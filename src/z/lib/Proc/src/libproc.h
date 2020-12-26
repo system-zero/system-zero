@@ -1,0 +1,69 @@
+#ifndef PROC_H
+#define PROC_H
+
+typedef struct proc_t proc_t;
+typedef struct Proc_t Proc_t;
+
+typedef int (*PopenRead_cb) (proc_t *, FILE *, FILE *);
+typedef int (*ProcAtFork_cb) (proc_t *);
+typedef int (*ProcPreFork_cb) (proc_t *);
+
+typedef struct proc_get_self {
+  proc_t
+    *(*next) (proc_t *);
+
+  void *(*userdata) (proc_t *);
+} proc_get_self;
+
+typedef struct proc_unset_self {
+  void
+    (*stdin) (proc_t *);
+} proc_unset_self;
+
+typedef struct proc_set_self {
+  void
+    (*prev) (proc_t *, proc_t *),
+    (*next) (proc_t *, proc_t *),
+    (*stdin) (proc_t *, char *, size_t),
+    (*at_fork_cb) (proc_t *, ProcAtFork_cb),
+    (*pre_fork_cb) (proc_t *, ProcPreFork_cb),
+    (*userdata) (proc_t *, void *);
+} proc_set_self;
+
+typedef struct proc_self {
+  proc_get_self get;
+  proc_set_self set;
+  proc_unset_self unset;
+
+  proc_t *(*new) (void);
+
+/*
+  Proc_t *(*New) (void);
+  void
+    (*Release) (Proc_t *),
+    (*Release_list) (Proc_t *);
+
+  int (*Exec) (Proc_t *, char *);
+*/
+
+  void
+    (*release) (proc_t *),
+    (*release_argv) (proc_t *);
+
+  char **(*parse) (proc_t *, char *);
+
+  int
+    (*open) (proc_t *),
+    (*exec) (proc_t *, char *),
+    (*read) (proc_t *);
+
+  pid_t (*wait) (proc_t *);
+} proc_self;
+
+typedef struct proc_T {
+  proc_self self;
+} proc_T;
+
+public proc_T  __init_proc__ (void);
+
+#endif /* PROC_H */
