@@ -1,11 +1,8 @@
 This is a quite minimal shell implementation and at very early stage of development.    
   
 <pre>
-Implemented: 
+Semantics:  
   Shell functionality:  
-  - pipes, e.g.,  
-  
-      ls | grep pat  
   
   - short-Circuit Operators “&&” and “||” are AND-OR operators.  
     “&&” executes the first command, and then executes the second  
@@ -17,6 +14,36 @@ Implemented:
   
     Note that quite possible there are combinations that maybe violate  
     expectations. The semantics are not clear yet.  
+  
+  - pipes, e.g.,  
+  
+      ls | grep pat  
+  
+ - supported redirection (operators):  
+  
+   - redirect stdout to a filename  
+  
+     command >/filename  
+  
+   - redirect stdout to an existing filename (overwrite)  
+  
+     command >| /filename  
+  
+   - redirect stderr to a filename  
+  
+     command 2>/filename  
+  
+   - redirect stderr and stdout in a filename  
+  
+     command >& /filename  
+  
+   - likewise but overwrite existing filename  
+  
+     command >&| /filename  
+  
+   - redirect stderr to stdout in a pipeline  
+  
+     command 2>&1 | next_command  
   
   Readline functionality:   
   - History set/load/save  

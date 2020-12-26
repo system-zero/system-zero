@@ -1,3 +1,7 @@
+/* a couple of logic bits derived from:
+ * https://notabug.org/rain1/s/
+ * Many thanks.
+ */
 
 #include <stdint.h>
 #include <stdio.h>
@@ -8,19 +12,34 @@
 #include <errno.h>
 
 #include <zc.h>
+#include <libstring.h>
 #include <libcstring.h>
 #include <libproc.h>
 #include <libsh.h>
 
+static  string_T StringT;
+#define String   StringT.self
+
 static  cstring_T CstringT;
 #define Cstring   CstringT.self
 
+static  proc_T ProcT;
+#define Proc   ProcT.self
+
+#define $myprop    this->prop
+#define $my(__v__) $myprop->__v__
+
 static pid_t CUR_PID = -1;
 
-#define COMMAND_TYPE 0
-#define PIPE_TYPE    1
-#define CONJ_TYPE    2
-#define DISJ_TYPE    3
+#define COMMAND_TYPE     0
+#define PIPE_TYPE        1
+#define CONJ_TYPE        2
+#define DISJ_TYPE        3
+
+#define NO_REDIR         0
+#define REDIR_NOCLOBBER  1
+#define REDIR_APPEND     2
+#define REDIR_CLOBBER    3
 
 typedef struct sh_prop {
   int saved_stdin;
@@ -39,18 +58,20 @@ struct sh_t {
 typedef struct shproc_t {
   int
     type,
-    fds[2],
+    saved_stderr,
+    stdout_fds[2],
+    stderr_fds[2],
     should_exit,
-    skip_next_proc;
+    skip_next_proc,
+    redir_type,
+    redir_streams;
+
+  string_t
+    *redir_stdout_file,
+    *redir_stderr_file;
 
   sigset_t mask;
 } shproc_t;
-
-static  proc_T ProcT;
-#define Proc   ProcT.self
-
-#define $myprop    this->prop
-#define $my(__v__) $myprop->__v__
 
 static int sh_append_proc (sh_t *this, proc_t *proc) {
   if ($my(head) is NULL) {
@@ -72,9 +93,19 @@ static void sh_release_list (sh_t *this) {
   proc_t *p = $my(head);
   while (p) {
     proc_t *t = Proc.get.next (p);
+
     shproc_t *sh = Proc.get.userdata (p);
+    String.release (sh->redir_stdout_file);
+    String.release (sh->redir_stderr_file);
+    if (sh->saved_stderr isnot STDERR_FILENO) {
+      dup2 (STDERR_FILENO, sh->saved_stderr);
+      close (sh->saved_stderr);
+    }
+
     free (sh);
+
     Proc.release (p);
+
     p = t;
   }
 
@@ -93,6 +124,52 @@ static void sh_release (sh_t *this) {
   this = NULL;
 }
 
+static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
+  shproc_t *sh = (shproc_t *) Proc.get.userdata (proc);
+
+  string_t *file = NULL;
+
+  if (stream is stdout)
+    file = sh->redir_stdout_file;
+  else if (stream is stderr)
+    file = sh->redir_stderr_file;
+
+  if (NULL is file) return OK;
+
+  FILE *fp = NULL;
+  if (sh->redir_type is REDIR_NOCLOBBER) {
+    if (0 is access (file->bytes, F_OK)) {
+      fprintf (stderr, "%s: exists, use the >| operator to continue writting\n",
+          file->bytes);
+      return OK;
+    }
+
+    fp = fopen (file->bytes, "w");
+  } else if (sh->redir_type is REDIR_APPEND) {
+    fp = fopen (file->bytes, "a+");
+  } else {
+    if (stream is stdout) {
+      fp = fopen (file->bytes, "w");
+    } else {
+      if (sh->redir_streams & PROC_READ_STDOUT)
+        fp = fopen (file->bytes, "a+");
+      else
+        fp = fopen (file->bytes, "w");
+    }
+  }
+
+  char *line = NULL;
+  size_t len = 0;
+  while (-1 isnot getline (&line, &len, read_fp))
+    fprintf (fp, "%s", line);
+
+  ifnot (NULL is line) free (line);
+
+  fclose (fp);
+
+  return OK;
+}
+
 static int sh_pre_fork_default_cb (proc_t *proc) {
   shproc_t *sh = (shproc_t *) Proc.get.userdata (proc);
 
@@ -105,18 +182,16 @@ static int sh_pre_fork_default_cb (proc_t *proc) {
 
 static int sh_pre_fork_pipeline_cb (proc_t *this) {
   shproc_t *sh = (shproc_t *) Proc.get.userdata (this);
-  if (-1 is pipe (&sh->fds[0]))
+
+  if (-1 is pipe (&sh->stdout_fds[0]))
     return NOTOK;
 
+  /*if (sh->redir_streams & PROC_READ_STDERR)
+    if (-1 is pipe (&sh->stderr_fds[0]))
+      return NOTOK;
+  */
+
   return sh_pre_fork_default_cb (this);
-}
-
-static void sh_sigint_handler (int sig) {
-  (void) sig;
-
-  if (CUR_PID is -1) return;
-
-  kill (-CUR_PID, SIGINT);
 }
 
 static int sh_at_fork_default_cb (proc_t *proc) {
@@ -125,25 +200,50 @@ static int sh_at_fork_default_cb (proc_t *proc) {
   sigprocmask (SIG_UNBLOCK, &sh->mask, NULL);
 
   CUR_PID = getpid ();
+
+  if (sh->redir_streams & PROC_READ_STDERR) {
+    if (sh->redir_streams & PROC_READ_STDOUT) {
+      sh->saved_stderr = dup (STDERR_FILENO);
+      dup2 (STDOUT_FILENO, STDERR_FILENO);
+    }
+  }
+
+  return OK;
+}
+
+static int sh_dup_stream (int *fds, int stream_fd) {
+  if (-1 is close (fds[0]))
+    return NOTOK;
+
+  if (-1 is close (stream_fd))
+    return NOTOK;
+
+  if (-1 is dup (fds[1]))
+    return NOTOK;
+
+  if (-1 is close (fds[1]))
+    return NOTOK;
+
   return OK;
 }
 
 static int sh_at_fork_pipeline_cb (proc_t *proc) {
   shproc_t *sh = (shproc_t *) Proc.get.userdata (proc);
 
-  if (-1 is close (sh->fds[0]))
+  if (NOTOK is sh_dup_stream (sh->stdout_fds, STDOUT_FILENO))
     return NOTOK;
 
-  if (-1 is close (STDOUT_FILENO))
-    return NOTOK;
-
-  if (-1 is dup (sh->fds[1]))
-    return NOTOK;
-
-  if (-1 is close (sh->fds[1]))
-    return NOTOK;
+  sh->redir_streams |= PROC_READ_STDOUT;
 
   return sh_at_fork_default_cb (proc);
+}
+
+static void sh_sigint_handler (int sig) {
+  (void) sig;
+
+  if (CUR_PID is -1) return;
+
+  kill (-CUR_PID, SIGINT);
 }
 
 static int sh_interpret (proc_t *this) {
@@ -172,24 +272,26 @@ static int sh_interpret (proc_t *this) {
 
     case PIPE_TYPE:
       retval = Proc.open (this);
+
       if (NOTOK is retval) {
         sh->should_exit = 1;
         break;
       }
 
-      if (-1 is close (sh->fds[1]) or
+      if (-1 is close (sh->stdout_fds[1]) or
           -1 is close (STDIN_FILENO) or
-          -1 is dup (sh->fds[0]) or
-          -1 is close (sh->fds[0])) {
+          -1 is dup (sh->stdout_fds[0]) or
+          -1 is close (sh->stdout_fds[0])) {
         retval = -1;
         sh->should_exit = 1;
         break;
       }
 
       retval = Proc.wait (this);
-
-      if (retval isnot 0)
-        sh->should_exit = 1;
+      /* allow
+       * if (retval isnot 0)
+       * sh->should_exit = 1;
+       */
 
       break;
 
@@ -222,9 +324,31 @@ static int sh_parse (sh_t *this, char *buf) {
 
   char *sp = cbuf;
   buf = sp;
+
   int type = COMMAND_TYPE;
+  int redir_type = NO_REDIR;
+  int redir_streams = 0;
+  int redir_stderr = 0;
+  int redir_stderr_to_stdout = 0;
 
   while (*sp) {
+    if (*sp is '2') {
+      if (sp is buf) goto next;
+      if (*(sp - 1) isnot ' ' and *(sp - 1) isnot '\t') goto next;
+      if (Cstring.eq_n (sp, "2>&1", 4)) {
+        redir_stderr_to_stdout = 1;
+        *sp = '\0';
+        sp += 3;
+        goto next;
+      }
+
+      if (*(sp + 1) isnot '>') goto next;
+
+      redir_stderr = 1;
+      *sp = '\0';
+      goto next;
+    }
+
     if (*sp is '|') {
       ifnot (*(sp + 1)) goto theerror;
 
@@ -257,18 +381,69 @@ static int sh_parse (sh_t *this, char *buf) {
       goto add_proc;
     }
 
+    if (*sp is '>') {
+      *sp++ = '\0';
+
+      ifnot (*sp) goto theerror;
+
+      redir_type = REDIR_NOCLOBBER;
+
+      if (*sp is '&') {
+        redir_streams = (PROC_READ_STDOUT|PROC_READ_STDERR);
+        sp++;
+      } else
+        if (redir_stderr)
+          redir_streams |= PROC_READ_STDERR;
+        else
+          redir_streams |= PROC_READ_STDOUT;
+
+      if (*sp is '>' or *sp is '|') {
+        redir_type = (*sp is '>' ? REDIR_APPEND : REDIR_CLOBBER);
+        sp++;
+      }
+
+      while (*sp is ' ' or *sp is '\t') sp++;
+      ifnot (*sp) goto theerror;
+
+      goto add_proc;
+    }
+
     goto next;
 
     add_proc:
       p = Proc.new ();
       sh = Alloc (sizeof (shproc_t));
+      sh->redir_stdout_file = NULL;
+      sh->redir_stderr_file = NULL;
+      sh->saved_stderr = STDERR_FILENO;
       sh->type = type;
+      sh->redir_type = redir_type;
+      sh->redir_streams = redir_streams;
+
+      if (sh->redir_type isnot NO_REDIR) {
+        char file[(sp - cbuf) + 1];
+
+        int idx = 0;
+        while (*sp) file[idx++] = *sp++;
+
+        file[idx] = '\0';
+
+        if (sh->redir_streams & PROC_READ_STDOUT) {
+          sh->redir_stdout_file = String.new_with (file);
+          Proc.set.read_stream_cb (p, PROC_READ_STDOUT, sh_read_stream_cb);
+        } else if (sh->redir_streams & PROC_READ_STDERR) {
+          sh->redir_stderr_file = String.new_with (file);
+          Proc.set.read_stream_cb (p, PROC_READ_STDERR, sh_read_stream_cb);
+        }
+      }
 
       Proc.parse (p, buf);
 
       if (type is PIPE_TYPE) {
         Proc.set.at_fork_cb (p, sh_at_fork_pipeline_cb);
         Proc.set.pre_fork_cb (p, sh_pre_fork_pipeline_cb);
+        if (redir_stderr_to_stdout)
+          sh->redir_streams |= PROC_READ_STDERR;
       } else {
         Proc.set.pre_fork_cb (p, sh_pre_fork_default_cb);
         Proc.set.at_fork_cb (p, sh_at_fork_default_cb);
@@ -279,6 +454,11 @@ static int sh_parse (sh_t *this, char *buf) {
 
       buf = sp;
       type = COMMAND_TYPE;
+      redir_type = NO_REDIR;
+      redir_streams = 0;
+      redir_stderr = 0;
+      redir_stderr_to_stdout = 0;
+
       ifnot (*sp) goto theend;
 
     next: sp++;
@@ -331,6 +511,7 @@ static int sh_exec (sh_t *this, char *buf) {
 
 public sh_T __init_sh__ (void) {
   ProcT = __init_proc__ ();
+  StringT = __init_string__ ();
   CstringT = __init_cstring__ ();
 
   return (sh_T) {

@@ -15,15 +15,6 @@
 static cstring_T CstringT;
 #define Cstring CstringT.self
 
-/*
-static pid_t CUR_PID = -1;
-
-#define COMMAND_TYPE 0
-#define PIPE_TYPE    1
-#define CONJ_TYPE    2
-#define DISJ_TYPE    3
-*/
-
 typedef struct proc_prop {
   pid_t  pid;
 
@@ -48,7 +39,8 @@ typedef struct proc_prop {
 
    size_t stdin_buf_size;
 
-   PopenRead_cb read;
+   PopenRead_cb read_stdout_cb;
+   PopenRead_cb read_stderr_cb;
    ProcAtFork_cb at_fork_cb;
    ProcPreFork_cb pre_fork_cb;
 
@@ -134,9 +126,9 @@ static proc_t *proc_new (void) {
   $my(is_bg) = 0;
   $my(setsid) = 0;
   $my(setpgid) = 0;
-  //$my(type) = COMMAND_TYPE;
 
-  $my(read) = proc_output_to_stream;
+  $my(read_stdout_cb) = proc_output_to_stream;
+  $my(read_stderr_cb) = proc_output_to_stream;
   $my(pre_fork_cb) = proc_pre_fork_default_cb;
   $my(at_fork_cb) = proc_at_fork_default_cb;
   return this;
@@ -161,17 +153,17 @@ static int proc_read (proc_t *this) {
   FILE *fp = NULL;
 
   if ($my(read_stdout)) {
-    if ($my(read) isnot NULL) {
+    if ($my(read_stdout_cb) isnot NULL) {
       fp = fdopen ($my(stdout_fds)[PIPE_READ_END], "r");
-      retval = $my(read) (this, stdout, fp);
+      retval = $my(read_stdout_cb) (this, stdout, fp);
       fclose (fp);
     }
   }
 
   if ($my(read_stderr)) {
-    if ($my(read) isnot NULL) {
+    if ($my(read_stderr_cb) isnot NULL) {
       fp = fdopen ($my(stderr_fds)[PIPE_READ_END], "r");
-      retval = $my(read) (this, stderr, fp);
+      retval = $my(read_stderr_cb) (this, stderr, fp);
       fclose (fp);
     }
   }
@@ -372,6 +364,18 @@ static void proc_set_pre_fork_cb (proc_t *this, ProcPreFork_cb cb) {
 static void proc_set_at_fork_cb (proc_t *this, ProcAtFork_cb cb) {
   if (NULL is this) return;
   $my(at_fork_cb) = cb;
+}
+
+static void proc_set_read_stream_cb (proc_t *this, int stream_flags, PopenRead_cb cb) {
+  if (stream_flags & PROC_READ_STDOUT) {
+    $my(read_stdout) = 1;
+    $my(read_stdout_cb) = cb;
+  }
+
+  if (stream_flags & PROC_READ_STDERR) {
+    $my(read_stderr) = 1;
+    $my(read_stderr_cb) = cb;
+  }
 }
 
 static proc_t *proc_get_next (proc_t *this) {
@@ -667,7 +671,8 @@ public proc_T __init_proc__ (void) {
         .stdin = proc_set_stdin,
         .userdata = proc_set_userdata,
         .at_fork_cb = proc_set_at_fork_cb,
-        .pre_fork_cb = proc_set_pre_fork_cb
+        .pre_fork_cb = proc_set_pre_fork_cb,
+        .read_stream_cb = proc_set_read_stream_cb,
       },
       .unset = (proc_unset_self) {
         .stdin = proc_unset_stdin

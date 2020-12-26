@@ -72,7 +72,7 @@ will offer a way to execute commands with superuser rights, so we could administ
 the system. Building those two tools, will allow us to slowly disassociate from our  
 host.  
   
-Implementation.  
+## Implementation.  
   
 This is going to be in C, as the nature of the task, it requires direct access to the  
 underlying machine, and this is the main property of C.  
@@ -120,7 +120,7 @@ Note that the libraries, are packed as structures and exposed in an Object Orien
 style for various reasons. Those Types, will follow us in every stage from now on,  
 and we can refer them as the z standard c library. We'll introduce others in the way.  
   
-This command, it will also built a quite minimal shell, which we'll refer to it as "zs",  
+This command, it will also built a quite minimal shell, which we'll refer to it as ["zs"](data/docs/zs.md),  
 and the "zsu" utility which is the one that will allow us to execute ANY command with  
 superuser rights. Note that the latter is installed as setuid root, that is owned by  
 root, and so capable to destroy the system; note that this utility is at very early  
