@@ -139,10 +139,13 @@ static int proc_wait (proc_t *this) {
   $my(status) = 0;
   waitpid ($my(pid), &$my(status), 0);
  // waitpid ($my(pid), &$my(status), WNOHANG|WUNTRACED);
+
   if (WIFEXITED ($my(status)))
     $my(retval) = WEXITSTATUS ($my(status));
   else
     $my(retval) = -1;
+
+  $my(pid) = -1;
 
   return $my(retval);
 }
@@ -383,6 +386,11 @@ static proc_t *proc_get_next (proc_t *this) {
   return this->next;
 }
 
+static pid_t proc_get_pid (proc_t *this) {
+  if (NULL is this) return -1;
+  return $my(pid);
+}
+
 static void *proc_get_userdata (proc_t *this) {
   if (NULL is this) return NULL;
   return $my(userdata);
@@ -405,253 +413,6 @@ static int proc_exec (proc_t *this, char *com) {
 theend:
   return retval;
 }
-
-#if 0
-static void Proc_release_list (Proc_t *this) {
-  proc_t *p = $my(head);
-  while (p) {
-    proc_t *t = p->next;
-    proc_release (p);
-    p = t;
-  }
-
-  $my(head) = $my(tail) = $my(current) = NULL;
-  $my(num_items) = 0;
-  $my(cur_idx) = -1;
-}
-
-static void Proc_release (Proc_t *this) {
-  if (this is NULL) return;
-
-  Proc_release_list (this);
-
-  free ($myprop);
-  free (this);
-  this = NULL;
-}
-
-static int Proc_pre_fork_default_cb (proc_t *this) {
-  (void) this;
-
-  sigemptyset (&$my(mask));
-  sigaddset (&$my(mask), SIGCHLD);
-  sigprocmask (SIG_BLOCK, &$my(mask), NULL);
-
-  return OK;
-}
-
-static int Proc_pre_fork_pipeline_cb (proc_t *this) {
-  if (-1 is pipe (&$my(fds)[0]))
-    return NOTOK;
-
-  return Proc_pre_fork_default_cb (this);
-}
-
-static void sigint_handler (int sig) {
-  (void) sig;
-  if (CUR_PID is -1) return;
-  kill (-CUR_PID, SIGINT);
-}
-
-static int Proc_at_fork_default_cb (proc_t *this) {
-  (void) this;
-  CUR_PID = getpid ();
-
-  sigprocmask(SIG_UNBLOCK, &$my(mask), NULL);
-
-  return OK;
-}
-
-static int Proc_at_fork_pipeline_cb (proc_t *this) {
-  if (-1 is close ($my(fds)[0]))
-    return NOTOK;
-
-  if (-1 is close (STDOUT_FILENO))
-    return NOTOK;
-
-  if (-1 is dup ($my(fds)[1]))
-    return NOTOK;
-
-  if (-1 is close ($my(fds)[1]))
-    return NOTOK;
-
-  return Proc_at_fork_default_cb (this);
-}
-
-static int proc_interpret (proc_t *this) {
-  if (NULL is this) return 1;
-
-  int retval = 1;
-  $my(should_exit) = 0;
-  $my(skip_next_proc) = 0;
-
-  switch ($my(type)) {
-    case COMMAND_TYPE:
-      retval = proc_exec (this, NULL);
-      break;
-
-    case CONJ_TYPE:
-      retval = proc_exec (this, NULL);
-      $my(skip_next_proc) = retval isnot 0;
-      break;
-
-    case DISJ_TYPE:
-      retval = proc_exec (this, NULL);
-      $my(skip_next_proc) = retval is 0;
-      break;
-
-    case PIPE_TYPE:
-      retval = proc_open (this);
-      if (NOTOK is retval) {
-        $my(should_exit) = 1;
-        break;
-      }
-
-      if (-1 is close ($my(fds)[1]) or
-          -1 is close (STDIN_FILENO) or
-          -1 is dup ($my(fds)[0]) or
-          -1 is close ($my(fds)[0])) {
-        retval = -1;
-        $my(should_exit) = 1;
-        break;
-      }
-
-      retval = proc_wait (this);
-
-      if (retval isnot 0)
-        $my(should_exit) = 1;
-
-      break;
-
-    default:
-      break;
-   }
-
-   return retval;
-}
-
-static Proc_t *Proc_new (void) {
-  Proc_t *this = Alloc (sizeof (Proc_t));
-  $myprop = Alloc (sizeof (Proc_prop));
-  $my(head) = $my(tail) = $my(current) = NULL;
-  $my(cur_idx) = -1; $my(num_items) = 0;
-  return this;
-}
-
-static int Proc_parse (Proc_t *this, char *buf) {
-  if (NULL is buf) return NOTOK;
-
-  size_t len = bytelen (buf);
-  ifnot (len) return NOTOK;
-
-  char cbuf[len + 1];
-  Cstring.cp (cbuf, len + 1, buf, len);
-
-  proc_t *p;
-
-  char *sp = cbuf;
-  buf = sp;
-  int type = COMMAND_TYPE;
-
-  while (*sp) {
-    if (*sp is '|') {
-      ifnot (*(sp + 1)) goto theerror;
-
-      if (*(sp + 1) is '|') {
-        ifnot (*(sp + 2)) goto theerror;
-
-        type = DISJ_TYPE;
-        *sp = '\0';
-        sp += 2;
-        goto add_proc;
-      }
-
-      type = PIPE_TYPE;
-      *sp = '\0';
-      sp++;
-      goto add_proc;
-    }
-
-    if (*sp is '&') {
-      ifnot (*(sp + 1)) goto theerror;
-
-      if (*(sp + 1) isnot '&') goto theerror;
-
-      ifnot (*(sp + 2)) goto theerror;
-
-      type = CONJ_TYPE;
-      *sp = '\0';
-      sp += 2;
-
-      goto add_proc;
-    }
-
-    goto next;
-
-    add_proc:
-      p = proc_new ();
-      p->prop->type = type;
-      proc_parse (p, buf);
-
-      if (type is PIPE_TYPE) {
-        p->prop->at_fork_cb = Proc_at_fork_pipeline_cb;
-        p->prop->pre_fork_cb = Proc_pre_fork_pipeline_cb;
-      } else {
-        p->prop->pre_fork_cb = Proc_pre_fork_default_cb;
-        p->prop->at_fork_cb = Proc_at_fork_default_cb;
-      }
-
-      DListAppend ($myprop, p);
-      buf = sp;
-      type = COMMAND_TYPE;
-      ifnot (*sp) goto theend;
-
-    next: sp++;
-  }
-
-  if (*buf) goto add_proc;
-
-theend:
-  return OK;
-
-theerror:
-  Proc_release_list (this);
-  return NOTOK;
-}
-
-static int Proc_exec (Proc_t *this, char *buf) {
-  if (NULL is this) return NOTOK;
-
-  if (NOTOK is Proc_parse (this, buf))
-    return NOTOK;
-
-  int retval = 0;
-  proc_t *p = $my(head);
-
-  $my(saved_stdin) = dup (STDIN_FILENO);
-
-  CUR_PID = -1;
-  signal (SIGINT, sigint_handler);
-
-  while (p) {
-    retval = proc_interpret (p);
-
-    if (p->prop->should_exit or retval is NOTOK)
-      break;
-
-    if (p->prop->skip_next_proc) {
-      p = p->next;
-    }
-
-    if (p isnot NULL)
-      p = p->next;
-  }
-
-  dup2 ($my(saved_stdin), STDIN_FILENO);
-
-  return (retval < OK ? 1 : retval);
-}
-#endif
 
 public proc_T __init_proc__ (void) {
   CstringT = __init_cstring__ ();
@@ -678,42 +439,10 @@ public proc_T __init_proc__ (void) {
         .stdin = proc_unset_stdin
       },
       .get = (proc_get_self) {
+        .pid = proc_get_pid,
         .next = proc_get_next,
         .userdata = proc_get_userdata
       }
     }
   };
 }
-#if 0
-public proc_T __init_proc__ (void) {
-  CstringT = __init_cstring__ ();
-
-  return (proc_T) {
-    .self = (proc_self) {
-      .New = Proc_new,
-      .Release = Proc_release,
-      .Release_list = Proc_release_list,
-      .Exec = Proc_exec,
-      .new = proc_new,
-      .wait = proc_wait,
-      .parse = proc_parse,
-      .read = proc_read,
-      .exec = proc_exec,
-      .release = proc_release,
-      .set = (proc_set_self) {
-        .stdin = proc_set_stdin,
-        .userdata = proc_set_userdata,
-        .at_fork_cb = proc_set_at_fork_cb,
-        .pre_fork_cb = proc_set_pre_fork_cb
-      },
-      .unset_= (proc_unset_self) {
-        .stdin = proc_unset_stdin
-      },
-      .get = (proc_get_self) {
-        .next = proc_get_next,
-        .userdata = proc_get_userdata
-      }
-    }
-  };
-}
-#endif

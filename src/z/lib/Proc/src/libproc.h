@@ -12,6 +12,8 @@ typedef int (*ProcPreFork_cb) (proc_t *);
 #define PROC_READ_STDERR (1 << 2)
 
 typedef struct proc_get_self {
+  pid_t (*pid) (proc_t *);
+
   proc_t
     *(*next) (proc_t *);
 

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <errno.h>
 
 #include <zc.h>
@@ -287,7 +288,7 @@ static int sh_interpret (proc_t *this) {
         break;
       }
 
-      retval = Proc.wait (this);
+      //retval = Proc.wait (this);
       /* allow
        * if (retval isnot 0)
        * sh->should_exit = 1;
@@ -480,18 +481,21 @@ static int sh_exec (sh_t *this, char *buf) {
   if (NOTOK is sh_parse (this, buf))
     return NOTOK;
 
-  int retval = 0;
-  proc_t *p = $my(head);
-
   $my(saved_stdin) = dup (STDIN_FILENO);
 
   CUR_PID = -1;
   signal (SIGINT, sh_sigint_handler);
 
+  int retval = 0;
+  proc_t *p = $my(head);
+
+  shproc_t *sh = (shproc_t *) Proc.get.userdata (p);
+  int is_pipeline = sh->type is PIPE_TYPE;
+
   while (p) {
     retval = sh_interpret (p);
 
-    shproc_t *sh = (shproc_t *) Proc.get.userdata (p);
+    sh = (shproc_t *) Proc.get.userdata (p);
 
     if (sh->should_exit or retval is NOTOK)
       break;
@@ -502,6 +506,16 @@ static int sh_exec (sh_t *this, char *buf) {
 
     if (p isnot NULL)
       p = Proc.get.next (p);
+
+    if (is_pipeline) {
+      proc_t *proc = $my(head);
+      while (proc and proc isnot $my(tail)) {
+        pid_t pid = Proc.get.pid (proc);
+        if (pid isnot -1)
+          waitpid (-1, NULL, 0);
+        proc = Proc.get.next (proc);
+      }
+    }
   }
 
   dup2 ($my(saved_stdin), STDIN_FILENO);
