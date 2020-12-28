@@ -1,14 +1,21 @@
 #ifndef C_H
 #define C_H
 
+/* This is my hble C (as c). Quite many of conveniences!
+ * But also many i believe standardized by now macros.
+ * Focusing mainly on an uncontrollable i'm afraid expressionism.
+ * Compiles and obeys to the C11 standard, using definitions from
+ * the newer POSIX and X/OPEN standards. 
+ */
+
 #define _POSIX_C_SOURCE 200809L
 #define _XOPEN_SOURCE   700
 
-#include <stdint.h>
+#include <stdint.h> /* get them (the integer types) right */
 #include <stddef.h> /* for ptrdiff_t (see below the idx_t section) */
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
+#include <stdlib.h> /* we need it here for malloc/free */
+#include <string.h> /* probably we can do without it, if we work hard */
+#include <errno.h>  /* this is a thread safe errno */
 
 #ifndef OK
 #define OK 0
@@ -42,30 +49,44 @@
 #define muttable __attribute__((__weak__))
 #endif
 
-#ifndef public
-#define public __attribute__((visibility ("default")))
-#endif
-
+/* i changed my mind about those two
+ * (i do not (have to) use them anymore) */
 #ifndef private
 #define private __attribute__((visibility ("hidden")))
+/* It doesn't work like static does, as it provides symbol collisions
+ * on static targets, whereas "static" hides them.
+ * (used to be used with -fvisibility=hidden in CFLAGS) */
+#endif
+
+#ifndef public
+#define public __attribute__((visibility ("default")))
+/* and that is what the compiler uses by default */
 #endif
 
 #ifndef unused
 #define unused  __attribute__ ((unused))
 #endif
 
+/* for purity */
 #ifndef bytelen
 #define bytelen strlen
 #endif
+/* strlen might made sence, but now is confusing for young minds.
+ * so dissasoiate it violently by forbiding it in the code.
+ * Today a standard charlen() might justfied. */
 
-typedef signed int utf8;
-typedef unsigned int uint;
+typedef   signed int  utf8;
+typedef unsigned int  uint;
 typedef unsigned char uchar;
 typedef unsigned long ulong;
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096  /* bytes in a path name */
 #endif
+
+/* for consistency and fulfill expectations and be kind with
+ * the human memory, we'll try to impose MAXLEN_* as prefix
+ * to all those common macros */
 
 #ifndef MAXLEN_PATH
 #define MAXLEN_PATH   PATH_MAX
@@ -75,54 +96,110 @@ typedef unsigned long ulong;
 #define MAXLEN_LINE   4096
 #endif
 
+#ifndef PATH_SEP
+#define PATH_SEP        ':'
+#endif
+
+#ifndef DIR_SEP
+#define DIR_SEP         '/'
+#endif
+
+#ifndef DIR_SEP_STR
+#define DIR_SEP_STR     "/"
+#endif
+
+#ifndef IS_DIR_SEP
+#define IS_DIR_SEP(c_)     (c_ == DIR_SEP)
+#endif
+
+#ifndef IS_NOT_DIR_SEP
+#define IS_NOT_DIR_SEP(c_) (0 == IS_DIR_SEP (c_))
+#endif
+
+#ifndef IS_DIR_ABS
+#define IS_DIR_ABS(d_)   IS_DIR_SEP (d_[0])
+#endif
+
 #ifndef IS_UTF8
 #define IS_UTF8(c_)     (((c_) & 0xC0) == 0x80)
 #endif
 
 #ifndef IS_DIGIT
-#define IS_DIGIT(c_)     ('0' <= (c_) && (c_) <= '9')
+#define IS_DIGIT(c_)    ('0' <= (c_) && (c_) <= '9')
 #endif
 
 #ifndef IS_CNTRL
-#define IS_CNTRL(c_)     ((c_ < 0x20 && c_ >= 0) || c_ == 0x7f)
+#define IS_CNTRL(c_)    ((c_ < 0x20 && c_ >= 0) || c_ == 0x7f)
 #endif
 
 #ifndef IS_SPACE
-#define IS_SPACE(c_)     ((c_) == ' ' || (c_) == '\t' || (c_) == '\r' || (c_) == '\n')
+#define IS_SPACE(c_)    ((c_) == ' ' || (c_) == '\t' || (c_) == '\r' || (c_) == '\n')
 #endif
 
 #ifndef IS_ALPHA
-#define IS_ALPHA(c_)     (((c_) >= 'a' && (c_) <= 'z') || ((c_) >= 'A' && (c_) <= 'Z'))
+#define IS_ALPHA(c_)    (((c_) >= 'a' && (c_) <= 'z') || ((c_) >= 'A' && (c_) <= 'Z'))
 #endif
 
 #ifndef IS_ALNUM
-#define IS_ALNUM(c_)     (IS_ALPHA(c_) || IS_DIGIT(c_))
+#define IS_ALNUM(c_)    (IS_ALPHA(c_) || IS_DIGIT(c_))
 #endif
 
 #ifndef IS_HEX
-#define IS_HEX(c_)       (IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
+#define IS_HEX(c_)      (IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
 #endif
 
 #ifndef ARRLEN
 #define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
+/* start safe */
+#define __ROOT_ERROR__         -10000
+/* reserve some space
+ * (maybe we map from EPERM (1) to ELOOP (40) at least, one day) */
+#define __BASE_ERROR__         (__ROOT_ERROR__ - 200)
+/* we want those two at least - for now */
+#define INDEX_ERROR            (__BASE_ERROR__ - 1)
+#define INTEGEROVERFLOW_ERROR  (__BASE_ERROR__ - 2)
+
 #ifndef ALLOC_H
 #define ALLOC_H
 
-#define INDEX_ERROR            -1000
-#define INTEGEROVERFLOW_ERROR  -1002
-
+       /* Our alloc exits hard */
+/* we set up an informative handler */
 typedef void (*AllocErrorHandlerF) (int, size_t, char *, const char *, int);
 
 AllocErrorHandlerF AllocErrorHandler;
 
+/* perhaps one day */
+#ifndef __REALLOC__
 #define __REALLOC__ realloc
+#endif
+
+#ifndef __CALLOC__
 #define __CALLOC__  calloc
+#endif
 
 /* reallocarray:
  * $OpenBSD: reallocarray.c,v 1.1 2014/05/08 21:43:49 deraadt Exp $
  * Copyright (c) 2008 Otto Moerbeek <otto@drijf.net>
+ */
+
+/*         (Mon, Dec 28, 2000 at 20.58.59)
+ *  A year ago (notice the crazy coincidence)
+ * Hi Paul,
+ *  On Sat, Dec 28, at 10:28 Paul Eggert wrote:
+ * ...
+ * >> #define MUL_NO_OVERFLOW ((size_t) 1 << (sizeof (size_t) * 4))
+ * >> #define MEM_IS_INT_OVERFLOW(nmemb, ssize)                       
+ * >>       \
+ * >> (((nmemb) >= MUL_NO_OVERFLOW || (ssize) >= MUL_NO_OVERFLOW) && 
+ * >>       \
+ * >> (nmemb) > 0 && SIZE_MAX / (nmemb) < (ssize))
+ * > 
+ * > Ouch. That code is not good. An unsigned division at runtime to do
+ * > memory allocation? Gnulib does better than that already. Also,
+ * > Glibc has some code in this area that we could migrate into Gnulib,
+ * > that could be better yet.
  */
 
 #define MUL_NO_OVERFLOW ((size_t) 1 << (sizeof (size_t) * 4))
@@ -205,6 +282,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 })
 #endif /* VA_ARGS_GET_FMT_STR */
 
+  /* idx_t */
 /* 13:03 28 Dec Mon 2020
  * Date: Thu, 24 Dec 2020 12:16:58 -0300                              
  * From: Adhemerval Zanella <adhemerval.zanella@linaro.org>
@@ -239,6 +317,8 @@ typedef ptrdiff_t idx_t;
  * PTRDIFF_WIDTH.
  */
 
+/* be sure and clear them to make every body happy:
+ * This is our main coding style/mechanism throughout our code universe */
 #ifdef $my
 #undef $my
 #endif
@@ -247,6 +327,7 @@ typedef ptrdiff_t idx_t;
 #undef self
 #endif
 
+/* and last but not least a small prose */
 #ifndef UNEXPRESSIONAL_C
 
 /* really: we really really want to try to make C a little bit more
@@ -256,11 +337,11 @@ typedef ptrdiff_t idx_t;
  * human beings and we express differently than the machine. */
 /*
  * Our humble mission, is to let C's programming mind flow expressed
- * naturally in code, just like writting some prose. We already used
+ * naturally in code, just like writing some prose. We already used
  * the is|isnot|and|or,... macros, but we want a bit more freedom.
  * We especially want this in our codebase, much more than a usual
  * project, since this is meant also to serve as a documented system
- * description, it is important, to be declared clearly in code our
+ * description,  it is important to be declared clearly in code our
  * intention. I believe that making easier for anyone to understand
  * the intentions is crucial finally for the development, especially
  * for some like me, that do not write comments (for reasons). */
@@ -268,22 +349,27 @@ typedef ptrdiff_t idx_t;
  * So we'll do this with the C's only way, by using macros.
  * We know that macros are hiding details, so we'll not use them in
  * that way (at least in the beginning (Mon 28 Dec 2020)).
- * But let's start slow and see how it is going to work. At first we
- * use them to bind libc functions, like isatty(). */
+ * But let's start slow and see how it is going to be, by trying
+ * first to bind libc functions, like isatty(). */
 /*
  * Well.
  * We already have Types (structures with properties and methods),
  * which expressed like Type.method (type, data, ...).
+ *
  * And we also introduced shell commands such: File.size filename
  * which maps exactly to the File.size (char *) library prototype.
+ *
  * So by trying to be consistent we have some options.
- * FdIsATyy or
- * Fd_is_a_tty or
- * FdIsATerminal or
- * FdReferToATerminal or
- * Fd_Is_A_Terminal or
- * FD_IS_A_TERMINAL
- * Touch. Dots (.) are not allowed in C macros. Capitals are noisy.
+ *
+ *   FdIsATyy or
+ *   Fd_is_a_tty or
+ *   FdIsATerminal or
+ *   FdReferToATerminal or
+ *   Fd_Is_A_Terminal or
+ *   FD_IS_A_TERMINAL
+ */
+
+/* Touch. Dots (.) are not allowed in C macros. Capitals are noisy.
  * So we have to use either underscore (_) or CamelCase, or a
  * combination. I'm tempted to use CamelCase and use the short
  * version, since it is less verbose, but i'm going to use the most

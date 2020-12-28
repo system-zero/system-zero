@@ -1,4 +1,4 @@
-THIS_LIBNAME = dir
+THIS_LIBNAME = path
 
 NS      :=
 API     := 0
@@ -82,7 +82,7 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-LIBFLAGS := -I. -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -lstring-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION) -lpath-$(VERSION)
+LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -lcstring-$(VERSION)
 
 all: shared static
 
@@ -113,7 +113,7 @@ clean_static: clean_header
 	@$(TEST) ! -f $(THIS_STATICLIB) || $(RM)  $(THIS_STATICLIB)
 
 clean_header:
-	@$(TEST) ! -f $(SYSINCDIR)/$(THIS_HEADER)     || $(RM) $(SYSINCDIR)/$(THIS_HEADER)
+	@$(TEST) ! -f $(SYSINCDIR)/$(THIS_HEADER) || $(RM) $(SYSINCDIR)/$(THIS_HEADER)
 
 AR = ar rs
 TEST = test

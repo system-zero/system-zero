@@ -1,19 +1,18 @@
-#define _POSIX_C_SOURCE 200809L
-#define _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE  /* for DT_* */
 
-#include <stdint.h>
-#include <stdlib.h>
+#include <zc.h>
+#include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include <errno.h>
 
-#include <zc.h>
 #include <dlist.h>
 #include <libstring.h>
 #include <libvstring.h>
 #include <libcstring.h>
+#include <libpath.h>
 #include <libdir.h>
 
 static  string_T StringT;
@@ -25,11 +24,10 @@ static  vstring_T VstringT;
 static  cstring_T CstringT;
 #define Cstring   CstringT.self
 
-#ifndef DIR_SEP
-#define DIR_SEP         '/'
-#endif
+static  path_T PathT;
+#define Path   PathT.self
 
-static int is_directory (char *dname) {
+static int dir_is_directory (char *dname) {
   struct stat st;
   if (NOTOK is stat (dname, &st)) return 0;
   return S_ISDIR (st.st_mode);
@@ -58,7 +56,7 @@ static void dir_list_free (dirlist_t *dlist) {
 static dirlist_t *dir_list (char *dir, int flags) {
   if (NULL is dir) return NULL;
   ifnot (flags & DIRLIST_DONOT_CHECK_DIRECTORY)
-    ifnot (is_directory (dir)) return NULL;
+    ifnot (dir_is_directory (dir)) return NULL;
 
   DIR *dh = NULL;
   if (NULL is (dh = opendir (dir))) return NULL;
@@ -222,7 +220,44 @@ static int dir_walk_run (dirwalk_t *this, char *dir) {
   return OK;
 }
 
+static int dir_make (char *dir, mode_t mode) {
+  if (NULL is dir) return NOTOK;
+
+  if (mkdir (dir, mode) isnot 0) {
+    if (errno is EEXIST)
+      return dir_is_directory (dir);
+
+    fprintf (stderr, "mkdir(): %s\n%s\n", dir, strerror (errno));
+    return NOTOK;
+  }
+
+  return OK;
+}
+
+static int dir_make_parents (char *, mode_t);
+static int dir_make_parents (char *dir, mode_t mode) {
+  if (Cstring.eq (dir, "."))
+    return OK;
+
+  char *dname = Path.dirname (dir);
+
+  int retval = 0;
+
+  if (Cstring.eq (dname, "/"))
+    goto theend;
+
+  if ((retval = dir_make_parents (dname, mode)) isnot 0)
+    goto theend;
+
+  retval = dir_make (dir, mode);
+
+theend:
+  free (dname);
+  return retval;
+}
+
 public dir_T __init_dir__ (void) {
+  PathT = __init_path__ ();
   StringT = __init_string__ ();
   VstringT = __init_vstring__ ();
   CstringT = __init_cstring__ ();
@@ -230,8 +265,10 @@ public dir_T __init_dir__ (void) {
   return (dir_T) {
     .self = (dir_self) {
       .list = dir_list,
+      .make = dir_make,
       .current = dir_current,
-      .is_directory = is_directory,
+      .is_directory = dir_is_directory,
+      .make_parents = dir_make_parents,
       .walk = (dir_walk_self) {
         .free = dir_walk_free,
         .new = dir_walk_new,

@@ -67,8 +67,8 @@ public io_T __init_io__ (void) {
   return (io_T) {
     .self = (io_self) {
       .fd = (io_fd_self) {
-        .read = fd_read,
-        .write = fd_write
+        .read = io_fd_read,
+        .write = io_fd_write
       }
     }
   };

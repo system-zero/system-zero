@@ -43,9 +43,13 @@ typedef struct dir_walk_self {
 typedef struct dir_self {
   dir_walk_self walk;
 
-  dirlist_t *(*list) (char *, int);
   char *(*current) (void);
-  int (*is_directory) (char *);
+  int
+    (*make) (char *, mode_t),
+    (*is_directory) (char *),
+    (*make_parents) (char *, mode_t);
+
+  dirlist_t *(*list) (char *, int);
 } dir_self;
 
 typedef struct dir_T {

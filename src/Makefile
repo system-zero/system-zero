@@ -126,6 +126,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Io_Type              = Io
     Z_IO_SRCDIR          = $(Z_SRCLIBDIR)/$(Io_Type)/src
 
+    # Path Type
+    Path_Type            = Path
+    Z_PATH_SRCDIR        = $(Z_SRCLIBDIR)/$(Path_Type)/src
+
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
     # a compatible container should include:
@@ -262,10 +266,10 @@ clean_libvstring_shared:
 clean_libvstring_static:
 	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
 #----------------------------------------------------------#
-libdir-shared: Env zc libstring-shared libvstring-shared libcstring-shared
+libdir-shared: Env zc libstring-shared libvstring-shared libcstring-shared libpath-shared
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libdir-static: Env zc libstring-static libvstring-static libcstring-static
+libdir-static: Env zc libstring-static libvstring-static libcstring-static libpath-static
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean_libdir_shared:
@@ -370,6 +374,18 @@ clean_libio_shared:
 clean_libio_static:
 	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
 #----------------------------------------------------------#
+libpath-shared: Env zc libcstring-shared
+	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libpath-static: Env zc libcstring-static
+	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean_libpath_shared:
+	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+
+clean_libpath_static:
+	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+#----------------------------------------------------------#
 zs-shared: Env zc libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
@@ -431,7 +447,8 @@ zero-shared:  zero_clean_shared\
               libstring-shared libustring-shared libcstring-shared\
               libvstring-shared libdir-shared libinput-shared\
               libproc-shared libauth-shared librline-shared\
-              libsh-shared\
+              libsh-shared libargparse-shared libio-shared\
+              libfile-shared libpath-shared\
               zs-shared zsu-shared
 
 zero-static:  zero_clean_static\
@@ -439,7 +456,8 @@ zero-static:  zero_clean_static\
               libstring-static libustring-static libcstring-static\
               libvstring-static libdir-static libinput-static\
               libproc-static libauth-static librline-static\
-              libsh-static\
+              libsh-static libargparse-static libio-static\
+              libfile-static libpath-static\
               zs-static
 
 zero_clean_shared:\
@@ -449,6 +467,8 @@ zero_clean_shared:\
               clean_libdir_shared clean_libinput_shared\
               clean_libproc_shared clean_libauth_shared\
               clean_librline_shared clean_libsh_shared\
+              clean_libargparse_shared clean_libio_shared\
+              clean_libfile_shared clean_libpath_shared\
               clean_zs_shared clean_zsu_shared
 
 zero_clean_static:\
@@ -458,6 +478,8 @@ zero_clean_static:\
               clean_libdir_static clean_libinput_static\
               clean_libproc_static clean_libauth_static\
               clean_librline_static clean_libsh_static\
+              clean_libargparse_static clean_libio_static\
+              clean_libfile_static clean_libpath_static\
               clean_zs_static clean_zsu_static
 
 all: zero-shared zero-static
