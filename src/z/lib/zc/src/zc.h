@@ -201,6 +201,42 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 })
 #endif /* VA_ARGS_GET_FMT_STR */
 
+/* 13:03 28 Dec Mon 2020
+ * Date: Thu, 24 Dec 2020 12:16:58 -0300                              
+ * From: Adhemerval Zanella <adhemerval.zanella@linaro.org>
+ *   To: libc-alpha@sourceware.org, Paul Eggert <eggert@cs.ucla.edu>
+ *   Cc: bug-gnulib@gnu.org
+ * Subject: [GNULIB] [PATCH 2/5] Import idx.h from gnulib
+ */
+
+/* from gnulib/lib/idx.h
+ * In the future, idx_t could be typedef'ed to a signed range type.
+ * The clang "extended integer types", supported in Clang 11 or newer
+ * <https://clang.llvm.org/docs/LanguageExtensions.html#extended-integer-types>,
+ * are a special case of range types.  However, these types don't support binary
+ * operators with plain integer types (e.g. expressions such as x > 1).
+ * Therefore, they don't behave like signed types (and not like unsigned types
+ * either).  So, we cannot use them here.
+ */
+
+/* Use the signed type 'ptrdiff_t'.
+ * Note: ISO C does not mandate that 'size_t' and 'ptrdiff_t' have the same
+ * size, but it is so on all platforms we have seen since 1990.
+ */
+
+#include <stddef.h>
+
+typedef ptrdiff_t idx_t;
+
+/* IDX_MAX is the maximum value of an idx_t.  */
+#define IDX_MAX PTRDIFF_MAX
+
+/* So far no need has been found for an IDX_WIDTH macro.
+ * Perhaps there should be another macro IDX_VALUE_BITS that does
+ * not count the sign bit and is therefore one less than
+ * PTRDIFF_WIDTH.
+ */
+
 #ifdef $my
 #undef $my
 #endif
