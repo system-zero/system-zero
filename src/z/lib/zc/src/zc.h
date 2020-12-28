@@ -1,6 +1,9 @@
 #ifndef C_H
 #define C_H
 
+#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE   700
+
 #include <stdint.h>
 #include <stddef.h> /* for ptrdiff_t (see below the idx_t section) */
 #include <stdlib.h>
