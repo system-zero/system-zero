@@ -114,6 +114,18 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Sh_Type              = Sh
     Z_SH_SRCDIR          = $(Z_SRCLIBDIR)/$(Sh_Type)/src
 
+    # File Type
+    File_Type            = File
+    Z_FILE_SRCDIR        = $(Z_SRCLIBDIR)/$(File_Type)/src
+
+    # Argparse Type
+    Argparse_Type        = Argparse
+    Z_ARGPARSE_SRCDIR    = $(Z_SRCLIBDIR)/$(Argparse_Type)/src
+
+    # Io Type
+    Io_Type              = Io
+    Z_IO_SRCDIR          = $(Z_SRCLIBDIR)/$(Io_Type)/src
+
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
     # a compatible container should include:
@@ -322,6 +334,42 @@ clean_libsh_shared:
 clean_libsh_static:
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
 #----------------------------------------------------------#
+libfile-shared: Env zc libstring-shared libcstring-shared libvstring-shared libdir-shared
+	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libfile-static: Env zc libstring-static libcstring-static libvstring-static libdir-static
+	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean_libfile_shared:
+	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+
+clean_libfile_static:
+	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+#----------------------------------------------------------#
+libargparse-shared: Env zc libstring-shared libcstring-shared libvstring-shared libdir-shared
+	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libargparse-static: Env zc libstring-static libcstring-static libvstring-static libdir-static
+	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean_libargparse_shared:
+	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+
+clean_libargparse_static:
+	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+#----------------------------------------------------------#
+libio-shared: Env zc
+	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libio-static: Env zc
+	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean_libio_shared:
+	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+
+clean_libio_static:
+	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+#----------------------------------------------------------#
 zs-shared: Env zc libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
@@ -354,6 +402,29 @@ clean_zsu_shared:
 
 clean_zsu_static:
 	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) clean_static
+#----------------------------------------------------------#
+# App+
+
+APP_FLAGS  :=
+APP_PREFIX := __
+APP_FLAGS  += APP_PREFIX=$(APP_PREFIX)
+APP_FLAGS  += $(ZARGS) $(MARGS)
+
+  # file
+  ZA_FILE             = zfile
+  ZA_FILE_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_FILE)/src
+
+zfile-shared: libfile-shared
+	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+zfile-static: libfile-static
+	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean_zfile_shared:
+	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_shared
+
+clean_zfile_static:
+	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_static
 #----------------------------------------------------------#
 zero-shared:  zero_clean_shared\
               Env zc dlist\
