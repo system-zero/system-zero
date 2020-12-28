@@ -2,6 +2,7 @@
 #define C_H
 
 #include <stdint.h>
+#include <stddef.h> /* for ptrdiff_t (see below the idx_t section) */
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -224,8 +225,6 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
  * size, but it is so on all platforms we have seen since 1990.
  */
 
-#include <stddef.h>
-
 typedef ptrdiff_t idx_t;
 
 /* IDX_MAX is the maximum value of an idx_t.  */
@@ -244,5 +243,61 @@ typedef ptrdiff_t idx_t;
 #ifdef self
 #undef self
 #endif
+
+#ifndef UNEXPRESSIONAL_C
+
+/* really: we really really want to try to make C a little bit more
+ * expressive, but without paying neither a bit of overhead.
+ * We really really like C, and we know exactly why is written that
+ * way, and we really really eppreciate this way. But we are common
+ * human beings and we express differently than the machine. */
+/*
+ * Our humble mission, is to let C's programming mind flow expressed
+ * naturally in code, just like writting some prose. We already used
+ * the is|isnot|and|or,... macros, but we want a bit more freedom.
+ * We especially want this in our codebase, much more than a usual
+ * project, since this is meant also to serve as a documented system
+ * description, it is important, to be declared clearly in code our
+ * intention. I believe that making easier for anyone to understand
+ * the intentions is crucial finally for the development, especially
+ * for some like me, that do not write comments (for reasons). */
+/*
+ * So we'll do this with the C's only way, by using macros.
+ * We know that macros are hiding details, so we'll not use them in
+ * that way (at least in the beginning (Mon 28 Dec 2020)).
+ * But let's start slow and see how it is going to work. At first we
+ * use them to bind libc functions, like isatty(). */
+/*
+ * Well.
+ * We already have Types (structures with properties and methods),
+ * which expressed like Type.method (type, data, ...).
+ * And we also introduced shell commands such: File.size filename
+ * which maps exactly to the File.size (char *) library prototype.
+ * So by trying to be consistent we have some options.
+ * FdIsATyy or
+ * Fd_is_a_tty or
+ * FdIsATerminal or
+ * FdReferToATerminal or
+ * Fd_Is_A_Terminal or
+ * FD_IS_A_TERMINAL
+ * Touch. Dots (.) are not allowed in C macros. Capitals are noisy.
+ * So we have to use either underscore (_) or CamelCase, or a
+ * combination. I'm tempted to use CamelCase and use the short
+ * version, since it is less verbose, but i'm going to use the most
+ * descriptive one as a start, mainly because it matches the
+ * description of isatty() in the man page. */
+
+ #define FdReferToATerminal(__fd__) isatty (__fd__)
+
+ /* For this to work, we'll have to introduce a tool to get these
+  * definitions from the sources, so we can always check for the
+  * implementation in constant time. */
+
+ /* But let the time to judge for the usefulness. In any case we
+  * have to walk slowly and carefully that path. */
+
+#endif /* UNEXPRESSIONAL_C */
+/* We don't define anywhere in our codebase that macro, so they are
+ * defined by default (but others might want them off). */
 
 #endif /* C_H */
