@@ -1,0 +1,46 @@
+#ifndef FILE_H
+#define FILE_H
+
+typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
+
+typedef struct tmpfname_t {
+  int fd;
+  string_t *fname;
+} tmpfname_t;
+
+typedef struct file_tmpfname_self {
+  tmpfname_t *(*new) (char *, char *);
+  void (*release) (tmpfname_t *);
+} file_tmpfname_self;
+
+typedef struct file_self {
+  file_tmpfname_self tmpfname;
+
+  int
+    (*exists) (const char *);
+
+  int
+    (*is_reg) (const char *),
+    (*is_elf) (const char *),
+    (*is_rwx) (const char *),
+    (*is_sock) (const char *),
+    (*is_readable) (const char *),
+    (*is_writable) (const char *),
+    (*is_executable) (const char *);
+
+  size_t (*size) (const char *);
+
+  ssize_t
+    (*write) (char *, char *, ssize_t),
+    (*append) (char *, char *, ssize_t);
+
+  Vstring_t *(*readlines) (char *, Vstring_t *, FileReadLines_cb, void *);
+} file_self;
+
+typedef struct file_T {
+  file_self self;
+} file_T;
+
+public file_T __init_file__ (void);
+
+#endif /* FILE_H */
