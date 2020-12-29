@@ -13,8 +13,13 @@ typedef struct file_tmpfname_self {
   void (*release) (tmpfname_t *);
 } file_tmpfname_self;
 
+typedef struct file_mode_self {
+  mode_t (*from_octal_string) (char *);
+} file_mode_self;
+
 typedef struct file_self {
   file_tmpfname_self tmpfname;
+  file_mode_self mode;
 
   int
     (*exists) (const char *);

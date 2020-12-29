@@ -80,6 +80,21 @@ static size_t file_size (const char *fname) {
   return st.st_size;
 }
 
+static mode_t file_mode_from_octal_string (char *oct_str) {
+  if (bytelen (oct_str) isnot 4) return 0;
+
+  mode_t mode = 0;
+  char c;
+  while ((c = *oct_str++)) {
+    if ('0' > c or c > '7')
+      return 0;
+
+    mode = mode * 8 + c - '0';
+  }
+
+  return mode;
+}
+
 static Vstring_t *file_readlines (char *file, Vstring_t *lines,
                                  FileReadLines_cb cb, void *obj) {
   Vstring_t *llines = lines;
@@ -248,6 +263,9 @@ public file_T __init_file__ (void) {
       .tmpfname = (file_tmpfname_self) {
         .new = file_tmpfname_new,
         .release = file_tmpfname_release
+      },
+      .mode = (file_mode_self) {
+        .from_octal_string = file_mode_from_octal_string
       }
     }
   };

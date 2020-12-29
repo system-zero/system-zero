@@ -441,6 +441,23 @@ clean_zfile_shared:
 
 clean_zfile_static:
 	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_static
+
+  #----------------------------------------------------------#
+  # dir
+  ZA_DIR             = zdir
+  ZA_DIR_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_DIR)/src
+
+zdir-shared: libdir-shared
+	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+zdir-static: libdir-static
+	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean_zdir_shared:
+	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_shared
+
+clean_zdir_static:
+	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_static
 #----------------------------------------------------------#
 zero-shared:  zero_clean_shared\
               Env zc dlist\
