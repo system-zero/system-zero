@@ -1,52 +1,49 @@
+#define APPLICATION "Dir.make"
+#define APP_OPTS   "directory-name"
+
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_SYS_STAT
+#define REQUIRE_STRING_TYPE  DONOT_DECLARE
+#define REQUIRE_VSTRING_TYPE DONOT_DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_FILE_TYPE    DECLARE
+#define REQUIRE_DIR_TYPE     DECLARE
+
 #include <zc.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/stat.h>
 
-#include <libstring.h>
-#include <libvstring.h>
-#include <libargparse.h>
-#include <libio.h>
-#include <libfile.h>
-#include <libdir.h>
+static int dir_make_print (FILE *fp, const char *fmt, ...) {
+  size_t len = VA_ARGS_FMT_SIZE(fmt);
+  char bytes[len+1];
+  VA_ARGS_GET_FMT_STR(bytes, len, fmt);
+  bytes[len-1] = '\0';
 
-static  io_T IoT;
-#define Io   IoT.self
+  char *dir = Cstring.byte.in_str (bytes, ':') + 2;
+  struct stat st;
 
-static  dir_T DirT;
-#define Dir   DirT.self
+  if (-1 is stat (dir, &st)) {
+    fprintf (stderr, "stat: %s, %s\n", dir, strerror (errno));
+    return OK;
+  }
 
-static  file_T FileT;
-#define File   FileT.self
+  char mode_string[16];
+  File.mode.stat_to_string (mode_string, st.st_mode);
+  char mode_oct[8]; snprintf (mode_oct, 8, "%o", st.st_mode);
 
-static  argparse_T ArgparseT;
-#define Argparse   ArgparseT.self
+  fprintf (fp, "%s, with mode %s (%s)\n",
+      bytes, mode_oct + 1, mode_string);
 
-#ifndef APP_NAME
-#define APP_NAME "Dir.make"
-#endif
-
-#define OPTS "directory-name"
-static const char *const usage[] = {
-  APP_NAME " " OPTS,
-  NULL,
-};
-
-static void dir_make_print (char *dname,  int retval, int verbose) {
-  ifnot (verbose) return;
-  if (retval isnot OK) return;
-
-  fprintf (stdout, "%s: created directory '%s'\n", APP_NAME, dname);
+  return OK;
 }
 
 int main (int argc, char **argv) {
-  IoT = __init_io__ ();
-  DirT = __init_dir__ ();
-  FileT = __init_file__ ();
-  ArgparseT = __init_argparse__ ();
+  __INIT__ (file);
+  __INIT__ (cstring);
+  __INIT__ (dir);
 
-  int retval = 0;
-  int version = 0;
+  __INIT_APP__;
+
+  int parents = 0;
   int verbose = 0;
   char *mode_string = NULL;
 
@@ -54,49 +51,53 @@ int main (int argc, char **argv) {
     OPT_HELP (),
     OPT_GROUP("Options:"),
     OPT_STRING('m', "mode", &mode_string, "set file mode in octal", NULL, 0, 0),
+    OPT_BOOLEAN('p', "parents", &parents, "make parents directories as needed", NULL, 0, 0),
     OPT_BOOLEAN('v', "verbose", &verbose, "print a message when creating a directory", NULL, 0, 0),
     OPT_BOOLEAN(0, "version", &version, "show version", NULL, 0, 0),
     OPT_END()
   };
 
-  argparse_t argparser;
-  Argparse.init (&argparser, options, usage, 0);
-  argc = Argparse.exec (&argparser, argc, (const char **) argv);
+  PARSE_ARGS;
 
-  if (version) {
-    fprintf (stderr, "version: %s\n", VERSION_STRING);
-    return 1;
+  /* dispatch */
+  DirMake fn = Dir.make;
+
+  if (parents)
+    fn = Dir.make_parents;
+
+  mode_t mask = umask (0);
+  mode_t mode = 0777 & ~mask;
+  umask (mask);
+
+  ifnot (NULL is mode_string) {
+    mode_t m = File.mode.from_octal_string (mode_string);
+
+    ifnot (m) {
+      fprintf (stderr, APPLICATION ": not a valid mode %s\n", mode_string);
+      return 1;
+    }
+
+    mode = (mode & 0) | m;
   }
-
-  mode_t mode = 0777 & ~umask (0);
-  mode_t m = File.mode.from_octal_string (mode_string);
-
-  ifnot (m) {
-    fprintf (stderr, APP_NAME ": not a valid mode %s\n", mode_string);
-    return 1;
-  }
-
-  mode = (mode & 0) | m;
 
   ifnot (FdReferToATerminal (STDIN_FILENO)) {
     char dname[MAXLEN_PATH];
     if (NOTOK is Io.fd.read (STDIN_FILENO, dname, MAXLEN_PATH))
       retval = 1;
     else
-      retval = Dir.make (dname, mode);
-
-    dir_make_print (dname, retval, verbose);
+      retval = fn (dname, mode, DirOpts (
+          .msg = verbose,
+          .msg_cb = dir_make_print
+        ));
 
     goto theend;
   }
 
-  ifnot (argc) {
-    Argparse.print_usage (&argparser);
-    return 1;
-  }
+  CHECK_ARGC;
 
-  retval = Dir.make (argv[0], mode);
-  dir_make_print (argv[0], retval, verbose);
+  retval = fn (argv[0], mode, DirOpts (
+      .msg = verbose,
+      .msg_cb = dir_make_print));
 
 theend:
   return (retval < 0 ? 1 : 0);

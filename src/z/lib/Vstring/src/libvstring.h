@@ -49,18 +49,26 @@ typedef struct vstring_self {
   vstring_t *(*new_item) (void);
 
   void
+    (*release_item) (vstring_t *);
+
+  void
     (*clear) (Vstring_t *),
-    (*release) (Vstring_t *),
     (*append) (Vstring_t *, vstring_t *),
+    (*release) (Vstring_t *),
+    (*remove_at) (Vstring_t *, int),
     (*append_uniq) (Vstring_t *, char *),
     (*append_with) (Vstring_t *, char *),
+    (*prepend_with) (Vstring_t *, char *),
     (*append_with_len) (Vstring_t *, char *, size_t),
     (*append_with_fmt) (Vstring_t *, char *, ...);
 
   char **(*shallow_copy) (Vstring_t *, char **);
 
   vstring_t *(*pop_at) (Vstring_t *, int);
-  string_t *(*join) (Vstring_t *, char *sep);
+
+  string_t
+    *(*join) (Vstring_t *, char *),
+    *(*join_allocated) (Vstring_t *, char *, string_t *);
 } vstring_self;
 
 typedef struct vstring_T {

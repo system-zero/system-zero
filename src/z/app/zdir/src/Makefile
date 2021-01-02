@@ -70,15 +70,17 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
-FLAGS += -ldir-$(VERSION) -lfile-$(VERSION) -largparse-$(VERSION) -lio-$(VERSION)
+FLAGS += -ldir-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION) -largparse-$(VERSION) -lio-$(VERSION)
 
 dir: shared static
 
 shared: clean_shared\
-    dir-make-shared
+    dir-make-shared\
+    dir-rm-shared
 
 static: clean_static\
-    dir-make-static
+    dir-make-static\
+    dir-rm-static
 
 clean_shared:\
     clean_dir_make_shared
@@ -88,10 +90,13 @@ clean_static:\
 #-----------------------------------------------#
 D_MAKE = $(NAME).make
 
-D_MAKE_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION)\
+FLAGS += -lcstring-$(VERSION)
+
+D_MAKE_STATIC_FLAGS = -lpath-$(VERSION)\
                       -lvstring-$(VERSION) -lstring-$(VERSION)
 
 dir-make-shared:
+
 	$(CC) $(D_MAKE).c $(FLAGS) -o $(SYSBINDIR)/$(D_MAKE)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(D_MAKE)-shared $(SYSBINDIR)/$(D_MAKE)
 
@@ -104,6 +109,24 @@ clean_dir_make_shared:
 
 clean_dir_make_static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(D_MAKE)-static || $(RM) $(SYSBINDIR)/$(D_MAKE)-static
+#-----------------------------------------------#
+D_RM = $(NAME).rm
+
+D_RM_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION) -lstring-$(VERSION)
+
+dir-rm-shared:
+	$(CC) $(D_RM).c $(FLAGS) -o $(SYSBINDIR)/$(D_RM)-shared
+	@$(LN_S) -vf $(SYSBINDIR)/$(D_RM)-shared $(SYSBINDIR)/$(D_RM)
+
+dir-rm-static:
+	$(CC) $(D_RM).c $(FLAGS) $(D_RM_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(D_RM)-static
+
+clean_dir_rm_shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(D_RM)-shared || $(RM) $(SYSBINDIR)/$(D_RM)-shared
+	@$(TEST) ! -L $(SYSBINDIR)/$(D_RM) || $(RM) $(SYSBINDIR)/$(D_RM)
+
+clean_dir_rm_static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(D_RM)-static || $(RM) $(SYSBINDIR)/$(D_RM)-static
 #-----------------------------------------------#
 
 TEST = test

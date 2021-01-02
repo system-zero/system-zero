@@ -18,14 +18,20 @@ static  string_T StringT;
 static  cstring_T CstringT;
 #define Cstring   CstringT.self
 
+static void vstring_release_item (vstring_t *it) {
+  if (it is NULL) return;
+  String.release (it->data);
+  free (it);
+  it = NULL;
+}
+
 static void vstring_clear (Vstring_t *this) {
   if (NULL is this) return;
 
   vstring_t *it = this->head;
   while (it) {
     vstring_t *tmp = it->next;
-    String.release (it->data);
-    free (it);
+    vstring_release_item (it);
     it = tmp;
   }
 
@@ -48,15 +54,15 @@ static vstring_t *vstring_new_item (void) {
 }
 
 static size_t vstring_get_size (Vstring_t *this) {
-  size_t len = 0;
+  size_t size = 0;
   vstring_t *it = this->head;
 
   while (it) {
-    len += it->data->num_bytes;
+    size += it->data->num_bytes;
     it = it->next;
   }
 
-  return len;
+  return size;
 }
 
 static char *vstring_to_cstring (Vstring_t *this, int addnl) {
@@ -81,8 +87,9 @@ static char *vstring_to_cstring (Vstring_t *this, int addnl) {
 }
 
 /* maybe also a vstring_join_u() for characters as separators */
-static string_t *vstring_join (Vstring_t *this, char *sep) {
-  string_t *bytes = String.new (32);
+static string_t *vstring_join_allocated (Vstring_t *this, char *sep, string_t *bytes) {
+  String.clear (bytes);
+
   vstring_t *it = this->head;
 
   while (it) {
@@ -95,6 +102,11 @@ static string_t *vstring_join (Vstring_t *this, char *sep) {
         (NULL is sep ? 0 : bytelen (sep)));
 
   return bytes;
+}
+
+static string_t *vstring_join (Vstring_t *this, char *sep) {
+  string_t *bytes = String.new (32);
+  return vstring_join_allocated (this, sep, bytes);
 }
 
 static void vstring_append (Vstring_t *this, vstring_t *new) {
@@ -145,6 +157,12 @@ static void vstring_current_prepend_with (Vstring_t *this, char *bytes) {
   vstring_t *vstr = Alloc (sizeof (vstring_t));
   vstr->data = String.new_with (bytes);
   DListPrependCurrent (this, vstr);
+}
+
+static void vstring_prepend_with (Vstring_t *this, char *bytes) {
+  vstring_t *vstr = Alloc (sizeof (vstring_t));
+  vstr->data = String.new_with (bytes);
+  DListPrepend (this, vstr);
 }
 
 /* like cstring_dup(), as a new copy */
@@ -263,25 +281,34 @@ static vstring_t *vstring_pop_at (Vstring_t *vstr, int idx) {
   return t;
 }
 
+static void vstring_remove_at (Vstring_t *vstr, int idx) {
+  vstring_t *t = vstring_pop_at (vstr, idx);
+  vstring_release_item (t);
+}
+
 public vstring_T __init_vstring__ (void) {
   StringT = __init_string__ ();
   CstringT = __init_cstring__ ();
 
   return (vstring_T) {
     .self = (vstring_self) {
-      .release = vstring_release,
-      .clear = vstring_clear,
       .new = vstring_new,
       .dup = vstring_dup,
       .join = vstring_join,
-      .new_item = vstring_new_item,
+      .clear = vstring_clear,
+      .pop_at = vstring_pop_at,
       .append = vstring_append,
+      .release = vstring_release,
+      .new_item = vstring_new_item,
+      .remove_at = vstring_remove_at,
       .append_with = vstring_append_with,
       .append_uniq = vstring_append_uniq,
+      .prepend_with = vstring_prepend_with,
+      .release_item = vstring_release_item,
+      .shallow_copy = vstring_shallow_copy,
+      .join_allocated = vstring_join_allocated,
       .append_with_fmt = vstring_append_with_fmt,
       .append_with_len = vstring_append_with_len,
-      .shallow_copy = vstring_shallow_copy,
-      .pop_at = vstring_pop_at,
       .current = (vstring_current_self) {
         .append_with = vstring_current_append_with,
         .prepend_with = vstring_current_prepend_with,

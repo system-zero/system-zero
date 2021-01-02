@@ -1,31 +1,19 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <time.h>
-#include <errno.h>
+#define LIBRARY "File"
+
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_SYS_STAT
+#define REQUIRE_SYS_TYPES
+#define REQUIRE_FCNTL
+#define REQUIRE_TIME
+
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_VSTRING_TYPE DECLARE
+#define REQUIRE_DIR_TYPE     DECLARE
+#define REQUIRE_FILE_TYPE    DONOT_DECLARE
 
 #include <zc.h>
-#include <libstring.h>
-#include <libcstring.h>
-#include <libvstring.h>
-#include <libdir.h>
-#include <libfile.h>
-
-static  string_T StringT;
-#define String   StringT.self
-
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
-
-static  vstring_T VstringT;
-#define Vstring   VstringT.self
-
-static  dir_T DirT;
-#define Dir   DirT.self
 
 static int file_is_reg (const char *fname) {
   struct stat st;
@@ -93,6 +81,47 @@ static mode_t file_mode_from_octal_string (char *oct_str) {
   }
 
   return mode;
+}
+
+/* from slang sources slsh/slsh.c
+ * Copyright (C) 2005-2017,2018 John E. Davis
+ * 
+ * This file is part of the S-Lang Library.
+ * 
+ * The S-Lang Library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ */
+
+private char *file_mode_stat_to_string (char *mode_string, mode_t mode) {
+  /* assumed at least 11 bytes */
+
+  if (S_ISREG(mode)) mode_string[0] = '-';
+  else if (S_ISDIR(mode)) mode_string[0] = 'd';
+  else if (S_ISLNK(mode)) mode_string[0] = 'l';
+  else if (S_ISCHR(mode)) mode_string[0] = 'c';
+  else if (S_ISFIFO(mode)) mode_string[0] = 'p';
+  else if (S_ISSOCK(mode)) mode_string[0] = 's';
+  else if (S_ISBLK(mode)) mode_string[0] = 'b';
+
+  if (mode & S_IRUSR) mode_string[1] = 'r'; else mode_string[1] = '-';
+  if (mode & S_IWUSR) mode_string[2] = 'w'; else mode_string[2] = '-';
+  if (mode & S_IXUSR) mode_string[3] = 'x'; else mode_string[3] = '-';
+  if (mode & S_ISUID) mode_string[3] = 's';
+
+  if (mode & S_IRGRP) mode_string[4] = 'r'; else mode_string[4] = '-';
+  if (mode & S_IWGRP) mode_string[5] = 'w'; else mode_string[5] = '-';
+  if (mode & S_IXGRP) mode_string[6] = 'x'; else mode_string[6] = '-';
+  if (mode & S_ISGID) mode_string[6] = 'g';
+
+  if (mode & S_IROTH) mode_string[7] = 'r'; else mode_string[7] = '-';
+  if (mode & S_IWOTH) mode_string[8] = 'w'; else mode_string[8] = '-';
+  if (mode & S_IXOTH) mode_string[9] = 'x'; else mode_string[9] = '-';
+  if (mode & S_ISVTX) mode_string[9] = 't';
+
+  mode_string[10] = '\0';
+  return mode_string;
 }
 
 static Vstring_t *file_readlines (char *file, Vstring_t *lines,
@@ -241,10 +270,10 @@ theend:
 }
 
 public file_T __init_file__ (void) {
-  DirT  = __init_dir__ ();
-  StringT = __init_string__ ();
-  CstringT = __init_cstring__ ();
-  VstringT = __init_vstring__ ();
+  __INIT__ (dir);
+  __INIT__ (string);
+  __INIT__ (vstring);
+  __INIT__ (cstring);
 
   return (file_T) {
     .self = (file_self) {
@@ -265,7 +294,9 @@ public file_T __init_file__ (void) {
         .release = file_tmpfname_release
       },
       .mode = (file_mode_self) {
+        .stat_to_string = file_mode_stat_to_string,
         .from_octal_string = file_mode_from_octal_string
+
       }
     }
   };

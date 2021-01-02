@@ -188,6 +188,7 @@ Z_SU        := $(ZC_SU)
 
   BASE_FLAGS     = -I$(Z_SYSINCDIR) -L$(Z_SYSLIBDIR)
   BASE_FLAGS    += -g -O2 -march=native -fdollars-in-identifiers
+  BASE_FLAGS    += -DDECLARE=1 -DDONOT_DECLARE=0
   DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
 
   DEBUG         := 1
@@ -199,7 +200,6 @@ Z_SU        := $(ZC_SU)
   endif
 
   ZARGS  = NS=$(ZNAME)
-
   MARGS :=
   MARGS  = API=$(API) REV=$(REV) VERSION=$(VERSION) DEBUG=$(DEBUG)
   MARGS += SYSDIR=$(SYSDIR) SYSDATADIR=$(SYSDATADIR) SYSTMPDIR=$(SYSTMPDIR)
@@ -338,10 +338,10 @@ clean_libsh_shared:
 clean_libsh_static:
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
 #----------------------------------------------------------#
-libfile-shared: Env zc libstring-shared libcstring-shared libvstring-shared libdir-shared
+libfile-shared: Env zc libstring-shared libcstring-shared libvstring-shared libdir-shared libpath-shared
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libfile-static: Env zc libstring-static libcstring-static libvstring-static libdir-static
+libfile-static: Env zc libstring-static libcstring-static libvstring-static libdir-static libpath-static
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean_libfile_shared:
@@ -447,10 +447,10 @@ clean_zfile_static:
   ZA_DIR             = zdir
   ZA_DIR_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_DIR)/src
 
-zdir-shared: libdir-shared
+zdir-shared: libdir-shared libfile-shared libpath-shared libio-shared libargparse-shared
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-zdir-static: libdir-static
+zdir-static: libdir-static libfile-static libpath-static libio-statuc libargparse-static
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean_zdir_shared:

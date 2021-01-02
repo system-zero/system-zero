@@ -1,9 +1,10 @@
 #ifndef C_H
 #define C_H
 
-/* This is my hble C (as c). Quite many of conveniences!
- * But also many i believe standardized by now macros.
- * Focusing mainly on an uncontrollable i'm afraid expressionism.
+/* This is our hble C (as c).
+ * Quite many of conveniences!
+ * Focusing mainly on an uncontrollable, i'm afraid, expressionism.
+ * But also some, and standardized by now, macros.
  * Compiles and obeys to the C11 standard, using definitions from
  * the newer POSIX and X/OPEN standards. 
  */
@@ -11,12 +12,21 @@
 #define _POSIX_C_SOURCE 200809L
 #define _XOPEN_SOURCE   700
 
-#include <stdint.h> /* get them (the integer types) right */
+#ifdef REQUIRE_STD_DEFAULT_SOURCE
+  #ifndef _DEFAULT_SOURCE
+  #define _DEFAULT_SOURCE
+  #endif
+
+#undef REQUIRE_STD_DEFAULT_SOURCE
+#endif
+
+/* we need those to be funtional in this unit */
 #include <stddef.h> /* for ptrdiff_t (see below the idx_t section) */
+#include <stdint.h> /* get them (the integer types) right */
 #include <stdlib.h> /* we need it here for malloc/free */
-#include <string.h> /* probably we can do without it, if we work hard */
 #include <errno.h>  /* this is a thread safe errno */
 
+/* the following seven magnificent are unnegotiatable */
 #ifndef OK
 #define OK 0
 #endif
@@ -45,6 +55,11 @@
 #define and &&
 #endif
 
+/* extreme (so negotiatable) */
+#ifndef forever
+#define forever for (;;)
+#endif
+
 #ifndef muttable
 #define muttable __attribute__((__weak__))
 #endif
@@ -63,11 +78,13 @@
 /* and that is what the compiler uses by default */
 #endif
 
+/* we used to use (void) arg;, so we've to modify the references */
+
 #ifndef unused
 #define unused  __attribute__ ((unused))
 #endif
 
-/* for purity */
+/* (not just) for purity */
 #ifndef bytelen
 #define bytelen strlen
 #endif
@@ -109,9 +126,10 @@ typedef unsigned long ulong;
 #endif
 
 #ifndef IS_DIR_SEP
-#define IS_DIR_SEP(c_)     (c_ == DIR_SEP)
+#define IS_DIR_SEP(c_)   (c_ == DIR_SEP)
 #endif
 
+/* in those coding cases, we want something really expressive */
 #ifndef IS_NOT_DIR_SEP
 #define IS_NOT_DIR_SEP(c_) (0 == IS_DIR_SEP (c_))
 #endif
@@ -122,6 +140,10 @@ typedef unsigned long ulong;
 
 #ifndef IS_UTF8
 #define IS_UTF8(c_)     (((c_) & 0xC0) == 0x80)
+#endif
+
+#ifndef ISNOT_UTF8
+#define ISNOT_UTF8(c_) (0 == IS_UTF8(c_))
 #endif
 
 #ifndef IS_DIGIT
@@ -175,6 +197,7 @@ AllocErrorHandlerF AllocErrorHandler;
 #define __REALLOC__ realloc
 #endif
 
+/* likewise */
 #ifndef __CALLOC__
 #define __CALLOC__  calloc
 #endif
@@ -317,16 +340,6 @@ typedef ptrdiff_t idx_t;
  * PTRDIFF_WIDTH.
  */
 
-/* be sure and clear them to make every body happy:
- * This is our main coding style/mechanism throughout our code universe */
-#ifdef $my
-#undef $my
-#endif
-
-#ifdef self
-#undef self
-#endif
-
 /* and last but not least a small prose */
 #ifndef UNEXPRESSIONAL_C
 
@@ -390,3 +403,323 @@ typedef ptrdiff_t idx_t;
  * defined by default (but others might want them off). */
 
 #endif /* C_H */
+
+/* our environment */
+
+/* Abstract as many details is possible here instead of doing this
+ * in every compilation unit. If something will change in the future
+ * it will be available instantly to the units.
+ */
+
+/* we use those at the very top of the compilation unit */
+#ifdef REQUIRE_STDIO
+  #ifndef STDIO_HDR
+  #define STDIO_HDR
+  #include <stdio.h>
+  #endif /* STDIO_HDR */
+
+#undef REQUIRE_STDIO
+#endif /* REQUIRE_STDIO */
+
+#ifdef REQUIRE_UNISTD
+  #ifndef UNISTD_HDR
+  #define UNISTD_HDR
+  #include <unistd.h>
+  #endif /* UNISTD_HDR */
+
+#undef REQUIRE_UNISTD
+#endif /* REQUIRE_UNISTD */
+
+/* enable it because we need it here, but probably we can do without
+ * it if we work hard, but define the macro anyway */
+#define REQUIRE_STRING
+
+#ifdef REQUIRE_STRING
+  #ifndef STRING_HDR
+  #define STRING_HDR
+  #include <string.h>
+  #endif /* STRING_HDR */
+
+#undef REQUIRE_STRING
+#endif /* REQUIRE_STRING */
+
+#ifdef REQUIRE_STDARG
+  #ifndef STDARG_HDR
+  #define STDARG_HDR
+  #include <stdarg.h>
+  #endif /* STDARG_HDR */
+
+#undef REQUIRE_STDARG
+#endif /* REQUIRE_STDARG */
+
+#ifdef REQUIRE_SYS_STAT
+  #ifndef SYS_STAT_HDR
+  #define SYS_STAT_HDR
+  #include <sys/stat.h>
+  #endif /* SYS_STAT_HDR */
+
+#undef REQUIRE_SYS_STAT
+#endif /* REQUIRE_SYS_STAT */
+
+#ifdef REQUIRE_SYS_TYPES
+  #ifndef SYS_TYPES_HDR
+  #define SYS_TYPES_HDR
+  #include <sys/types.h>
+  #endif /* SYS_TYPES_HDR */
+#undef REQUIRE_SYS_TYPES
+#endif /* REQUIRE_SYS_TYPES */
+
+#ifdef REQUIRE_DIRENT
+  #ifndef DIRENT_HDR
+  #define DIRENT_HDR
+  #include <dirent.h>
+  #endif /* DIRENT_HDR */
+#undef REQUIRE_DIRENT
+#endif /* REQUIRE_DIRENT */
+
+#ifdef REQUIRE_FCNTL
+  #ifndef FCNTL_HDR
+  #define FCNTL_HDR
+  #include <fcntl.h>
+  #endif /* FCNTL_HDR */
+#undef REQUIRE_FCNTL
+#endif /* REQUIRE_FCNTL */
+
+#ifdef REQUIRE_TIME
+  #ifndef TIME_HDR
+  #define TIME_HDR
+  #include <time.h>
+  #endif /* TIME_HDR */
+#undef REQUIRE_TIME
+#endif /* REQUIRE_TIME */
+
+/* types */
+
+#ifdef REQUIRE_DLIST_TYPE
+  #ifndef DLIST_TYPE_HDR
+  #define DLIST_TYPE_HDR
+  #include <dlist.h>
+  #endif /* DLIST_TYPE_HDR */
+
+#undef REQUIRE_DLIST_TYPE
+#endif /* REQUIRE_DLIST_TYPE */
+
+#ifdef REQUIRE_STRING_TYPE
+  #ifndef STRING_TYPE_HDR
+  #define STRING_TYPE_HDR
+  #include <libstring.h>
+  #endif /* STRING_TYPE_HDR */
+
+  #if (REQUIRE_STRING_TYPE == DECLARE)
+  static  string_T stringType;
+  #define String   stringType.self
+  #endif
+#undef REQUIRE_STRING_TYPE
+#endif /* REQUIRE_STRING_TYPE */
+
+#ifdef REQUIRE_CSTRING_TYPE
+  #ifndef CSTRING_TYPE_HDR
+  #define CSTRING_TYPE_HDR
+  #include <libcstring.h>
+  #endif /* CSTRING_TYPE_HDR */
+
+  #if (REQUIRE_CSTRING_TYPE == DECLARE)
+  static  cstring_T cstringType;
+  #define Cstring   cstringType.self
+  #endif
+static  cstring_T cstringType;
+#define Cstring   cstringType.self
+#undef REQUIRE_CSTRING_TYPE
+#endif /* REQUIRE_CSTRING_TYPE */
+
+#ifdef REQUIRE_VSTRING_TYPE
+  #ifndef VSTRING_TYPE_HDR
+  #define VSTRING_TYPE_HDR
+  #include <libvstring.h>
+  #endif /* VSTRING_TYPE_HDR */
+
+  #if (REQUIRE_VSTRING_TYPE == DECLARE)
+  static  vstring_T vstringType;
+  #define Vstring   vstringType.self
+  #endif
+#undef REQUIRE_VSTRING_TYPE
+#endif /* REQUIRE_VSTRING_TYPE */
+
+#ifdef REQUIRE_IO_TYPE
+  #ifndef IO_TYPE_HDR
+  #define IO_TYPE_HDR
+  #include <libio.h>
+  #endif /* IO_TYPE_HDR */
+
+  #if (REQUIRE_IO_TYPE == DECLARE)
+  static  io_T ioType;
+  #define Io   ioType.self
+  #endif
+#undef REQUIRE_IO_TYPE
+#endif /* REQUIRE_IO_TYPE */
+
+#ifdef REQUIRE_FILE_TYPE
+  #ifndef FILE_TYPE_HDR
+  #define FILE_TYPE_HDR
+  #include <libfile.h>
+  #endif /* FILE_TYPE_HDR */
+
+  #if (REQUIRE_FILE_TYPE == DECLARE)
+  static  file_T fileType;
+  #define File   fileType.self
+  #endif
+#undef REQUIRE_FILE_TYPE
+#endif /* REQUIRE_FILE_TYPE */
+
+#ifdef REQUIRE_PATH_TYPE
+  #ifndef PATH_TYPE_HDR
+  #define PATH_TYPE_HDR
+  #include <libpath.h>
+  #endif /* PATH_TYPE_HDR */
+
+  #if (REQUIRE_PATH_TYPE == DECLARE)
+  static  path_T pathType;
+  #define Path   pathType.self
+  #endif
+#undef REQUIRE_PATH_TYPE
+#endif /* REQUIRE_PATH_TYPE */
+
+#ifdef REQUIRE_DIR_TYPE
+  #ifndef DIR_TYPE_HDR
+  #define DIR_TYPE_HDR
+  #include <libdir.h>
+  #endif /* DIR_TYPE_HDR */
+
+  #if (REQUIRE_DIR_TYPE == DECLARE)
+  static  dir_T dirType;
+  #define Dir   dirType.self
+  #endif
+#undef REQUIRE_DIR_TYPE
+#endif /* REQUIRE_DIR_TYPE */
+
+#ifdef REQUIRE_ARGPARSE_TYPE
+  #ifndef ARGPARSE_TYPE_HDR
+  #define ARGPARSE_TYPE_HDR
+  #include <libdir.h>
+  #endif /* ARGPARSE_TYPE_HDR */
+
+  #if (REQUIRE_ARGPARSE_TYPE == DECLARE)
+  static  argparse_T ArgparseType;
+  #define Argparse   argparseType.self
+  #endif
+#undef REQUIRE_ARGPARSE_TYPE
+#endif /* REQUIRE_DIR_TYPE */
+
+#ifdef LIBRARY
+
+  #ifndef LIBRARY_HDR
+  #define LIBRARY_HDR
+  #endif /* LIBRARY_HDR */
+
+#undef LIBRARY
+#endif /* LIBRARY */
+
+#ifndef DECLARE
+#define DECLARE 1
+#endif
+
+/* Those application routines are the quite the same and is useless
+ * to repeat ourselves.
+ * This will allow for rapid development.
+ */
+#define __INIT__(_T_) _T_ ## Type = __init_ ## _T_ ## __ ()
+
+#define __INIT_APP__   \
+  __INIT__ (argparse); \
+  __INIT__ (io);       \
+  int version = 0;     \
+  int retval  = 0;     \
+  argparse_t argparser
+
+#define PARSE_ARGS                               \
+  Argparse.init (&argparser, options, usage, 0); \
+  argc = Argparse.exec (&argparser, argc, (const char **) argv); \
+  CHECK_VERSION
+
+#define CHECK_VERSION  \
+  if (version) {       \
+    fprintf (stderr, "%s\n", VERSION_STRING); \
+    return 1;          \
+  }
+
+#define CHECK_ARGC     \
+  ifnot (argc) {       \
+    Argparse.print_usage (&argparser); \
+    return 1;          \
+  }
+
+#ifdef APPLICATION
+
+  #ifndef APPLICATION_HDR
+  #define APPLICATION_HDR
+
+    #ifndef WITHOUT_STDARG
+      #ifndef STDARG_HDR
+      #define STDARG_HDR
+      #include <stdarg.h>
+      #endif
+    #endif
+
+    #ifndef WITHOUT_ARGPARSE
+      #ifndef ARGPARSE_TYPE_HDR
+      #define ARGPARSE_TYPE_HDR
+      #include <libargparse.h>
+      #endif
+    #endif
+
+    #ifndef WITHOUT_IO
+      #ifndef IO_TYPE_HDR
+      #define IO_TYPE_HDR
+      #include <libio.h>
+      #endif
+    #endif
+
+  #endif /* APPLICATION_HDR */
+
+  #ifndef WITHOUT_ARGPARSE
+    #ifndef WITHOUT_ARGPARSE_DECLARATION
+      #ifndef Argparse
+      static  argparse_T argparseType;
+      #define Argparse   argparseType.self
+      #endif
+    #endif
+  #endif
+
+  #ifndef WITHOUT_IO
+    #ifndef WITHOUT_IO_DECLARATION
+      #ifndef Io
+      static  io_T ioType;
+      #define Io   ioType.self
+      #endif
+    #endif
+  #endif
+
+  #ifndef WITHOUT_USAGE
+    #ifdef APP_OPTS
+    static const char *const usage[] = { \
+      APPLICATION " " APP_OPTS,          \
+    NULL,                                \
+    };
+    #endif
+  #endif
+
+#undef APPLICATION
+#endif /* APPLICATION */
+
+/* ----------------------------------------------- */
+/* make everybody happy:
+ * This is our main coding style/mechanism throughout our
+ * code universe */
+#ifdef $my
+#undef $my
+#endif
+
+#ifdef self
+#undef self
+#endif
+

@@ -9,7 +9,8 @@ typedef struct path_self {
     *(*extname) (char *),
     *(*dirname) (char *);
 
-  int (*is_absolute) (char *);
+  int (*is_absolute) (const char *);
+  Vstring_t *(*split) (const char *);
 } path_self;
 
 typedef struct path_T {

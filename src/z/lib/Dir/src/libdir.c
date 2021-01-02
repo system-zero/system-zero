@@ -1,31 +1,26 @@
-#define _DEFAULT_SOURCE  /* for DT_* */
+/* The idea is to let the main unit to take care for the details
+ * and create the environment for us.
+ * So if something change, it will have to change in one place */
+
+#define LIBRARY "__Dir__"
+
+#define REQUIRE_STD_DEFAULT_SOURCE  /* for DT_* */
+
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_SYS_STAT
+#define REQUIRE_SYS_TYPES
+#define REQUIRE_DIRENT
+
+#define REQUIRE_DLIST_TYPE
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_VSTRING_TYPE DECLARE
+#define REQUIRE_PATH_TYPE    DECLARE
+#define REQUIRE_DIR_TYPE     DONOT_DECLARE
 
 #include <zc.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <dirent.h>
-
-#include <dlist.h>
-#include <libstring.h>
-#include <libvstring.h>
-#include <libcstring.h>
-#include <libpath.h>
-#include <libdir.h>
-
-static  string_T StringT;
-#define String   StringT.self
-
-static  vstring_T VstringT;
-#define Vstring   VstringT.self
-
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
-
-static  path_T PathT;
-#define Path   PathT.self
+#include "__dir.h"
 
 static int dir_is_directory (char *dname) {
   struct stat st;
@@ -220,24 +215,29 @@ static int dir_walk_run (dirwalk_t *this, char *dir) {
   return OK;
 }
 
-static int dir_make (char *dir, mode_t mode) {
+static int dir_make (char *dir, mode_t mode, dir_opts opts) {
   if (NULL is dir) return NOTOK;
 
   if (mkdir (dir, mode) isnot 0) {
     if (errno is EEXIST)
-      return dir_is_directory (dir);
+      return (dir_is_directory (dir) ? OK : NOTOK);
 
-    fprintf (stderr, "mkdir(): %s\n%s\n", dir, strerror (errno));
+    DIR_ERROR ("mkdir: %s %s\n", dir, strerror (errno));
+
     return NOTOK;
   }
+
+  DIR_MSG ("created directory: %s\n", dir);
 
   return OK;
 }
 
-static int dir_make_parents (char *, mode_t);
-static int dir_make_parents (char *dir, mode_t mode) {
+static int dir_make_parents (char *, mode_t, dir_opts opts);
+static int dir_make_parents (char *dir, mode_t mode, dir_opts opts) {
   if (Cstring.eq (dir, "."))
     return OK;
+
+  mode *= 2;
 
   char *dname = Path.dirname (dir);
 
@@ -246,29 +246,88 @@ static int dir_make_parents (char *dir, mode_t mode) {
   if (Cstring.eq (dname, "/"))
     goto theend;
 
-  if ((retval = dir_make_parents (dname, mode)) isnot 0)
+  if ((retval = dir_make_parents (dname, mode, opts)) isnot 0)
     goto theend;
 
-  retval = dir_make (dir, mode);
+  mode /= 2;
+
+  mode_t m;
+  if (mode > 0777) {
+    mode_t mask = umask (0);
+    m = 0777 & ~mask;
+    umask (mask);
+  } else
+    m = mode;
+
+  retval = dir_make (dir, m, opts);
 
 theend:
   free (dname);
   return retval;
 }
 
+static int dir_rm  (char *dir, dir_opts opts) {
+  if (dir is NULL) return NOTOK;
+  int retval =rmdir (dir);
+
+  if (retval isnot OK)
+    DIR_ERROR ("rmdir: %s %s\n", dir, strerror (errno));
+  else
+    DIR_MSG ("removed directory: %s\n", dir);
+
+  return retval;
+}
+
+/* Here we use common techniques found in higher level languages.
+ * Such style allows consentration to the logic, rather to optimize
+ * the specific code. We can do, but we loose a couple of advantages
+ * (like when you rereading the code after time). Also, since tiny
+ * (some silly) mistakes are quite normal to happen, it is always
+ * wise to reuse algorithms. This is the most precious jewel in C.
+ * Since C will never change, an algorithm that does the right thing
+ * will always do it forever.
+ * Small price for an abstraction, and a generous gift. */
+
+static int dir_rm_parents (char *dir, dir_opts opts) {
+  int retval = 0;
+
+  Vstring_t *path = Path.split (dir);
+
+  string_t *p = String.new (bytelen (dir));
+
+  int num_items = path->num_items;
+
+  for (idx_t i = 0; i < num_items; i++) {
+    Vstring.join_allocated (path, DIR_SEP_STR, p);
+
+    retval = dir_rm (p->bytes, opts);
+
+    ifnot (OK is retval) break;
+
+    Vstring.remove_at (path, -1);
+  }
+
+  String.release (p);
+  Vstring.release (path);
+
+  return retval;
+}
+
 public dir_T __init_dir__ (void) {
-  PathT = __init_path__ ();
-  StringT = __init_string__ ();
-  VstringT = __init_vstring__ ();
-  CstringT = __init_cstring__ ();
+  __INIT__(path);
+  __INIT__ (string);
+  __INIT__ (cstring);
+  __INIT__ (vstring);
 
   return (dir_T) {
     .self = (dir_self) {
+      .rm = dir_rm,
       .list = dir_list,
       .make = dir_make,
       .current = dir_current,
-      .is_directory = dir_is_directory,
+      .rm_parents = dir_rm_parents,
       .make_parents = dir_make_parents,
+      .is_directory = dir_is_directory,
       .walk = (dir_walk_self) {
         .free = dir_walk_free,
         .new = dir_walk_new,

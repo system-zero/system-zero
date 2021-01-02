@@ -1,12 +1,20 @@
 #include <zc.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/param.h>  /* for MAXSYMLINKS */
+
+#include <dlist.h>
+#include <libstring.h>
+#include <libvstring.h>
 #include <libcstring.h>
 #include <libpath.h>
 
 static  cstring_T CstringT;
 #define Cstring   CstringT.self
+
+static  vstring_T VstringT;
+#define Vstring   VstringT.self
 
 static char *path_basename (char *name) {
   ifnot (name) return name;
@@ -47,7 +55,7 @@ static char *path_extname (char *name) {
   return p;
 }
 
-/* as a new c string (null terninated), note: that all new c strings here
+/* as a new c string (null terninated), any new created c strings
  * should be null byte terminated */
 static char *path_dirname (char *name) {
   size_t len = bytelen (name);
@@ -57,7 +65,7 @@ static char *path_dirname (char *name) {
     return dname;
   }
 
-  char *sep = name + len;
+  char *sep = name + len - 1;
 
   /* trailing slashes */
   while (sep isnot name) {
@@ -71,9 +79,11 @@ static char *path_dirname (char *name) {
     sep--;
   }
 
+  if (sep - 1 is name) goto theend;
+
   /* trim again */
   while (sep isnot name) {
-    ifnot (IS_DIR_SEP (*sep)) break;
+    if (IS_NOT_DIR_SEP (*sep)) break;
     sep--;
   }
 
@@ -83,13 +93,15 @@ static char *path_dirname (char *name) {
     return dname;
   }
 
+theend:
   len = sep - name + 1;
   dname = Alloc (len + 1);
   Cstring.cp (dname, len + 1, name, len);
+
   return dname;
 }
 
-static int path_is_absolute (char *path) {
+static int path_is_absolute (const char *path) {
   return IS_DIR_ABS (path);
 }
 
@@ -279,17 +291,49 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
   return resolved;
 }
 
+static Vstring_t *path_split (const char *path) {
+  if (NULL is path) return NULL;
+
+  size_t len = bytelen (path);
+  char lpath[len + 1];
+  Cstring.cp (lpath, len + 1, path, len);
+
+  char *sp = lpath;
+  char *end = sp + len - 1;
+
+  Vstring_t *p = Vstring.new ();
+
+  for (;;) {
+    char *basename = path_basename (sp);
+
+    if (*end is DIR_SEP and end isnot lpath)
+      *end = '\0'; /* remove the trailing slash ifnot the first one */
+
+    Vstring.prepend_with (p, basename);
+
+    if (sp is basename) break;
+
+    *basename = '\0';
+    end = basename - 1;
+    sp = lpath;
+  }
+
+  return p;
+}
+
 public path_T __init_path__ (void) {
   CstringT = __init_cstring__ ();
+  VstringT = __init_vstring__ ();
 
   return (path_T) {
     .self = (path_self) {
       .real = path_real,
-      .basename = path_basename,
-      .basename_sans_extname = path_basename_sans_extname,
+      .split = path_split,
       .extname = path_extname,
       .dirname = path_dirname,
-      .is_absolute = path_is_absolute
+      .basename = path_basename,
+      .is_absolute = path_is_absolute,
+      .basename_sans_extname = path_basename_sans_extname,
     }
   };
 }

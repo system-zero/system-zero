@@ -15,6 +15,7 @@ typedef struct file_tmpfname_self {
 
 typedef struct file_mode_self {
   mode_t (*from_octal_string) (char *);
+  char  *(*stat_to_string) (char *, mode_t);
 } file_mode_self;
 
 typedef struct file_self {
