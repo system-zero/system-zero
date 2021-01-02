@@ -11,7 +11,7 @@ THISDIR := $(shell (cd . && pwd))
 
 THIS_LIBVERS  :=  $(API).$(REV)
 
-THIS_HEADER     = lib$(THIS_LIBNAME).h
+THIS_HEADER     = $(THIS_LIBNAME).h
 THIS_LIBSRC     = lib$(THIS_LIBNAME).c
 LIBNAME         = $(THIS_LIBNAME)-$(THIS_LIBVERS)
 THIS_LIB        = lib$(LIBNAME)

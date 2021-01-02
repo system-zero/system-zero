@@ -1,14 +1,9 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_STDARG
+#define REQUIRE_DLIST_TYPE
+#define REQUIRE_USTRING_TYPE DONOT_DECLARE
 
-#include <zc.h>
-#include <dlist.h>
-
-#include <libustring.h>
+#include <z/zc.h>
 
 /* this code belongs to? */
 static const utf8 offsetsFromUTF8[6] = {

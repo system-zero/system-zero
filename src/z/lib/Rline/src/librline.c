@@ -1,18 +1,10 @@
-#define _POSIX_C_SOURCE 200809L
-#define _DEFAULT_SOURCE
+#define REQUIRE_STD_DEFAULT_SOURCE
+#define REQUIRE_UNISTD
+#define REQUIRE_DIRENT
+#define REQUIRE_STRING_TYPE DECLARE
+#define REQUIRE_RLINE_TYPE  DONOT_DECLARE
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <errno.h>
-
-#include <zc.h>
-#include <libstring.h>
-#include <librline.h>
-
-static  string_T StringT;
-#define String   StringT.self
+#include <z/zc.h>
 
 #define DEFAULT_PROPMT "$ "
 
@@ -2832,7 +2824,7 @@ static void rline_history_release (rline_t *this) {
 }
 
 public rline_T __init_rline__ (void) {
-  StringT = __init_string__ ();
+  __INIT__ (string);
 
   return (rline_T) {
     .self = (rline_self) {

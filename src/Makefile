@@ -186,7 +186,7 @@ Z_SU        := $(ZC_SU)
   # (but we might be compiled by olders, but its not our buisness)
   CC_STD        := -std=c11
 
-  BASE_FLAGS     = -I$(Z_SYSINCDIR) -L$(Z_SYSLIBDIR)
+  BASE_FLAGS     = -I$(SYSINCDIR) -L$(Z_SYSLIBDIR)
   BASE_FLAGS    += -g -O2 -march=native -fdollars-in-identifiers
   BASE_FLAGS    += -DDECLARE=1 -DDONOT_DECLARE=0
   DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
@@ -450,7 +450,7 @@ clean_zfile_static:
 zdir-shared: libdir-shared libfile-shared libpath-shared libio-shared libargparse-shared
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-zdir-static: libdir-static libfile-static libpath-static libio-statuc libargparse-static
+zdir-static: libdir-static libfile-static libpath-static libio-static libargparse-static
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean_zdir_shared:

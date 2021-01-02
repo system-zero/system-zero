@@ -1,20 +1,14 @@
-#include <zc.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/param.h>  /* for MAXSYMLINKS */
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_SYS_STAT
+#define REQUIRE_SYS_PARAM  /* for MAXSYMLINKS */
+#define REQUIRE_DLIST_TYPE
+#define REQUIRE_STRING_TYPE   DONOT_DECLARE
+#define REQUIRE_CSTRING_TYPE  DECLARE
+#define REQUIRE_VSTRING_TYPE  DECLARE
+#define REQUIRE_PATH_TYPE     DONOT_DECLARE
 
-#include <dlist.h>
-#include <libstring.h>
-#include <libvstring.h>
-#include <libcstring.h>
-#include <libpath.h>
-
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
-
-static  vstring_T VstringT;
-#define Vstring   VstringT.self
+#include <z/zc.h>
 
 static char *path_basename (char *name) {
   ifnot (name) return name;
@@ -322,8 +316,8 @@ static Vstring_t *path_split (const char *path) {
 }
 
 public path_T __init_path__ (void) {
-  CstringT = __init_cstring__ ();
-  VstringT = __init_vstring__ ();
+  __INIT__ (cstring);
+  __INIT__ (vstring);
 
   return (path_T) {
     .self = (path_self) {

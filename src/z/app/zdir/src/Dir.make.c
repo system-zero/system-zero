@@ -1,3 +1,4 @@
+#define APPNAME     "Dir.make"
 #define APPLICATION "Dir.make"
 #define APP_OPTS   "directory-name"
 
@@ -73,7 +74,7 @@ int main (int argc, char **argv) {
     mode_t m = File.mode.from_octal_string (mode_string);
 
     ifnot (m) {
-      fprintf (stderr, APPLICATION ": not a valid mode %s\n", mode_string);
+      fprintf (stderr, APPNAME ": not a valid mode %s\n", mode_string);
       return 1;
     }
 

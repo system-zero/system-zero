@@ -1,15 +1,10 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_STDARG
 
-#include <zc.h>
-#include <libcstring.h>
-#include <libargparse.h>
+#define REQUIRE_CSTRING_TYPE  DECLARE
+#define REQUIRE_ARGPARSE_TYPE DONOT_DECLARE
 
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
+#include <z/zc.h>
 
 /* Argparse:
   https://github.com/cofyc/argparse
@@ -429,7 +424,7 @@ public int argparse_help_cb (argparse_t *self, const argparse_option_t *option) 
 }
 
 public argparse_T __init_argparse__ (void) {
-  CstringT = __init_cstring__ ();
+  __INIT__ (cstring);
 
   return (argparse_T) {
     .self = (argparse_self) {

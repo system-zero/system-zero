@@ -9,34 +9,20 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
-#include <grp.h>
-#include <time.h>
-#include <security/pam_appl.h>
-#include <security/pam_modules.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_SYS_TYPES
+#define REQUIRE_TIME
+#define REQUIRE_PWD
+#define REQUIRE_GRP
+#define REQUIRE_PAM
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_USTRING_TYPE DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_INPUT_TYPE   DECLARE
+#define REQUIRE_AUTH_TYPE    DONOT_DECLARE
 
-#include <zc.h>
-#include <libstring.h>
-#include <libcstring.h>
-#include <libustring.h>
-#include <libinput.h>
-#include <libauth.h>
-
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
-
-static  string_T StringT;
-#define String   StringT.self
-
-static  ustring_T UstringT;
-#define Ustring   UstringT.self
-
-static  input_T InputT;
-#define Input   InputT.self
+#include <z/zc.h>
 
 #define $my(__v__) this->prop->__v__
 
@@ -399,11 +385,12 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
   return this;
 }
 
-auth_T  __init_auth__ (void) {
-  InputT   = __init_input__ ();
-  StringT = __init_string__ ();
-  CstringT = __init_cstring__ ();
-  UstringT = __init_ustring__ ();
+public auth_T  __init_auth__ (void) {
+  __INIT__ (input);
+  __INIT__ (string);
+  __INIT__ (cstring);
+  __INIT__ (ustring);
+
   return (auth_T) {
     .self = (auth_self) {
       .new = auth_new,

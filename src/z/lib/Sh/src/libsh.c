@@ -3,29 +3,18 @@
  * Many thanks.
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdarg.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_STDARG
+#define REQUIRE_WAIT
+#define REQUIRE_SIGNAL
+
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_PROC_TYPE    DECLARE
+#define REQUIRE_SH_TYPE      DONOT_DECLARE
 
 #include <zc.h>
-#include <libstring.h>
-#include <libcstring.h>
-#include <libproc.h>
-#include <libsh.h>
-
-static  string_T StringT;
-#define String   StringT.self
-
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
-
-static  proc_T ProcT;
-#define Proc   ProcT.self
 
 #define $myprop    this->prop
 #define $my(__v__) $myprop->__v__
@@ -524,9 +513,9 @@ static int sh_exec (sh_t *this, char *buf) {
 }
 
 public sh_T __init_sh__ (void) {
-  ProcT = __init_proc__ ();
-  StringT = __init_string__ ();
-  CstringT = __init_cstring__ ();
+  __INIT__ (proc);
+  __INIT__ (string);
+  __INIT__ (cstring);
 
   return (sh_T) {
     .self = (sh_self) {

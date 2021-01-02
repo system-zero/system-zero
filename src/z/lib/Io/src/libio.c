@@ -1,8 +1,8 @@
-#include <zc.h>
-#include <unistd.h>
-#include <sys/select.h>
+#define REQUIRE_UNISTD
+#define REQUIRE_SELECT
+#define REQUIRE_IO_TYPE DONOT_DECLARE
 
-#include <libio.h>
+#include <z/zc.h>
 
 #define CONTINUE_ON_EXPECTED_ERRNO(fd__)  \
   if (errno == EINTR) {                   \

@@ -1,14 +1,10 @@
-#include <unistd.h>
-#include <termios.h>
-#include <sys/select.h>
-#include <errno.h>
+#define REQUIRE_UNISTD
+#define REQUIRE_TERMIOS
+#define REQUIRE_SELECT
+#define REQUIRE_USTRING_TYPE DECLARE
+#define REQUIRE_INPUT_TYPE   DONOT_DECLARE
 
-#include <zc.h>
-#include <libustring.h>
-#include <libinput.h>
-
-static  ustring_T UstringT;
-#define Ustring   UstringT.self
+#include <z/zc.h>
 
 struct termios orig_mode, raw_mode;
 
@@ -278,7 +274,7 @@ static utf8 input_getkey (int infd) {
 }
 
 public input_T __init_input__ (void) {
-  UstringT = __init_ustring__ ();
+  __INIT__ (ustring);
 
   return (input_T) {
     .self = (input_self) {

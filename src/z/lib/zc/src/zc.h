@@ -20,6 +20,14 @@
 #undef REQUIRE_STD_DEFAULT_SOURCE
 #endif
 
+#ifdef REQUIRE_STD_GNU_SOURCE
+  #ifndef _GNU_SOURCE
+  #define _GNU_SOURCE
+  #endif
+
+#undef REQUIRE_STD_GNU_SOURCE
+#endif
+
 /* we need those to be funtional in this unit */
 #include <stddef.h> /* for ptrdiff_t (see below the idx_t section) */
 #include <stdint.h> /* get them (the integer types) right */
@@ -452,6 +460,24 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_STDARG
 #endif /* REQUIRE_STDARG */
 
+#ifdef REQUIRE_SIGNAL
+  #ifndef SYS_SIGNAL_HDR
+  #define SYS_SIGNAL_HDR
+  #include <sys/wait.h>
+  #endif /* SYS_SIGNAL_HDR */
+
+#undef REQUIRE_SYS_SIGNAL
+#endif /* REQUIRE_SYS_SIGNAL */
+
+#ifdef REQUIRE_WAIT
+  #ifndef SYS_WAIT_HDR
+  #define SYS_WAIT_HDR
+  #include <sys/wait.h>
+  #endif /* SYS_WAIT_HDR */
+
+#undef REQUIRE_SYS_WAIT
+#endif /* REQUIRE_SYS_WAIT */
+
 #ifdef REQUIRE_SYS_STAT
   #ifndef SYS_STAT_HDR
   #define SYS_STAT_HDR
@@ -461,6 +487,15 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SYS_STAT
 #endif /* REQUIRE_SYS_STAT */
 
+#ifdef REQUIRE_SYS_PARAM
+  #ifndef SYS_PARAM_HDR
+  #define SYS_PARAM_HDR
+  #include <sys/param.h>
+  #endif /* SYS_PARAM_HDR */
+
+#undef REQUIRE_SYS_PARAM
+#endif /* REQUIRE_SYS_PARAM */
+
 #ifdef REQUIRE_SYS_TYPES
   #ifndef SYS_TYPES_HDR
   #define SYS_TYPES_HDR
@@ -468,6 +503,22 @@ typedef ptrdiff_t idx_t;
   #endif /* SYS_TYPES_HDR */
 #undef REQUIRE_SYS_TYPES
 #endif /* REQUIRE_SYS_TYPES */
+
+#ifdef REQUIRE_SELECT
+  #ifndef SELECT_HDR
+  #define SELECT_HDR
+  #include <sys/select.h>
+  #endif /* SELECT_HDR */
+#undef REQUIRE_SELECT
+#endif /* REQUIRE_SELECT */
+
+#ifdef REQUIRE_TERMIOS
+  #ifndef TERMIOS_HDR
+  #define TERMIOS_HDR
+  #include <termios.h>
+  #endif /* TERMIOS_HDR */
+#undef REQUIRE_TERMIOS
+#endif /* REQUIRE_TERMIOS */
 
 #ifdef REQUIRE_DIRENT
   #ifndef DIRENT_HDR
@@ -493,12 +544,37 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_TIME
 #endif /* REQUIRE_TIME */
 
+#ifdef REQUIRE_GRP
+  #ifndef GRP_HDR
+  #define GRP_HDR
+  #include <grp.h>
+  #endif /* GRP_HDR */
+#undef REQUIRE_GRP
+#endif /* REQUIRE_GRP */
+
+#ifdef REQUIRE_PWD
+  #ifndef PWD_HDR
+  #define PWD_HDR
+  #include <pwd.h>
+  #endif /* PWD_HDR */
+#undef REQUIRE_PWD
+#endif /* REQUIRE_PWD */
+
+#ifdef REQUIRE_PAM
+  #ifndef PAM_HDR
+  #define PAM_HDR
+  #include <security/pam_appl.h>
+  #include <security/pam_modules.h>
+  #endif /* PAM_HDR */
+#undef REQUIRE_PAM
+#endif /* REQUIRE_PAM */
+
 /* types */
 
 #ifdef REQUIRE_DLIST_TYPE
   #ifndef DLIST_TYPE_HDR
   #define DLIST_TYPE_HDR
-  #include <dlist.h>
+  #include <z/dlist.h>
   #endif /* DLIST_TYPE_HDR */
 
 #undef REQUIRE_DLIST_TYPE
@@ -507,7 +583,7 @@ typedef ptrdiff_t idx_t;
 #ifdef REQUIRE_STRING_TYPE
   #ifndef STRING_TYPE_HDR
   #define STRING_TYPE_HDR
-  #include <libstring.h>
+  #include <z/stringt.h>
   #endif /* STRING_TYPE_HDR */
 
   #if (REQUIRE_STRING_TYPE == DECLARE)
@@ -520,22 +596,20 @@ typedef ptrdiff_t idx_t;
 #ifdef REQUIRE_CSTRING_TYPE
   #ifndef CSTRING_TYPE_HDR
   #define CSTRING_TYPE_HDR
-  #include <libcstring.h>
+  #include <z/cstring.h>
   #endif /* CSTRING_TYPE_HDR */
 
   #if (REQUIRE_CSTRING_TYPE == DECLARE)
   static  cstring_T cstringType;
   #define Cstring   cstringType.self
   #endif
-static  cstring_T cstringType;
-#define Cstring   cstringType.self
 #undef REQUIRE_CSTRING_TYPE
 #endif /* REQUIRE_CSTRING_TYPE */
 
 #ifdef REQUIRE_VSTRING_TYPE
   #ifndef VSTRING_TYPE_HDR
   #define VSTRING_TYPE_HDR
-  #include <libvstring.h>
+  #include <z/vstring.h>
   #endif /* VSTRING_TYPE_HDR */
 
   #if (REQUIRE_VSTRING_TYPE == DECLARE)
@@ -545,10 +619,23 @@ static  cstring_T cstringType;
 #undef REQUIRE_VSTRING_TYPE
 #endif /* REQUIRE_VSTRING_TYPE */
 
+#ifdef REQUIRE_USTRING_TYPE
+  #ifndef USTRING_TYPE_HDR
+  #define USTRING_TYPE_HDR
+  #include <z/ustring.h>
+  #endif /* USTRING_TYPE_HDR */
+
+  #if (REQUIRE_USTRING_TYPE == DECLARE)
+  static  ustring_T ustringType;
+  #define Ustring   ustringType.self
+  #endif
+#undef REQUIRE_USTRING_TYPE
+#endif /* REQUIRE_USTRING_TYPE */
+
 #ifdef REQUIRE_IO_TYPE
   #ifndef IO_TYPE_HDR
   #define IO_TYPE_HDR
-  #include <libio.h>
+  #include <z/io.h>
   #endif /* IO_TYPE_HDR */
 
   #if (REQUIRE_IO_TYPE == DECLARE)
@@ -558,10 +645,36 @@ static  cstring_T cstringType;
 #undef REQUIRE_IO_TYPE
 #endif /* REQUIRE_IO_TYPE */
 
+#ifdef REQUIRE_RLINE_TYPE
+  #ifndef RLINE_TYPE_HDR
+  #define RLINE_TYPE_HDR
+  #include <z/rline.h>
+  #endif /* RLINE_TYPE_HDR */
+
+  #if (REQUIRE_RLINE_TYPE == DECLARE)
+  static  rline_T rlineType;
+  #define Rline   rlineType.self
+  #endif
+#undef REQUIRE_RLINE_TYPE
+#endif /* REQUIRE_RLINE_TYPE */
+
+#ifdef REQUIRE_SH_TYPE
+  #ifndef SH_TYPE_HDR
+  #define SH_TYPE_HDR
+  #include <z/sh.h>
+  #endif /* SH_TYPE_HDR */
+
+  #if (REQUIRE_SH_TYPE == DECLARE)
+  static  sh_T shType;
+  #define Sh   shType.self
+  #endif
+#undef REQUIRE_SH_TYPE
+#endif /* REQUIRE_SH_TYPE */
+
 #ifdef REQUIRE_FILE_TYPE
   #ifndef FILE_TYPE_HDR
   #define FILE_TYPE_HDR
-  #include <libfile.h>
+  #include <z/file.h>
   #endif /* FILE_TYPE_HDR */
 
   #if (REQUIRE_FILE_TYPE == DECLARE)
@@ -574,7 +687,7 @@ static  cstring_T cstringType;
 #ifdef REQUIRE_PATH_TYPE
   #ifndef PATH_TYPE_HDR
   #define PATH_TYPE_HDR
-  #include <libpath.h>
+  #include <z/path.h>
   #endif /* PATH_TYPE_HDR */
 
   #if (REQUIRE_PATH_TYPE == DECLARE)
@@ -584,10 +697,23 @@ static  cstring_T cstringType;
 #undef REQUIRE_PATH_TYPE
 #endif /* REQUIRE_PATH_TYPE */
 
+#ifdef REQUIRE_PROC_TYPE
+  #ifndef PROC_TYPE_HDR
+  #define PROC_TYPE_HDR
+  #include <z/proc.h>
+  #endif /* PROC_TYPE_HDR */
+
+  #if (REQUIRE_PROC_TYPE == DECLARE)
+  static  proc_T procType;
+  #define Proc   procType.self
+  #endif
+#undef REQUIRE_PROC_TYPE
+#endif /* REQUIRE_PROC_TYPE */
+
 #ifdef REQUIRE_DIR_TYPE
   #ifndef DIR_TYPE_HDR
   #define DIR_TYPE_HDR
-  #include <libdir.h>
+  #include <z/dir.h>
   #endif /* DIR_TYPE_HDR */
 
   #if (REQUIRE_DIR_TYPE == DECLARE)
@@ -597,10 +723,36 @@ static  cstring_T cstringType;
 #undef REQUIRE_DIR_TYPE
 #endif /* REQUIRE_DIR_TYPE */
 
+#ifdef REQUIRE_INPUT_TYPE
+  #ifndef INPUT_TYPE_HDR
+  #define INPUT_TYPE_HDR
+  #include <z/input.h>
+  #endif /* INPUT_TYPE_HDR */
+
+  #if (REQUIRE_INPUT_TYPE == DECLARE)
+  static  input_T inputType;
+  #define Input   inputType.self
+  #endif
+#undef REQUIRE_INPUT_TYPE
+#endif /* REQUIRE_INPUT_TYPE */
+
+#ifdef REQUIRE_AUTH_TYPE
+  #ifndef AUTH_TYPE_HDR
+  #define AUTH_TYPE_HDR
+  #include <z/auth.h>
+  #endif /* AUTH_TYPE_HDR */
+
+  #if (REQUIRE_AUTH_TYPE == DECLARE)
+  static  auth_T authType;
+  #define Auth   authType.self
+  #endif
+#undef REQUIRE_AUTH_TYPE
+#endif /* REQUIRE_AUTH_TYPE */
+
 #ifdef REQUIRE_ARGPARSE_TYPE
   #ifndef ARGPARSE_TYPE_HDR
   #define ARGPARSE_TYPE_HDR
-  #include <libdir.h>
+  #include <z/argparse.h>
   #endif /* ARGPARSE_TYPE_HDR */
 
   #if (REQUIRE_ARGPARSE_TYPE == DECLARE)
@@ -668,14 +820,14 @@ static  cstring_T cstringType;
     #ifndef WITHOUT_ARGPARSE
       #ifndef ARGPARSE_TYPE_HDR
       #define ARGPARSE_TYPE_HDR
-      #include <libargparse.h>
+      #include <z/argparse.h>
       #endif
     #endif
 
     #ifndef WITHOUT_IO
       #ifndef IO_TYPE_HDR
       #define IO_TYPE_HDR
-      #include <libio.h>
+      #include <z/io.h>
       #endif
     #endif
 

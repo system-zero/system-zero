@@ -1,13 +1,8 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_STDARG
+#define REQUIRE_CSTRING_TYPE DONOT_DECLARE
 
-#include <zc.h>
-
-#include <libcstring.h>
+#include <z/zc.h>
 
 static int cstring_eq (const char *sa, const char *sb) {
   const uchar *spa = (const uchar *) sa;

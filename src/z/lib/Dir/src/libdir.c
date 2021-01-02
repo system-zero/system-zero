@@ -19,7 +19,7 @@
 #define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_DIR_TYPE     DONOT_DECLARE
 
-#include <zc.h>
+#include <z/zc.h>
 #include "__dir.h"
 
 static int dir_is_directory (char *dname) {

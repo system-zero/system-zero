@@ -88,12 +88,16 @@ clean_static:\
 #-----------------------------------------------#
 F_SIZE = $(NAME).size
 
+F_SIZE_STATIC_FLAGS = -ldir-$(VERSION) -lpath-$(VERSION)\
+                      -lvstring-$(VERSION) -lstring-$(VERSION)\
+                      -lcstring-$(VERSION) -largparse-$(VERSION)
+
 file-size-shared:
 	$(CC) $(F_SIZE).c $(FLAGS) -o $(SYSBINDIR)/$(F_SIZE)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(F_SIZE)-shared $(SYSBINDIR)/$(F_SIZE)
 
 file-size-static:
-	$(CC) $(F_SIZE).c $(FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(F_SIZE)-static
+	$(CC) $(F_SIZE).c $(FLAGS) $(F_SIZE_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(F_SIZE)-static
 
 clean_file_size_shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_SIZE)-shared || $(RM) $(SYSBINDIR)/$(F_SIZE)-shared

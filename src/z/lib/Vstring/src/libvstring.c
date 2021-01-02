@@ -1,22 +1,11 @@
-#define _POSIX_C_SOURCE 200809L
+#define REQUIRE_STDIO
+#define REQUIRE_STDARG
+#define REQUIRE_DLIST_TYPE
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
-
-#include <zc.h>
-#include <dlist.h>
-#include <libstring.h>
-#include <libcstring.h>
-#include <libvstring.h>
-
-static  string_T StringT;
-#define String   StringT.self
-
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
+#include <z/zc.h>
 
 static void vstring_release_item (vstring_t *it) {
   if (it is NULL) return;
@@ -287,8 +276,8 @@ static void vstring_remove_at (Vstring_t *vstr, int idx) {
 }
 
 public vstring_T __init_vstring__ (void) {
-  StringT = __init_string__ ();
-  CstringT = __init_cstring__ ();
+  __INIT__ (string);
+  __INIT__ (cstring);
 
   return (vstring_T) {
     .self = (vstring_self) {

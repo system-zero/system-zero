@@ -1,13 +1,8 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_STDARG
+#define REQUIRE_STRING_TYPE DONOT_DECLARE
 
-#include <zc.h>
-
-#include <libstring.h>
+#include <z/zc.h>
 
 static size_t byte_cp (char *dest, const char *src, size_t nelem) {
   const char *sp = src;

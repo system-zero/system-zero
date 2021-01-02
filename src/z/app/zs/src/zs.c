@@ -1,29 +1,13 @@
-#define _POSIX_C_SOURCE 200809L
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_STDARG
+#define REQUIRE_TIME
+#define REQUIRE_SIGNAL
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_SH_TYPE      DECLARE
+#define REQUIRE_RLINE_TYPE   DECLARE
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <strings.h>
-#include <stdarg.h>
-#include <time.h>
-#include <signal.h>
-#include <errno.h>
-
-#include <zc.h>
-#include <libcstring.h>
-#include <libsh.h>
-#include <librline.h>
-
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
-
-static  sh_T ShT;
-#define Sh   ShT.self
-
-static  rline_T RlineT;
-#define Rline   RlineT.self
+#include <z/zc.h>
 
 #define DEFAULT_ROOT_PROMPT "\033[31m$\033[m "
 #define DEFAULT_USER_PROMPT "\033[32m$\033[m "
@@ -113,9 +97,9 @@ static int zs_interactive (sh_t *this) {
 }
 
 int main (int argc, char **argv) {
-  ShT = __init_sh__ ();
-  RlineT = __init_rline__ ();
-  CstringT = __init_cstring__ ();
+  __INIT__ (sh);
+  __INIT__ (rline);
+  __INIT__ (cstring);
 
   char dir[MAXLEN_DIR]; dir[0] = '\0';
   char command[MAXLEN_COMMAND]; command[0] = '\0';

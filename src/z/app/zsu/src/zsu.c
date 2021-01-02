@@ -1,36 +1,21 @@
-#define _DEFAULT_SOURCE
-#define _GNU_SOURCE
+#define REQUIRE_STD_DEFAULT_SOURCE
+#define REQUIRE_STD_GNU_SOURCE
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdarg.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <grp.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_STDARG
+#define REQUIRE_TIME
+#define REQUIRE_SYS_TYPES
+#define REQUIRE_SYS_STAT
+#define REQUIRE_FCNTL
+#define REQUIRE_GRP
 
-#include <zc.h>
-#include <libcstring.h>
-#include <libstring.h>
-#include <libproc.h>
-#include <libauth.h>
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_PROC_TYPE    DECLARE
+#define REQUIRE_AUTH_TYPE    DECLARE
 
-static  cstring_T CstringT;
-#define Cstring   CstringT.self
-
-static  string_T StringT;
-#define String   StringT.self
-
-static  auth_T AuthT;
-#define Auth   AuthT.self
-
-static  proc_T ProcT;
-#define Proc   ProcT.self
+#include <z/zc.h>
 
 #define ROOT_UID  0
 #define ROOT_GID  0
@@ -48,10 +33,10 @@ int main (int argc, char **argv) {
 
   argc--; argv++;
 
-  CstringT = __init_cstring__ ();
-  StringT = __init_string__ ();
-  ProcT = __init_proc__ ();
-  AuthT = __init_auth__ ();
+  __INIT__ (cstring);
+  __INIT__ (string);
+  __INIT__ (proc);
+  __INIT__ (auth);
 
   char dir[MAXLEN_DIR];
   dir[0] = '\0';

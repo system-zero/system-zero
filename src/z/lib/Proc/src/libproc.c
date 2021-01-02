@@ -1,19 +1,15 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdarg.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <errno.h>
+#define REQUIRE_STDIO
+#define REQUIRE_UNISTD
+#define REQUIRE_STDARG
+#define REQUIRE_SYS_STAT
+#define REQUIRE_SYS_TYPES
+#define REQUIRE_WAIT
 
-#include <zc.h>
-#include <dlist.h>
-#include <libcstring.h>
-#include <libproc.h>
+#define REQUIRE_DLIST_TYPE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_PROC_TYPE    DONOT_DECLARE
 
-static cstring_T CstringT;
-#define Cstring CstringT.self
+#include <z/zc.h>
 
 typedef struct proc_prop {
   pid_t  pid;
@@ -415,7 +411,7 @@ theend:
 }
 
 public proc_T __init_proc__ (void) {
-  CstringT = __init_cstring__ ();
+  __INIT__ (cstring);
 
   return (proc_T) {
     .self = (proc_self) {
