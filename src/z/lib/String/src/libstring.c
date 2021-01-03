@@ -1,8 +1,10 @@
+#define LIBRARY "String"
+
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
 #define REQUIRE_STRING_TYPE DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 static size_t byte_cp (char *dest, const char *src, size_t nelem) {
   const char *sp = src;

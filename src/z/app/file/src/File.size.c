@@ -7,7 +7,7 @@
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
 
-#include <zc.h>
+#include <z/cenv.h>
 
 int main (int argc, char **argv) {
   __INIT_APP__;

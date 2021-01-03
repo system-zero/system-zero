@@ -1,3 +1,5 @@
+#define LIBRARY "Path"
+
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_STAT
@@ -8,7 +10,7 @@
 #define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_PATH_TYPE     DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 static char *path_basename (char *name) {
   ifnot (name) return name;
@@ -331,4 +333,3 @@ public path_T __init_path__ (void) {
     }
   };
 }
-

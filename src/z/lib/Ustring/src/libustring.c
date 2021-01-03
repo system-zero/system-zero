@@ -1,9 +1,11 @@
+#define LIBRARY "Ustring"
+
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
 #define REQUIRE_DLIST_TYPE
 #define REQUIRE_USTRING_TYPE DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 /* this code belongs to? */
 static const utf8 offsetsFromUTF8[6] = {

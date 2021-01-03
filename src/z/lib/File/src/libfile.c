@@ -13,7 +13,7 @@
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_FILE_TYPE    DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 static int file_is_reg (const char *fname) {
   struct stat st;

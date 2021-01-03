@@ -67,9 +67,9 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
   # z library namespace
   Z_SRCLIBDIR = $(Z_SRCDIR)/lib
 
-    # our way to write C code
-    ZC                   = zc
-    Z_C_SRCDIR          := $(Z_SRCLIBDIR)/$(ZC)/src
+    # our C environment
+    ZCENV                = cenv
+    Z_CENV_SRCDIR        := $(Z_SRCLIBDIR)/$(ZCENV)/src
 
     # C structures (types) 
 
@@ -206,199 +206,199 @@ Z_SU        := $(ZC_SU)
   MARGS += BASE_FLAGS='$(BASE_FLAGS)'
 
 #----------------------------------------------------------#
-zc: Env
-	@cd $(Z_C_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
+cenv: Env
+	@cd $(Z_CENV_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
-clean_zc:
-	@cd $(Z_C_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean
+clean-cenv:
+	@cd $(Z_CENV_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean
 #----------------------------------------------------------#
 dlist: Env
 	@cd $(Z_DLIST_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
-clean_dlist:
+clean-dlist:
 	@cd $(Z_DLIST_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean
 #----------------------------------------------------------#
-libstring-shared: Env zc
+libstring-shared: Env cenv
 	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libstring-static: Env zc
+libstring-static: Env cenv
 	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libstring_shared:
-	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libstring-shared:
+	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libstring_static:
-	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libstring-static:
+	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libustring-shared: Env zc
+libustring-shared: Env cenv
 	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libustring-static: Env zc
+libustring-static: Env cenv
 	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libustring_shared:
-	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libustring-shared:
+	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libustring_static:
-	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libustring-static:
+	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libcstring-shared: Env zc
+libcstring-shared: Env cenv
 	@cd $(Z_CSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libcstring-static: Env zc
+libcstring-static: Env cenv
 	@cd $(Z_CSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libcstring_shared:
-	@cd $(Z_CSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libcstring-shared:
+	@cd $(Z_CSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libcstring_static:
-	@cd $(Z_CSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libcstring-static:
+	@cd $(Z_CSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libvstring-shared: Env zc libstring-shared libcstring-shared
+libvstring-shared: Env cenv libstring-shared libcstring-shared
 	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libvstring-static: Env zc libstring-static libcstring-static
+libvstring-static: Env cenv libstring-static libcstring-static
 	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libvstring_shared:
-	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libvstring-shared:
+	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libvstring_static:
-	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libvstring-static:
+	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libdir-shared: Env zc libstring-shared libvstring-shared libcstring-shared libpath-shared
+libdir-shared: Env cenv libstring-shared libvstring-shared libcstring-shared libpath-shared
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libdir-static: Env zc libstring-static libvstring-static libcstring-static libpath-static
+libdir-static: Env cenv libstring-static libvstring-static libcstring-static libpath-static
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libdir_shared:
-	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libdir-shared:
+	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libdir_static:
-	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libdir-static:
+	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libinput-shared: Env zc libustring-shared
+libinput-shared: Env cenv libustring-shared
 	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libinput-static: Env zc libustring-static
+libinput-static: Env cenv libustring-static
 	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libinput_shared:
-	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libinput-shared:
+	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libinput_static:
-	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libinput-static:
+	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libauth-shared: Env zc libstring-shared libcstring-shared libustring-shared libinput-shared
+libauth-shared: Env cenv libstring-shared libcstring-shared libustring-shared libinput-shared
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libauth-static: Env zc libstring-static libcstring-static libustring-static libinput-static
+libauth-static: Env cenv libstring-static libcstring-static libustring-static libinput-static
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libauth_shared:
-	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libauth-shared:
+	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libauth_static:
-	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libauth-static:
+	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libproc-shared: Env zc dlist libcstring-shared
+libproc-shared: Env cenv dlist libcstring-shared
 	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libproc-static: Env zc dlist libcstring-static
+libproc-static: Env cenv dlist libcstring-static
 	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libproc_shared:
-	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libproc-shared:
+	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libproc_static:
-	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libproc-static:
+	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-librline-shared: Env zc libstring-shared
+librline-shared: Env cenv libstring-shared
 	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-librline-static: Env zc libstring-static
+librline-static: Env cenv libstring-static
 	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_librline_shared:
-	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-librline-shared:
+	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_librline_static:
-	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-librline-static:
+	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libsh-shared: Env zc libcstring-shared libproc-shared
+libsh-shared: Env cenv libcstring-shared libproc-shared
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libsh-static: Env zc libcstring-static libproc-static
+libsh-static: Env cenv libcstring-static libproc-static
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libsh_shared:
-	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libsh-shared:
+	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libsh_static:
-	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libsh-static:
+	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libfile-shared: Env zc libstring-shared libcstring-shared libvstring-shared libdir-shared libpath-shared
+libfile-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libdir-shared libpath-shared
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libfile-static: Env zc libstring-static libcstring-static libvstring-static libdir-static libpath-static
+libfile-static: Env cenv libstring-static libcstring-static libvstring-static libdir-static libpath-static
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libfile_shared:
-	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libfile-shared:
+	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libfile_static:
-	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libfile-static:
+	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libargparse-shared: Env zc libstring-shared libcstring-shared libvstring-shared libdir-shared
+libargparse-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libdir-shared
 	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libargparse-static: Env zc libstring-static libcstring-static libvstring-static libdir-static
+libargparse-static: Env cenv libstring-static libcstring-static libvstring-static libdir-static
 	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libargparse_shared:
-	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libargparse-shared:
+	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libargparse_static:
-	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libargparse-static:
+	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libio-shared: Env zc
+libio-shared: Env cenv
 	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libio-static: Env zc
+libio-static: Env cenv
 	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libio_shared:
-	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libio-shared:
+	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libio_static:
-	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libio-static:
+	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libpath-shared: Env zc libcstring-shared
+libpath-shared: Env cenv libcstring-shared
 	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libpath-static: Env zc libcstring-static
+libpath-static: Env cenv libcstring-static
 	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean_libpath_shared:
-	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-libpath-shared:
+	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_libpath_static:
-	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-libpath-static:
+	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-zs-shared: Env zc libcstring-shared libsh-shared librline-shared
+zs-shared: Env cenv libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
-zs-static: Env zc libcstring-static libsh-static librline-static
+zs-static: Env cenv libcstring-static libsh-static librline-static
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
-clean_zs_shared:
-	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-zs-shared:
+	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_zs_static:
-	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-zs-static:
+	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-zsu-shared: Env zc libcstring-shared libstring-shared libproc-shared libauth-shared
+zsu-shared: Env cenv libcstring-shared libstring-shared libproc-shared libauth-shared
 	cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-shared
 	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) install-shared
 	@cd $(Z_SU_SRCDIR) && $(RM) zsu-shared
@@ -408,16 +408,16 @@ zsu-shared: Env zc libcstring-shared libstring-shared libproc-shared libauth-sha
 #   warning: Using 'initgroups' in statically linked applications
 #   requires at runtime the shared libraries from the glibc version
 #   used for linking
-zsu-static: Env zc libcstring-static libstring-static libproc-static libauth-static
+zsu-static: Env cenv libcstring-static libstring-static libproc-static libauth-static
 	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-static
 	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) install-static
 	@cd $(Z_SU_SRCDIR) && $(RM) zsu-static
 
-clean_zsu_shared:
-	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) clean_shared
+clean-zsu-shared:
+	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean_zsu_static:
-	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) clean_static
+clean-zsu-static:
+	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 # App+
 
@@ -427,79 +427,81 @@ APP_FLAGS  += APP_PREFIX=$(APP_PREFIX)
 APP_FLAGS  += $(ZARGS) $(MARGS)
 
   # file
-  ZA_FILE             = zfile
+  ZA_FILE             = file
   ZA_FILE_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_FILE)/src
 
-zfile-shared: libfile-shared
+file-shared: libfile-shared
 	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-zfile-static: libfile-static
+file-static: libfile-static
 	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
-clean_zfile_shared:
-	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_shared
+clean-file-shared:
+	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
 
-clean_zfile_static:
-	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_static
+clean-file-static:
+	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 
   #----------------------------------------------------------#
   # dir
-  ZA_DIR             = zdir
+  ZA_DIR             = dir
   ZA_DIR_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_DIR)/src
 
-zdir-shared: libdir-shared libfile-shared libpath-shared libio-shared libargparse-shared
+dir-shared: libdir-shared libfile-shared libpath-shared libio-shared libargparse-shared
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-zdir-static: libdir-static libfile-static libpath-static libio-static libargparse-static
+dir-static: libdir-static libfile-static libpath-static libio-static libargparse-static
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
-clean_zdir_shared:
-	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_shared
+clean-dir-shared:
+	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
 
-clean_zdir_static:
-	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean_static
+clean-dir-static:
+	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
-zero-shared:  zero_clean_shared\
-              Env zc dlist\
+shared: zero-clean-shared zero-shared
+zero-shared:  Env cenv dlist\
               libstring-shared libustring-shared libcstring-shared\
               libvstring-shared libdir-shared libinput-shared\
               libproc-shared libauth-shared librline-shared\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared\
-              zs-shared zsu-shared
+              zs-shared zsu-shared\
+              dir-shared file-shared
 
-zero-static:  zero_clean_static\
-              Env zc dlist\
+static: zero-clean-static zero-static
+zero-static:  Env cenv dlist\
               libstring-static libustring-static libcstring-static\
               libvstring-static libdir-static libinput-static\
               libproc-static libauth-static librline-static\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static\
-              zs-static
+              zs-static\
+              dir-static file-static
 
-zero_clean_shared:\
-              clean_zc clean_dlist\
-              clean_libstring_shared clean_libustring_shared\
-              clean_libcstring_shared clean_libvstring_shared\
-              clean_libdir_shared clean_libinput_shared\
-              clean_libproc_shared clean_libauth_shared\
-              clean_librline_shared clean_libsh_shared\
-              clean_libargparse_shared clean_libio_shared\
-              clean_libfile_shared clean_libpath_shared\
-              clean_zs_shared clean_zsu_shared
+zero-clean-shared:\
+              clean-cenv clean-dlist\
+              clean-libstring-shared clean-libustring-shared\
+              clean-libcstring-shared clean-libvstring-shared\
+              clean-libdir-shared clean-libinput-shared\
+              clean-libproc-shared clean-libauth-shared\
+              clean-librline-shared clean-libsh-shared\
+              clean-libargparse-shared clean-libio-shared\
+              clean-libfile-shared clean-libpath-shared\
+              clean-zs-shared clean-zsu-shared
 
-zero_clean_static:\
-              clean_zc clean_dlist\
-              clean_libstring_static clean_libustring_static\
-              clean_libcstring_static clean_libvstring_static\
-              clean_libdir_static clean_libinput_static\
-              clean_libproc_static clean_libauth_static\
-              clean_librline_static clean_libsh_static\
-              clean_libargparse_static clean_libio_static\
-              clean_libfile_static clean_libpath_static\
-              clean_zs_static clean_zsu_static
+zero-clean-static:\
+              clean-cenv clean-dlist\
+              clean-libstring-static clean-libustring-static\
+              clean-libcstring-static clean-libvstring-static\
+              clean-libdir-static clean-libinput-static\
+              clean-libproc-static clean-libauth-static\
+              clean-librline-static clean-libsh-static\
+              clean-libargparse-static clean-libio-static\
+              clean-libfile-static clean-libpath-static\
+              clean-zs-static clean-zsu-static
 
-all: zero-shared zero-static
+all: shared static
 
 #----------------------------------------------------------#
 Env: makeenv checkenv

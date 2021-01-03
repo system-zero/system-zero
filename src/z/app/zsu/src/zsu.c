@@ -1,3 +1,4 @@
+// APPLICATION "zsu"
 #define REQUIRE_STD_DEFAULT_SOURCE
 #define REQUIRE_STD_GNU_SOURCE
 
@@ -15,7 +16,7 @@
 #define REQUIRE_PROC_TYPE    DECLARE
 #define REQUIRE_AUTH_TYPE    DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 #define ROOT_UID  0
 #define ROOT_GID  0

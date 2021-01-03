@@ -3,6 +3,8 @@
  * Many thanks.
  */
 
+#define LIBRARY "Sh"
+
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_STDARG
@@ -14,7 +16,7 @@
 #define REQUIRE_PROC_TYPE    DECLARE
 #define REQUIRE_SH_TYPE      DONOT_DECLARE
 
-#include <zc.h>
+#include <z/cenv.h>
 
 #define $myprop    this->prop
 #define $my(__v__) $myprop->__v__
@@ -300,6 +302,13 @@ static sh_t *sh_new (void) {
   return this;
 }
 
+/* more than couple of cases are not handled yet:
+ *  - quoted arguments
+ *  - globbing
+ *  - valid redirections
+ *  - informative messages
+ *  - ...
+ */
 static int sh_parse (sh_t *this, char *buf) {
   if (NULL is buf) return NOTOK;
 

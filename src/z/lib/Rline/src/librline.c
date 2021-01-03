@@ -1,10 +1,12 @@
+#define LIBRARY "Rline"
+
 #define REQUIRE_STD_DEFAULT_SOURCE
 #define REQUIRE_UNISTD
 #define REQUIRE_DIRENT
 #define REQUIRE_STRING_TYPE DECLARE
 #define REQUIRE_RLINE_TYPE  DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 #define DEFAULT_PROPMT "$ "
 

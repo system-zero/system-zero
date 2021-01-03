@@ -1,8 +1,10 @@
+#define LIBRARY "Io"
+
 #define REQUIRE_UNISTD
 #define REQUIRE_SELECT
 #define REQUIRE_IO_TYPE DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 #define CONTINUE_ON_EXPECTED_ERRNO(fd__)  \
   if (errno == EINTR) {                   \

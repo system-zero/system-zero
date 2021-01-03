@@ -1,10 +1,12 @@
+#define LIBRARY "Input"
+
 #define REQUIRE_UNISTD
 #define REQUIRE_TERMIOS
 #define REQUIRE_SELECT
 #define REQUIRE_USTRING_TYPE DECLARE
 #define REQUIRE_INPUT_TYPE   DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 struct termios orig_mode, raw_mode;
 

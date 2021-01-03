@@ -1,4 +1,4 @@
-NAME    := Dir
+NAME    := File
 
 NS      :=
 API     := 0
@@ -70,63 +70,41 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
-FLAGS += -ldir-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION) -largparse-$(VERSION) -lio-$(VERSION)
+FLAGS += -lfile-$(VERSION) -largparse-$(VERSION) -lio-$(VERSION)
 
-dir: shared static
+file: shared static
 
-shared: clean_shared\
-    dir-make-shared\
-    dir-rm-shared
+shared: clean-shared\
+    file-size-shared
 
-static: clean_static\
-    dir-make-static\
-    dir-rm-static
+static: clean-static\
+    file-size-static
 
-clean_shared:\
-    clean_dir_make_shared
+clean-shared:\
+    clean-file-size-shared
 
-clean_static:\
-    clean_dir_make_static
+clean-static:\
+    clean-file-size-static
 #-----------------------------------------------#
-D_MAKE = $(NAME).make
+F_SIZE = $(NAME).size
 
-FLAGS += -lcstring-$(VERSION)
+F_SIZE_STATIC_FLAGS = -ldir-$(VERSION) -lpath-$(VERSION)\
+                      -lvstring-$(VERSION) -lstring-$(VERSION)\
+                      -lcstring-$(VERSION) -largparse-$(VERSION)
 
-D_MAKE_STATIC_FLAGS = -lpath-$(VERSION)\
-                      -lvstring-$(VERSION) -lstring-$(VERSION)
+file-size-shared:
+	$(CC) $(F_SIZE).c $(FLAGS) -o $(SYSBINDIR)/$(F_SIZE)-shared
+	@$(LN_S) -vf $(SYSBINDIR)/$(F_SIZE)-shared $(SYSBINDIR)/$(F_SIZE)
 
-dir-make-shared:
+file-size-static:
+	$(CC) $(F_SIZE).c $(FLAGS) $(F_SIZE_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(F_SIZE)-static
 
-	$(CC) $(D_MAKE).c $(FLAGS) -o $(SYSBINDIR)/$(D_MAKE)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(D_MAKE)-shared $(SYSBINDIR)/$(D_MAKE)
+clean-file-size-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_SIZE)-shared || $(RM) $(SYSBINDIR)/$(F_SIZE)-shared
+	@$(TEST) ! -L $(SYSBINDIR)/$(F_SIZE) || $(RM) $(SYSBINDIR)/$(F_SIZE)
 
-dir-make-static:
-	$(CC) $(D_MAKE).c $(FLAGS) $(D_MAKE_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(D_MAKE)-static
-
-clean_dir_make_shared:
-	@$(TEST) ! -f $(SYSBINDIR)/$(D_MAKE)-shared || $(RM) $(SYSBINDIR)/$(D_MAKE)-shared
-	@$(TEST) ! -L $(SYSBINDIR)/$(D_MAKE) || $(RM) $(SYSBINDIR)/$(D_MAKE)
-
-clean_dir_make_static:
-	@$(TEST) ! -f $(SYSBINDIR)/$(D_MAKE)-static || $(RM) $(SYSBINDIR)/$(D_MAKE)-static
-#-----------------------------------------------#
-D_RM = $(NAME).rm
-
-D_RM_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION) -lstring-$(VERSION)
-
-dir-rm-shared:
-	$(CC) $(D_RM).c $(FLAGS) -o $(SYSBINDIR)/$(D_RM)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(D_RM)-shared $(SYSBINDIR)/$(D_RM)
-
-dir-rm-static:
-	$(CC) $(D_RM).c $(FLAGS) $(D_RM_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(D_RM)-static
-
-clean_dir_rm_shared:
-	@$(TEST) ! -f $(SYSBINDIR)/$(D_RM)-shared || $(RM) $(SYSBINDIR)/$(D_RM)-shared
-	@$(TEST) ! -L $(SYSBINDIR)/$(D_RM) || $(RM) $(SYSBINDIR)/$(D_RM)
-
-clean_dir_rm_static:
-	@$(TEST) ! -f $(SYSBINDIR)/$(D_RM)-static || $(RM) $(SYSBINDIR)/$(D_RM)-static
+clean-file-size-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_SIZE)-static || $(RM) $(SYSBINDIR)/$(F_SIZE)-static
 #-----------------------------------------------#
 
 TEST = test

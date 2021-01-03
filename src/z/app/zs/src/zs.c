@@ -1,3 +1,5 @@
+// APPLICATION "zs"
+
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_STDARG
@@ -7,7 +9,7 @@
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_RLINE_TYPE   DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 #define DEFAULT_ROOT_PROMPT "\033[31m$\033[m "
 #define DEFAULT_USER_PROMPT "\033[32m$\033[m "

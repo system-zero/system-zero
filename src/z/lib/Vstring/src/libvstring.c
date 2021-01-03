@@ -1,3 +1,5 @@
+#define LIBRARY "Vstring"
+
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
 #define REQUIRE_DLIST_TYPE
@@ -5,7 +7,7 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 static void vstring_release_item (vstring_t *it) {
   if (it is NULL) return;

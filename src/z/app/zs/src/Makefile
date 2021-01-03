@@ -80,12 +80,12 @@ zs-shared:
 zs-static:
 	$(CC) $(NAME).c -DTMPDIR='"$(SYSTMPDIR)"' $(FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(NAME)-static
 
-clean: clean_shared clean_static
+clean: clean-shared clean-static
 
-clean_shared:
+clean-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-shared || $(RM) $(SYSBINDIR)/$(NAME)-shared
 
-clean_static:
+clean-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-static || $(RM) $(SYSBINDIR)/$(NAME)-static
 
 TEST = test

@@ -8,14 +8,14 @@ SYSINCDIR  = $(SYSDIR)/include/$(NS)
 
 dlist: $(SYSINCDIR)/$(THIS_HEADER)
 
-header: Env clean_header $(SYSINCDIR)/$(THIS_HEADER)
+header: Env clean-header $(SYSINCDIR)/$(THIS_HEADER)
 
 $(SYSINCDIR)/$(THIS_HEADER):
 	@$(CP) $(THIS_HEADER) $(SYSINCDIR)
 
-clean: clean_header
+clean: clean-header
 
-clean_header:
+clean-header:
 	@$(TEST) ! -f $(SYSINCDIR)/$(THIS_HEADER) || $(RM) $(SYSINCDIR)/$(THIS_HEADER)
 
 AR = ar rs

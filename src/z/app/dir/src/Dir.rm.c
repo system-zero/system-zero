@@ -10,7 +10,7 @@
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 
-#include <zc.h>
+#include <z/cenv.h>
 
 int main (int argc, char **argv) {
   __INIT__ (dir);

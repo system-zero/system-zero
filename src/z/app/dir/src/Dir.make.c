@@ -11,7 +11,7 @@
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 
-#include <zc.h>
+#include <z/cenv.h>
 
 static int dir_make_print (FILE *fp, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);

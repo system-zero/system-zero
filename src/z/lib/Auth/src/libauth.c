@@ -9,6 +9,8 @@
  *
  */
 
+#define LIBRARY "Auth"
+
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_TYPES
@@ -22,7 +24,7 @@
 #define REQUIRE_INPUT_TYPE   DECLARE
 #define REQUIRE_AUTH_TYPE    DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 #define $my(__v__) this->prop->__v__
 

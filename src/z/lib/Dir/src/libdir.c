@@ -2,7 +2,7 @@
  * and create the environment for us.
  * So if something change, it will have to change in one place */
 
-#define LIBRARY "__Dir__"
+#define LIBRARY "Dir"
 
 #define REQUIRE_STD_DEFAULT_SOURCE  /* for DT_* */
 
@@ -19,7 +19,7 @@
 #define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_DIR_TYPE     DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 #include "__dir.h"
 
 static int dir_is_directory (char *dname) {

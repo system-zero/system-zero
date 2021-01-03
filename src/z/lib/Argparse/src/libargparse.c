@@ -1,10 +1,12 @@
+#define LIBRARY "Argparse"
+
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
 
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_ARGPARSE_TYPE DONOT_DECLARE
 
-#include <z/zc.h>
+#include <z/cenv.h>
 
 /* Argparse:
   https://github.com/cofyc/argparse

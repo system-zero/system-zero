@@ -99,20 +99,20 @@ $(THIS_STATICLIB):
 	@$(AR) $(THIS_STATICLIB) $(THIS_LIB).o
 	@$(RM) $(THIS_LIB).o
 
-header: clean_header $(SYSINCDIR)/$(THIS_HEADER)
+header: clean-header $(SYSINCDIR)/$(THIS_HEADER)
 
 $(SYSINCDIR)/$(THIS_HEADER):
 	@$(CP) $(THIS_HEADER) $(SYSINCDIR)
 
-clean: clean_shared clean_static clean_header
+clean: clean-shared clean-static clean-header
 
-clean_shared: clean_header
+clean-shared: clean-header
 	@$(TEST) ! -f $(THIS_SHAREDLIB) || $(RM) $(THIS_SHAREDLIB)
 
-clean_static: clean_header
+clean-static: clean-header
 	@$(TEST) ! -f $(THIS_STATICLIB) || $(RM)  $(THIS_STATICLIB)
 
-clean_header:
+clean-header:
 	@$(TEST) ! -f $(SYSINCDIR)/$(THIS_HEADER) || $(RM) $(SYSINCDIR)/$(THIS_HEADER)
 
 AR = ar rs
