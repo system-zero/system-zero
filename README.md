@@ -187,6 +187,165 @@ model to be our guide and the bright paradigm in our life.
 It is the only way to satisfy our uncontrolable desire for the ultimate freedom  
 without illusions.  
   
+## Commands and Shell Interface.
+  
+So far we've implemented an utility, that can act as an intermediary between the user  
+and the kernel of the Operating System. This implementation gets input from the   
+keyboard, interprets the text and then makes the request to the kernel service.    
+This kind of utility is called a shell, and it is the traditional UNIX system interface.  
+  
+For instance in UNIX, if we wish to get a list of the contents of a directory, we 
+use the ls utility. If we use it without an argument, then it prints in the screen,  
+the contencts of the current directory. A directory is a file that holds the names   
+of files which are references to a data structure that is called inode, that holds  
+the file's data and metadata. Those inodes are part of the underlying filesystem, a 
+tree directory structure, where the highest level in UNIX is denoted by the slash (/).  
+  
+The first such kind of utility that we've implemented is called File.size.  
+This gets this information, for the specified filename and then prints the  
+number of bytes (the data) that are associated with this filename.  
+We got this information by calling a function from our standard C library, which is
+responsible to communicate with the kernel. Here is the C code:
+  
+```C
+static size_t file_size (const char *fname) {
+  struct stat st;
+  if (NOTOK is stat (fname, &st)) return 0;
+  return st.st_size;
+}
+```
+The st structure contains all the information about the inode that us associated  
+with the requested filename. In this function we're interesting about the number of  
+bytes, so we return them to our callee. So the programmer what it has to do only, is  
+to parse the input from the user and then simply call this function, here it is:
+  
+```C 
+   size_t size = File.size (filename);
+   fprintf (stdout, "%zd\n", size);
+```
+  
+The fprintf() function, is asking from the kernel, to print the output, into the  
+screen the given text.
+
+The output of a command can be redirected into a filename, like:
+
+```sh
+  File.size Makefile >size_of_Makefile
+```
+The output of this command was written into the "size_of_Makefile" file.  
+  
+But also, the output of a command can be the input of another command, like:
+```sh
+  ls Makefile | File.size
+```
+Assuming that the programmer of the command File.size wrote code that will handle  
+the case that the input is not comming from the keyboard, but from standard input  
+stream. In that case it is handled, so the effect it is the same.  
+  
+This command chain is called pipeline, so the output of a command is the input of  
+another command in the chain.  
+  
+This concept is supported in our shell. In fact, it is going to be our direction.  
+  
+You maybe notice the weird command with a dot in between. This is totally unusual,  
+in fact nobody else has done something similar before, so we are going to deviate  
+here.  
+  
+Our libraries functions are not exposed with the traditional C way.  
+We expose structures which they have fields that are pointers to functions. Here  
+is the signature of this specific one:
+  
+```C
+
+typedef struct file_self {
+  ...
+  size_t (*size) (const char *);
+} file_self;
+
+typedef struct file_T {
+  file_self self;
+} file_T;
+
+/* and the simplified initialization: */
+
+  file_t File_Type = (file_T) {
+    .self = (file_self) {
+      .size = file_size
+      ...
+    }
+  };
+
+/* the following is a macro (for a bit of syntactic sugar), that helps the
+ * programmer mind to focus on the implementation */
+
+#define File File_Type.self
+```
+  
+Such a style is called usually object oriented style, though in this specific usage,  
+there is no object to operate, since there are no properties, though they can be  
+added one day. It is being used here for code organization, and because oit offers  
+flexibility, as the user of this structure, it can overide this method with another  
+function implementation tailored in the needs.  
+  
+In any case the most important here is that the command File.size and the underlying  
+library function matches. And in this case they match also the arguments.  
+However, we can extend the command to take another argument from the command line  
+and do something different, like to print the bytes also in MegaBytes.  
+And many tools usually work that way.  
+  
+In our system however we will not. We will prefer to implement another command for  
+this, that we'll call it Bytes.to_mbytes or something similar.  
+That way we gain some bits of conveniences.  
+  
+Let's explain it. In Unix land there are two main tools to download data from the net.  
+That is wget and curl. First the names are unusual and don't really have a relation  
+with their job. Most utilities fell into this category. Secondly, the command line  
+interface usually are different, though they are doing same things.  So there isn't  
+a standardized unification.  
+  
+But with the schema above we can do better. How? Let's say for simplification, that  
+we wanted to wrap these tools, we could provide a Net command with ssubmethods.  
+The implementation it would be as easy as providing symbolic links to the same unit,  
+and the programmer could lookup to the argv[0] (which is always the program name).  
+The other thing would be to unify their arguments, so the user finally has to  
+learn one thing.  
+  
+Utilities such bysybox are working like this. The GNU project also is trying to do  
+something similar. This is called the principle of less surprise and it works wonders.  
+  
+We'll focus to make our commands to read from standard input. In fact at the time  
+of writing, we've implemented Dir.make and Dir.rm. Both are reading from stdin, like:
+  
+```sh
+  $ printf newdir/another/andanother | Dir.make --parents --verbose
+  created directory: newdir, with mode 0755 (drwxr-xr-x)
+  created directory: newdir/another, with mode 0755 (drwxr-xr-x)
+  created directory: newdir/another/andanother, with mode 0755 (drwxr-xr-x)
+  $ printf newdir/another/andanother | Dir.rm --parents --verbose
+  removed directory: newdir/another/andanother
+  removed directory: newdir/another
+  removed directory: newdir
+```
+  
+Here we used two arguments known in everyone that used those tools.  
+The --verbose argument says to print the result to standard output.  
+The --parents argument says to make any intermediate directory.  
+Because they are standardized, we can also use their short version, which is,
+-v for --verbose and -p for --parents.  
+  
+So we satisfy both camps of short argument lovers and the GNU style with two dashes  
+and descriptive names. I'm in the second camp, though in my youth, i was an expert  
+and i knew, and i still know many (though the memory fades a bit), both variants.  
+The obvious advantage is for the novices. In any case modern shells offer all, a  
+mechanism that is called autocompletion and is usually triggered by pressiong Tab.  
+Out shell though doesn't really support this great flexibility though.  
+  
+Using an autocompletion mechanism, simplifies a lot of things and mutates a crucial  
+a valid objection. Our way is quite verbose, as our $PATH will be filled with  
+myriad of commands and so the lookup maybe slow. Our counterargument is quite simple.  
+  
+Our commands begin with a Capital.
+
 To be continued ...  
   
 ... though of course, we'll try to enhance this basic system with time.
