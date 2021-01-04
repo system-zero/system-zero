@@ -93,12 +93,28 @@
 #endif
 
 /* (not just) for purity */
+/*
 #ifndef bytelen
 #define bytelen strlen
 #endif
+*/
+
 /* strlen might made sence, but now is confusing for young minds.
  * so dissasoiate it violently by forbiding it in the code.
  * Today a standard charlen() might justfied. */
+
+inline size_t bytelen (const char *str) {
+  const char *sp = str;
+  while (*sp) ++sp;
+  return sp - str;
+}
+/* we don't really care about performance at this stage;
+ * later when go at the next computing level and we work with
+ * such big strings:
+ * https://medium.com/late-night-programming/strlen-buf-29eb94f8441f 
+ * we'll do the best to understand the algorithm.
+ * But now, it subtracts clarity.
+ */
 
 typedef   signed int  utf8;
 typedef unsigned int  uint;
@@ -177,6 +193,14 @@ typedef unsigned long ulong;
 #ifndef IS_HEX
 #define IS_HEX(c_)      (IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
 #endif
+
+#define BLK_CHAR   'b'
+#define CHR_CHAR   'c'
+#define DIR_CHAR   'd'
+#define LNK_CHAR   'l'
+#define REG_CHAR   '-'
+#define FIFO_CHAR  'p'
+#define SOCK_CHAR  's'
 
 #ifndef ARRLEN
 #define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))

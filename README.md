@@ -191,7 +191,7 @@ without illusions.
   
 So far we've implemented an utility, that can act as an intermediary between the user  
 and the kernel of the Operating System. This implementation gets input from the   
-keyboard, interprets the text and then makes the request to the kernel service.    
+keyboard, interprets the text and then makes the request for the kernel service.    
 This kind of utility is called a shell, and it is the traditional UNIX system interface.  
   
 For instance in UNIX, if we wish to get a list of the contents of a directory, we 
@@ -214,9 +214,9 @@ static size_t file_size (const char *fname) {
   return st.st_size;
 }
 ```
-The st structure contains all the information about the inode that us associated  
+The st structure contains all the information about the inode that is associated  
 with the requested filename. In this function we're interesting about the number of  
-bytes, so we return them to our callee. So the programmer what it has to do only, is  
+bytes, which we return them to our callee. So the programmer what it has to do only, is  
 to parse the input from the user and then simply call this function, here it is:
   
 ```C 
@@ -224,10 +224,10 @@ to parse the input from the user and then simply call this function, here it is:
    fprintf (stdout, "%zd\n", size);
 ```
   
-The fprintf() function, is asking from the kernel, to print the output, into the  
-screen the given text.
+The fprintf() function, is asking from the kernel, to print the output, the given text
+onto the screen.
 
-The output of a command can be redirected into a filename, like:
+The output of a command can also be redirected into a filename, like:
 
 ```sh
   File.size Makefile >size_of_Makefile
@@ -238,12 +238,12 @@ But also, the output of a command can be the input of another command, like:
 ```sh
   ls Makefile | File.size
 ```
-Assuming that the programmer of the command File.size wrote code that will handle  
-the case that the input is not comming from the keyboard, but from standard input  
-stream. In that case it is handled, so the effect it is the same.  
+Assuming that the programmer of the File.size command, wrote code that will handle  
+the case when the input is not comming from the keyboard, but from the standard  
+input stream. In our case this is handled, so the effect it is the same.  
   
-This command chain is called pipeline, so the output of a command is the input of  
-another command in the chain.  
+This command chain is called pipeline, as the output of a command is the input of  
+the next command in the chain.  
   
 This concept is supported in our shell. In fact, it is going to be our direction.  
   
@@ -251,8 +251,8 @@ You maybe notice the weird command with a dot in between. This is totally unusua
 in fact nobody else has done something similar before, so we are going to deviate  
 here.  
   
-Our libraries functions are not exposed with the traditional C way.  
-We expose structures which they have fields that are pointers to functions. Here  
+Our libraries (functions) are not exposed with the traditional C way.  
+We expose structures, which they have fields that are pointers to functions. Here  
 is the signature of this specific one:
   
 ```C
@@ -275,7 +275,7 @@ typedef struct file_T {
     }
   };
 
-/* the following is a macro (for a bit of syntactic sugar), that helps the
+/* the following is a macro (a bit of syntactic sugar), that helps the
  * programmer mind to focus on the implementation */
 
 #define File File_Type.self
@@ -301,12 +301,14 @@ Let's explain it. In Unix land there are two main tools to download data from th
 That is wget and curl. First the names are unusual and don't really have a relation  
 with their job. Most utilities fell into this category. Secondly, the command line  
 interface usually are different, though they are doing same things.  So there isn't  
-a standardized unification.  
+a unification.  
   
 But with the schema above we can do better. How? Let's say for simplification, that  
-we wanted to wrap these tools, we could provide a Net command with ssubmethods.  
+we wanted to wrap these tools, we could provide a Net command with submethods.  
 The implementation it would be as easy as providing symbolic links to the same unit,  
-and the programmer could lookup to the argv[0] (which is always the program name).  
+and the programmer could lookup to the argv[0] (which is always the program name),
+to develop logic.  
+   
 The other thing would be to unify their arguments, so the user finally has to  
 learn one thing.  
   
@@ -333,15 +335,15 @@ The --parents argument says to make any intermediate directory.
 Because they are standardized, we can also use their short version, which is,
 -v for --verbose and -p for --parents.  
   
-So we satisfy both camps of short argument lovers and the GNU style with two dashes  
+So we satisfy both camps; short argument lovers and the GNU style with two dashes  
 and descriptive names. I'm in the second camp, though in my youth, i was an expert  
 and i knew, and i still know many (though the memory fades a bit), both variants.  
 The obvious advantage is for the novices. In any case modern shells offer all, a  
-mechanism that is called autocompletion and is usually triggered by pressiong Tab.  
-Out shell though doesn't really support this great flexibility though.  
+mechanism that is called autocompletion, which is usually triggered by pressiong Tab.  
+Out shell doesn't really support this great flexibility though for now.  
   
 Using an autocompletion mechanism, simplifies a lot of things and mutates a crucial  
-a valid objection. Our way is quite verbose, as our $PATH will be filled with  
+and valid objection. Our way is quite verbose, as our $PATH will be filled with  
 myriad of commands and so the lookup maybe slow. Our counterargument is quite simple.  
   
 Our commands begin with a Capital.
@@ -356,7 +358,7 @@ We do not need laws and licenses to make the right thing.
 But I respect a lot the GNU philosophy and i feel that we owe a lot to  
 the GNU project. We can be sure, that we wouldn't be here if it wasn't the GPL and GNU.    
 That is the reason for the GPL2. However, and i do not know if it is possible  
-i would like to release it also with the UNLICENSE or to the Public Domain.  
+i would like to release it and with the UNLICENSE or to the Public Domain.  
 Or if it is allowed to even more liberal licenses. But i do not know and i can not  
-understand these laws, so i plead guilty beforehand. However my actual law is called  
-conscience.  
+understand these laws, so i plead guilty beforehand. However my actual law obeys 
+in common sense and is called conscience.  
