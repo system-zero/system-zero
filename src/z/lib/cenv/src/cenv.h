@@ -109,11 +109,11 @@ inline size_t bytelen (const char *str) {
   return sp - str;
 }
 /* we don't really care about performance at this stage;
- * later when go at the next computing level and we work with
+ * later when we go at the next computing level and we work with
  * such big strings:
  * https://medium.com/late-night-programming/strlen-buf-29eb94f8441f 
  * we'll do the best to understand the algorithm.
- * But now, it subtracts clarity.
+ * But for now, this subtracts clarity.
  */
 
 typedef   signed int  utf8;
@@ -194,13 +194,16 @@ typedef unsigned long ulong;
 #define IS_HEX(c_)      (IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
 #endif
 
+#define REG_CHAR   '-'
 #define BLK_CHAR   'b'
 #define CHR_CHAR   'c'
 #define DIR_CHAR   'd'
 #define LNK_CHAR   'l'
-#define REG_CHAR   '-'
 #define FIFO_CHAR  'p'
 #define SOCK_CHAR  's'
+#define SUID_CHAR  's'
+#define SGID_CHAR  'g'
+#define SVTX_CHAR  't'
 
 #ifndef ARRLEN
 #define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))

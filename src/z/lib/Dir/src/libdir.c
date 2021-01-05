@@ -78,10 +78,10 @@ static dirlist_t *dir_list (char *dir, int flags) {
 
     vstring_t *vstr = Vstring.new_item ();
     vstr->data = String.new_with (dp->d_name);
-/* continue logic (though not sure where to store) */
+    /* continue logic (though not sure where to store) */
     switch (dp->d_type) {
       case DT_DIR:
-        String.append_byte (vstr->data, DIR_SEP);
+        String.append_byte (vstr->data, '/');
     }
 
     DListAppendCurrent (dlist->list, vstr);
@@ -120,7 +120,7 @@ static dirwalk_t *dir_walk_new (DirProcessDir_cb process_dir, DirProcessFile_cb 
   this->process_dir = (NULL is process_dir ? dir_walk_process_dir_def : process_dir);
   this->process_file = (NULL is process_file ? dir_walk_process_file_def : process_file);
   this->stat_file = stat;
-  this->object = NULL;
+  this->user_data = NULL;
 
   return this;
 }
@@ -217,6 +217,28 @@ static int dir_walk_run (dirwalk_t *this, char *dir) {
 
 static int dir_make (char *dir, mode_t mode, dir_opts opts) {
   if (NULL is dir) return NOTOK;
+
+  if (*dir is '-' or *dir is ' ') {
+    DIR_ERROR ("|%c| (%d) character is not allowed in front of a directory name\n",
+        *dir, *dir);
+    return NOTOK;
+  }
+
+  char *sp = dir;
+  while (*sp) {
+    if (' ' > *sp or *sp > 'z' or
+        Cstring.byte.in_str (NOT_ALLOWED_IN_A_DIRECTORY_NAME, *sp)) {
+      DIR_ERROR ("|%c| |%d| character is not allowed in a directory name\n", *sp, *sp);
+      return NOTOK;
+    }
+
+    sp++;
+  }
+
+  if (*(sp - 1) is ' ') {
+    DIR_ERROR ("trailing spaces are not allowed in a directory name\n");
+    return NOTOK;
+  }
 
   if (mkdir (dir, mode) isnot 0) {
     if (errno is EEXIST)

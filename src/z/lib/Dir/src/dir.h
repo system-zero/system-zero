@@ -1,6 +1,8 @@
 #ifndef DIR_H
 #define DIR_H
 
+#define NOT_ALLOWED_IN_A_DIRECTORY_NAME "\t\n"
+
 typedef struct dirwalk_t dirwalk_t;
 typedef struct dir_opts  dir_opts;
 
@@ -40,16 +42,15 @@ struct dir_opts {
 }
 
 struct dirwalk_t {
-  string_t *dir;
-
-  Vstring_t *files;
-
   int
     orig_depth,
     depth,
     status;
 
-  void *object;
+  string_t *dir;
+  Vstring_t *files;
+
+  void *user_data;
 
   DirProcessDir_cb process_dir;
   DirProcessFile_cb process_file;

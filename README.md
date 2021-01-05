@@ -18,7 +18,7 @@ Normally this is a program, that makes the necessary steps to brings up the comp
 in a usable state, and also to halt the system.  
   
 The first task usually is to mount the required filesystems, like the root filesystem,  
-that is assuming that has the the required tools to be a functional system.  
+that is assuming that has the required tools to be a functional system.  
   
 Another crusial task is to offer ways to the user of a system, to use the underlying  
 machine's hardware, by binding device pointers in a special directory at the root  
@@ -31,7 +31,7 @@ like to mount other filesystems in some given addresses of the root mountpoint.
 This procedure is called Init Process, and traditionally in a systemV, this is done  
 through a very simple mechanism. Such a procedure it looks in a directory for files,  
 which are usually shell scripts and loads them by usually using the default shell in  
-UNIX, which simply is called "sh", and by default found as /bin/sh/.  
+UNIX, which simply is called "sh", and by default found as /bin/sh.  
 This location is standardized by the POSIX standard, and this shell is refered as  
 POSIX sh.  
   
@@ -39,8 +39,8 @@ The sequence of executing those scripts is dictated by the first two bytes in th
 filenames, which should be digits, so the lower one in this list, is the one that take  
 precedence. Naturally a script that has a 99 prefix, as the last one in the chain, it  
 has the ability to overlap any previous ones.  
-This is also satisfying the UNIX philosophy, where the user of a system should have  
-the final control of a system, even if this is wrong.  
+This is also satisfying the UNIX philosophy, where the users of a system should have  
+the final control of a system, even if they are wrong.  
   
 This mechanism, besides the flexibility, satisfy also user expectations, because the  
 SystemV init system has been established through those years. It is modeled by again  
@@ -51,10 +51,11 @@ in an expected way and without the fear to bring down a monolithic system, like 
 a traditional init, and which violates the above standards. There is nothing wrong  
 with the underlying idea, to be a "userspace kernel", but it is the implementation  
 that makes it inadequated to a UNIX like system, which is based on modularization  
-and expectations. We also want to be when we grown up a "User Space Kernel".  
+and expectations.  
+We also want to be, and when we grown up, a "User Space Kernel".  
   
 Also usually distributions are using this init process, to log the booting process  
-plus messages from the kernel, in a way that will be usefull for debugging.  
+and the messages from the kernel, in a way that will be usefull for debugging.  
   
 At least in Linux systems, if anything go wrong with the init process, such an init  
 system can use a console to start an emergency shell, and which is actually the dash  
@@ -84,15 +85,14 @@ we have to implement ourselves at least the basic functionality.
 It is s system zero point anyway.  
   
 Our only requirenment at this stage is a standard C library (libc), plus libpam as our  
-authentication mechanism.  
-  
-Our building tool at this stage, will be the make utility, which is also and the most  
-primitive building tool, since the birth of systemV.  
+authentication mechanism, and our building tool, will be the make utility, which  
+is also and the most primitive building tool, since the birth of systemV.  
   
 We're gonna to use some other core utilities, installed by default in all UNIX systems,  
 like mkdir, ln, cp, ... utilities.  
   
-Also the sudo utility (only required to build its replacement) and a linker.  
+Also the sudo utility (which only required once to build its replacement) and a  
+linker.  
   
 The main development environment here is a Void Linux distribution, with GNU libc,  
 the linker from GNU, make from GNU, and the core utilities again the ones that are  
@@ -111,10 +111,10 @@ To build the zero basic system, issue:
   
 This will built first some libraries, such as string type functions that deal with C   
 strings. Why? Because it is our desire that some day, we can be independent by even a  
-libc (though these days are at least a couple of years away). At some point we can try  
-to build one standard C library in the same location with the rest of this system, so  
-we can use this system as an Operating System (OS). In any case rolling our own libraries  
-offers flexibility, and chances for optimizations.  
+libc (though these days are at least a couple of years away). 
+At some point we can try to build one standard C library in the same location with  
+the rest of this system, so we can use this system as an Operating System (OS).  
+In any case rolling our own libraries offers flexibility, and chances for optimizations.  
   
 Note that the libraries, are packed as structures and exposed in an Object Oriented  
 style for various reasons. Those Types, will follow us in every stage from now on,  
@@ -123,7 +123,7 @@ and we can refer them as the z standard c library. We'll introduce others in the
 This command, it will also built a quite minimal shell, which we'll refer to it as ["zs"](data/docs/zs.md),  
 and the "zsu" utility which is the one that will allow us to execute ANY command with  
 superuser rights. Note that the latter is installed as setuid root, that is owned by  
-root, and so capable to destroy the system; note that this utility is at very early  
+root, and so capable to destroy the system, and that this utility is at very early  
 development. In any case, though we really really want to be correct and provide an  
 accurate implementation, we care most about to describe the procedure and provide a  
 solution to explain some why's. We prefer something to present and demonstrate, than  
@@ -189,7 +189,7 @@ without illusions.
   
 ## Commands and Shell Interface.
   
-So far we've implemented an utility, that can act as an intermediary between the user  
+So far, we've implemented an utility, that can act as an intermediary between the user  
 and the kernel of the Operating System. This implementation gets input from the   
 keyboard, interprets the text and then makes the request for the kernel service.    
 This kind of utility is called a shell, and it is the traditional UNIX system interface.  
@@ -348,9 +348,102 @@ myriad of commands and so the lookup maybe slow. Our counterargument is quite si
   
 Our commands begin with a Capital.
 
-To be continued ...  
+## Semantics.
+
+Slowly we'll have to set some semantics for our system.  
   
-... though of course, we'll try to enhance this basic system with time.
+We've already implemented a "make directory" command and in a way, that can receive  
+the argument by reading the standard input. Here is the relevant code:  
+  
+```C
+
+  ifnot (FdReferToATerminal (STDIN_FILENO)) {
+    char dname[MAXLEN_PATH];
+    if (NOTOK is Io.fd.read (STDIN_FILENO, directory_name, MAXLEN_PATH))
+      ... logic to handle the error, as the function call was unsuccesfull
+    else
+      ... continue logic below, as our request completed with success, and now we  
+      have our input (like if the user has typed something in the keyboard), in the dname
+      variable, by the read() method, of the File Descriptor Type/Class, which is  
+      included in the Input Output class. In this case the File Descriptor class  
+      is called subclass in programming consepts.
+```
+
+What is a file descriptor? Easy. It is a number!!!  
+  
+Without joking, yes it is a number that the kernel give to a process, when this  
+process requests access to a file name. This number for us, it is just a esoteric  
+kernel table, that in the case of a filename, it simply refers to the underlying  
+inode.  
+  
+Couldn't have been done simplier for us mere mortals, as with this number in our   
+hands, we now can access and manipulate the data.  
+  
+Note that, what is almost unbelievable, is that how ridiculously simple to read and write back.  
+The document about [Pointers](data/docs/pointers.md) is trying to explain some bits,  
+by using the above example.  
+  
+And one last thing before we proceed. When a process is a background process or if  
+it is connected to a pipeline, like in the above exampe, it is being said, that it  
+has no controlling terminal; means that we can not input nothing to that process  
+through (lets say) the keyboard, as it isn't associated with a terminal.  
+In such processes there isn't a way to interact directly with it, but only through  
+other mechanisms like through a socket.   
+
+In our code above, STDIN_FILENO is a file descriptor that refers to a kernel table.  
+By default this is 0, while STDOUT_FILENO binds to 1 and STDERR_FILENO to 2.  
+  
+Now consider this shell session, which is using standard coreutils tools:  
+```sh
+[aga][485](/tmp/a)mkdir -v ../a/-n
+mkdir: created directory '../a/-n
+[aga][486](/tmp/a)ls
+-n/
+[aga][487](/tmp/a)echo something > file
+[aga][488](/tmp/a)cat *
+     1	something
+```
+Wrong and unexpected result! It isn't a bug. POSIX allows a leading dash in pathnames,  
+so mkdir is conforming. The cat utility reads all the filenames and outputs their  
+contents, but in this case what it happens, is that the cat utility thinks that "-n"  
+is an option to itself, and so it includes in its output, also a number.  
+  
+You can read a bit more in this [article](https://dwheeler.com/essays/fixing-unix-linux-filenames.html).  
+  
+So we have to make a decision. Should we allow a leading dash, or a new line or a  
+tab or control characters, when we are creating a directory?  
+  
+Our decision will set the semantics of our system.  
+  
+Since in our mind this doesn't make sense, or at the very least complicates the code,
+we won't. In the followin code, we don't even allow any character outside of the  
+ASCII range:  
+  
+```C
+#define NOT_ALLOWED_IN_A_DIRECTORY_NAME "\t\n"
+
+  if (*dir is '-' or *dir is ' ') {
+    DIR_ERROR ("|%c| (%d) character is not allowed in front of a directory name\n",
+        *dir, *dir);
+    return NOTOK;
+  }
+
+  char *sp = dir;
+  while (*sp) {
+    if (' ' > *sp or *sp > 'z' or
+        Cstring.byte.in_str (NOT_ALLOWED_IN_A_DIRECTORY_NAME, *sp)) {
+      DIR_ERROR ("|%c| |%d| character is not allowed in a directory name\n", *sp, *sp);
+      return NOTOK;
+    }
+```
+  
+Now, what would be prudent in our code, is that every time we need to create a  
+directory, we should call Dir.make (), otherwise we might violate the above semantics.  
+  
+In this case Dir.make() is our interface, as it abstracts all the details for us,  
+and allows consistency, which is quite important to a system.  
+  
+To be continued ...  
   
 License: I understand the UNLICENSE license kind of thought.  
 We do not need laws and licenses to make the right thing.  
