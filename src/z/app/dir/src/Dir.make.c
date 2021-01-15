@@ -83,7 +83,7 @@ int main (int argc, char **argv) {
 
   ifnot (FdReferToATerminal (STDIN_FILENO)) {
     char dname[MAXLEN_PATH];
-    if (NOTOK is Io.fd.read (STDIN_FILENO, dname, MAXLEN_PATH))
+    if (NOTOK is IO.fd.read (STDIN_FILENO, dname, MAXLEN_PATH))
       retval = 1;
     else
       retval = fn (dname, mode, DirOpts (

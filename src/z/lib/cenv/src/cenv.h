@@ -667,7 +667,7 @@ typedef ptrdiff_t idx_t;
 
   #if (REQUIRE_IO_TYPE == DECLARE)
   static  io_T ioType;
-  #define Io   ioType.self
+  #define IO   ioType.self
   #endif
 #undef REQUIRE_IO_TYPE
 #endif /* REQUIRE_IO_TYPE */
@@ -871,9 +871,9 @@ typedef ptrdiff_t idx_t;
 
   #ifndef WITHOUT_IO
     #ifndef WITHOUT_IO_DECLARATION
-      #ifndef Io
+      #ifndef IO
       static  io_T ioType;
-      #define Io   ioType.self
+      #define IO   ioType.self
       #endif
     #endif
   #endif

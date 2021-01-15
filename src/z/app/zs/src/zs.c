@@ -4,8 +4,13 @@
 #define REQUIRE_UNISTD
 #define REQUIRE_STDARG
 #define REQUIRE_TIME
+#define REQUIRE_SYS_STAT
 #define REQUIRE_SIGNAL
+#define REQUIRE_IO_TYPE      DECLARE
+#define REQUIRE_STRING_TYPE  DONOT_DECLARE
+#define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_RLINE_TYPE   DECLARE
 
@@ -16,6 +21,10 @@
 
 #define MAXLEN_DIR     4096
 #define MAXLEN_COMMAND 8192
+
+#define ZS_RETURN       -10
+#define ZS_CONTINUE     -11
+#define ZS_NOTHING_TODO -12
 
 static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
@@ -50,9 +59,53 @@ static rline_t *zs_init_rline (char *histfile) {
   return this;
 }
 
+static int zs_builtins (char *line, Vstring_t *cdpath) {
+  if (Cstring.eq (line, "exit")) {
+    free (line);
+    return ZS_RETURN;
+  }
+
+  if (Cstring.eq_n (line, "cd ", 3)) {
+    char *path = line + 3;
+    ifnot (*path)
+      return ZS_CONTINUE; // handle $HOME
+
+    if (Cstring.eq (path, "-")) {
+      if (cdpath->tail->prev isnot NULL)
+        path = cdpath->tail->prev->data->bytes;
+      else
+        return ZS_CONTINUE;
+    }
+
+    // handle -1, -2, ...
+
+    if (Cstring.eq (path, cdpath->tail->data->bytes))
+      return ZS_CONTINUE;
+
+    if (-1 is chdir (path))
+      fprintf (stderr, "cd: %s\n", strerror (errno));
+
+    Vstring.append_with (cdpath, path);
+    return ZS_CONTINUE;
+  }
+
+  return ZS_NOTHING_TODO;
+}
+
 static int zs_interactive (sh_t *this) {
   int retval = OK;
   char *line;
+
+  char *cwd = Dir.current ();
+  if (NULL is cwd) {
+    IO.print ("cannot determinate current directory\n");
+    return NOTOK;
+  }
+
+  Vstring_t *cdpath = Vstring.new ();
+  Vstring.append_with (cdpath, cwd);
+  free (cwd);
+  cwd = NULL;
 
   size_t len = bytelen (TMPDIR) + sizeof ("/.zs_history");
 
@@ -69,17 +122,14 @@ static int zs_interactive (sh_t *this) {
        break;
     }
 
-    if (Cstring.eq (line, "exit")) {
-      free (line);
-      break;
-    }
+    int builtin = zs_builtins (line, cdpath);
+    switch (builtin) {
+      case ZS_RETURN:
+        goto theend;
 
-    if (Cstring.eq_n (line, "cd ", 3)) {
-      char *path = line + 3;
-      if (-1 is chdir (path))
-        fprintf (stderr, "cd: %s\n", strerror (errno));
-      goto next;
-    }
+      case ZS_CONTINUE:
+        goto next;
+     }
 
     signal (SIGINT, SIG_IGN);
     retval = Sh.exec (this, line);
@@ -91,16 +141,21 @@ static int zs_interactive (sh_t *this) {
     Sh.release_list (this);
   }
 
+theend:
   Rline.history.save (rline);
   Rline.history.release (rline);
   Rline.release (rline);
+  Vstring.release (cdpath);
 
   return retval;
 }
 
 int main (int argc, char **argv) {
+  __INIT__ (io);
   __INIT__ (sh);
+  __INIT__ (dir);
   __INIT__ (rline);
+  __INIT__ (vstring);
   __INIT__ (cstring);
 
   char dir[MAXLEN_DIR]; dir[0] = '\0';

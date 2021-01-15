@@ -122,9 +122,9 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Argparse_Type        = Argparse
     Z_ARGPARSE_SRCDIR    = $(Z_SRCLIBDIR)/$(Argparse_Type)/src
 
-    # Io Type
-    Io_Type              = Io
-    Z_IO_SRCDIR          = $(Z_SRCLIBDIR)/$(Io_Type)/src
+    # IO Type
+    IO_Type              = IO
+    Z_IO_SRCDIR          = $(Z_SRCLIBDIR)/$(IO_Type)/src
 
     # Path Type
     Path_Type            = Path
@@ -458,6 +458,22 @@ clean-dir-shared:
 
 clean-dir-static:
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+  #----------------------------------------------------------#
+  # io
+  ZA_IO             = io
+  ZA_IO_SRCIO     := $(Z_SRCAPPDIR)/$(ZA_IO)/src
+
+io-shared: libio-shared
+	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) shared
+
+io-static: libio-static
+	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) static
+
+clean-io-shared:
+	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-io-static:
+	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv dlist\
@@ -467,7 +483,7 @@ zero-shared:  Env cenv dlist\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared\
               zs-shared zsu-shared\
-              dir-shared file-shared
+              dir-shared file-shared io-shared
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv dlist\
@@ -477,7 +493,7 @@ zero-static:  Env cenv dlist\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static\
               zs-static\
-              dir-static file-static
+              dir-static file-static io-static
 
 zero-clean-shared:\
               clean-cenv clean-dlist\

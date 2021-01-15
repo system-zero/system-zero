@@ -26,7 +26,7 @@ int main (int argc, char **argv) {
 
   ifnot (FdReferToATerminal (STDIN_FILENO)) {
     char filename[MAXLEN_PATH];
-    if (NOTOK is Io.fd.read (STDIN_FILENO, filename, MAXLEN_PATH))
+    if (NOTOK is IO.fd.read (STDIN_FILENO, filename, MAXLEN_PATH))
       retval = 1;
     else
       size = File.size (filename);

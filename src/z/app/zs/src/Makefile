@@ -69,7 +69,11 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-FLAGS += -lcstring-$(VERSION) -lsh-$(VERSION) -lproc-$(VERSION) -lrline-$(VERSION) -lstring-$(VERSION)
+FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION)
+FLAGS += -lsh-$(VERSION) -lproc-$(VERSION) -lrline-$(VERSION)
+FLAGS += -lio-$(VERSION) -lstring-$(VERSION)
+
+Z_ZS_STATIC_FLAGS := -lpath-$(VERSION)
 
 zs: zs-shared zs-static
 
@@ -78,7 +82,7 @@ zs-shared:
 	@$(LN_S) -f $(SYSBINDIR)/$(NAME)-shared $(SYSBINDIR)/$(NAME)
 
 zs-static:
-	$(CC) $(NAME).c -DTMPDIR='"$(SYSTMPDIR)"' $(FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(NAME)-static
+	$(CC) $(NAME).c -DTMPDIR='"$(SYSTMPDIR)"' $(FLAGS) $(Z_ZS_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(NAME)-static
 
 clean: clean-shared clean-static
 

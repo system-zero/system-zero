@@ -448,10 +448,11 @@ To be continued ...
 License: I understand the UNLICENSE license kind of thought.  
 We do not need laws and licenses to make the right thing.  
 
-But I respect a lot the GNU philosophy and i feel that we owe a lot to  
-the GNU project. We can be sure, that we wouldn't be here if it wasn't the GPL and GNU.    
-That is the reason for the GPL2. However, and i do not know if it is possible  
-i would like to release it and with the UNLICENSE or to the Public Domain.  
-Or if it is allowed to even more liberal licenses. But i do not know and i can not  
-understand these laws, so i plead guilty beforehand. However my actual law obeys 
-in common sense and is called conscience.  
+But I respect a lot the GNU philosophy and i feel that we owe a lot to the GNU project.  
+We can be sure, that we wouldn't be here if it wasn't the GPL and GNU.  
+That is the reason for the GPL2. However, and i do not know if it is possible i would  
+like to release it and with the UNLICENSE or to the Public Domain, or to even more  
+liberal licenses. But i do not know them nor i can understand these laws, so i plead  
+guilty beforehand. In any case my actual law obeys in common sense and an inner will to  
+do what i have to do by my own, and not because i have to do because they told me to  
+do. Our law is and it should be streaming from the gained conscience.  

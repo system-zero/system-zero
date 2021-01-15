@@ -2,12 +2,18 @@
 #define IO_H
 
 typedef struct io_fd_self {
-  int (*read) (int, char *, idx_t);
-  int (*write) (int, char *, idx_t);
+  idx_t
+    (*read) (int, char *, idx_t),
+    (*write) (int, char *, idx_t);
 } io_fd_self;
 
 typedef struct io_self {
   io_fd_self fd;
+  idx_t
+    (*print) (const char *),
+    (*print_fmt) (const char *, ...);
+
+   string_t *(*parse_escapes) (char *);
 } io_self;
 
 typedef struct io_T {
