@@ -9,11 +9,13 @@ typedef struct io_fd_self {
 
 typedef struct io_self {
   io_fd_self fd;
+
   idx_t
     (*print) (const char *),
     (*print_fmt) (const char *, ...);
 
-   string_t *(*parse_escapes) (char *);
+  utf8 (*getkey) (int);
+  string_t *(*parse_escapes) (char *);
 } io_self;
 
 typedef struct io_T {

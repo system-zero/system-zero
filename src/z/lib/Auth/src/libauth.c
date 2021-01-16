@@ -14,14 +14,17 @@
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_TYPES
+#define REQUIRE_TERMIOS
 #define REQUIRE_TIME
 #define REQUIRE_PWD
 #define REQUIRE_GRP
 #define REQUIRE_PAM
+
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_USTRING_TYPE DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
-#define REQUIRE_INPUT_TYPE   DECLARE
+#define REQUIRE_IO_TYPE      DECLARE
+#define REQUIRE_TERM_TYPE    DECLARE
 #define REQUIRE_AUTH_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -211,17 +214,17 @@ private void auth_release (auth_t *this) {
 }
 
 private int auth_get_passwd_default_cb (auth_t *this) {
-  fprintf (stdout, "passwd:");
-  fflush (stdout);
+  IO.print ("passwd:");
 
-  Input.raw_mode (STDIN_FILENO);
+  term_t *term = Term.new ();
+  Term.raw_mode (term);
 
   flockfile (stdin);
 
   utf8 c;
   char buf[8];
   int len;
-  while ((c = Input.getkey (STDIN_FILENO)) isnot '\r') {
+  while ((c = IO.getkey (STDIN_FILENO)) isnot '\r') {
     len = 0;
     buf[0] = '\0';
     Ustring.character (c, buf, &len);
@@ -229,10 +232,10 @@ private int auth_get_passwd_default_cb (auth_t *this) {
     memset (buf, 0, sizeof (buf));
   }
 
-  fprintf (stdout, "\r\n");
-  fflush (stdout);
+  IO.print ("\r\n");
 
-  Input.orig_mode (STDIN_FILENO);
+  Term.orig_mode (term);
+  Term.release (&term);
 
   funlockfile (stdin);
 
@@ -388,10 +391,11 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
 }
 
 public auth_T  __init_auth__ (void) {
-  __INIT__ (input);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (ustring);
+  __INIT__ (io);
+  __INIT__ (term);
 
   return (auth_T) {
     .self = (auth_self) {

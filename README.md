@@ -283,12 +283,12 @@ typedef struct file_T {
   
 Such a style is called usually object oriented style, though in this specific usage,  
 there is no object to operate, since there are no properties, though they can be  
-added one day. It is being used here for code organization, and because oit offers  
+added one day. It is being used here for code organization, and because it offers  
 flexibility, as the user of this structure, it can overide this method with another  
-function implementation tailored in the needs.  
+function implementation, tailored in the needs.  
   
-In any case the most important here is that the command File.size and the underlying  
-library function matches. And in this case they match also the arguments.  
+In any case the most important here, is that the command File.size and the underlying  
+library function matches. And in this case they also match the arguments.  
 However, we can extend the command to take another argument from the command line  
 and do something different, like to print the bytes also in MegaBytes.  
 And many tools usually work that way.  
@@ -339,7 +339,7 @@ So we satisfy both camps; short argument lovers and the GNU style with two dashe
 and descriptive names. I'm in the second camp, though in my youth, i was an expert  
 and i knew, and i still know many (though the memory fades a bit), both variants.  
 The obvious advantage is for the novices. In any case modern shells offer all, a  
-mechanism that is called autocompletion, which is usually triggered by pressiong Tab.  
+mechanism that is called autocompletion, which is usually triggered by pressing Tab.  
 Out shell doesn't really support this great flexibility though for now.  
   
 Using an autocompletion mechanism, simplifies a lot of things and mutates a crucial  

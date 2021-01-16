@@ -73,7 +73,7 @@ FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION)
 FLAGS += -lsh-$(VERSION) -lproc-$(VERSION) -lrline-$(VERSION)
 FLAGS += -lio-$(VERSION) -lstring-$(VERSION)
 
-Z_ZS_STATIC_FLAGS := -lpath-$(VERSION)
+Z_ZS_STATIC_FLAGS := -lpath-$(VERSION) -lustring-$(VERSION)
 
 zs: zs-shared zs-static
 

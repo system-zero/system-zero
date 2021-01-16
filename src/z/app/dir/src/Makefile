@@ -93,7 +93,7 @@ D_MAKE = $(NAME).make
 FLAGS += -lcstring-$(VERSION)
 
 D_MAKE_STATIC_FLAGS = -lpath-$(VERSION)\
-                      -lvstring-$(VERSION) -lstring-$(VERSION)
+                      -lvstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION)
 
 dir-make-shared:
 
@@ -112,7 +112,8 @@ clean-dir-make-static:
 #-----------------------------------------------#
 D_RM = $(NAME).rm
 
-D_RM_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION) -lstring-$(VERSION)
+D_RM_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)\
+                    -lstring-$(VERSION) -lustring-$(VERSION)
 
 dir-rm-shared:
 	$(CC) $(D_RM).c $(FLAGS) -o $(SYSBINDIR)/$(D_RM)-shared

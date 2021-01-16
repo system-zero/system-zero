@@ -71,7 +71,7 @@ endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -lterm-$(VERSION) -largparse-$(VERSION) -lio-$(VERSION)
-FLAGS += -lstring-$(VERSION) -lcstring-$(VERSION)
+FLAGS += -lstring-$(VERSION) -lcstring-$(VERSION) -lustring-$(VERSION)
 
 file: shared static
 

@@ -94,10 +94,6 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Dir_Type             = Dir
     Z_DIR_SRCDIR        := $(Z_SRCLIBDIR)/$(Dir_Type)/src
 
-    # Input Type
-    Input_Type          = Input
-    Z_INPUT_SRCDIR     := $(Z_SRCLIBDIR)/$(Input_Type)/src
-
     # Authentication Type
     Auth_Type            = Auth
     Z_AUTH_SRCDIR       := $(Z_SRCLIBDIR)/$(Auth_Type)/src
@@ -298,22 +294,12 @@ clean-libdir-shared:
 clean-libdir-static:
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libinput-shared: Env cenv libustring-shared
-	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
-
-libinput-static: Env cenv libustring-static
-	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
-
-clean-libinput-shared:
-	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
-
-clean-libinput-static:
-	@cd $(Z_INPUT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
-#----------------------------------------------------------#
-libauth-shared: Env cenv libstring-shared libcstring-shared libustring-shared libinput-shared
+libauth-shared: Env cenv libstring-shared libcstring-shared libustring-shared\
+                libio-shared libterm-shared
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libauth-static: Env cenv libstring-static libcstring-static libustring-static libinput-static
+libauth-static: Env cenv libstring-static libcstring-static libustring-static\
+                libio-static libterm-static
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libauth-shared:
@@ -481,7 +467,7 @@ clean-zs-static:
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 zsu-shared: Env cenv libcstring-shared libstring-shared libproc-shared libauth-shared
-	cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-shared
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-shared
 	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) install-shared
 	@cd $(Z_SU_SRCDIR) && $(RM) zsu-shared
 
@@ -576,30 +562,30 @@ clean-term-static:
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv dlist\
               libstring-shared libustring-shared libcstring-shared\
-              libvstring-shared libdir-shared libinput-shared\
+              libvstring-shared libdir-shared\
               libproc-shared libauth-shared librline-shared\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared libterm-shared\
               libimap-shared libsmap-shared\
               zs-shared zsu-shared\
-              dir-shared file-shared io-shared
+              dir-shared file-shared io-shared term-shared
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv dlist\
               libstring-static libustring-static libcstring-static\
-              libvstring-static libdir-static libinput-static\
+              libvstring-static libdir-static\
               libproc-static libauth-static librline-static\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static libterm-static\
               libimap-static libsmap-static\
               zs-static\
-              dir-static file-static io-static
+              dir-static file-static io-static term-static
 
 zero-clean-shared:\
               clean-cenv clean-dlist\
               clean-libstring-shared clean-libustring-shared\
               clean-libcstring-shared clean-libvstring-shared\
-              clean-libdir-shared clean-libinput-shared\
+              clean-libdir-shared\
               clean-libproc-shared clean-libauth-shared\
               clean-librline-shared clean-libsh-shared\
               clean-libargparse-shared clean-libio-shared\
@@ -610,7 +596,7 @@ zero-clean-static:\
               clean-cenv clean-dlist\
               clean-libstring-static clean-libustring-static\
               clean-libcstring-static clean-libvstring-static\
-              clean-libdir-static clean-libinput-static\
+              clean-libdir-static\
               clean-libproc-static clean-libauth-static\
               clean-librline-static clean-libsh-static\
               clean-libargparse-static clean-libio-static\

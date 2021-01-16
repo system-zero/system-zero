@@ -786,20 +786,6 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_DIR_TYPE
 #endif /* REQUIRE_DIR_TYPE */
 
-#ifdef REQUIRE_INPUT_TYPE
-  #ifndef INPUT_TYPE_HDR
-  #define INPUT_TYPE_HDR
-  #include <z/input.h>
-  #endif /* INPUT_TYPE_HDR */
-
-  #if (REQUIRE_INPUT_TYPE == DECLARE)
-  static  input_T inputType;
-  #define Input   inputType.self
-  #endif
-
-#undef REQUIRE_INPUT_TYPE
-#endif /* REQUIRE_INPUT_TYPE */
-
 #ifdef REQUIRE_TERM_TYPE
   #ifndef TERM_TYPE_HDR
   #define TERM_TYPE_HDR
