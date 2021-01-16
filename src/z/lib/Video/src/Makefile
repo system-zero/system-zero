@@ -1,4 +1,4 @@
-THIS_LIBNAME = smap
+THIS_LIBNAME = video
 
 NS      :=
 API     := 0
@@ -82,7 +82,8 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -lcstring-$(VERSION) -lstring-$(VERSION)
+LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -lstring-$(VERSION) -lustring-$(VERSION) -lcstring-$(VERSION)\
+            -lio-$(VERSION)
 
 all: shared static
 

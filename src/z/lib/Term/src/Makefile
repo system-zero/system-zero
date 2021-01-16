@@ -83,7 +83,6 @@ ifneq ($(DEBUG), 0)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)# -lstring-$(VERSION) -lio-$(VERSION)
-# -lustring-$(VERSION) -lcstring-$(VERSION) -linput-$(VERSION)
 
 all: shared static
 
@@ -109,6 +108,7 @@ clean: clean-shared clean-static clean-header
 
 clean-shared: clean-header
 	@$(TEST) ! -f $(THIS_SHAREDLIB) || $(RM) $(THIS_SHAREDLIB)
+	@$(TEST) ! -L $(SYSLIBDIR)/lib$(THIS_LIBNAME).so || $(RM) $(SYSLIBDIR)/lib$(THIS_LIBNAME).so
 
 clean-static: clean-header
 	@$(TEST) ! -f $(THIS_STATICLIB) || $(RM)  $(THIS_STATICLIB)

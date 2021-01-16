@@ -142,6 +142,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Re_Type              = Re
     Z_RE_SRCDIR          = $(Z_SRCLIBDIR)/$(Re_Type)/src
 
+    # Video Type
+    Video_Type           = Video
+    Z_VIDEO_SRCDIR       = $(Z_SRCLIBDIR)/$(Video_Type)/src
+
     # E Type
     E_Type               = E
     Z_E_SRCDIR           = $(Z_SRCLIBDIR)/$(E_Type)/src
@@ -440,6 +444,18 @@ clean-libre-shared:
 clean-libre-static:
 	@cd $(Z_RE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libvideo-shared: Env cenv libcstring-shared libstring-shared libustring-shared libio-shared
+	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libvideo-static: Env cenv libcstring-static libstring-static libustring-static libio-static
+	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libvideo-shared:
+	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libvideo-static:
+	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 libe-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libustring-shared\
              libpath-shared libfile-shared libdir-shared libterm-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
@@ -566,7 +582,7 @@ zero-shared:  Env cenv dlist\
               libproc-shared libauth-shared librline-shared\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared libterm-shared\
-              libimap-shared libsmap-shared\
+              libimap-shared libsmap-shared libvideo-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared
 
@@ -577,7 +593,7 @@ zero-static:  Env cenv dlist\
               libproc-static libauth-static librline-static\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static libterm-static\
-              libimap-static libsmap-static\
+              libimap-static libsmap-static libvideo-static\
               zs-static\
               dir-static file-static io-static term-static
 
@@ -590,7 +606,11 @@ zero-clean-shared:\
               clean-librline-shared clean-libsh-shared\
               clean-libargparse-shared clean-libio-shared\
               clean-libfile-shared clean-libpath-shared\
-              clean-zs-shared clean-zsu-shared
+              clean-libterm-shared clean-libimap-shared\
+              clean-libsmap-shared clean-libvideo-shared\
+              clean-libre-shared\
+              clean-zs-shared clean-zsu-shared clean-dir-shared\
+              clean-file-shared clean-io-shared clean-term-shared
 
 zero-clean-static:\
               clean-cenv clean-dlist\
@@ -601,7 +621,12 @@ zero-clean-static:\
               clean-librline-static clean-libsh-static\
               clean-libargparse-static clean-libio-static\
               clean-libfile-static clean-libpath-static\
-              clean-zs-static clean-zsu-static
+              clean-libterm-static clean-libimap-static\
+              clean-libsmap-static clean-libvideo-static\
+              clean-libre-static\
+              clean-zs-static clean-zsu-static\
+              clean-dir-static\
+              clean-file-static clean-io-static clean-term-static\
 
 all: shared static
 

@@ -83,10 +83,12 @@ static: clean-static\
     dir-rm-static
 
 clean-shared:\
-    clean-dir-make-shared
+    clean-dir-make-shared\
+    clean-dir-rm-shared
 
 clean-static:\
-    clean-dir-make-static
+    clean-dir-make-static\
+    clean-dir-rm-static
 #-----------------------------------------------#
 D_MAKE = $(NAME).make
 
@@ -96,7 +98,6 @@ D_MAKE_STATIC_FLAGS = -lpath-$(VERSION)\
                       -lvstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION)
 
 dir-make-shared:
-
 	$(CC) $(D_MAKE).c $(FLAGS) -o $(SYSBINDIR)/$(D_MAKE)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(D_MAKE)-shared $(SYSBINDIR)/$(D_MAKE)
 

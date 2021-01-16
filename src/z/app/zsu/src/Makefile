@@ -67,7 +67,7 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-FLAGS += -lauth-$(VERSION) -linput-$(VERSION) -lcstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION) -lproc-$(VERSION) -lpam
+FLAGS += -lauth-$(VERSION) -lcstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION) -lproc-$(VERSION) -lpam
 FLAGS += -lio-$(VERSION) -lterm-$(VERSION)
 
 SHARED_FLAGS = $(FLAGS)
@@ -96,6 +96,7 @@ clean: clean-shared clean-static
 
 clean-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-shared || $(RM) $(SYSBINDIR)/$(NAME)-shared
+	@$(TEST) ! -L $(SYSBINDIR)/$(NAME)        || $(RM) $(SYSBINDIR)/$(NAME)
 
 clean-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-static || $(RM) $(SYSBINDIR)/$(NAME)-static

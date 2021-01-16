@@ -68,6 +68,11 @@
 #define forever for (;;)
 #endif
 
+/* likewise */
+#ifndef loop
+#define loop(__n__) for (int __i__ = 0; __i__ < __n__; __i__++)
+#endif
+
 #ifndef muttable
 #define muttable __attribute__((__weak__))
 #endif
@@ -882,7 +887,21 @@ typedef ptrdiff_t idx_t;
   #endif
 
 #undef REQUIRE_RE_TYPE
-#endif /* REQUIRE_DIR_TYPE */
+#endif /* REQUIRE_RE_TYPE */
+
+#ifdef REQUIRE_VIDEO_TYPE
+  #ifndef VIDEO_TYPE_HDR
+  #define VIDEO_TYPE_HDR
+  #include <z/video.h>
+  #endif /* VIDEO_TYPE_HDR */
+
+  #if (REQUIRE_VIDEO_TYPE == DECLARE)
+  static  video_T videoType;
+  #define Video   videoType.self
+  #endif
+
+#undef REQUIRE_VIDEO_TYPE
+#endif /* REQUIRE_VIDEO_TYPE */
 
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR
@@ -954,6 +973,8 @@ typedef ptrdiff_t idx_t;
 
   #define TERM_LAST_RIGHT_CORNER      "\033[999C\033[999B"
   #define TERM_LAST_RIGHT_CORNER_LEN  12
+  #define TERM_FIRST_LEFT_CORNER      "\033[H"
+  #define TERM_FIRST_LEFT_CORNER_LEN  3
   #define TERM_GET_PTR_POS            "\033[6n"
   #define TERM_GET_PTR_POS_LEN        4
   #define TERM_SCREEN_SAVE            "\033[?47h"
@@ -979,10 +1000,26 @@ typedef ptrdiff_t idx_t;
   #define TERM_AUTOWRAP_OFF_LEN       5
   #define TERM_BELL                   "\033[7"
   #define TERM_BELL_LEN               3
+  #define TERM_NEXT_BOL              "\033E"
+  #define TERM_NEXT_BOL_LEN           2
+  #define TERM_SCROLL_REGION_FMT      "\033[%d;%dr"
+  #define TERM_COLOR_RESET            "\033[m"
+  #define TERM_COLOR_RESET_LEN        3
   #define TERM_SET_COLOR_FMT          "\033[%dm"
   #define TERM_SET_COLOR_FMT_LEN      5
   #define TERM_LINE_CLR_EOL           "\033[2K"
   #define TERM_LINE_CLR_EOL_LEN       4
+  #define COLOR_RED         31
+  #define COLOR_GREEN       32
+  #define COLOR_YELLOW      33
+  #define COLOR_BLUE        34
+  #define COLOR_MAGENTA     35
+  #define COLOR_CYAN        36
+  #define COLOR_WHITE       37
+  #define COLOR_FG_NORMAL   39
+  #define COLOR_BG_NORMAL   49
+
+  #define COLOR_BOX         COLOR_YELLOW
 
   #define TERM_MAKE_COLOR(clr) \
   ({char b__[8];snprintf (b__, 8, TERM_SET_COLOR_FMT, (clr));b__;})

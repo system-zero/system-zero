@@ -108,6 +108,7 @@ clean: clean-shared clean-static clean-header
 
 clean-shared: clean-header
 	@$(TEST) ! -f $(THIS_SHAREDLIB) || $(RM) $(THIS_SHAREDLIB)
+	@$(TEST) ! -L $(SYSLIBDIR)/lib$(THIS_LIBNAME).so || $(RM) $(SYSLIBDIR)/lib$(THIS_LIBNAME).so
 
 clean-static: clean-header
 	@$(TEST) ! -f $(THIS_STATICLIB) || $(RM)  $(THIS_STATICLIB)

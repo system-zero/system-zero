@@ -105,6 +105,7 @@ io-print-static:
 clean-io-print-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(I_PRINT)-shared || $(RM) $(SYSBINDIR)/$(I_PRINT)-shared
 	@$(TEST) ! -L $(SYSBINDIR)/$(I_PRINT)        || $(RM) $(SYSBINDIR)/$(I_PRINT)
+	@$(TEST) ! -L $(SYSBINDIR)/$(I_PRINT)_raw    || $(RM) $(SYSBINDIR)/$(I_PRINT)_raw
 	@$(TEST) ! -L $(SYSBINDIR)/$(I_PRINT)ln      || $(RM) $(SYSBINDIR)/$(I_PRINT)ln
 	@$(TEST) ! -L $(SYSBINDIR)/$(I_PRINT)ln_raw  || $(RM) $(SYSBINDIR)/$(I_PRINT)ln_raw
 

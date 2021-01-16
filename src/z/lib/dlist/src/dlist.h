@@ -1,3 +1,6 @@
+#ifndef DLIST_HDR
+#define DLIST_HDR
+
 #ifndef DListAppend
 #define DListAppend(list_, node_)                        \
 ({                                                       \
@@ -255,3 +258,5 @@ do {                                                    \
   (list_)->current;                                    \
 })
 #endif /* DListAppendCurrent */
+
+#endif /* DLIST_HDR */

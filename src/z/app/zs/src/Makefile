@@ -88,6 +88,7 @@ clean: clean-shared clean-static
 
 clean-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-shared || $(RM) $(SYSBINDIR)/$(NAME)-shared
+	@$(TEST) ! -L $(SYSBINDIR)/$(NAME)        || $(RM) $(SYSBINDIR)/$(NAME)
 
 clean-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-static || $(RM) $(SYSBINDIR)/$(NAME)-static
