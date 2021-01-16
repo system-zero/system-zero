@@ -983,13 +983,29 @@ typedef ptrdiff_t idx_t;
   #define TERM_CURSOR_HIDE_LEN        6
   #define TERM_CURSOR_SHOW            "\033[?25h"
   #define TERM_CURSOR_SHOW_LEN        6
+  #define TERM_CURSOR_RESTORE         "\0338"
+  #define TERM_CURSOR_RESTORE_LEN     2
+  #define TERM_CURSOR_SAVE            "\0337"
+  #define TERM_CURSOR_SAVE_LEN        2
   #define TERM_AUTOWRAP_ON            "\033[?7h"
   #define TERM_AUTOWRAP_ON_LEN        5
   #define TERM_AUTOWRAP_OFF           "\033[?7l"
   #define TERM_AUTOWRAP_OFF_LEN       5
+  #define TERM_BELL                   "\033[7"
+  #define TERM_BELL_LEN               3
+  #define TERM_SET_COLOR_FMT          "\033[%dm"
+  #define TERM_SET_COLOR_FMT_LEN      5
+  #define TERM_LINE_CLR_EOL           "\033[2K"
+  #define TERM_LINE_CLR_EOL_LEN       4
 
+  #define TERM_MAKE_COLOR(clr) \
+  ({char b__[8];snprintf (b__, 8, TERM_SET_COLOR_FMT, (clr));b__;})
   #define TERM_SEND_ESC_SEQ(seq) IO.fd.write (this->out_fd, seq, seq ## _LEN)
   #endif /* TERM_MACROS_HDR */
+
+  #define TERM_DONOT_SAVE_SCREEN    (1 << 0)
+  #define TERM_DONOT_CLEAR_SCREEN   (1 << 1)
+  #define TERM_DONOT_RESTORE_SCREEN (1 << 2)
 
 #undef TERM_MACROS
 #endif /*TERM_MACROS */

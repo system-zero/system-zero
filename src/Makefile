@@ -543,19 +543,35 @@ clean-dir-static:
   #----------------------------------------------------------#
   # io
   ZA_IO             = io
-  ZA_IO_SRCIO     := $(Z_SRCAPPDIR)/$(ZA_IO)/src
+  ZA_IO_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_IO)/src
 
 io-shared: libio-shared
-	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) shared
+	@cd $(ZA_IO_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
 io-static: libio-static
-	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) static
+	@cd $(ZA_IO_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-io-shared:
-	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) clean-shared
+	@cd $(ZA_IO_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
 
 clean-io-static:
-	@cd $(ZA_IO_SRCIO) && $(MAKE) $(APP_FLAGS) clean-static
+	@cd $(ZA_IO_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#----------------------------------------------------------#
+  # term
+  ZA_TERM          = term
+  ZA_TERM_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_TERM)/src
+
+term-shared: libterm-shared
+	@cd $(ZA_TERM_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+term-static: libterm-static
+	@cd $(ZA_TERM_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-term-shared:
+	@cd $(ZA_TERM_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-term-static:
+	@cd $(ZA_TERM_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv dlist\
