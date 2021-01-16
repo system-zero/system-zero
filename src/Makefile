@@ -134,6 +134,18 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Term_Type            = Term
     Z_TERM_SRCDIR        = $(Z_SRCLIBDIR)/$(Term_Type)/src
 
+    # Imap Type
+    Imap_Type            = Imap
+    Z_IMAP_SRCDIR        = $(Z_SRCLIBDIR)/$(Imap_Type)/src
+
+    # Imap Type
+    Smap_Type            = Smap
+    Z_SMAP_SRCDIR        = $(Z_SRCLIBDIR)/$(Smap_Type)/src
+
+    # E Type
+    E_Type               = E
+    Z_E_SRCDIR           = $(Z_SRCLIBDIR)/$(E_Type)/src
+
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
     # a compatible container should include:
@@ -390,10 +402,10 @@ clean-libpath-shared:
 clean-libpath-static:
 	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libterm-shared: Env cenv libstring-shared io-shared
+libterm-shared: Env cenv libstring-shared libio-shared
 	@cd $(Z_TERM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libterm-static: Env cenv libstring-static io-static
+libterm-static: Env cenv libstring-static libio-static
 	@cd $(Z_TERM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libterm-shared:
@@ -401,6 +413,44 @@ clean-libterm-shared:
 
 clean-libterm-static:
 	@cd $(Z_TERM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libimap-shared: Env cenv libcstring-shared
+	@cd $(Z_IMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libimap-static: Env cenv libcstring-static
+	@cd $(Z_IMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libimap-shared:
+	@cd $(Z_IMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libimap-static:
+	@cd $(Z_IMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libsmap-shared: Env cenv libcstring-shared
+	@cd $(Z_SMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libsmap-static: Env cenv libcstring-static
+	@cd $(Z_SMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libsmap-shared:
+	@cd $(Z_SMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libsmap-static:
+	@cd $(Z_SMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libe-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libustring-shared\
+             libpath-shared libfile-shared libdir-shared libterm-shared
+	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libe-static: Env cenv libstring-static libcstring-static libvstring-static libustring-static\
+             libpath-static libfile-static libdir-static libterm-static
+	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libe-shared:
+	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libe-static:
+	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@

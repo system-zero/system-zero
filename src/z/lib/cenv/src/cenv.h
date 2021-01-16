@@ -820,6 +820,48 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_AUTH_TYPE
 #endif /* REQUIRE_AUTH_TYPE */
 
+#ifdef REQUIRE_E_TYPE
+  #ifndef E_TYPE_HDR
+  #define E_TYPE_HDR
+  #include <z/e.h>
+  #endif /* E_TYPE_HDR */
+
+  #if (REQUIRE_E_TYPE == DECLARE)
+  static  e_T eType;
+  #define E   eType.self
+  #endif
+
+#undef REQUIRE_E_TYPE
+#endif /* REQUIRE_E_TYPE */
+
+#ifdef REQUIRE_IMAP_TYPE
+  #ifndef IMAP_TYPE_HDR
+  #define IMAP_TYPE_HDR
+  #include <z/imap.h>
+  #endif /* IMAP_TYPE_HDR */
+
+  #if (REQUIRE_IMAP_TYPE == DECLARE)
+  static  imap_T imapType;
+  #define Imap   imapType.self
+  #endif
+
+#undef REQUIRE_IMAP_TYPE
+#endif /* REQUIRE_IMAP_TYPE */
+
+#ifdef REQUIRE_SMAP_TYPE
+  #ifndef SMAP_TYPE_HDR
+  #define SMAP_TYPE_HDR
+  #include <z/smap.h>
+  #endif /* SMAP_TYPE_HDR */
+
+  #if (REQUIRE_SMAP_TYPE == DECLARE)
+  static  smap_T smapType;
+  #define Smap   smapType.self
+  #endif
+
+#undef REQUIRE_SMAP_TYPE
+#endif /* REQUIRE_SMAP_TYPE */
+
 #ifdef REQUIRE_ARGPARSE_TYPE
   #ifndef ARGPARSE_TYPE_HDR
   #define ARGPARSE_TYPE_HDR
@@ -929,6 +971,88 @@ typedef ptrdiff_t idx_t;
 
 #undef TERM_MACROS
 #endif /*TERM_MACROS */
+
+#ifdef REQUIRE_MAP_MACROS
+  #ifndef MAP_MACROS_HDR
+  #define MAP_MACROS_HDR
+
+  #define MAP_DEFAULT_LENGTH 32
+
+  #define MAP_HASH_KEY(__map__, __key__) ({     \
+    ssize_t hs = 5381; int i = 0;               \
+    while (key[i])                              \
+       hs = ((hs << 5) + hs) + key[i++];        \
+    hs % __map__->num_slots;                    \
+  })
+
+  #define MAP_RELEASE_SLOT(_it, _tp, _fun)      \
+  ({                                            \
+    while (_it) {                               \
+      _tp *_tmp = _it->next;                    \
+      free (_it->key);                          \
+      _fun (_it->val);                          \
+      free (_it);                               \
+      _it = _tmp;                               \
+    }                                           \
+  })
+
+  #define MAP_CLEAR(_map, _fun)                 \
+  ({                                            \
+    for (size_t i = 0; i < map->num_slots; i++) \
+      _fun (map->slots[i]);                     \
+    map->num_keys = 0;                          \
+  })
+
+  #define MAP_RELEASE(_map, _fun)               \
+  do {                                          \
+    if (_map is NULL) return;                   \
+    _fun (_map);                                \
+    free (_map->slots);                         \
+    free (_map);                                \
+  } while (0)
+
+  #define MAP_NEW(_TP, _tp, _num)                            \
+  ({                                                         \
+    _TP *_map = Alloc (sizeof (_TP));                        \
+    int _num_slots = (_num < 1 ? MAP_DEFAULT_LENGTH : _num); \
+    _map->slots = Alloc (sizeof (_tp *) * num_slots);        \
+    _map->num_slots = _num_slots;                            \
+    _map->num_keys = 0;                                      \
+    for (;--_num_slots >= 0;) _map->slots[_num_slots] = 0;   \
+    _map;                                                    \
+  })
+
+  #define MAP_GET(_tp, _map, _key, _idx)        \
+  ({                                            \
+    _idx = MAP_HASH_KEY (_map, _key);           \
+    _tp *_slot = _map->slots[_idx];             \
+    while (_slot) {                             \
+      if (Cstring.eq (_slot->key, _key)) break; \
+      _slot = _slot->next;                      \
+    }                                           \
+    _slot;                                      \
+  })
+
+  #define MAP_SET(_tp_, _map_, _key_, _val)             \
+  ({                                                    \
+    uint _idx_ = 0;                                     \
+    _tp_ *_it_ = MAP_GET(_tp_, _map_, _key_, _idx_);    \
+    ifnot (NULL is _it_) {                              \
+      _it_->val = _val;                                 \
+    } else {                                            \
+      _it_ = Alloc (sizeof (_tp_));                     \
+      _it_->key = Cstring.dup (_key_, bytelen (_key_)); \
+      _it_->val = _val;                                 \
+      _it_->next = _map_->slots[_idx_];                 \
+      _map_->slots[_idx_] = _it_;                       \
+      _map_->num_keys++;                                \
+    }                                                   \
+    _idx_;                                              \
+  })
+  #endif /* MAP_MACROS_HDR */
+
+#undef REQUIRE_MAP_MACROS
+#endif /* REQUIRE_MAP_MACROS */
 
 #ifdef LIBRARY
 
