@@ -130,6 +130,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Path_Type            = Path
     Z_PATH_SRCDIR        = $(Z_SRCLIBDIR)/$(Path_Type)/src
 
+    # Term Type
+    Term_Type            = Term
+    Z_TERM_SRCDIR        = $(Z_SRCLIBDIR)/$(Term_Type)/src
+
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
     # a compatible container should include:
@@ -386,6 +390,18 @@ clean-libpath-shared:
 clean-libpath-static:
 	@cd $(Z_PATH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libterm-shared: Env cenv libstring-shared io-shared
+	@cd $(Z_TERM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libterm-static: Env cenv libstring-static io-static
+	@cd $(Z_TERM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libterm-shared:
+	@cd $(Z_TERM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libterm-static:
+	@cd $(Z_TERM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
@@ -481,7 +497,7 @@ zero-shared:  Env cenv dlist\
               libvstring-shared libdir-shared libinput-shared\
               libproc-shared libauth-shared librline-shared\
               libsh-shared libargparse-shared libio-shared\
-              libfile-shared libpath-shared\
+              libfile-shared libpath-shared libterm-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared
 
@@ -491,7 +507,7 @@ zero-static:  Env cenv dlist\
               libvstring-static libdir-static libinput-static\
               libproc-static libauth-static librline-static\
               libsh-static libargparse-static libio-static\
-              libfile-static libpath-static\
+              libfile-static libpath-static libterm-static\
               zs-static\
               dir-static file-static io-static
 

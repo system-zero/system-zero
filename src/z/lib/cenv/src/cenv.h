@@ -488,13 +488,13 @@ typedef ptrdiff_t idx_t;
 #endif /* REQUIRE_STDARG */
 
 #ifdef REQUIRE_SIGNAL
-  #ifndef SYS_SIGNAL_HDR
-  #define SYS_SIGNAL_HDR
-  #include <sys/wait.h>
-  #endif /* SYS_SIGNAL_HDR */
+  #ifndef SIGNAL_HDR
+  #define SIGNAL_HDR
+  #include <signal.h>
+  #endif /* SIGNAL_HDR */
 
-#undef REQUIRE_SYS_SIGNAL
-#endif /* REQUIRE_SYS_SIGNAL */
+#undef REQUIRE_SIGNAL
+#endif /* REQUIRE_SIGNAL */
 
 #ifdef REQUIRE_WAIT
   #ifndef SYS_WAIT_HDR
@@ -528,22 +528,25 @@ typedef ptrdiff_t idx_t;
   #define SYS_TYPES_HDR
   #include <sys/types.h>
   #endif /* SYS_TYPES_HDR */
+
 #undef REQUIRE_SYS_TYPES
 #endif /* REQUIRE_SYS_TYPES */
 
-#ifdef REQUIRE_SELECT
-  #ifndef SELECT_HDR
-  #define SELECT_HDR
+#ifdef REQUIRE_SYS_SELECT
+  #ifndef SYS_SELECT_HDR
+  #define SYS_SELECT_HDR
   #include <sys/select.h>
-  #endif /* SELECT_HDR */
-#undef REQUIRE_SELECT
-#endif /* REQUIRE_SELECT */
+  #endif /* SYS_SELECT_HDR */
+
+#undef REQUIRE_SYS_SELECT
+#endif /* REQUIRE_SYS_SELECT */
 
 #ifdef REQUIRE_TERMIOS
   #ifndef TERMIOS_HDR
   #define TERMIOS_HDR
   #include <termios.h>
   #endif /* TERMIOS_HDR */
+
 #undef REQUIRE_TERMIOS
 #endif /* REQUIRE_TERMIOS */
 
@@ -552,6 +555,7 @@ typedef ptrdiff_t idx_t;
   #define DIRENT_HDR
   #include <dirent.h>
   #endif /* DIRENT_HDR */
+
 #undef REQUIRE_DIRENT
 #endif /* REQUIRE_DIRENT */
 
@@ -560,6 +564,7 @@ typedef ptrdiff_t idx_t;
   #define FCNTL_HDR
   #include <fcntl.h>
   #endif /* FCNTL_HDR */
+
 #undef REQUIRE_FCNTL
 #endif /* REQUIRE_FCNTL */
 
@@ -568,6 +573,7 @@ typedef ptrdiff_t idx_t;
   #define TIME_HDR
   #include <time.h>
   #endif /* TIME_HDR */
+
 #undef REQUIRE_TIME
 #endif /* REQUIRE_TIME */
 
@@ -576,6 +582,7 @@ typedef ptrdiff_t idx_t;
   #define GRP_HDR
   #include <grp.h>
   #endif /* GRP_HDR */
+
 #undef REQUIRE_GRP
 #endif /* REQUIRE_GRP */
 
@@ -584,6 +591,7 @@ typedef ptrdiff_t idx_t;
   #define PWD_HDR
   #include <pwd.h>
   #endif /* PWD_HDR */
+
 #undef REQUIRE_PWD
 #endif /* REQUIRE_PWD */
 
@@ -593,9 +601,18 @@ typedef ptrdiff_t idx_t;
   #include <security/pam_appl.h>
   #include <security/pam_modules.h>
   #endif /* PAM_HDR */
+
 #undef REQUIRE_PAM
 #endif /* REQUIRE_PAM */
 
+#ifdef REQUIRE_SYS_IOCTL
+  #ifndef IOCTL_HDR
+  #define IOCTL_HDR
+  #include <sys/ioctl.h>
+  #endif /* IOCTL_HDR */
+
+#undef REQUIRE_SYS_IOCTL
+#endif /* REQUIRE_IOCTL */
 /* types */
 
 #ifdef REQUIRE_DLIST_TYPE
@@ -617,6 +634,7 @@ typedef ptrdiff_t idx_t;
   static  string_T stringType;
   #define String   stringType.self
   #endif
+
 #undef REQUIRE_STRING_TYPE
 #endif /* REQUIRE_STRING_TYPE */
 
@@ -630,6 +648,7 @@ typedef ptrdiff_t idx_t;
   static  cstring_T cstringType;
   #define Cstring   cstringType.self
   #endif
+
 #undef REQUIRE_CSTRING_TYPE
 #endif /* REQUIRE_CSTRING_TYPE */
 
@@ -643,6 +662,7 @@ typedef ptrdiff_t idx_t;
   static  vstring_T vstringType;
   #define Vstring   vstringType.self
   #endif
+
 #undef REQUIRE_VSTRING_TYPE
 #endif /* REQUIRE_VSTRING_TYPE */
 
@@ -656,6 +676,7 @@ typedef ptrdiff_t idx_t;
   static  ustring_T ustringType;
   #define Ustring   ustringType.self
   #endif
+
 #undef REQUIRE_USTRING_TYPE
 #endif /* REQUIRE_USTRING_TYPE */
 
@@ -669,6 +690,7 @@ typedef ptrdiff_t idx_t;
   static  io_T ioType;
   #define IO   ioType.self
   #endif
+
 #undef REQUIRE_IO_TYPE
 #endif /* REQUIRE_IO_TYPE */
 
@@ -682,6 +704,7 @@ typedef ptrdiff_t idx_t;
   static  rline_T rlineType;
   #define Rline   rlineType.self
   #endif
+
 #undef REQUIRE_RLINE_TYPE
 #endif /* REQUIRE_RLINE_TYPE */
 
@@ -695,6 +718,7 @@ typedef ptrdiff_t idx_t;
   static  sh_T shType;
   #define Sh   shType.self
   #endif
+
 #undef REQUIRE_SH_TYPE
 #endif /* REQUIRE_SH_TYPE */
 
@@ -708,6 +732,7 @@ typedef ptrdiff_t idx_t;
   static  file_T fileType;
   #define File   fileType.self
   #endif
+
 #undef REQUIRE_FILE_TYPE
 #endif /* REQUIRE_FILE_TYPE */
 
@@ -721,6 +746,7 @@ typedef ptrdiff_t idx_t;
   static  path_T pathType;
   #define Path   pathType.self
   #endif
+
 #undef REQUIRE_PATH_TYPE
 #endif /* REQUIRE_PATH_TYPE */
 
@@ -734,6 +760,7 @@ typedef ptrdiff_t idx_t;
   static  proc_T procType;
   #define Proc   procType.self
   #endif
+
 #undef REQUIRE_PROC_TYPE
 #endif /* REQUIRE_PROC_TYPE */
 
@@ -747,6 +774,7 @@ typedef ptrdiff_t idx_t;
   static  dir_T dirType;
   #define Dir   dirType.self
   #endif
+
 #undef REQUIRE_DIR_TYPE
 #endif /* REQUIRE_DIR_TYPE */
 
@@ -760,8 +788,23 @@ typedef ptrdiff_t idx_t;
   static  input_T inputType;
   #define Input   inputType.self
   #endif
+
 #undef REQUIRE_INPUT_TYPE
 #endif /* REQUIRE_INPUT_TYPE */
+
+#ifdef REQUIRE_TERM_TYPE
+  #ifndef TERM_TYPE_HDR
+  #define TERM_TYPE_HDR
+  #include <z/term.h>
+  #endif /* TERM_TYPE_HDR */
+
+  #if (REQUIRE_TERM_TYPE == DECLARE)
+  static  term_T termType;
+  #define Term   termType.self
+  #endif
+
+#undef REQUIRE_TERM_TYPE
+#endif /* REQUIRE_TERM_TYPE */
 
 #ifdef REQUIRE_AUTH_TYPE
   #ifndef AUTH_TYPE_HDR
@@ -773,6 +816,7 @@ typedef ptrdiff_t idx_t;
   static  auth_T authType;
   #define Auth   authType.self
   #endif
+
 #undef REQUIRE_AUTH_TYPE
 #endif /* REQUIRE_AUTH_TYPE */
 
@@ -786,8 +830,105 @@ typedef ptrdiff_t idx_t;
   static  argparse_T ArgparseType;
   #define Argparse   argparseType.self
   #endif
+
 #undef REQUIRE_ARGPARSE_TYPE
 #endif /* REQUIRE_DIR_TYPE */
+
+#ifdef REQUIRE_KEYS_MACROS
+  #ifndef KEYS_MACROS_HDR
+  #define KEYS_MACROS_HDR
+
+  #ifndef BACKSPACE_KEY
+  #define BACKSPACE_KEY   010
+  #endif
+
+  #ifndef ESCAPE_KEY
+  #define ESCAPE_KEY      033
+  #endif
+
+  #ifndef ARROW_DOWN_KEY
+  #define ARROW_DOWN_KEY  0402
+  #endif
+
+  #ifndef ARROW_UP_KEY
+  #define ARROW_UP_KEY    0403
+  #endif
+
+  #ifndef ARROW_LEFT_KEY
+  #define ARROW_LEFT_KEY  0404
+  #endif
+
+  #ifndef ARROW_RIGHT_KEY
+  #define ARROW_RIGHT_KEY 0405
+  #endif
+
+  #ifndef HOME_KEY
+  #define HOME_KEY        0406
+  #endif
+
+  #ifndef FN_KEY
+  #define FN_KEY(x)       (x + 0410)
+  #endif
+
+  #ifndef DELETE_KEY
+  #define DELETE_KEY      0512
+  #endif
+
+  #ifndef INSERT_KEY
+  #define INSERT_KEY      0513
+  #endif
+
+  #ifndef PAGE_DOWN_KEY
+  #define PAGE_DOWN_KEY   0522
+  #endif
+
+  #ifndef PAGE_UP_KEY
+  #define PAGE_UP_KEY     0523
+  #endif
+
+  #ifndef END_KEY
+  #define END_KEY         0550
+  #endif
+
+  #ifndef CTRL
+  #define CTRL(X) (X & 037)
+  #endif
+  #endif /* KEYS_MACROS_HDR */
+
+#undef REQUIRE_KEYS_MACROS
+#endif /* REQUIRE_KEYS_MACROS */
+
+#ifdef REQUIRE_TERM_MACROS
+  #ifndef TERM_MACROS_HDR
+  #define TERM_MACROS_HDR
+
+  #define TERM_LAST_RIGHT_CORNER      "\033[999C\033[999B"
+  #define TERM_LAST_RIGHT_CORNER_LEN  12
+  #define TERM_GET_PTR_POS            "\033[6n"
+  #define TERM_GET_PTR_POS_LEN        4
+  #define TERM_SCREEN_SAVE            "\033[?47h"
+  #define TERM_SCREEN_SAVE_LEN        6
+  #define TERM_SCREEN_RESTORE        "\033[?47l"
+  #define TERM_SCREEN_RESTORE_LEN     6
+  #define TERM_SCREEN_CLEAR           "\033[2J"
+  #define TERM_SCREEN_CLEAR_LEN       4
+  #define TERM_SCROLL_RESET           "\033[r"
+  #define TERM_SCROLL_RESET_LEN       3
+  #define TERM_GOTO_PTR_POS_FMT       "\033[%d;%dH"
+  #define TERM_CURSOR_HIDE            "\033[?25l"
+  #define TERM_CURSOR_HIDE_LEN        6
+  #define TERM_CURSOR_SHOW            "\033[?25h"
+  #define TERM_CURSOR_SHOW_LEN        6
+  #define TERM_AUTOWRAP_ON            "\033[?7h"
+  #define TERM_AUTOWRAP_ON_LEN        5
+  #define TERM_AUTOWRAP_OFF           "\033[?7l"
+  #define TERM_AUTOWRAP_OFF_LEN       5
+
+  #define TERM_SEND_ESC_SEQ(seq) IO.fd.write (this->out_fd, seq, seq ## _LEN)
+  #endif /* TERM_MACROS_HDR */
+
+#undef TERM_MACROS
+#endif /*TERM_MACROS */
 
 #ifdef LIBRARY
 
