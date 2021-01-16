@@ -142,6 +142,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Smap_Type            = Smap
     Z_SMAP_SRCDIR        = $(Z_SRCLIBDIR)/$(Smap_Type)/src
 
+    # Re Type
+    Re_Type              = Re
+    Z_RE_SRCDIR          = $(Z_SRCLIBDIR)/$(Re_Type)/src
+
     # E Type
     E_Type               = E
     Z_E_SRCDIR           = $(Z_SRCLIBDIR)/$(E_Type)/src
@@ -438,6 +442,18 @@ clean-libsmap-shared:
 clean-libsmap-static:
 	@cd $(Z_SMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libre-shared: Env cenv libcstring-shared libstring-shared libustring-shared
+	@cd $(Z_RE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libre-static: Env cenv libcstring-static libstring-static libustring-static
+	@cd $(Z_RE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libre-shared:
+	@cd $(Z_RE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libre-static:
+	@cd $(Z_RE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 libe-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libustring-shared\
              libpath-shared libfile-shared libdir-shared libterm-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
@@ -548,6 +564,7 @@ zero-shared:  Env cenv dlist\
               libproc-shared libauth-shared librline-shared\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared libterm-shared\
+              libimap-shared libsmap-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared
 
@@ -558,6 +575,7 @@ zero-static:  Env cenv dlist\
               libproc-static libauth-static librline-static\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static libterm-static\
+              libimap-static libsmap-static\
               zs-static\
               dir-static file-static io-static
 

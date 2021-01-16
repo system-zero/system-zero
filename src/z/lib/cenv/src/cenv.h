@@ -134,7 +134,15 @@ typedef unsigned long ulong;
 #endif
 
 #ifndef MAXLEN_LINE
-#define MAXLEN_LINE   4096
+#define MAXLEN_LINE       4096
+#endif
+
+#ifndef MAXLEN_WORD
+#define MAXLEN_WORD        256
+#endif
+
+#ifndef MAXLEN_ERR_MSG
+#define MAXLEN_ERR_MSG     512
 #endif
 
 #ifndef PATH_SEP
@@ -874,6 +882,20 @@ typedef ptrdiff_t idx_t;
   #endif
 
 #undef REQUIRE_ARGPARSE_TYPE
+#endif /* REQUIRE_DIR_TYPE */
+
+#ifdef REQUIRE_RE_TYPE
+  #ifndef RE_TYPE_HDR
+  #define RE_TYPE_HDR
+  #include <z/re.h>
+  #endif /* RE_TYPE_HDR */
+
+  #if (REQUIRE_RE_TYPE == DECLARE)
+  static  re_T reType;
+  #define Re   reType.self
+  #endif
+
+#undef REQUIRE_RE_TYPE
 #endif /* REQUIRE_DIR_TYPE */
 
 #ifdef REQUIRE_KEYS_MACROS
