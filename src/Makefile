@@ -150,6 +150,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     E_Type               = E
     Z_E_SRCDIR           = $(Z_SRCLIBDIR)/$(E_Type)/src
 
+    # I Type
+    I_Type               = I
+    Z_I_SRCDIR           = $(Z_SRCLIBDIR)/$(I_Type)/src
+
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
     # a compatible container should include:
@@ -470,6 +474,20 @@ clean-libe-shared:
 clean-libe-static:
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libi-shared: Env cenv libstring-shared libcstring-shared \
+             libvstring-shared libustring-shared libpath-shared libfile-shared
+	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libi-static: Env cenv libstring-static libcstring-static\
+             libvstring-static libustring-static libpath-static libfile-static
+	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libi-shared:
+	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libi-static:
+	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
@@ -574,6 +592,22 @@ clean-term-shared:
 
 clean-term-static:
 	@cd $(ZA_TERM_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#----------------------------------------------------------#
+  # i
+  ZA_I          = i
+  ZA_I_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_I)/src
+
+i-shared: libi-shared
+	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+i-static: libi-static
+	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-i-shared:
+	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-i-static:
+	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv dlist\

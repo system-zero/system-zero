@@ -150,6 +150,10 @@ typedef unsigned long ulong;
 #define MAXLEN_ERR_MSG     512
 #endif
 
+#ifndef MAXLEN_NAME
+#define MAXLEN_NAME        16
+#endif
+
 #ifndef PATH_SEP
 #define PATH_SEP        ':'
 #endif
@@ -902,6 +906,20 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_VIDEO_TYPE
 #endif /* REQUIRE_VIDEO_TYPE */
+
+#ifdef REQUIRE_I_TYPE
+  #ifndef I_TYPE_HDR
+  #define I_TYPE_HDR
+  #include <z/i.h>
+  #endif /* I_TYPE_HDR */
+
+  #if (REQUIRE_I_TYPE == DECLARE)
+  static  i_T iType;
+  #define I   iType.self
+  #endif
+
+#undef REQUIRE_I_TYPE
+#endif /* REQUIRE_I_TYPE */
 
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR
