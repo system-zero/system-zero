@@ -37,12 +37,12 @@ typedef struct proc_prop {
 
    size_t stdin_buf_size;
 
-   PopenRead_cb read_stdout_cb;
-   PopenRead_cb read_stderr_cb;
+   ProcRead_cb read_stdout_cb;
+   ProcRead_cb read_stderr_cb;
    ProcAtFork_cb at_fork_cb;
    ProcPreFork_cb pre_fork_cb;
 
-   void *userdata;
+   void *user_data;
 } proc_prop;
 
 struct proc_t {
@@ -352,9 +352,9 @@ static void proc_set_stdin (proc_t *this, char *buf, size_t size) {
   Cstring.cp ($my(stdin_buf), size + 1, buf, size);
 }
 
-static void proc_set_userdata (proc_t *this, void *userdata) {
+static void proc_set_user_data (proc_t *this, void *user_data) {
   if (NULL is this) return;
-  $my(userdata) = userdata;
+  $my(user_data) = user_data;
 }
 
 static void proc_set_pre_fork_cb (proc_t *this, ProcPreFork_cb cb) {
@@ -367,7 +367,11 @@ static void proc_set_at_fork_cb (proc_t *this, ProcAtFork_cb cb) {
   $my(at_fork_cb) = cb;
 }
 
-static void proc_set_read_stream_cb (proc_t *this, int stream_flags, PopenRead_cb cb) {
+static void proc_set_dup_stdin (proc_t *this, int val) {
+  $my(dup_stdin) = 0 isnot val;
+}
+
+static void proc_set_read_stream_cb (proc_t *this, int stream_flags, ProcRead_cb cb) {
   if (stream_flags & PROC_READ_STDOUT) {
     $my(read_stdout) = 1;
     $my(read_stdout_cb) = cb;
@@ -389,9 +393,9 @@ static pid_t proc_get_pid (proc_t *this) {
   return $my(pid);
 }
 
-static void *proc_get_userdata (proc_t *this) {
+static void *proc_get_user_data (proc_t *this) {
   if (NULL is this) return NULL;
-  return $my(userdata);
+  return $my(user_data);
 }
 
 static int proc_exec (proc_t *this, char *com) {
@@ -428,7 +432,8 @@ public proc_T __init_proc__ (void) {
         .next = proc_set_next,
         .prev = proc_set_prev,
         .stdin = proc_set_stdin,
-        .userdata = proc_set_userdata,
+        .dup_stdin = proc_set_dup_stdin,
+        .user_data = proc_set_user_data,
         .at_fork_cb = proc_set_at_fork_cb,
         .pre_fork_cb = proc_set_pre_fork_cb,
         .read_stream_cb = proc_set_read_stream_cb,
@@ -439,7 +444,7 @@ public proc_T __init_proc__ (void) {
       .get = (proc_get_self) {
         .pid = proc_get_pid,
         .next = proc_get_next,
-        .userdata = proc_get_userdata
+        .user_data = proc_get_user_data
       }
     }
   };

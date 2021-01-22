@@ -15,6 +15,7 @@
 #define REQUIRE_IMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_SMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_I_TYPE        DONOT_DECLARE
+#define REQUIRE_PROC_TYPE     DONOT_DECLARE
 #define REQUIRE_TERM_TYPE     DECLARE
 #define REQUIRE_E_TYPE        DECLARE
 #define REQUIRE_TERM_MACROS
@@ -28,10 +29,7 @@ static E_T *__E__ = NULL;
 #define Ed  __E__->__Ed__->self
 #define Win __E__->__Ed__->__Win__.self
 #define Buf __E__->__Ed__->__Buf__.self
-#define Rline   __E__->__Ed__->__Rline__.self
-
-//static i_T *__I__ = NULL;
-//#define I   __I__->self
+#define Rline  __E__->__Ed__->__Rline__.self
 
 public void sigwinch_handler (int sig) {
   signal (sig, sigwinch_handler);
@@ -120,6 +118,7 @@ static string_t *parse_command (char *bytes) {
 int main (int argc, char **argv) {
   __INIT__ (term);
   __INIT__ (string);
+
   __INIT_APP__;
 
   int ifd = -1;

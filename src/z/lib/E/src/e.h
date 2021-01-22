@@ -453,7 +453,6 @@ typedef int  (*StrChop_cb) (Vstring_t *, char *, void *);
 typedef int  (*RlineAtBeg_cb) (rline_t **);
 typedef int  (*RlineAtEnd_cb) (rline_t **);
 typedef int  (*RlineTabCompletion_cb) (rline_t *);
-typedef int  (*PopenRead_cb) (buf_t *, FILE *stream, fp_t *);
 typedef int  (*MenuProcessList_cb) (menu_t *);
 typedef int  (*VisualLwMode_cb) (buf_t **, int, int, Vstring_t *, utf8, char *);
 typedef int  (*VisualCwMode_cb) (buf_t **, int, int, string_t *, utf8, char *);
@@ -1389,7 +1388,7 @@ typedef struct ed_menu_self {
 } ed_menu_self;
 
 typedef struct ed_sh_self {
-  int (*popen) (ed_t *, buf_t *, char *, int, int, PopenRead_cb);
+  int (*popen) (ed_t *, buf_t *, char *, int, int, ProcRead_cb);
 } ed_sh_self;
 
 typedef struct edhistory_set_self {

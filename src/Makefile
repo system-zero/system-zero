@@ -633,10 +633,10 @@ clean-i-static:
   ZA_E          = e
   ZA_E_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_E)/src
 
-e-shared: libe-shared libargparse-shared
+e-shared: libe-shared libargparse-shared libproc-shared libstring-shared
 	@cd $(ZA_E_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-e-static: libe-static
+e-static: libe-static libargparse-static libproc-static libstring-static
 	@cd $(ZA_E_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-e-shared:

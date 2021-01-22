@@ -442,6 +442,42 @@ directory, we should call Dir.make (), otherwise we might violate the above sema
   
 In this case Dir.make() is our interface, as it abstracts all the details for us,  
 and allows consistency, which is quite important to a system.  
+ 
+Interface.  
+In this sample system, we are choosing to implement, a user interface, that will  
+resemble a vi(m) like interface. Because of historical reasons and because is an
+intuitive, this is very popular and already established, as quite many applications  
+offer this capability.  
+  
+A common interface is quite important for obvious reasons, as it allows to apply  
+the gained knowledge everywhere with the same, consistent and expected way.  
+  
+In our next step, we'll implement an editor, to ease us in the development, and  
+to administrate the machine. As having a shell and an editor available, can really  
+be more than enough many times.  
+  
+Actually, what we would like to have to feel perfect, so to continue development,  
+is a way to execute some code.  
+  
+The Emacs editor, offers a Lisp like interpreter, allowing to its users to extend  
+a system, plus comes with a quite of wide range of applications.  
+Actually is more an environment, rather an editor. It is really more than just  
+an editor.  
+ 
+For us, this is the moment, that we have to think about our development environment. 
+  
+But first lets build this really tiny vim clone:
+  
+```sh
+  make e-shared
+```
+  
+See the [documentation](data/docs/editor.md) about the provided functionality.  
+
+Development Environment.  
+  
+  What are our choises?  
+  
   
 To be continued ...  
   

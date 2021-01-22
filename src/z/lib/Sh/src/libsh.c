@@ -86,7 +86,7 @@ static void sh_release_list (sh_t *this) {
   while (p) {
     proc_t *t = Proc.get.next (p);
 
-    shproc_t *sh = Proc.get.userdata (p);
+    shproc_t *sh = Proc.get.user_data (p);
     String.release (sh->redir_stdout_file);
     String.release (sh->redir_stderr_file);
     if (sh->saved_stderr isnot STDERR_FILENO) {
@@ -117,7 +117,7 @@ static void sh_release (sh_t *this) {
 }
 
 static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
-  shproc_t *sh = (shproc_t *) Proc.get.userdata (proc);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (proc);
 
   string_t *file = NULL;
 
@@ -163,7 +163,7 @@ static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
 }
 
 static int sh_pre_fork_default_cb (proc_t *proc) {
-  shproc_t *sh = (shproc_t *) Proc.get.userdata (proc);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (proc);
 
   sigemptyset (&sh->mask);
   sigaddset (&sh->mask, SIGCHLD);
@@ -173,7 +173,7 @@ static int sh_pre_fork_default_cb (proc_t *proc) {
 }
 
 static int sh_pre_fork_pipeline_cb (proc_t *this) {
-  shproc_t *sh = (shproc_t *) Proc.get.userdata (this);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (this);
 
   if (-1 is pipe (&sh->stdout_fds[0]))
     return NOTOK;
@@ -187,7 +187,7 @@ static int sh_pre_fork_pipeline_cb (proc_t *this) {
 }
 
 static int sh_at_fork_default_cb (proc_t *proc) {
-  shproc_t *sh = (shproc_t *) Proc.get.userdata (proc);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (proc);
 
   sigprocmask (SIG_UNBLOCK, &sh->mask, NULL);
 
@@ -220,7 +220,7 @@ static int sh_dup_stream (int *fds, int stream_fd) {
 }
 
 static int sh_at_fork_pipeline_cb (proc_t *proc) {
-  shproc_t *sh = (shproc_t *) Proc.get.userdata (proc);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (proc);
 
   if (NOTOK is sh_dup_stream (sh->stdout_fds, STDOUT_FILENO))
     return NOTOK;
@@ -241,7 +241,7 @@ static void sh_sigint_handler (int sig) {
 static int sh_interpret (proc_t *this) {
   if (NULL is this) return 1;
 
-  shproc_t *sh = (shproc_t *) Proc.get.userdata (this);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (this);
 
   int retval = 1;
   sh->should_exit = 0;
@@ -448,7 +448,7 @@ static int sh_parse (sh_t *this, char *buf) {
         Proc.set.at_fork_cb (p, sh_at_fork_default_cb);
       }
 
-      Proc.set.userdata (p, sh);
+      Proc.set.user_data (p, sh);
       sh_append_proc (this, p);
 
       buf = sp;
@@ -487,13 +487,13 @@ static int sh_exec (sh_t *this, char *buf) {
   int retval = 0;
   proc_t *p = $my(head);
 
-  shproc_t *sh = (shproc_t *) Proc.get.userdata (p);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (p);
   int is_pipeline = sh->type is PIPE_TYPE;
 
   while (p) {
     retval = sh_interpret (p);
 
-    sh = (shproc_t *) Proc.get.userdata (p);
+    sh = (shproc_t *) Proc.get.user_data (p);
 
     if (sh->should_exit or retval is NOTOK)
       break;

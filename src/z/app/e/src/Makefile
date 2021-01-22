@@ -72,7 +72,7 @@ endif
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
 FLAGS += -lterm-$(VERSION)
-FLAGS += -le-$(VERSION) -li-$(VERSION)
+FLAGS += -le-$(VERSION) -li-$(VERSION) -lproc-$(VERSION)
 FLAGS += -limap-$(VERSION) -lsmap-$(VERSION)
 
 e:shared static

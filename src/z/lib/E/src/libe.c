@@ -37,6 +37,7 @@
 #define REQUIRE_IMAP_TYPE     DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
 #define REQUIRE_I_TYPE        DECLARE
+#define REQUIRE_PROC_TYPE     DECLARE
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
 
@@ -8523,11 +8524,51 @@ private string_t *vsys_which (char *ex, char *path) {
   return ex_path;
 }
 
-private int ed_sh_popen (ed_t *ed, buf_t *buf, char *com,
-  int redir_stdout, int redir_stderr, PopenRead_cb read_cb) {
-  (void) ed; (void) buf; (void) com; (void) redir_stdout; (void) redir_stderr;
-  (void) read_cb;
-  return NOTHING_TODO;
+static int buf_proc_read_cb (proc_t *proc, FILE *stream, FILE *fp) {
+  buf_t *this = Proc.get.user_data (proc);
+  fp_t fpt = {.fp = fp};
+  return buf_read_from_fp (this, stream, &fpt);
+}
+
+static int ed_sh_popen (ed_t *ed, buf_t *this, char *com,
+  int redir_stdout, int redir_stderr, ProcRead_cb read_cb) {
+  int retval = NOTOK;
+  proc_t *proc = Proc.new ();
+
+  int flags = (PROC_READ_STDERR|PROC_READ_STDOUT);
+
+  Proc.set.user_data (proc, this);
+
+  ifnot (NULL is read_cb)
+    Proc.set.read_stream_cb (proc, flags, read_cb);
+  else
+    if (redir_stdout or redir_stderr)
+      Proc.set.read_stream_cb (proc, flags, buf_proc_read_cb);
+
+  Proc.parse (proc, com);
+
+  term_t *term = Ed.get.term (ed);
+
+  ifnot (redir_stdout)
+    Term.reset (term);
+
+  if (NOTOK is Proc.open (proc)) goto theend;
+  Proc.read (proc);
+  retval = Proc.wait (proc);
+
+theend:
+  ifnot (redir_stdout) {
+    Term.set_mode (term, 'r');
+    IO.getkey (STDIN_FILENO);
+    Term.set (term);
+  }
+
+  Proc.release (proc);
+  win_t *w = Ed.get.current_win (ed);
+  int idx = Win.get.current_buf_idx (w);
+  Win.set.current_buf (w, idx, DONOT_DRAW);
+  Win.draw (w);
+  return retval;
 }
 
 private int buf_read_from_shell (buf_t *this, char *com, int rlcom) {
@@ -13641,6 +13682,7 @@ private ed_T *editor_new (void) {
   __INIT__ (io);
   __INIT__ (imap);
   __INIT__ (smap);
+  __INIT__ (proc);
 
   $my(video) = NULL;
   $my(term)  = NULL;
