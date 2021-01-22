@@ -167,7 +167,9 @@ typedef struct i_t {
   IPrintFmtBytes_cb print_fmt_bytes;
   ISyntaxError_cb syntax_error;
 
-  void *object;
+  IDefineFuns_cb define_funs_cb;
+
+  void *user_data;
 
   i_t *next;
 } i_t;
@@ -1418,12 +1420,16 @@ static void i_set_idir (i_t *this, char *fn) {
   String.replace_with_len (this->idir, fn, len);
 }
 
-static void i_set_object (i_t *this, void *obj) {
-  this->object = obj;
+static void i_set_define_funs_cb (i_t *this, IDefineFuns_cb cb) {
+  this->define_funs_cb = cb;
 }
 
-static void *i_get_object (i_t *this) {
-  return this->object;
+static void i_set_user_data (i_t *this, void *user_data) {
+  this->user_data = user_data;
+}
+
+static void *i_get_user_data (i_t *this) {
+  return this->user_data;
 }
 
 static i_t *i_get_current (i_T *this) {
@@ -1438,32 +1444,33 @@ static int i_get_current_idx (i_T *this) {
   return $my(current_idx);
 }
 
-static void i_print_bytes (FILE *fp, const char *bytes) {
-  fprintf (fp, "%s", bytes);
+static int i_print_bytes (FILE *fp, const char *bytes) {
+  return fprintf (fp, "%s", bytes);
 }
 
-static void i_print_fmt_bytes (FILE *fp, const char *fmt, ...) {
+static int i_print_fmt_bytes (FILE *fp, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE (fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
-  i_print_bytes (fp, bytes);
+  return i_print_bytes (fp, bytes);
 }
 
-static void i_print_byte (FILE *fp, int c) {
-  i_print_fmt_bytes (fp, "%c", c);
+static int i_print_byte (FILE *fp, int c) {
+  return i_print_fmt_bytes (fp, "%c", c);
 }
 
 ival_t i_print_str (i_t *this, ival_t str) {
   char *sp = (char *) str;
+  int nbytes = 0;
   while (*sp)
-    this->print_byte (this->out_fp, *sp++);
+    nbytes += this->print_byte (this->out_fp, *sp++);
   return I_OK;
 }
 
 ival_t i_println_str (i_t *this, ival_t str) {
-  i_print_str (this, str);
+  int nbytes = i_print_str (this, str);
   this->print_byte (this->out_fp, '\n');
-  return I_OK;
+  return nbytes + 1;
 }
 
 ival_t i_release_str (i_t *this, ival_t str) {
@@ -1540,7 +1547,8 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
   this->err_fp = opts.err_fp;
   this->out_fp = opts.out_fp;
   this->max_script_size = opts.max_script_size;
-  this->object = opts.object;
+  this->user_data = opts.user_data;
+  this->define_funs_cb = opts.define_funs_cb;
   this->state = 0;
 
   if (NULL is opts.idir)
@@ -1616,6 +1624,7 @@ static int i_load_file (i_T *__i__, i_t *this, char *fn) {
     size_t len = ddir->num_bytes + bytelen (fname) + 2 + 7;
     char tmp[len + 3];
     Cstring.cp_fmt (tmp, len + 1, "%s/scripts/%s", ddir->bytes, fname);
+
     if (0 is File.exists (tmp) or 0 is File.is_reg (tmp)) {
       tmp[len] = '.'; tmp[len+1] = 'i'; tmp[len+2] = '\0';
     }
@@ -1628,6 +1637,14 @@ static int i_load_file (i_T *__i__, i_t *this, char *fn) {
   ifnot (File.exists (fn)) return NOTOK;
 
   return i_eval_file (this, fn);
+}
+
+static ival_t I_print_bytes (i_t *this, char *bytes) {
+  return this->print_bytes (this->out_fp, bytes);
+}
+
+static ival_t I_print_byte (i_t *this, char byte) {
+  return this->print_byte (this->out_fp, byte);
 }
 
 public i_T *__init_i__ (void) {
@@ -1644,24 +1661,27 @@ public i_T *__init_i__ (void) {
   *this = (i_T) {
     .self = (i_self) {
       .new = i_new,
-      .release = i_release,
       .init = i_init,
       .def =  i_define,
-      .init_instance = i_init_instance,
+      .release = i_release,
+      .eval_file = i_eval_file,
       .load_file = i_load_file,
+      .print_byte = I_print_byte,
+      .print_bytes = I_print_bytes,
+      .eval_string =  i_eval_string,
+      .init_instance = i_init_instance,
       .remove_instance = i_remove_instance,
       .append_instance = i_append_instance,
-      .eval_string =  i_eval_string,
-      .eval_file = i_eval_file,
       .get = (i_get_self) {
-        .object = i_get_object,
         .current = i_get_current,
+        .user_data = i_get_user_data,
         .current_idx = i_get_current_idx
       },
       .set = (i_set_self) {
         .idir = i_set_idir,
-        .object = i_set_object,
-        .current = i_set_current
+        .current = i_set_current,
+        .user_data = i_set_user_data,
+        .define_funs_cb = i_set_define_funs_cb
       }
     },
     .prop = $myprop,

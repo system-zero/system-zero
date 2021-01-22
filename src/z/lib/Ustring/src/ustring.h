@@ -9,6 +9,16 @@
 #define TO_UPPER 1
 #endif
 
+#define UTF8_CODE(s_)                                     \
+({                                                        \
+  int code = 0; int i_ = 0; int sz = 0;                   \
+  do {code <<= 6; code += (uchar) s_[i_++]; sz++;}        \
+  while (s_[i_] and IS_UTF8(s_[i_]));                     \
+                                                          \
+  code -= offsetsFromUTF8[sz-1];                          \
+  code;                                                   \
+})
+
 typedef struct ustring_t ustring_t;
 struct ustring_t {
   utf8 code;
@@ -43,7 +53,9 @@ typedef struct ustring_self {
   ustring_get_self get;
 
   Ustring_t *(*new) (void);
-  void (*free) (Ustring_t *);
+  void
+    (*release) (Ustring_t *),
+    (*release_members) (Ustring_t *);
 
   ustring_t *(*encode) (Ustring_t *, char *, size_t, int, int, int);
 
@@ -56,9 +68,10 @@ typedef struct ustring_self {
     (*charlen) (uchar),
     (*is_lower) (utf8),
     (*is_upper) (utf8),
-    (*is_nth_character_at) (char *, size_t, int),
+    (*char_num) (char *, int),
     (*swap_case) (char *, char *, size_t),
-    (*change_case) (char *, char *, size_t, int);
+    (*change_case) (char *, char *, size_t, int),
+    (*is_nth_character_at) (char *, size_t, int);
 
   size_t (*validate) (unsigned char *, size_t, char **, int *);
 

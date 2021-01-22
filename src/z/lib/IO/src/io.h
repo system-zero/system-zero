@@ -1,6 +1,8 @@
 #ifndef IO_H
 #define IO_H
 
+typedef utf8 (*IOGetkey) (int);
+
 typedef struct io_fd_self {
   idx_t
     (*read) (int, char *, idx_t),

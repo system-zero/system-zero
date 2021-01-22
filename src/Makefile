@@ -55,8 +55,8 @@ SYSINCDIR      = $(SYSDIR)/include
 # (not sure about them too yet: the question is: should be one or two? 
 #  perhaps a USER_ prefix is justified, though this can be abstracted
 #  at runtime by our identity)
-SYSDATADIR     = $(SYSDIR)/data
-SYSTMPDIR      = $(SYSDIR)/tmp
+SYSDATADIR     = $(SYSDIR)/../data
+SYSTMPDIR      = $(SYSDIR)/../tmp
 
 #-----------------------------------------------#
 #             zero namespace
@@ -153,6 +153,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     # I Type
     I_Type               = I
     Z_I_SRCDIR           = $(Z_SRCLIBDIR)/$(I_Type)/src
+
+    # Readline Type
+    Readline_Type        = Readline
+    Z_READLINE_SRCDIR    = $(Z_SRCLIBDIR)/$(Readline_Type)/src
 
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
@@ -460,12 +464,14 @@ clean-libvideo-shared:
 clean-libvideo-static:
 	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libe-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libustring-shared\
-             libpath-shared libfile-shared libdir-shared libterm-shared
+libe-shared: Env cenv dlist libstring-shared libcstring-shared libvstring-shared libustring-shared\
+             libpath-shared libfile-shared libdir-shared libterm-shared libio-shared\
+             libre-shared libimap-shared libsmap-shared libi-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libe-static: Env cenv libstring-static libcstring-static libvstring-static libustring-static\
-             libpath-static libfile-static libdir-static libterm-static
+libe-static: Env cenv dlist libstring-static libcstring-static libvstring-static libustring-static\
+             libpath-static libfile-static libdir-static libterm-static libio-static\
+             libre-static libimap-static libsmap-static libi-static
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libe-shared:
@@ -487,6 +493,20 @@ clean-libi-shared:
 
 clean-libi-static:
 	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libreadline-shared: Env cenv libstring-shared libcstring-shared \
+             libvstring-shared libustring-shared libpath-shared libfile-shared
+	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libreadline-static: Env cenv libstring-static libcstring-static\
+             libvstring-static libustring-static libpath-static libfile-static
+	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libreadline-shared:
+	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libreadline-static:
+	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
@@ -609,6 +629,22 @@ clean-i-shared:
 clean-i-static:
 	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
+  # e
+  ZA_E          = e
+  ZA_E_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_E)/src
+
+e-shared: libe-shared libargparse-shared
+	@cd $(ZA_E_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+e-static: libe-static
+	@cd $(ZA_E_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-e-shared:
+	@cd $(ZA_E_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-e-static:
+	@cd $(ZA_E_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv dlist\
               libstring-shared libustring-shared libcstring-shared\
@@ -672,6 +708,7 @@ makeenv:
 	@$(TEST) -d $(SYSBINDIR)   || $(MKDIR)   $(SYSBINDIR)
 	@$(TEST) -d $(SYSINCDIR)   || $(MKDIR)   $(SYSINCDIR)
 	@$(TEST) -d $(SYSTMPDIR)   || $(MKDIR)   $(SYSTMPDIR)
+	@$(TEST) -d $(SYSDATADIR)  || $(MKDIR)   $(SYSDATADIR)
 	@$(TEST) -d $(Z_SYSDIR)    || $(MKDIR)   $(Z_SYSDIR)
 	@$(TEST) -d $(Z_SYSBINDIR) || $(MKDIR)   $(Z_SYSBINDIR)
 	@$(TEST) -d $(Z_SYSLIBDIR) || $(MKDIR)   $(Z_SYSLIBDIR)
@@ -683,6 +720,7 @@ checkenv:
 	@$(TEST) -w $(SYSLIBDIR)   || exit 1
 	@$(TEST) -w $(SYSINCDIR)   || exit 1
 	@$(TEST) -w $(SYSTMPDIR)   || exit 1
+	@$(TEST) -w $(SYSDATADIR)  || exit 1
 	@$(TEST) -w $(Z_SYSBINDIR) || exit 1
 	@$(TEST) -w $(Z_SYSLIBDIR) || exit 1
 	@$(TEST) -w $(Z_SYSINCDIR) || exit 1

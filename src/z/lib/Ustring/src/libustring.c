@@ -34,6 +34,20 @@ static int ustring_charlen (uchar c) {
   return 3 + ((c & 0xf0) isnot 0xe0);
 }
 
+static int ustring_char_num (char *bytes, int len) {
+  int n = 0;
+  int clen = 0;
+  char *sp = bytes;
+
+  for (int i = 0; i < len and *sp; i++) {
+    sp += clen;
+    clen = ustring_charlen ((uchar) *sp);
+    n++;
+  }
+
+  return n;
+}
+
 static char *ustring_at_nth_character (char *bytes, size_t len, int nth) {
   int n = 0;
   int clen = 0;
@@ -861,7 +875,7 @@ static size_t ustring_validate (unsigned char *str, size_t len,
   return 0;
 }
 
-static void ustring_free_members (Ustring_t *u) {
+static void ustring_release_members (Ustring_t *u) {
   ifnot (u->num_items) return;
   ustring_t *it = u->head;
   while (it) {
@@ -874,9 +888,9 @@ static void ustring_free_members (Ustring_t *u) {
   u->head = u->tail = u->current = NULL;
 }
 
-static void ustring_free (Ustring_t *u) {
+static void ustring_release (Ustring_t *u) {
   if (NULL is u) return;
-  ustring_free_members (u);
+  ustring_release_members (u);
   free (u);
 }
 
@@ -886,7 +900,7 @@ static Ustring_t *ustring_new (void) {
 
 static ustring_t *ustring_encode (Ustring_t *u, char *bytes,
             size_t len, int clear_line, int tabwidth, int curidx) {
-  if (clear_line) ustring_free_members (u);
+  if (clear_line) ustring_release_members (u);
 
   ifnot (len) {
     u->num_items = 0;
@@ -1210,20 +1224,22 @@ public ustring_T __init_ustring__ (void) {
   return (ustring_T) {
     .self = (ustring_self) {
       .new = ustring_new,
-      .free = ustring_free,
       .width = ustring_width,
       .encode = ustring_encode,
       .charlen = ustring_charlen,
+      .release = ustring_release,
       .validate = ustring_validate,
       .to_lower = ustring_to_lower,
       .to_upper = ustring_to_upper,
       .is_lower = ustring_is_lower,
       .is_upper = ustring_is_upper,
-      .at_nth_character = ustring_at_nth_character,
-      .is_nth_character_at = ustring_is_nth_character_at,
+      .char_num = ustring_char_num,
       .character = ustring_character,
       .swap_case = ustring_swap_case,
       .change_case = ustring_change_case,
+      .release_members = ustring_release_members,
+      .at_nth_character = ustring_at_nth_character,
+      .is_nth_character_at = ustring_is_nth_character_at,
       .get = (ustring_get_self) {
         .code_at = ustring_get_code_at,
         .num_characters = ustring_get_num_characters,

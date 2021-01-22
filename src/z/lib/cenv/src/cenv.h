@@ -73,8 +73,8 @@
 #define loop(__n__) for (int __i__ = 0; __i__ < __n__; __i__++)
 #endif
 
-#ifndef muttable
-#define muttable __attribute__((__weak__))
+#ifndef mutable
+#define mutable __attribute__((__weak__))
 #endif
 
 /* i changed my mind about those two
@@ -93,8 +93,8 @@
 
 /* we used to use (void) arg;, so we've to modify the references */
 
-#ifndef unused
-#define unused  __attribute__ ((unused))
+#ifndef UNUSED
+#define UNUSED  __attribute__ ((unused))
 #endif
 
 /* (not just) for purity */
@@ -152,6 +152,10 @@ typedef unsigned long ulong;
 
 #ifndef MAXLEN_NAME
 #define MAXLEN_NAME        16
+#endif
+
+#ifndef NAME_MAX
+#define NAME_MAX 255  /* bytes in a file name */
 #endif
 
 #ifndef PATH_SEP
@@ -823,19 +827,19 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_AUTH_TYPE
 #endif /* REQUIRE_AUTH_TYPE */
 
-#ifdef REQUIRE_E_TYPE
-  #ifndef E_TYPE_HDR
-  #define E_TYPE_HDR
-  #include <z/e.h>
-  #endif /* E_TYPE_HDR */
+#ifdef REQUIRE_I_TYPE
+  #ifndef I_TYPE_HDR
+  #define I_TYPE_HDR
+  #include <z/i.h>
+  #endif /* I_TYPE_HDR */
 
-  #if (REQUIRE_E_TYPE == DECLARE)
-  static  e_T eType;
-  #define E   eType.self
+  #if (REQUIRE_I_TYPE == DECLARE)
+  static  i_T iType;
+  #define I   iType.self
   #endif
 
-#undef REQUIRE_E_TYPE
-#endif /* REQUIRE_E_TYPE */
+#undef REQUIRE_I_TYPE
+#endif /* REQUIRE_I_TYPE */
 
 #ifdef REQUIRE_IMAP_TYPE
   #ifndef IMAP_TYPE_HDR
@@ -907,19 +911,34 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_VIDEO_TYPE
 #endif /* REQUIRE_VIDEO_TYPE */
 
-#ifdef REQUIRE_I_TYPE
-  #ifndef I_TYPE_HDR
-  #define I_TYPE_HDR
-  #include <z/i.h>
-  #endif /* I_TYPE_HDR */
+#ifdef REQUIRE_READLINE_TYPE
+  #ifndef READLINE_TYPE_HDR
+  #define READLINE_TYPE_HDR
+  #include <z/readline.h>
+  #endif /* READLINE_TYPE_HDR */
 
-  #if (REQUIRE_I_TYPE == DECLARE)
-  static  i_T iType;
-  #define I   iType.self
+  #if (REQUIRE_READLINE_TYPE == DECLARE)
+  static  readline_T readlineType;
+  #define Readline   readlineType.self
   #endif
 
-#undef REQUIRE_I_TYPE
-#endif /* REQUIRE_I_TYPE */
+#undef REQUIRE_READLINE_TYPE
+#endif /* REQUIRE_READLINE_TYPE */
+
+#ifdef REQUIRE_E_TYPE
+  #ifndef E_TYPE_HDR
+  #define E_TYPE_HDR
+  #include <z/e.h>
+  #endif /* E_TYPE_HDR */
+
+  #if (REQUIRE_E_TYPE == DECLARE)
+  typedef E_T e_T;
+  //static  e_T eType;
+  //#define E   eType.self
+  #endif
+
+#undef REQUIRE_E_TYPE
+#endif /* REQUIRE_E_TYPE */
 
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR
@@ -989,6 +1008,10 @@ typedef ptrdiff_t idx_t;
   #ifndef TERM_MACROS_HDR
   #define TERM_MACROS_HDR
 
+  #define TERM_ITALIC                 "\033[3m"
+  #define TERM_ITALIC_LEN             4
+  #define TERM_INVERTED               "\033[7m"
+  #define TERM_INVERTED_LEN           4
   #define TERM_LAST_RIGHT_CORNER      "\033[999C\033[999B"
   #define TERM_LAST_RIGHT_CORNER_LEN  12
   #define TERM_FIRST_LEFT_CORNER      "\033[H"
@@ -1041,7 +1064,9 @@ typedef ptrdiff_t idx_t;
 
   #define TERM_MAKE_COLOR(clr) \
   ({char b__[8];snprintf (b__, 8, TERM_SET_COLOR_FMT, (clr));b__;})
-  #define TERM_SEND_ESC_SEQ(seq) IO.fd.write (this->out_fd, seq, seq ## _LEN)
+  #define TERM_SEND_ESC_SEQ(seq_) IO.fd.write (this->out_fd, seq_, seq_ ## _LEN)
+  #define SEND_ESC_SEQ(fd_, seq_) IO.fd.write ((fd_), seq_, seq_ ## _LEN)
+
   #endif /* TERM_MACROS_HDR */
 
   #define TERM_DONOT_SAVE_SCREEN    (1 << 0)

@@ -229,6 +229,12 @@ static term_t *term_new (void) {
   return this;
 }
 
+static int *term_get_dim (term_t *this, int *dim) {
+  dim[0] = this->num_rows;
+  dim[1] = this->num_cols;
+  return dim;
+}
+
 public term_T __init_term__ (void) {
   __INIT__ (io);
   __INIT__ (string);
@@ -246,6 +252,9 @@ public term_T __init_term__ (void) {
       .init_size = term_init_size,
       .set_state_bit = term_set_state_bit,
       .unset_state_bit = term_unset_state_bit,
+      .get = (term_get_self) {
+        .dim = term_get_dim
+      },
       .screen = (term_screen_self) {
         .bell = term_screen_bell,
         .save = term_screen_save,

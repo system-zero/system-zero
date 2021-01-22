@@ -17,9 +17,9 @@ enum {
   I_OK = 0,
   I_ERR_OK_ELSE = 1
 };
-typedef void (*IPrintByte_cb) (FILE *, int);
-typedef void (*IPrintBytes_cb) (FILE *, const char *);
-typedef void (*IPrintFmtBytes_cb) (FILE *, const char *, ...);
+typedef int (*IPrintByte_cb) (FILE *, int);
+typedef int (*IPrintBytes_cb) (FILE *, const char *);
+typedef int (*IPrintFmtBytes_cb) (FILE *, const char *, ...);
 typedef int  (*ISyntaxError_cb) (i_t *, const char *);
 typedef int  (*IDefineFuns_cb) (i_t *);
 
@@ -42,7 +42,7 @@ typedef struct i_opts {
   ISyntaxError_cb syntax_error;
   IDefineFuns_cb define_funs_cb;
 
-  void *object;
+  void *user_data;
 } i_opts;
 
 #define IOpts(...) (i_opts) { \
@@ -58,13 +58,13 @@ typedef struct i_opts {
   .idir = NULL,               \
   .name_gen = 97,             \
   .max_script_size = 1 << 16, \
-  .object = NULL,             \
+  .user_data = NULL,          \
   __VA_ARGS__}
 
 typedef struct i_get_self {
   i_t *(*current) (i_T *);
   int (*current_idx) (i_T *);
-  void *(*object) (i_t *);
+  void *(*user_data) (i_t *);
 } i_get_self;
 
 typedef struct i_set_self {
@@ -72,7 +72,8 @@ typedef struct i_set_self {
 
   void
     (*idir) (i_t *, char *),
-    (*object) (i_t *, void *);
+    (*user_data) (i_t *, void *),
+    (*define_funs_cb) (i_t *, IDefineFuns_cb);
 
 } i_set_self;
 
@@ -95,6 +96,11 @@ typedef struct i_self {
     (*eval_file) (i_t *, const char *),
     (*load_file) (i_T *, i_t *, char *),
     (*eval_string) (i_t *, const char *, int, int);
+
+  ival_t
+    (*print_byte) (i_t *, char),
+    (*print_bytes) (i_t *, char *);
+
 } i_self;
 
 struct i_T {

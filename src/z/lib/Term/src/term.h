@@ -46,9 +46,14 @@ typedef struct term_screen_self {
     (*set_color) (term_t *, int);
 } term_screen_self;
 
+typedef struct term_get_self {
+  int *(*dim) (term_t *, int *);
+} term_get_self;
+
 typedef struct term_self {
   term_screen_self screen;
   term_cursor_self cursor;
+  term_get_self get;
 
   void
     (*release)   (term_t **),
