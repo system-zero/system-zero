@@ -1,4 +1,4 @@
-THIS_LIBNAME = string
+THIS_LIBNAME = sys
 
 NS      :=
 API     := 0
@@ -11,10 +11,10 @@ THISDIR := $(shell (cd . && pwd))
 
 THIS_LIBVERS  :=  $(VERSION)
 
-THIS_HEADER    = $(THIS_LIBNAME)t.h
-THIS_LIBSRC    = lib$(THIS_LIBNAME).c
-LIBNAME        = $(THIS_LIBNAME)-$(THIS_LIBVERS)
-THIS_LIB       = lib$(LIBNAME)
+THIS_HEADER     = $(THIS_LIBNAME).h
+THIS_LIBSRC     = lib$(THIS_LIBNAME).c
+LIBNAME         = $(THIS_LIBNAME)-$(THIS_LIBVERS)
+THIS_LIB        = lib$(LIBNAME)
 
 CC            := gcc
 CC_STD        := -std=c11
@@ -23,14 +23,14 @@ SYSKERNEL     := $(shell uname -s)
 SYSARCH       := $(shell uname -m)
 SYS           := $(SYSKERNEL)-$(SYSARCH)
 
-DATADIR        =  $(THISDIR)/data
+DATADIR    =  $(THISDIR)/data
 
-SYSDIR        := $(THISDIR)/../../../sys
-SYSLIBDIR      = $(SYSDIR)/lib/$(NS)
-SYSBINDIR      = $(SYSDIR)/bin
-SYSINCDIR      = $(SYSDIR)/include/$(NS)
-SYSDATADIR     = $(SYSDIR)/data
-SYSTMPDIR      = $(SYSDIR)/tmp
+SYSDIR    := $(THISDIR)/../../sys
+SYSLIBDIR  = $(SYSDIR)/lib/$(NS)
+SYSBINDIR  = $(SYSDIR)/bin
+SYSINCDIR  = $(SYSDIR)/include/$(NS)
+SYSDATADIR = $(SYSDIR)/data
+SYSTMPDIR  = $(SYSDIR)/tmp
 
 THIS_SHAREDLIB := $(SYSLIBDIR)/$(THIS_LIB).so
 THIS_STATICLIB := $(SYSLIBDIR)/$(THIS_LIB).a
@@ -42,11 +42,10 @@ DEBUG_FLAGS := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused
 # -Wno-override-init: is for designated initializers and both compilers complain.
 # it is included in extra in gcc, but clang needs this unconditionally
 ifneq ($(DEBUG), 1)
-  ifeq (-$(CC), -clang
+  ifeq (-$(CC), -clang)
     BASE_FLAGS  +=  -Wno-override-init
   endif
 endif
-
 
 ifneq (-$(CC), -tcc)
   DEBUG_FLAGS += -Werror
@@ -83,7 +82,8 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-LIBFLAGS := -I$(SYSINCDIR) $(FLAGS)
+LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
+LIBFLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lcstring-$(VERSION)
 
 all: shared static
 
@@ -115,7 +115,7 @@ clean-static: clean-header
 	@$(TEST) ! -f $(THIS_STATICLIB) || $(RM)  $(THIS_STATICLIB)
 
 clean-header:
-	@$(TEST) ! -f $(SYSINCDIR)/$(THIS_HEADER)     || $(RM) $(SYSINCDIR)/$(THIS_HEADER)
+	@$(TEST) ! -f $(SYSINCDIR)/$(THIS_HEADER) || $(RM) $(SYSINCDIR)/$(THIS_HEADER)
 
 AR = ar rs
 TEST = test

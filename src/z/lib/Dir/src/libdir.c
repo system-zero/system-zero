@@ -244,7 +244,7 @@ static int dir_make (char *dir, mode_t mode, dir_opts opts) {
     if (errno is EEXIST)
       return (dir_is_directory (dir) ? OK : NOTOK);
 
-    DIR_ERROR ("mkdir: %s %s\n", dir, strerror (errno));
+    DIR_ERROR ("mkdir: %s, %s\n", dir, strerror (errno));
 
     return NOTOK;
   }

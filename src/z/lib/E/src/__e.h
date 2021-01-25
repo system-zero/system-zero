@@ -251,7 +251,6 @@ enum {
   E_T *__E__;                    \
   __me__ ## _T *Me;              \
   msg_T *__Msg__;                \
-  vsys_T *__Vsys__;              \
   video_T *__Video__;            \
   error_T *__Error__;            \
   rline_T *__Rline__
@@ -864,7 +863,6 @@ typedef struct E_prop {
   ed_self __Ed__;
   Reg_t shared_reg[1];
 
-  //i_T *__I__;
   IDefineFuns_cb i_define_funs_cb;
 
   int num_at_exit_cbs;
@@ -916,8 +914,6 @@ private arg_t    *rline_get_arg (rline_t *, int);
 private string_t *rline_get_string (rline_t *);
 private string_t *rline_get_anytype_arg (rline_t *, char *);
 
-private long       vsys_get_clock_sec (clockid_t clock_id);
-private string_t  *vsys_which (char *, char *);
 private Vstring_t  *cstring_chop (char *, char, Vstring_t *, StrChop_cb, void *);
 
 /* this code belongs to? */
@@ -1298,10 +1294,8 @@ do {                                                                \
 #define Ed My(__Ed__)
 #define Win My(__Win__)
 #define Buf My(__Buf__)
-//#define I My(__I__)
 
 #define Msg My(__Msg__)
-#define Vsys My(__Vsys__)
 #define Error My(__Error__)
 #define Video My(__Video__)
 #define Rline My(__Rline__)

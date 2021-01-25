@@ -34,7 +34,7 @@ THISDIR        = $(shell (cd . && pwd))
 # is not quite portable in macOS, because this Operating System lacks a realpath
 # implementation by default (it is available however through GNU coreutils macOS
 # package made for this OS. On a later development phase, we may provide an own
-# implementation or realpath, as it is quite useful to sanitizes paths).
+# implementation or realpath, as it is quite useful to sanitize paths).
 
 # our sources namespace. We want this also in a constant state (again this is not possible)
 SRCDIR         = $(THISDIR)
@@ -142,9 +142,9 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Re_Type              = Re
     Z_RE_SRCDIR          = $(Z_SRCLIBDIR)/$(Re_Type)/src
 
-    # Video Type
-    Video_Type           = Video
-    Z_VIDEO_SRCDIR       = $(Z_SRCLIBDIR)/$(Video_Type)/src
+    # Sys Type
+    Sys_Type             = Sys
+    Z_SYS_SRCDIR         = $(Z_SRCLIBDIR)/$(Sys_Type)/src
 
     # E Type
     E_Type               = E
@@ -153,6 +153,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     # I Type
     I_Type               = I
     Z_I_SRCDIR           = $(Z_SRCLIBDIR)/$(I_Type)/src
+
+    # Video Type
+    Video_Type           = Video
+    Z_VIDEO_SRCDIR       = $(Z_SRCLIBDIR)/$(Video_Type)/src
 
     # Readline Type
     Readline_Type        = Readline
@@ -218,6 +222,10 @@ Z_SU        := $(ZC_SU)
   BASE_FLAGS    += -g -O2 -march=native -fdollars-in-identifiers
   BASE_FLAGS    += -DDECLARE=1 -DDONOT_DECLARE=0
   DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
+
+  ifeq (-$(CC), -clang)
+    BASE_FLAGS  +=  -Wno-unused-command-line-argument
+  endif
 
   DEBUG         := 1
   RPATH         := 1
@@ -452,6 +460,20 @@ clean-libre-shared:
 clean-libre-static:
 	@cd $(Z_RE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libsys-shared: Env cenv libcstring-shared libstring-shared libfile-shared\
+               libsmap-shared
+	@cd $(Z_SYS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libsys-static: Env cenv libcstring-static libstring-static libfile-static\
+               libsmap-static
+	@cd $(Z_SYS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libsys-shared:
+	@cd $(Z_SYS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libsys-static:
+	@cd $(Z_SYS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 libvideo-shared: Env cenv libcstring-shared libstring-shared libustring-shared libio-shared
 	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
@@ -466,12 +488,14 @@ clean-libvideo-static:
 #----------------------------------------------------------#
 libe-shared: Env cenv dlist libstring-shared libcstring-shared libvstring-shared libustring-shared\
              libpath-shared libfile-shared libdir-shared libterm-shared libio-shared\
-             libre-shared libimap-shared libsmap-shared libi-shared
+             libre-shared libimap-shared libsmap-shared libi-shared\
+             libsys-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libe-static: Env cenv dlist libstring-static libcstring-static libvstring-static libustring-static\
              libpath-static libfile-static libdir-static libterm-static libio-static\
-             libre-static libimap-static libsmap-static libi-static
+             libre-static libimap-static libsmap-static libi-static\
+             libsys-static
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libe-shared:
@@ -645,6 +669,22 @@ clean-e-shared:
 clean-e-static:
 	@cd $(ZA_E_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
+  # sys
+  ZA_SYS          = sys
+  ZA_SYS_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SYS)/src
+
+sys-shared: libsys-shared libstring-shared libfile-shared libio-shared libargparse-shared
+	@cd $(ZA_SYS_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+sys-static: libsys-static libstring-static libfile-static libio-static libargparse-static
+	@cd $(ZA_SYS_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-sys-shared:
+	@cd $(ZA_SYS_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-sys-static:
+	@cd $(ZA_SYS_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv dlist\
               libstring-shared libustring-shared libcstring-shared\
@@ -654,7 +694,8 @@ zero-shared:  Env cenv dlist\
               libfile-shared libpath-shared libterm-shared\
               libimap-shared libsmap-shared libvideo-shared\
               zs-shared zsu-shared\
-              dir-shared file-shared io-shared term-shared
+              dir-shared file-shared io-shared term-shared\
+              sys-shared
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv dlist\
@@ -665,7 +706,8 @@ zero-static:  Env cenv dlist\
               libfile-static libpath-static libterm-static\
               libimap-static libsmap-static libvideo-static\
               zs-static\
-              dir-static file-static io-static term-static
+              dir-static file-static io-static term-static\
+              sys-static
 
 zero-clean-shared:\
               clean-cenv clean-dlist\
@@ -680,7 +722,8 @@ zero-clean-shared:\
               clean-libsmap-shared clean-libvideo-shared\
               clean-libre-shared\
               clean-zs-shared clean-zsu-shared clean-dir-shared\
-              clean-file-shared clean-io-shared clean-term-shared
+              clean-file-shared clean-io-shared clean-term-shared\
+              clean-sys-shared
 
 zero-clean-static:\
               clean-cenv clean-dlist\
@@ -697,6 +740,7 @@ zero-clean-static:\
               clean-zs-static clean-zsu-static\
               clean-dir-static\
               clean-file-static clean-io-static clean-term-static\
+              clean-sys-static
 
 all: shared static
 

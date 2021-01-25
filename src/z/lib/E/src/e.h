@@ -827,24 +827,6 @@ typedef struct error_T {
   error_self self;
 } error_T;
 
-typedef struct vsys_stat_self {
-  char *(*mode_to_string) (char *, mode_t);
-} vsys_stat_self;
-
-typedef struct vsys_get_self {
-  long (*clock_sec) (clockid_t);
-} vsys_get_self;
-
-typedef struct vsys_self {
-  vsys_stat_self stat;
-  vsys_get_self get;
-  string_t *(*which) (char *, char *);
-} vsys_self;
-
-typedef struct vsys_T {
-  vsys_self self;
-} vsys_T;
-
 typedef struct buf_iter_self {
   void (*free) (buf_t *, bufiter_t *);
 
@@ -1465,7 +1447,6 @@ typedef struct ed_T {
   i_T __I__;
 
   msg_T __Msg__;
-  vsys_T __Vsys__;
   rline_T __Rline__;
   video_T __Video__;
   error_T __Error__;

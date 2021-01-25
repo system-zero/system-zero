@@ -31,12 +31,13 @@
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
-#define REQUIRE_RE_TYPE       DECLARE
-#define REQUIRE_TERM_TYPE     DECLARE
+#define REQUIRE_I_TYPE        DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
+#define REQUIRE_RE_TYPE       DECLARE
+#define REQUIRE_SYS_TYPE      DECLARE
+#define REQUIRE_TERM_TYPE     DECLARE
 #define REQUIRE_IMAP_TYPE     DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
-#define REQUIRE_I_TYPE        DECLARE
 #define REQUIRE_PROC_TYPE     DECLARE
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
@@ -2318,65 +2319,6 @@ private void buf_undo_free (buf_t *this) {
   free ($my(redo));
 }
 
-/* from slang sources slsh/slsh.c
- * Copyright (C) 2005-2017,2018 John E. Davis
- * 
- * This file is part of the S-Lang Library.
- * 
- * The S-Lang Library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version.
- */
-
-private char *vsys_stat_mode_to_string (char *mode_string, mode_t mode) {
-  if (S_ISREG(mode)) mode_string[0] = '-';
-  else if (S_ISDIR(mode)) mode_string[0] = 'd';
-  else if (S_ISLNK(mode)) mode_string[0] = 'l';
-  else if (S_ISCHR(mode)) mode_string[0] = 'c';
-  else if (S_ISFIFO(mode)) mode_string[0] = 'p';
-  else if (S_ISSOCK(mode)) mode_string[0] = 's';
-  else if (S_ISBLK(mode)) mode_string[0] = 'b';
-
-  if (mode & S_IRUSR) mode_string[1] = 'r'; else mode_string[1] = '-';
-  if (mode & S_IWUSR) mode_string[2] = 'w'; else mode_string[2] = '-';
-  if (mode & S_IXUSR) mode_string[3] = 'x'; else mode_string[3] = '-';
-  if (mode & S_ISUID) mode_string[3] = 's';
-
-  if (mode & S_IRGRP) mode_string[4] = 'r'; else mode_string[4] = '-';
-  if (mode & S_IWGRP) mode_string[5] = 'w'; else mode_string[5] = '-';
-  if (mode & S_IXGRP) mode_string[6] = 'x'; else mode_string[6] = '-';
-  if (mode & S_ISGID) mode_string[6] = 'g';
-
-  if (mode & S_IROTH) mode_string[7] = 'r'; else mode_string[7] = '-';
-  if (mode & S_IWOTH) mode_string[8] = 'w'; else mode_string[8] = '-';
-  if (mode & S_IXOTH) mode_string[9] = 'x'; else mode_string[9] = '-';
-  if (mode & S_ISVTX) mode_string[9] = 't';
-
-  mode_string[10] = '\0';
-  return mode_string;
-}
-
-private long vsys_get_clock_sec (clockid_t clock_id) {
-  struct timespec cspec;
-  clock_gettime (clock_id, &cspec);
-  return cspec.tv_sec;
-}
-
-private vsys_T __init_vsys__ (void) {
-  return (vsys_T) {
-    .self = (vsys_self) {
-      .which = vsys_which,
-      .get = (vsys_get_self) {
-        .clock_sec = vsys_get_clock_sec
-      },
-      .stat = (vsys_stat_self) {
-        .mode_to_string = vsys_stat_mode_to_string
-      }
-    }
-  };
-}
-
 private int __env_check_directory__ (char *dir, char *dir_descr,
                int exit_on_error, int exit_on_warning, int warn) {
   int retval = OK;
@@ -2429,7 +2371,7 @@ private int __env_check_directory__ (char *dir, char *dir_descr,
 
   if (warn) {
     char mode_string[12];
-    vsys_stat_mode_to_string (mode_string, st.st_mode);
+    File.mode.stat_to_string (mode_string, st.st_mode);
     ifnot (Cstring.eq (mode_string, "drwx------")) {
       fprintf (stderr, "Warning: (%s) directory |%s| permissions is not 0700 or drwx------\n",
          dir_descr, dir);
@@ -2520,8 +2462,8 @@ private venv_t *venv_new (void) {
   char *path = getenv ("PATH");
   env->path = (path is NULL) ? NULL : String.new_with (path);
 
-  env->diff_exec = vsys_which ("diff", env->path->bytes);
-  env->xclip_exec = vsys_which ("xclip", env->path->bytes);
+  env->diff_exec = Sys.which ("diff", env->path->bytes);
+  env->xclip_exec = Sys.which ("xclip", env->path->bytes);
 
   env->env_str = String.new (8);
 
@@ -2816,7 +2758,7 @@ private void buf_set_autosave (buf_t *this, long minutes) {
   if (minutes > (60 * 24)) minutes = (60 * 24);
   $my(autosave) = minutes * 60;
   ifnot ($my(saved_sec))
-    Vsys.get.clock_sec (DEFAULT_CLOCK);
+    Sys.get.clock_sec (DEFAULT_CLOCK);
 }
 
 private void buf_set_on_emptyline (buf_t *this, char *str) {
@@ -3412,7 +3354,6 @@ private buf_t *win_buf_init (win_t *w, int at_frame, int flags) {
   $my(__I__)       = $myparents(__I__);
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
-  $my(__Vsys__)    = $myparents(__Vsys__);
   $my(__Error__)   = $myparents(__Error__);
   $my(__Video__)   = $myparents(__Video__);
   $my(__Rline__)   = $myparents(__Rline__);
@@ -3722,7 +3663,6 @@ private win_t *ed_win_init (ed_t *ed, char *name, WinDimCalc_cb dim_calc_cb) {
   $my(__I__)       = $myparents(__I__);
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
-  $my(__Vsys__)    = $myparents(__Vsys__);
   $my(__Error__)   = $myparents(__Error__);
   $my(__Video__)   = $myparents(__Video__);
   $my(__Rline__)   = $myparents(__Rline__);
@@ -8494,36 +8434,6 @@ private int buf_read_from_file (buf_t *this, char *fname) {
   return retval;
 }
 
-private string_t *vsys_which (char *ex, char *path) {
-  if (NULL is ex or NULL is path) return NULL;
-  size_t
-    ex_len = bytelen (ex),
-    p_len = bytelen (path);
-
-  ifnot (ex_len and p_len) return NULL;
-  char sep[2]; sep[0] = PATH_SEP; sep[1] = '\0';
-
-  char *alpath = Cstring.dup (path, p_len);
-  char *sp = strtok (alpath, sep);
-
-  string_t *ex_path = NULL;
-
-  while (sp) {
-    size_t toklen = bytelen (sp) + 1;
-    char tok[ex_len + toklen + 1];
-    snprintf (tok, ex_len + toklen + 1, "%s/%s", sp, ex);
-    if (File.is_executable (tok)) {
-      ex_path = String.new_with_len (tok, toklen + ex_len);
-      break;
-    }
-
-    sp = strtok (NULL, sep);
-  }
-
-  free (alpath);
-  return ex_path;
-}
-
 static int buf_proc_read_cb (proc_t *proc, FILE *stream, FILE *fp) {
   buf_t *this = Proc.get.user_data (proc);
   fp_t fpt = {.fp = fp};
@@ -11829,7 +11739,7 @@ theend:
   if ($my(flags) & BUF_IS_MODIFIED)
     if ($my(autosave) > 0) {
       long cur_sec = $my(saved_sec);
-      $my(saved_sec) = Vsys.get.clock_sec (DEFAULT_CLOCK);
+      $my(saved_sec) = Sys.get.clock_sec (DEFAULT_CLOCK);
       if (cur_sec > 0) {
         if ($my(saved_sec) - cur_sec > $my(autosave))
           self(write, FORCE);
@@ -13665,21 +13575,21 @@ private ed_T *editor_new (void) {
         .string = ed_error_string
       },
     },
-    .__Vsys__ = __init_vsys__ (),
     .__Video__ = __init_video__ (),
     .__Rline__ = __init_rline__ ()
   };
 
-  __INIT__ (cstring);
   __INIT__ (string);
+  __INIT__ (cstring);
   __INIT__ (vstring);
   __INIT__ (ustring);
+  __INIT__ (re);
+  __INIT__ (io);
+  __INIT__ (dir);
+  __INIT__ (sys);
   __INIT__ (file);
   __INIT__ (path);
-  __INIT__ (dir);
-  __INIT__ (re);
   __INIT__ (term);
-  __INIT__ (io);
   __INIT__ (imap);
   __INIT__ (smap);
   __INIT__ (proc);
@@ -13739,7 +13649,6 @@ private ed_t *ed_init (E_T *E, ed_opts opts) {
   $my(__I__)       = &E->__Ed__->__I__;
   $my(__E__)       = E;
   $my(__Msg__)     = &E->__Ed__->__Msg__;
-  $my(__Vsys__)    = &E->__Ed__->__Vsys__;
   $my(__Video__)   = &E->__Ed__->__Video__;
   $my(__Rline__)   = &E->__Ed__->__Rline__;
   $my(__Error__)   = &E->__Ed__->__Error__;
@@ -14476,7 +14385,6 @@ private ed_T *ed_init_prop (ed_T *this) {
   $my(__I__)       = &this->__I__;
   $my(__E__)       = $my(__E__);
   $my(__Msg__)     = &this->__Msg__;
-  $my(__Vsys__)    = &this->__Vsys__;
   $my(__Error__)   = &this->__Error__;
   $my(__Rline__)   = &this->__Rline__;
   $my(__Video__)   = &this->__Video__;
@@ -14885,6 +14793,8 @@ public void __deinit_ed__ (E_T **thisp) {
   free (this->__Ed__);
 
   __deinit_i__ (&__I__);
+
+  __deinit_sys__ ();
 
   if ($my(num_at_exit_cbs)) free ($my(at_exit_cbs));
 

@@ -9,23 +9,28 @@
  * the newer POSIX and X/OPEN standards. 
  */
 
+#ifndef STD_POSIX_C_SOURCE_HDR
+#define STD_POSIX_C_SOURCE_HDR
 #define _POSIX_C_SOURCE 200809L
+#endif
+
+#ifndef STD_XOPEN_SOURCE_HDR
+#define STD_XOPEN_SOURCE_HDR
 #define _XOPEN_SOURCE   700
+#endif
 
 #ifdef REQUIRE_STD_DEFAULT_SOURCE
-  #ifndef _DEFAULT_SOURCE
+  #ifndef STD_DEFAULT_SOURCE_HDR
+  #define STD_DEFAULT_SOURCE_HDR
   #define _DEFAULT_SOURCE
   #endif
-
-#undef REQUIRE_STD_DEFAULT_SOURCE
 #endif
 
 #ifdef REQUIRE_STD_GNU_SOURCE
-  #ifndef _GNU_SOURCE
+  #ifndef STD_GNU_SOURCE
+  #define STD_GNU_SOURCE
   #define _GNU_SOURCE
   #endif
-
-#undef REQUIRE_STD_GNU_SOURCE
 #endif
 
 /* we need those to be funtional in this unit */
@@ -788,6 +793,12 @@ typedef ptrdiff_t idx_t;
 #ifdef REQUIRE_DIR_TYPE
   #ifndef DIR_TYPE_HDR
   #define DIR_TYPE_HDR
+
+  #ifndef SYS_STAT_HDR
+  #define SYS_STAT_HDR
+  #include <sys/stat.h>
+  #endif /* SYS_STAT_HDR */
+
   #include <z/dir.h>
   #endif /* DIR_TYPE_HDR */
 
@@ -876,12 +887,26 @@ typedef ptrdiff_t idx_t;
   #endif /* ARGPARSE_TYPE_HDR */
 
   #if (REQUIRE_ARGPARSE_TYPE == DECLARE)
-  static  argparse_T ArgparseType;
+  static  argparse_T argparseType;
   #define Argparse   argparseType.self
   #endif
 
 #undef REQUIRE_ARGPARSE_TYPE
-#endif /* REQUIRE_DIR_TYPE */
+#endif /* REQUIRE_ARGPARSE_TYPE */
+
+#ifdef REQUIRE_SYS_TYPE
+  #ifndef SYS_TYPE_HDR
+  #define SYS_TYPE_HDR
+  #include <z/sys.h>
+  #endif /* SYS_TYPE_HDR */
+
+  #if (REQUIRE_SYS_TYPE == DECLARE)
+  static  sys_T sysType;
+  #define Sys   sysType.self
+  #endif
+
+#undef REQUIRE_SYS_TYPE
+#endif /* REQUIRE_SYS_TYPE */
 
 #ifdef REQUIRE_RE_TYPE
   #ifndef RE_TYPE_HDR
@@ -1171,21 +1196,25 @@ typedef ptrdiff_t idx_t;
 #define DECLARE 1
 #endif
 
-/* Those application routines are the quite the same and is useless
+/* Those application routines are quite the same and is useless
  * to repeat ourselves.
- * This will allow for rapid development.
  */
 #define __INIT__(_T_) _T_ ## Type = __init_ ## _T_ ## __ ()
 
-#define __INIT_APP__   \
-  __INIT__ (argparse); \
-  __INIT__ (io);       \
-  int version = 0;     \
-  int retval  = 0;     \
+#define __INIT_APP__        \
+  __INIT__ (argparse);      \
+  __INIT__ (io);            \
+  int version = 0;          \
+  int retval  = 0;          \
+  char *progname = argv[0]; \
+  (void) progname;          \
   argparse_t argparser
 
-#define PARSE_ARGS                               \
-  Argparse.init (&argparser, options, usage, 0); \
+#define PARSE_ARGS                                               \
+  int argparse_flags = 0;                                        \
+  if (0 == isatty (STDIN_FILENO))                                \
+    argparse_flags |= ARGPARSE_DONOT_EXIT_ON_UNKNOWN;            \
+  Argparse.init (&argparser, options, usage, argparse_flags);    \
   argc = Argparse.exec (&argparser, argc, (const char **) argv); \
   CHECK_VERSION
 
@@ -1214,6 +1243,11 @@ typedef ptrdiff_t idx_t;
     #endif
 
     #ifndef WITHOUT_ARGPARSE
+      #ifndef UNISTD_HDR
+      #define UNISTD_HDR
+      #include <unistd.h>
+      #endif
+
       #ifndef ARGPARSE_TYPE_HDR
       #define ARGPARSE_TYPE_HDR
       #include <z/argparse.h>
@@ -1221,6 +1255,11 @@ typedef ptrdiff_t idx_t;
     #endif
 
     #ifndef WITHOUT_IO
+      #ifndef STDIO_HDR
+      #define STDIO_HDR
+      #include <stdio.h>
+      #endif
+
       #ifndef IO_TYPE_HDR
       #define IO_TYPE_HDR
       #include <z/io.h>

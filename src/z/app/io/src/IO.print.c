@@ -58,7 +58,9 @@ int main (int argc, char **argv) {
   CHECK_ARGC;
 
   for (int i = 0; i < argc; i++) {
-    String.append_byte (out, ' ');
+    if (i)
+      String.append_byte (out, ' ');
+
     String.append_with (out, argv[i]);
   }
 

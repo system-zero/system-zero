@@ -29,7 +29,14 @@ static string_t *smap_get (Smap_t *smap, char *key) {
 }
 
 static uint smap_set (Smap_t *smap, char *key, string_t *val) {
-  return MAP_SET(smap_t, smap, key, val);
+  string_t *old = smap_get (smap, key);
+
+  uint idx = MAP_SET(smap_t, smap, key, val);
+
+  ifnot (NULL is old)
+    String.release (old);
+
+  return idx;
 }
 
 static int smap_key_exists (Smap_t *smap, char *key) {

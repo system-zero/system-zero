@@ -1,4 +1,4 @@
-NAME    := E
+NAME    := Sys
 
 NS      :=
 API     := 0
@@ -22,7 +22,6 @@ SYSBINDIR  = $(SYSDIR)/bin
 SYSINCDIR  = $(SYSDIR)/include/$(NS)
 SYSTMPDIR  = $(SYSDIR)/tmp
 
-#BASE_FLAGS  := -g -O2 -march=native -fvisibility=hidden -fdollars-in-identifiers
 BASE_FLAGS  := -g -O2 -march=native -fdollars-in-identifiers
 
 DEBUG_FLAGS := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
@@ -70,48 +69,41 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
-FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
-FLAGS += -lterm-$(VERSION)
-FLAGS += -le-$(VERSION) -li-$(VERSION) -lproc-$(VERSION)
-FLAGS += -limap-$(VERSION) -lsmap-$(VERSION)
+FLAGS += -lio-$(VERSION) -largparse-$(VERSION) -lstring-$(VERSION) -lsys-$(VERSION)
+FLAGS += -lfile-$(VERSION) -lsmap-$(VERSION)
 
-e:shared static
+sys: shared static
 
 shared: clean-shared\
-    e-shared
+    sys-chroot-shared
 
 static: clean-static\
-    e-static
+    sys-chroot-static
 
 clean-shared:\
-    clean-e-shared
+    clean-sys-chroot-shared
 
 clean-static:\
-    clean-e-static
+    clean-sys-chroot-static
 #-----------------------------------------------#
-E = $(NAME)
+SYS_CHROOT = $(NAME).chroot
 
-FLAGS += -le-$(VERSION) -lstring-$(VERSION)
+SYS_CHROOT_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION)
+SYS_CHROOT_STATIC_FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lpath-$(VERSION)
 
-E_STATIC_FLAGS = -lpath-$(VERSION)\
-                 -lvstring-$(VERSION) -lstring-$(VERSION)\
-                 -lustring-$(VERSION) -lcstring-$(VERSION)\
-                 -lfile-$(VERSION) -ldir-$(VERSION)\
-                 -li-$(VERSION) -lre-$(VERSION) -lsys-$(VERSION)
+sys-chroot-shared:
+	$(CC) $(SYS_CHROOT).c $(FLAGS) -o $(SYSBINDIR)/$(SYS_CHROOT)-shared
+	@$(LN_S) -vf $(SYSBINDIR)/$(SYS_CHROOT)-shared $(SYSBINDIR)/$(SYS_CHROOT)
 
-e-shared:
-	$(CC) $(E).c $(FLAGS) -o $(SYSBINDIR)/$(E)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(E)-shared $(SYSBINDIR)/$(E)
+sys-chroot-static:
+	$(CC) $(SYS_CHROOT).c $(FLAGS) $(SYS_CHROOT_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(SYS_CHROOT)-static
 
-e-static:
-	$(CC) $(E).c $(FLAGS) $(E_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(E)-static
+clean-sys-chroot-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(SYS_CHROOT)-shared || $(RM) $(SYSBINDIR)/$(SYS_CHROOT)-shared
+	@$(TEST) ! -L $(SYSBINDIR)/$(SYS_CHROOT)        || $(RM) $(SYSBINDIR)/$(SYS_CHROOT)
 
-clean-e-shared:
-	@$(TEST) ! -f $(SYSBINDIR)/$(E)-shared || $(RM) $(SYSBINDIR)/$(E)-shared
-	@$(TEST) ! -L $(SYSBINDIR)/$(E) || $(RM) $(SYSBINDIR)/$(E)
-
-clean-e-static:
-	@$(TEST) ! -f $(SYSBINDIR)/$(E)-static || $(RM) $(SYSBINDIR)/$(E)-static
+clean-sys-chroot-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(SYS_CHROOT)-static       || $(RM) $(SYSBINDIR)/$(SYS_CHROOT)-static
 #-----------------------------------------------#
 
 TEST = test
