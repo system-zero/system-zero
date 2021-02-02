@@ -15,12 +15,6 @@
 
 #define DEFAULT_CLOCK CLOCK_REALTIME
 
-#ifndef RLINE_HISTORY_NUM_ENTRIES
-#define RLINE_HISTORY_NUM_ENTRIES 20
-#endif
-
-#define RLINE_LAST_COMPONENT_NUM_ENTRIES 10
-
 #ifndef UNDO_NUM_ENTRIES
 #define UNDO_NUM_ENTRIES 40
 #endif
@@ -412,8 +406,6 @@ typedef struct undo_t undo_t;
 typedef struct hist_t hist_t;
 typedef struct menu_t menu_t;
 typedef struct mark_t mark_t;
-typedef struct video_t video_t;
-typedef struct rline_t rline_t;
 typedef struct ftype_t ftype_t;
 typedef struct search_t search_t;
 typedef struct Search_t Search_t;
@@ -421,7 +413,6 @@ typedef struct action_t action_t;
 typedef struct Action_t Action_t;
 typedef struct balanced_t balanced_t;
 typedef struct histitem_t histitem_t;
-typedef struct h_rlineitem_t h_rlineitem_t;
 typedef struct buf_t buf_t;
 typedef struct bufinfo_t bufinfo_t;
 typedef struct buf_prop buf_prop;
@@ -436,8 +427,6 @@ typedef struct edinfo_t edinfo_t;
 typedef struct ed_prop ed_prop;
 typedef struct ed_T ed_T;
 
-typedef struct video_T video_T;
-
 typedef struct E_prop E_prop;
 typedef struct E_self E_self;
 typedef struct E_T E_T;
@@ -448,11 +437,8 @@ typedef struct ed_opts ed_opts;
  * something is gonna change in future, if it's not just a signle change it is
  * certainly (easier) searchable */
 
-typedef int  (*Rline_cb) (buf_t **, rline_t *, utf8);
+typedef int  (*Readline_cb) (buf_t **, readline_t *, utf8);
 typedef int  (*StrChop_cb) (Vstring_t *, char *, void *);
-typedef int  (*RlineAtBeg_cb) (rline_t **);
-typedef int  (*RlineAtEnd_cb) (rline_t **);
-typedef int  (*RlineTabCompletion_cb) (rline_t *);
 typedef int  (*MenuProcessList_cb) (menu_t *);
 typedef int  (*VisualLwMode_cb) (buf_t **, int, int, Vstring_t *, utf8, char *);
 typedef int  (*VisualCwMode_cb) (buf_t **, int, int, string_t *, utf8, char *);
@@ -655,17 +641,17 @@ struct ed_opts {
   EdAtInit_cb init_cb;
 };
 
-#define EdOpts(...) (ed_opts) { \
-  .first_row = 1,               \
-  .first_col = 1,               \
-  .num_rows = 0,                \
-  .num_cols = 0,                \
-  .flags = 0,                   \
-  .num_win = 1,                 \
-  .term_flags = 0,              \
-  .init_cb = NULL,              \
-  .hs_file = NULL,              \
-  .hrl_file = NULL,             \
+#define EdOpts(...) (ed_opts) {      \
+  .first_row = 1,                    \
+  .first_col = 1,                    \
+  .num_rows = 0,                     \
+  .num_cols = 0,                     \
+  .flags = ED_INIT_OPT_LOAD_HISTORY, \
+  .num_win = 1,                      \
+  .term_flags = 0,                   \
+  .init_cb = NULL,                   \
+  .hs_file = NULL,                   \
+  .hrl_file = NULL,                  \
   __VA_ARGS__}
 
 #define FtypeOpts(...) (ftype_t) {               \
@@ -707,99 +693,6 @@ typedef struct screen_dim_opts {
   .num_cols = 0,                               \
   .init_term = 1,                              \
   __VA_ARGS__ }
-
-typedef struct video_set_self {
-  void (*row_with) (video_t *, int, char *);
-} video_set_self;
-
-typedef struct video_draw_self {
-  void
-    (*row_at) (video_t *, int),
-    (*all) (video_t *);
-
-  int
-    (*bytes) (video_t *, char *, size_t);
-} video_draw_self;
-
-typedef struct video_self {
-  video_set_self set;
-  video_draw_self draw;
-
-  video_t
-    *(*new) (int, int, int, int, int);
-
-  void
-    (*free) (video_t *),
-    (*flush) (video_t *, string_t *);
-} video_self;
-
-typedef struct video_T {
-  video_self self;
-} video_T;
-
-typedef struct rline_set_self {
-  void
-    (*line) (rline_t *, char *, size_t),
-    (*opts) (rline_t *, int),
-    (*state) (rline_t *, int),
-    (*opts_bit) (rline_t *, int),
-    (*state_bit) (rline_t *, int),
-    (*visibility) (rline_t *, int),
-    (*prompt_char) (rline_t *, char),
-    (*user_object) (rline_t *, void *);
-} rline_set_self;
-
-typedef struct rline_get_self {
-  string_t
-     *(*line) (rline_t *),
-     *(*command) (rline_t *),
-     *(*anytype_arg) (rline_t *, char *);
-
-  Vstring_t *(*anytype_args) (rline_t *, char *);
-
-  arg_t *(*arg) (rline_t *, int);
-
-  int
-    (*opts) (rline_t *),
-    (*state) (rline_t *),
-    (*buf_range) (rline_t *, buf_t *, int *);
-
-  void *(*user_object) (rline_t *);
-
-  Vstring_t *(*arg_fnames) (rline_t *, int);
-} rline_get_self;
-
-typedef struct rline_arg_self {
-  int (*exists) (rline_t *, char *);
-} rline_arg_self;
-
-typedef struct rline_history_self {
-  void (*push) (rline_t *);
-} rline_history_self;
-
-typedef struct rline_self {
-  rline_get_self get;
-  rline_set_self set;
-  rline_arg_self arg;
-  rline_history_self history;
-
-  rline_t
-    *(*edit) (rline_t *),
-    *(*parse) (rline_t *, buf_t *);
-
-  void
-    (*free) (rline_t *),
-    (*clear) (rline_t *),
-    (*write_and_break) (rline_t *);
-
-  int
-    (*exec) (rline_t *, buf_t **);
-
-} rline_self;
-
-typedef struct rline_T {
-  rline_self self;
-} rline_T;
 
 typedef struct msg_self {
   void
@@ -1143,7 +1036,7 @@ typedef struct buf_self {
     *(*info) (buf_t *);
 
   int
-    (*rline) (buf_t **, rline_t *),
+    (*readline) (buf_t **, readline_t *),
     (*write) (buf_t *, int),
     (*search) (buf_t *, char, char *, utf8),
     (*indent) (buf_t *, int, utf8),
@@ -1263,7 +1156,7 @@ typedef struct ed_get_self {
     (*min_rows) (ed_t *),
     (*current_win_idx) (ed_t *),
     (*num_special_win) (ed_t *),
-    (*num_rline_commands) (ed_t *);
+    (*num_readline_commands) (ed_t *);
 
   win_t
     *(*current_win) (ed_t *),
@@ -1298,7 +1191,7 @@ typedef struct ed_set_self {
     (*exit_quick) (ed_t *, int),
     (*screen_size) (ed_t *, screen_dim_opts),
     (*topline) (ed_t *, buf_t *),
-    (*rline_cb) (ed_t *, Rline_cb),
+    (*readline_cb) (ed_t *, Readline_cb),
     (*lang_map) (ed_t *, int[][26]),
     (*record_cb) (ed_t *, Record_cb),
     (*at_exit_cb) (ed_t *, EdAtExit_cb),
@@ -1336,19 +1229,19 @@ typedef struct ed_append_self {
     (*toscratch_fmt) (ed_t *, int, char *, ...),
     (*toscratch) (ed_t *, int, char *),
     (*command_arg) (ed_t *, char *, char *, size_t),
-    (*rline_commands) (ed_t *, char **, int, int[], int[]),
-    (*rline_command) (ed_t *, char *, int, int);
+    (*readline_commands) (ed_t *, char **, int, int[], int[]),
+    (*readline_command) (ed_t *, char *, int, int);
 } ed_append_self;
 
 typedef struct ed_readjust_self {
   void (*win_size) (ed_t *, win_t *);
 } ed_readjust_self;
 
-typedef struct ed_rline_self {
-  rline_t
+typedef struct ed_readline_self {
+  readline_t
     *(*new) (ed_t *),
     *(*new_with) (ed_t *, char *);
-} ed_rline_self;
+} ed_readline_self;
 
 typedef struct ed_buf_self {
   int (*change) (ed_t  *, buf_t **, char *, char *);
@@ -1375,13 +1268,13 @@ typedef struct ed_sh_self {
 
 typedef struct edhistory_set_self {
   string_t
-    *(*rline_file) (ed_t *, char *),
+    *(*readline_file) (ed_t *, char *),
     *(*search_file) (ed_t *, char *);
 } edhistory_set_self;
 
 typedef struct edhistory_get_self {
   string_t
-    *(*rline_file) (ed_t *),
+    *(*readline_file) (ed_t *),
     *(*search_file) (ed_t *);
 } edhistory_get_self;
 
@@ -1412,7 +1305,7 @@ typedef struct ed_self {
   ed_menu_self menu;
   ed_draw_self draw;
   ed_unset_self unset;
-  ed_rline_self rline;
+  ed_readline_self readline;
   ed_append_self append;
   ed_history_self history;
   ed_readjust_self readjust;
@@ -1447,8 +1340,6 @@ typedef struct ed_T {
   i_T __I__;
 
   msg_T __Msg__;
-  rline_T __Rline__;
-  video_T __Video__;
   error_T __Error__;
 } ed_T;
 

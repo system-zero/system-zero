@@ -11,32 +11,6 @@
 
 #include <z/cenv.h>
 
-struct video_t {
-  vstring_t *head;
-  vstring_t *tail;
-  vstring_t *current;
-        int  cur_idx;
-        int  num_items;
-
-  string_t
-    *render,
-    *tmp_render;
-
-  Vstring_t *tmp_list;
-
-  int
-    fd,
-    num_cols,
-    num_rows,
-    first_row,
-    first_col,
-    last_row,
-    row_pos,
-    col_pos;
-
-  int *rows;
-};
-
 static void video_alloc_list (video_t *this) {
   this->tmp_list = Vstring.new ();
   for (int i = 0; i < this->num_rows; i++) {
@@ -237,7 +211,10 @@ static video_t *video_paint_rows_with (video_t *this, int row, int f_col, int l_
 }
 public video_T __init_video__ (void) {
   __INIT__ (string);
+  __INIT__ (cstring);
   __INIT__ (vstring);
+  __INIT__ (ustring);
+  __INIT__ (io);
 
   return (video_T) {
     .self = (video_self) {

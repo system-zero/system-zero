@@ -6,7 +6,12 @@ typedef struct sys_set_self {
 } sys_set_self;
 
 typedef struct sys_get_self {
-  string_t *(*env) (char *);
+  char *(*env_value) (char *);
+
+  string_t
+    *(*env) (char *),
+    *(*battery_info) (void);
+
   long (*clock_sec) (clockid_t);
 } sys_get_self;
 

@@ -251,102 +251,7 @@ enum {
   E_T *__E__;                    \
   __me__ ## _T *Me;              \
   msg_T *__Msg__;                \
-  video_T *__Video__;            \
-  error_T *__Error__;            \
-  rline_T *__Rline__
-
-typedef struct video_t {
-  vstring_t *head;
-  vstring_t *tail;
-  vstring_t *current;
-        int  cur_idx;
-        int  num_items;
-
-  string_t
-    *render,
-    *tmp_render;
-
-  Vstring_t *tmp_list;
-
-  int
-    fd,
-    num_cols,
-    num_rows,
-    first_row,
-    first_col,
-    last_row,
-    row_pos,
-    col_pos;
-
-  int *rows;
-} video_t;
-
-typedef struct arg_t {
-  int type;
-  string_t
-    *argname,
-    *argval;
-
-  arg_t *next;
-  arg_t *prev;
-} arg_t;
-
-typedef struct rlcom_t {
-  char *com;
-  char **args;
-  int  num_args;
-} rlcom_t;
-
-typedef struct rline_t {
-  char prompt_char;
-
-  int
-    com,
-    opts,
-    rows,
-    state,
-    range[2],
-    row_pos,
-    num_cols,
-    num_rows,
-    first_row,
-    first_col,
-    prompt_row,
-    trigger_first_char_completion;
-
-  utf8
-    c,
-    first_chars[8];
-
-  int first_chars_len;
-
-  term_t *term;
-  ed_t *ed;
-
-  int fd;
-
-  video_t *cur_video;
-
-  Vstring_t *line;
-  arg_t *head;
-  arg_t *tail;
-  arg_t *current;
-    int  cur_idx;
-    int  num_items;
-
-  string_t *render;
-
-  rlcom_t **commands;
-      int   commands_len;
-
-  void *object;
-  void *user_object;
-
-  IOGetkey getch;
-  RlineAtBeg_cb at_beg;
-  RlineAtEnd_cb at_end;
-  RlineTabCompletion_cb tab_completion;
-} rline_t;
+  error_T *__Error__
 
 typedef struct menu_t {
   char pat[MAXLEN_PAT];
@@ -510,24 +415,9 @@ typedef struct h_search_t {
          int  cur_idx;
 } h_search_t;
 
-typedef struct h_rlineitem_t {
-  h_rlineitem_t *next;
-  h_rlineitem_t *prev;
-  rline_t *data;
-} h_rlineitem_t;
-
-typedef struct h_rline_t {
-  h_rlineitem_t *head;
-  h_rlineitem_t *tail;
-  h_rlineitem_t *current;
-            int  num_items;
-            int  cur_idx;
-            int  history_idx;
-} h_rline_t;
-
 typedef struct hist_t {
   h_search_t *search;
-  h_rline_t  *rline;
+  readline_hist_t  *readline;
 } hist_t;
 
 typedef struct dim_t {
@@ -743,7 +633,7 @@ typedef struct ed_prop {
     has_promptline,
     has_msgline,
     has_topline,
-    has_ed_rline_commands,
+    has_ed_readline_commands,
     max_wins,
     max_num_hist_entries,
     max_num_undo_entries,
@@ -768,7 +658,7 @@ typedef struct ed_prop {
   term_t *term;
   hist_t *history;
   Reg_t regs[NUM_REGISTERS];
-  rlcom_t **commands;
+  readline_com_t **commands;
 
   Ustring_t *uline;
 
@@ -813,8 +703,8 @@ typedef struct ed_prop {
   int num_on_normal_g_cbs;
   BufNormalOng_cb *on_normal_g_cbs;
 
-  int num_rline_cbs;
-  Rline_cb *rline_cbs;
+  int num_readline_cbs;
+  Readline_cb *readline_cbs;
 
   int num_syntaxes;
   syn_t syntaxes[NUM_SYNTAXES];
@@ -887,7 +777,7 @@ private int  buf_write_to_fname (buf_t *, char *, int, int, int, int, int);
 
 private int  buf_change (buf_t **, int);
 private int  buf_split (buf_t **, char *);
-private int  buf_rline (buf_t **, rline_t *);
+private int  buf_readline (buf_t **, readline_t *);
 private int  buf_normal_visual_lw (buf_t **);
 private int  buf_enew_fname (buf_t **, char *);
 private int  buf_insert (buf_t **, utf8, char *);
@@ -900,19 +790,7 @@ private void ed_resume (ed_t *);
 private void ed_suspend (ed_t *);
 private void ed_record (ed_t *, char *, ...);
 private int  ed_win_change (ed_t *, buf_t **, int, char *, int, int);
-private rline_t *ed_rline_new (ed_t *);
-
-private rline_t  *rline_new (ed_t *, term_t *, IOGetkey, int, int, int, video_t *);
-private rline_t  *rline_edit (rline_t *);
-private void      rline_clear (rline_t *);
-private void      rline_release (rline_t *);
-private void      rline_write_and_break (rline_t *);
-private int       rline_break (rline_t **);
-private int       rline_arg_exists (rline_t *, char *);
-private int       rline_parse_arg_buf_range (rline_t *rl, arg_t *arg, buf_t *this);
-private arg_t    *rline_get_arg (rline_t *, int);
-private string_t *rline_get_string (rline_t *);
-private string_t *rline_get_anytype_arg (rline_t *, char *);
+private readline_t *ed_readline_new (ed_t *);
 
 private Vstring_t  *cstring_chop (char *, char, Vstring_t *, StrChop_cb, void *);
 
@@ -988,7 +866,7 @@ static const utf8 offsetsFromUTF8[6] = {
   while (1) {                                                             \
     if (has_pop_pup) {                                                    \
       String.replace_with_fmt (sbuf, "%s %s", prefix, ibuf->bytes);       \
-      video_paint_rows_with ($my(video), frow, fcol, lcol, sbuf->bytes);  \
+      Video.paint_rows_with ($my(video), frow, fcol, lcol, sbuf->bytes);  \
       SEND_ESC_SEQ ($my(video)->fd, TERM_CURSOR_HIDE);                    \
     }                                                                     \
     cc__ = IO.getkey (STDIN_FILENO);                                      \
@@ -1001,24 +879,11 @@ static const utf8 offsetsFromUTF8[6] = {
   }                                                                       \
   if (has_pop_pup) {                                                      \
     String.release (ibuf); String.release (sbuf);                               \
-    video_resume_painted_rows ($my(video));                               \
+    Video.resume_painted_rows ($my(video));                               \
     SEND_ESC_SEQ ($my(video)->fd, TERM_CURSOR_SHOW);                      \
   }                                                                       \
   nr;                                                                     \
 })
-
-#define BYTES_TO_RLINE(rl_, bytes, len)                                   \
-do {                                                                      \
-  char *sp_ = (bytes);                                                    \
-  for (int i__ = 0; i__ < (len); i__++) {                                 \
-    int clen = Ustring.charlen ((bytes)[i__]);                            \
-    (rl_)->state |= (RL_INSERT_CHAR|RL_BREAK);                            \
-    (rl_)->c = utf8_code (sp_);                                           \
-    rline_edit ((rl_));                                                   \
-    i__ += clen - 1;                                                      \
-    sp_ += clen;                                                          \
-    }                                                                     \
-} while (0)
 
 #define IS_MODE(mode__) Cstring.eq ($my(mode), (mode__))
 
@@ -1290,6 +1155,23 @@ do {                                                                \
   node;                                                             \
 })
 
+#define ED_BYTES_TO_READLINE(rl_, bytes, len)                                \
+do {                                                                      \
+  char *sp_ = (bytes);                                                    \
+  for (int i__ = 0; i__ < (len); i__++) {                                 \
+    int clen = Ustring.charlen ((bytes)[i__]);                            \
+    (rl_)->state |= (READLINE_INSERT_CHAR|READLINE_BREAK);                \
+    (rl_)->c = UTF8_CODE (sp_);                                           \
+    Readline.edit ((rl_));                                                \
+    i__ += clen - 1;                                                      \
+    sp_ += clen;                                                          \
+    }                                                                     \
+} while (0)
+
+#define READLINE_ED_USER_DATA_IDX   0
+#define READLINE_BUF_USER_DATA_IDX  1
+#define READLINE_MENU_USER_DATA_IDX 2
+
 #define Root  My(__E__)
 #define Ed My(__Ed__)
 #define Win My(__Win__)
@@ -1297,8 +1179,6 @@ do {                                                                \
 
 #define Msg My(__Msg__)
 #define Error My(__Error__)
-#define Video My(__Video__)
-#define Rline My(__Rline__)
 
 #define Screen termType.self.screen
 #define Cursor termType.self.cursor

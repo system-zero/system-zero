@@ -24,6 +24,7 @@
 #define REQUIRE_TIME
 #define REQUIRE_DIRENT
 
+#define REQUIRE_DLIST_TYPE
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_USTRING_TYPE  DECLARE
@@ -39,6 +40,9 @@
 #define REQUIRE_IMAP_TYPE     DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
 #define REQUIRE_PROC_TYPE     DECLARE
+#define REQUIRE_SPELL_TYPE    DECLARE
+#define REQUIRE_VIDEO_TYPE    DECLARE
+#define REQUIRE_READLINE_TYPE DECLARE
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
 
@@ -170,226 +174,6 @@ private int is_quantifier (const char *re) {
   return re[0] == '*' || re[0] == '+' || re[0] == '?';
 }
 
-private void video_alloc_list (video_t *this) {
-  this->tmp_list = Vstring.new ();
-  for (int i = 0; i < this->num_rows; i++) {
-    vstring_t *vstr = Alloc (sizeof (vstring_t));
-    vstr->data = String.new (this->num_cols);
-    current_list_append (this->tmp_list, vstr);
-  }
-}
-
-private video_t *video_new (int fd, int rows, int cols, int first_row, int first_col) {
-  video_t *this = Alloc (sizeof (video_t));
-  loop (rows) {
-    vstring_t *row = Alloc (sizeof (vstring_t));
-    row->data = String.new_with_len (" ", 1);
-    current_list_append (this, row);
-  }
-
-  this->fd = fd;
-  this->first_row = first_row;
-  this->first_col = first_col;
-  this->num_rows = rows;
-  this->num_cols = cols;
-  this->last_row = first_row + rows - 1;
-  this->row_pos = this->first_row;
-  this->col_pos = 1;
-  this->render = String.new (cols);
-  this->tmp_render = String.new (cols);
-  this->rows = Alloc (sizeof (int) * this->num_rows);
-  video_alloc_list (this);
-  return this;
-}
-
-private void video_free (video_t *this) {
-  if (this is NULL) return;
-
-  Vstring.release (this->tmp_list);
-  vstring_t *it = this->head;
-
-  while (it isnot NULL) {
-    vstring_t *next = it->next;
-    String.release (it->data);
-    free (it);
-    it = next;
-  }
-
-  String.release (this->render);
-  String.release (this->tmp_render);
-  free (this->rows);
-  free (this);
-  this = NULL;
-}
-
-private void video_flush (video_t *this, string_t *render) {
-  IO.fd.write (this->fd, render->bytes, render->num_bytes);
-}
-
-private void video_render_set_from_to (video_t *this, int frow, int lrow) {
-  int fidx = frow - 1; int lidx = lrow - 1;
-
-  String.append_with (this->render, TERM_CURSOR_HIDE);
-  while (fidx <= lidx) {
-    current_list_set (this, fidx++);
-    String.append_with_fmt (this->render, TERM_GOTO_PTR_POS_FMT "%s%s%s",
-        this->cur_idx + 1, this->first_col, TERM_LINE_CLR_EOL,
-        this->current->data->bytes, TERM_NEXT_BOL);
-  }
-
-  String.append_with (this->render, TERM_CURSOR_SHOW);
-}
-
-private void video_draw_row_at (video_t *this, int at) {
-  int idx = at - 1;
-
-  if (current_list_set(this, idx) is INDEX_ERROR) return;
-
-  vstring_t *row = this->current;
-  String.replace_with_fmt (this->tmp_render,
-      "%s" TERM_GOTO_PTR_POS_FMT "%s%s%s" TERM_GOTO_PTR_POS_FMT,
-      TERM_CURSOR_HIDE, at, this->first_col, TERM_LINE_CLR_EOL,
-      row->data->bytes, TERM_CURSOR_SHOW, this->row_pos, this->col_pos);
-
-  video_flush (this, this->tmp_render);
-}
-
-private void video_draw_all (video_t *this) {
-  String.clear (this->tmp_render);
-  String.append_with_fmt (this->tmp_render,
-      "%s%s" TERM_SCROLL_REGION_FMT "\033[0m\033[1m",
-   TERM_CURSOR_HIDE, TERM_FIRST_LEFT_CORNER, 0, this->num_rows);
-
-  int num_times = this->last_row;
-  vstring_t *row = this->head;
-
-  loop (num_times - 1) {
-    String.append_with_fmt (this->tmp_render, "%s%s%s", TERM_LINE_CLR_EOL,
-        row->data->bytes, TERM_NEXT_BOL);
-    row = row->next;
-  }
-
-  String.append_with_fmt (this->tmp_render, "%s" TERM_GOTO_PTR_POS_FMT,
-     TERM_CURSOR_SHOW, this->row_pos, this->col_pos);
-
-  video_flush (this, this->tmp_render);
-}
-
-private void video_set_row_with (video_t *this, int idx, char *bytes) {
-  if (current_list_set (this, idx) is INDEX_ERROR) return;
-  vstring_t *row = this->current;
-  String.replace_with (row->data, bytes);
-}
-
-private void video_row_hl_at (video_t *this, int idx, int color,
-                                               int fidx, int lidx) {
-  if (current_list_set (this, idx) is INDEX_ERROR) return;
-  vstring_t *row = this->current;
-  if (fidx >= (int) row->data->num_bytes) return;
-  if (lidx >= (int) row->data->num_bytes) lidx = row->data->num_bytes - 1;
-
-  String.insert_at_with_len (row->data, lidx, TERM_COLOR_RESET, TERM_COLOR_RESET_LEN);
-  String.insert_at_with_len (row->data, fidx, TERM_MAKE_COLOR(color), TERM_SET_COLOR_FMT_LEN);
-  String.replace_with_fmt (this->tmp_render, TERM_GOTO_PTR_POS_FMT, idx + 1, 1);
-  String.append_with_len (this->tmp_render, row->data->bytes, row->data->num_bytes);
-
-  video_flush (this, this->tmp_render);
-}
-
-private void video_resume_painted_rows (video_t *this) {
-  int row = 0, i = 0;
-  while (0 isnot (row = this->rows[i++])) video_draw_row_at (this, row);
-  this->rows[0] = 0;
-}
-
-private video_t *video_paint_rows_with (video_t *this, int row, int f_col, int l_col, char *bytes) {
-  int last_row = this->last_row - 3;
-  int first_row = row < 1 or row > last_row ? last_row : row;
-  int last_col = l_col < 0 or l_col > this->num_cols ? this->num_cols : l_col;
-  int first_col = f_col < 0 or f_col > this->num_cols ? 1 : f_col;
-  char *f_p = 0;
-  f_p = bytes;
-  char *l_p = bytes;
-
-  Vstring_t *Vstr = this->tmp_list;
-  vstring_t *vstr = Vstr->head;
-
-  int num_items = 0;
-  while (l_p) {
-    String.clear (vstr->data);
-
-    l_p = Cstring.byte.in_str (l_p, '\n');
-
-    if (NULL is l_p) {
-      String.append_with (vstr->data, f_p);
-    } else {
-      char line[l_p - f_p];
-      int i = 0;
-      while (f_p < l_p) line[i++] = *f_p++;
-      f_p++; l_p++;
-      line[i] = '\0';
-      String.append_with (vstr->data, line);
-    }
-
-    if (++num_items is this->num_rows) break;
-    vstr = vstr->next;
-  }
-
-  int num_rows = num_items;
-
-  int i = 0; while (i < num_rows - 1 and first_row > 2) {i++; first_row--;};
-  num_rows = i + 1;
-  int num_chars = last_col - first_col + 1;
-
-  String.clear (this->tmp_render);
-  String.append_with_fmt (this->tmp_render, "%s" TERM_SET_COLOR_FMT, TERM_CURSOR_HIDE, COLOR_BOX);
-
-  vstring_t *it = Vstr->head;
-  i = 0;
-  while (i < num_rows) {
-    this->rows[i] = (i + first_row);
-    String.append_with_fmt (this->tmp_render, TERM_GOTO_PTR_POS_FMT, first_row + i++, first_col);
-    int num = 0; int idx = 0;
-    while (num++ < num_chars and idx < (int) it->data->num_bytes) {
-      int clen = Ustring.charlen ((uchar) it->data->bytes[idx]);
-      for (int li = 0; li < clen; li++)
-        String.append_byte (this->tmp_render, it->data->bytes[idx + li]);
-      idx += clen;
-    }
-
-    while (num++ <= num_chars) String.append_byte (this->tmp_render, ' ');
-
-    it = it->next;
-  }
-
-  this->rows[num_rows] = 0;
-
-  String.append_with_fmt (this->tmp_render, "%s%s", TERM_COLOR_RESET, TERM_CURSOR_SHOW);
-  video_flush (this, this->tmp_render);
-  return this;
-}
-
-private video_T __init_video__ (void) {
-  return (video_T) {
-    .self = (video_self) {
-      .free = video_free,
-      .flush = video_flush,
-      .new =  video_new,
-      .set = (video_set_self) {
-        .row_with = video_set_row_with
-      },
-      .draw = (video_draw_self) {
-        .row_at = video_draw_row_at,
-        .all = video_draw_all
-      }
-    }
-  };
-}
-
-private void __deinit_video__ (video_T *this) {
-  (void) this;
-}
-
 private void menu_free_list (menu_t *this) {
   if (this->state & MENU_LIST_IS_ALLOCATED) {
     Vstring.release (this->list);
@@ -432,7 +216,7 @@ private menu_t *menu_new (ed_t *this, int first_row, int last_row, int first_col
 }
 
 private void menu_clear (menu_t *menu) {
-  buf_t *this = menu->this;
+  //buf_t *this = menu->this;
   if (menu->header->num_bytes)
     Video.draw.row_at (menu->cur_video, menu->first_row - 1);
 
@@ -440,7 +224,12 @@ private void menu_clear (menu_t *menu) {
     Video.draw.row_at (menu->cur_video, menu->first_row + i);
 }
 
-private int rline_menu_at_beg (rline_t **rl) {
+static int readline_break (readline_t **rl) {
+  (*rl)->state |= READLINE_BREAK;
+  return READLINE_BREAK;
+}
+
+private int readline_menu_at_beg (readline_t **rl) {
   switch ((*rl)->c) {
     case ESCAPE_KEY:
     case '\r':
@@ -458,8 +247,8 @@ private int rline_menu_at_beg (rline_t **rl) {
   return RL_OK;
 }
 
-private int rline_menu_at_end (rline_t **rl) {
-  menu_t *menu = (menu_t *) (*rl)->object;
+private int readline_menu_at_end (readline_t **rl) {
+  menu_t *menu = (menu_t *) (*rl)->user_data[READLINE_MENU_USER_DATA_IDX];
 
   switch ((*rl)->c) {
     case BACKSPACE_KEY:
@@ -475,18 +264,29 @@ private int rline_menu_at_end (rline_t **rl) {
   return RL_BREAK;
 }
 
+private void readline_last_component_push_cb (readline_t *rl) {
+  ed_t *this = (ed_t *) rl->user_data[READLINE_ED_USER_DATA_IDX];
+  Vstring.current.prepend_with ($my(rl_last_component), rl->tail->argval->bytes);
+
+  if ($my(rl_last_component)->num_items > READLINE_LAST_COMPONENT_NUM_ENTRIES) {
+    vstring_t *item = DListPopTail ($my(rl_last_component), vstring_t);
+    String.release (item->data);
+    free (item);
+  }
+}
+
 private char *menu_create (ed_t *this, menu_t *menu) {
-  rline_t *rl = rline_new (this, $my(term), IO.getkey, $my(prompt_row),
+  readline_t *rl = Readline.new (this, $my(term), IO.getkey, $my(prompt_row),
       1, $my(dim)->num_cols, $my(video));
-  rl->at_beg = rline_menu_at_beg;
-  rl->at_end = rline_menu_at_end;
-  rl->object = (void *) menu;
+  rl->at_beg = readline_menu_at_beg;
+  rl->at_end = readline_menu_at_end;
+  rl->user_data[READLINE_MENU_USER_DATA_IDX] = (void *) menu;
   rl->state |= RL_CURSOR_HIDE;
   rl->prompt_char = 0;
 
   if (menu->state & RL_IS_VISIBLE) rl->state &= ~RL_IS_VISIBLE;
 
-  BYTES_TO_RLINE (rl, menu->pat, menu->patlen);
+  ED_BYTES_TO_READLINE (rl, menu->pat, menu->patlen);
 
 init_list:;
   if (menu->state & MENU_REINIT_LIST) {
@@ -611,7 +411,7 @@ init_list:;
 
     String.release (render);
 
-    menu->c = Rline.edit (rl)->c;
+    menu->c = Readline.edit (rl)->c;
     if (menu->state & MENU_QUIT) goto theend;
 
 handle_char:
@@ -757,7 +557,7 @@ insert_char:
 
 theend:
   menu_clear (menu);
-  Rline.free (rl);
+  Readline.release (rl);
   return match;
 }
 
@@ -777,31 +577,31 @@ private menu_t *ed_menu_new (ed_t *this, buf_t *buf, MenuProcessList_cb cb) {
 private string_t *buf_input_box (buf_t *this, int row, int col,
                             int abort_on_escape, char *buf) {
   string_t *str = NULL;
-  rline_t *rl = rline_new ($my(root), $my(term_ptr), IO.getkey, row,
+  readline_t *rl = Readline.new ($my(root), $my(term_ptr), IO.getkey, row,
       col, $my(dim)->num_cols - col + 1, $my(video));
   rl->opts &= ~RL_OPT_HAS_HISTORY_COMPLETION;
   rl->opts &= ~RL_OPT_HAS_TAB_COMPLETION;
   rl->prompt_char = 0;
 
   ifnot (NULL is buf)
-    BYTES_TO_RLINE (rl, buf, (int) bytelen (buf));
+    ED_BYTES_TO_READLINE (rl, buf, (int) bytelen (buf));
 
   utf8 c;
   for (;;) {
-     c = Rline.edit (rl)->c;
+     c = Readline.edit (rl)->c;
      switch (c) {
        case ESCAPE_KEY:
           if (abort_on_escape) {
             str = String.new (1);
             goto theend;
           }
-       case '\r': str = Rline.get.line (rl); goto theend;
+       case '\r': str = Readline.get.line (rl); goto theend;
      }
   }
 
 theend:
   String.clear_at (str, -1);
-  Rline.free (rl);
+  Readline.release (rl);
   return str;
 }
 
@@ -1908,24 +1708,131 @@ private ftype_t *buf_ftype_set (buf_t *this, int ftype, ftype_t q) {
   return __ftype_set__ ($my(ftype), q);
 }
 
+private int readline_parse_arg_buf_range (readline_t *rl, readline_arg_t *arg, buf_t *this) {
+  if (arg is NULL) {
+    rl->range[0] = rl->range[1] = this->cur_idx;
+    return OK;
+  }
+
+  if (arg->argval->num_bytes is 1) {
+    if (arg->argval->bytes[0] is '%') {
+      rl->range[0] = 0; rl->range[1] = this->num_items - 1;
+      return OK;
+    }
+
+    if (arg->argval->bytes[0] is '.') {
+      rl->range[0] = rl->range[1] = this->cur_idx;
+      return OK;
+    }
+
+    if ('0' < arg->argval->bytes[0] and arg->argval->bytes[0] <= '9') {
+      rl->range[0] = rl->range[1] = (arg->argval->bytes[0] - '0') - 1;
+      if (rl->range[0] >= this->num_items) return NOTOK;
+      return OK;
+    }
+
+    return NOTOK;
+  }
+
+  char *sp = Cstring.byte.in_str (arg->argval->bytes, ',');
+
+  if (NULL is sp) {
+    sp = arg->argval->bytes;
+
+    int num = 0;
+    int idx = 0;
+    while ('0' <= *sp and *sp <= '9' and idx++ <= MAX_COUNT_DIGITS)
+      num = (10 * num) + (*sp++ - '0');
+
+    if (*sp isnot 0) return NOTOK;
+    rl->range[0] = rl->range[1] = num - 1;
+    if (rl->range[0] >= this->num_items or rl->range[0] < 0) return NOTOK;
+    return OK;
+  }
+
+  int diff = sp - arg->argval->bytes;
+  sp++;
+  do {
+    if (*sp is '.') {
+      if (*(sp + 1) isnot 0) return NOTOK;
+      rl->range[1] = this->cur_idx;
+      break;
+    }
+
+    if (*sp is '$') {
+      if (*(sp + 1) isnot 0) return NOTOK;
+      rl->range[1] = this->num_items - 1;
+      break;
+    }
+
+    if (*sp > '9' or *sp < '0') return NOTOK;
+    int num = 0;
+    int idx = 0;
+    while ('0' <= *sp and *sp <= '9' and idx++ <= MAX_COUNT_DIGITS)
+      num = (10 * num) + (*sp++ - '0');
+
+    if (*sp isnot 0) return NOTOK;
+    rl->range[1] = num - 1;
+  } while (0);
+
+  String.clear_at (arg->argval, diff);
+  ifnot (arg->argval->num_bytes) return NOTOK;
+  sp = arg->argval->bytes;
+
+  loop (1) {
+    if (*sp is '.') {
+      if (*(sp + 1) isnot 0) return NOTOK;
+      rl->range[0] = this->cur_idx;
+      break;
+    }
+
+    if (*sp > '9' or *sp < '0') return NOTOK;
+    int num = 0;
+    int idx = 0;
+    while ('0' <= *sp and *sp <= '9' and idx++ <= MAX_COUNT_DIGITS)
+      num = (10 * num) + (*sp++ - '0');
+
+    if (*sp isnot 0) return NOTOK;
+    rl->range[0] = num - 1;
+  } while (0);
+
+  if (rl->range[0] < 0) return NOTOK;
+  if (rl->range[0] > rl->range[1]) return NOTOK;
+  if (rl->range[1] >= this->num_items) return NOTOK;
+  return OK;
+}
+
+private int readline_get_buf_range (readline_t  *rl, buf_t *this, int *range) {
+  readline_arg_t *arg = Readline.get.arg (rl, RL_ARG_RANGE);
+  if (NULL is arg or (NOTOK is readline_parse_arg_buf_range (rl, arg, this))) {
+    range[0] = -1; range[1] = -1;
+    return NOTOK;
+  }
+
+  range[0] = rl->range[0];
+  range[1] = rl->range[1];
+
+  return OK;
+}
+
 /* this retval pointer provides information, since the callee resets retval at the
  * beginning of its function. The early return here is actually a goto theend there */
-private int buf_com_substitute (buf_t *this, rline_t *rl, int *retval) {
-  arg_t *pat = rline_get_arg (rl, RL_ARG_PATTERN);
-  arg_t *sub = rline_get_arg (rl, RL_ARG_SUB);
-  arg_t *global = rline_get_arg (rl, RL_ARG_GLOBAL);
-  arg_t *interactive = rline_get_arg (rl, RL_ARG_INTERACTIVE);
-  arg_t *range = rline_get_arg (rl, RL_ARG_RANGE);
+private int buf_com_substitute (buf_t *this, readline_t *rl, int *retval) {
+  readline_arg_t *pat = Readline.get.arg (rl, RL_ARG_PATTERN);
+  readline_arg_t *sub = Readline.get.arg (rl, RL_ARG_SUB);
+  readline_arg_t *global = Readline.get.arg (rl, RL_ARG_GLOBAL);
+  readline_arg_t *interactive = Readline.get.arg (rl, RL_ARG_INTERACTIVE);
+  readline_arg_t *range = Readline.get.arg (rl, RL_ARG_RANGE);
 
   if (NULL is range and rl->com is VED_COM_SUBSTITUTE_WHOLE_FILE_AS_RANGE) {
     rl->range[0] = 0; rl->range[1] = this->num_items - 1;
   } else
-    if (NOTOK is rline_parse_arg_buf_range (rl, range, this))
+    if (NOTOK is readline_parse_arg_buf_range (rl, range, this))
       return *retval;
 
-  if (rline_arg_exists (rl, "remove-tabs")) {
+  if (Readline.arg.exists (rl, "remove-tabs")) {
     int shiftwidth = $my(ftype)->shiftwidth;
-    string_t *sw = rline_get_anytype_arg (rl, "shiftwidth");
+    string_t *sw = Readline.get.anytype_arg (rl, "shiftwidth");
     ifnot (NULL is sw) shiftwidth = atoi (sw->bytes);
     char subst[shiftwidth];
     for (int i = 0; i < shiftwidth; i++) subst[i] = ' ';
@@ -1933,7 +1840,7 @@ private int buf_com_substitute (buf_t *this, rline_t *rl, int *retval) {
     return buf_substitute (this, "\t", subst, GLOBAL, interactive isnot NULL, rl->range[0], rl->range[1]);
   }
 
-  if (rline_arg_exists (rl, "remove-doseol")) {
+  if (Readline.arg.exists (rl, "remove-doseol")) {
     return buf_substitute (this, "\x0d", "", GLOBAL, interactive isnot NULL, rl->range[0], rl->range[1]);
   }
 
@@ -1945,10 +1852,10 @@ private int buf_com_substitute (buf_t *this, rline_t *rl, int *retval) {
   return *retval;
 }
 
-private int buf_com_set (buf_t *this, rline_t *rl) {
+private int buf_com_set (buf_t *this, readline_t *rl) {
   int draw = 0;
 
-  string_t *arg = rline_get_anytype_arg (rl, "ftype");
+  string_t *arg = Readline.get.anytype_arg (rl, "ftype");
   ifnot (NULL is arg) {
     int idx = Ed.syn.get_ftype_idx ($my(root), arg->bytes);
     syn_t syn = $myroots(syntaxes)[idx];
@@ -1960,55 +1867,55 @@ private int buf_com_set (buf_t *this, rline_t *rl) {
     }
   }
 
-  arg = rline_get_anytype_arg (rl, "tabwidth");
+  arg = Readline.get.anytype_arg (rl, "tabwidth");
   ifnot (NULL is arg) {
     $my(ftype)->tabwidth = atoi (arg->bytes);
     self(normal.bol, DONOT_DRAW);
     draw = 1;
   }
 
-  arg = rline_get_anytype_arg (rl, "shiftwidth");
+  arg = Readline.get.anytype_arg (rl, "shiftwidth");
   ifnot (NULL is arg) {
     $my(ftype)->shiftwidth = atoi (arg->bytes);
     self(normal.bol, DONOT_DRAW);
     draw = 1;
   }
 
-  arg = rline_get_anytype_arg (rl, "autosave");
+  arg = Readline.get.anytype_arg (rl, "autosave");
   ifnot (NULL is arg) {
     long minutes = atol (arg->bytes);
     if (minutes)
       self(set.autosave, minutes);
   }
 
-  arg = rline_get_anytype_arg (rl, "save-image");
+  arg = Readline.get.anytype_arg (rl, "save-image");
   ifnot (NULL is arg)
     Root.set.save_image ($OurRoot, atoi (arg->bytes));
 
-  arg = rline_get_anytype_arg (rl, "image-file");
+  arg = Readline.get.anytype_arg (rl, "image-file");
   ifnot (NULL is arg)
     Root.set.image_file ($OurRoot, arg->bytes);
 
-  arg = rline_get_anytype_arg (rl, "image-name");
+  arg = Readline.get.anytype_arg (rl, "image-name");
   ifnot (NULL is arg)
     Root.set.image_name ($OurRoot, arg->bytes);
 
-  arg = rline_get_anytype_arg (rl, "persistent-layout");
+  arg = Readline.get.anytype_arg (rl, "persistent-layout");
   ifnot (NULL is arg)
     Root.set.persistent_layout ($OurRoot, atoi (arg->bytes));
 
-  if (rline_arg_exists (rl, "backupfile")) {
-    arg = rline_get_anytype_arg (rl, "backup-suffix");
+  if (Readline.arg.exists (rl, "backupfile")) {
+    arg = Readline.get.anytype_arg (rl, "backup-suffix");
     self(set.backup, 1, (NULL is arg ? BACKUP_SUFFIX : arg->bytes));
   }
 
-  if (rline_arg_exists (rl, "no-backupfile"))
+  if (Readline.arg.exists (rl, "no-backupfile"))
     ifnot (NULL is $my(backupfile)) {
       free ($my(backupfile));
       $my(backupfile) = NULL;
     }
 
-  if (rline_arg_exists (rl, "enable-writing"))
+  if (Readline.arg.exists (rl, "enable-writing"))
     $my(enable_writing) = 1;
 
   if (draw) self(draw);
@@ -2504,11 +2411,11 @@ private void history_free (hist_t **hist) {
     }
   }
 
-  h_rline_t *hrl = (*hist)->rline;
-  h_rlineitem_t *it = hrl->head;
+  readline_hist_t *hrl = (*hist)->readline;
+  readline_hist_item_t *it = hrl->head;
   while (it isnot NULL) {
-    h_rlineitem_t *tmp = it->next;
-    rline_release (it->data);
+    readline_hist_item_t *tmp = it->next;
+    Readline.release (it->data);
     free (it);
     it = tmp;
   }
@@ -2974,7 +2881,7 @@ private int buf_com_backupfile (buf_t *this) {
       this->num_items - 1, FORCE, VERBOSE_OFF);
 }
 
-private int buf_com_edit_image (buf_t **thisp, rline_t *rl) {
+private int buf_com_edit_image (buf_t **thisp, readline_t *rl) {
   (void) rl;
   buf_t *this = *thisp;
   if (NULL is $OurRoots(image_file))
@@ -2984,9 +2891,9 @@ private int buf_com_edit_image (buf_t **thisp, rline_t *rl) {
      $myparents(cur_frame), NO_FORCE, DRAW, REOPEN);
 }
 
-private int buf_com_save_image (buf_t *this, rline_t *rl) {
+private int buf_com_save_image (buf_t *this, readline_t *rl) {
   char *fn = NULL;
-  string_t *fn_arg = Rline.get.anytype_arg (rl, "as");
+  string_t *fn_arg = Readline.get.anytype_arg (rl, "as");
 
   ifnot (NULL is fn_arg)
     fn = fn_arg->bytes;
@@ -3355,8 +3262,6 @@ private buf_t *win_buf_init (win_t *w, int at_frame, int flags) {
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
   $my(__Error__)   = $myparents(__Error__);
-  $my(__Video__)   = $myparents(__Video__);
-  $my(__Rline__)   = $myparents(__Rline__);
 
   $my(term_ptr) = $myroots(term);
   $my(msg_row_ptr) = &$myroots(msg_row);
@@ -3664,8 +3569,6 @@ private win_t *ed_win_init (ed_t *ed, char *name, WinDimCalc_cb dim_calc_cb) {
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
   $my(__Error__)   = $myparents(__Error__);
-  $my(__Video__)   = $myparents(__Video__);
-  $my(__Rline__)   = $myparents(__Rline__);
 
   $my(video) = $myparents(video);
   $my(min_rows) = 1;
@@ -4315,7 +4218,7 @@ theend:
   return retval;
 }
 
-private int rline_search_at_beg (rline_t **rl) {
+private int readline_search_at_beg (readline_t **rl) {
   switch ((*rl)->c) {
     case ESCAPE_KEY:
     case '\r':
@@ -4368,10 +4271,10 @@ private int buf_search (buf_t *this, char com, char *str, utf8 cc) {
 
   MSG(" ");
 
-  rline_t *rl = rline_new ($my(root), $my(term_ptr), IO.getkey,
+  readline_t *rl = Readline.new ($my(root), $my(term_ptr), IO.getkey,
       *$my(prompt_row_ptr), 1, $my(dim)->num_cols, $my(video));
-  rl->at_beg = rline_search_at_beg;
-  rl->at_end = rline_break;
+  rl->at_beg = readline_search_at_beg;
+  rl->at_end = readline_break;
 
   rl->prompt_char = (com is '*' or com is '/') ? '/' : '?';
 
@@ -4383,18 +4286,18 @@ private int buf_search (buf_t *this, char com, char *str, utf8 cc) {
     self(get.current_word, word, Notword, Notword_len, &fidx, &lidx);
     sch->pat = String.new_with (word);
     if (sch->pat->num_bytes) {
-      BYTES_TO_RLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
-      Rline.write_and_break (rl);
+      ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
+      Readline.write_and_break (rl);
       goto search;
     }
   } else {
     if (str isnot NULL) {
       sch->pat = String.new_with (his->data->bytes);
-      BYTES_TO_RLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
+      ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
 
       com = 'n' is com ? '/' : '?';
       rl->prompt_char = com;
-      Rline.write_and_break (rl);
+      Readline.write_and_break (rl);
       if (cc is -1)
         goto search;
       else
@@ -4403,11 +4306,11 @@ private int buf_search (buf_t *this, char com, char *str, utf8 cc) {
     } else if (com is 'n' or com is 'N') {
       if ($my(history)->search->num_items is 0) return NOTHING_TODO;
       sch->pat = String.new_with (his->data->bytes);
-      BYTES_TO_RLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
+      ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
 
       com = 'n' is com ? '/' : '?';
       rl->prompt_char = com;
-      Rline.write_and_break (rl);
+      Readline.write_and_break (rl);
       goto search;
     } else
       sch->pat = String.new (1);
@@ -4419,7 +4322,7 @@ theloop:
     if (cc isnot -1)
       c = cc;
     else
-      c = Rline.edit (rl)->c;
+      c = Readline.edit (rl)->c;
 
     string_t *p = Vstring.join (rl->line, "");
 
@@ -4450,7 +4353,7 @@ search:
         Msg.set_fmt ($my(root), COLOR_NORMAL, MSG_SET_APPEND|MSG_SET_CLOSE, "%s%s",
             sch->match, sch->end);
 
-        video_row_hl_at ($my(video), *$my(msg_row_ptr) - 1, COLOR_RED,
+        Video.row_hl_at ($my(video), *$my(msg_row_ptr) - 1, COLOR_RED,
             hl_idx, hl_idx + bytelen(sch->match));
 
         sch->cur_idx = sch->idx;
@@ -4515,8 +4418,8 @@ search:
         String.replace_with (sch->pat, his->data->bytes);
 
         rl->state |= RL_CLEAR_FREE_LINE;
-        Rline.clear (rl);
-        BYTES_TO_RLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
+        Readline.clear (rl);
+        ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
         goto search;
 
       default:
@@ -4532,8 +4435,8 @@ theend:
 
   MSG(" ");
 
-  Rline.clear (rl);
-  Rline.free (rl);
+  Readline.clear (rl);
+  Readline.release (rl);
 
   SEARCH_FREE;
   return DONE;
@@ -4943,9 +4846,9 @@ private int ed_reg_special_set (ed_t *this, buf_t *buf, int regidx) {
       }
 
     case REG_PROMPT:
-      if ($my(history)->rline->num_items is 0) return NOTOK;
+      if ($my(history)->readline->num_items is 0) return NOTOK;
       {
-        h_rlineitem_t *it = $my(history)->rline->head;
+        readline_hist_item_t *it = $my(history)->readline->head;
         if (NULL is it) return ERROR;
         string_t *str = Vstring.join (it->data->line, "");
         ed_reg_push_with (this, regidx, CHARWISE, str->bytes, DEFAULT_ORDER);
@@ -5027,7 +4930,7 @@ private Reg_t *ed_reg_set_with (ed_t *this, int regidx, int type, char *bytes, i
 }
 
 private utf8 buf_quest (buf_t *this, char *qu, utf8 *chs, int len) {
-  video_paint_rows_with ($my(video), -1, -1, -1, qu);
+  Video.paint_rows_with ($my(video), -1, -1, -1, qu);
   SEND_ESC_SEQ ($my(video)->fd, TERM_CURSOR_HIDE);
   utf8 c;
   for (;;) {
@@ -5037,7 +4940,7 @@ private utf8 buf_quest (buf_t *this, char *qu, utf8 *chs, int len) {
   }
 
 theend:
-  video_resume_painted_rows ($my(video));
+  Video.resume_painted_rows ($my(video));
   SEND_ESC_SEQ ($my(video)->fd, TERM_CURSOR_SHOW);
   return c;
 }
@@ -5102,21 +5005,21 @@ private void buf_to_video (buf_t *this) {
 }
 
 private void buf_flush (buf_t *this) {
-  video_render_set_from_to ($my(video), $my(dim)->first_row, $my(statusline_row));
+  Video.render_set_from_to ($my(video), $my(dim)->first_row, $my(statusline_row));
   String.append_with_fmt ($my(video)->render, TERM_GOTO_PTR_POS_FMT,
       $my(video)->row_pos, $my(video)->col_pos);
-  video_flush ($my(video), $my(video)->render);
+  Video.flush ($my(video), $my(video)->render);
 }
 
 private void buf_draw (buf_t *this) {
   String.clear ($my(video)->render);
   Ed.set.topline ($my(root), this);
-  video_render_set_from_to ($my(video), $myroots(topline_row), $myroots(topline_row));
+  Video.render_set_from_to ($my(video), $myroots(topline_row), $myroots(topline_row));
   self(to.video);
   self(flush);
 }
 
-private int buf_com_diff (buf_t **thisp, rline_t *rl, int to_stdout) {
+private int buf_com_diff (buf_t **thisp, readline_t *rl, int to_stdout) {
   buf_t *this = *thisp;
   if (NULL is $myroots(env)->diff_exec) {
     Msg.error ($my(root), "diff executable can not be found in $PATH");
@@ -5126,7 +5029,7 @@ private int buf_com_diff (buf_t **thisp, rline_t *rl, int to_stdout) {
   char file[PATH_MAX]; file[0] = '\0';
 
   ifnot (NULL is rl) {
-    int origin = Rline.arg.exists (rl, "origin");
+    int origin = Readline.arg.exists (rl, "origin");
     ifnot (origin) goto thenext_condition;
 
     if (NULL is $my(backupfile)) {
@@ -7491,12 +7394,12 @@ handle_char:
       case 's':
         VISUAL_ADJUST_IDXS($my(vis)[0]);
         {
-          rline_t *rl = Ed.rline.new ($my(root));
+          readline_t *rl = Ed.readline.new ($my(root));
           string_t *str = String.new_with_fmt ("substitute --range=%d,%d --global -i --pat=",
               $my(vis)[0].fidx + 1, $my(vis)[0].lidx + 1);
-          BYTES_TO_RLINE (rl, str->bytes, (int) str->num_bytes);
-          Rline.write_and_break (rl);
-          buf_rline (&this, rl);
+          ED_BYTES_TO_READLINE (rl, str->bytes, (int) str->num_bytes);
+          Readline.write_and_break (rl);
+          buf_readline (&this, rl);
           String.release (str);
         }
         goto theend;
@@ -7504,12 +7407,12 @@ handle_char:
       case 'w':
         VISUAL_ADJUST_IDXS($my(vis)[0]);
         {
-          rline_t *rl = Ed.rline.new ($my(root));
+          readline_t *rl = Ed.readline.new ($my(root));
           string_t *str = String.new_with_fmt ("write --range=%d,%d ",
               $my(vis)[0].fidx + 1, $my(vis)[0].lidx + 1);
-          BYTES_TO_RLINE (rl, str->bytes, (int) str->num_bytes);
-          Rline.write_and_break (rl);
-          buf_rline (&this, rl);
+          ED_BYTES_TO_READLINE (rl, str->bytes, (int) str->num_bytes);
+          Readline.write_and_break (rl);
+          buf_readline (&this, rl);
           String.release (str);
         }
         goto theend;
@@ -8787,7 +8690,7 @@ private int ed_complete_arg (menu_t *menu) {
   char *line = $my(shared_str)->bytes;
 
   if ($myroots(commands)[com]->args is NULL) {
-    if (0 is $myroots(has_ed_rline_commands) or
+    if (0 is $myroots(has_ed_readline_commands) or
         (com < VED_COM_BUF_DELETE_FORCE or
          com > VED_COM_BUF_CHANGE_ALIAS)) {
       menu->state |= MENU_QUIT;
@@ -8802,7 +8705,7 @@ private int ed_complete_arg (menu_t *menu) {
 
   Vstring_t *args = Vstring.new ();
 
-  if ($myroots(has_ed_rline_commands)) {
+  if ($myroots(has_ed_readline_commands)) {
     int patisopt = (menu->patlen ? Cstring.eq (menu->pat, "--bufname=") : 0);
 
     if ((com >= VED_COM_BUF_DELETE_FORCE and
@@ -9003,7 +8906,7 @@ getlist:;
     it = it->next;
   }
 
-  dlist->free (dlist);
+  dlist->release (dlist);
 
   menu->list = vs;
   menu->state |= (MENU_LIST_IS_ALLOCATED|MENU_REINIT_LIST);
@@ -9084,349 +8987,12 @@ theend:
   return retval;
 }
 
-private void rline_clear (rline_t *rl) {
-  ed_t *this = rl->ed;
-  rl->state &= ~RL_CLEAR;
-  int row = rl->first_row;
-  while (row < rl->prompt_row)
-    Video.draw.row_at (rl->cur_video, row++);
+private int readline_tab_completion (readline_t *rl) {
+  ed_t *this = (ed_t *) rl->user_data[READLINE_ED_USER_DATA_IDX];
 
-  if (rl->prompt_row is $from(rl->ed, prompt_row))
-    Video.set.row_with (rl->cur_video, rl->prompt_row - 1, " ");
+  ifnot (rl->line->num_items) return READLINE_OK;
 
-  Video.draw.row_at (rl->cur_video, rl->prompt_row);
-
-  if (rl->state & RL_CLEAR_FREE_LINE) {
-    Vstring.release (rl->line);
-    rl->num_items = 0;
-    rl->cur_idx = 0;
-    rl->line = Vstring.new ();
-    vstring_t *vstr = Alloc (sizeof (vstring_t));
-    vstr->data = String.new_with_len (" ", 1);
-    current_list_append (rl->line, vstr);
-  }
-
-  rl->state &= ~RL_CLEAR_FREE_LINE;
-}
-
-private void rline_free_members (rline_t *rl) {
-  Vstring.release (rl->line);
-  arg_t *it = rl->head;
-  while (it isnot NULL) {
-    arg_t *tmp = it->next;
-    String.release (it->argname);
-    String.release (it->argval);
-    free (it);
-    it = tmp;
-  }
-  rl->num_items = 0;
-  rl->cur_idx = 0;
-}
-
-private void rline_release (rline_t *rl) {
-  rline_free_members (rl);
-  String.release (rl->render);
-  free (rl);
-}
-
-private void rline_free (rline_t *rl) {
-  rline_clear (rl);
-  rline_release (rl);
-}
-
-private int rline_history_at_beg (rline_t **rl) {
-  switch ((*rl)->c) {
-    case ESCAPE_KEY:
-    case '\r':
-    case ARROW_UP_KEY:
-    case ARROW_DOWN_KEY:
-    case '\t':
-    (*rl)->state |= RL_POST_PROCESS;
-    return RL_POST_PROCESS;
-  }
-
-  (*rl)->state |= RL_OK;
-  return RL_OK;
-}
-
-private int rline_last_arg_at_beg (rline_t **rl) {
-  switch ((*rl)->c) {
-    case LAST_ARG_KEY:
-    (*rl)->state |= RL_POST_PROCESS;
-    return RL_POST_PROCESS;
-  }
-
-  (*rl)->state |= RL_OK;
-  return RL_OK;
-}
-
-private rline_t *rline_complete_last_arg (rline_t *rl) {
-  ed_t *this = rl->ed;
-  ifnot ($my(rl_last_component)->num_items)
-    return rl;
-
-  $my(rl_last_component)->current = $my(rl_last_component)->head;
-
-  rline_t *lrl = rline_new (this, $my(term), IO.getkey, $my(prompt_row),
-      1, $my(dim)->num_cols, $my(video));
-
-  lrl->at_beg = rline_last_arg_at_beg;
-  lrl->at_end = rline_break;
-
-  lrl->prompt_row = rl->first_row - 1;
-  lrl->prompt_char = 0;
-
-loop_again:
-  if (lrl->line isnot NULL)
-    Vstring.release (lrl->line);
-
-  lrl->line = Vstring.dup (rl->line);
-  BYTES_TO_RLINE (lrl, $my(rl_last_component)->current->data->bytes,
-                 (int) $my(rl_last_component)->current->data->num_bytes);
-  Rline.write_and_break (lrl);
-
-get_char:;
-  utf8 c = Rline.edit (lrl)->c;
-  switch (c) {
-    case ESCAPE_KEY:
-      goto theend;
-
-    case ' ':
-    case '\r': goto thesuccess;
-    case LAST_ARG_KEY:
-      if ($my(rl_last_component)->current is $my(rl_last_component)->tail)
-        goto theend;
-
-      $my(rl_last_component)->current = $my(rl_last_component)->current->next;
-      goto loop_again;
-
-    default: goto get_char;
-  }
-
-thesuccess:
-  Vstring.release (rl->line);
-  rl->line = Vstring.dup (lrl->line);
-
-theend:
-  Rline.clear (lrl);
-  rline_release (lrl);
-  Video.draw.row_at (rl->cur_video, rl->first_row); // is minus one
-  return rl;
-}
-
-private rline_t *rline_complete_history (rline_t *rl, int *idx, int dir) {
-  ed_t *this = rl->ed;
-  ifnot ($my(history)->rline->num_items) return rl;
-
-  if (dir is -1) {
-    if (*idx is 0)
-      *idx = $my(history)->rline->num_items - 1;
-    else
-      *idx -= 1;
-  } else {
-    if (*idx is $my(history)->rline->num_items - 1)
-      *idx = 0;
-    else
-      *idx += 1;
-  }
-
-  int lidx = 0;
-  h_rlineitem_t *it = $my(history)->rline->head;
-
-  while (lidx < *idx) { it = it->next; lidx++; }
-
-  rline_t *lrl = rline_new (this, $my(term), IO.getkey, $my(prompt_row),
-      1, $my(dim)->num_cols, $my(video));
-
-  lrl->prompt_row = rl->first_row - 1;
-  lrl->prompt_char = 0;
-
-  RlineAtBeg_cb at_beg = rl->at_beg;
-  RlineAtEnd_cb at_end = rl->at_end;
-  rl->at_beg = rline_history_at_beg;
-  rl->at_end = rline_break;
-
-  int counter = $my(history)->rline->num_items;
-
-  goto thecheck;
-
-theiter:
-  ifnot (--counter)
-    goto theend;
-
-  if (dir is -1) {
-    if (it->prev is NULL) {
-      lidx = $my(history)->rline->num_items - 1;
-      it = $my(history)->rline->tail;
-    } else {
-      it = it->prev;
-      lidx--;
-    }
-  } else {
-    if (it->next is NULL) {
-      lidx = 0;
-      it = $my(history)->rline->head;
-    } else {
-      lidx++;
-      it = it->next;
-    }
-  }
-
-thecheck:;
-#define __release_strings__ String.release (str); String.release (cur)
-
-  string_t *str = Vstring.join (it->data->line, "");
-  string_t *cur = Vstring.join (rl->line, "");
-  if (cur->bytes[cur->num_bytes - 1] is ' ')
-    String.clear_at (cur, cur->num_bytes - 1);
-  int match = (Cstring.eq_n (str->bytes, cur->bytes, cur->num_bytes));
-
-  if (0 is cur->num_bytes or $my(history)->rline->num_items is 1 or match) {
-    __release_strings__;
-    goto theinput;
-  }
-
-  __release_strings__;
-  goto theiter;
-
-theinput:
-  rline_free_members (lrl);
-  lrl->line = Vstring.dup (it->data->line);
-  lrl->first_row = it->data->first_row;
-  lrl->row_pos = it->data->row_pos;
-
-  rline_write_and_break (lrl);
-
-  utf8 c = rline_edit (rl)->c;
-  switch (c) {
-    case ESCAPE_KEY:
-      goto theend;
-
-    case ' ':
-    case '\r': goto thesuccess;
-    case ARROW_DOWN_KEY: dir = -1; goto theiter;
-    case ARROW_UP_KEY: dir = 1; goto theiter;
-    default: goto theiter;
-  }
-
-thesuccess:
-  rline_free_members (rl);
-  rl->line = Vstring.dup (it->data->line);
-  rl->first_row = it->data->first_row;
-  rl->row_pos = it->data->row_pos;
-
-theend:
-  Rline.clear (lrl);
-  Video.draw.row_at (rl->cur_video, rl->first_row); // is minus one
-  rline_release (lrl);
-  rl->at_beg = at_beg;
-  rl->at_end = at_end;
-  return rl;
-}
-
-private void rline_history_push (rline_t *rl) {
-  ed_t *this = rl->ed;
-  if ($my(max_num_hist_entries) < $my(history)->rline->num_items) {
-    h_rlineitem_t *tmp = list_pop_tail ($my(history)->rline, h_rlineitem_t);
-    rline_release (tmp->data);
-    free (tmp);
-  }
-
-  h_rlineitem_t *hrl = Alloc (sizeof (h_rlineitem_t));
-  hrl->data = rl;
-  current_list_prepend ($my(history)->rline, hrl);
-}
-
-private void rline_history_push_api (rline_t *rl) {
-  rline_clear (rl);
-  rl->state &= ~RL_CLEAR_FREE_LINE;
-  rline_history_push (rl);
-}
-
-private void rline_last_component_push (rline_t *rl) {
-  if (rl->tail is NULL) return;
-  if (rl->tail->argval is NULL) return;
-
-  ed_t *this = rl->ed;
-  Vstring.current.prepend_with ($my(rl_last_component), rl->tail->argval->bytes);
-
-  if ($my(rl_last_component)->num_items > RLINE_LAST_COMPONENT_NUM_ENTRIES) {
-    vstring_t *item = list_pop_tail ($my(rl_last_component), vstring_t);
-    String.release (item->data);
-    free (item);
-  }
-}
-
-private vstring_t *rline_parse_command (rline_t *rl) {
-  vstring_t *it = rl->line->head;
-  char com[MAXLEN_COM]; com[0] = '\0';
-  int com_idx = 0;
-
-  while (it isnot NULL and it->data->bytes[0] is ' ') it = it->next;
-
-  if (it isnot NULL and it->data->bytes[0] is '!') {
-    com[0] = '!'; com[1] = '\0';
-    goto get_command;
-  }
-
-  while (it isnot NULL and it->data->bytes[0] isnot ' ') {
-    for (size_t zi = 0; zi < it->data->num_bytes; zi++)
-      com[com_idx++] = it->data->bytes[zi];
-    it = it->next;
-  }
-  com[com_idx] = '\0';
-
-get_command:
-  rl->com = RL_NO_COMMAND;
-
-  int i = 0;
-  for (i = 0; i < rl->commands_len; i++) {
-    if (Cstring.eq (rl->commands[i]->com, com)) {
-      rl->com = i;
-      break;
-    }
-  }
-
-  return it;
-}
-
-private void rline_set_line (rline_t *rl, char *bytes, size_t len) {
-  BYTES_TO_RLINE (rl, bytes, (int) len);
-  rline_write_and_break (rl);
-}
-
-private string_t *rline_get_line (rline_t *rl) {
-  return Vstring.join (rl->line, "");
-}
-
-private int rline_get_state (rline_t *rl) {
-  return rl->state;
-}
-
-private void *rline_get_user_object (rline_t *rl) {
-  return rl->user_object;
-}
-
-private int rline_get_opts (rline_t *rl) {
-  return rl->opts;
-}
-
-private string_t *rline_get_command (rline_t *rl) {
-  string_t *str = String.new (8);
-  vstring_t *it = rl->line->head;
-
-  while (it isnot NULL and it->data->bytes[0] isnot ' ') {
-    String.append_with (str, it->data->bytes);
-    it = it->next;
-  }
-
-  return str;
-}
-
-private int rline_tab_completion (rline_t *rl) {
-  ed_t *this = rl->ed;
-  ifnot (rl->line->num_items) return RL_OK;
-  int retval = RL_OK;
+  int retval = READLINE_OK;
   buf_t *curbuf = this->current->current;
 
   string_t *currline = NULL;  // otherwise segfaults on certain conditions
@@ -9449,14 +9015,14 @@ redo:;
   if (fidx is 0) {
     type |= RL_TOK_COMMAND;
   } else {
-    rline_parse_command (rl);
+    Readline.parse_command (rl);
 
     $from(curbuf, shared_int) = rl->com;
     String.replace_with ($from(curbuf, shared_str), currline->bytes);
 
-    if (rl->com isnot RL_NO_COMMAND) {
+    if (rl->com isnot READLINE_NO_COMMAND) {
       if (Cstring.eq_n (tok, "--fname=", 8)) {
-        type |= RL_TOK_ARG_FILENAME;
+        type |= READLINE_TOK_ARG_FILENAME;
         int len = 8 + (tok[8] is '"');
         char tmp[toklen - len + 1];
         int i;
@@ -9465,18 +9031,18 @@ redo:;
         Cstring.cp (tok, tok_stacklen, tmp, i-len);
         toklen = i-len;
       } else if (tok[0] is '-') {
-        type |= RL_TOK_ARG;
+        type |= READLINE_TOK_ARG;
         ifnot (NULL is Cstring.byte.in_str (tok, '='))
-          type |= RL_TOK_ARG_OPTION;
+          type |= READLINE_TOK_ARG_OPTION;
       } else {
-        if ($my(has_ed_rline_commands)) {
+        if ($my(has_ed_readline_commands)) {
           if (rl->com >= VED_COM_BUF_DELETE_FORCE and
               rl->com <= VED_COM_BUF_CHANGE_ALIAS)
-            type |= RL_TOK_ARG;
+            type |= READLINE_TOK_ARG;
           else
-            type |= RL_TOK_ARG_FILENAME;
+            type |= READLINE_TOK_ARG_FILENAME;
         } else
-          type |= RL_TOK_ARG_FILENAME;
+          type |= READLINE_TOK_ARG_FILENAME;
       }
     }
   }
@@ -9487,20 +9053,20 @@ redo:;
 
   int (*process_list) (menu_t *) = NULL;
 
-  if (type & RL_TOK_ARG_FILENAME)
+  if (type & READLINE_TOK_ARG_FILENAME)
     process_list = ed_complete_filename;
-  else if (type & RL_TOK_COMMAND)
+  else if (type & READLINE_TOK_COMMAND)
     process_list = ed_complete_command;
-  else if (type & RL_TOK_ARG)
+  else if (type & READLINE_TOK_ARG)
     process_list = ed_complete_arg;
 
   menu_t *menu = menu_new (this, $my(prompt_row) - 2, $my(prompt_row) - 2, 0,
       process_list, tok, toklen);
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
-  menu->state &= ~RL_IS_VISIBLE;
+  menu->state &= ~READLINE_IS_VISIBLE;
 
-  if (type & RL_TOK_ARG_FILENAME)
+  if (type & READLINE_TOK_ARG_FILENAME)
     menu->clear_and_continue_on_backspace = 1;
 
   menu->return_if_one_item = 1;
@@ -9511,15 +9077,15 @@ redo:;
 
     if (NULL is item) goto theend;
     if (menu->state & MENU_QUIT) break;
-    if (type & RL_TOK_ARG and Cstring.eq_n ("--command=", item, 10))
+    if (type & READLINE_TOK_ARG and Cstring.eq_n ("--command=", item, 10))
        Msg.send (this, COLOR_WARNING, "--command argument should be enclosed in a pair of '{}' braces");
 
-    if (type & RL_TOK_COMMAND or type & RL_TOK_ARG) break;
+    if (type & READLINE_TOK_COMMAND or type & READLINE_TOK_ARG) break;
 
     menu->patlen = bytelen (item);
     Cstring.cp (menu->pat, MAXLEN_PAT, item, menu->patlen);
 
-    if (type & RL_TOK_ARG_FILENAME) menu->state |= MENU_FINALIZE;
+    if (type & READLINE_TOK_ARG_FILENAME) menu->state |= MENU_FINALIZE;
 
     if (menu->process_list (menu) is NOTHING_TODO) goto theend;
 
@@ -9527,7 +9093,7 @@ redo:;
     if (menu->state & MENU_QUIT) goto theend;
   }
 
-  if (type & RL_TOK_ARG_FILENAME) {
+  if (type & READLINE_TOK_ARG_FILENAME) {
     ifnot (menu->state & MENU_REDO)
       if (rl->com isnot VED_COM_READ_SHELL and rl->com isnot VED_COM_SHELL) {
         String.prepend_with ($from(curbuf, shared_str), "--fname=\"");
@@ -9537,17 +9103,17 @@ redo:;
     item = $from(curbuf, shared_str)->bytes;
   }
 
-  ifnot (type & RL_TOK_ARG_OPTION) {
-    current_list_set (rl->line, fidx);
+  ifnot (type & READLINE_TOK_ARG_OPTION) {
+    DListSetCurrent (rl->line, fidx);
     int lidx = fidx + orig_len;
     while (fidx++ < lidx) {
-      vstring_t *tmp = current_list_pop (rl->line, vstring_t);
+      vstring_t *tmp = DListPopCurrent (rl->line, vstring_t);
       String.release (tmp->data);
       free (tmp);
     }
   }
 
-  BYTES_TO_RLINE (rl, item, (int) bytelen (item));
+  ED_BYTES_TO_READLINE (rl, item, (int) bytelen (item));
 
   if (menu->state & MENU_REDO) {
     menu_free (menu);
@@ -9556,27 +9122,26 @@ redo:;
 
 theend:
   menu_free (menu);
-  return RL_OK;
+  return READLINE_OK;
 }
 
-private int rline_call_at_beg (rline_t **rl) {
-  (*rl)->state |= RL_OK;
-  return RL_OK;
+private void readline_history_push (readline_t *rl) {
+  ed_t *this = (ed_t *) rl->user_data;
+  if ($my(max_num_hist_entries) < $my(history)->readline->num_items) {
+    readline_hist_item_t *tmp = list_pop_tail ($my(history)->readline, readline_hist_item_t);
+    Readline.release (tmp->data);
+    free (tmp);
+  }
+
+  readline_hist_item_t *hrl = Alloc (sizeof (readline_hist_item_t));
+  hrl->data = rl;
+  current_list_prepend ($my(history)->readline, hrl);
 }
 
-private int rline_call_at_end (rline_t **rl) {
-  (*rl)->state |= RL_OK;
-  return RL_OK;
-}
-
-private int rline_break (rline_t **rl) {
-  (*rl)->state |= RL_BREAK;
-  return RL_BREAK;
-}
-
-private int rline_tab_completion_void (rline_t *rl) {
-  (void) rl;
-  return NOTHING_TODO;
+private void readline_history_push_api (readline_t *rl) {
+  Readline.clear (rl);
+  rl->state &= ~RL_CLEAR_FREE_LINE;
+  readline_history_push (rl);
 }
 
 private void ed_deinit_commands (ed_t *this) {
@@ -9599,10 +9164,10 @@ private void ed_deinit_commands (ed_t *this) {
   free ($my(commands));
   $my(commands) = NULL;
   $my(num_commands) = 0;
-  $my(has_ed_rline_commands) = 0;
+  $my(has_ed_readline_commands) = 0;
 }
 
-private void ed_realloc_command_arg (rlcom_t *rlcom, int num) {
+private void ed_realloc_command_arg (readline_com_t *rlcom, int num) {
   int orig_num = rlcom->num_args;
   rlcom->num_args = num;
   rlcom->args = Realloc (rlcom->args, sizeof (char *) * (rlcom->num_args + 1));
@@ -9610,7 +9175,7 @@ private void ed_realloc_command_arg (rlcom_t *rlcom, int num) {
     rlcom->args[i] = NULL;
 }
 
-private void ed_add_command_arg (rlcom_t *rlcom, int flags) {
+private void ed_add_command_arg (readline_com_t *rlcom, int flags) {
 #define ADD_ARG(arg, len, idx) ({                             \
   if (idx is rlcom->num_args)                                 \
     ed_realloc_command_arg (rlcom, idx);                     \
@@ -9659,19 +9224,19 @@ private void ed_append_command_arg (ed_t *this, char *com, char *argname, size_t
   }
 }
 
-private void ed_append_rline_commands (ed_t *this, char **commands,
+private void ed_append_readline_commands (ed_t *this, char **commands,
                      int commands_len, int num_args[], int flags[]) {
   int len = $my(num_commands) + commands_len;
 
   ifnot ($my(num_commands))
-    $my(commands) = Alloc (sizeof (rlcom_t) * (commands_len + 1));
+    $my(commands) = Alloc (sizeof (readline_com_t) * (commands_len + 1));
   else
-    $my(commands) = Realloc ($my(commands), sizeof (rlcom_t) * (len + 1));
+    $my(commands) = Realloc ($my(commands), sizeof (readline_com_t) * (len + 1));
 
   int j = 0;
   int i = $my(num_commands);
   for (; i < len; i++, j++) {
-    $my(commands)[i] = Alloc (sizeof (rlcom_t));
+    $my(commands)[i] = Alloc (sizeof (readline_com_t));
     size_t clen = bytelen (commands[j]);
     $my(commands)[i]->com = Alloc (clen + 1);
     Cstring.cp ($my(commands)[i]->com, clen + 1, commands[j], clen);
@@ -9693,284 +9258,20 @@ private void ed_append_rline_commands (ed_t *this, char **commands,
   $my(num_commands) = len;
 }
 
-private void ed_append_rline_command (ed_t *this, char *name, int args, int flags) {
+private void ed_append_readline_command (ed_t *this, char *name, int args, int flags) {
   char *commands[2] = {name, NULL};
   int largs[] = {args, 0};
   int lflags[] = {flags, 0};
-  ed_append_rline_commands (this, commands, 1, largs, lflags);
+  ed_append_readline_commands (this, commands, 1, largs, lflags);
 }
 
-private int ed_get_num_rline_commands (ed_t *this) {
+private int ed_get_num_readline_commands (ed_t *this) {
   return $my(num_commands);
 }
 
-private void ed_init_commands (ed_t *this) {
-  ifnot (NULL is $my(commands)) return;
+private void readline_reg (readline_t *rl) {
+  ed_t *this = (ed_t *) rl->user_data[READLINE_ED_USER_DATA_IDX];
 
-  $my(has_ed_rline_commands) = 1;
-
-  char *ed_commands[VED_COM_END + 1] = {
-    [VED_COM_BUF_BACKUP] = "@bufbackup",
-    [VED_COM_BUF_CHANGE_NEXT] = "bufnext",
-    [VED_COM_BUF_CHANGE_NEXT_ALIAS] = "bn",
-    [VED_COM_BUF_CHANGE_PREV_FOCUSED] = "bufprevfocused",
-    [VED_COM_BUF_CHANGE_PREV_FOCUSED_ALIAS] = "b`",
-    [VED_COM_BUF_CHANGE_PREV] = "bufprev",
-    [VED_COM_BUF_CHANGE_PREV_ALIAS] = "bp",
-    [VED_COM_BUF_DELETE_FORCE] = "bufdelete!",
-    [VED_COM_BUF_DELETE_FORCE_ALIAS] = "bd!",
-    [VED_COM_BUF_DELETE] = "bufdelete",
-    [VED_COM_BUF_DELETE_ALIAS] = "bd",
-    [VED_COM_BUF_CHANGE] = "buffer",
-    [VED_COM_BUF_CHANGE_ALIAS] = "b",
-    [VED_COM_BUF_CHECK_BALANCED] = "@balanced_check",
-    [VED_COM_BUF_SET] = "set",
-    [VED_COM_DIFF_BUF] = "diffbuf",
-    [VED_COM_DIFF] = "diff",
-    [VED_COM_EDIT_FORCE] = "edit!",
-    [VED_COM_EDIT_FORCE_ALIAS] = "e!",
-    [VED_COM_EDIT] = "edit",
-    [VED_COM_EDIT_ALIAS] = "e",
-    [VED_COM_EDIT_IMAGE] = "@edit_image",
-    [VED_COM_EDNEW] = "ednew",
-    [VED_COM_ENEW] = "enew",
-    [VED_COM_EDNEXT] = "ednext",
-    [VED_COM_EDPREV] = "edprev",
-    [VED_COM_EDPREV_FOCUSED] = "edprevfocused",
-    [VED_COM_ETAIL] = "etail",
-    [VED_COM_GREP] = "vgrep",
-    [VED_COM_MESSAGES] = "messages",
-    [VED_COM_QUIT_FORCE] = "quit!",
-    [VED_COM_QUIT_FORCE_ALIAS] = "q!",
-    [VED_COM_QUIT] = "quit",
-    [VED_COM_QUIT_ALIAS] = "q",
-    [VED_COM_READ] = "read",
-    [VED_COM_READ_ALIAS] = "r",
-    [VED_COM_READ_SHELL] = "r!",
-    [VED_COM_REDRAW] = "redraw",
-    [VED_COM_SCRATCH] = "scratch",
-    [VED_COM_SEARCHES] = "searches",
-    [VED_COM_SHELL] = "!",
-    [VED_COM_SPLIT] = "split",
-    [VED_COM_SUBSTITUTE] = "substitute",
-    [VED_COM_SUBSTITUTE_WHOLE_FILE_AS_RANGE] = "s%",
-    [VED_COM_SUBSTITUTE_ALIAS] = "s",
-    [VED_COM_SAVE_IMAGE] = "@save_image",
-    [VED_COM_TEST_KEY] = "testkey",
-    [VED_COM_VALIDATE_UTF8] = "@validate_utf8",
-    [VED_COM_WIN_CHANGE_NEXT] = "winnext",
-    [VED_COM_WIN_CHANGE_NEXT_ALIAS] = "wn",
-    [VED_COM_WIN_CHANGE_PREV_FOCUSED] = "winprevfocused",
-    [VED_COM_WIN_CHANGE_PREV_FOCUSED_ALIAS] = "w`",
-    [VED_COM_WIN_CHANGE_PREV] = "winprev",
-    [VED_COM_WIN_CHANGE_PREV_ALIAS] = "wp",
-    [VED_COM_WRITE_FORCE] = "write!",
-    [VED_COM_WRITE_FORCE_ALIAS] = "w!",
-    [VED_COM_WRITE_FORCE_FORCE] = "write!!",
-    [VED_COM_WRITE_FORCE_FORCE_ALIAS] = "w!!",
-    [VED_COM_WRITE] = "write",
-    [VED_COM_WRITE_ALIAS] = "w",
-    [VED_COM_WRITE_QUIT_FORCE] = "wq!",
-    [VED_COM_WRITE_QUIT] = "wq",
-    [VED_COM_END] = NULL
-  };
-
-  int num_args[VED_COM_END + 1] = {
-    [VED_COM_BUF_DELETE_FORCE ... VED_COM_BUF_DELETE_ALIAS] = 1,
-    [VED_COM_BUF_CHANGE ... VED_COM_BUF_CHANGE_ALIAS] = 1,
-    [VED_COM_BUF_CHECK_BALANCED] = 1,
-    [VED_COM_EDIT ... VED_COM_ENEW] = 1,
-    [VED_COM_GREP] = 3,
-    [VED_COM_QUIT_FORCE ... VED_COM_QUIT_ALIAS] = 1,
-    [VED_COM_READ ... VED_COM_READ_ALIAS] = 1,
-    [VED_COM_SPLIT] = 1,
-    [VED_COM_SUBSTITUTE ... VED_COM_SUBSTITUTE_ALIAS] = 5,
-    [VED_COM_SAVE_IMAGE] = 1,
-    [VED_COM_VALIDATE_UTF8] = 1,
-    [VED_COM_WRITE_FORCE ... VED_COM_WRITE_ALIAS] = 4,
-    [VED_COM_WRITE_QUIT_FORCE ... VED_COM_WRITE_QUIT] = 1
-  };
-
-  int flags[VED_COM_END + 1] = {
-    [VED_COM_BUF_DELETE_FORCE ... VED_COM_BUF_DELETE_ALIAS] = RL_ARG_BUFNAME,
-    [VED_COM_BUF_CHANGE ... VED_COM_BUF_CHANGE_ALIAS] = RL_ARG_BUFNAME,
-    [VED_COM_BUF_CHECK_BALANCED] = RL_ARG_RANGE,
-    [VED_COM_EDIT ... VED_COM_ENEW] = RL_ARG_FILENAME,
-    [VED_COM_GREP] = RL_ARG_FILENAME|RL_ARG_PATTERN|RL_ARG_RECURSIVE,
-    [VED_COM_QUIT_FORCE ... VED_COM_QUIT_ALIAS] = RL_ARG_GLOBAL,
-    [VED_COM_READ ... VED_COM_READ_ALIAS] = RL_ARG_FILENAME,
-    [VED_COM_SPLIT] = RL_ARG_FILENAME,
-    [VED_COM_SUBSTITUTE ... VED_COM_SUBSTITUTE_ALIAS] =
-      RL_ARG_RANGE|RL_ARG_GLOBAL|RL_ARG_PATTERN|RL_ARG_SUB|RL_ARG_INTERACTIVE,
-    [VED_COM_VALIDATE_UTF8] = RL_ARG_FILENAME,
-    [VED_COM_WRITE_FORCE ... VED_COM_WRITE_ALIAS] =
-      RL_ARG_FILENAME|RL_ARG_RANGE|RL_ARG_BUFNAME|RL_ARG_APPEND,
-    [VED_COM_WRITE_QUIT_FORCE ... VED_COM_WRITE_QUIT] = RL_ARG_GLOBAL
-  };
-
-  $my(commands) = Alloc (sizeof (rlcom_t) * (VED_COM_END + 1));
-
-  int i = 0;
-  for (i = 0; i < VED_COM_END; i++) {
-    $my(commands)[i] = Alloc (sizeof (rlcom_t));
-    size_t clen = bytelen (ed_commands[i]);
-    $my(commands)[i]->com = Alloc (clen + 1);
-    Cstring.cp ($my(commands)[i]->com, clen + 1, ed_commands[i], clen);
-
-    ifnot (num_args[i]) {
-      $my(commands)[i]->args = NULL;
-      continue;
-    }
-
-    $my(commands)[i]->args = Alloc (sizeof (char *) * (num_args[i] + 1));
-    $my(commands)[i]->num_args = num_args[i];
-    for (int j = 0; j <= num_args[i]; j++)
-      $my(commands)[i]->args[j] = NULL;
-
-    ed_add_command_arg ($my(commands)[i], flags[i]);
-  }
-
-  $my(commands)[i] = NULL;
-  $my(num_commands) = VED_COM_END;
-
-  ed_append_command_arg (this, "set", "--persistent-layout=", 20);
-  ed_append_command_arg (this, "set", "--enable-writing", 16);
-  ed_append_command_arg (this, "set", "--backup-suffix=", 16);
-  ed_append_command_arg (this, "set", "--no-backupfile", 15);
-  ed_append_command_arg (this, "set", "--shiftwidth=", 13);
-  ed_append_command_arg (this, "set", "--save-image=", 13);
-  ed_append_command_arg (this, "set", "--image-file=", 13);
-  ed_append_command_arg (this, "set", "--image-name=", 13);
-  ed_append_command_arg (this, "set", "--backupfile", 12);
-  ed_append_command_arg (this, "set", "--tabwidth=", 11);
-  ed_append_command_arg (this, "set", "--autosave=", 11);
-  ed_append_command_arg (this, "set", "--ftype=", 8);
-  ed_append_command_arg (this, "diff", "--origin", 8);
-  ed_append_command_arg (this, "substitute", "--remove-doseol", 15);
-  ed_append_command_arg (this, "s%",         "--remove-doseol", 15);
-  ed_append_command_arg (this, "substitute", "--remove-tabs", 13);
-  ed_append_command_arg (this, "s%",         "--remove-tabs", 13);
-  ed_append_command_arg (this, "substitute", "--shiftwidth=", 13);
-  ed_append_command_arg (this, "s%",         "--shiftwidth=", 13);
-  ed_append_command_arg (this, "@save_image", "--as=", 5);
-}
-
-private void rline_write_and_break (rline_t *rl){
-  rl->state |= (RL_WRITE|RL_BREAK);
-  rline_edit (rl);
-}
-
-private void rline_insert_char_and_break (rline_t *rl) {
-  rl->state |= (RL_INSERT_CHAR|RL_BREAK);
-  rline_edit (rl);
-}
-
-private int rline_calc_columns (rline_t *rl, int num_cols) {
-  int cols = rl->first_col + num_cols;
-  while (cols > $from(rl->ed, dim)->num_cols) cols--;
-  return cols;
-}
-
-private rline_t *rline_new (ed_t *ed, term_t *this, IOGetkey getch,
-  int prompt_row, int first_col, int num_cols, video_t *video) {
-  rline_t *rl = Alloc (sizeof (rline_t));
-  rl->ed = ed;
-  rl->term = this;
-  rl->cur_video = video;
-  rl->getch = getch;
-  rl->at_beg = rline_call_at_beg;
-  rl->at_end = rline_call_at_end;
-  rl->tab_completion = rline_tab_completion_void;
-
-  rl->prompt_char = DEFAULT_PROMPT_CHAR;
-  rl->prompt_row = prompt_row;
-  rl->first_row = prompt_row;
-  rl->first_col = first_col;
-  rl->num_cols = rline_calc_columns (rl, num_cols);
-  rl->row_pos = rl->prompt_row;
-  rl->fd = this->out_fd;
-  rl->user_object = NULL;
-  rl->render = String.new (num_cols);
-  rl->line = Vstring.new ();
-  vstring_t *s = Alloc (sizeof (vstring_t));
-  s->data = String.new_with_len (" ", 1);
-  current_list_append (rl->line, s);
-
-  rl->state |= (RL_OK|RL_IS_VISIBLE);
-  rl->opts |= (RL_OPT_HAS_HISTORY_COMPLETION|RL_OPT_HAS_TAB_COMPLETION);
-  return rl;
-}
-
-private void rline_render (rline_t *rl) {
-  int has_prompt_char = (rl->prompt_char isnot 0);
-  String.clear (rl->render);
-
-  if (rl->state & RL_SET_POS) goto set_pos;
-
-  vstring_t *chars = rl->line->head;
-  rl->row_pos = rl->prompt_row - rl->num_rows + 1;
-
-  String.append_with_fmt (rl->render, "%s" TERM_GOTO_PTR_POS_FMT
-      TERM_SET_COLOR_FMT "%c", TERM_CURSOR_HIDE, rl->first_row,
-      rl->first_col, COLOR_PROMPT, rl->prompt_char);
-
-  int cidx = 0;
-
-  for (int i = 0; i < rl->num_rows; i++) {
-    if (i)
-      String.append_with_fmt (rl->render, TERM_GOTO_PTR_POS_FMT, rl->first_row + i,
-          rl->first_col);
-
-    for (cidx = 0; (cidx + (i * rl->num_cols) + (i == 0 ? has_prompt_char : 0))
-       < rl->line->num_items and cidx < (rl->num_cols -
-          (i == 0 ? has_prompt_char : 0)); cidx++) {
-      String.append_with (rl->render, chars->data->bytes);
-      chars = chars->next;
-    }
-  }
-
-  while (cidx++ < rl->num_cols - 1) String.append_byte (rl->render, ' ');
-
-  String.append_with_fmt (rl->render, "%s%s", TERM_COLOR_RESET,
-    (rl->state & RL_CURSOR_HIDE) ? "" : TERM_CURSOR_SHOW);
-
-set_pos:
-  rl->state &= ~RL_SET_POS;
-  int row = rl->first_row;
-  int col = rl->first_col;
-
-  row += ((rl->line->cur_idx + has_prompt_char) / rl->num_cols);
-  col += ((rl->line->cur_idx + has_prompt_char) < rl->num_cols
-    ? has_prompt_char + rl->line->cur_idx
-    : ((rl->line->cur_idx + has_prompt_char) % rl->num_cols));
-
-  String.append_with_fmt (rl->render, TERM_GOTO_PTR_POS_FMT, row, col);
-}
-
-private void rline_write (rline_t *rl) {
-  ed_t *this = rl->ed;
-  int orig_first_row = rl->first_row;
-
-  if (rl->line->num_items + 1 <= rl->num_cols) {
-    rl->num_rows = 1;
-    rl->first_row = rl->prompt_row;
-  } else {
-    int mod = rl->line->num_items % rl->num_cols;
-    rl->num_rows = (rl->line->num_items / rl->num_cols) + (mod isnot 0);
-    if  (rl->num_rows is 0) rl->num_rows = 1;
-    rl->first_row = rl->prompt_row - rl->num_rows + 1;
-  }
-
-  while (rl->first_row > orig_first_row)
-    Video.draw.row_at (rl->cur_video, orig_first_row++);
-
-  rline_render (rl);
-  IO.fd.write (rl->fd, rl->render->bytes, rl->render->num_bytes);
-  rl->state &= ~RL_WRITE;
-}
-
-private void rline_reg (rline_t *rl) {
-  ed_t *this = rl->ed;
   int regidx = ed_reg_get_idx (this, IO.getkey (STDIN_FILENO));
   if (NOTOK is regidx) return;
 
@@ -9983,7 +9284,7 @@ private void rline_reg (rline_t *rl) {
 
   reg_t *reg = rg->head;
   while (reg isnot NULL) {
-    BYTES_TO_RLINE (rl, reg->data->bytes, (int) reg->data->num_bytes);
+    ED_BYTES_TO_READLINE (rl, reg->data->bytes, (int) reg->data->num_bytes);
     reg = reg->next;
   }
 }
@@ -9996,228 +9297,7 @@ private int array_any_int (int *ar, size_t len, int c) {
   return 0;
 }
 
-private rline_t *rline_edit (rline_t *rl) {
-  ed_t *this = rl->ed; (void) this;
-  vstring_t *ch;
-  int retval;
-
-  if (rl->state & RL_CLEAR) {
-    rline_clear (rl);
-    if (rl->state & RL_BREAK) goto theend;
-  }
-
-  if (rl->state & RL_WRITE) {
-    if (rl->state & RL_IS_VISIBLE)
-      rline_write (rl);
-    else
-      rl->state &= ~RL_WRITE;
-
-    if (rl->state & RL_BREAK)
-      goto theend;
-  }
-
-  if (rl->state & RL_PROCESS_CHAR)
-    goto process_char;
-
-  if (rl->state & RL_INSERT_CHAR)
-    goto insert_char;
-
-  for (;;) {
-thecontinue:
-    rl->state &= ~RL_CONTINUE;
-
-    if (rl->state & RL_IS_VISIBLE) {
-      ed_check_msg_status (rl->ed);
-      rline_write (rl);
-    }
-
-    rl->c = rl->getch (STDIN_FILENO);
-
-    retval = rl->at_beg (&rl);
-    switch (retval) {
-      case RL_OK: break;
-      case RL_BREAK: goto theend; // CHANGE debug
-      case RL_PROCESS_CHAR: goto process_char;
-      case RL_CONTINUE: goto thecontinue;
-      case RL_POST_PROCESS: goto post_process;
-    }
-
-process_char:
-    rl->state &= ~RL_PROCESS_CHAR;
-
-    if (rl->line->num_items is 1) {
-      if (array_any_int (rl->first_chars, rl->first_chars_len, rl->c)) {
-        if (rl->opts & RL_OPT_HAS_TAB_COMPLETION) {
-          if (rl->trigger_first_char_completion) {
-            rl->state |= (RL_INSERT_CHAR|RL_FIRST_CHAR_COMPLETION);
-            goto insert_char;
-          }
-        }
-      }
-    }
-
-theloop:
-    switch (rl->c) {
-      case ESCAPE_KEY:
-      case '\r':
-        goto theend;
-
-      case ARROW_UP_KEY:
-      case ARROW_DOWN_KEY:
-        ifnot (rl->opts & RL_OPT_HAS_HISTORY_COMPLETION) goto post_process;
-        $my(history)->rline->history_idx = (rl->c is ARROW_DOWN_KEY
-            ? 0 : $my(history)->rline->num_items - 1);
-        rl = rline_complete_history (rl, &$my(history)->rline->history_idx,
-            (rl->c is ARROW_DOWN_KEY ? -1 : 1));
-        goto post_process;
-
-      case LAST_ARG_KEY:
-        rl = rline_complete_last_arg (rl);
-        goto post_process;
-
-      case ARROW_LEFT_KEY:
-         if (rl->line->cur_idx > 0) {
-           rl->line->current = rl->line->current->prev;
-           rl->line->cur_idx--;
-           rl->state |= RL_SET_POS;
-         }
-         goto post_process;
-
-      case ARROW_RIGHT_KEY:
-         if (rl->line->cur_idx < (rl->line->num_items - 1)) {
-           rl->line->current = rl->line->current->next;
-           rl->line->cur_idx++;
-           rl->state |= RL_SET_POS;
-         }
-         goto post_process;
-
-      case HOME_KEY:
-      case CTRL('a'):
-        rl->line->cur_idx = 0;
-        rl->line->current = rl->line->head;
-        rl->state |= RL_SET_POS;
-        goto post_process;
-
-      case END_KEY:
-      case CTRL('e'):
-        rl->line->cur_idx = (rl->line->num_items - 1);
-        rl->line->current =  rl->line->tail;
-        rl->state |= RL_SET_POS;
-        goto post_process;
-
-      case DELETE_KEY:
-        if (rl->line->cur_idx is (rl->line->num_items - 1) or
-           (rl->line->cur_idx is 0 and rl->line->current->data->bytes[0] is ' ' and
-            rl->line->num_items is 0))
-          goto post_process;
-        {
-          vstring_t *tmp = current_list_pop (rl->line, vstring_t);
-          if (NULL isnot tmp) {String.release (tmp->data); free (tmp);}
-        }
-        goto post_process;
-
-      case BACKSPACE_KEY: {
-          if (rl->line->cur_idx is 0) continue;
-          rl->line->current = rl->line->current->prev;
-          rl->line->cur_idx--;
-          vstring_t *tmp = current_list_pop (rl->line, vstring_t);
-          if (NULL isnot tmp) {String.release (tmp->data); free (tmp);}
-        }
-        goto post_process;
-
-      case CTRL('l'):
-        rl->state |= RL_CLEAR_FREE_LINE;
-        rline_clear (rl);
-        goto post_process;
-
-      case CTRL('r'):
-        rline_reg (rl);
-        goto post_process;
-
-      case '\t':
-        ifnot (rl->opts & RL_OPT_HAS_TAB_COMPLETION)
-          goto post_process;
-
-        retval = rl->tab_completion (rl);
-
-        if (rl->opts & RL_OPT_RETURN_AFTER_TAB_COMPLETION) {
-          rl->c = '\r';
-          goto theend;
-        }
-
-        switch (retval) {
-          case RL_PROCESS_CHAR:
-            goto process_char;
-        }
-
-
-        goto post_process;
-
-      default:
-insert_char:
-        rl->state &= ~RL_INSERT_CHAR;
-
-        if (rl->c < ' ' or
-            rl->c is INSERT_KEY or
-           (rl->c > 0x7f and (rl->c < 0x0a0 or (rl->c >= FN_KEY(1) and rl->c <= FN_KEY(12)) or
-           (rl->c >= ARROW_DOWN_KEY and rl->c < HOME_KEY) or
-           (rl->c > HOME_KEY and (rl->c is PAGE_DOWN_KEY or rl->c is PAGE_UP_KEY or rl->c is END_KEY))
-           ))) {
-          if (rl->state & RL_BREAK) goto theend;
-          goto post_process;
-        }
-
-        if (rl->c < 0x80) {
-          ch = Alloc (sizeof (vstring_t));
-          ch->data = String.new_with_fmt ("%c", rl->c);
-        } else {
-          ch = Alloc (sizeof (vstring_t));
-          char buf[5]; int len;
-          ch->data = String.new_with (Ustring.character (rl->c, buf, &len));
-        }
-
-        if (rl->line->cur_idx is rl->line->num_items - 1 and ' ' is rl->line->current->data->bytes[0]) {
-          current_list_prepend (rl->line, ch);
-          rl->line->current = rl->line->current->next;
-          rl->line->cur_idx++;
-        } else if (rl->line->cur_idx isnot rl->line->num_items - 1) {
-          current_list_prepend (rl->line, ch);
-          rl->line->current = rl->line->current->next;
-          rl->line->cur_idx++;
-        }
-        else
-          current_list_append (rl->line, ch);
-
-        if (rl->state & RL_BREAK)
-          goto theend;
-
-        if (rl->state & RL_FIRST_CHAR_COMPLETION) {
-            rl->state &= ~RL_FIRST_CHAR_COMPLETION;
-            rl->c = '\t';
-            goto theloop;
-        }
-
-        goto post_process;
-
-    }
-
-post_process:
-    rl->state &= ~RL_POST_PROCESS;
-    if (rl->state & RL_BREAK) goto theend;
-    retval = rl->at_end (&rl);
-    switch (retval) {
-      case RL_BREAK: goto theend;
-      case RL_PROCESS_CHAR: goto process_char;
-      case RL_CONTINUE: goto thecontinue;
-    }
-  }
-
-theend:
-  rl->state &= ~RL_BREAK;
-  return rl;
-}
-
-private vstring_t *rline_quote_subcommand (vstring_t *it) {
+private vstring_t *readline_quote_subcommand (vstring_t *it) {
   if (it is NULL) return NULL;
 
   vstring_t *it_head = it->prev;
@@ -10277,445 +9357,6 @@ theend:
   return it_head;
 }
 
-private rline_t *rline_parse (rline_t *rl, buf_t *this) {
-  vstring_t *it = rline_parse_command (rl);
-
-  while (it) {
-    int type = 0;
-    if (Cstring.eq (it->data->bytes, " ")) goto itnext;
-
-    arg_t *arg = Alloc (sizeof (arg_t));
-    string_t *opt = NULL;
-
-    if (it->data->bytes[0] is '-') {
-      if (it->next and it->next->data->bytes[0] is '-') {
-        type |= RL_TOK_ARG_LONG;
-        it = it->next;
-      } else
-        type |= RL_TOK_ARG_SHORT;
-
-      it = it->next;
-      if (it is NULL) {
-        if (this)
-          MSG_ERRNO (RL_ARGUMENT_MISSING_ERROR);
-        rl->com = RL_ARGUMENT_MISSING_ERROR;
-        goto theerror;
-      }
-
-      opt = String.new (8);
-      while (it) {
-        if (it->data->bytes[0] is ' ')
-          goto arg_type;
-
-        if (it->data->bytes[0] is '=') {
-          if (Cstring.eq (opt->bytes, "command"))
-            it = rline_quote_subcommand (it->next);
-
-          if (it->next is NULL) {
-            if (this)
-              MSG_ERRNO (RL_ARG_AWAITING_STRING_OPTION_ERROR);
-            rl->com = RL_ARG_AWAITING_STRING_OPTION_ERROR;
-            goto theerror;
-          }
-
-          it = it->next;
-
-          arg->argval = String.new (8);
-          int is_quoted = '"' is it->data->bytes[0];
-          if (is_quoted) it = it->next;
-
-          while (it) {
-            if (' ' is it->data->bytes[0]) {
-              ifnot (is_quoted) {
-                type |= RL_TOK_ARG_OPTION;
-                goto arg_type;
-              }
-            }
-
-            if ('"' is it->data->bytes[0]) {
-              if (is_quoted) {
-                is_quoted = 0;
-                if (arg->argval->bytes[arg->argval->num_bytes - 1] is '\\' and
-                    arg->argval->bytes[arg->argval->num_bytes - 2] isnot '\\') {
-                  arg->argval->bytes[arg->argval->num_bytes - 1] = '"';
-                  is_quoted = 1;
-                  it = it->next;
-                  continue;
-                }
-                else { /* accept empty string --opt="" */
-                  type |= RL_TOK_ARG_OPTION;
-                  goto arg_type;
-                }
-              }
-            }
-
-            String.append_with (arg->argval, it->data->bytes);
-            it = it->next;
-          }
-
-          if (is_quoted){
-            if (this)
-              MSG_ERRNO (RL_UNTERMINATED_QUOTED_STRING_ERROR);
-            rl->com = RL_UNTERMINATED_QUOTED_STRING_ERROR;
-            goto theerror;
-          }
-
-          goto arg_type;
-        }
-
-        String.append_with (opt, it->data->bytes);
-        it = it->next;
-      }
-
-arg_type:
-      if (arg->argname isnot NULL) {
-        String.replace_with (arg->argname, opt->bytes);
-      } else
-        arg->argname = String.new_with (opt->bytes);
-
-      if (type & RL_TOK_ARG_OPTION) {
-        if (Cstring.eq (opt->bytes, "pat"))
-          arg->type |= RL_ARG_PATTERN;
-        else if (Cstring.eq (opt->bytes, "sub"))
-          arg->type |= RL_ARG_SUB;
-        else if (Cstring.eq (opt->bytes, "range"))
-          arg->type |= RL_ARG_RANGE;
-        else if (Cstring.eq (opt->bytes, "bufname"))
-          arg->type |= RL_ARG_BUFNAME;
-        else if (Cstring.eq (opt->bytes, "fname"))
-          arg->type |= RL_ARG_FILENAME;
-        else {
-          arg->type |= RL_ARG_ANYTYPE;
-          int found_arg = 0;
-          if (rl->com < rl->commands_len) {
-            int idx = 0;
-            while (idx < rl->commands[rl->com]->num_args) {
-              ifnot (NULL is rl->commands[rl->com]->args[idx]) {
-                if (Cstring.eq_n (opt->bytes, rl->commands[rl->com]->args[idx]+2, opt->num_bytes)) {
-                  found_arg = 1;
-                  break;
-                }
-              }
-              idx++;
-            }
-          }
-
-          ifnot (found_arg) {
-            if (this)
-              MSG_ERRNO (RL_UNRECOGNIZED_OPTION);
-            rl->com = RL_UNRECOGNIZED_OPTION;
-          }
-        }
-
-        goto argtype_succeed;
-      } else {
-        if (Cstring.eq (opt->bytes, "i") or Cstring.eq (opt->bytes, "interactive"))
-          arg->type |= RL_ARG_INTERACTIVE;
-        else if (Cstring.eq (opt->bytes, "global"))
-          arg->type |= RL_ARG_GLOBAL;
-        else if (Cstring.eq (opt->bytes, "append"))
-          arg->type |= RL_ARG_APPEND;
-        else if (Cstring.eq (opt->bytes, "verbose"))
-          arg->type |= RL_ARG_VERBOSE;
-        else if (Cstring.eq (opt->bytes, "r") or Cstring.eq (opt->bytes, "recursive"))
-          arg->type |= RL_ARG_RECURSIVE;
-        else
-          arg->type |= RL_ARG_ANYTYPE;
-
-        goto argtype_succeed;
-      }
-
-theerror:
-      String.release (opt);
-      String.release (arg->argname);
-      String.release (arg->argval);
-      free (arg);
-      goto theend;
-
-argtype_succeed:
-      String.release (opt);
-      goto append_arg;
-    } else {
-      arg->argname = String.new_with (it->data->bytes);
-      it = it->next;
-      while (it isnot NULL and 0 is (Cstring.eq (it->data->bytes, " "))) {
-        String.append_with (arg->argname, it->data->bytes);
-        it = it->next;
-      }
-
-      if (rl->com is VED_COM_BUF_CHANGE or rl->com is VED_COM_BUF_CHANGE_ALIAS) {
-        opt = String.new_with ("bufname");
-        arg->argval = String.new_with (arg->argname->bytes);
-        type |= RL_TOK_ARG_OPTION;
-        goto arg_type;
-      }
-
-      char *glob = Cstring.byte.in_str (arg->argname->bytes, '*');
-      ifnot (NULL is glob) {
-        dirlist_t *dlist = NULL;
-        string_t *dir = String.new (16);
-        string_t *pre = NULL;
-        string_t *post = NULL;
-
-        if (arg->argname->num_bytes is 1) {
-          String.append_byte (dir, '.');
-          goto getlist;
-        }
-
-        char *sp = glob;
-        ifnot (sp is arg->argname->bytes) {
-          pre = String.new (sp - arg->argname->bytes + 1);
-          while (--sp >= arg->argname->bytes and *sp isnot DIR_SEP)
-            String.prepend_byte (pre, *sp);
-
-          ifnot (*sp is DIR_SEP) sp++;
-        }
-
-        if (sp is arg->argname->bytes)
-          String.append_byte (dir, '.');
-        else
-          while (--sp >= arg->argname->bytes)
-            String.prepend_byte (dir, *sp);
-
-        ifnot (bytelen (glob) is 1) {
-          post = String.new ((arg->argname->bytes - glob) + 1);
-          sp = glob + 1;
-          while (*sp) String.append_byte (post, *sp++);
-        }
-getlist:
-        dlist = Dir.list (dir->bytes, 0);
-        if (NULL is dlist or dlist->list->num_items is 0) goto free_strings;
-        vstring_t *fit = dlist->list->head;
-
-        while (fit) {
-          char *fname = fit->data->bytes;
-           /* matter to change */
-          if (fname[fit->data->num_bytes - 1] is DIR_SEP) goto next_fname;
-
-          if (pre isnot NULL)
-            ifnot (Cstring.eq_n (fname, pre->bytes, pre->num_bytes)) goto next_fname;
-
-          if (post isnot NULL) {
-            int pi; int fi = fit->data->num_bytes - 1;
-            for (pi = post->num_bytes - 1; pi >= 0 and fi >= 0; pi--, fi--)
-              if (fname[fi] isnot post->bytes[pi]) break;
-
-            if (pi isnot -1) goto next_fname;
-          }
-          arg_t *larg = Alloc (sizeof (arg_t));
-          ifnot (Cstring.eq (dir->bytes, "."))
-            larg->argval = String.new_with_fmt ("%s/%s", dir->bytes, fname);
-          else
-            larg->argval = String.new_with (fname);
-
-          larg->type |= RL_ARG_FILENAME;
-          current_list_append (rl, larg);
-next_fname:
-          fit = fit->next;
-        }
-free_strings:
-        ifnot (NULL is pre) String.release (pre);
-        ifnot (NULL is post) String.release (post);
-        ifnot (NULL is dlist) dlist->free (dlist);
-        String.release (arg->argname);
-        String.release (dir);
-        free (arg);
-        goto itnext;
-      } else {
-        arg->type |= RL_ARG_FILENAME;
-        arg->argval = String.new_with (arg->argname->bytes);
-      }
-    }
-
-append_arg:
-    current_list_append (rl, arg);
-
-itnext:
-    if (it isnot NULL) it = it->next;
-  }
-
-theend:
-  return rl;
-}
-
-private Vstring_t *rline_get_arg_fnames (rline_t *rl, int num) {
-  Vstring_t *fnames = Vstring.new ();
-  arg_t *arg = rl->head;
-  if (num < 0) num = 256000;
-  while (arg and num) {
-    if (arg->type & RL_ARG_FILENAME) {
-      Vstring.append_uniq (fnames, arg->argval->bytes);
-      num--;
-    }
-    arg = arg->next;
-  }
-
-  ifnot (fnames->num_items) {
-    free (fnames);
-    return NULL;
-  }
-
-  fnames->current = fnames->head;
-  fnames->cur_idx = 0;
-  return fnames;
-}
-
-private arg_t *rline_get_arg (rline_t *rl, int type) {
-  arg_t *arg = rl->tail;
-  while (arg) {
-    if (arg->type & type) return arg;
-    arg = arg->prev;
-  }
-
-  return NULL;
-}
-
-private string_t *rline_get_anytype_arg (rline_t *rl, char *argname) {
-  arg_t *arg = rl->tail;
-  while (arg) {
-    if (arg->type & RL_ARG_ANYTYPE) {
-      if (Cstring.eq (arg->argname->bytes, argname))
-        return arg->argval;
-    }
-    arg = arg->prev;
-  }
-
-  return NULL;
-}
-
-private Vstring_t *rline_get_anytype_args (rline_t *rl, char *argname) {
-  Vstring_t *args = NULL;
-  arg_t *arg = rl->head;
-  while (arg) {
-    if (arg->type & RL_ARG_ANYTYPE) {
-      if (Cstring.eq (arg->argname->bytes, argname)) {
-        if (NULL is args) args = Vstring.new ();
-        Vstring.current.append_with (args, arg->argval->bytes);
-      }
-    }
-    arg = arg->next;
-  }
-
-  return args;
-}
-
-private int rline_arg_exists (rline_t *rl, char *argname) {
-  arg_t *arg = rl->head;
-  while (arg) {
-    if (Cstring.eq (arg->argname->bytes, argname)) return 1;
-    arg = arg->next;
-  }
-
-  return 0;
-}
-
-private int rline_parse_arg_buf_range (rline_t *rl, arg_t *arg, buf_t *this) {
-  if (arg is NULL) {
-    rl->range[0] = rl->range[1] = this->cur_idx;
-    return OK;
-  }
-
-  if (arg->argval->num_bytes is 1) {
-    if (arg->argval->bytes[0] is '%') {
-      rl->range[0] = 0; rl->range[1] = this->num_items - 1;
-      return OK;
-    }
-
-    if (arg->argval->bytes[0] is '.') {
-      rl->range[0] = rl->range[1] = this->cur_idx;
-      return OK;
-    }
-
-    if ('0' < arg->argval->bytes[0] and arg->argval->bytes[0] <= '9') {
-      rl->range[0] = rl->range[1] = (arg->argval->bytes[0] - '0') - 1;
-      if (rl->range[0] >= this->num_items) return NOTOK;
-      return OK;
-    }
-
-    return NOTOK;
-  }
-
-  char *sp = Cstring.byte.in_str (arg->argval->bytes, ',');
-
-  if (NULL is sp) {
-    sp = arg->argval->bytes;
-
-    int num = 0;
-    int idx = 0;
-    while ('0' <= *sp and *sp <= '9' and idx++ <= MAX_COUNT_DIGITS)
-      num = (10 * num) + (*sp++ - '0');
-
-    if (*sp isnot 0) return NOTOK;
-    rl->range[0] = rl->range[1] = num - 1;
-    if (rl->range[0] >= this->num_items or rl->range[0] < 0) return NOTOK;
-    return OK;
-  }
-
-  int diff = sp - arg->argval->bytes;
-  sp++;
-  do {
-    if (*sp is '.') {
-      if (*(sp + 1) isnot 0) return NOTOK;
-      rl->range[1] = this->cur_idx;
-      break;
-    }
-
-    if (*sp is '$') {
-      if (*(sp + 1) isnot 0) return NOTOK;
-      rl->range[1] = this->num_items - 1;
-      break;
-    }
-
-    if (*sp > '9' or *sp < '0') return NOTOK;
-    int num = 0;
-    int idx = 0;
-    while ('0' <= *sp and *sp <= '9' and idx++ <= MAX_COUNT_DIGITS)
-      num = (10 * num) + (*sp++ - '0');
-
-    if (*sp isnot 0) return NOTOK;
-    rl->range[1] = num - 1;
-  } while (0);
-
-  String.clear_at (arg->argval, diff);
-  ifnot (arg->argval->num_bytes) return NOTOK;
-  sp = arg->argval->bytes;
-
-  loop (1) {
-    if (*sp is '.') {
-      if (*(sp + 1) isnot 0) return NOTOK;
-      rl->range[0] = this->cur_idx;
-      break;
-    }
-
-    if (*sp > '9' or *sp < '0') return NOTOK;
-    int num = 0;
-    int idx = 0;
-    while ('0' <= *sp and *sp <= '9' and idx++ <= MAX_COUNT_DIGITS)
-      num = (10 * num) + (*sp++ - '0');
-
-    if (*sp isnot 0) return NOTOK;
-    rl->range[0] = num - 1;
-  } while (0);
-
-  if (rl->range[0] < 0) return NOTOK;
-  if (rl->range[0] > rl->range[1]) return NOTOK;
-  if (rl->range[1] >= this->num_items) return NOTOK;
-  return OK;
-}
-
-private int rline_get_buf_range (rline_t  *rl, buf_t *this, int *range) {
-  arg_t *arg = rline_get_arg (rl, RL_ARG_RANGE);
-  if (NULL is arg or (NOTOK is rline_parse_arg_buf_range (rl, arg, this))) {
-    range[0] = -1; range[1] = -1;
-    return NOTOK;
-  }
-
-  range[0] = rl->range[0];
-  range[1] = rl->range[1];
-
-  return OK;
-}
-
 private int buf_test_key (buf_t *this) {
   utf8 c;
   MSG("press any key to test, press escape to end the test");
@@ -10765,13 +9406,13 @@ check_utf8:
   return *retval;
 }
 
-private int buf_com_validate_utf8 (buf_t **thisp, rline_t *rl) {
+private int buf_com_validate_utf8 (buf_t **thisp, readline_t *rl) {
   buf_t *this = *thisp;
 
   int retval = OK;
 
   Vstring_t *fnames = NULL;
-  if (NULL is rl or (NULL is (fnames = Rline.get.arg_fnames (rl, -1)))) {
+  if (NULL is rl or (NULL is (fnames = Readline.get.arg_fnames (rl, -1)))) {
     fnames = Vstring.new ();
     Vstring.append_with (fnames, $my(fname));
   }
@@ -10855,96 +9496,338 @@ int buf_validate_utf8_lw_mode_cb (buf_t **thisp, int fidx, int lidx,
   return retval;
 }
 
-private int rline_exec (rline_t *this, buf_t **thisp) {
-  this->state |= RL_EXEC;
-  return buf_rline (thisp, this);
+private utf8 buf_spell_question (spell_t *spell, buf_t **thisp,
+        Action_t **Action, int fidx, int lidx, bufiter_t *iter) {
+  buf_t *this = *thisp;
+  ed_t *ed = $my(root);
+
+  char prefix[fidx + 1];
+  char lpart[iter->line->num_bytes - lidx];
+
+  Cstring.substr (prefix, fidx, iter->line->bytes, iter->line->num_bytes, 0);
+  Cstring.substr (lpart, iter->line->num_bytes - lidx - 1, iter->line->bytes,
+     iter->line->num_bytes, lidx + 1);
+
+  string_t *quest = String.new (512);
+
+  String.append_with_fmt (quest,
+    "Spelling [%s] at line %d and %d index\n%s%s%s\n",
+     spell->word, iter->idx + 1, fidx, prefix, spell->word, lpart);
+
+   ifnot (spell->guesses->num_items)
+     String.append_with (quest, "Cannot find matching words and there are no suggestions\n");
+   else
+     String.append_with (quest, "Suggestions: (enter number to accept one as correct)\n");
+
+  int charslen = 5 + spell->guesses->num_items;
+  utf8 chars[charslen];
+  chars[0] = 'A'; chars[1] = 'a'; chars[2] = 'c'; chars[3] = 'i'; chars[4] = 'q';
+  vstring_t *it = spell->guesses->head;
+  for (int j = 1; j <= spell->guesses->num_items; j++) {
+    String.append_with_fmt (quest, "%d: %s\n", j, it->data->bytes);
+    chars[4+j] = '0' + j;
+    it = it->next;
+  }
+
+  String.append_with (quest,
+      "Choises:\n"
+      "a[ccept] word as correct and add it to the dictionary\n"
+      "A[ccept] word as correct just for this session\n"
+      "c[ansel] operation and continue with the next\n"
+      "i[nput]  correct word by getting input\n"
+      "q[uit]   quit operation\n");
+
+  utf8 c = Ed.question (ed, quest->bytes, chars, charslen);
+  String.release (quest);
+
+  it = spell->guesses->head;
+  switch (c) {
+    case 'c': return SPELL_OK;
+    case 'a':
+      Spell.add_word_to_dictionary (spell, spell->word);
+      Imap.set_with_keylen (spell->dic, spell->word);
+      return SPELL_OK;
+
+    case 'q': return SPELL_ERROR;
+
+    case 'A':
+      Imap.set_with_keylen (spell->ign_words, spell->word);
+      return SPELL_OK;
+
+    case 'i': {
+      int row = self(get.current_video_row) - 1;
+      int col = self(get.current_video_col);
+
+      string_t *inp = self(input_box, row, col, 0, spell->word);
+      ifnot (inp->num_bytes) {
+        String.release (inp);
+        return SPELL_OK;
+      }
+
+      self(Action.set_with, *Action, REPLACE_LINE, iter->idx,
+          iter->line->bytes, iter->line->num_bytes);
+      String.replace_numbytes_at_with (iter->line, spell->word_len, fidx, inp->bytes);
+      String.release (inp);
+      self(set.modified);
+      return SPELL_CHANGED_WORD;
+    }
+
+    default: {
+      self(Action.set_with, *Action, REPLACE_LINE, iter->idx,
+          iter->line->bytes, iter->line->num_bytes);
+      it = spell->guesses->head;
+      for (int k = '1'; k < c; k++) it = it->next;
+      String.replace_numbytes_at_with (iter->line, spell->word_len, fidx,
+          it->data->bytes);
+      self(set.modified);
+      return SPELL_CHANGED_WORD;
+    }
+  }
+
+  return SPELL_OK;
 }
 
-private void rline_set_prompt_char (rline_t *rl, char c) {
-  rl->prompt_char = c;
-}
+private int buf_spell (buf_t **thisp, readline_t *rl) {
+  buf_t *this = *thisp;
 
-private void rline_set_user_object (rline_t *rl, void *obj) {
-  rl->user_object = obj;
-}
+  int range[2];
+  int edit = Readline.arg.exists (rl, "edit");
+  if (edit) {
+    win_t *w = $my(parent);
+    Win.edit_fname (w, thisp, Spell.get.dictionary ()->bytes, 0, 0, 1, 0);
+    return OK;
+  }
 
-private void rline_set_opts (rline_t *rl, int opts) {
-  rl->opts = opts;
-}
+  ed_t *ed = $my(root);
 
-private void rline_set_opts_bit (rline_t *rl, int bit) {
-  rl->opts |= bit;
-}
+  int retval = readline_get_buf_range (rl, *thisp, range);
+  if (NOTOK is retval) {
+    range[0] = self(get.current_row_idx);
+    range[1] = range[0];
+  }
 
-private void rline_set_state (rline_t *rl, int state) {
-  rl->state = state;
-}
+  int count = range[1] - range[0] + 1;
 
-private void rline_set_state_bit (rline_t *rl, int bit) {
-  rl->state |= bit;
-}
+  spell_t *spell = Spell.new ();
+  if (SPELL_ERROR is Spell.init_dictionary (spell, Spell.get.dictionary (),
+      Spell.get.num_entries (), NO_FORCE)) {
+    Msg.send (ed, COLOR_RED, spell->messages->head->data->bytes);
+    Spell.release (spell, SPELL_CLEAR_DICTIONARY);
+    return NOTOK;
+  }
 
-private void rline_set_visibility (rline_t *rl, int visible) {
-  if (YES is visible)
-    rl->state |= RL_IS_VISIBLE;
-  else if (NO is visible)
-    rl->state &= ~RL_IS_VISIBLE;
-}
+  Action_t *Action = self(Action.new);
+  self(Action.set_with_current, Action, REPLACE_LINE);
 
-private rline_T __init_rline__ (void) {
-  return (rline_T) {
-    .self = (rline_self) {
-      .edit = rline_edit,
-      .free = rline_free,
-      .exec = rline_exec,
-      .clear = rline_clear,
-      .parse = rline_parse,
-      .write_and_break = rline_write_and_break,
-      .get = (rline_get_self) {
-        .arg = rline_get_arg,
-        .opts = rline_get_opts,
-        .line = rline_get_line,
-        .state = rline_get_state,
-        .command = rline_get_command,
-        .buf_range = rline_get_buf_range,
-        .arg_fnames = rline_get_arg_fnames,
-        .user_object = rline_get_user_object,
-        .anytype_arg = rline_get_anytype_arg,
-        .anytype_args = rline_get_anytype_args
-      },
-      .set = (rline_set_self) {
-        .line = rline_set_line,
-        .opts = rline_set_opts,
-        .state = rline_set_state,
-        .opts_bit = rline_set_opts_bit,
-        .state_bit = rline_set_state_bit,
-        .visibility = rline_set_visibility,
-        .prompt_char = rline_set_prompt_char,
-        .user_object = rline_set_user_object
-      },
-      .arg = (rline_arg_self) {
-       .exists = rline_arg_exists
-      },
-      .history = (rline_history_self) {
-        .push = rline_history_push
+  int buf_changed = 0;
+
+  char word[MAXLEN_WORD];
+
+  bufiter_t *iter = self(iter.new, range[0]);
+
+  int i = 0;
+  while (iter and i++ < count) {
+    int fidx = 0; int lidx = -1;
+    string_t *line = iter->line;
+    char *tmp = NULL;
+    for (;;) {
+      int cur_idx = lidx + 1 + (tmp isnot NULL);
+      tmp = Cstring.extract_word_at (line->bytes, line->num_bytes,
+          word, MAXLEN_WORD, SPELL_NOTWORD, SPELL_NOTWORD_LEN, cur_idx, &fidx, &lidx);
+
+      if (NULL is tmp) {
+        if (lidx >= (int) line->num_bytes - 1)
+          goto itnext;
+        continue;
+      }
+
+      int len = lidx - fidx + 1;
+      if (len < (int) spell->min_word_len or len >= MAXLEN_WORD)
+        continue;
+
+      spell->word_len = len;
+      Cstring.cp (spell->word, MAXLEN_WORD, word, len);
+
+      retval = Spell.correct (spell);
+
+      if (retval >= SPELL_WORD_IS_CORRECT) continue;
+
+      retval = buf_spell_question (spell, thisp, &Action, fidx, lidx, iter);
+      if (SPELL_ERROR is retval) goto theend;
+      if (SPELL_CHANGED_WORD is retval) {
+        retval = SPELL_OK;
+        buf_changed = 1;
       }
     }
-  };
+itnext:
+    iter = self(iter.next, iter);
+  }
+
+theend:
+  if (buf_changed) {
+    self(undo.push, Action);
+    self(draw);
+  } else
+    self(Action.free, Action);
+
+  self(iter.free, iter);
+  Spell.release (spell, SPELL_DONOT_CLEAR_DICTIONARY);
+  return retval;
 }
 
-private void ed_set_rline_cb (ed_t *this, Rline_cb cb) {
-  $my(num_rline_cbs)++;
-  ifnot ($my(num_rline_cbs) - 1)
-    $my(rline_cbs) = Alloc (sizeof (Rline_cb));
+private int buf_spell_word (buf_t **thisp, int fidx, int lidx,
+                                  bufiter_t *iter, char *word) {
+  buf_t *this = *thisp;
+  ed_t *ed = $my(root);
+
+  int retval = NOTOK;
+
+  spell_t *spell = Spell.new ();
+
+  if (SPELL_ERROR is Spell.init_dictionary (spell, Spell.get.dictionary (),
+      Spell.get.num_entries (), NO_FORCE)) {
+    Msg.send (ed, COLOR_RED, spell->messages->head->data->bytes);
+    Spell.release (spell, SPELL_CLEAR_DICTIONARY);
+    return NOTOK;
+  }
+
+  Action_t *Action = self(Action.new);
+  self(Action.set_with_current, Action, REPLACE_LINE);
+
+  int len = lidx - fidx + 1;
+
+  char lword[len + 1];
+  int i = 0;
+  while (i < len and NULL isnot Cstring.byte.in_str (SPELL_NOTWORD, word[i])) {
+    fidx++;
+    len--;
+    i++;
+  }
+
+  int j = 0;
+  int orig_len = len;
+  len = 0;
+  while (i < orig_len and NULL is Cstring.byte.in_str (SPELL_NOTWORD, word[i])) {
+    lword[j++] = word[i++];
+    len++;
+  }
+
+  lword[j] = '\0';
+
+  if (i isnot len) {
+    i = len - 1;
+    while (i >= 0 and NULL isnot Cstring.byte.in_str (SPELL_NOTWORD, word[i--])) {
+      lidx--;
+      len--;
+    }
+  }
+
+  if (len < (int) spell->min_word_len) goto theend;
+
+  spell->word_len = len;
+  Cstring.cp (spell->word, MAXLEN_WORD, lword, len);
+
+  retval = Spell.correct (spell);
+
+  if (retval >= SPELL_WORD_IS_CORRECT) {
+    retval = OK;
+    goto theend;
+  }
+
+  retval = buf_spell_question (spell, thisp, &Action, fidx, lidx, iter);
+
+theend:
+  if (retval is SPELL_CHANGED_WORD) {
+    self(undo.push, Action);
+    self(draw);
+    retval = SPELL_OK;
+  } else
+    self(Action.free, Action);
+
+  Spell.release (spell, SPELL_DONOT_CLEAR_DICTIONARY);
+  return retval;
+}
+
+private int buf_spell_word_cb  (buf_t **thisp, int fidx, int lidx,
+                  bufiter_t *it, char *word, utf8 c, char *action) {
+  (void) fidx; (void) lidx; (void) action; (void) it; (void) word; (void) thisp;
+
+  if (c isnot 'S') return NO_CALLBACK_FUNCTION;
+
+  return buf_spell_word (thisp, fidx, lidx, it, word);
+}
+
+private int buf_spell_cw_mode_cb (buf_t **thisp, int fidx, int lidx, string_t *str, utf8 c, char *action) {
+  if (c isnot 'S') return NO_CALLBACK_FUNCTION;
+
+  buf_t *this = *thisp;
+
+  bufiter_t *iter = self(iter.new, -1);
+  int retval = buf_spell_word_cb (thisp, fidx, lidx, iter, str->bytes, c, action);
+  self(iter.free, iter);
+  return retval;
+}
+
+private int buf_spell_lw_mode_cb (buf_t **thisp, int fidx, int lidx, Vstring_t *vstr, utf8 c, char *action) {
+  (void) fidx; (void) lidx; (void) action; (void) vstr;
+
+  if (c isnot 'S') return NO_CALLBACK_FUNCTION;
+
+  buf_t *this = *thisp;
+  ed_t *ed = $my(root);
+
+  readline_t *rl = Ed.readline.new (ed);
+  string_t *str = String.new_with_fmt ("spell --range=%d,%d", fidx + 1, lidx + 1);
+  Readline.set.visibility (rl, NO);
+  Readline.set.line (rl, str->bytes, str->num_bytes);
+  String.release (str);
+  Readline.parse (rl);
+//, *thisp);
+
+  int retval = OK;
+
+  if (SPELL_OK is (retval = buf_spell (thisp, rl)))
+    Readline.history.push (rl);
   else
-    $my(rline_cbs) = Realloc ($my(rline_cbs), sizeof (Rline_cb) * $my(num_rline_cbs));
+    Readline.release (rl);
 
-  $my(rline_cbs)[$my(num_rline_cbs) - 1] = cb;
+  return retval;
 }
 
-private void ed_free_rline_cbs (ed_t *this) {
-  ifnot ($my(num_rline_cbs)) return;
-  free ($my(rline_cbs));
+private int buf_spell_readline_cb (buf_t **thisp, readline_t *rl, utf8 c) {
+  (void) thisp; (void) c;
+
+  int retval = RLINE_NO_COMMAND;
+  string_t *com = Readline.get.command (rl);
+
+  ifnot (Cstring.eq (com->bytes, "spell"))
+    goto theend;
+
+  retval = buf_spell (thisp, rl);
+
+theend:
+  String.release (com);
+  return retval;
+}
+
+private int readline_exec (readline_t *this, buf_t **thisp) {
+  this->state |= RL_EXEC;
+  return buf_readline (thisp, this);
+}
+
+private void ed_set_readline_cb (ed_t *this, Readline_cb cb) {
+  $my(num_readline_cbs)++;
+  ifnot ($my(num_readline_cbs) - 1)
+    $my(readline_cbs) = Alloc (sizeof (Readline_cb));
+  else
+    $my(readline_cbs) = Realloc ($my(readline_cbs), sizeof (Readline_cb) * $my(num_readline_cbs));
+
+  $my(readline_cbs)[$my(num_readline_cbs) - 1] = cb;
+}
+
+private void ed_free_readline_cbs (ed_t *this) {
+  ifnot ($my(num_readline_cbs)) return;
+  free ($my(readline_cbs));
 }
 
 private void ed_set_normal_on_g_cb (ed_t *this, BufNormalOng_cb cb) {
@@ -10989,7 +9872,7 @@ private void ed_free_expr_reg_cbs (ed_t *this) {
   free ($my(expr_reg_cbs));
 }
 
-private int buf_rline (buf_t **thisp, rline_t *rl) {
+private int buf_readline (buf_t **thisp, readline_t *rl) {
   buf_t *this = *thisp;
 
   int retval = NOTHING_TODO;
@@ -10998,7 +9881,7 @@ private int buf_rline (buf_t **thisp, rline_t *rl) {
 
   if (rl->state & RL_EXEC) goto exec;
 
-  rl = Rline.edit (rl);
+  rl = Readline.edit (rl);
 
   if (rl->c isnot '\r') goto theend;
 
@@ -11008,10 +9891,10 @@ exec:
   if (rl->line->head is NULL or rl->line->head->data->bytes[0] is ' ')
     goto theend;
 
-  rline_parse (rl, this);
+  Readline.parse (rl);
 
-  for (int i = 0; i < $myroots(num_rline_cbs); i++) {
-    retval = $myroots(rline_cbs)[i] (thisp, rl, rl->com);
+  for (int i = 0; i < $myroots(num_readline_cbs); i++) {
+    retval = $myroots(readline_cbs)[i] (thisp, rl, rl->com);
     if (retval isnot RLINE_NO_COMMAND) goto theend;
   }
 
@@ -11032,9 +9915,9 @@ redo:
     case VED_COM_WRITE_FORCE:
     case VED_COM_WRITE:
       if ($my(enable_writing)) {
-        arg_t *fname = Rline.get.arg (rl, RL_ARG_FILENAME);
-        arg_t *range = Rline.get.arg (rl, RL_ARG_RANGE);
-        arg_t *append = Rline.get.arg (rl, RL_ARG_APPEND);
+        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
+        readline_arg_t *range = Readline.get.arg (rl, RL_ARG_RANGE);
+        readline_arg_t *append = Readline.get.arg (rl, RL_ARG_APPEND);
         if (NULL is fname) {
           if (is_special_win) goto theend;
           if (NULL isnot range or NULL isnot append) goto theend;
@@ -11046,7 +9929,7 @@ redo:
             rl->range[0] = 0;
             rl->range[1] = this->num_items - 1;
           } else
-            if (NOTOK is rline_parse_arg_buf_range (rl, range, this))
+            if (NOTOK is readline_parse_arg_buf_range (rl, range, this))
               goto theend;
 
           retval = buf_write_to_fname (this, fname->argval->bytes, NULL isnot append,
@@ -11065,7 +9948,7 @@ redo:
       if (is_special_win) goto theend;
       if ($my(is_sticked)) goto theend;
       {
-        arg_t *fname = Rline.get.arg (rl, RL_ARG_FILENAME);
+        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
         retval = Win.edit_fname ($my(parent), thisp, (NULL is fname ? NULL: fname->argval->bytes),
            $myparents(cur_frame), VED_COM_EDIT_FORCE is rl->com, 1, 1);
       }
@@ -11082,19 +9965,19 @@ redo:
     case VED_COM_QUIT:
     case VED_COM_QUIT_ALIAS:
       retval = ed_quit ($my(root), VED_COM_QUIT_FORCE is rl->com,
-          Rline.arg.exists (rl, "global"));
+          Readline.arg.exists (rl, "global"));
       goto theend;
 
     case VED_COM_WRITE_QUIT:
     case VED_COM_WRITE_QUIT_FORCE:
       self(write, NO_FORCE);
       retval = ed_quit ($my(root), VED_COM_WRITE_QUIT_FORCE is rl->com,
-          Rline.arg.exists (rl, "global"));
+          Readline.arg.exists (rl, "global"));
       goto theend;
 
     case VED_COM_EDNEW:
        {
-         arg_t *fname = Rline.get.arg (rl, RL_ARG_FILENAME);
+         readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
          if (NULL isnot fname)
            String.replace_with ($myroots(ed_str), fname->argval->bytes);
          else
@@ -11123,7 +10006,7 @@ redo:
 
     case VED_COM_ENEW:
        {
-         arg_t *fname = Rline.get.arg (rl, RL_ARG_FILENAME);
+         readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
          if (NULL isnot fname)
            retval = buf_enew_fname (thisp, fname->argval->bytes);
          else
@@ -11139,7 +10022,7 @@ redo:
     case VED_COM_BUF_CHECK_BALANCED:
       if ($my(ftype)->balanced isnot NULL) {
         int range[2];
-        if (NOTOK is Rline.get.buf_range (rl, this, range)) {
+        if (NOTOK is readline_get_buf_range (rl, this, range)) {
           range[0] = 0;
           range[1] = this->num_items - 1;
         }
@@ -11170,10 +10053,10 @@ redo:
 
     case VED_COM_GREP:
       {
-        arg_t *pat = Rline.get.arg (rl, RL_ARG_PATTERN);
+        readline_arg_t *pat = Readline.get.arg (rl, RL_ARG_PATTERN);
         if (NULL is pat) break;
 
-        Vstring_t *fnames = Rline.get.arg_fnames (rl, -1);
+        Vstring_t *fnames = Readline.get.arg_fnames (rl, -1);
         dirlist_t *dlist = NULL;
 
         if (NULL is fnames) {
@@ -11182,7 +10065,7 @@ redo:
           fnames = dlist->list;
         }
 
-        arg_t *rec = Rline.get.arg (rl, RL_ARG_RECURSIVE);
+        readline_arg_t *rec = Readline.get.arg (rl, RL_ARG_RECURSIVE);
         dirwalk_t *dw = NULL;
 
         ifnot (NULL is rec) {
@@ -11195,7 +10078,7 @@ redo:
           }
 
           ifnot (NULL is dlist) {
-            dlist->free (dlist);
+            dlist->release (dlist);
             dlist = NULL;
           } else
             Vstring.release (fnames);
@@ -11206,20 +10089,20 @@ redo:
         retval = buf_grep (thisp, pat->argval->bytes, fnames);
 
         ifnot (NULL is dlist)
-          dlist->free (dlist);
+          dlist->release (dlist);
         else
           if (NULL is dw)
             Vstring.release (fnames);
 
         ifnot (NULL is dw)
-          Dir.walk.free (&dw);
+          Dir.walk.release (&dw);
       }
       goto theend;
 
     case VED_COM_SPLIT:
       {
         if (is_special_win) goto theend;
-        arg_t *fname = Rline.get.arg (rl, RL_ARG_FILENAME);
+        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
         if (NULL is fname)
           retval = buf_split (thisp, UNNAMED);
         else
@@ -11231,7 +10114,7 @@ redo:
     case VED_COM_READ:
     case VED_COM_READ_ALIAS:
       {
-        arg_t *fname = Rline.get.arg (rl, RL_ARG_FILENAME);
+        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
         if (NULL is fname) goto theend;
         retval = buf_read_from_file (this, fname->argval->bytes);
       }
@@ -11289,7 +10172,7 @@ redo:
       if ($my(flags) & BUF_IS_SPECIAL) goto theend;
       if ($my(is_sticked)) goto theend;
       {
-        arg_t *bufname = Rline.get.arg (rl, RL_ARG_BUFNAME);
+        readline_arg_t *bufname = Readline.get.arg (rl, RL_ARG_BUFNAME);
         if (NULL is bufname) goto theend;
         retval = buf_change_bufname (thisp, bufname->argval->bytes);
       }
@@ -11328,7 +10211,7 @@ redo:
     case VED_COM_BUF_DELETE:
       {
         int idx;
-        arg_t *bufname = Rline.get.arg (rl, RL_ARG_BUFNAME);
+        readline_arg_t *bufname = Readline.get.arg (rl, RL_ARG_BUFNAME);
         if (NULL is bufname)
           idx = $my(parent)->cur_idx;
         else
@@ -11357,8 +10240,8 @@ redo:
       goto theend;
 
     default:
-     // for (int i = 0; i < $myroots(num_rline_cbs); i++) {
-     //   retval = $myroots(rline_cbs)[i] (thisp, rl, rl->com);
+     // for (int i = 0; i < $myroots(num_readline_cbs); i++) {
+     //   retval = $myroots(readline_cbs)[i] (thisp, rl, rl->com);
      //   if (retval isnot RLINE_NO_COMMAND) break;
      // }
       goto theend;
@@ -11367,14 +10250,14 @@ redo:
 theend:
   this = *thisp; // as thisp can be modified, "this" might end up as NULL reference
 
-  Rline.clear (rl);
+  Readline.clear (rl);
 
   ifnot (DONE is retval)
-    Rline.free (rl);
+    Readline.release (rl);
   else {
     rl->state &= ~RL_CLEAR_FREE_LINE;
-    Rline.history.push (rl);
-    rline_last_component_push (rl);
+    Readline.history.push (rl);
+    Readline.last_component_push (rl);
   }
 
   return retval;
@@ -11899,7 +10782,7 @@ private void ed_set_screen_size (ed_t *this, screen_dim_opts opts) {
   $my(topline_row) = $my(dim)->first_row;
   $my(prompt_row)  = $my(msg_row) - 1;
 
-  Video.free ($my(video));
+  Video.release ($my(video));
   $my(video) = Video.new (OUTPUT_FD, $my(dim)->num_rows, $my(dim)->num_cols, $my(dim)->first_row, $my(dim)->first_col);
 }
 
@@ -11922,7 +10805,7 @@ private string_t *ed_history_get_search_file (ed_t *this) {
   return $my(hs_file);
 }
 
-private string_t *ed_history_get_rline_file (ed_t *this) {
+private string_t *ed_history_get_readline_file (ed_t *this) {
   return $my(hrl_file);
 }
 
@@ -11950,7 +10833,7 @@ private string_t *ed_history_set_search_file (ed_t *this, char *file) {
   return $my(hs_file);
 }
 
-private string_t *ed_history_set_rline_file (ed_t *this, char *file) {
+private string_t *ed_history_set_readline_file (ed_t *this, char *file) {
   string_t *hrl_file = $my(hrl_file);
   ifnot (NULL is file) {
     if (NULL is hrl_file)
@@ -11965,7 +10848,7 @@ private string_t *ed_history_set_rline_file (ed_t *this, char *file) {
       hrl_file = String.replace_with (hrl_file,
           Root.get.env ($OurRoot, "data_dir")->bytes);
 
-    String.append_with_fmt (hrl_file, "/.%s_libved_hist_rline",
+    String.append_with_fmt (hrl_file, "/.%s_libved_hist_readline",
         Root.get.env ($OurRoot, "user_name")->bytes);
   }
 
@@ -11975,13 +10858,14 @@ private string_t *ed_history_set_rline_file (ed_t *this, char *file) {
 }
 
 private void ed_history_add (ed_t *this, char *bytes, size_t num_bytes) {
-  rline_t *rl = self(rline.new);
-  BYTES_TO_RLINE (rl, bytes, (int) num_bytes);
-  Rline.history.push (rl);
+  readline_t *rl = self(readline.new);
+  ED_BYTES_TO_READLINE (rl, bytes, (int) num_bytes);
+  Readline.history.push (rl);
 }
 
 private void ed_history_add_lines (ed_t *this, Vstring_t *hist, int what) {
   if (NULL is hist) return;
+
 
   if (what is RLINE_HISTORY) {
     vstring_t *it = hist->head;
@@ -12042,7 +10926,7 @@ hrl_file:
   fp = fopen ($my(hrl_file)->bytes, "w");
   if (NULL is fp) return;
 
-  h_rlineitem_t *hrl = $my(history)->rline->tail;
+  readline_hist_item_t *hrl = $my(history)->readline->tail;
   while (hrl) {
     string_t *line = Vstring.join (hrl->data->line, "");
     fprintf (fp, "%s\n", line->bytes);
@@ -12092,6 +10976,7 @@ private int buf_word_actions_cb (buf_t **thisp, int fidx, int lidx,
       return selfp(insert.mode, 0, buf);
     }
   }
+
   return NOTHING_TODO;
 }
 
@@ -12124,7 +11009,7 @@ private void ed_set_word_actions_default (ed_t *this) {
   $my(word_actions) = Vstring.new ();
   $my(word_actions_chars) = NULL;
   $my(word_actions_chars_len) = 0;
-  utf8 chars[] = {'+', '*', '`', '~', 'L', 'U', ESCAPE_KEY};
+  utf8 chars[] = {'+', '*', '`', '~', 'L', 'U', 'S', ESCAPE_KEY};
   char actions[] =
     "+send selected word to XA_CLIPBOARD\n"
     "*send selected word to XA_PRIMARY\n"
@@ -12134,6 +11019,12 @@ private void ed_set_word_actions_default (ed_t *this) {
     "Upper (convert word to upper case)";
 
   self(set.word_actions, chars, ARRLEN(chars), actions, buf_word_actions_cb);
+
+  if ($my(env)->uid) {
+    utf8 spc[] = {'S'}; char spact[] = "Spell selected word";
+    self(set.word_actions, spc, ARRLEN(spc), spact, buf_spell_word_cb);
+  }
+
 }
 
 private void ed_set_cw_mode_actions (ed_t *this, utf8 *chars, int len,
@@ -12178,7 +11069,7 @@ private void ed_free_cw_mode_cbs (ed_t *this) {
 }
 
 private void ed_set_cw_mode_actions_default (ed_t *this) {
-  utf8 chars[] = {'e', 'd', 'y', 'Y', '+', '*', 033};
+  utf8 chars[] = {'e', 'd', 'y', 'Y', '+', '*', 'S', 033};
   char actions[] =
     "edit selected area as filename\n"
     "delete selected area\n"
@@ -12188,6 +11079,11 @@ private void ed_set_cw_mode_actions_default (ed_t *this) {
     "*send selected area to XA_PRIMARY";
 
   self(set.cw_mode_actions, chars, ARRLEN(chars), actions, NULL);
+
+  if (getuid ()) {
+    utf8 sp[] = {'S'}; char spact[] = "Spell selected";
+    self(set.cw_mode_actions, sp, 1, spact, buf_spell_cw_mode_cb);
+  }
 }
 
 private void ed_set_lw_mode_actions (ed_t *this, utf8 *chars, int len,
@@ -12232,7 +11128,7 @@ private void ed_free_lw_mode_cbs (ed_t *this) {
 }
 
 private void ed_set_lw_mode_actions_default (ed_t *this) {
-  utf8 chars[] = {'s', 'w', 'd', 'y', '>', '<', '+', '*', '`', 033};
+  utf8 chars[] = {'s', 'w', 'd', 'y', '>', '<', '+', '*', '`', 'S', 033};
   char actions[] =
     "substitute command for the selected lines\n"
     "write selected lines to file\n"
@@ -12256,7 +11152,11 @@ private void ed_set_lw_mode_actions_default (ed_t *this) {
   if ($my(env)->uid) {
     utf8 ev[] = {'@'}; char evact[] = "@evaluate selected lines";
     self(set.lw_mode_actions, ev, 1, evact, buf_evaluate_lw_mode_cb);
+
+    utf8 sp[] = {'S'}; char spact[] = "Spell selected lines";
+    self(set.lw_mode_actions, sp, 1, spact, buf_spell_lw_mode_cb);
   }
+
 }
 
 private void ed_free_line_mode_cbs (ed_t *this) {
@@ -12434,6 +11334,25 @@ private int buf_file_mode_actions_cb (buf_t **thisp, utf8 c, char *action) {
 
       break;
 
+    case 'S': {
+        int flags = self(get.flags);
+        if (0 is (flags & BUF_IS_SPECIAL) and
+            0 is Cstring.eq (self(get.basename), UNNAMED)) {
+          readline_t *rl = Ed.readline.new ($my(root));
+          string_t *str = String.new_with ("spell --range=%");
+          Readline.set.visibility (rl, NO);
+          Readline.set.line (rl, str->bytes, str->num_bytes);
+          String.release (str);
+          Readline.parse (rl);
+// *thisp);
+          if (SPELL_OK is (retval = buf_spell (thisp, rl)))
+            Readline.history.push (rl);
+          else
+            Readline.release (rl);
+        }
+    }
+      break;
+
     default:
       break;
   }
@@ -12448,7 +11367,8 @@ private void ed_set_file_mode_actions_default (ed_t *this) {
   char actions[] =
      "write buffer\n"
      "validate file for invalid utf8 sequences\n"
-     "@evaluate buffer";
+     "@evaluate buffer\n"
+     "Spell file";
   self(set.file_mode_actions, chars, ARRLEN(chars), actions, buf_file_mode_actions_cb);
 
 }
@@ -12541,7 +11461,7 @@ private void ed_free (ed_t *this) {
     String.release ($my(hrl_file));
     Ustring.release ($my(uline));
     Vstring.release ($my(rl_last_component));
-    Video.free ($my(video));
+    Video.release ($my(video));
 
     history_free (&$my(history));
     //venv_free (&$my(env));
@@ -12564,7 +11484,7 @@ private void ed_free (ed_t *this) {
     free ($my(word_actions_chars));
     free ($my(word_actions_cb));
 
-    ed_free_rline_cbs (this);
+    ed_free_readline_cbs (this);
     ed_free_on_normal_g_cbs (this);
     ed_free_expr_reg_cbs (this);
     ed_free_lw_mode_cbs (this);
@@ -12782,8 +11702,8 @@ handle_com:
 
     case ':':
       {
-      rline_t *rl = Ed.rline.new (ed);
-      retval = buf_rline (thisp, rl);
+      readline_t *rl = Ed.readline.new (ed);
+      retval = buf_readline (thisp, rl);
       this = *thisp;
       }
 
@@ -13148,25 +12068,184 @@ private void ed_resume (ed_t *this) {
   Win.draw (this->current);
 }
 
-private rline_t *ed_rline_new (ed_t *this) {
-  rline_t *rl = rline_new (this, $my(term), IO.getkey, $my(prompt_row),
+private void ed_init_commands (ed_t *this) {
+  ifnot (NULL is $my(commands)) return;
+
+  $my(has_ed_readline_commands) = 1;
+
+  char *ed_commands[VED_COM_END + 1] = {
+    [VED_COM_BUF_BACKUP] = "@bufbackup",
+    [VED_COM_BUF_CHANGE_NEXT] = "bufnext",
+    [VED_COM_BUF_CHANGE_NEXT_ALIAS] = "bn",
+    [VED_COM_BUF_CHANGE_PREV_FOCUSED] = "bufprevfocused",
+    [VED_COM_BUF_CHANGE_PREV_FOCUSED_ALIAS] = "b`",
+    [VED_COM_BUF_CHANGE_PREV] = "bufprev",
+    [VED_COM_BUF_CHANGE_PREV_ALIAS] = "bp",
+    [VED_COM_BUF_DELETE_FORCE] = "bufdelete!",
+    [VED_COM_BUF_DELETE_FORCE_ALIAS] = "bd!",
+    [VED_COM_BUF_DELETE] = "bufdelete",
+    [VED_COM_BUF_DELETE_ALIAS] = "bd",
+    [VED_COM_BUF_CHANGE] = "buffer",
+    [VED_COM_BUF_CHANGE_ALIAS] = "b",
+    [VED_COM_BUF_CHECK_BALANCED] = "@balanced_check",
+    [VED_COM_BUF_SET] = "set",
+    [VED_COM_DIFF_BUF] = "diffbuf",
+    [VED_COM_DIFF] = "diff",
+    [VED_COM_EDIT_FORCE] = "edit!",
+    [VED_COM_EDIT_FORCE_ALIAS] = "e!",
+    [VED_COM_EDIT] = "edit",
+    [VED_COM_EDIT_ALIAS] = "e",
+    [VED_COM_EDIT_IMAGE] = "@edit_image",
+    [VED_COM_EDNEW] = "ednew",
+    [VED_COM_ENEW] = "enew",
+    [VED_COM_EDNEXT] = "ednext",
+    [VED_COM_EDPREV] = "edprev",
+    [VED_COM_EDPREV_FOCUSED] = "edprevfocused",
+    [VED_COM_ETAIL] = "etail",
+    [VED_COM_GREP] = "vgrep",
+    [VED_COM_MESSAGES] = "messages",
+    [VED_COM_QUIT_FORCE] = "quit!",
+    [VED_COM_QUIT_FORCE_ALIAS] = "q!",
+    [VED_COM_QUIT] = "quit",
+    [VED_COM_QUIT_ALIAS] = "q",
+    [VED_COM_READ] = "read",
+    [VED_COM_READ_ALIAS] = "r",
+    [VED_COM_READ_SHELL] = "r!",
+    [VED_COM_REDRAW] = "redraw",
+    [VED_COM_SCRATCH] = "scratch",
+    [VED_COM_SEARCHES] = "searches",
+    [VED_COM_SHELL] = "!",
+    [VED_COM_SPLIT] = "split",
+    [VED_COM_SUBSTITUTE] = "substitute",
+    [VED_COM_SUBSTITUTE_WHOLE_FILE_AS_RANGE] = "s%",
+    [VED_COM_SUBSTITUTE_ALIAS] = "s",
+    [VED_COM_SAVE_IMAGE] = "@save_image",
+    [VED_COM_TEST_KEY] = "testkey",
+    [VED_COM_VALIDATE_UTF8] = "@validate_utf8",
+    [VED_COM_WIN_CHANGE_NEXT] = "winnext",
+    [VED_COM_WIN_CHANGE_NEXT_ALIAS] = "wn",
+    [VED_COM_WIN_CHANGE_PREV_FOCUSED] = "winprevfocused",
+    [VED_COM_WIN_CHANGE_PREV_FOCUSED_ALIAS] = "w`",
+    [VED_COM_WIN_CHANGE_PREV] = "winprev",
+    [VED_COM_WIN_CHANGE_PREV_ALIAS] = "wp",
+    [VED_COM_WRITE_FORCE] = "write!",
+    [VED_COM_WRITE_FORCE_ALIAS] = "w!",
+    [VED_COM_WRITE_FORCE_FORCE] = "write!!",
+    [VED_COM_WRITE_FORCE_FORCE_ALIAS] = "w!!",
+    [VED_COM_WRITE] = "write",
+    [VED_COM_WRITE_ALIAS] = "w",
+    [VED_COM_WRITE_QUIT_FORCE] = "wq!",
+    [VED_COM_WRITE_QUIT] = "wq",
+    [VED_COM_END] = NULL
+  };
+
+  int num_args[VED_COM_END + 1] = {
+    [VED_COM_BUF_DELETE_FORCE ... VED_COM_BUF_DELETE_ALIAS] = 1,
+    [VED_COM_BUF_CHANGE ... VED_COM_BUF_CHANGE_ALIAS] = 1,
+    [VED_COM_BUF_CHECK_BALANCED] = 1,
+    [VED_COM_EDIT ... VED_COM_ENEW] = 1,
+    [VED_COM_GREP] = 3,
+    [VED_COM_QUIT_FORCE ... VED_COM_QUIT_ALIAS] = 1,
+    [VED_COM_READ ... VED_COM_READ_ALIAS] = 1,
+    [VED_COM_SPLIT] = 1,
+    [VED_COM_SUBSTITUTE ... VED_COM_SUBSTITUTE_ALIAS] = 5,
+    [VED_COM_SAVE_IMAGE] = 1,
+    [VED_COM_VALIDATE_UTF8] = 1,
+    [VED_COM_WRITE_FORCE ... VED_COM_WRITE_ALIAS] = 4,
+    [VED_COM_WRITE_QUIT_FORCE ... VED_COM_WRITE_QUIT] = 1
+  };
+
+  int flags[VED_COM_END + 1] = {
+    [VED_COM_BUF_DELETE_FORCE ... VED_COM_BUF_DELETE_ALIAS] = RL_ARG_BUFNAME,
+    [VED_COM_BUF_CHANGE ... VED_COM_BUF_CHANGE_ALIAS] = RL_ARG_BUFNAME,
+    [VED_COM_BUF_CHECK_BALANCED] = RL_ARG_RANGE,
+    [VED_COM_EDIT ... VED_COM_ENEW] = RL_ARG_FILENAME,
+    [VED_COM_GREP] = RL_ARG_FILENAME|RL_ARG_PATTERN|RL_ARG_RECURSIVE,
+    [VED_COM_QUIT_FORCE ... VED_COM_QUIT_ALIAS] = RL_ARG_GLOBAL,
+    [VED_COM_READ ... VED_COM_READ_ALIAS] = RL_ARG_FILENAME,
+    [VED_COM_SPLIT] = RL_ARG_FILENAME,
+    [VED_COM_SUBSTITUTE ... VED_COM_SUBSTITUTE_ALIAS] =
+      RL_ARG_RANGE|RL_ARG_GLOBAL|RL_ARG_PATTERN|RL_ARG_SUB|RL_ARG_INTERACTIVE,
+    [VED_COM_VALIDATE_UTF8] = RL_ARG_FILENAME,
+    [VED_COM_WRITE_FORCE ... VED_COM_WRITE_ALIAS] =
+      RL_ARG_FILENAME|RL_ARG_RANGE|RL_ARG_BUFNAME|RL_ARG_APPEND,
+    [VED_COM_WRITE_QUIT_FORCE ... VED_COM_WRITE_QUIT] = RL_ARG_GLOBAL
+  };
+
+  $my(commands) = Alloc (sizeof (readline_com_t) * (VED_COM_END + 1));
+
+  int i = 0;
+  for (i = 0; i < VED_COM_END; i++) {
+    $my(commands)[i] = Alloc (sizeof (readline_com_t));
+    size_t clen = bytelen (ed_commands[i]);
+    $my(commands)[i]->com = Alloc (clen + 1);
+    Cstring.cp ($my(commands)[i]->com, clen + 1, ed_commands[i], clen);
+
+    ifnot (num_args[i]) {
+      $my(commands)[i]->args = NULL;
+      continue;
+    }
+
+    $my(commands)[i]->args = Alloc (sizeof (char *) * (num_args[i] + 1));
+    $my(commands)[i]->num_args = num_args[i];
+    for (int j = 0; j <= num_args[i]; j++)
+      $my(commands)[i]->args[j] = NULL;
+
+    ed_add_command_arg ($my(commands)[i], flags[i]);
+  }
+
+  $my(commands)[i] = NULL;
+  $my(num_commands) = VED_COM_END;
+
+  ed_append_command_arg (this, "set", "--persistent-layout=", 20);
+  ed_append_command_arg (this, "set", "--enable-writing", 16);
+  ed_append_command_arg (this, "set", "--backup-suffix=", 16);
+  ed_append_command_arg (this, "set", "--no-backupfile", 15);
+  ed_append_command_arg (this, "set", "--shiftwidth=", 13);
+  ed_append_command_arg (this, "set", "--save-image=", 13);
+  ed_append_command_arg (this, "set", "--image-file=", 13);
+  ed_append_command_arg (this, "set", "--image-name=", 13);
+  ed_append_command_arg (this, "set", "--backupfile", 12);
+  ed_append_command_arg (this, "set", "--tabwidth=", 11);
+  ed_append_command_arg (this, "set", "--autosave=", 11);
+  ed_append_command_arg (this, "set", "--ftype=", 8);
+  ed_append_command_arg (this, "diff", "--origin", 8);
+  ed_append_command_arg (this, "substitute", "--remove-doseol", 15);
+  ed_append_command_arg (this, "s%",         "--remove-doseol", 15);
+  ed_append_command_arg (this, "substitute", "--remove-tabs", 13);
+  ed_append_command_arg (this, "s%",         "--remove-tabs", 13);
+  ed_append_command_arg (this, "substitute", "--shiftwidth=", 13);
+  ed_append_command_arg (this, "s%",         "--shiftwidth=", 13);
+  ed_append_command_arg (this, "@save_image", "--as=", 5);
+
+  if (getuid ()) {
+    ed_append_readline_command (this, "spell", 1, RL_ARG_RANGE);
+    ed_append_command_arg (this, "spell",  "--edit", 6);
+    ed_set_readline_cb (this, buf_spell_readline_cb);
+  }
+}
+
+private readline_t *ed_readline_new (ed_t *this) {
+  readline_t *rl = Readline.new (this, $my(term), IO.getkey, $my(prompt_row),
       1, $my(dim)->num_cols, $my(video)) ;
   if ($my(commands) is NULL) ed_init_commands (this);
   rl->commands = $my(commands);
   rl->commands_len = $my(num_commands);
-  rl->tab_completion = rline_tab_completion;
-  rl->trigger_first_char_completion = 1;
   rl->first_chars[0] = '~';
   rl->first_chars[1] = '`';
   rl->first_chars[2] = '@';
   rl->first_chars_len = 3;
-
+  rl->trigger_first_char_completion = 1;
+  rl->tab_completion = readline_tab_completion;
+  rl->last_component_push = readline_last_component_push_cb;
+  rl->history = $my(history)->readline;
+  rl->last_component = $my(rl_last_component);
   return rl;
 }
 
-private rline_t *ed_rline_new_with (ed_t *this, char *bytes) {
-  rline_t *rl = self(rline.new);
-  Rline.set.line (rl, bytes, bytelen (bytes));
+private readline_t *ed_readline_new_with (ed_t *this, char *bytes) {
+  readline_t *rl = self(readline.new);
+  Readline.set.line (rl, bytes, bytelen (bytes));
   return rl;
 }
 
@@ -13193,7 +12272,7 @@ private ed_T *editor_new (void) {
         .dim = ed_set_dim,
         .state = ed_set_state,
         .topline = ed_set_topline,
-        .rline_cb = ed_set_rline_cb,
+        .readline_cb = ed_set_readline_cb,
         .lang_map = ed_set_lang_map,
         .state_bit = ed_set_state_bit,
         .record_cb = ed_set_record_cb,
@@ -13238,7 +12317,7 @@ private ed_T *editor_new (void) {
         .callback_fun = ed_get_callback_fun,
         .current_win_idx = ed_get_current_win_idx,
         .num_special_win = ed_get_num_special_win,
-        .num_rline_commands = ed_get_num_rline_commands
+        .num_readline_commands = ed_get_num_readline_commands
       },
       .syn = (ed_syn_self) {
         .append = ed_syn_append,
@@ -13255,15 +12334,15 @@ private ed_T *editor_new (void) {
         .toscratch = ed_append_toscratch,
         .toscratch_fmt = ed_append_toscratch_fmt,
         .command_arg = ed_append_command_arg,
-        .rline_commands = ed_append_rline_commands,
-        .rline_command = ed_append_rline_command
+        .readline_commands = ed_append_readline_commands,
+        .readline_command = ed_append_readline_command
       },
       .readjust = (ed_readjust_self) {
         .win_size =ed_win_readjust_size
       },
-      .rline = (ed_rline_self) {
-        .new = ed_rline_new,
-        .new_with = ed_rline_new_with
+      .readline = (ed_readline_self) {
+        .new = ed_readline_new,
+        .new_with = ed_readline_new_with
       },
       .buf = (ed_buf_self) {
         .change = ed_buf_change,
@@ -13289,11 +12368,11 @@ private ed_T *editor_new (void) {
         .write = ed_history_write,
         .add_lines = ed_history_add_lines,
         .set = (edhistory_set_self) {
-          .rline_file = ed_history_set_rline_file,
+          .readline_file = ed_history_set_readline_file,
           .search_file = ed_history_set_search_file
         },
         .get = (edhistory_get_self) {
-          .rline_file = ed_history_get_rline_file,
+          .readline_file = ed_history_get_readline_file,
           .search_file = ed_history_get_search_file
         }
       },
@@ -13544,7 +12623,7 @@ private ed_T *editor_new (void) {
         .draw = buf_draw,
         .clear = buf_clear,
         .flush = buf_flush,
-        .rline = buf_rline,
+        .readline = buf_readline,
         .write = buf_write,
         .search = buf_search,
         .indent = buf_indent,
@@ -13575,8 +12654,6 @@ private ed_T *editor_new (void) {
         .string = ed_error_string
       },
     },
-    .__Video__ = __init_video__ (),
-    .__Rline__ = __init_rline__ ()
   };
 
   __INIT__ (string);
@@ -13593,6 +12670,9 @@ private ed_T *editor_new (void) {
   __INIT__ (imap);
   __INIT__ (smap);
   __INIT__ (proc);
+  __INIT__ (spell);
+  __INIT__ (video);
+  __INIT__ (readline);
 
   $my(video) = NULL;
   $my(term)  = NULL;
@@ -13649,8 +12729,6 @@ private ed_t *ed_init (E_T *E, ed_opts opts) {
   $my(__I__)       = &E->__Ed__->__I__;
   $my(__E__)       = E;
   $my(__Msg__)     = &E->__Ed__->__Msg__;
-  $my(__Video__)   = &E->__Ed__->__Video__;
-  $my(__Rline__)   = &E->__Ed__->__Rline__;
   $my(__Error__)   = &E->__Ed__->__Error__;
 
   $my(has_topline) = $my(has_msgline) = $my(has_promptline) = 1;
@@ -13686,17 +12764,14 @@ private ed_t *ed_init (E_T *E, ed_opts opts) {
 
   $my(history) = Alloc (sizeof (hist_t));
   $my(history)->search = Alloc (sizeof (h_search_t));
-  $my(history)->rline = Alloc (sizeof (h_rline_t));
-  $my(history)->rline->history_idx = 0;
+  $my(history)->readline = Alloc (sizeof (readline_hist_t));
+  $my(history)->readline->history_idx = 0;
   $my(max_num_hist_entries) = RLINE_HISTORY_NUM_ENTRIES;
   $my(max_num_undo_entries) = UNDO_NUM_ENTRIES;
   $my(hs_file) = self(history.set.search_file, opts.hs_file);
-  $my(hrl_file) = self(history.set.rline_file, opts.hrl_file);
+  $my(hrl_file) = self(history.set.readline_file, opts.hrl_file);
 
-  if (opts.flags & ED_INIT_OPT_LOAD_HISTORY)
-    self(history.read);
-
-  $my(has_ed_rline_commands) = 0;
+  $my(has_ed_readline_commands) = 0;
   $my(exit_quick) = 0;
   $my(repeat_mode) = 0;
   $my(record) = 0;
@@ -13711,6 +12786,10 @@ private ed_t *ed_init (E_T *E, ed_opts opts) {
 
   this->name_gen = ('z' - 'a') + 1;
 
+  $my(num_readline_cbs) = $my(num_on_normal_g_cbs) =
+  $my(num_lw_mode_cbs) = $my(num_cw_mode_cbs) =
+  $my(num_at_exit_cbs) = $my(num_file_mode_cbs) = 0;
+
   ed_reg_init_all (this);
 
   ed_init_syntaxes (this);
@@ -13719,9 +12798,8 @@ private ed_t *ed_init (E_T *E, ed_opts opts) {
 
   ed_init_special_win (this);
 
-  $my(num_rline_cbs) = $my(num_on_normal_g_cbs) =
-  $my(num_lw_mode_cbs) = $my(num_cw_mode_cbs) =
-  $my(num_at_exit_cbs) = $my(num_file_mode_cbs) = 0;
+  if (opts.flags & ED_INIT_OPT_LOAD_HISTORY) // after ed_init_commands
+    self(history.read);
 
   ed_set_cw_mode_actions_default (this);
   ed_set_lw_mode_actions_default (this);
@@ -14386,8 +13464,6 @@ private ed_T *ed_init_prop (ed_T *this) {
   $my(__E__)       = $my(__E__);
   $my(__Msg__)     = &this->__Msg__;
   $my(__Error__)   = &this->__Error__;
-  $my(__Rline__)   = &this->__Rline__;
-  $my(__Video__)   = &this->__Video__;
 
   $my(Me) = this;
   $my(video) = NULL;
@@ -14401,6 +13477,9 @@ private int Ed_init (ed_T *this) {
 
   $my(term) = Term.new ();
   $my(env)  = venv_new ();
+
+  Spell.set.dictionary (STR_FMT ("%s/spell/spell.txt",
+      __venv_get__ (this, $my(env)->data_dir)->bytes));
 
   Term.set_state_bit ($my(term), (TERM_DONOT_CLEAR_SCREEN|TERM_DONOT_SAVE_SCREEN|TERM_DONOT_RESTORE_SCREEN));
 
@@ -14666,6 +13745,7 @@ private i_T *__init_this_i__ (E_T *this) {
   __I__ = __init_i__ ();
   iType = *__I__;
   $my(i_define_funs_cb) = i_define_funs_default_cb;
+  this->__Ed__->__I__ = *__I__;
   return __I__;
 }
 
@@ -14673,9 +13753,15 @@ private int E_load_file (E_T *this, char *fn) {
   i_t *i = I.init_instance (__I__, IOpts (
     .define_funs_cb = i_define_funs_default_cb,
     .idir = E_get_env (this, "i_dir")->bytes));
+
   I.set.user_data (i, this);
 
-  return I.load_file (__I__, i, fn);
+  int retval = I.load_file (__I__, i, fn);
+
+  if (retval is NOTOK)
+    tostderr (I.get.message (i));
+
+  return retval;
 }
 
 public E_T *__init_ed__ (char *name) {
@@ -14736,13 +13822,14 @@ public E_T *__init_ed__ (char *name) {
 
   $my(state) = 0;
 
+  __init_this_i__ (this);
+
   if (NOTOK is Ed_init (this->__Ed__)) {
     __deinit_ed__ (&this);
     return NULL;
   }
 
   $my(__Ed__) = this->__Ed__->self;
-  __init_this_i__ (this);
 
   Cstring.cp ($my(name), MAXLEN_ED_NAME, name, MAXLEN_ED_NAME - 1);
   $my(name_gen) = ('z' - 'a') + 1;
@@ -14795,6 +13882,7 @@ public void __deinit_ed__ (E_T **thisp) {
   __deinit_i__ (&__I__);
 
   __deinit_sys__ ();
+  __deinit_spell__ (&spellType);
 
   if ($my(num_at_exit_cbs)) free ($my(at_exit_cbs));
 

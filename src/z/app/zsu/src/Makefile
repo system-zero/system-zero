@@ -71,7 +71,7 @@ FLAGS += -lauth-$(VERSION) -lcstring-$(VERSION) -lstring-$(VERSION) -lustring-$(
 FLAGS += -lio-$(VERSION) -lterm-$(VERSION)
 
 SHARED_FLAGS = $(FLAGS)
-STATIC_FLAGS = $(FLAGS) $(STATIC_CFLAGS)
+STATIC_FLAGS = $(FLAGS) $(STATIC_CFLAGS) -ldl
 
 VSU_DIR := $(SYSTMPDIR)/zsu
 

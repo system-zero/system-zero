@@ -35,6 +35,8 @@ typedef struct auth_get_self {
     *(*user) (auth_t *),
     *(*group) (auth_t *);
 
+  void *(*user_data) (auth_t *);
+
   uid_t (*uid) (auth_t *);
   gid_t (*gid) (auth_t *);
 } auth_get_self;
@@ -44,15 +46,21 @@ typedef struct auth_set_self {
     (*timeout) (auth_t *, time_t),
     (*num_tries) (auth_t *, int),
     (*cached_time) (auth_t *, int);
+
+  void (*user_data) (auth_t *, void *);
 } auth_set_self;
 
 typedef struct auth_self {
   auth_set_self set;
   auth_get_self get;
 
-  void (*release) (auth_t *);
-  int (*check) (auth_t *);
   auth_t *(*new) (const char *, const char *, int);
+
+  void
+    (*release) (auth_t *),
+    (*reset_hashed) (auth_t *);
+
+  int (*check) (auth_t *);
 } auth_self;
 
 struct auth_t {

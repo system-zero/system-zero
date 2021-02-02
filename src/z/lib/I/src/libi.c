@@ -130,7 +130,10 @@ typedef struct i_prop {
 
 typedef struct i_t {
   char name[32];
-  string_t *idir;
+  string_t
+    *idir,
+    *message;
+
   i_prop *prop;
 
   size_t
@@ -219,16 +222,20 @@ static inline int is_notquote (int chr) {
   return NULL is Cstring.byte.in_str ("\"\n", c);
 }
 
-/*
-private int is_metacharacter (const unsigned char *s) {
-  static const char *metacharacters = "^$().[]*+?|\\Ssdbfnrtv";
-  return cstring_byte_in_str (metacharacters, *s) != NULL;
+static void i_set_message (i_t *this, int append, char *msg) {
+  if (NULL is msg) return;
+  if (append)
+    String.append_with (this->message, msg);
+  else
+    String.replace_with (this->message, msg);
 }
 
-private int is_quantifier (const char *re) {
-  return re[0] == '*' || re[0] == '+' || re[0] == '?';
+static void i_set_message_fmt (i_t *this, int append, char *fmt, ...) {
+  size_t len = VA_ARGS_FMT_SIZE(fmt);
+  char bytes[len + 1];
+  VA_ARGS_GET_FMT_STR(bytes, len, fmt);
+  i_set_message (this, append, bytes);
 }
-*/
 
 static inline unsigned i_StringGetLen (istring_t s) {
   return (unsigned)s.len_;
@@ -1326,6 +1333,7 @@ static void i_release (i_t **thisp) {
   if (NULL is *thisp) return;
   i_t *this = *thisp;
   String.release (this->idir);
+  String.release (this->message);
   free (this->arena);
   free (this);
   *thisp = NULL;
@@ -1430,6 +1438,10 @@ static void i_set_user_data (i_t *this, void *user_data) {
 
 static void *i_get_user_data (i_t *this) {
   return this->user_data;
+}
+
+static char *i_get_message (i_t *this) {
+  return this->message->bytes;
 }
 
 static i_t *i_get_current (i_T *this) {
@@ -1556,6 +1568,8 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
   else
     this->idir = String.new_with (opts.idir);
 
+  this->message = String.new (32);
+
   this->symptr = (Sym *) this->arena;
   this->valptr = (ival_t *) (this->arena + this->mem_size);
 
@@ -1618,7 +1632,10 @@ static int i_load_file (i_T *__i__, i_t *this, char *fn) {
       fname[fnlen] = '\0';
     }
 
-    ifnot (this->idir->num_bytes) return NOTOK;
+    ifnot (this->idir->num_bytes) {
+      i_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
+      return NOTOK;
+    }
 
     string_t *ddir = this->idir;
     size_t len = ddir->num_bytes + bytelen (fname) + 2 + 7;
@@ -1629,12 +1646,18 @@ static int i_load_file (i_T *__i__, i_t *this, char *fn) {
       tmp[len] = '.'; tmp[len+1] = 'i'; tmp[len+2] = '\0';
     }
 
-    ifnot (File.exists (tmp)) return NOTOK;
+    ifnot (File.exists (tmp)) {
+      i_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
+      return NOTOK;
+    }
 
     return i_eval_file (this, tmp);
   }
 
-  ifnot (File.exists (fn)) return NOTOK;
+  ifnot (File.exists (fn)) {
+    i_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
+    return NOTOK;
+  }
 
   return i_eval_file (this, fn);
 }
@@ -1673,6 +1696,7 @@ public i_T *__init_i__ (void) {
       .remove_instance = i_remove_instance,
       .append_instance = i_append_instance,
       .get = (i_get_self) {
+        .message = i_get_message,
         .current = i_get_current,
         .user_data = i_get_user_data,
         .current_idx = i_get_current_idx

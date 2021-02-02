@@ -85,7 +85,8 @@ endif
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
 LIBFLAGS += -lstring-$(VERSION) -lustring-$(VERSION) -lcstring-$(VERSION)
 LIBFLAGS += -lvstring-$(VERSION) -lfile-$(VERSION) -ldir-$(VERSION) -lpath-$(VERSION)
-LIBFLAGS += -lre-$(VERSION) -lsys-$(VERSION)
+LIBFLAGS += -lre-$(VERSION) -lsys-$(VERSION) -lspell-$(VERSION)
+LIBFLAGS += -lvideo-$(VERSION)
 
 LIBOPTS :=
 

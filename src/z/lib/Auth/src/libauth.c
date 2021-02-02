@@ -49,7 +49,7 @@ struct auth_prop {
 
   char shared_string[MAXLEN_USERNAME + 1];
 
-  void *object;
+  void *user_data;
 
   AuthGetPasswd_cb get_passwd_cb;
 };
@@ -57,7 +57,7 @@ struct auth_prop {
 #define ROOT_UID  0
 #define ROOT_GID  0
 
-private int
+static int
 auth_pam_conversation (int num_msg, const struct pam_message **msg,
                     struct pam_response* *resp, void *appdata_ptr) {
   (void) num_msg; (void) msg;
@@ -71,7 +71,7 @@ auth_pam_conversation (int num_msg, const struct pam_message **msg,
   return PAM_SUCCESS;
 }
 
-private int auth_pam (auth_t *this, const char *pass) {
+static int auth_pam (auth_t *this, const char *pass) {
   if ($my(user) is NULL or
       $my(user)->num_bytes is 0 or
       pass is NULL or
@@ -166,13 +166,12 @@ theend:
   return (retval is PAM_SUCCESS ? OK : NOTOK);
 }
 
-private int auth_reset_hashed (auth_t *this) {
+static void auth_reset_hashed (auth_t *this) {
   $my(timeout) = time (NULL);
   String.clear ($my(hashed_data));
-  return OK;
 }
 
-private int auth_check (auth_t *this) {
+static int auth_check (auth_t *this) {
   time_t cur = time (NULL);
   time_t diff = cur - $my(timeout);
   int is_expired = diff > $my(cached_time);
@@ -203,7 +202,7 @@ private int auth_check (auth_t *this) {
   return OK;
 }
 
-private void auth_release (auth_t *this) {
+static void auth_release (auth_t *this) {
   if (this is NULL) return;
   String.release ($my(user));
   String.release ($my(group));
@@ -213,7 +212,11 @@ private void auth_release (auth_t *this) {
   free (this);
 }
 
-private int auth_get_passwd_default_cb (auth_t *this) {
+static void *auth_get_user_data (auth_t *this) {
+  return $my(user_data);
+}
+
+static int auth_get_passwd_default_cb (auth_t *this) {
   IO.print ("passwd:");
 
   term_t *term = Term.new ();
@@ -276,6 +279,10 @@ static char *auth_get_user (auth_t *this) {
   Cstring.cp ($my(shared_string), MAXLEN_USERNAME,
       $my(user)->bytes, len);
   return $my(shared_string);
+}
+
+static void auth_set_user_data (auth_t *this, void *user_data) {
+  $my(user_data) = user_data;
 }
 
 static int auth_set_timeout (auth_t *this, time_t timeout) {
@@ -385,7 +392,7 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
   $my(timeout) = 0;
 
   $my(get_passwd_cb) = auth_get_passwd_default_cb;
-  $my(object) = NULL;
+  $my(user_data) = NULL;
 
   return this;
 }
@@ -402,16 +409,19 @@ public auth_T  __init_auth__ (void) {
       .new = auth_new,
       .check = auth_check,
       .release = auth_release,
+      .reset_hashed = auth_reset_hashed,
       .set = (auth_set_self) {
         .timeout = auth_set_timeout,
         .num_tries = auth_set_num_tries,
+        .user_data = auth_set_user_data,
         .cached_time = auth_set_cached_time
       },
       .get = (auth_get_self) {
         .uid = auth_get_uid,
         .gid = auth_get_gid,
         .user = auth_get_user,
-        .group = auth_get_group
+        .group = auth_get_group,
+        .user_data = auth_get_user_data
       }
     }
   };

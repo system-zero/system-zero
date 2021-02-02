@@ -567,6 +567,15 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SYS_SELECT
 #endif /* REQUIRE_SYS_SELECT */
 
+#ifdef REQUIRE_SYS_UNAME
+  #ifndef SYS_UNAME_HDR
+  #define SYS_UNAME_HDR
+  #include <sys/utsname.h>
+  #endif /* SYS_UNAME_HDR */
+
+#undef REQUIRE_SYS_UNAME
+#endif /* REQUIRE_SYS_UNAME */
+
 #ifdef REQUIRE_TERMIOS
   #ifndef TERMIOS_HDR
   #define TERMIOS_HDR
@@ -602,6 +611,24 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_TIME
 #endif /* REQUIRE_TIME */
+
+#ifdef REQUIRE_MATH
+  #ifndef MATH_HDR
+  #define MATH_HDR
+  #include <math.h>
+  #endif /* MATH_HDR */
+
+#undef REQUIRE_MATH
+#endif /* REQUIRE_MATH */
+
+#ifdef REQUIRE_LOCALE
+  #ifndef LOCALE_HDR
+  #define LOCALE_HDR
+  #include <locale.h>
+  #endif /* LOCALE_HDR */
+
+#undef REQUIRE_LOCALE
+#endif /* REQUIRE_LOCALE */
 
 #ifdef REQUIRE_GRP
   #ifndef GRP_HDR
@@ -733,6 +760,21 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_RLINE_TYPE
 #endif /* REQUIRE_RLINE_TYPE */
+
+
+#ifdef REQUIRE_JSON_TYPE
+  #ifndef JSON_TYPE_HDR
+  #define JSON_TYPE_HDR
+  #include <z/json.h>
+  #endif /* JSON_TYPE_HDR */
+
+  #if (REQUIRE_JSON_TYPE == DECLARE)
+  static  json_T jsonType;
+  #define Json   jsonType.self
+  #endif
+
+#undef REQUIRE_JSON_TYPE
+#endif /* REQUIRE_JSON_TYPE */
 
 #ifdef REQUIRE_SH_TYPE
   #ifndef SH_TYPE_HDR
@@ -921,6 +963,20 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_RE_TYPE
 #endif /* REQUIRE_RE_TYPE */
+
+#ifdef REQUIRE_SPELL_TYPE
+  #ifndef SPELL_TYPE_HDR
+  #define SPELL_TYPE_HDR
+  #include <z/spell.h>
+  #endif /* SPELL_TYPE_HDR */
+
+  #if (REQUIRE_SPELL_TYPE == DECLARE)
+  static  spell_T spellType;
+  #define Spell   spellType.self
+  #endif
+
+#undef REQUIRE_SPELL_TYPE
+#endif /* REQUIRE_SPELL_TYPE */
 
 #ifdef REQUIRE_VIDEO_TYPE
   #ifndef VIDEO_TYPE_HDR

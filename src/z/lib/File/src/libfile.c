@@ -265,7 +265,7 @@ theerror:
   }
 
 theend:
-  dlist->free (dlist);
+  dlist->release (dlist);
   return this;
 }
 

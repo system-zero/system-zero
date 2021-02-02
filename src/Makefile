@@ -9,7 +9,7 @@
 # This is our actual first file, and it is the one that will assist us to build the
 # environment. It also serves as a vehicle to understand the needs, establish the
 # hierarhy and finally to end up on things. So at the same time there are development
-# type of comments. 
+# type of comments.
 
 # We use a Make type of building system, which is and the most primitive in Unix land.
 # Particularly the GNU make implementation, though we want to be POSIX compatible, so
@@ -161,6 +161,14 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     # Readline Type
     Readline_Type        = Readline
     Z_READLINE_SRCDIR    = $(Z_SRCLIBDIR)/$(Readline_Type)/src
+
+    # Spell Type
+    Spell_Type           = Spell
+    Z_SPELL_SRCDIR       = $(Z_SRCLIBDIR)/$(Spell_Type)/src
+
+    # Json Type
+    Json_Type           = Json
+    Z_JSON_SRCDIR       = $(Z_SRCLIBDIR)/$(Json_Type)/src
 
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
@@ -486,16 +494,42 @@ clean-libvideo-shared:
 clean-libvideo-static:
 	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libspell-shared: Env cenv libcstring-shared libstring-shared libustring-shared libio-shared
+	@cd $(Z_SPELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libspell-static: Env cenv libcstring-static libstring-static libustring-static libio-static
+	@cd $(Z_SPELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libspell-shared:
+	@cd $(Z_SPELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libspell-static:
+	@cd $(Z_SPELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libjson-shared: Env cenv libcstring-shared libstring-shared
+	@cd $(Z_JSON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libjson-static: Env cenv libcstring-static libstring-static
+	@cd $(Z_JSON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libjson-shared:
+	@cd $(Z_JSON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libjson-static:
+	@cd $(Z_JSON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 libe-shared: Env cenv dlist libstring-shared libcstring-shared libvstring-shared libustring-shared\
              libpath-shared libfile-shared libdir-shared libterm-shared libio-shared\
              libre-shared libimap-shared libsmap-shared libi-shared\
-             libsys-shared
+             libproc-shared\
+             libsys-shared libspell-shared libvideo-shared libreadline-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libe-static: Env cenv dlist libstring-static libcstring-static libvstring-static libustring-static\
              libpath-static libfile-static libdir-static libterm-static libio-static\
              libre-static libimap-static libsmap-static libi-static\
-             libsys-static
+             libproc-static\
+             libsys-static libspell-static libvideo-static libreadline-static
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libe-shared:
@@ -709,6 +743,7 @@ zero-static:  Env cenv dlist\
               dir-static file-static io-static term-static\
               sys-static
 
+clean-shared: zero-clean-shared
 zero-clean-shared:\
               clean-cenv clean-dlist\
               clean-libstring-shared clean-libustring-shared\
@@ -720,11 +755,14 @@ zero-clean-shared:\
               clean-libfile-shared clean-libpath-shared\
               clean-libterm-shared clean-libimap-shared\
               clean-libsmap-shared clean-libvideo-shared\
-              clean-libre-shared\
+              clean-libre-shared clean-libspell-shared\
+              clean-libe-shared clean-libi-shared clean-libjson-shared\
+              clean-libreadline-shared clean-libsys-shared\
               clean-zs-shared clean-zsu-shared clean-dir-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared
 
+clean-static: zero-clean-static
 zero-clean-static:\
               clean-cenv clean-dlist\
               clean-libstring-static clean-libustring-static\
@@ -736,7 +774,9 @@ zero-clean-static:\
               clean-libfile-static clean-libpath-static\
               clean-libterm-static clean-libimap-static\
               clean-libsmap-static clean-libvideo-static\
-              clean-libre-static\
+              clean-libre-static clean-libspell-static\
+              clean-libe-static clean-libi-static clean-libjson-static\
+              clean-libreadline-static clean-libsys-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static\
               clean-file-static clean-io-static clean-term-static\

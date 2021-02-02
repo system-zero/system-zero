@@ -64,12 +64,12 @@ typedef struct dirlist_t dirlist_t;
 struct dirlist_t {
   Vstring_t *list;
   char dir[PATH_MAX];
-  void (*free) (dirlist_t *);
+  void (*release) (dirlist_t *);
 };
 
 typedef struct dir_walk_self {
   dirwalk_t *(*new) (DirProcessDir_cb, DirProcessFile_cb);
-  void (*free) (dirwalk_t **);
+  void (*release) (dirwalk_t **);
   int (*run) (dirwalk_t *, char *);
 } dir_walk_self;
 

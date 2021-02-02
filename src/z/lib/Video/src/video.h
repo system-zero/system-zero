@@ -1,7 +1,31 @@
 #ifndef VIDEO_HDR
 #define VIDEO_HDR
 
-typedef struct video_t video_t;
+typedef struct video_t {
+  vstring_t *head;
+  vstring_t *tail;
+  vstring_t *current;
+        int  cur_idx;
+        int  num_items;
+
+  string_t
+    *render,
+    *tmp_render;
+
+  Vstring_t *tmp_list;
+
+  int
+    fd,
+    num_cols,
+    num_rows,
+    first_row,
+    first_col,
+    last_row,
+    row_pos,
+    col_pos;
+
+  int *rows;
+} video_t;
 
 typedef struct video_set_self {
   void (*row_with) (video_t *, int, char *);

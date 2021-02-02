@@ -65,6 +65,7 @@ typedef struct i_get_self {
   i_t *(*current) (i_T *);
   int (*current_idx) (i_T *);
   void *(*user_data) (i_t *);
+  char *(*message) (i_t *);
 } i_get_self;
 
 typedef struct i_set_self {

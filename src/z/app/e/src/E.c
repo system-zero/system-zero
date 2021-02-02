@@ -10,13 +10,19 @@
 #define REQUIRE_TERMIOS
 
 #define REQUIRE_STRING_TYPE   DECLARE
-#define REQUIRE_VSTRING_TYPE  DONOT_DECLARE
-#define REQUIRE_DIR_TYPE      DONOT_DECLARE
+#define REQUIRE_VSTRING_TYPE  DECLARE
+#define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_IMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_SMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_I_TYPE        DONOT_DECLARE
 #define REQUIRE_PROC_TYPE     DONOT_DECLARE
+#define REQUIRE_VIDEO_TYPE    DONOT_DECLARE
+#define REQUIRE_READLINE_TYPE DECLARE
+#define REQUIRE_SYS_TYPE      DECLARE
 #define REQUIRE_TERM_TYPE     DECLARE
+#define REQUIRE_FILE_TYPE     DECLARE
+#define REQUIRE_PATH_TYPE     DECLARE
+#define REQUIRE_DIR_TYPE      DECLARE
 #define REQUIRE_E_TYPE        DECLARE
 #define REQUIRE_TERM_MACROS
 
@@ -29,7 +35,6 @@ static E_T *__E__ = NULL;
 #define Ed  __E__->__Ed__->self
 #define Win __E__->__Ed__->__Win__.self
 #define Buf __E__->__Ed__->__Buf__.self
-#define Rline  __E__->__Ed__->__Rline__.self
 
 public void sigwinch_handler (int sig) {
   signal (sig, sigwinch_handler);
@@ -115,9 +120,455 @@ static string_t *parse_command (char *bytes) {
   return com;
 }
 
+private int sys_man (buf_t **bufp, char *word, int section) {
+  int retval = NOTOK;
+  if (NULL is word) return NOTOK;
+
+  string_t *man_exec = Sys.which ("man", NULL);
+  if (NULL is man_exec) return NOTOK;
+
+  ed_t *ed = E.get.current (__E__);
+
+  string_t *com = NULL;
+
+  buf_t *this = Ed.get.scratch_buf (ed);
+  Buf.clear (this);
+
+  if (File.exists (word)) {
+    if (Path.is_absolute (word))
+      com = String.new_with_fmt ("%s %s", man_exec->bytes, word);
+    else {
+      char *cwdir = Dir.current ();
+      com = String.new_with_fmt ("%s %s/%s", man_exec->bytes, cwdir, word);
+      free (cwdir);
+    }
+
+    retval = Ed.sh.popen (ed, this, com->bytes, 1, 1, NULL);
+    goto theend;
+  }
+
+  int sections[9]; for (int i = 0; i < 9; i++) sections[i] = 0;
+  int def_sect = 2;
+
+  section = ((section <= 0 or section > 8) ? def_sect : section);
+  com = String.new_with_fmt ("%s -s %d %s", man_exec->bytes,
+     section, word);
+
+  int total_sections = 0;
+  for (int i = 1; i < 9; i++) {
+    sections[section] = 1;
+    total_sections++;
+    retval = Ed.sh.popen (ed, this, com->bytes, 1, 1, NULL);
+    ifnot (retval) break;
+
+    while (sections[section] and total_sections < 8) {
+      if (section is 8) section = 1;
+      else section++;
+    }
+
+    String.replace_with_fmt (com, "%s -s %d %s", man_exec->bytes,
+        section, word);
+  }
+
+theend:
+  String.release (com);
+  String.release (man_exec);
+
+  Ed.scratch (ed, bufp, 0);
+  Buf.substitute (this, ".\b", "", GLOBAL, NO_INTERACTIVE, 0,
+      Buf.get.num_lines (this) - 1);
+  Buf.normal.bof (this, DRAW);
+
+  return (retval > 0 ? NOTOK : OK);
+
+}
+
+private string_t *__ex_buf_serial_info__ (bufinfo_t *info) {
+  string_t *sinfo = String.new_with ("BUF_INFO_STRUCTURE\n");
+  String.append_with_fmt (sinfo,
+    "fname       : \"%s\"\n"
+    "cwd         : \"%s\"\n"
+    "parent name : \"%s\"\n"
+    "at frame    : %d\n"
+    "num bytes   : %zd\n"
+    "num lines   : %zd\n"
+    "cur idx     : %d\n"
+    "is writable : %d\n",
+    info->fname, info->cwd, info->parents_name, info->at_frame,
+    info->num_bytes, info->num_lines, info->cur_idx, info->is_writable);
+
+  return sinfo;
+}
+
+private string_t *__ex_win_serial_info__ (wininfo_t *info) {
+  string_t *sinfo = String.new_with ("WIN_INFO_STRUCTURE\n");
+  String.append_with_fmt (sinfo,
+    "name         : \"%s\"\n"
+    "ed name      : \"%s\"\n"
+    "num buf      : %zd\n"
+    "num frames   : %d\n"
+    "cur buf idx  : %d\n"
+    "cur buf name : \"%s\"\n"
+    "buf names    :\n",
+    info->name, info->parents_name, info->num_items, info->num_frames,
+    info->cur_idx, info->cur_buf);
+
+  for (size_t i = 0; i < info->num_items; i++)
+    String.append_with_fmt (sinfo, "%12d : \"%s\"\n", i + 1, info->buf_names[i]);
+
+  return sinfo;
+}
+
+private string_t *__ex_ed_serial_info__ (edinfo_t *info) {
+  string_t *sinfo = String.new_with ("ED_INFO_STRUCTURE\n");
+  String.append_with_fmt (sinfo,
+    "name         : \"%s\"\n"
+    "normal win   : %zd\n"
+    "special win  : %d\n"
+    "cur win idx  : %d\n"
+    "cur win name : \"%s\"\n"
+    "win names    :\n",
+    info->name, info->num_items, info->num_special_win, info->cur_idx,
+    info->cur_win);
+
+  for (size_t i = 0; i < info->num_items; i++)
+    String.append_with_fmt (sinfo, "%12d : \"%s\"\n", i + 1, info->win_names[i]);
+  return sinfo;
+}
+
+private int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
+  (void) thisp; (void) rl;
+  ed_t *ced = E.get.current (__E__);
+
+  int
+    buf = Readline.arg.exists (rl, "buf"),
+    win = Readline.arg.exists (rl, "win"),
+    ed  = Readline.arg.exists (rl, "ed");
+
+  ifnot (buf + win + ed) buf = 1;
+
+  Ed.append.toscratch (ced, CLEAR, "");
+
+  if (buf) {
+    bufinfo_t *binfo = Buf.get.info.as_type (*thisp);
+    string_t *sbinfo = __ex_buf_serial_info__ (binfo);
+    Ed.append.toscratch (ced, DONOT_CLEAR, sbinfo->bytes);
+    String.release (sbinfo);
+    Buf.free.info (*thisp, &binfo);
+  }
+
+  if (win) {
+    win_t *cw = Ed.get.current_win (ced);
+    wininfo_t *winfo = Win.get.info.as_type (cw);
+    string_t *swinfo = __ex_win_serial_info__ (winfo);
+    Ed.append.toscratch (ced, DONOT_CLEAR, swinfo->bytes);
+    String.release (swinfo);
+    Win.free_info (cw, &winfo);
+  }
+
+  if (ed) {
+    edinfo_t *einfo = Ed.get.info.as_type (ced);
+    string_t *seinfo = __ex_ed_serial_info__ (einfo);
+    Ed.append.toscratch (ced, DONOT_CLEAR, seinfo->bytes);
+    String.release (seinfo);
+    Ed.free_info (ced, &einfo);
+  }
+
+  Ed.scratch (ced, thisp, NOT_AT_EOF);
+
+  return OK;
+}
+
+private int __ex_rline_cb__ (buf_t **thisp, readline_t *rl, utf8 c) {
+  (void) thisp; (void) c;
+  int retval = RLINE_NO_COMMAND;
+  string_t *com = Readline.get.command (rl);
+
+  if (Cstring.eq (com->bytes, "@info")) {
+    retval = __ex_com_info__ (thisp, rl);
+    goto theend;
+
+  } else if (Cstring.eq (com->bytes, "`man")) {
+    Vstring_t *names = Readline.get.arg_fnames (rl, 1);
+    if (NULL is names) goto theend;
+
+    string_t *section = Readline.get.anytype_arg (rl, "section");
+    int sect_id = (NULL is section ? 0 : atoi (section->bytes));
+
+    retval = sys_man (thisp, names->head->data->bytes, sect_id);
+    Vstring.release (names);
+  }
+
+theend:
+  String.release (com);
+  return retval;
+}
+
+private void __ex_add_readline_commands__ (ed_t *this) {
+  Ed.append.readline_command (this, "`man", 2, RL_ARG_FILENAME|RL_ARG_VERBOSE );
+  Ed.append.command_arg (this, "`man", "--section=", 10);
+
+  Ed.append.readline_command (this, "@info", 0, 0);
+  Ed.append.command_arg (this, "@info", "--buf", 5);
+  Ed.append.command_arg (this, "@info", "--win", 5);
+  Ed.append.command_arg (this, "@info", "--ed",  4);
+
+  Ed.set.readline_cb (this, __ex_rline_cb__);
+}
+
+private int __ex_word_actions_cb__ (buf_t **thisp, int fidx, int lidx,
+                      bufiter_t *it, char *word, utf8 c, char *action) {
+  (void) fidx; (void) lidx; (void) action; (void) it; (void) word; (void) thisp;
+
+  int retval = NO_CALLBACK_FUNCTION;
+  (void) retval; // gcc complains here for no reason
+  switch (c) {
+    case 'm':
+      retval = sys_man (thisp, word, -1);
+      break;
+
+    default:
+      break;
+   }
+
+  return retval;
+}
+
+private void __ex_add_word_actions__ (ed_t *this) {
+  int num_actions = 1;
+  utf8 chars[] = {'m'};
+  char actions[] = "man page";
+
+  Ed.set.word_actions (this, chars, num_actions, actions, __ex_word_actions_cb__);
+}
+
+char __ex_balanced_pairs[] = "()[]{}";
+char *__ex_NULL_ARRAY[] = {NULL};
+
+char *make_filenames[] = {"Makefile", NULL};
+char *make_extensions[] = {".Makefile", NULL};
+char *make_keywords[] = {
+  "ifeq I", "ifneq I", "endif I", "else I", "ifdef I", NULL};
+
+char *sh_extensions[] = {".sh", ".bash", NULL};
+char *sh_shebangs[] = {"#!/bin/sh", "#!/bin/bash", NULL};
+char  sh_operators[] = "+:-%*><=|&()[]{}!$/`?";
+char *sh_keywords[] = {
+  "if I", "else I", "elif I", "then I", "fi I", "while I", "for I", "break I",
+  "done I", "do I", "case I", "esac I", "in I", "EOF I", NULL};
+char sh_singleline_comment[] = "#";
+
+char *zig_extensions[] = {".zig", NULL};
+char zig_operators[] = "+:-*^><=|&~.()[]{}/";
+char zig_singleline_comment[] = "//";
+char *zig_keywords[] = {
+  "const V", "@import V", "pub I", "fn I", "void T", "try I",
+  "else I", "if I", "while I", "true V", "false V", "Self V", "@This V",
+  "return I", "u8 T", "struct T", "enum T", "var V", "comptime T",
+  "switch I", "continue I", "for I", "type T", "void T", "defer I",
+  "orelse I", "errdefer I", "undefined T", "threadlocal T", NULL};
+
+char *lua_extensions[] = {".lua", NULL};
+char *lua_shebangs[] = {"#!/bin/env lua", "#!/usr/bin/lua", NULL};
+char  lua_operators[] = "+:-*^><=|&~.()[]{}!@/";
+char *lua_keywords[] = {
+  "do I", "if I", "while I", "else I", "elseif I", "nil I",
+  "local I",  "self V", "require V", "return V", "and V",
+  "then I", "end I", "function V", "or I", "in V",
+  "repeat I", "for I",  "goto I", "not I", "break I",
+  "setmetatable F", "getmetatable F", "until I",
+  "true I", "false I", NULL
+};
+
+char lua_singleline_comment[] = "--";
+char lua_multiline_comment_start[] = "--[[";
+char lua_multiline_comment_end[] = "]]";
+
+char *lai_extensions[] = {".lai", ".du", NULL};
+char *lai_shebangs[] = {"#!/bin/env lai", "#!/usr/bin/dictu", NULL};
+char  lai_operators[] = "+:-*^><=|&~.()[]{}!@/";
+char *lai_keywords[] = {
+  "beg I", "end I", "if I", "while I", "else I", "for I", "do I", "orelse I",
+  "is I", "isnot I", "nil E", "not I", "var V", "const V", "return V", "and I",
+  "or I", "self F", "this V", "then I", "def F",  "continue I", "break I", "init I", "class T",
+  "trait T", "true V", "false E", "import T", "as T", "hasAttribute F", "getAttribute F",
+  "setAttribute F", "super V", "type T", "set F", "assert E", "with F", "forever I",
+  "use T", "elseif I", "static T",
+   NULL};
+
+char lai_singleline_comment[] = "//";
+char lai_multiline_comment_start[] = "/*";
+char lai_multiline_comment_end[] = "*/";
+
+char *md_extensions[] = {".md", NULL};
+
+char *diff_extensions[] = {".diff", ".patch", NULL};
+
+private char *__ex_diff_syn_parser (buf_t *this, char *line, int len, int idx, row_t *row) {
+  (void) idx; (void) row;
+
+  ifnot (len) return line;
+
+  string_t *shared = Buf.get.shared_str (this);
+
+  String.replace_with_len (shared, TERM_COLOR_RESET, TERM_COLOR_RESET_LEN);
+
+  int color = HL_TXT;
+
+  if (Cstring.eq_n (line, "--- ", 4)) {
+    color = HL_IDENTIFIER;
+    goto theend;
+  }
+
+  if (Cstring.eq_n (line, "+++ ", 4)) {
+    color = HL_NUMBER;
+    goto theend;
+  }
+
+  if (line[0] is  '-') {
+    color = HL_VISUAL;
+    goto theend;
+  }
+
+  if (line[0] is  '+') {
+    color = HL_STRING_DELIM;
+    goto theend;
+  }
+
+  if (Cstring.eq_n (line, "diff ", 5) or Cstring.eq_n (line, "index ", 6)
+      or Cstring.eq_n (line, "@@ ", 3)) {
+    color = HL_COMMENT;
+    goto theend;
+  }
+
+theend:;
+  String.append_with_fmt (shared, "%s%s%s", TERM_MAKE_COLOR(color), line, TERM_COLOR_RESET);
+  Cstring.cp (line, MAXLEN_LINE, shared->bytes, shared->num_bytes);
+  return line;
+}
+
+private ftype_t *__ex_diff_syn_init (buf_t *this) {
+  ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "diff"),
+    FtypeOpts(.tabwidth = 0, .tab_indents = 0));
+  return ft;
+}
+
+private char *__ex_syn_parser (buf_t *this, char *line, int len, int idx, row_t *row) {
+  return Buf.syn.parser (this, line, len, idx, row);
+}
+
+private string_t *__ex_ftype_autoindent (buf_t *this, row_t *row) {
+  FtypeAutoIndent_cb autoindent_fun = Ed.get.callback_fun (E.get.current (__E__), "autoindent_default");
+  return autoindent_fun (this, row);
+}
+
+private string_t *__ex_c_ftype_autoindent (buf_t *this, row_t *row) {
+  FtypeAutoIndent_cb autoindent_fun = Ed.get.callback_fun (E.get.current (__E__), "autoindent_c");
+  return autoindent_fun (this, row);
+}
+
+private ftype_t *__ex_lai_syn_init (buf_t *this) {
+  ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "lai"),
+    FtypeOpts(.autoindent = __ex_c_ftype_autoindent, .tabwidth = 2, .tab_indents = 1));
+  return ft;
+}
+
+private ftype_t *__ex_lua_syn_init (buf_t *this) {
+  ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "lua"),
+    FtypeOpts(.autoindent = __ex_c_ftype_autoindent, .tabwidth = 2, .tab_indents = 1));
+  return ft;
+}
+
+private ftype_t *__ex_make_syn_init (buf_t *this) {
+  ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "make"),
+    FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_ftype_autoindent));
+  return ft;
+}
+
+private ftype_t *__ex_sh_syn_init (buf_t *this) {
+  ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "sh"),
+    FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_ftype_autoindent));
+  return ft;
+}
+
+private ftype_t *__ex_zig_syn_init (buf_t *this) {
+  ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "zig"),
+    FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_c_ftype_autoindent));
+  return ft;
+}
+
+private ftype_t *__ex_md_syn_init (buf_t *this) {
+  ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "md"),
+    FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_c_ftype_autoindent, .clear_blanklines = 0));
+  return ft;
+}
+
+/* really minimal and incomplete support */
+syn_t ex_syn[] = {
+  {
+    "make", make_filenames, make_extensions, __ex_NULL_ARRAY,
+    make_keywords, sh_operators,
+    sh_singleline_comment, NULL, NULL, NULL,
+    HL_STRINGS, HL_NUMBERS,
+    __ex_syn_parser, __ex_make_syn_init, 0, 0, NULL, NULL, NULL,
+  },
+  {
+    "sh", __ex_NULL_ARRAY, sh_extensions, sh_shebangs,
+    sh_keywords, sh_operators,
+    sh_singleline_comment, NULL, NULL, NULL,
+    HL_STRINGS, HL_NUMBERS,
+    __ex_syn_parser, __ex_sh_syn_init, 0, 0, NULL, NULL, __ex_balanced_pairs,
+  },
+  {
+    "zig", __ex_NULL_ARRAY, zig_extensions, __ex_NULL_ARRAY, zig_keywords, zig_operators,
+    zig_singleline_comment, NULL, NULL, NULL, HL_STRINGS, HL_NUMBERS,
+    __ex_syn_parser, __ex_zig_syn_init, 0, 0, NULL, NULL, __ex_balanced_pairs
+  },
+  {
+    "lua", __ex_NULL_ARRAY, lua_extensions, lua_shebangs, lua_keywords, lua_operators,
+    lua_singleline_comment, lua_multiline_comment_start, lua_multiline_comment_end,
+    NULL, HL_STRINGS, HL_NUMBERS,
+    __ex_syn_parser, __ex_lua_syn_init, 0, 0, NULL, NULL, __ex_balanced_pairs,
+  },
+  {
+    "lai", __ex_NULL_ARRAY, lai_extensions, lai_shebangs, lai_keywords, lai_operators,
+    lai_singleline_comment, lai_multiline_comment_start, lai_multiline_comment_end,
+    NULL, HL_STRINGS, HL_NUMBERS,
+    __ex_syn_parser, __ex_lai_syn_init, 0, 0, NULL, NULL, __ex_balanced_pairs,
+  },
+  {
+    "diff", __ex_NULL_ARRAY, diff_extensions, __ex_NULL_ARRAY,
+    __ex_NULL_ARRAY, NULL, NULL, NULL, NULL,
+    NULL, HL_STRINGS_NO, HL_NUMBERS_NO,
+    __ex_diff_syn_parser, __ex_diff_syn_init, 0, 0, NULL, NULL, NULL
+  },
+  {
+    "md", __ex_NULL_ARRAY, md_extensions, __ex_NULL_ARRAY,
+    __ex_NULL_ARRAY, NULL, NULL, NULL, NULL,
+    NULL, HL_STRINGS_NO, HL_NUMBERS_NO,
+    __ex_syn_parser, __ex_md_syn_init, 0, 0, NULL, NULL, NULL
+  }
+};
+
+private void __init_ext__ (ed_t *this, ed_opts opts) {
+  (void) opts;
+  __ex_add_readline_commands__ (this);
+  __ex_add_word_actions__ (this);
+
+  for (size_t i = 0; i < ARRLEN(ex_syn); i++)
+    Ed.syn.append (this, ex_syn[i]);
+}
+
 int main (int argc, char **argv) {
+  __INIT__ (sys);
   __INIT__ (term);
   __INIT__ (string);
+  __INIT__ (vstring);
+  __INIT__ (cstring);
+  __INIT__ (readline);
+  __INIT__ (path);
+  __INIT__ (file);
+  __INIT__ (dir);
 
   __INIT_APP__;
 
@@ -175,6 +626,8 @@ int main (int argc, char **argv) {
 
   if (argc is -1) goto theend;
 
+  E.set.at_init_cb (__E__, __init_ext__);
+
   int term_flags = 0;
 
    /* minimal cooperation with libvwn */
@@ -215,10 +668,10 @@ int main (int argc, char **argv) {
 
   num_win = (num_win < argc ? num_win : argc);
 
-//      .init_cb = __init_ext__,
   this = E.new (__E__, EdOpts(
       .num_win = num_win,
       .term_flags = term_flags));
+  Ed.set.at_exit_cb (this, Ed.history.write);
 
   if (NOTOK is Ed.check_sanity (this)) {
     retval = 1;
@@ -282,9 +735,9 @@ int main (int argc, char **argv) {
 
   if (exec_com isnot NULL) {
     string_t *com = parse_command (exec_com);
-    rline_t *rl = Ed.rline.new_with (this, com->bytes);
-    buf_t *buf = Ed.get.current_buf (this);
-    retval = Rline.exec (rl, &buf);
+    readline_t *rl = Ed.readline.new_with (this, com->bytes);
+    //buf_t *buf = Ed.get.current_buf (this);
+    retval = Readline.exec (rl);
     String.release (com);
   }
 
@@ -308,8 +761,8 @@ theloop:;
     if (E.test.state_bit (__E__, E_SUSPENDED)) {
       if (E.get.num (__E__) is 1) {
         /* as an example, we simply create another independed instance */
-        //this = E.new (__E__, EdOpts(.init_cb = __init_ext__));
         this = E.new (__E__, EdOpts());
+        Ed.set.at_exit_cb (this, Ed.history.write);
 
         w = Ed.get.current_win (this);
         buf = Win.buf.new (w, BufOpts());

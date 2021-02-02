@@ -70,10 +70,13 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
+FLAGS += -le-$(VERSION) -li-$(VERSION)
 FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
-FLAGS += -lterm-$(VERSION)
-FLAGS += -le-$(VERSION) -li-$(VERSION) -lproc-$(VERSION)
-FLAGS += -limap-$(VERSION) -lsmap-$(VERSION)
+FLAGS += -lstring-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION)
+FLAGS += -lfile-$(VERSION) -lpath-$(VERSION)
+FLAGS += -lsys-$(VERSION) -ldir-$(VERSION)
+FLAGS += -lsmap-$(VERSION) -limap-$(VERSION) -lproc-$(VERSION)
+FLAGS += -lterm-$(VERSION) -lreadline-$(VERSION)
 
 e:shared static
 
@@ -91,13 +94,8 @@ clean-static:\
 #-----------------------------------------------#
 E = $(NAME)
 
-FLAGS += -le-$(VERSION) -lstring-$(VERSION)
-
-E_STATIC_FLAGS = -lpath-$(VERSION)\
-                 -lvstring-$(VERSION) -lstring-$(VERSION)\
-                 -lustring-$(VERSION) -lcstring-$(VERSION)\
-                 -lfile-$(VERSION) -ldir-$(VERSION)\
-                 -li-$(VERSION) -lre-$(VERSION) -lsys-$(VERSION)
+E_STATIC_FLAGS  = -lustring-$(VERSION) -lre-$(VERSION) -lspell-$(VERSION)
+E_STATIC_FLAGS += -lvideo-$(VERSION)
 
 e-shared:
 	$(CC) $(E).c $(FLAGS) -o $(SYSBINDIR)/$(E)-shared

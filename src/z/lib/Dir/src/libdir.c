@@ -42,7 +42,7 @@ static char *dir_current (void) {
   return dir;
 }
 
-static void dir_list_free (dirlist_t *dlist) {
+static void dir_list_release (dirlist_t *dlist) {
   Vstring.release (dlist->list);
   free (dlist);
 }
@@ -60,7 +60,7 @@ static dirlist_t *dir_list (char *dir, int flags) {
   size_t len;
 
   dirlist_t *dlist = Alloc (sizeof (dirlist_t));
-  dlist->free = dir_list_free;
+  dlist->release = dir_list_release;
   dlist->list = Vstring.new ();
   Cstring.cp (dlist->dir, PATH_MAX, dir, PATH_MAX - 1);
 
@@ -91,7 +91,7 @@ static dirlist_t *dir_list (char *dir, int flags) {
   return dlist;
 }
 
-static void dir_walk_free (dirwalk_t **thisp) {
+static void dir_walk_release (dirwalk_t **thisp) {
   if (NULL is thisp) return;
   dirwalk_t *this = *thisp;
   Vstring.release (this->files);
@@ -351,7 +351,7 @@ public dir_T __init_dir__ (void) {
       .make_parents = dir_make_parents,
       .is_directory = dir_is_directory,
       .walk = (dir_walk_self) {
-        .free = dir_walk_free,
+        .release = dir_walk_release,
         .new = dir_walk_new,
         .run = dir_walk_run
       }
