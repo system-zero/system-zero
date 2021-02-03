@@ -506,7 +506,7 @@ libvui-shared: Env cenv libcstring-shared libstring-shared\
                libvideo-shared libreadline-shared
 	@cd $(Z_VUI_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libvui-static: Env cenv libcstring-static libstring-staticc\
+libvui-static: Env cenv libcstring-static libstring-static\
                libvideo-static libreadline-static
 	@cd $(Z_VUI_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
@@ -763,7 +763,7 @@ v-shared: cenv libvwm-shared libstring-shared libfile-shared libio-shared libarg
    libterm-shared
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-v-static: libv-static libstring-static libfile-static libio-static libargparse-static
+v-static: cenv libvwm-static libstring-static libfile-static libio-static libargparse-static
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-v-shared:
@@ -811,6 +811,7 @@ zero-clean-shared:\
               clean-libre-shared clean-libspell-shared\
               clean-libe-shared clean-libi-shared clean-libjson-shared\
               clean-libreadline-shared clean-libsys-shared\
+              clean-libvui-shared\
               clean-zs-shared clean-zsu-shared clean-dir-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared
@@ -830,6 +831,7 @@ zero-clean-static:\
               clean-libre-static clean-libspell-static\
               clean-libe-static clean-libi-static clean-libjson-static\
               clean-libreadline-static clean-libsys-static\
+              clean-libvui-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static\
               clean-file-static clean-io-static clean-term-static\
