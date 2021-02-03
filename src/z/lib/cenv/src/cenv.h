@@ -163,6 +163,10 @@ typedef unsigned long ulong;
 #define NAME_MAX 255  /* bytes in a file name */
 #endif
 
+#ifndef MAXLEN_PATTERN
+#define MAXLEN_PATTERN 1024
+#endif
+
 #ifndef PATH_SEP
 #define PATH_SEP        ':'
 #endif
@@ -366,6 +370,15 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 })
 #endif /* VA_ARGS_GET_FMT_STR */
 
+#ifndef STR_FMT
+#define STR_FMT(fmt_, ...)                                            \
+({                                                                    \
+  char buf_[MAXLEN_LINE];                                             \
+  snprintf (buf_, MAXLEN_LINE, fmt_, __VA_ARGS__);                    \
+  buf_;                                                               \
+})
+#endif
+
   /* idx_t */
 /* 13:03 28 Dec Mon 2020
  * Date: Thu, 24 Dec 2020 12:16:58 -0300                              
@@ -522,7 +535,7 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SIGNAL
 #endif /* REQUIRE_SIGNAL */
 
-#ifdef REQUIRE_WAIT
+#ifdef REQUIRE_SYS_WAIT
   #ifndef SYS_WAIT_HDR
   #define SYS_WAIT_HDR
   #include <sys/wait.h>
@@ -530,6 +543,15 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_SYS_WAIT
 #endif /* REQUIRE_SYS_WAIT */
+
+#ifdef REQUIRE_SYS_MMAN
+  #ifndef SYS_MMAN_HDR
+  #define SYS_MMAN_HDR
+  #include <sys/mman.h>
+  #endif /* SYS_MMAN_HDR */
+
+#undef REQUIRE_SYS_MMAN
+#endif /* REQUIRE_SYS_MMAN */
 
 #ifdef REQUIRE_SYS_STAT
   #ifndef SYS_STAT_HDR
@@ -584,6 +606,15 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_TERMIOS
 #endif /* REQUIRE_TERMIOS */
+
+#ifdef REQUIRE_PTY
+  #ifndef PTY_HDR
+  #define PTY_HDR
+  #include <pty.h>
+  #endif /* PTY_HDR */
+
+#undef REQUIRE_PTY
+#endif /* REQUIRE_PTY */
 
 #ifdef REQUIRE_DIRENT
   #ifndef DIRENT_HDR
@@ -992,6 +1023,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_VIDEO_TYPE
 #endif /* REQUIRE_VIDEO_TYPE */
 
+#ifdef REQUIRE_VUI_TYPE
+  #ifndef VUI_TYPE_HDR
+  #define VUI_TYPE_HDR
+  #include <z/vui.h>
+  #endif /* VUI_TYPE_HDR */
+
+  #if (REQUIRE_VUI_TYPE == DECLARE)
+  static  vui_T vuiType;
+  #define Vui   vuiType.self
+  #endif
+
+#undef REQUIRE_VUI_TYPE
+#endif /* REQUIRE_VUI_TYPE */
+
 #ifdef REQUIRE_READLINE_TYPE
   #ifndef READLINE_TYPE_HDR
   #define READLINE_TYPE_HDR
@@ -1013,13 +1058,46 @@ typedef ptrdiff_t idx_t;
   #endif /* E_TYPE_HDR */
 
   #if (REQUIRE_E_TYPE == DECLARE)
-  typedef E_T e_T;
-  //static  e_T eType;
-  //#define E   eType.self
+  typedef E_T     e_T;
+  static  e_T  *__E__ = NULL;
+  #define E     __E__->self
+  #define Ed    __E__->__Ed__->self
+  #define Win   __E__->__Ed__->__Win__.self
+  #define Buf   __E__->__Ed__->__Buf__.self
+  #define Msg   __E__->__Ed__->__Msg__.self
+  #define Error __E__->__Ed__->__Error__.self
   #endif
 
 #undef REQUIRE_E_TYPE
 #endif /* REQUIRE_E_TYPE */
+
+#ifdef REQUIRE_VWM_TYPE
+  #ifndef VWM_TYPE_HDR
+  #define VWM_TYPE_HDR
+  #include <z/vwm.h>
+  #endif /* VWM_TYPE_HDR */
+
+  #if (REQUIRE_VWM_TYPE == DECLARE)
+  static  vwm_T  *__VWM__ = NULL;
+  #define Vwm     __VWM__->self
+  #define Vframe  __VWM__->frame
+  #define Vwin    __VWM__->win
+  #endif
+
+  #ifndef SHELL
+  #define SHELL "zs"
+  #endif
+
+  #ifndef EDITOR
+  #define EDITOR "E"
+  #endif
+
+  #ifndef DEFAULT_APP
+  #define DEFAULT_APP SHELL
+  #endif
+
+#undef REQUIRE_VWM_TYPE
+#endif /* REQUIRE_VWM_TYPE */
 
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR
@@ -1080,6 +1158,10 @@ typedef ptrdiff_t idx_t;
   #ifndef CTRL
   #define CTRL(X) (X & 037)
   #endif
+
+  #ifndef MODE_KEY
+  #define MODE_KEY  CTRL('\\')
+  #endif
   #endif /* KEYS_MACROS_HDR */
 
 #undef REQUIRE_KEYS_MACROS
@@ -1131,6 +1213,7 @@ typedef ptrdiff_t idx_t;
   #define TERM_SET_COLOR_FMT_LEN      5
   #define TERM_LINE_CLR_EOL           "\033[2K"
   #define TERM_LINE_CLR_EOL_LEN       4
+
   #define COLOR_RED         31
   #define COLOR_GREEN       32
   #define COLOR_YELLOW      33
@@ -1147,6 +1230,10 @@ typedef ptrdiff_t idx_t;
   ({char b__[8];snprintf (b__, 8, TERM_SET_COLOR_FMT, (clr));b__;})
   #define TERM_SEND_ESC_SEQ(seq_) IO.fd.write (this->out_fd, seq_, seq_ ## _LEN)
   #define SEND_ESC_SEQ(fd_, seq_) IO.fd.write ((fd_), seq_, seq_ ## _LEN)
+
+  #define COLOR_MENU_HEADER COLOR_CYAN
+  #define COLOR_MENU_BG     COLOR_RED
+  #define COLOR_MENU_SEL    COLOR_GREEN
 
   #endif /* TERM_MACROS_HDR */
 
@@ -1263,11 +1350,11 @@ typedef ptrdiff_t idx_t;
   int version = 0;          \
   int retval  = 0;          \
   char *progname = argv[0]; \
+  int argparse_flags = 0;   \
   (void) progname;          \
   argparse_t argparser
 
 #define PARSE_ARGS                                               \
-  int argparse_flags = 0;                                        \
   if (0 == isatty (STDIN_FILENO))                                \
     argparse_flags |= ARGPARSE_DONOT_EXIT_ON_UNKNOWN;            \
   Argparse.init (&argparser, options, usage, argparse_flags);    \

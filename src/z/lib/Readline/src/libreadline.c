@@ -43,6 +43,18 @@ static const utf8 offsetsFromUTF8[6] = {
   0x03C82080UL, 0xFA082080UL, 0x82082080UL
 };
 
+static void readline_insert_with_len (readline_t *this, char *bytes, size_t len) {
+  char *sp = bytes;
+  for (size_t i = 0; i < len; i++) {
+    int clen = Ustring.charlen (bytes[i]);
+    this->state |= (READLINE_INSERT_CHAR|READLINE_BREAK);
+    this->c = UTF8_CODE (sp);
+    readline_edit (this);
+    i += clen - 1;
+    sp += clen;
+  }
+}
+
 static int readline_tab_completion (readline_t *rl) {
   (void) rl;
   return READLINE_OK;
@@ -58,7 +70,7 @@ static int readline_call_at_end (readline_t **rl) {
   return READLINE_OK;
 }
 
-static int readline_break (readline_t **rl) {
+static int readline_set_break_state (readline_t **rl) {
   (*rl)->state |= READLINE_BREAK;
   return READLINE_BREAK;
 }
@@ -122,6 +134,7 @@ static readline_t *readline_new (void *user_data, term_t *term, InputGetch_cb ge
 
   rl->state |= (READLINE_OK|READLINE_IS_VISIBLE);
   rl->opts  |= (READLINE_OPT_HAS_HISTORY_COMPLETION|READLINE_OPT_HAS_TAB_COMPLETION);
+  rl->opts  |= (READLINE_OPT_CLEAR_PROMPTLINE_AT_END);
   return rl;
 }
 
@@ -158,7 +171,7 @@ static void readline_clear (readline_t *rl) {
   while (row < rl->prompt_row)
     Video.draw.row_at (rl->video, row++);
 
-//  if (rl->prompt_row is $from(rl->ed, prompt_row))
+  if (rl->opts & READLINE_OPT_CLEAR_PROMPTLINE_AT_END)
     Video.set.row_with (rl->video, rl->prompt_row - 1, " ");
 
   Video.draw.row_at (rl->video, rl->prompt_row);
@@ -322,7 +335,7 @@ static readline_t *readline_complete_last_arg (readline_t *this) {
       1, this->num_cols, this->video);
 
   lrl->at_beg = readline_last_arg_at_beg;
-  lrl->at_end = readline_break;
+  lrl->at_end = readline_set_break_state;
 
   lrl->prompt_row = this->first_row - 1;
   lrl->prompt_char = 0;
@@ -614,7 +627,7 @@ static readline_t *readline_complete_history (readline_t *rl, int *idx, int dir)
   ReadlineAtBeg_cb at_beg = rl->at_beg;
   ReadlineAtEnd_cb at_end = rl->at_end;
   rl->at_beg = readline_history_at_beg;
-  rl->at_end = readline_break;
+  rl->at_end = readline_set_break_state;
 
   int counter = rl->history->num_items;
 
@@ -1030,7 +1043,7 @@ theend:
 }
 
 static void readline_set_line (readline_t *rl, char *bytes, size_t len) {
-  BYTES_TO_READLINE (rl, bytes, (int) len);
+  readline_insert_with_len (rl, bytes, len);
   readline_write_and_break (rl);
 }
 
@@ -1188,6 +1201,7 @@ public readline_T __init_readline__ (void) {
       .release= readline_release,
       .parse_command = readline_parse_command,
       .write_and_break = readline_write_and_break,
+      .insert_with_len = readline_insert_with_len,
       .last_component_push = readline_last_component_push,
       .get = (readline_get_self) {
         .arg = readline_get_arg,
@@ -1206,7 +1220,8 @@ public readline_T __init_readline__ (void) {
         .opts_bit = readline_set_opts_bit,
         .state_bit = readline_set_state_bit,
         .visibility = readline_set_visibility,
-        .prompt_char = readline_set_prompt_char
+        .prompt_char = readline_set_prompt_char,
+        .break_state = readline_set_break_state
       },
       .arg = (readline_arg_self) {
        .exists = readline_arg_exists

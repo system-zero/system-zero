@@ -307,47 +307,7 @@
 
 #define NO_OFFSET  0
 
-/* #define RESET_ERRNO errno = 0   mostly as an indicator and reminder */
-
 #define ZERO_FLAGS 0
-
-#define RL_ERROR                             -20
-#define RL_NO_COMMAND                        -21
-#define RL_ARG_AWAITING_STRING_OPTION_ERROR  -22
-#define RL_ARGUMENT_MISSING_ERROR            -23
-#define RL_UNTERMINATED_QUOTED_STRING_ERROR  -24
-#define RL_UNRECOGNIZED_OPTION               -25
-
-#define RL_ARG_FILENAME    (1 << 0)
-#define RL_ARG_RANGE       (1 << 1)
-#define RL_ARG_GLOBAL      (1 << 2)
-#define RL_ARG_PATTERN     (1 << 3)
-#define RL_ARG_SUB         (1 << 4)
-#define RL_ARG_INTERACTIVE (1 << 5)
-#define RL_ARG_APPEND      (1 << 6)
-#define RL_ARG_BUFNAME     (1 << 7)
-#define RL_ARG_VERBOSE     (1 << 8)
-#define RL_ARG_ANYTYPE     (1 << 9)
-#define RL_ARG_RECURSIVE   (1 << 10)
-
-#define RL_OK (1 << 0)
-#define RL_CONTINUE (1 << 1)
-#define RL_BREAK (1 << 2)
-#define RL_PROCESS_CHAR (1 << 3)
-#define RL_INSERT_CHAR (1 << 4)
-#define RL_CLEAR (1 << 5)
-#define RL_WRITE (1 << 6)
-#define RL_IS_VISIBLE (1 << 7)
-#define RL_CURSOR_HIDE (1 << 8)
-#define RL_CLEAR_FREE_LINE (1 << 9)
-#define RL_POST_PROCESS (1 << 10)
-#define RL_SET_POS (1 << 11)
-#define RL_EXEC (1 << 12)
-#define RL_FIRST_CHAR_COMPLETION (1 << 13)
-
-#define RL_OPT_HAS_TAB_COMPLETION (1 << 0)
-#define RL_OPT_HAS_HISTORY_COMPLETION (1 << 1)
-#define RL_OPT_RETURN_AFTER_TAB_COMPLETION (1 << 2)
 
 enum {
   NO_CALLBACK_FUNCTION = -4,
@@ -364,16 +324,6 @@ enum {
   NEWCHAR,
 };
 
-typedef ptrdiff_t idx_t;
-typedef ptrdiff_t msize_t;
-
-#define STR_FMT(fmt_, ...)                                            \
-({                                                                    \
-  char buf_[MAXLEN_LINE];                                             \
-  snprintf (buf_, MAXLEN_LINE, fmt_, __VA_ARGS__);                    \
-  buf_;                                                               \
-})
-
 #define __Me__  Me
 #define __this__ this
 #define __thisp__ thisp
@@ -389,7 +339,6 @@ typedef ptrdiff_t msize_t;
 #define self(__f__, ...) $self(__f__)(__this__, ##__VA_ARGS__)
 #define selfp(__f__, ...) $selfp(__f__)(__thisp__, ##__VA_ARGS__)
 #define My(__C__) $my(__C__)->self
-//#define $from(__v__) __v__->__prop__
 #define $from(__v__, __p__) __v__->__prop__->__p__
 #define $mycur(__v__) __this__->__current__->__v__
 #define $myparents(__p__) __this__->__prop__->__parent__->__prop__->__p__
@@ -1257,7 +1206,7 @@ typedef struct ed_win_self {
 } ed_win_self;
 
 typedef struct ed_menu_self {
-   void (*free) (ed_t *, menu_t *);
+   void (*release) (ed_t *, menu_t *);
    menu_t *(*new) (ed_t *, buf_t *, MenuProcessList_cb);
    char *(*create) (ed_t *, menu_t *);
 } ed_menu_self;

@@ -15,6 +15,7 @@ typedef struct string_self {
 
   string_t
     *(*new) (size_t),
+    *(*dup) (string_t *),
     *(*reallocate) (string_t *, size_t),
     *(*new_with) (const char *),
     *(*new_with_len) (const char *, size_t),

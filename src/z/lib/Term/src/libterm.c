@@ -122,7 +122,7 @@ static void term_cursor_save (term_t *this) {
   TERM_SEND_ESC_SEQ (TERM_CURSOR_SAVE);
 }
 
-static int term_cursor_get_ptr_pos (term_t *this, int *row, int *col) {
+static int term_cursor_get_pos (term_t *this, int *row, int *col) {
   if (NOTOK == TERM_SEND_ESC_SEQ (TERM_GET_PTR_POS))
     return NOTOK;
 
@@ -147,7 +147,7 @@ static int term_cursor_get_ptr_pos (term_t *this, int *row, int *col) {
   return OK;
 }
 
-static void term_cursor_set_ptr_pos (term_t *this, int row, int col) {
+static void term_cursor_set_pos (term_t *this, int row, int col) {
   char ptr[32];
   snprintf (ptr, 32, TERM_GOTO_PTR_POS_FMT, row, col);
   IO.fd.write (this->out_fd, ptr, bytelen (ptr));
@@ -166,11 +166,11 @@ static void term_init_size (term_t *this, int *rows, int *cols) {
   } while (errno == EINTR);
 
   int orig_row, orig_col;
-  term_cursor_get_ptr_pos (this, &orig_row, &orig_col);
+  term_cursor_get_pos (this, &orig_row, &orig_col);
 
   TERM_SEND_ESC_SEQ (TERM_LAST_RIGHT_CORNER);
-  term_cursor_get_ptr_pos (this, rows, cols);
-  term_cursor_set_ptr_pos (this, orig_row, orig_col);
+  term_cursor_get_pos (this, rows, cols);
+  term_cursor_set_pos (this, orig_row, orig_col);
 }
 
 static int term_set_mode (term_t *this, char mode) {
@@ -192,7 +192,7 @@ static void term_unset_state_bit (term_t *this, int bit) {
 
 static int term_set (term_t *this) {
   if (NOTOK is term_set_mode (this, 'r')) return NOTOK;
-  term_cursor_get_ptr_pos (this, &this->orig_curs_row_pos, &this->orig_curs_col_pos);
+  term_cursor_get_pos (this, &this->orig_curs_row_pos, &this->orig_curs_col_pos);
   term_init_size (this, &this->num_rows, &this->num_cols);
 
   ifnot (this->state & TERM_DONOT_SAVE_SCREEN)
@@ -208,7 +208,7 @@ static int term_set (term_t *this) {
 static int term_reset (term_t *this) {
   ifnot (this->is_initialized) return OK;
   term_set_mode (this, 's');
-  term_cursor_set_ptr_pos (this, this->orig_curs_row_pos, this->orig_curs_col_pos);
+  term_cursor_set_pos (this, this->orig_curs_row_pos, this->orig_curs_col_pos);
 
   ifnot (this->state & TERM_DONOT_RESTORE_SCREEN)
     term_screen_restore (this);
@@ -267,8 +267,8 @@ public term_T __init_term__ (void) {
         .hide = term_cursor_hide,
         .show = term_cursor_show,
         .save = term_cursor_save,
-        .set_pos = term_cursor_set_ptr_pos,
-        .get_pos = term_cursor_get_ptr_pos,
+        .set_pos = term_cursor_set_pos,
+        .get_pos = term_cursor_get_pos,
         .restore = term_cursor_restore
       }
     }

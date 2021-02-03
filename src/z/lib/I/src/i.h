@@ -20,8 +20,8 @@ enum {
 typedef int (*IPrintByte_cb) (FILE *, int);
 typedef int (*IPrintBytes_cb) (FILE *, const char *);
 typedef int (*IPrintFmtBytes_cb) (FILE *, const char *, ...);
-typedef int  (*ISyntaxError_cb) (i_t *, const char *);
-typedef int  (*IDefineFuns_cb) (i_t *);
+typedef int (*ISyntaxError_cb) (i_t *, const char *);
+typedef int (*IDefineFuns_cb) (i_t *);
 
 typedef intptr_t ival_t;
 typedef ival_t (*Cfunc) (i_t *, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t);
@@ -63,9 +63,11 @@ typedef struct i_opts {
 
 typedef struct i_get_self {
   i_t *(*current) (i_T *);
-  int (*current_idx) (i_T *);
   void *(*user_data) (i_t *);
-  char *(*message) (i_t *);
+  char
+    *(*eval_str) (i_t *),
+    *(*message) (i_t *);
+  int   (*current_idx) (i_T *);
 } i_get_self;
 
 typedef struct i_set_self {

@@ -172,16 +172,18 @@ static ssize_t file_append (char *fname, char *bytes, ssize_t size) {
   return __file_write__ (fname, bytes, size, "a+");
 }
 
-static void file_tmpfname_release (tmpfname_t *this) {
+static void file_tmpfname_release (tmpfname_t *this, int flags) {
   ifnot (this) return;
   ifnot (NULL is this->fname) {
-    unlink (this->fname->bytes);
+    if (flags & FILE_TMPFNAME_UNLINK_FILE)
+      unlink (this->fname->bytes);
     String.release (this->fname);
     this->fname = NULL;
   }
 
   if (-1 isnot this->fd)
-    close (this->fd);
+    if (flags & FILE_TMPFNAME_CLOSE_FD)
+      close (this->fd);
 
   free (this);
 }
@@ -260,7 +262,7 @@ again:
 
 theerror:
   ifnot (NULL is this) {
-    file_tmpfname_release (this);
+    file_tmpfname_release (this, FILE_TMPFNAME_UNLINK_FILE| FILE_TMPFNAME_CLOSE_FD);
     this = NULL;
   }
 

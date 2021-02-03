@@ -77,6 +77,7 @@ FLAGS += -lfile-$(VERSION) -lpath-$(VERSION)
 FLAGS += -lsys-$(VERSION) -ldir-$(VERSION)
 FLAGS += -lsmap-$(VERSION) -limap-$(VERSION) -lproc-$(VERSION)
 FLAGS += -lterm-$(VERSION) -lreadline-$(VERSION)
+FLAGS += -lvui-$(VERSION)
 
 e:shared static
 

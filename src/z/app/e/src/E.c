@@ -8,6 +8,7 @@
 #define REQUIRE_SYS_STAT
 #define REQUIRE_FCNTL
 #define REQUIRE_TERMIOS
+#define REQUIRE_LOCALE
 
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_VSTRING_TYPE  DECLARE
@@ -27,14 +28,6 @@
 #define REQUIRE_TERM_MACROS
 
 #include <z/cenv.h>
-#include <locale.h>
-
-static E_T *__E__ = NULL;
-
-#define E   __E__->self
-#define Ed  __E__->__Ed__->self
-#define Win __E__->__Ed__->__Win__.self
-#define Buf __E__->__Ed__->__Buf__.self
 
 public void sigwinch_handler (int sig) {
   signal (sig, sigwinch_handler);
@@ -305,7 +298,7 @@ theend:
 }
 
 private void __ex_add_readline_commands__ (ed_t *this) {
-  Ed.append.readline_command (this, "`man", 2, RL_ARG_FILENAME|RL_ARG_VERBOSE );
+  Ed.append.readline_command (this, "`man", 2, READLINE_ARG_FILENAME|READLINE_ARG_VERBOSE );
   Ed.append.command_arg (this, "`man", "--section=", 10);
 
   Ed.append.readline_command (this, "@info", 0, 0);

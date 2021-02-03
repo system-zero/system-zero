@@ -47,6 +47,7 @@
 #define READLINE_OPT_HAS_TAB_COMPLETION           (1 << 0)
 #define READLINE_OPT_HAS_HISTORY_COMPLETION       (1 << 1)
 #define READLINE_OPT_RETURN_AFTER_TAB_COMPLETION  (1 << 2)
+#define READLINE_OPT_CLEAR_PROMPTLINE_AT_END      (1 << 3)
 
 #define READLINE_LAST_ARG_KEY    037
 
@@ -106,6 +107,7 @@ struct readline_t {
   char prompt_char;
 
   int
+    fd,
     com,
     opts,
     rows,
@@ -117,17 +119,14 @@ struct readline_t {
     first_row,
     first_col,
     prompt_row,
+    first_chars_len,
     trigger_first_char_completion;
 
   utf8
     c,
     first_chars[8];
 
-  int first_chars_len;
-
   term_t *term;
-
-  int fd;
 
   video_t *video;
 
@@ -169,6 +168,8 @@ typedef struct readline_set_self {
     (*state_bit) (readline_t *, int),
     (*visibility) (readline_t *, int),
     (*prompt_char) (readline_t *, char);
+
+  int (*break_state) (readline_t **);
 } readline_set_self;
 
 typedef struct readline_get_self {
@@ -211,9 +212,11 @@ typedef struct readline_self {
     (*clear) (readline_t *),
     (*release) (readline_t *),
     (*write_and_break) (readline_t *),
+    (*insert_with_len) (readline_t *, char *, size_t),
     (*last_component_push) (readline_t *);
 
-  int (*exec) (readline_t *);
+  int
+    (*exec) (readline_t *);
 
   vstring_t *(*parse_command) (readline_t *);
 } readline_self;

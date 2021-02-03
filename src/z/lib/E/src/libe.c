@@ -42,6 +42,7 @@
 #define REQUIRE_PROC_TYPE     DECLARE
 #define REQUIRE_SPELL_TYPE    DECLARE
 #define REQUIRE_VIDEO_TYPE    DECLARE
+#define REQUIRE_VUI_TYPE      DECLARE
 #define REQUIRE_READLINE_TYPE DECLARE
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
@@ -174,96 +175,6 @@ private int is_quantifier (const char *re) {
   return re[0] == '*' || re[0] == '+' || re[0] == '?';
 }
 
-private void menu_free_list (menu_t *this) {
-  if (this->state & MENU_LIST_IS_ALLOCATED) {
-    Vstring.release (this->list);
-    this->state &= ~MENU_LIST_IS_ALLOCATED;
-  }
-}
-
-private void menu_free (menu_t *this) {
-  menu_free_list (this);
-  String.release (this->header);
-  free (this);
-}
-
-private menu_t *menu_new (ed_t *this, int first_row, int last_row, int first_col,
-                                 MenuProcessList_cb cb, char *pat, size_t patlen) {
-  menu_t *menu = Alloc (sizeof (menu_t));
-  menu->fd = $my(video)->fd;
-  menu->next_key = 0;
-  menu->first_row = first_row;
-  menu->orig_first_row = first_row;
-  menu->min_first_row = 3;
-  menu->last_row = last_row;
-  menu->num_rows = menu->last_row - menu->first_row + 1;
-  menu->orig_num_rows = menu->num_rows;
-  menu->first_col = first_col + 1;
-  menu->num_cols = $my(dim)->num_cols;
-  menu->cur_video = $my(video);
-  menu->process_list = cb;
-  menu->state |= (MENU_INIT|RL_IS_VISIBLE);
-  menu->space_selects = 1;
-  menu->header = String.new (8);
-  menu->this = self(get.current_buf);
-  ifnot (NULL is pat) {
-    menu->patlen = patlen;
-    Cstring.cp (menu->pat, MAXLEN_PAT, pat, patlen);
-  }
-
-  menu->retval = menu->process_list (menu);
-  return menu;
-}
-
-private void menu_clear (menu_t *menu) {
-  //buf_t *this = menu->this;
-  if (menu->header->num_bytes)
-    Video.draw.row_at (menu->cur_video, menu->first_row - 1);
-
-  for (int i = 0;i < menu->num_rows; i++)
-    Video.draw.row_at (menu->cur_video, menu->first_row + i);
-}
-
-static int readline_break (readline_t **rl) {
-  (*rl)->state |= READLINE_BREAK;
-  return READLINE_BREAK;
-}
-
-private int readline_menu_at_beg (readline_t **rl) {
-  switch ((*rl)->c) {
-    case ESCAPE_KEY:
-    case '\r':
-    case ARROW_LEFT_KEY:
-    case ARROW_RIGHT_KEY:
-    case ARROW_UP_KEY:
-    case ARROW_DOWN_KEY:
-    case '\t':
-
-      (*rl)->state |= RL_POST_PROCESS;
-      return RL_POST_PROCESS;
-  }
-
-  (*rl)->state |= RL_OK;
-  return RL_OK;
-}
-
-private int readline_menu_at_end (readline_t **rl) {
-  menu_t *menu = (menu_t *) (*rl)->user_data[READLINE_MENU_USER_DATA_IDX];
-
-  switch ((*rl)->c) {
-    case BACKSPACE_KEY:
-      if (menu->clear_and_continue_on_backspace) {
-        menu_clear (menu);
-       (*rl)->state |= RL_CONTINUE;
-       return RL_CONTINUE;
-      }
-      break;
-  }
-
-  (*rl)->state |= RL_BREAK;
-  return RL_BREAK;
-}
-
 private void readline_last_component_push_cb (readline_t *rl) {
   ed_t *this = (ed_t *) rl->user_data[READLINE_ED_USER_DATA_IDX];
   Vstring.current.prepend_with ($my(rl_last_component), rl->tail->argval->bytes);
@@ -275,302 +186,24 @@ private void readline_last_component_push_cb (readline_t *rl) {
   }
 }
 
-private char *menu_create (ed_t *this, menu_t *menu) {
-  readline_t *rl = Readline.new (this, $my(term), IO.getkey, $my(prompt_row),
-      1, $my(dim)->num_cols, $my(video));
-  rl->at_beg = readline_menu_at_beg;
-  rl->at_end = readline_menu_at_end;
-  rl->user_data[READLINE_MENU_USER_DATA_IDX] = (void *) menu;
-  rl->state |= RL_CURSOR_HIDE;
-  rl->prompt_char = 0;
-
-  if (menu->state & RL_IS_VISIBLE) rl->state &= ~RL_IS_VISIBLE;
-
-  ED_BYTES_TO_READLINE (rl, menu->pat, menu->patlen);
-
-init_list:;
-  if (menu->state & MENU_REINIT_LIST) {
-    menu->state &= ~MENU_REINIT_LIST;
-    menu_clear (menu);
-    menu->first_row = menu->orig_first_row;
-  }
-
-  char *match = NULL;
-  int cur_idx = 0;
-  int maxlen = 0;
-  int vcol_pos = 1;
-  int vrow_pos = 0;
-  int frow_idx = 0;
-  int num_rows = 0;
-  int num_cols = 0;
-  int mod = 0;
-  int num = 1;
-  int rend_rows = menu->orig_num_rows;
-  int first_row = menu->first_row;
-  int first_col = menu->first_col;
-  int orig_beh  = menu->return_if_one_item;
-
-  ifnot (menu->list->num_items) goto theend;
-
-  vstring_t *it = menu->list->head;
-
-  if (menu->list->num_items is 1)
-    if (menu->return_if_one_item) {
-      menu->c = '\r';
-      goto handle_char;
-    }
-
-  while (it) {
-    if ((int) it->data->num_bytes > maxlen) maxlen = it->data->num_bytes;
-    it = it->next;
-  }
-
-  ifnot (maxlen) goto theend;
-  maxlen++;
-
-  while ((first_col + 1) and first_col + maxlen > menu->num_cols)
-     first_col--;
-
-  int avail_cols = menu->num_cols - first_col;
-
-  if (maxlen < avail_cols) {
-    num = avail_cols / maxlen;
-    if ((num - 1) + (maxlen * num) > avail_cols)
-      num--;
-  } else {
-    num = 1;
-    maxlen = avail_cols;
-  }
-
-  mod = menu->list->num_items % num;
-  num_cols = (num * maxlen);
-  num_rows = (menu->list->num_items / num) + (mod isnot 0);
-  // +  (menu->header->num_bytes isnot 0);
-
-  if (num_rows > rend_rows) {
-    while (first_row > menu->min_first_row and num_rows > rend_rows) {
-      first_row--;
-      rend_rows++;
-    }
-  } else {
-    rend_rows = num_rows;
-  }
-
-  menu->num_rows = rend_rows;
-  menu->first_row = first_row;
-
-  char *fmt = STR_FMT ("\033[%%dm%%-%ds%%s", maxlen);
-
-  vrow_pos = first_row;
-
-  for (;;) {
-    it = menu->list->head;
-    for (int i = 0; i < frow_idx; i++)
-      for (int j = 0; j < num; j++)
-        it = it->next;
-
-    string_t *render = String.new_with (TERM_CURSOR_HIDE);
-    if (menu->header->num_bytes) {
-      String.append_with_fmt (render, TERM_GOTO_PTR_POS_FMT TERM_SET_COLOR_FMT,
-         first_row - 1, first_col, COLOR_MENU_HEADER);
-
-      if ((int) menu->header->num_bytes > num_cols) {
-        String.clear_at (menu->header, num_cols - 1);
-      } else
-      while ((int) menu->header->num_bytes < num_cols)
-        String.append_byte (menu->header, ' ');
-
-      String.append_with_fmt (render, "%s%s", menu->header->bytes, TERM_COLOR_RESET);
-    }
-
-    int ridx, iidx = 0; int start_row = 0;
-    for (ridx = 0; ridx < rend_rows; ridx++) {
-      start_row = first_row + ridx;
-      String.append_with_fmt (render, TERM_GOTO_PTR_POS_FMT, start_row, first_col);
-
-      for (iidx = 0; iidx < num and iidx + (ridx  * num) + (frow_idx * num) < menu->list->num_items; iidx++) {
-        int len = ((int) it->data->num_bytes > maxlen ? maxlen : (int) it->data->num_bytes);
-        char item[len + 1];
-        Cstring.cp (item, len + 1, it->data->bytes, len);
-
-        int color = (iidx + (ridx * num) + (frow_idx * num) is cur_idx)
-           ? COLOR_MENU_SEL : COLOR_MENU_BG;
-        String.append_with_fmt (render, fmt, color, item, TERM_COLOR_RESET);
-        it = it->next;
-      }
-
-      if (mod)
-        for (int i = mod + 1; i < num; i++)
-          for (int j = 0; j < maxlen; j++)
-            String.append_byte (render, ' ');
-   }
-
-//    String.append_with (render, TERM_CURSOR_SHOW);
-
-    IO.fd.write (menu->fd, render->bytes, render->num_bytes);
-
-    String.release (render);
-
-    menu->c = Readline.edit (rl)->c;
-    if (menu->state & MENU_QUIT) goto theend;
-
-handle_char:
-
-    if (menu->c is menu->next_key)
-      menu->c = ARROW_RIGHT_KEY;
-
-    switch (menu->c) {
-      case ESCAPE_KEY: goto theend;
-
-      case '\r':
-      case ' ':
-        if (' ' is menu->c and menu->space_selects is 0)
-          goto insert_char;
-
-        it = menu->list->head;
-        for (int i = 0; i < cur_idx; i++) it = it->next;
-        match = it->data->bytes;
-        goto theend;
-
-      case ARROW_LEFT_KEY:
-        ifnot (0 is cur_idx) {
-          if (vcol_pos > 1) {
-            cur_idx--;
-            vcol_pos--;
-            continue;
-          }
-
-          cur_idx += (num - vcol_pos);
-          vcol_pos += (num - vcol_pos);
-        }
-
-        //__fallthrough__;
-
-      case ARROW_UP_KEY:
-        if (vrow_pos is first_row) {
-          ifnot (frow_idx) {
-            cur_idx = menu->list->num_items - 1;
-            vcol_pos = 1 + (mod ? mod - 1 : 0);
-            frow_idx = num_rows - rend_rows;
-            vrow_pos = first_row + rend_rows - 1;
-            continue;
-          }
-
-          frow_idx--;
-        } else
-          vrow_pos--;
-
-        cur_idx -= num;
-        continue;
-
-      case '\t':
-      case ARROW_RIGHT_KEY:
-         if (vcol_pos isnot num and cur_idx < menu->list->num_items - 1) {
-           cur_idx++;
-           vcol_pos++;
-           continue;
-         }
-
-        cur_idx -= (vcol_pos - 1);
-        vcol_pos = 1;
-
-        //__fallthrough__;
-
-      case ARROW_DOWN_KEY:
-        if (vrow_pos is menu->last_row or (vrow_pos - first_row + 1 is num_rows)) {
-          if (cur_idx + (num - vcol_pos) + 1 >= menu->list->num_items) {
-            frow_idx = 0;
-            vrow_pos = first_row;
-            cur_idx = 0;
-            vcol_pos = 1;
-            continue;
-          }
-
-          cur_idx += num;
-          while (cur_idx >= menu->list->num_items) {cur_idx--; vcol_pos--;}
-          frow_idx++;
-          continue;
-        }
-
-        cur_idx += num;
-        while (cur_idx >= menu->list->num_items) {cur_idx--; vcol_pos--;}
-        vrow_pos++;
-        continue;
-
-      case PAGE_UP_KEY: {
-          int i = rend_rows;
-          while (i--) {
-            if (frow_idx > 0) {
-              frow_idx--;
-              cur_idx -= num;
-            } else break;
-          }
-        }
-
-        continue;
-
-      case PAGE_DOWN_KEY: {
-          int i = rend_rows;
-          while (i--) {
-            if (frow_idx < num_rows - rend_rows) {
-              frow_idx++;
-              cur_idx += num;
-            } else break;
-          }
-        }
-
-        continue;
-
-      default:
-insert_char:
-        {
-          string_t *p = Vstring.join (rl->line, "");
-          if (rl->line->tail->data->bytes[0] is ' ')
-            String.clear_at (p, p->num_bytes - 1);
-
-          ifnot (Cstring.eq (menu->pat, p->bytes)) {
-            menu->patlen = p->num_bytes;
-            Cstring.cp (menu->pat, MAXLEN_PAT, p->bytes, p->num_bytes);
-          }
-
-          String.release (p);
-        }
-
-        menu->process_list (menu);
-
-        if (menu->state & MENU_QUIT) goto theend;
-
-        if (menu->list->num_items is 1)
-          if (menu->return_if_one_item) {
-            menu->c = '\r';
-            goto handle_char;
-          }
-
-        /* this it can be change in the callback, and is intented for backspace */
-        menu->return_if_one_item = orig_beh;
-
-        if (menu->state & MENU_REINIT_LIST) goto init_list;
-
-        continue;
-    }
-  }
-
-theend:
-  menu_clear (menu);
-  Readline.release (rl);
-  return match;
-}
-
-private void ed_menu_free (ed_t *ed, menu_t *this) {
+private void ed_menu_release (ed_t *ed, menu_t *this) {
   (void) ed;
-  menu_free (this);
+  Menu.release(this);
 }
 
 private menu_t *ed_menu_new (ed_t *this, buf_t *buf, MenuProcessList_cb cb) {
-  menu_t *menu = menu_new (this, $my(video)->row_pos, $my(prompt_row) - 2,
-    $my(video)->col_pos, cb, NULL, 0);
-  menu->this = buf;
-  menu->return_if_one_item = 1;
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = this,
+    .user_data_second = buf,
+    .video = $my(video),
+    .term = $my(term),
+    .first_row = $my(video)->row_pos,
+    .last_row = $my(prompt_row) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = cb,
+    .pat = NULL,
+    .patlen = 0));
+
   return menu;
 }
 
@@ -579,12 +212,12 @@ private string_t *buf_input_box (buf_t *this, int row, int col,
   string_t *str = NULL;
   readline_t *rl = Readline.new ($my(root), $my(term_ptr), IO.getkey, row,
       col, $my(dim)->num_cols - col + 1, $my(video));
-  rl->opts &= ~RL_OPT_HAS_HISTORY_COMPLETION;
-  rl->opts &= ~RL_OPT_HAS_TAB_COMPLETION;
+  rl->opts &= ~READLINE_OPT_HAS_HISTORY_COMPLETION;
+  rl->opts &= ~READLINE_OPT_HAS_TAB_COMPLETION;
   rl->prompt_char = 0;
 
   ifnot (NULL is buf)
-    ED_BYTES_TO_READLINE (rl, buf, (int) bytelen (buf));
+    Readline.insert_with_len (rl, buf, bytelen (buf));
 
   utf8 c;
   for (;;) {
@@ -1556,13 +1189,25 @@ private int buf_balanced_lw_mode_cb (buf_t **thisp, int fidx, int lidx, Vstring_
   return NO_CALLBACK_FUNCTION;
 }
 
+static int i_syntax_error_to_ed (i_t *__i__, const char *msg) {
+  E_T *e = I.get.user_data (__i__);
+  ed_t *this = e->prop->current;
+  char *ptr = I.get.eval_str (__i__);
+  Msg.write_fmt (this, "\nSYNTAX ERROR: %s\nbefore:\n%s\n", msg, ptr);
+  return I_ERR_SYNTAX;
+}
+
 private int buf_interpret (buf_t **thisp, char *malloced) {
   buf_t *this = *thisp;
   char *str = malloced;
 
   i_t *in = I.get.current ($my(__I__));
   ifnot (in)
-    in = I.init_instance ($my(__I__), IOpts());
+    in = I.init_instance ($my(__I__), IOpts (
+      .define_funs_cb = $OurRoots (i_define_funs_cb),
+      .syntax_error = i_syntax_error_to_ed));
+
+  I.set.user_data (in, $OurRoot);
 
   Term.reset ($my(term_ptr));
 
@@ -1803,7 +1448,7 @@ private int readline_parse_arg_buf_range (readline_t *rl, readline_arg_t *arg, b
 }
 
 private int readline_get_buf_range (readline_t  *rl, buf_t *this, int *range) {
-  readline_arg_t *arg = Readline.get.arg (rl, RL_ARG_RANGE);
+  readline_arg_t *arg = Readline.get.arg (rl, READLINE_ARG_RANGE);
   if (NULL is arg or (NOTOK is readline_parse_arg_buf_range (rl, arg, this))) {
     range[0] = -1; range[1] = -1;
     return NOTOK;
@@ -1818,11 +1463,11 @@ private int readline_get_buf_range (readline_t  *rl, buf_t *this, int *range) {
 /* this retval pointer provides information, since the callee resets retval at the
  * beginning of its function. The early return here is actually a goto theend there */
 private int buf_com_substitute (buf_t *this, readline_t *rl, int *retval) {
-  readline_arg_t *pat = Readline.get.arg (rl, RL_ARG_PATTERN);
-  readline_arg_t *sub = Readline.get.arg (rl, RL_ARG_SUB);
-  readline_arg_t *global = Readline.get.arg (rl, RL_ARG_GLOBAL);
-  readline_arg_t *interactive = Readline.get.arg (rl, RL_ARG_INTERACTIVE);
-  readline_arg_t *range = Readline.get.arg (rl, RL_ARG_RANGE);
+  readline_arg_t *pat = Readline.get.arg (rl, READLINE_ARG_PATTERN);
+  readline_arg_t *sub = Readline.get.arg (rl, READLINE_ARG_SUB);
+  readline_arg_t *global = Readline.get.arg (rl, READLINE_ARG_GLOBAL);
+  readline_arg_t *interactive = Readline.get.arg (rl, READLINE_ARG_INTERACTIVE);
+  readline_arg_t *range = Readline.get.arg (rl, READLINE_ARG_RANGE);
 
   if (NULL is range and rl->com is VED_COM_SUBSTITUTE_WHOLE_FILE_AS_RANGE) {
     rl->range[0] = 0; rl->range[1] = this->num_items - 1;
@@ -4228,12 +3873,12 @@ private int readline_search_at_beg (readline_t **rl) {
     case ARROW_DOWN_KEY:
 
     case '\t':
-    (*rl)->state |= RL_POST_PROCESS;
-    return RL_POST_PROCESS;
+    (*rl)->state |= READLINE_POST_PROCESS;
+    return READLINE_POST_PROCESS;
   }
 
-  (*rl)->state |= RL_OK;
-  return RL_OK;
+  (*rl)->state |= READLINE_OK;
+  return READLINE_OK;
 }
 
 private void ed_search_history_push (ed_t *this, char *bytes, size_t len) {
@@ -4274,7 +3919,7 @@ private int buf_search (buf_t *this, char com, char *str, utf8 cc) {
   readline_t *rl = Readline.new ($my(root), $my(term_ptr), IO.getkey,
       *$my(prompt_row_ptr), 1, $my(dim)->num_cols, $my(video));
   rl->at_beg = readline_search_at_beg;
-  rl->at_end = readline_break;
+  rl->at_end = Readline.set.break_state;
 
   rl->prompt_char = (com is '*' or com is '/') ? '/' : '?';
 
@@ -4286,14 +3931,13 @@ private int buf_search (buf_t *this, char com, char *str, utf8 cc) {
     self(get.current_word, word, Notword, Notword_len, &fidx, &lidx);
     sch->pat = String.new_with (word);
     if (sch->pat->num_bytes) {
-      ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
-      Readline.write_and_break (rl);
+      Readline.set.line (rl, sch->pat->bytes, sch->pat->num_bytes);
       goto search;
     }
   } else {
     if (str isnot NULL) {
       sch->pat = String.new_with (his->data->bytes);
-      ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
+      Readline.insert_with_len (rl, sch->pat->bytes, sch->pat->num_bytes);
 
       com = 'n' is com ? '/' : '?';
       rl->prompt_char = com;
@@ -4306,7 +3950,7 @@ private int buf_search (buf_t *this, char com, char *str, utf8 cc) {
     } else if (com is 'n' or com is 'N') {
       if ($my(history)->search->num_items is 0) return NOTHING_TODO;
       sch->pat = String.new_with (his->data->bytes);
-      ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
+      Readline.insert_with_len (rl, sch->pat->bytes, sch->pat->num_bytes);
 
       com = 'n' is com ? '/' : '?';
       rl->prompt_char = com;
@@ -4417,9 +4061,9 @@ search:
 
         String.replace_with (sch->pat, his->data->bytes);
 
-        rl->state |= RL_CLEAR_FREE_LINE;
+        rl->state |= READLINE_CLEAR_FREE_LINE;
         Readline.clear (rl);
-        ED_BYTES_TO_READLINE (rl, sch->pat->bytes, (int) sch->pat->num_bytes);
+        Readline.insert_with_len (rl, sch->pat->bytes, sch->pat->num_bytes);
         goto search;
 
       default:
@@ -5075,7 +4719,7 @@ thediff:;
     }
   }
 
-  File.tmpfname.release (tmpn);
+  File.tmpfname.release (tmpn, FILE_TMPFNAME_UNLINK_FILE|FILE_TMPFNAME_CLOSE_FD);
 
   return retval;
 }
@@ -5525,8 +5169,6 @@ private int buf_normal_page_down (buf_t *this, int count, int draw) {
 }
 
 private int buf_normal_page_up (buf_t *this, int count, int draw) {
-  //ed_record ($my(root), "buf_normal_page_up (buf, %d)", count);
-
   if ($my(video_first_row_idx) is 0 or this->num_items < ONE_PAGE)
     return NOTHING_TODO;
 
@@ -5914,7 +5556,7 @@ private int buf_word_math (buf_t *this, int count, utf8 com) {
 }
 
 private int ed_complete_word_callback (menu_t *menu) {
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
 
   int idx = 0;
   if (menu->state & MENU_INIT) {
@@ -5950,7 +5592,7 @@ private int ed_complete_word_callback (menu_t *menu) {
 
     menu->pat[menu->patlen] = '\0';
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
   Vstring_t *words = Vstring.new ();
 
@@ -5991,15 +5633,26 @@ private int ed_complete_word_callback (menu_t *menu) {
 private int buf_complete_word (buf_t **thisp) {
   buf_t *this = *thisp;
   int retval = DONE;
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2, $my(video)->col_pos,
-  ed_complete_word_callback, NULL, 0);
-  menu->next_key = CTRL('n');
+
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_complete_word_callback,
+    .next_key = CTRL('n'),
+    .pat = NULL,
+    .patlen = 0));
+
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
-  //menu->space_selects = 0;
 
   int orig_patlen = menu->patlen;
 
-  char *word = menu_create ($my(root), menu);
+  char *word = Menu.create (menu);
+
   if (word isnot NULL) {
     Action_t *Action = self(Action.new);
     self(Action.set_with_current, Action, REPLACE_LINE);
@@ -6016,12 +5669,12 @@ private int buf_complete_word (buf_t **thisp) {
   }
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return retval;
 }
 
 private int ed_complete_line_callback (menu_t *menu) {
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
 
   int idx = 0;
 
@@ -6040,7 +5693,7 @@ private int ed_complete_line_callback (menu_t *menu) {
 
     menu->pat[menu->patlen] = '\0';
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
   Vstring_t *lines = Vstring.new ();
 
@@ -6079,13 +5732,23 @@ private int ed_complete_line_callback (menu_t *menu) {
 
 private int buf_complete_line (buf_t *this) {
   int retval = DONE;
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2, $my(video)->col_pos,
-      ed_complete_line_callback, NULL, 0);
-  //menu->space_selects = 0;
-  menu->next_key = CTRL('l');
+
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_complete_line_callback,
+    .next_key = CTRL('l'),
+    .pat = NULL,
+    .patlen = 0));
+
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
-  char *line = menu_create ($my(root), menu);
+  char *line = Menu.create (menu);
 
   if (line isnot NULL) {
     Action_t *Action = self(Action.new);
@@ -6099,7 +5762,7 @@ private int buf_complete_line (buf_t *this) {
   }
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return retval;
 }
 
@@ -6127,11 +5790,12 @@ private int buf_win_only (buf_t *this) {
 }
 
 private int ed_complete_word_actions_cb (menu_t *menu) {
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
+
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
   ifnot (menu->patlen)
     menu->list = Vstring.dup ($myroots(word_actions));
@@ -6152,13 +5816,24 @@ private int ed_complete_word_actions_cb (menu_t *menu) {
 private utf8 buf_complete_word_actions (buf_t *this, char *action) {
   int retval = DONE;
   utf8 c = ESCAPE_KEY;
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2,
-    $my(video)->col_pos, ed_complete_word_actions_cb, NULL, 0);
-  menu->next_key = 'W';
+
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_complete_word_actions_cb,
+    .next_key = 'W',
+    .pat = NULL,
+    .patlen = 0));
+
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
-  menu->this = this;
-  menu->return_if_one_item = 1;
-  char *item = menu_create ($my(root), menu);
+
+  char *item = Menu.create (menu);
+
   if (item isnot NULL) {
     c = *item;
     char *tmp = item;
@@ -6170,7 +5845,7 @@ private utf8 buf_complete_word_actions (buf_t *this, char *action) {
 
 theend:                                     /* avoid list (de|re)allocation */
   //menu->state &= ~MENU_LIST_IS_ALLOCATED; /* list will be free'd at ed_free() */
-  menu_free (menu);
+  Menu.release(menu);
   return c;
 }
 
@@ -6205,12 +5880,12 @@ private int ed_actions_token_cb (Vstring_t *str, char *tok, void *menu_o) {
 }
 
 private int ed_complete_line_mode_actions_cb (menu_t *menu) {
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
+
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
-
-  buf_t *this = menu->this;
+    Menu.release_list (menu);
 
   Vstring_t *items;
   items = cstring_chop ($myroots(line_mode_actions), '\n', NULL, ed_actions_token_cb, menu);
@@ -6223,14 +5898,23 @@ private utf8 buf_complete_line_mode_actions (buf_t *this, char *action) {
   int retval = DONE;
   utf8 c = ESCAPE_KEY;
 
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2,
-    $my(video)->col_pos, ed_complete_line_mode_actions_cb, NULL, 0);
-  menu->this = this;
-  menu->return_if_one_item = ($myroots(line_mode_chars_len) isnot 1);
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_complete_line_mode_actions_cb,
+    .return_if_one_item = ($myroots(line_mode_chars_len) isnot 1),
+    .next_key = 'L',
+    .pat = NULL,
+    .patlen = 0));
 
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
-  char *item = menu_create ($my(root), menu);
+  char *item = Menu.create (menu);
 
   if (item isnot NULL) {
     c = *item;
@@ -6242,7 +5926,7 @@ private utf8 buf_complete_line_mode_actions (buf_t *this, char *action) {
   }
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return c;
 }
 
@@ -6272,9 +5956,9 @@ private int ed_complete_file_actions_cb (menu_t *menu) {
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
 
   Vstring_t *items;
   items = cstring_chop ($myroots(file_mode_actions), '\n', NULL, ed_actions_token_cb, menu);
@@ -6287,14 +5971,23 @@ private utf8 buf_complete_file_actions (buf_t *this, char *action) {
   int retval = DONE;
   utf8 c = ESCAPE_KEY;
 
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2,
-    $my(video)->col_pos, ed_complete_file_actions_cb, NULL, 0);
-  menu->this = this;
-  menu->return_if_one_item = ($myroots(file_mode_chars_len) isnot 1);
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_complete_file_actions_cb,
+    .return_if_one_item = ($myroots(file_mode_chars_len) isnot 1),
+    .next_key = 'F',
+    .pat = NULL,
+    .patlen = 0));
 
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
-  char *item = menu_create ($my(root), menu);
+  char *item = Menu.create (menu);
 
   if (item isnot NULL) {
     c = *item;
@@ -6306,7 +5999,7 @@ private utf8 buf_complete_file_actions (buf_t *this, char *action) {
   }
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return c;
 }
 
@@ -6603,6 +6296,7 @@ theend:
 
 private int buf_normal_change_case (buf_t *this) {
   ed_record ($my(root), "buf_normal_change_case (buf)");
+
   utf8 c = CUR_UTF8_CODE;
   char buf[5]; int len;
   Action_t *Action;
@@ -7215,9 +6909,9 @@ private int ed_visual_complete_actions_cb (menu_t *menu) {
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
 
   Vstring_t *items;
   if (IS_MODE(VISUAL_MODE_CW))
@@ -7239,14 +6933,24 @@ private int ed_visual_complete_actions_cb (menu_t *menu) {
 private utf8 buf_visual_complete_actions (buf_t *this, char *action) {
   int retval = DONE;
   utf8 c = ESCAPE_KEY;
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2,
-    $my(video)->col_pos, ed_visual_complete_actions_cb, NULL, 0);
-  menu->this = this;
-  menu->return_if_one_item = 1;
+
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_visual_complete_actions_cb,
+    .pat = NULL,
+    .patlen = 0));
+
 
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
-  char *item = menu_create ($my(root), menu);
+  char *item = Menu.create (menu);
+
   if (item isnot NULL) {
     c = *item;
     char *tmp = item;
@@ -7257,7 +6961,7 @@ private utf8 buf_visual_complete_actions (buf_t *this, char *action) {
   }
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return c;
 }
 
@@ -7397,8 +7101,7 @@ handle_char:
           readline_t *rl = Ed.readline.new ($my(root));
           string_t *str = String.new_with_fmt ("substitute --range=%d,%d --global -i --pat=",
               $my(vis)[0].fidx + 1, $my(vis)[0].lidx + 1);
-          ED_BYTES_TO_READLINE (rl, str->bytes, (int) str->num_bytes);
-          Readline.write_and_break (rl);
+          Readline.set.line (rl, str->bytes, str->num_bytes);
           buf_readline (&this, rl);
           String.release (str);
         }
@@ -7410,7 +7113,7 @@ handle_char:
           readline_t *rl = Ed.readline.new ($my(root));
           string_t *str = String.new_with_fmt ("write --range=%d,%d ",
               $my(vis)[0].fidx + 1, $my(vis)[0].lidx + 1);
-          ED_BYTES_TO_READLINE (rl, str->bytes, (int) str->num_bytes);
+          Readline.set.line (rl, str->bytes, str->num_bytes);
           Readline.write_and_break (rl);
           buf_readline (&this, rl);
           String.release (str);
@@ -8640,7 +8343,7 @@ private int ed_complete_digraph_callback (menu_t *menu) {
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
   Vstring_t *items = Vstring.new ();
   char *digraphs[] = {
@@ -8668,23 +8371,35 @@ private int ed_complete_digraph_callback (menu_t *menu) {
 
 private int buf_complete_digraph (buf_t *this, utf8 *c) {
   int retval = DONE;
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2,
-    $my(video)->col_pos, ed_complete_digraph_callback, NULL, 0);
-  menu->next_key = CTRL('k');
+
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_complete_digraph_callback,
+    .next_key = CTRL('k'),
+    .pat = NULL,
+    .patlen = 0));
+
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
-  char *item = menu_create ($my(root), menu);
+  char *item = Menu.create (menu);
+
   *c = 0;
   if (item isnot NULL)
     while (*item isnot ' ') *c = (10 * *c) + (*item++ - '0');
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return NEWCHAR;
 }
 
 private int ed_complete_arg (menu_t *menu) {
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
 
   int com = $my(shared_int);
   char *line = $my(shared_str)->bytes;
@@ -8701,7 +8416,7 @@ private int ed_complete_arg (menu_t *menu) {
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
   Vstring_t *args = Vstring.new ();
 
@@ -8764,12 +8479,12 @@ check_list:
 }
 
 private int ed_complete_command (menu_t *menu) {
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
 
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
   Vstring_t *coms = Vstring.new ();
   int i = 0;
@@ -8799,7 +8514,7 @@ private int ed_complete_command (menu_t *menu) {
 }
 
 private int ed_complete_filename (menu_t *menu) {
-  buf_t *this = menu->this;
+  buf_t *this = menu->user_data[MENU_BUF_IDX];
   char dir[PATH_MAX];
   int joinpath;
 
@@ -8811,7 +8526,7 @@ private int ed_complete_filename (menu_t *menu) {
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;
   } else
-    menu_free_list (menu);
+    Menu.release_list (menu);
 
   char *sp = (menu->patlen is 0) ? NULL : menu->pat + menu->patlen - 1;
   char *end = sp;
@@ -8951,14 +8666,24 @@ private int buf_insert_complete_filename (buf_t **thisp) {
   size_t orig_len = len;
 
 redo:;
-  menu_t *menu = menu_new ($my(root), $my(video)->row_pos, *$my(prompt_row_ptr) - 2,
-      $my(video)->col_pos,  ed_complete_filename, word, len);
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = $my(root),
+    .user_data_second = this,
+    .video = $my(video),
+    .term = $my(term_ptr),
+    .first_row = $my(video)->row_pos,
+    .last_row = *$my(prompt_row_ptr) - 2,
+    .first_col = $my(video)->col_pos,
+    .process_list_cb = ed_complete_filename,
+    .next_key = CTRL('f'),
+    .pat = word,
+    .patlen = len));
 
-  menu->next_key = CTRL('f');
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
   for (;;) {
-    char *item  = menu_create ($my(root), menu);
+    char *item  = Menu.create (menu);
+
     if (NULL is item) { retval = NOTHING_TODO; goto theend; }
 
     menu->patlen = bytelen (item);
@@ -8971,7 +8696,7 @@ redo:;
 
     len = $my(shared_str)->num_bytes;
     Cstring.cp (word, WORD_LEN, $my(shared_str)->bytes, $my(shared_str)->num_bytes);
-    menu_free (menu);
+    Menu.release(menu);
     goto redo;
   }
 
@@ -8983,7 +8708,7 @@ redo:;
   self(draw_current_row);
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return retval;
 }
 
@@ -9013,7 +8738,7 @@ redo:;
   int type = 0;
 
   if (fidx is 0) {
-    type |= RL_TOK_COMMAND;
+    type |= READLINE_TOK_COMMAND;
   } else {
     Readline.parse_command (rl);
 
@@ -9060,8 +8785,18 @@ redo:;
   else if (type & READLINE_TOK_ARG)
     process_list = ed_complete_arg;
 
-  menu_t *menu = menu_new (this, $my(prompt_row) - 2, $my(prompt_row) - 2, 0,
-      process_list, tok, toklen);
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = this,
+    .user_data_second = curbuf,
+    .video = $my(video),
+    .term = $my(term),
+    .first_row = $my(prompt_row) - 2,
+    .last_row  = $my(prompt_row) - 2,
+    .first_col = 0,
+    .process_list_cb = process_list,
+    .pat = tok,
+    .patlen = toklen));
+
   if ((retval = menu->retval) is NOTHING_TODO) goto theend;
 
   menu->state &= ~READLINE_IS_VISIBLE;
@@ -9073,7 +8808,7 @@ redo:;
 
   char *item;
   for (;;) {
-    item = menu_create (this, menu);
+    item = Menu.create (menu);
 
     if (NULL is item) goto theend;
     if (menu->state & MENU_QUIT) break;
@@ -9113,15 +8848,15 @@ redo:;
     }
   }
 
-  ED_BYTES_TO_READLINE (rl, item, (int) bytelen (item));
+  Readline.insert_with_len (rl, item, bytelen (item));
 
   if (menu->state & MENU_REDO) {
-    menu_free (menu);
+    Menu.release(menu);
     goto redo;
   }
 
 theend:
-  menu_free (menu);
+  Menu.release(menu);
   return READLINE_OK;
 }
 
@@ -9140,7 +8875,7 @@ private void readline_history_push (readline_t *rl) {
 
 private void readline_history_push_api (readline_t *rl) {
   Readline.clear (rl);
-  rl->state &= ~RL_CLEAR_FREE_LINE;
+  rl->state &= ~READLINE_CLEAR_FREE_LINE;
   readline_history_push (rl);
 }
 
@@ -9184,16 +8919,16 @@ private void ed_add_command_arg (readline_com_t *rlcom, int flags) {
 })
 
   int i = 0;
-  if (flags & RL_ARG_INTERACTIVE) ADD_ARG ("--interactive", 13, i);
-  if (flags & RL_ARG_BUFNAME) ADD_ARG ("--bufname=", 10, i);
-  if (flags & RL_ARG_RANGE) ADD_ARG ("--range=", 8, i);
-  if (flags & RL_ARG_GLOBAL) ADD_ARG ("--global", 8, i);
-  if (flags & RL_ARG_APPEND) ADD_ARG ("--append", 8, i);
-  if (flags & RL_ARG_FILENAME) ADD_ARG ("--fname=", 8, i);
-  if (flags & RL_ARG_SUB) ADD_ARG ("--sub=", 6, i);
-  if (flags & RL_ARG_PATTERN) ADD_ARG ("--pat=", 6, i);
-  if (flags & RL_ARG_VERBOSE) ADD_ARG ("--verbose", 9, i);
-  if (flags & RL_ARG_RECURSIVE) ADD_ARG ("--recursive", 11, i);
+  if (flags & READLINE_ARG_INTERACTIVE) ADD_ARG ("--interactive", 13, i);
+  if (flags & READLINE_ARG_BUFNAME) ADD_ARG ("--bufname=", 10, i);
+  if (flags & READLINE_ARG_RANGE) ADD_ARG ("--range=", 8, i);
+  if (flags & READLINE_ARG_GLOBAL) ADD_ARG ("--global", 8, i);
+  if (flags & READLINE_ARG_APPEND) ADD_ARG ("--append", 8, i);
+  if (flags & READLINE_ARG_FILENAME) ADD_ARG ("--fname=", 8, i);
+  if (flags & READLINE_ARG_SUB) ADD_ARG ("--sub=", 6, i);
+  if (flags & READLINE_ARG_PATTERN) ADD_ARG ("--pat=", 6, i);
+  if (flags & READLINE_ARG_VERBOSE) ADD_ARG ("--verbose", 9, i);
+  if (flags & READLINE_ARG_RECURSIVE) ADD_ARG ("--recursive", 11, i);
 }
 
 private void ed_append_command_arg (ed_t *this, char *com, char *argname, size_t len) {
@@ -9284,7 +9019,7 @@ private void readline_reg (readline_t *rl) {
 
   reg_t *reg = rg->head;
   while (reg isnot NULL) {
-    ED_BYTES_TO_READLINE (rl, reg->data->bytes, (int) reg->data->num_bytes);
+    Readline.insert_with_len (rl, reg->data->bytes, reg->data->num_bytes);
     reg = reg->next;
   }
 }
@@ -9782,7 +9517,6 @@ private int buf_spell_lw_mode_cb (buf_t **thisp, int fidx, int lidx, Vstring_t *
   Readline.set.line (rl, str->bytes, str->num_bytes);
   String.release (str);
   Readline.parse (rl);
-//, *thisp);
 
   int retval = OK;
 
@@ -9811,7 +9545,7 @@ theend:
 }
 
 private int readline_exec (readline_t *this, buf_t **thisp) {
-  this->state |= RL_EXEC;
+  this->state |= READLINE_EXEC;
   return buf_readline (thisp, this);
 }
 
@@ -9879,14 +9613,14 @@ private int buf_readline (buf_t **thisp, readline_t *rl) {
 
   int is_special_win = $myparents(type) is VED_WIN_SPECIAL_TYPE;
 
-  if (rl->state & RL_EXEC) goto exec;
+  if (rl->state & READLINE_EXEC) goto exec;
 
   rl = Readline.edit (rl);
 
   if (rl->c isnot '\r') goto theend;
 
 exec:
-  rl->state &= ~RL_EXEC;
+  rl->state &= ~READLINE_EXEC;
 
   if (rl->line->head is NULL or rl->line->head->data->bytes[0] is ' ')
     goto theend;
@@ -9915,9 +9649,9 @@ redo:
     case VED_COM_WRITE_FORCE:
     case VED_COM_WRITE:
       if ($my(enable_writing)) {
-        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
-        readline_arg_t *range = Readline.get.arg (rl, RL_ARG_RANGE);
-        readline_arg_t *append = Readline.get.arg (rl, RL_ARG_APPEND);
+        readline_arg_t *fname = Readline.get.arg (rl, READLINE_ARG_FILENAME);
+        readline_arg_t *range = Readline.get.arg (rl, READLINE_ARG_RANGE);
+        readline_arg_t *append = Readline.get.arg (rl, READLINE_ARG_APPEND);
         if (NULL is fname) {
           if (is_special_win) goto theend;
           if (NULL isnot range or NULL isnot append) goto theend;
@@ -9948,7 +9682,7 @@ redo:
       if (is_special_win) goto theend;
       if ($my(is_sticked)) goto theend;
       {
-        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
+        readline_arg_t *fname = Readline.get.arg (rl, READLINE_ARG_FILENAME);
         retval = Win.edit_fname ($my(parent), thisp, (NULL is fname ? NULL: fname->argval->bytes),
            $myparents(cur_frame), VED_COM_EDIT_FORCE is rl->com, 1, 1);
       }
@@ -9977,7 +9711,7 @@ redo:
 
     case VED_COM_EDNEW:
        {
-         readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
+         readline_arg_t *fname = Readline.get.arg (rl, READLINE_ARG_FILENAME);
          if (NULL isnot fname)
            String.replace_with ($myroots(ed_str), fname->argval->bytes);
          else
@@ -10006,7 +9740,7 @@ redo:
 
     case VED_COM_ENEW:
        {
-         readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
+         readline_arg_t *fname = Readline.get.arg (rl, READLINE_ARG_FILENAME);
          if (NULL isnot fname)
            retval = buf_enew_fname (thisp, fname->argval->bytes);
          else
@@ -10053,7 +9787,7 @@ redo:
 
     case VED_COM_GREP:
       {
-        readline_arg_t *pat = Readline.get.arg (rl, RL_ARG_PATTERN);
+        readline_arg_t *pat = Readline.get.arg (rl, READLINE_ARG_PATTERN);
         if (NULL is pat) break;
 
         Vstring_t *fnames = Readline.get.arg_fnames (rl, -1);
@@ -10065,7 +9799,7 @@ redo:
           fnames = dlist->list;
         }
 
-        readline_arg_t *rec = Readline.get.arg (rl, RL_ARG_RECURSIVE);
+        readline_arg_t *rec = Readline.get.arg (rl, READLINE_ARG_RECURSIVE);
         dirwalk_t *dw = NULL;
 
         ifnot (NULL is rec) {
@@ -10102,7 +9836,7 @@ redo:
     case VED_COM_SPLIT:
       {
         if (is_special_win) goto theend;
-        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
+        readline_arg_t *fname = Readline.get.arg (rl, READLINE_ARG_FILENAME);
         if (NULL is fname)
           retval = buf_split (thisp, UNNAMED);
         else
@@ -10114,7 +9848,7 @@ redo:
     case VED_COM_READ:
     case VED_COM_READ_ALIAS:
       {
-        readline_arg_t *fname = Readline.get.arg (rl, RL_ARG_FILENAME);
+        readline_arg_t *fname = Readline.get.arg (rl, READLINE_ARG_FILENAME);
         if (NULL is fname) goto theend;
         retval = buf_read_from_file (this, fname->argval->bytes);
       }
@@ -10172,7 +9906,7 @@ redo:
       if ($my(flags) & BUF_IS_SPECIAL) goto theend;
       if ($my(is_sticked)) goto theend;
       {
-        readline_arg_t *bufname = Readline.get.arg (rl, RL_ARG_BUFNAME);
+        readline_arg_t *bufname = Readline.get.arg (rl, READLINE_ARG_BUFNAME);
         if (NULL is bufname) goto theend;
         retval = buf_change_bufname (thisp, bufname->argval->bytes);
       }
@@ -10211,7 +9945,7 @@ redo:
     case VED_COM_BUF_DELETE:
       {
         int idx;
-        readline_arg_t *bufname = Readline.get.arg (rl, RL_ARG_BUFNAME);
+        readline_arg_t *bufname = Readline.get.arg (rl, READLINE_ARG_BUFNAME);
         if (NULL is bufname)
           idx = $my(parent)->cur_idx;
         else
@@ -10255,7 +9989,7 @@ theend:
   ifnot (DONE is retval)
     Readline.release (rl);
   else {
-    rl->state &= ~RL_CLEAR_FREE_LINE;
+    rl->state &= ~READLINE_CLEAR_FREE_LINE;
     Readline.history.push (rl);
     Readline.last_component_push (rl);
   }
@@ -10859,7 +10593,7 @@ private string_t *ed_history_set_readline_file (ed_t *this, char *file) {
 
 private void ed_history_add (ed_t *this, char *bytes, size_t num_bytes) {
   readline_t *rl = self(readline.new);
-  ED_BYTES_TO_READLINE (rl, bytes, (int) num_bytes);
+  Readline.insert_with_len (rl, bytes, num_bytes);
   Readline.history.push (rl);
 }
 
@@ -11344,7 +11078,7 @@ private int buf_file_mode_actions_cb (buf_t **thisp, utf8 c, char *action) {
           Readline.set.line (rl, str->bytes, str->num_bytes);
           String.release (str);
           Readline.parse (rl);
-// *thisp);
+
           if (SPELL_OK is (retval = buf_spell (thisp, rl)))
             Readline.history.push (rl);
           else
@@ -11542,20 +11276,26 @@ private void ed_init_special_win (ed_t *this) {
   ed_search_buf (this);
   $my(num_special_win) = 4;
 }
-
+int REC = 0;
 private int ed_i_record_default (ed_t *this, Vstring_t *rec) {
   char *str = Vstring.to.cstring (rec, ADD_NL);
-
+debug_append ("REC %d\n|%s\n", REC++, str);
   if (bytelen (str) is (size_t) $my(record_header_len)) return NOTOK;
 
   i_t *in = I.get.current ($my(__I__));
   ifnot (in)
-    in = I.init_instance ($my(__I__), IOpts());
+    in = I.init_instance ($my(__I__), IOpts(
+      .define_funs_cb = $OurRoots (i_define_funs_cb),
+      .syntax_error = i_syntax_error_to_ed));
+
+  I.set.user_data (in, $OurRoot);
+debug_append ("isnill %d\n", I.get.user_data (in) == NULL);
 
   int retval = I.eval_string (in, str, 1, 1);
 
   free (str);
 
+debug_append ("retval %d\n", retval);
   if (retval is I_ERR_SYNTAX) {
     buf_t *buf = this->current->current;
     ed_messages (this, &buf, AT_EOF);
@@ -12156,20 +11896,20 @@ private void ed_init_commands (ed_t *this) {
   };
 
   int flags[VED_COM_END + 1] = {
-    [VED_COM_BUF_DELETE_FORCE ... VED_COM_BUF_DELETE_ALIAS] = RL_ARG_BUFNAME,
-    [VED_COM_BUF_CHANGE ... VED_COM_BUF_CHANGE_ALIAS] = RL_ARG_BUFNAME,
-    [VED_COM_BUF_CHECK_BALANCED] = RL_ARG_RANGE,
-    [VED_COM_EDIT ... VED_COM_ENEW] = RL_ARG_FILENAME,
-    [VED_COM_GREP] = RL_ARG_FILENAME|RL_ARG_PATTERN|RL_ARG_RECURSIVE,
-    [VED_COM_QUIT_FORCE ... VED_COM_QUIT_ALIAS] = RL_ARG_GLOBAL,
-    [VED_COM_READ ... VED_COM_READ_ALIAS] = RL_ARG_FILENAME,
-    [VED_COM_SPLIT] = RL_ARG_FILENAME,
+    [VED_COM_BUF_DELETE_FORCE ... VED_COM_BUF_DELETE_ALIAS] = READLINE_ARG_BUFNAME,
+    [VED_COM_BUF_CHANGE ... VED_COM_BUF_CHANGE_ALIAS] = READLINE_ARG_BUFNAME,
+    [VED_COM_BUF_CHECK_BALANCED] = READLINE_ARG_RANGE,
+    [VED_COM_EDIT ... VED_COM_ENEW] = READLINE_ARG_FILENAME,
+    [VED_COM_GREP] = READLINE_ARG_FILENAME|READLINE_ARG_PATTERN|READLINE_ARG_RECURSIVE,
+    [VED_COM_QUIT_FORCE ... VED_COM_QUIT_ALIAS] = READLINE_ARG_GLOBAL,
+    [VED_COM_READ ... VED_COM_READ_ALIAS] = READLINE_ARG_FILENAME,
+    [VED_COM_SPLIT] = READLINE_ARG_FILENAME,
     [VED_COM_SUBSTITUTE ... VED_COM_SUBSTITUTE_ALIAS] =
-      RL_ARG_RANGE|RL_ARG_GLOBAL|RL_ARG_PATTERN|RL_ARG_SUB|RL_ARG_INTERACTIVE,
-    [VED_COM_VALIDATE_UTF8] = RL_ARG_FILENAME,
+      READLINE_ARG_RANGE|READLINE_ARG_GLOBAL|READLINE_ARG_PATTERN|READLINE_ARG_SUB|READLINE_ARG_INTERACTIVE,
+    [VED_COM_VALIDATE_UTF8] = READLINE_ARG_FILENAME,
     [VED_COM_WRITE_FORCE ... VED_COM_WRITE_ALIAS] =
-      RL_ARG_FILENAME|RL_ARG_RANGE|RL_ARG_BUFNAME|RL_ARG_APPEND,
-    [VED_COM_WRITE_QUIT_FORCE ... VED_COM_WRITE_QUIT] = RL_ARG_GLOBAL
+      READLINE_ARG_FILENAME|READLINE_ARG_RANGE|READLINE_ARG_BUFNAME|READLINE_ARG_APPEND,
+    [VED_COM_WRITE_QUIT_FORCE ... VED_COM_WRITE_QUIT] = READLINE_ARG_GLOBAL
   };
 
   $my(commands) = Alloc (sizeof (readline_com_t) * (VED_COM_END + 1));
@@ -12219,7 +11959,7 @@ private void ed_init_commands (ed_t *this) {
   ed_append_command_arg (this, "@save_image", "--as=", 5);
 
   if (getuid ()) {
-    ed_append_readline_command (this, "spell", 1, RL_ARG_RANGE);
+    ed_append_readline_command (this, "spell", 1, READLINE_ARG_RANGE);
     ed_append_command_arg (this, "spell",  "--edit", 6);
     ed_set_readline_cb (this, buf_spell_readline_cb);
   }
@@ -12356,8 +12096,7 @@ private ed_T *editor_new (void) {
       },
       .menu = (ed_menu_self) {
         .new = ed_menu_new,
-        .free = ed_menu_free,
-        .create = menu_create
+        .release = ed_menu_release
       },
       .sh = (ed_sh_self) {
         .popen = ed_sh_popen
@@ -12673,6 +12412,7 @@ private ed_T *editor_new (void) {
   __INIT__ (spell);
   __INIT__ (video);
   __INIT__ (readline);
+  __INIT__ (vui);
 
   $my(video) = NULL;
   $my(term)  = NULL;

@@ -3,6 +3,9 @@
 
 typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
 
+#define FILE_TMPFNAME_UNLINK_FILE (1 << 0)
+#define FILE_TMPFNAME_CLOSE_FD    (1 << 1)
+
 typedef struct tmpfname_t {
   int fd;
   string_t *fname;
@@ -10,7 +13,7 @@ typedef struct tmpfname_t {
 
 typedef struct file_tmpfname_self {
   tmpfname_t *(*new) (char *, char *);
-  void (*release) (tmpfname_t *);
+  void (*release) (tmpfname_t *, int);
 } file_tmpfname_self;
 
 typedef struct file_mode_self {

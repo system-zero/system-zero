@@ -347,17 +347,6 @@ static int i_syntax_error (i_t *this, const char *msg) {
   return i_err_ptr (this, I_ERR_SYNTAX);
 }
 
-#if 0
-static int i_syntax_error_to_ed (i_t *this, const char *msg) {
-  if (NULL is $OurRoots(current))
-    return i_syntax_error (this, msg);
-
-  const char *ptr = (const char *) i_StringGetPtr (this->parseptr);
-  Msg.write_fmt ($OurRoots(current), "\nSYNTAX ERROR: %s\nbefore:\n%s\n", msg, ptr);
-  return I_ERR_SYNTAX;
-}
-#endif
-
 static int i_arg_mismatch (i_t *this) {
   this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "argument mismatch before:");
   return i_err_ptr (this, I_ERR_BADARGS);
@@ -1444,6 +1433,10 @@ static char *i_get_message (i_t *this) {
   return this->message->bytes;
 }
 
+static char *i_get_eval_str (i_t *this) {
+  return (char *) i_StringGetPtr (this->parseptr);
+}
+
 static i_t *i_get_current (i_T *this) {
   i_t *it = $my(head);
   int i = 0;
@@ -1698,6 +1691,7 @@ public i_T *__init_i__ (void) {
       .get = (i_get_self) {
         .message = i_get_message,
         .current = i_get_current,
+        .eval_str = i_get_eval_str,
         .user_data = i_get_user_data,
         .current_idx = i_get_current_idx
       },

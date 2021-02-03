@@ -221,6 +221,10 @@ static string_t *string_prepend_with_fmt (string_t *this, const char *fmt, ...) 
   return string_insert_at_with_len (this, 0, bytes, len);
 }
 
+static string_t *string_dup (string_t *this) {
+  return string_new_with_len (this->bytes, this->num_bytes);
+}
+
 static int string_delete_numbytes_at (string_t *this, int num, int idx) {
   if (num < 0) return NOTOK;
   ifnot (num) return OK;
@@ -279,10 +283,14 @@ static string_t *string_trim_end (string_t *this, char c) {
 public string_T __init_string__ (void) {
   return (string_T) {
     .self = (string_self) {
-      .release = string_release,
       .new = string_new,
-      .reallocate = string_reallocate,
+      .dup = string_dup,
+      .clear = string_clear,
+      .clear_at = string_clear_at,
+      .release = string_release,
       .new_with = string_new_with,
+      .trim_end = string_trim_end,
+      .reallocate = string_reallocate,
       .new_with_len = string_new_with_len,
       .new_with_fmt = string_new_with_fmt,
       .insert_at_with = string_insert_at_with,
@@ -299,10 +307,7 @@ public string_T __init_string__ (void) {
       .replace_numbytes_at_with = string_replace_numbytes_at_with,
       .replace_with = string_replace_with,
       .replace_with_len = string_replace_with_len,
-      .replace_with_fmt = string_replace_with_fmt,
-      .trim_end = string_trim_end,
-      .clear = string_clear,
-      .clear_at = string_clear_at,
+      .replace_with_fmt = string_replace_with_fmt
     }
   };
 }

@@ -4,6 +4,9 @@
 #define VED_WIN_NORMAL_TYPE  0
 #define VED_WIN_SPECIAL_TYPE 1
 
+#define MENU_ED_IDX  0
+#define MENU_BUF_IDX 1
+
 #define NORMAL_MODE     "normal"
 #define INSERT_MODE     "insert"
 #define VISUAL_MODE_LW  "visual lw"
@@ -21,15 +24,6 @@
 
 #define CASE_A ",[]()+-:;}{<>_"
 #define CASE_B ".][)(-+;:{}><-"
-
-#define MENU_INIT (1 << 0)
-#define MENU_QUIT (1 << 1)
-#define MENU_INSERT (1 << 2)
-#define MENU_REINIT_LIST (1 << 3)
-#define MENU_FINALIZE (1 << 4)
-#define MENU_DONE (1 << 5)
-#define MENU_LIST_IS_ALLOCATED (1 << 6)
-#define MENU_REDO (1 << 7)
 
 #define RL_TOK_COMMAND (1 << 0)
 #define RL_TOK_ARG (1 << 1)
@@ -252,41 +246,6 @@ enum {
   __me__ ## _T *Me;              \
   msg_T *__Msg__;                \
   error_T *__Error__
-
-typedef struct menu_t {
-  char pat[MAXLEN_PAT];
-
-  int
-    patlen,
-    fd,
-    next_key,
-    num_cols,
-    num_rows,
-    first_row,
-    last_row,
-    first_col,
-    last_col,
-    row_pos,
-    col_pos,
-    min_first_row,
-    space_selects,
-    return_if_one_item,
-    clear_and_continue_on_backspace,
-    state,
-    orig_first_row,
-    orig_num_rows,
-    retval;
-
-  utf8 c;
-
-  buf_t *this;
-
-  string_t *header;
-  Vstring_t  *list;
-  video_t *cur_video;
-
-  int (*process_list) (menu_t *);
-} menu_t;
 
 typedef struct reg_t {
   string_t *data;
@@ -1155,19 +1114,6 @@ do {                                                                \
   node;                                                             \
 })
 
-#define ED_BYTES_TO_READLINE(rl_, bytes, len)                                \
-do {                                                                      \
-  char *sp_ = (bytes);                                                    \
-  for (int i__ = 0; i__ < (len); i__++) {                                 \
-    int clen = Ustring.charlen ((bytes)[i__]);                            \
-    (rl_)->state |= (READLINE_INSERT_CHAR|READLINE_BREAK);                \
-    (rl_)->c = UTF8_CODE (sp_);                                           \
-    Readline.edit ((rl_));                                                \
-    i__ += clen - 1;                                                      \
-    sp_ += clen;                                                          \
-    }                                                                     \
-} while (0)
-
 #define READLINE_ED_USER_DATA_IDX   0
 #define READLINE_BUF_USER_DATA_IDX  1
 #define READLINE_MENU_USER_DATA_IDX 2
@@ -1182,6 +1128,8 @@ do {                                                                      \
 
 #define Screen termType.self.screen
 #define Cursor termType.self.cursor
+
+#define Menu Vui.menu
 
 #define $OurRoot  $my(__E__)
 #define $OurRoots(__p__) $my(__E__)->prop->__p__
