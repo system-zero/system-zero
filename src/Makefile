@@ -170,6 +170,14 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Json_Type           = Json
     Z_JSON_SRCDIR       = $(Z_SRCLIBDIR)/$(Json_Type)/src
 
+    # Vui Type
+    Vui_Type            = Vui
+    Z_VUI_SRCDIR        = $(Z_SRCLIBDIR)/$(Vui_Type)/src
+
+    # Vwm Type
+    Vwm_Type           = Vwm
+    Z_VWM_SRCDIR       = $(Z_SRCLIBDIR)/$(Vwm_Type)/src
+
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
     # a compatible container should include:
@@ -494,6 +502,20 @@ clean-libvideo-shared:
 clean-libvideo-static:
 	@cd $(Z_VIDEO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libvui-shared: Env cenv libcstring-shared libstring-shared\
+               libvideo-shared libreadline-shared
+	@cd $(Z_VUI_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libvui-static: Env cenv libcstring-static libstring-staticc\
+               libvideo-static libreadline-static
+	@cd $(Z_VUI_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libvui-shared:
+	@cd $(Z_VUI_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libvui-static:
+	@cd $(Z_VUI_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 libspell-shared: Env cenv libcstring-shared libstring-shared libustring-shared libio-shared
 	@cd $(Z_SPELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
@@ -521,14 +543,14 @@ clean-libjson-static:
 libe-shared: Env cenv dlist libstring-shared libcstring-shared libvstring-shared libustring-shared\
              libpath-shared libfile-shared libdir-shared libterm-shared libio-shared\
              libre-shared libimap-shared libsmap-shared libi-shared\
-             libproc-shared\
+             libproc-shared libvui-shared\
              libsys-shared libspell-shared libvideo-shared libreadline-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libe-static: Env cenv dlist libstring-static libcstring-static libvstring-static libustring-static\
              libpath-static libfile-static libdir-static libterm-static libio-static\
              libre-static libimap-static libsmap-static libi-static\
-             libproc-static\
+             libproc-static libvui-static\
              libsys-static libspell-static libvideo-static libreadline-static
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
@@ -565,6 +587,20 @@ clean-libreadline-shared:
 
 clean-libreadline-static:
 	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libvwm-shared: Env cenv libstring-shared libcstring-shared \
+               libustring-shared libdir-shared libfile-shared
+	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libvwm-static: Env cenv libstring-static libcstring-static \
+               libustring-static libdir-static libfile-static
+	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libvwm-shared:
+	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libvwm-static:
+	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
@@ -718,6 +754,23 @@ clean-sys-shared:
 
 clean-sys-static:
 	@cd $(ZA_SYS_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#----------------------------------------------------------#
+  # v
+  ZA_V          = v
+  ZA_V_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_V)/src
+
+v-shared: cenv libvwm-shared libstring-shared libfile-shared libio-shared libargparse-shared\
+   libterm-shared
+	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+v-static: libv-static libstring-static libfile-static libio-static libargparse-static
+	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-v-shared:
+	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-v-static:
+	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv dlist\
