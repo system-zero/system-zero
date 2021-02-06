@@ -221,7 +221,7 @@ typedef unsigned long ulong;
 #endif
 
 #ifndef IS_HEX
-#define IS_HEX(c_)      (IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
+#define IS_HEX(c_)      ((IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
 #endif
 
 #define REG_CHAR   '-'
@@ -697,7 +697,59 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_SYS_IOCTL
 #endif /* REQUIRE_IOCTL */
-/* types */
+
+  /* types */
+#ifdef APPLICATION
+
+  #ifndef APPLICATION_HDR
+  #define APPLICATION_HDR
+
+    #ifndef WITHOUT_STDARG
+      #ifndef STDARG_HDR
+      #define STDARG_HDR
+      #include <stdarg.h>
+      #endif
+    #endif
+
+    #ifndef WITHOUT_ARGPARSE
+      #ifndef UNISTD_HDR
+      #define UNISTD_HDR
+      #include <unistd.h>
+      #endif
+
+      #ifndef WITHOUT_ARGPARSE_DECLARATION
+        #define REQUIRE_ARGPARSE_TYPE DECLARE
+      #else
+        #define REQUIRE_ARGPARSE_TYPE DONOT_DECLARE
+      #endif
+    #endif
+
+    #ifndef WITHOUT_IO
+      #ifndef STDIO_HDR
+      #define STDIO_HDR
+      #include <stdio.h>
+      #endif
+
+      #ifndef WITHOUT_IO_DECLARATION
+        #define REQUIRE_IO_TYPE DECLARE
+      #else
+        #define REQUIRE_IO_TYPE DONOT_DECLARE
+      #endif
+    #endif
+
+  #endif /* APPLICATION_HDR */
+
+  #ifndef WITHOUT_USAGE
+    #ifdef APP_OPTS
+    static const char *const usage[] = { \
+      APPLICATION " " APP_OPTS,          \
+    NULL,                                \
+    };
+    #endif
+  #endif
+
+#undef APPLICATION
+#endif /* APPLICATION */
 
 #ifdef REQUIRE_DLIST_TYPE
   #ifndef DLIST_TYPE_HDR
@@ -960,8 +1012,10 @@ typedef ptrdiff_t idx_t;
   #endif /* ARGPARSE_TYPE_HDR */
 
   #if (REQUIRE_ARGPARSE_TYPE == DECLARE)
-  static  argparse_T argparseType;
-  #define Argparse   argparseType.self
+    #ifndef Argparse
+    static  argparse_T argparseType;
+    #define Argparse   argparseType.self
+    #endif
   #endif
 
 #undef REQUIRE_ARGPARSE_TYPE
@@ -1099,6 +1153,69 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_VWM_TYPE
 #endif /* REQUIRE_VWM_TYPE */
 
+#ifdef REQUIRE_LIST_STACK_MACROS
+#define ListStackFree(list, type)                                   \
+do {                                                                \
+  type *item = (list)->head;                                        \
+  while (item != NULL) {                                            \
+    type *tmp = item->next;                                         \
+    free (item);                                                    \
+    item = tmp;                                                     \
+  }                                                                 \
+} while (0)
+
+#define ListStackAppend(list, type, node)                           \
+({                                                                  \
+  type *item = (node);                                              \
+  while (item and item->next) item = item->next;                    \
+  item->next = NULL;                                                \
+  item = (list)->head;                                              \
+  if (item == NULL) {                                               \
+    (list)->head = (node);                                          \
+    (list)->head->prev = NULL;                                      \
+  } else {                                                          \
+    while (item->next != NULL) item = item->next;                   \
+    (node)->prev = item;                                            \
+    item->next = (node);                                            \
+  }                                                                 \
+  (list);                                                           \
+})
+
+#define ListStackPush(list, node)                                   \
+({                                                                  \
+  if ((list)->head == NULL) {                                       \
+    (list)->head = (node);                                          \
+    (list)->head->next = NULL;                                      \
+  } else {                                                          \
+    (node)->next = (list)->head;                                    \
+    (list)->head = (node);                                          \
+  }                                                                 \
+                                                                    \
+ (list);                                                            \
+})
+
+#define ListStackPop(list_, type_)                                  \
+({                                                                  \
+  type_ *node_ = (list_)->head;                                     \
+  if (node_ != NULL)                                                \
+    (list_)->head = (list_)->head->next;                            \
+                                                                    \
+  node_;                                                            \
+})
+
+#define ListStackPopTail(list_, type_)                              \
+({                                                                  \
+  type_ *node_ = (list_)->head;                                     \
+  type_ *tmp_ = NULL;                                               \
+  while (node_->next) {                                             \
+    tmp_ = node_;                                                   \
+    node_ = node_->next;                                            \
+  }                                                                 \
+  if (tmp_) tmp_->next = NULL;                                      \
+  node_;                                                            \
+})
+#endif /* LIST_STACK_MACROS */
+
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR
   #define KEYS_MACROS_HDR
@@ -1235,6 +1352,17 @@ typedef ptrdiff_t idx_t;
   #define COLOR_MENU_BG     COLOR_RED
   #define COLOR_MENU_SEL    COLOR_GREEN
 
+  #define COLOR_SU          COLOR_RED
+  #define COLOR_BOX         COLOR_YELLOW
+  #define COLOR_MSG         COLOR_YELLOW
+  #define COLOR_ERROR       COLOR_RED
+  #define COLOR_PROMPT      COLOR_YELLOW
+  #define COLOR_NORMAL      COLOR_FG_NORMAL
+  #define COLOR_TOPLINE     COLOR_YELLOW
+  #define COLOR_DIVIDER     COLOR_MAGENTA
+  #define COLOR_WARNING     COLOR_MAGENTA
+  #define COLOR_SUCCESS     COLOR_GREEN
+  #define COLOR_STATUSLINE  COLOR_BLUE
   #endif /* TERM_MACROS_HDR */
 
   #define TERM_DONOT_SAVE_SCREEN    (1 << 0)
@@ -1372,74 +1500,6 @@ typedef ptrdiff_t idx_t;
     Argparse.print_usage (&argparser); \
     return 1;          \
   }
-
-#ifdef APPLICATION
-
-  #ifndef APPLICATION_HDR
-  #define APPLICATION_HDR
-
-    #ifndef WITHOUT_STDARG
-      #ifndef STDARG_HDR
-      #define STDARG_HDR
-      #include <stdarg.h>
-      #endif
-    #endif
-
-    #ifndef WITHOUT_ARGPARSE
-      #ifndef UNISTD_HDR
-      #define UNISTD_HDR
-      #include <unistd.h>
-      #endif
-
-      #ifndef ARGPARSE_TYPE_HDR
-      #define ARGPARSE_TYPE_HDR
-      #include <z/argparse.h>
-      #endif
-    #endif
-
-    #ifndef WITHOUT_IO
-      #ifndef STDIO_HDR
-      #define STDIO_HDR
-      #include <stdio.h>
-      #endif
-
-      #ifndef IO_TYPE_HDR
-      #define IO_TYPE_HDR
-      #include <z/io.h>
-      #endif
-    #endif
-
-  #endif /* APPLICATION_HDR */
-
-  #ifndef WITHOUT_ARGPARSE
-    #ifndef WITHOUT_ARGPARSE_DECLARATION
-      #ifndef Argparse
-      static  argparse_T argparseType;
-      #define Argparse   argparseType.self
-      #endif
-    #endif
-  #endif
-
-  #ifndef WITHOUT_IO
-    #ifndef WITHOUT_IO_DECLARATION
-      #ifndef IO
-      static  io_T ioType;
-      #define IO   ioType.self
-      #endif
-    #endif
-  #endif
-
-  #ifndef WITHOUT_USAGE
-    #ifdef APP_OPTS
-    static const char *const usage[] = { \
-      APPLICATION " " APP_OPTS,          \
-    NULL,                                \
-    };
-    #endif
-  #endif
-
-#undef APPLICATION
-#endif /* APPLICATION */
 
 /* ----------------------------------------------- */
 /* make everybody happy:

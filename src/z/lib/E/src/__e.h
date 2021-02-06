@@ -25,13 +25,6 @@
 #define CASE_A ",[]()+-:;}{<>_"
 #define CASE_B ".][)(-+;:{}><-"
 
-#define RL_TOK_COMMAND (1 << 0)
-#define RL_TOK_ARG (1 << 1)
-#define RL_TOK_ARG_SHORT (1 << 2)
-#define RL_TOK_ARG_LONG (1 << 3)
-#define RL_TOK_ARG_OPTION (1 << 4)
-#define RL_TOK_ARG_FILENAME (1 << 5)
-
 #define ACCEPT_TAB_WHEN_INSERT (1 << 0)
 
 #define WIN_NUM_FRAMES(w_) w_->prop->num_frames
@@ -369,6 +362,7 @@ typedef struct histitem_t {
 
 typedef struct h_search_t {
   histitem_t *head;
+  histitem_t *current;
   histitem_t *tail;
          int  num_items;
          int  cur_idx;
@@ -561,8 +555,6 @@ typedef struct venv_t {
     *home_dir,
     *tmp_dir,
     *data_dir,
-    *diff_exec,
-    *xclip_exec,
     *path,
     *display,
     *env_str,
@@ -663,7 +655,7 @@ typedef struct ed_prop {
   BufNormalOng_cb *on_normal_g_cbs;
 
   int num_readline_cbs;
-  Readline_cb *readline_cbs;
+  BufReadline_cb *readline_cbs;
 
   int num_syntaxes;
   syn_t syntaxes[NUM_SYNTAXES];
@@ -723,81 +715,43 @@ typedef struct E_prop {
 #undef MY_CLASSES
 #undef MY_PROPERTIES
 
-private int  win_edit_fname (win_t *, buf_t **, char *, int, int, int, int);
+static int  win_edit_fname (win_t *, buf_t **, char *, int, int, int, int);
 
-private int  buf_normal_eof (buf_t *, int);
-private int  buf_normal_left (buf_t *, int, int);
-private int  buf_normal_right (buf_t *, int, int);
-private utf8 buf_quest (buf_t *, char *, utf8 *, int);
-private int  buf_normal_down (buf_t *, int, int, int);
-private int  buf_normal_goto_linenr (buf_t *, int, int);
-private int  buf_substitute (buf_t *, char *, char *, int, int, int, int);
-private int  buf_write_to_fname (buf_t *, char *, int, int, int, int, int);
+static int  buf_normal_eof (buf_t *, int);
+static int  buf_normal_left (buf_t *, int, int);
+static int  buf_normal_right (buf_t *, int, int);
+static utf8 buf_quest (buf_t *, char *, utf8 *, int);
+static int  buf_normal_down (buf_t *, int, int, int);
+static int  buf_normal_goto_linenr (buf_t *, int, int);
+static int  buf_substitute (buf_t *, char *, char *, int, int, int, int);
+static int  buf_write_to_fname (buf_t *, char *, int, int, int, int, int);
+static int  buf_change (buf_t **, int);
+static int  buf_split (buf_t **, char *);
+static int  buf_readline (buf_t **, readline_t *);
+static int  buf_normal_visual_lw (buf_t **);
+static int  buf_enew_fname (buf_t **, char *);
+static int  buf_change_bufname (buf_t **, char *);
+static int  buf_insert_complete_filename (buf_t **);
+static int  buf_grep_on_normal (buf_t **, utf8, int, int);
+static int  buf_open_fname_under_cursor (buf_t **, int, int, int, int);
 
-private int  buf_change (buf_t **, int);
-private int  buf_split (buf_t **, char *);
-private int  buf_readline (buf_t **, readline_t *);
-private int  buf_normal_visual_lw (buf_t **);
-private int  buf_enew_fname (buf_t **, char *);
-private int  buf_insert (buf_t **, utf8, char *);
-private int  buf_change_bufname (buf_t **, char *);
-private int  buf_insert_complete_filename (buf_t **);
-private int  buf_grep_on_normal (buf_t **, utf8, int, int);
-private int  buf_open_fname_under_cursor (buf_t **, int, int, int, int);
+static void ed_resume (ed_t *);
+static void ed_suspend (ed_t *);
+static void ed_record (ed_t *, char *, ...);
+static int  ed_win_change (ed_t *, buf_t **, int, char *, int, int);
 
-private void ed_resume (ed_t *);
-private void ed_suspend (ed_t *);
-private void ed_record (ed_t *, char *, ...);
-private int  ed_win_change (ed_t *, buf_t **, int, char *, int, int);
-private readline_t *ed_readline_new (ed_t *);
+static void readline_error (readline_t *, int);
+static void readline_expr_reg (readline_t *);
+static void readline_on_write (readline_t *);
 
-private Vstring_t  *cstring_chop (char *, char, Vstring_t *, StrChop_cb, void *);
-
-/* this code belongs to? */
-static const utf8 offsetsFromUTF8[6] = {
-  0x00000000UL, 0x00003080UL, 0x000E2080UL,
-  0x03C82080UL, 0xFA082080UL, 0x82082080UL
-};
-/* the only reference found from the last research,
- * was at the julia programming language sources,
- * (this code and the functions that make use of it,
- * is atleast 4/5 years old, lying (during a non network season))
- */
+static readline_t *ed_readline_new (ed_t *);
 
 #define ONE_PAGE ($my(dim->num_rows) - 1)
-#define isnotutf8(c) IS_UTF8 (c) == 0
-#define isnotatty(fd__) (0 == isatty ((fd__)))
-#define IsNotDirSep(c) (c != DIR_SEP)
-
-#define debug_append(fmt, ...)                            \
-({                                                        \
-  char *file_ = STR_FMT ("/tmp/%s.debug", __func__);      \
-  FILE *fp_ = fopen (file_, "a+");                        \
-  if (fp_ isnot NULL) {                                   \
-    fprintf (fp_, (fmt), ## __VA_ARGS__);                 \
-    fclose (fp_);                                         \
-  }                                                       \
-})
-
-#define utf8_code(s_)                                     \
-({                                                        \
-  int code = 0; int i_ = 0; int sz = 0;                   \
-  do {code <<= 6; code += (uchar) s_[i_++]; sz++;}        \
-  while (s_[i_] and IS_UTF8(s_[i_]));                     \
-                                                          \
-  code -= offsetsFromUTF8[sz-1];                          \
-  code;                                                   \
-})
 
 #define CUR_UTF8_CODE                                     \
 ({                                                        \
   char *s_ = $mycur(data)->bytes + $mycur(cur_col_idx);   \
-  int code = 0; int i_ = 0; int sz = 0;                   \
-  do {code <<= 6; code += (uchar) s_[i_++]; sz++;}        \
-  while (s_[i_] and IS_UTF8(s_[i_]));                     \
-                                                          \
-  code -= offsetsFromUTF8[sz-1];                          \
-  code;                                                   \
+  Ustring.get.code (s_);                                  \
 })
 
 #define BUF_GET_NUMBER(intbuf_, idx_)                     \
@@ -858,262 +812,6 @@ static const utf8 offsetsFromUTF8[6] = {
   if ($mycur(data)->bytes[$mycur(data)->num_bytes - 1] isnot '\n')   \
     String.append_with ($mycur(data), "\n")
 
-#define stack_free(list, type)                                      \
-do {                                                                \
-  type *item = (list)->head;                                        \
-  while (item != NULL) {                                            \
-    type *tmp = item->next;                                         \
-    free (item);                                                    \
-    item = tmp;                                                     \
-  }                                                                 \
-} while (0)
-
-#define stack_append(list, type, node)                              \
-({                                                                  \
-  type *item = (node);                                              \
-  while (item and item->next) item = item->next;                    \
-  item->next = NULL;                                                \
-  item = (list)->head;                                              \
-  if (item == NULL) {                                               \
-    (list)->head = (node);                                          \
-    (list)->head->prev = NULL;                                      \
-  } else {                                                          \
-    while (item->next != NULL) item = item->next;                   \
-    (node)->prev = item;                                            \
-    item->next = (node);                                            \
-  }                                                                 \
-  (list);                                                           \
-})
-
-#define stack_push(list, node)                                      \
-({                                                                  \
-  if ((list)->head == NULL) {                                       \
-    (list)->head = (node);                                          \
-    (list)->head->next = NULL;                                      \
-  } else {                                                          \
-    (node)->next = (list)->head;                                    \
-    (list)->head = (node);                                          \
-  }                                                                 \
-                                                                    \
- (list);                                                            \
-})
-
-#define stack_pop(list_, type_)                                     \
-({                                                                  \
-  type_ *node_ = (list_)->head;                                     \
-  if (node_ != NULL)                                                \
-    (list_)->head = (list_)->head->next;                            \
-                                                                    \
-  node_;                                                            \
-})
-
-#define stack_pop_tail(list_, type_)                                \
-({                                                                  \
-  type_ *node_ = (list_)->head;                                     \
-  type_ *tmp_ = NULL;                                               \
-  while (node_->next) {                                             \
-    tmp_ = node_;                                                   \
-    node_ = node_->next;                                            \
-  }                                                                 \
-  if (tmp_) tmp_->next = NULL;                                      \
-  node_;                                                            \
-})
-
-#define list_push(list, node)                                       \
-({                                                                  \
-  if ((list)->head == NULL) {                                       \
-    (list)->head = (node);                                          \
-    (list)->tail = (node);                                          \
-    (list)->head->next = NULL;                                      \
-    (list)->head->prev = NULL;                                      \
-  } else {                                                          \
-    (list)->head->prev = (node);                                    \
-    (node)->next = (list)->head;                                    \
-    (list)->head = (node);                                          \
-  }                                                                 \
-                                                                    \
-  (list)->num_items++;                                              \
-  list;                                                             \
-})
-
-#define current_list_prepend(list, node)                            \
-({                                                                  \
-  if ((list)->current is NULL) {                                    \
-    (list)->head = (node);                                          \
-    (list)->tail = (node);                                          \
-    (list)->cur_idx = 0;                                            \
-    (list)->current = (list)->head;                                 \
-  } else {                                                          \
-    if ((list)->cur_idx == 0) {                                     \
-      (list)->head->prev = (node);                                  \
-      (node)->next = (list)->head;                                  \
-      (list)->head = (node);                                        \
-      (list)->current = (list)->head;                               \
-    } else {                                                        \
-      (list)->current->prev->next = (node);                         \
-      (list)->current->prev->next->next = (list)->current;          \
-      (list)->current->prev->next->prev = (list)->current->prev;    \
-      (list)->current->prev = (list)->current->prev->next;          \
-      (list)->current = (list)->current->prev;                      \
-    }                                                               \
-  }                                                                 \
-                                                                    \
-  (list)->num_items++;                                              \
-  (list)->current;                                                  \
-})
-
-#define current_list_append(list, node)                             \
-({                                                                  \
-  if ((list)->current is NULL) {                                    \
-    (list)->head = (node);                                          \
-    (list)->tail = (node);                                          \
-    (list)->cur_idx = 0;                                            \
-    (list)->current = (list)->head;                                 \
-  } else {                                                          \
-    if ((list)->cur_idx is (list)->num_items - 1) {                 \
-      (list)->current->next = (node);                               \
-      (node)->prev = (list)->current;                               \
-      (list)->current = (node);                                     \
-      (node)->next = NULL;                                          \
-      (list)->cur_idx++;                                            \
-      (list)->tail = (node);                                        \
-    } else {                                                        \
-      (node)->next = (list)->current->next;                         \
-      (list)->current->next = (node);                               \
-      (node)->prev = (list)->current;                               \
-      (node)->next->prev = (node);                                  \
-      (list)->current = (node);                                     \
-      (list)->cur_idx++;                                            \
-    }                                                               \
-  }                                                                 \
-                                                                    \
-  (list)->num_items++;                                              \
-  (list)->current;                                                  \
-})
-
-#define list_append(list, node)                                     \
-({                                                                  \
-  if ((list)->head is NULL) {                                       \
-    (list)->head = (node);                                          \
-    (list)->tail = (node);                                          \
-    (list)->cur_idx = 0;                                            \
-    (list)->current = (list)->head;                                 \
-  } else {                                                          \
-    (list)->tail->next = (node);                                    \
-    (node)->prev = (list)->tail;                                    \
-    (node)->next = NULL;                                            \
-    (list)->tail = (node);                                          \
-  }                                                                 \
-                                                                    \
-  (list)->num_items++;                                              \
-})
-
-#define list_pop_tail(list, type)                                   \
-({                                                                  \
-type *node = NULL;                                                  \
-do {                                                                \
-  if ((list)->tail is NULL) break;                                  \
-  node = (list)->tail;                                              \
-  (list)->tail->prev->next = NULL;                                  \
-  (list)->tail = (list)->tail->prev;                                \
-  (list)->num_items--;                                              \
-} while (0);                                                        \
-  node;                                                             \
-})
-
-#define list_pop_at(list, type, idx_)                               \
-({                                                                  \
-  int cur_idx = (list)->cur_idx;                                    \
-  int __idx__ = current_list_set (list, idx_);                      \
-  type *cnode = NULL;                                               \
-  do {                                                              \
-    if (__idx__ is INDEX_ERROR) break;                              \
-    cnode = current_list_pop (list, type);                          \
-    if (cur_idx is __idx__) break;                                  \
-    if (cur_idx > __idx__) cur_idx--;                               \
-    current_list_set (list, cur_idx);                               \
-  } while (0);                                                      \
-  cnode;                                                            \
-})
-
-#define current_list_pop(list, type)                                \
-({                                                                  \
-type *node = NULL;                                                  \
-do {                                                                \
-  if ((list)->current is NULL) break;                               \
-  node = (list)->current;                                           \
-  if (1 is (list)->num_items) {                                     \
-    (list)->head = NULL;                                            \
-    (list)->tail = NULL;                                            \
-    (list)->current = NULL;                                         \
-    break;                                                          \
-  }                                                                 \
-  if (0 is (list)->cur_idx) {                                       \
-    (list)->current = (list)->current->next;                        \
-    (list)->current->prev = NULL;                                   \
-    (list)->head = (list)->current;                                 \
-    break;                                                          \
-  }                                                                 \
-  if ((list)->cur_idx is (list)->num_items - 1) {                   \
-    (list)->current = (list)->current->prev;                        \
-    (list)->current->next = NULL;                                   \
-    (list)->cur_idx--;                                              \
-    (list)->tail = (list)->current;                                 \
-    break;                                                          \
-  }                                                                 \
-  (list)->current->next->prev = (list)->current->prev;              \
-  (list)->current->prev->next = (list)->current->next;              \
-  (list)->current = (list)->current->next;                          \
-} while (0);                                                        \
-  if (node isnot NULL) (list)->num_items--;                         \
-  node;                                                             \
-})
-
-#define current_list_set(list, idx_)                                \
-({                                                                  \
-  int idx__ = idx_;                                                 \
-  do {                                                              \
-    if (0 > idx__) idx__ += (list)->num_items;                      \
-    if (idx__ < 0 or idx__ >= (list)->num_items) {                  \
-      idx__ = INDEX_ERROR;                                          \
-      break;                                                        \
-    }                                                               \
-    if (idx__ is (list)->cur_idx) break;                            \
-    int idx___ = (list)->cur_idx;                                   \
-    (list)->cur_idx = idx__;                                        \
-    if (idx___ < idx__)                                             \
-      while (idx___++ < idx__)                                      \
-        (list)->current = (list)->current->next;                    \
-    else                                                            \
-      while (idx___-- > idx__)                                      \
-        (list)->current = (list)->current->prev;                    \
-  } while (0);                                                      \
-  idx__;                                                            \
-})
-
-#define list_get_at(list_, type_, idx_)                             \
-({                                                                  \
-  type_ *node = NULL;                                               \
-  int idx__ = idx_;                                                 \
-  do {                                                              \
-    if (0 > idx__) idx__ += (list_)->num_items;                     \
-    if (idx__ < 0 or idx__ >= (list_)->num_items) {                 \
-      idx__ = INDEX_ERROR;                                          \
-      break;                                                        \
-    }                                                               \
-    if ((list_)->num_items / 2 < idx__) {                           \
-      node = (list_)->head;                                         \
-      while (idx__--)                                               \
-        node = node->next;                                          \
-    } else {                                                        \
-      node = (list_)->tail;                                         \
-      while (idx__++ < (list_)->num_items - 1)                      \
-        node = node->prev;                                          \
-    }                                                               \
-  } while (0);                                                      \
-  node;                                                             \
-})
-
 #define READLINE_ED_USER_DATA_IDX   0
 #define READLINE_BUF_USER_DATA_IDX  1
 #define READLINE_MENU_USER_DATA_IDX 2
@@ -1133,3 +831,13 @@ do {                                                                \
 
 #define $OurRoot  $my(__E__)
 #define $OurRoots(__p__) $my(__E__)->prop->__p__
+
+#define debug_append(fmt, ...)                            \
+({                                                        \
+  char *file_ = STR_FMT ("/tmp/%s.debug", __func__);      \
+  FILE *fp_ = fopen (file_, "a+");                        \
+  if (fp_ isnot NULL) {                                   \
+    fprintf (fp_, (fmt), ## __VA_ARGS__);                 \
+    fclose (fp_);                                         \
+  }                                                       \
+})

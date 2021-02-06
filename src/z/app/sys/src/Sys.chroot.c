@@ -43,6 +43,8 @@ int main (int argc, char **argv) {
   __INIT__ (file);
   __INIT__ (string);
 
+  Sys.init_environment (SysEnvOpts());
+
   __INIT_APP__;
 
   argparse_option_t options[] = {

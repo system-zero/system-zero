@@ -13,11 +13,6 @@
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
-#define REQUIRE_IMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_SMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_I_TYPE        DONOT_DECLARE
-#define REQUIRE_PROC_TYPE     DONOT_DECLARE
-#define REQUIRE_VIDEO_TYPE    DONOT_DECLARE
 #define REQUIRE_READLINE_TYPE DECLARE
 #define REQUIRE_SYS_TYPE      DECLARE
 #define REQUIRE_TERM_TYPE     DECLARE
@@ -25,6 +20,12 @@
 #define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
 #define REQUIRE_E_TYPE        DECLARE
+#define REQUIRE_IMAP_TYPE     DONOT_DECLARE
+#define REQUIRE_SMAP_TYPE     DONOT_DECLARE
+#define REQUIRE_I_TYPE        DONOT_DECLARE
+#define REQUIRE_PROC_TYPE     DONOT_DECLARE
+#define REQUIRE_VIDEO_TYPE    DONOT_DECLARE
+#define REQUIRE_VUI_TYPE      DONOT_DECLARE
 #define REQUIRE_TERM_MACROS
 
 #include <z/cenv.h>
@@ -113,7 +114,7 @@ static string_t *parse_command (char *bytes) {
   return com;
 }
 
-private int sys_man (buf_t **bufp, char *word, int section) {
+static int sys_man (buf_t **bufp, char *word, int section) {
   int retval = NOTOK;
   if (NULL is word) return NOTOK;
 
@@ -176,7 +177,7 @@ theend:
 
 }
 
-private string_t *__ex_buf_serial_info__ (bufinfo_t *info) {
+static string_t *__ex_buf_serial_info__ (bufinfo_t *info) {
   string_t *sinfo = String.new_with ("BUF_INFO_STRUCTURE\n");
   String.append_with_fmt (sinfo,
     "fname       : \"%s\"\n"
@@ -193,7 +194,7 @@ private string_t *__ex_buf_serial_info__ (bufinfo_t *info) {
   return sinfo;
 }
 
-private string_t *__ex_win_serial_info__ (wininfo_t *info) {
+static string_t *__ex_win_serial_info__ (wininfo_t *info) {
   string_t *sinfo = String.new_with ("WIN_INFO_STRUCTURE\n");
   String.append_with_fmt (sinfo,
     "name         : \"%s\"\n"
@@ -212,7 +213,7 @@ private string_t *__ex_win_serial_info__ (wininfo_t *info) {
   return sinfo;
 }
 
-private string_t *__ex_ed_serial_info__ (edinfo_t *info) {
+static string_t *__ex_ed_serial_info__ (edinfo_t *info) {
   string_t *sinfo = String.new_with ("ED_INFO_STRUCTURE\n");
   String.append_with_fmt (sinfo,
     "name         : \"%s\"\n"
@@ -229,7 +230,7 @@ private string_t *__ex_ed_serial_info__ (edinfo_t *info) {
   return sinfo;
 }
 
-private int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
+static int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
   (void) thisp; (void) rl;
   ed_t *ced = E.get.current (__E__);
 
@@ -272,7 +273,7 @@ private int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
   return OK;
 }
 
-private int __ex_rline_cb__ (buf_t **thisp, readline_t *rl, utf8 c) {
+static int __ex_rline_cb__ (buf_t **thisp, readline_t *rl, utf8 c) {
   (void) thisp; (void) c;
   int retval = RLINE_NO_COMMAND;
   string_t *com = Readline.get.command (rl);
@@ -297,7 +298,7 @@ theend:
   return retval;
 }
 
-private void __ex_add_readline_commands__ (ed_t *this) {
+static void __ex_add_readline_commands__ (ed_t *this) {
   Ed.append.readline_command (this, "`man", 2, READLINE_ARG_FILENAME|READLINE_ARG_VERBOSE );
   Ed.append.command_arg (this, "`man", "--section=", 10);
 
@@ -309,7 +310,7 @@ private void __ex_add_readline_commands__ (ed_t *this) {
   Ed.set.readline_cb (this, __ex_rline_cb__);
 }
 
-private int __ex_word_actions_cb__ (buf_t **thisp, int fidx, int lidx,
+static int __ex_word_actions_cb__ (buf_t **thisp, int fidx, int lidx,
                       bufiter_t *it, char *word, utf8 c, char *action) {
   (void) fidx; (void) lidx; (void) action; (void) it; (void) word; (void) thisp;
 
@@ -327,7 +328,7 @@ private int __ex_word_actions_cb__ (buf_t **thisp, int fidx, int lidx,
   return retval;
 }
 
-private void __ex_add_word_actions__ (ed_t *this) {
+static void __ex_add_word_actions__ (ed_t *this) {
   int num_actions = 1;
   utf8 chars[] = {'m'};
   char actions[] = "man page";
@@ -397,7 +398,7 @@ char *md_extensions[] = {".md", NULL};
 
 char *diff_extensions[] = {".diff", ".patch", NULL};
 
-private char *__ex_diff_syn_parser (buf_t *this, char *line, int len, int idx, row_t *row) {
+static char *__ex_diff_syn_parser (buf_t *this, char *line, int len, int idx, row_t *row) {
   (void) idx; (void) row;
 
   ifnot (len) return line;
@@ -440,57 +441,57 @@ theend:;
   return line;
 }
 
-private ftype_t *__ex_diff_syn_init (buf_t *this) {
+static ftype_t *__ex_diff_syn_init (buf_t *this) {
   ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "diff"),
     FtypeOpts(.tabwidth = 0, .tab_indents = 0));
   return ft;
 }
 
-private char *__ex_syn_parser (buf_t *this, char *line, int len, int idx, row_t *row) {
+static char *__ex_syn_parser (buf_t *this, char *line, int len, int idx, row_t *row) {
   return Buf.syn.parser (this, line, len, idx, row);
 }
 
-private string_t *__ex_ftype_autoindent (buf_t *this, row_t *row) {
+static string_t *__ex_ftype_autoindent (buf_t *this, row_t *row) {
   FtypeAutoIndent_cb autoindent_fun = Ed.get.callback_fun (E.get.current (__E__), "autoindent_default");
   return autoindent_fun (this, row);
 }
 
-private string_t *__ex_c_ftype_autoindent (buf_t *this, row_t *row) {
+static string_t *__ex_c_ftype_autoindent (buf_t *this, row_t *row) {
   FtypeAutoIndent_cb autoindent_fun = Ed.get.callback_fun (E.get.current (__E__), "autoindent_c");
   return autoindent_fun (this, row);
 }
 
-private ftype_t *__ex_lai_syn_init (buf_t *this) {
+static ftype_t *__ex_lai_syn_init (buf_t *this) {
   ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "lai"),
     FtypeOpts(.autoindent = __ex_c_ftype_autoindent, .tabwidth = 2, .tab_indents = 1));
   return ft;
 }
 
-private ftype_t *__ex_lua_syn_init (buf_t *this) {
+static ftype_t *__ex_lua_syn_init (buf_t *this) {
   ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "lua"),
     FtypeOpts(.autoindent = __ex_c_ftype_autoindent, .tabwidth = 2, .tab_indents = 1));
   return ft;
 }
 
-private ftype_t *__ex_make_syn_init (buf_t *this) {
+static ftype_t *__ex_make_syn_init (buf_t *this) {
   ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "make"),
     FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_ftype_autoindent));
   return ft;
 }
 
-private ftype_t *__ex_sh_syn_init (buf_t *this) {
+static ftype_t *__ex_sh_syn_init (buf_t *this) {
   ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "sh"),
     FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_ftype_autoindent));
   return ft;
 }
 
-private ftype_t *__ex_zig_syn_init (buf_t *this) {
+static ftype_t *__ex_zig_syn_init (buf_t *this) {
   ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "zig"),
     FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_c_ftype_autoindent));
   return ft;
 }
 
-private ftype_t *__ex_md_syn_init (buf_t *this) {
+static ftype_t *__ex_md_syn_init (buf_t *this) {
   ftype_t *ft = Buf.ftype.set (this,  Ed.syn.get_ftype_idx (E.get.current (__E__), "md"),
     FtypeOpts(.tabwidth = 4, .tab_indents = 0, .autoindent = __ex_c_ftype_autoindent, .clear_blanklines = 0));
   return ft;
@@ -543,7 +544,7 @@ syn_t ex_syn[] = {
   }
 };
 
-private void __init_ext__ (ed_t *this, ed_opts opts) {
+static void __init_ext__ (ed_t *this, ed_opts opts) {
   (void) opts;
   __ex_add_readline_commands__ (this);
   __ex_add_word_actions__ (this);
@@ -562,6 +563,8 @@ int main (int argc, char **argv) {
   __INIT__ (path);
   __INIT__ (file);
   __INIT__ (dir);
+
+  Sys.init_environment (SysEnvOpts());
 
   __INIT_APP__;
 

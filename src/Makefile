@@ -58,6 +58,13 @@ SYSINCDIR      = $(SYSDIR)/include
 SYSDATADIR     = $(SYSDIR)/../data
 SYSTMPDIR      = $(SYSDIR)/../tmp
 
+UID       := $(shell id -u)
+GID       := $(shell id -g)
+USERNAME  := $(shell id -un)
+GROUPNAME := $(shell id -gn)
+HOME      := $(HOME)
+TERM      := $(TERM)
+
 #-----------------------------------------------#
 #             zero namespace
 
@@ -256,6 +263,8 @@ Z_SU        := $(ZC_SU)
   MARGS  = API=$(API) REV=$(REV) VERSION=$(VERSION) DEBUG=$(DEBUG)
   MARGS += SYSDIR=$(SYSDIR) SYSDATADIR=$(SYSDATADIR) SYSTMPDIR=$(SYSTMPDIR)
   MARGS += BASE_FLAGS='$(BASE_FLAGS)'
+  MARGS += USERNAME=$(USERNAME) GROUPNAME=$(GROUPNAME)
+  MARGS += HOME=$(HOME) UID=$(UID) GID=$(GID) TERM=$(TERM)
 
 #----------------------------------------------------------#
 cenv: Env
@@ -780,6 +789,7 @@ zero-shared:  Env cenv dlist\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared libterm-shared\
               libimap-shared libsmap-shared libvideo-shared\
+              libjson-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared
@@ -792,6 +802,7 @@ zero-static:  Env cenv dlist\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static libterm-static\
               libimap-static libsmap-static libvideo-static\
+              libjson-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static
@@ -840,7 +851,12 @@ zero-clean-static:\
 all: shared static
 
 #----------------------------------------------------------#
-Env: makeenv checkenv
+Env: checkuid makeenv checkenv
+
+checkuid:
+	@echo 1
+	@if [ $(UID) = 0 ]; then echo "You can not run this makefile as the root user"; exit 1; fi
+
 makeenv:
 	@$(TEST) -d $(SYSDIR)      || $(MKDIR_P) $(SYSDIR)
 	@$(TEST) -d $(SYSLIBDIR)   || $(MKDIR)   $(SYSLIBDIR)

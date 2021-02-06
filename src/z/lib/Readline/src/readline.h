@@ -69,8 +69,11 @@ typedef int  (*ReadlineExec_cb) (readline_t *);
 typedef int  (*ReadlineAtBeg_cb) (readline_t **);
 typedef int  (*ReadlineAtEnd_cb) (readline_t **);
 typedef int  (*ReadlineTabCompletion_cb) (readline_t *);
-typedef int  (*ReadlineCalcColumns_cb) (readline_t *rl, int);
-typedef void (*ReadlineLastComponentPush_cb) (readline_t *rl);
+typedef int  (*ReadlineCalcColumns_cb) (readline_t *, int);
+typedef void (*ReadlineLastComponentPush_cb) (readline_t *);
+typedef void (*ReadlineExprReg_cb) (readline_t *);
+typedef void (*ReadlineError_cb) (readline_t *, int);
+typedef void (*ReadlineOnWrite_cb) (readline_t *);
 
 struct readline_hist_item_t {
   readline_hist_item_t *next;
@@ -152,8 +155,11 @@ struct readline_t {
 
   InputGetch_cb getch;
   ReadlineExec_cb exec;
+  ReadlineError_cb error;
   ReadlineAtBeg_cb at_beg;
   ReadlineAtEnd_cb at_end;
+  ReadlineOnWrite_cb on_write;
+  ReadlineExprReg_cb expr_reg;
   ReadlineCalcColumns_cb calc_columns;
   ReadlineTabCompletion_cb tab_completion;
   ReadlineLastComponentPush_cb last_component_push;

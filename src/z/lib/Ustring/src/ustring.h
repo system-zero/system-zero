@@ -9,16 +9,6 @@
 #define TO_UPPER 1
 #endif
 
-#define UTF8_CODE(s_)                                     \
-({                                                        \
-  int code = 0; int i_ = 0; int sz = 0;                   \
-  do {code <<= 6; code += (uchar) s_[i_++]; sz++;}        \
-  while (s_[i_] and IS_UTF8(s_[i_]));                     \
-                                                          \
-  code -= offsetsFromUTF8[sz-1];                          \
-  code;                                                   \
-})
-
 typedef struct ustring_t ustring_t;
 struct ustring_t {
   utf8 code;
@@ -43,6 +33,7 @@ typedef struct Ustring_t {
 
 typedef struct ustring_get_self {
   utf8
+    (*code) (char *),
     (*code_at) (char *, size_t, int, int *),
     (*nth_character_code) (char *, size_t, int);
 

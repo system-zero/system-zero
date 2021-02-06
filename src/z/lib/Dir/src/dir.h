@@ -1,6 +1,7 @@
 #ifndef DIR_H
 #define DIR_H
 
+#define DIRWALK_MAX_DEPTH 1024
 #define NOT_ALLOWED_IN_A_DIRECTORY_NAME "\t\n"
 
 typedef struct dirwalk_t dirwalk_t;

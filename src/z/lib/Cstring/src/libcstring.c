@@ -273,7 +273,7 @@ char *bytes,  size_t bsize, char *word, size_t wsize, char *Nwtype, size_t Nwsiz
   return word;
 }
 
-private void cstring_tok_release (cstring_tok *this) {
+static void cstring_tok_release (cstring_tok *this) {
   if (NULL is this) return;
   for (int i = 0; i < this->num_tokens; i++)
     free (this->tokens[i]);
@@ -284,7 +284,7 @@ private void cstring_tok_release (cstring_tok *this) {
   this = NULL;
 }
 
-private cstring_tok *cstring_tokenize (cstring_tok *this,
+static cstring_tok *cstring_tokenize (cstring_tok *this,
  char *buf, char *tok, CstringTok_cb cb, void *obj) {
   if (NULL is tok or *tok is '\0') return this;
 

@@ -1,8 +1,10 @@
 #define LIBRARY "Sys"
 
 #define REQUIRE_STDIO
-#define REQUIRE_TIME
+#define REQUIRE_UNISTD
 #define REQUIRE_SYS_UNAME
+#define REQUIRE_SYS_TYPES
+#define REQUIRE_TIME
 
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
@@ -10,6 +12,8 @@
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
+#define REQUIRE_PWD
+#define REQUIRE_GRP
 #define REQUIRE_SYS_TYPE      DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -93,18 +97,108 @@ static string_t *sys_which (char *ex, char *path) {
   return ex_path;
 }
 
-static void sys_set_env (void) {
-  char *env = getenv ("PATH");
-  sys_set_env_as (env, "PATH", 1);
+static int sys_init_environment (sys_env_opts opts) {
+/* yet to be done:
+  * return_a_proper error; for now return NOTOK
+  * print the error? option
+  * file_pointer option
+  * error_string method
+  * locked_after_first_set objects
+  */
 
-  env = getenv ("HOME");
-  sys_set_env_as (env, "HOME", 1);
+  pid_t pid = getpid ();
+  sys_set_env_as (STR_FMT ("%d", pid), "PID", opts.overwrite);
+
+  uid_t uid = getuid ();
+  sys_set_env_as (STR_FMT ("%d", uid), "UID", opts.overwrite);
+
+  gid_t gid = getgid ();
+  sys_set_env_as (STR_FMT ("%d", gid), "GID", opts.overwrite);
+
+  char *path = getenv ("PATH");
+  if (NULL is path)
+    sys_set_env_as ("/bin:/usr/bin:/usr/local/bin", "PATH", opts.overwrite);
+  else
+    sys_set_env_as (path, "PATH", opts.overwrite);
+
+  errno = 0;
+
+  struct passwd *pswd = getpwuid (uid);
+  ifnot (NULL is pswd) {
+    sys_set_env_as (pswd->pw_name, "USERNAME", opts.overwrite);
+  } else {
+    do {
+      if (opts.username isnot NULL) {
+        sys_set_env_as (opts.username, "USERNAME", opts.overwrite);
+        break;
+      }
+
+      char *user = getenv ("USERNAME");
+      ifnot  (NULL is user) {
+        sys_set_env_as (user, "USERNAME", opts.overwrite);
+        break;
+      }
+
+      #ifdef USERNAME
+        sys_set_env_as (USERNAME, "USERNAME", opts.overwrite);
+        break;
+      #endif
+
+      if (opts.return_on_error) {
+        return NOTOK;
+      }
+
+      if (opts.exit_on_error) {
+        fprintf (stderr, "Can not read group record %s\n", strerror (errno));
+        exit (1);
+      }
+
+    } while (0);
+  }
+
+  struct group *gr = getgrgid (gid);
+  if (NULL is gr) {
+    char *group = getenv ("GROUPNAME");
+    if (NULL is group) {
+      #ifdef GROUPNAME
+      sys_set_env_as (GROUPNAME, "GROUPNAME", opts.overwrite);
+      #else
+        if (opts.return_on_error) {
+          return NOTOK;
+        }
+
+        if (opts.exit_on_error) {
+          fprintf (stderr, "Can not read group record %s\n", strerror (errno));
+          exit (1);
+        }
+      #endif
+    } else
+      sys_set_env_as (group, "GROUPNAME", opts.overwrite);
+  } else
+    sys_set_env_as (gr->gr_name, "GROUPNAME", opts.overwrite);
+
+  char *hdir = getenv ("HOME");
+  ifnot (NULL is hdir)
+    sys_set_env_as (hdir, "HOME", opts.overwrite);
+  else {
+    ifnot (NULL is pswd)
+      sys_set_env_as (pswd->pw_dir, "HOME", 1);
+    else {
+      #ifdef HOME
+      sys_set_env_as (HOME, "HOME", opts.overwrite);
+      #else
+      sys_set_env_as (STR_FMT ("/home/%s", sys_get_env_value ("HOME")), "HOME", opts.overwrite);
+      #endif
+    }
+  }
 
   struct utsname u;
   if (-1 is uname (&u))
-    sys_set_env_as ("unknown", "PLATFORM", 1);
+    sys_set_env_as ("unknown", "PLATFORM", opts.overwrite);
   else
-    sys_set_env_as (u.sysname, "PLATFORM", 1);
+    sys_set_env_as (u.sysname, "PLATFORM", opts.overwrite);
+
+  return OK;
 }
 
 static string_t *sys_battery_info (void) {
@@ -182,11 +276,10 @@ public sys_T __init_sys__ (void) {
   __INIT__ (smap);
   __INIT__ (dir);
 
-  sys_set_env ();
-
   return (sys_T) {
     .self = (sys_self) {
       .which = sys_which,
+      .init_environment = sys_init_environment,
       .get = (sys_get_self) {
         .env = sys_get_env,
         .env_value = sys_get_env_value,

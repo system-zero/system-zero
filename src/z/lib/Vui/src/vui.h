@@ -58,6 +58,7 @@ struct menu_t {
 
 typedef struct menu_opts {
   int fd;
+  int state;
   int first_row;
   int last_row;
   int prompt_row;
@@ -77,26 +78,27 @@ typedef struct menu_opts {
   void *user_data_second;
 } menu_opts;
 
-#define MenuOpts(...) (menu_opts) {     \
-  .fd = STDOUT_FILENO,                  \
-  .first_row = 1,                       \
-  .last_row  = 24,                      \
-  .prompt_row = 23,                     \
-  .first_col = 1,                       \
-  .num_cols = 78,                       \
-  .space_selects = 1,                   \
-  .return_if_one_item = 1,              \
-  .clear_and_continue_on_backspace = 0, \
-  .next_key = '\t',                     \
-  .pat = NULL,                          \
-  .patlen = 0,                          \
-  .video = NULL,                        \
-  .term = NULL,                         \
-  .process_list_cb = NULL,              \
-  .getch_cb = IO.getkey,                \
-  .user_data_first = NULL,              \
-  .user_data_second = NULL,             \
-  __VA_ARGS__                           \
+#define MenuOpts(...) (menu_opts) {         \
+  .fd = STDOUT_FILENO,                      \
+  .state = (MENU_INIT|READLINE_IS_VISIBLE), \
+  .first_row = 1,                           \
+  .last_row  = 24,                          \
+  .prompt_row = 23,                         \
+  .first_col = 1,                           \
+  .num_cols = 78,                           \
+  .space_selects = 1,                       \
+  .return_if_one_item = 1,                  \
+  .clear_and_continue_on_backspace = 0,     \
+  .next_key = '\t',                         \
+  .pat = NULL,                              \
+  .patlen = 0,                              \
+  .video = NULL,                            \
+  .term = NULL,                             \
+  .process_list_cb = NULL,                  \
+  .getch_cb = IO.getkey,                    \
+  .user_data_first = NULL,                  \
+  .user_data_second = NULL,                 \
+  __VA_ARGS__                               \
 }
 
 typedef struct vui_menu_self {

@@ -2,9 +2,10 @@
 #define LIBVED_H
 
 #define MYNAME "veda"
+
 #define ED_INSTANCES 252
 
-#define MIN_ROWS 8
+#define MIN_ROWS  8
 #define MIN_COLS  2
 
 #define MAX_FRAMES 3
@@ -84,31 +85,31 @@
 #define MAX_BACKTRACK_LINES_FOR_ML_COMMENTS 24
 #endif
 
-#define DIRWALK_MAX_DEPTH 1024
 #define MAX_SCREEN_ROWS    256
 
 #define MAXLEN_MODE        16
 #define MAXLEN_FTYPE_NAME  16
 #define MAXLEN_WORD_ACTION 512
 #define MAXLEN_COM         512
-#define MAXLEN_PAT         PATH_MAX
 
 #define MAXLEN_ED_NAME MAXLEN_NAME
-#define OUTPUT_FD STDOUT_FILENO
+
+#define OUTPUT_FD   STDOUT_FILENO
 
 #define Notword ".,?/+*-=~%<>[](){}\\'\";"
 #define Notword_len 22
 #define Notfname "|][\""
 #define Notfname_len 4
 
-#define IsAlsoAHex(c)    (((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
-#define IsAlsoANumber(c) ((c) == '.' || (c) == 'x' || IsAlsoAHex (c))
+/* The following macros, are visual assistants and allow us to understand the
+ * various boolean function arguments (both, in the function signature, but
+ * mostly on function calls), when we are looking to the code */
 
 #define NO_GLOBAL 0
 #define GLOBAL    1
 
-#define NO_FORCE 0
-#define FORCE    1
+#define NO_FORCE  0
+#define FORCE     1
 
 #define NO_INTERACTIVE 0
 #define INTERACTIVE    1
@@ -146,11 +147,14 @@
 #define DONOR_REOPEN 0
 #define REOPEN       1
 
-#define X_PRIMARY     0
-#define X_CLIPBOARD   1
-
 #define DONOT_REDIRECT 0
 #define REDIRECT       1
+
+#define DONOT_RELOAD   0
+#define RELOAD         1
+
+#define X_PRIMARY     0
+#define X_CLIPBOARD   1
 
 #define NULL_CALLBACK_FN  NULL
 
@@ -236,7 +240,7 @@
 #define ED_PREV             (1 << 7)
 #define ED_PREV_FOCUSED     (1 << 8)
 
-#define ED_INIT_OPT_LOAD_HISTORY (1 << 0)
+#define ED_INIT_OPT_LOAD_HISTORY   (1 << 0)
 
 #define E_SUSPENDED                (1 << 0)
 #define E_EXIT                     (1 << 1)
@@ -259,25 +263,6 @@
 #define FIRST_FRAME  0
 #define SECOND_FRAME 1
 #define THIRD_FRAME  2
-
-#define LAST_ARG_KEY    037
-
-#define COLOR_SU          COLOR_RED
-#define COLOR_BOX         COLOR_YELLOW
-#define COLOR_MSG         COLOR_YELLOW
-#define COLOR_ERROR       COLOR_RED
-#define COLOR_PROMPT      COLOR_YELLOW
-#define COLOR_NORMAL      COLOR_FG_NORMAL
-#define COLOR_MENU_BG     COLOR_RED
-#define COLOR_TOPLINE     COLOR_YELLOW
-#define COLOR_DIVIDER     COLOR_MAGENTA
-#define COLOR_WARNING     COLOR_MAGENTA
-#define COLOR_SUCCESS     COLOR_GREEN
-#define COLOR_TOPLINE     COLOR_YELLOW
-#define COLOR_WARNING     COLOR_MAGENTA
-#define COLOR_MENU_SEL    COLOR_GREEN
-#define COLOR_STATUSLINE  COLOR_BLUE
-#define COLOR_MENU_HEADER COLOR_CYAN
 
 #define HL_NORMAL         COLOR_NORMAL
 #define HL_VISUAL         COLOR_CYAN
@@ -347,13 +332,11 @@ enum {
 typedef struct fp_t fp_t;
 typedef struct reg_t reg_t;
 typedef struct Reg_t Reg_t;
-typedef struct arg_t arg_t;
 typedef struct row_t row_t;
 typedef struct dim_t dim_t;
 typedef struct syn_t syn_t;
 typedef struct undo_t undo_t;
 typedef struct hist_t hist_t;
-typedef struct menu_t menu_t;
 typedef struct mark_t mark_t;
 typedef struct ftype_t ftype_t;
 typedef struct search_t search_t;
@@ -386,9 +369,11 @@ typedef struct ed_opts ed_opts;
  * something is gonna change in future, if it's not just a signle change it is
  * certainly (easier) searchable */
 
-typedef int  (*Readline_cb) (buf_t **, readline_t *, utf8);
+typedef void (*EAtExit_cb) (void);
+typedef void (*EdAtExit_cb) (ed_t *);
+typedef void (*EdAtInit_cb) (ed_t *, ed_opts);
+typedef int  (*BufReadline_cb) (buf_t **, readline_t *, utf8);
 typedef int  (*StrChop_cb) (Vstring_t *, char *, void *);
-typedef int  (*MenuProcessList_cb) (menu_t *);
 typedef int  (*VisualLwMode_cb) (buf_t **, int, int, Vstring_t *, utf8, char *);
 typedef int  (*VisualCwMode_cb) (buf_t **, int, int, string_t *, utf8, char *);
 typedef int  (*WordActions_cb)  (buf_t **, int, int, bufiter_t *, char *, utf8, char *);
@@ -397,18 +382,15 @@ typedef int  (*FileActions_cb)  (buf_t **, utf8, char *);
 typedef int  (*BufNormalBeg_cb) (buf_t **, utf8, int, int);
 typedef int  (*BufNormalEnd_cb) (buf_t **, utf8, int, int);
 typedef int  (*BufNormalOng_cb) (buf_t **, int);
+typedef int  (*Balanced_cb) (buf_t **, int, int);
+typedef int  (*ExprRegister_cb) (ed_t *, buf_t *, int);
 typedef char *(*FtypeOpenFnameUnderCursor_cb) (char *, size_t, size_t);
 typedef dim_t **(*WinDimCalc_cb) (win_t *, int, int, int, int);
 typedef string_t *(*FtypeAutoIndent_cb) (buf_t *, row_t *);
-typedef int (*Balanced_cb) (buf_t **, int, int);
-typedef int (*ExprRegister_cb) (ed_t *, buf_t *, int);
-typedef void (*EAtExit_cb) (void);
-typedef void (*EdAtExit_cb) (ed_t *);
-typedef void (*EdAtInit_cb) (ed_t *, ed_opts);
 
 /* in between */
-typedef void (*Record_cb) (ed_t *, char *);
-typedef int  (*IRecord_cb) (ed_t *, Vstring_t *);
+typedef void  (*Record_cb) (ed_t *, char *);
+typedef int   (*IRecord_cb) (ed_t *, Vstring_t *);
 typedef char *(*InitRecord_cb) (ed_t *);
 
 #define NULL_REF NULL
@@ -1140,7 +1122,7 @@ typedef struct ed_set_self {
     (*exit_quick) (ed_t *, int),
     (*screen_size) (ed_t *, screen_dim_opts),
     (*topline) (ed_t *, buf_t *),
-    (*readline_cb) (ed_t *, Readline_cb),
+    (*readline_cb) (ed_t *, BufReadline_cb),
     (*lang_map) (ed_t *, int[][26]),
     (*record_cb) (ed_t *, Record_cb),
     (*at_exit_cb) (ed_t *, EdAtExit_cb),

@@ -633,22 +633,24 @@ streaming from the gained conscience.
 
 ## Acknowledgements and References:
 
-[Mir: A jit compiler library.](https://github.com/vnmakarov/mir)
-
-[Tinycc: A tiny C compiler.](https://repo.or.cz/tinycc)
-
-[Tinyscript: A very simple scripting language.](https://repo.or.cz/tinycc)
-
-[Zig: A generar purpose programming language.](https://ziglang.org/)
-
-[Dictu: A simple programming language.](https://github.com/dictu-lang/Dictu)
-
-[VoidLinux : A Linux distribution](https://voidlinux.org/)
-
-[Tagha: A small process virtual machine](https://github.com/assyrianic/Tagha)
-
-[Crafting Interpreters](https://github.com/munificent/craftinginterpreters)
-
-[Build Your Own Lisp](https://github.com/orangeduck/BuildYourOwnLisp)
-
-[Linux From Scratch](https://linuxfromscratch.org)
+- [Mir: A jit compiler library.](https://github.com/vnmakarov/mir)
+   
+- [Tinycc: A tiny C compiler.](https://repo.or.cz/tinycc)
+   
+- [Tinyscript: A very simple scripting language.](https://github.com/totalspectrum/tinyscript)
+   
+- [Zig: A generar purpose programming language.](https://ziglang.org/)
+   
+- [Dictu: A simple programming language.](https://github.com/dictu-lang/Dictu)
+   
+- [VoidLinux : A Linux distribution without systemd.](https://voidlinux.org/)
+   
+- [Tagha: A small process virtual machine.](https://github.com/assyrianic/Tagha)
+   
+- [Crafting Interpreters.](https://github.com/munificent/craftinginterpreters)
+   
+- [Build Your Own Lisp.](https://github.com/orangeduck/BuildYourOwnLisp)
+   
+- [A Programming Language in Javascript.](http://lisperator.net/pltut/)
+   
+- [Linux From Scratch.](https://linuxfromscratch.org)

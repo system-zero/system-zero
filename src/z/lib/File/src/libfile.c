@@ -94,7 +94,7 @@ static mode_t file_mode_from_octal_string (char *oct_str) {
  * License, or (at your option) any later version.
  */
 
-private char *file_mode_stat_to_string (char *mode_string, mode_t mode) {
+static char *file_mode_stat_to_string (char *mode_string, mode_t mode) {
   /* assumed at least 11 bytes */
 
   if      (S_ISREG(mode))  mode_string[0] = REG_CHAR;

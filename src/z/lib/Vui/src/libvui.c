@@ -40,8 +40,8 @@ static void vui_menu_release (menu_t *this) {
 static menu_t *vui_menu_new (menu_opts opts) {
   menu_t *this = Alloc (sizeof (menu_t));
   this->fd = opts.fd;
-  this->first_row = opts.first_row;
   this->last_row = opts.last_row;
+  this->first_row = (opts.first_row is 1 ? 2 : opts.first_row);
   this->prompt_row = opts.prompt_row;
   this->first_col = opts.first_col + 1;
   this->num_cols = opts.num_cols;
@@ -54,13 +54,13 @@ static menu_t *vui_menu_new (menu_opts opts) {
   this->getch = opts.getch_cb;
   this->patlen = opts.patlen;
   this->next_key = opts.next_key;
+  this->state |= opts.state;
   this->user_data[0] = opts.user_data_first;
   this->user_data[1] = opts.user_data_second;
 
   this->orig_first_row = opts.first_row;
   this->num_rows = this->last_row - this->first_row + 1;
   this->orig_num_rows = this->num_rows;
-  this->state |= (MENU_INIT|READLINE_IS_VISIBLE);
   this->header = String.new (8);
 
   ifnot (NULL is opts.pat) {
@@ -86,7 +86,7 @@ static void vui_menu_clear (menu_t *this) {
   if (this->header->num_bytes)
     Video.draw.row_at (this->video, this->first_row - 1);
 
-  for (int i = 0;i < this->num_rows; i++)
+  for (int i = 0; i < this->num_rows; i++)
     Video.draw.row_at (this->video, this->first_row + i);
 }
 
@@ -127,14 +127,16 @@ static int readline_menu_at_end (readline_t **rl) {
 
 static char *vui_menu_create (menu_t *this) {
   readline_t *rl = Readline.new (this->user_data[0], this->term, this->getch,
-     this->prompt_row,  1, this->num_cols, this->video);
+     this->prompt_row - 2,  1, this->num_cols, this->video);
   rl->at_beg = readline_menu_at_beg;
   rl->at_end = readline_menu_at_end;
+  rl->user_data[READLINE_MENU_USER_DATA_IDX - 1] = this->user_data[1];
   rl->user_data[READLINE_MENU_USER_DATA_IDX] = this;
   rl->state |= READLINE_IS_VISIBLE|READLINE_CURSOR_HIDE;
   rl->prompt_char = 0;
 
-  if (this->state & READLINE_IS_VISIBLE) rl->state &= ~READLINE_IS_VISIBLE;
+  if (0 is (this->state & READLINE_IS_VISIBLE))
+    rl->state &= ~READLINE_IS_VISIBLE;
 
   Readline.insert_with_len (rl, this->pat, this->patlen);
 
@@ -228,8 +230,8 @@ init_list:;
       if ((int) this->header->num_bytes > num_cols) {
         String.clear_at (this->header, num_cols - 1);
       } else
-      while ((int) this->header->num_bytes < num_cols)
-        String.append_byte (this->header, ' ');
+        while ((int) this->header->num_bytes < num_cols)
+          String.append_byte (this->header, ' ');
 
       String.append_with_fmt (render, "%s%s", this->header->bytes, TERM_COLOR_RESET);
     }

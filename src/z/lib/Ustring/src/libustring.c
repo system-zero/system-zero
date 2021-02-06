@@ -7,6 +7,8 @@
 
 #include <z/cenv.h>
 
+static utf8 ustring_get_code (char *);
+
 /* this code belongs to? */
 static const utf8 offsetsFromUTF8[6] = {
   0x00000000UL, 0x00003080UL, 0x000E2080UL,
@@ -18,15 +20,22 @@ static const utf8 offsetsFromUTF8[6] = {
  * is atleast 4/5 years old, lying (during a non network season))
  */
 
-#define UTF8_CODE(s_)                                     \
-({                                                        \
-  int code = 0; int i_ = 0; int sz = 0;                   \
-  do {code <<= 6; code += (uchar) s_[i_++]; sz++;}        \
-  while (s_[i_] and IS_UTF8(s_[i_]));                     \
-                                                          \
-  code -= offsetsFromUTF8[sz-1];                          \
-  code;                                                   \
-})
+static utf8 __ustring_get_code__ (char *buf, int *len) {
+  if (NULL is buf or 0 is *buf) return -1;
+
+  int code = 0;
+  *len = 0;
+
+  int i = 0;
+  do {
+    code <<= 6;
+    code += (uchar) buf[i++];
+    (*len)++;
+  } while (buf[i] and IS_UTF8 (buf[i]));
+
+  code -= offsetsFromUTF8[*len - 1];
+  return code;
+}
 
 static int ustring_charlen (uchar c) {
   if (c < 0x80) return 1;
@@ -83,7 +92,10 @@ static utf8 ustring_get_nth_character_code (char *bytes, size_t len, int nth) {
   if (sp is bytes and nth isnot 1)
     return 0;
 
-  return UTF8_CODE (sp);
+  int llen = 0;
+  utf8 code =  __ustring_get_code__ (sp, &llen);
+  len = llen;
+  return code;
 }
 
 static int ustring_is_nth_character_at (char *bytes, size_t len, int idx) {
@@ -621,7 +633,7 @@ static int cwidth (utf8 c) {
 static int ustring_width (char *s, int tabwidth) {
   if (s[0] >= ' ' and s[0] <= '~') return 1;
   if (s[0] is '\t') return tabwidth;
-  return cwidth (UTF8_CODE (s));
+  return cwidth (ustring_get_code (s));
 }
 
 /* The following function is from the is_utf8 project at:
@@ -968,20 +980,15 @@ push:
   return u->current;
 }
 
+static utf8 ustring_get_code (char *src) {
+  int len = 0;
+  return __ustring_get_code__ (src, &len);
+}
+
 static utf8 ustring_get_code_at (char *src, size_t src_len, int idx, int *len) {
   if (idx >= (int) src_len) return -1;
   char *sp = src + idx;
-  int code = 0;
-  int i = 0;
-  *len = 0;
-  do {
-    code <<= 6;
-    code += (uchar) sp[i++];
-    (*len)++;
-  } while (sp[i] and IS_UTF8 (sp[i]));
-
-  code -= offsetsFromUTF8[*len-1];
-  return code;
+  return __ustring_get_code__ (sp, len);
 }
 
 static char *ustring_character (utf8 c, char *buf, int *len) {
@@ -1241,6 +1248,7 @@ public ustring_T __init_ustring__ (void) {
       .at_nth_character = ustring_at_nth_character,
       .is_nth_character_at = ustring_is_nth_character_at,
       .get = (ustring_get_self) {
+        .code = ustring_get_code,
         .code_at = ustring_get_code_at,
         .num_characters = ustring_get_num_characters,
         .nth_character_code = ustring_get_nth_character_code

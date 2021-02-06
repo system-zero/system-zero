@@ -30,7 +30,7 @@ typedef int clockid_t;
 
 #include <z/cenv.h>
 
-private jsmntok_t *jsmn_alloc_token(jsmn_parser *parser, jsmntok_t *tokens,
+static jsmntok_t *jsmn_alloc_token(jsmn_parser *parser, jsmntok_t *tokens,
                                    const size_t num_tokens) {
   jsmntok_t *tok;
   if (parser->toknext >= num_tokens) {
@@ -48,7 +48,7 @@ private jsmntok_t *jsmn_alloc_token(jsmn_parser *parser, jsmntok_t *tokens,
 /**
  * Fills token type and boundaries.
  */
-private void jsmn_fill_token(jsmntok_t *token, const jsmntype_t type,
+static void jsmn_fill_token(jsmntok_t *token, const jsmntype_t type,
                             const int start, const int end) {
   token->type = type;
   token->start = start;
@@ -59,7 +59,7 @@ private void jsmn_fill_token(jsmntok_t *token, const jsmntype_t type,
 /**
  * Fills next available token with JSON primitive.
  */
-private int jsmn_parse_primitive(jsmn_parser *parser, const char *js,
+static int jsmn_parse_primitive(jsmn_parser *parser, const char *js,
                                 const size_t len, jsmntok_t *tokens,
                                 const size_t num_tokens) {
   jsmntok_t *token;
@@ -114,7 +114,7 @@ found:
 /**
  * Fills next token with JSON string.
  */
-private int jsmn_parse_string(jsmn_parser *parser, const char *js,
+static int jsmn_parse_string(jsmn_parser *parser, const char *js,
                              const size_t len, jsmntok_t *tokens,
                              const size_t num_tokens) {
   jsmntok_t *token;
@@ -189,7 +189,7 @@ private int jsmn_parse_string(jsmn_parser *parser, const char *js,
 /**
  * Parse JSON string and fill tokens.
  */
-private int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
+static int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
                         jsmntok_t *tokens, const unsigned int num_tokens) {
   int r;
   int i;
@@ -381,13 +381,13 @@ private int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
  * available.
  */
 
-private void jsmn_init(jsmn_parser *parser) {
+static void jsmn_init(jsmn_parser *parser) {
   parser->pos = 0;
   parser->toknext = 0;
   parser->toksuper = -1;
 }
 
-private void json_release (json_t **thisp) {
+static void json_release (json_t **thisp) {
   json_t *this = *thisp;
   if (NULL is this) return;
   String.release (this->data);
@@ -406,7 +406,7 @@ private void json_release (json_t **thisp) {
   thisp = NULL;
 }
 
-private json_t *json_new (int num_tokens, JsonParse_cb parse_cb,
+static json_t *json_new (int num_tokens, JsonParse_cb parse_cb,
                                      JsonGetData_cb get_data_cb) {
   json_t *this = Alloc (sizeof (json_t));
   this->num_tokens = (0 > num_tokens ? JSON_NUM_TOKENS : num_tokens);
@@ -420,7 +420,7 @@ private json_t *json_new (int num_tokens, JsonParse_cb parse_cb,
   return this;
 }
 
-private int parse_json (json_t *this) {
+static int parse_json (json_t *this) {
   if (NOTOK is this->get_data (this)) return NOTOK;
 
   this->retval = jsmn_parse (this->jsmn, this->data->bytes, this->data->num_bytes,

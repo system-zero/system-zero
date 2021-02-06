@@ -63,6 +63,11 @@ STATIC_CFLAGS := -static
 
 FLAGS         := $(BASE_FLAGS)
 
+USERNAME  := (shell id -un)
+GROUPNAME := (shell id -gn)
+
+FLAGS += -DUSERNAME='"$(USERNAME)"' -DGROUPNAME='"$(GROUPNAME)"'
+
 CHECK_PTR_BOUNDS_FLAGS := -mmpx -fcheck-pointer-bounds
 
 CHECK_PTR_BOUNDS := 0
