@@ -35,7 +35,7 @@ typedef struct sys_env_opts {
   .overwrite = 1,       \
   .username = NULL,     \
   .groupname = NULL,    \
-  .termname = NULL,     \
+  .termname = "vt100",  \
   .home = NULL,         \
   .uid = -1,            \
   .gid = -1,            \

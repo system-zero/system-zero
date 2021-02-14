@@ -178,6 +178,7 @@ static char  *cstring_trim_end (char *bytes, char c) {
     if (*sp isnot c) break;
     *sp = '\0';
     if (sp is bytes) break;
+    sp--;
   }
   return bytes;
 }

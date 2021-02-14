@@ -314,6 +314,286 @@ Search:
                             with --load-file=file.i, to restore it,
                             default filename: $SYSDATADIR/images/currentbufname.i)
   :@edit_image            (edit the current process image script (if exists))
+  :@info [--buf,--win,--ed] (with no arguments defaults to --buf) (this prints
+                          details to the scratch buffer of the corresponded arguments)
+  :`man [--section=int] manpage  (display man page on the scratch buffer)
   :q[!] [--global]        (quit (if force[!], do not check for modified buffers),
                               (if --global exit from all running editor instances))
+
+  Unified Diff:
+  This feature requires (for now) the `diff' utility.
+
+  The :diff command open a dedicated "diff" buffer, with the results (if any) of
+  the differences (in a unified format), between the buffer in memory with the one
+  that is written on the disk.
+  Note that it first clears the previous diff if any.
+
+  The :diff command can take an "--origin" argument. In this case the command will
+  display any differences, between the backup file and and the buffer in memory.
+  For that to work the "backfile" option should be set (either on invocation or by
+  using the :set --backupfile command first with the conjunction with the :@bufbackup
+  command. Otherwise a warning message should be displayed.
+
+  The :diffbuf command gives the focus to this "diff" buffer. Note, that this buffer
+  can be quickly closed with 'q', line in a pager (likewise for the other special
+  buffers, like the message buffer or the scratch buffer).
+
+  Another usage of this feature is when quiting normally with :quit (without forcing) 
+  and the buffer has been modified.
+  In that case a dialog (below) presents some options:
+
+    "[bufname] has been modified since last change
+     continue writing? [yY|nN], [cC]ansel, unified [d]iff?"
+
+    on 'y': write the buffer and continue
+    on 'n': continue without writing
+    on 'c': cancel operation at this point (some buffers might be closed already)
+    on 'd': print to the stdout the unified diff and redo the question (note that
+            when printing to the stdout, the previous terminal state is restored;
+            any key can bring back the focus)
+
+  UTF-8 Validation:
+  There are two ways to check for invalid UTF-8 byte sequences.
+  1. using the command :@validate_utf8 filename
+  2. in visual linewise mode, by pressing v or through tab completion
+
+  In both cases any error is redirected to the scratch buffer. It doesn't
+  and (probably) never is going to do any magic, so the function is mostly
+  only informational (at least for now).
+  Usually any such invalid byte sequence is visually inspected as it messes
+  up the screen.
+
+  The code for this functionality is from the is_utf8 project at:
+  https://github.com/JulienPalard/is_utf8
+  specifically the is_utf8.c unit and the is_utf8() function
+  Many Thanks.
+
+  Copyright (c) 2013 Palard Julien. All rights reserved.
+  but see src/lib/utf8/is_utf8.c for details.
+
+  Regexp:
+  This library uses a slightly modified version of the slre machine, which is an
+  ISO C library that implements a subset of Perl regular expression syntax, see
+  and clone at:
+
+  https://github.com/cesanta/slre.git
+  Many thanks.
+
+  The substitution string in the ":substitute command", can use '&' to denote the
+  full captured matched string.
+
+  For captured substring a \1\2... can be used to mean, `nth' captured substring
+  numbering from one.
+
+  It is also possible to force caseless searching, by using (like pcre) (?i) in front
+  of the pattern. This option won't work with multibyte characters. Searching for
+  multibyte characters it should work properly though.
+
+  To include a white space, the string should be (double) quoted. In that case a
+  literal double quote '"', should be escaped. Alternatively a \s can be used to
+  include a white space.
+
+  Re Syntax.
+    ^       Match beginning of a buffer
+    $       Match end of a buffer
+    ()      Grouping and substring capturing
+    \s      Match whitespace
+    \S      Match non-whitespace
+    \d      Match decimal digit
+    \n      Match new line character
+    \r      Match line feed character
+    \f      Match form feed character
+    \v      Match vertical tab character
+    \t      Match horizontal tab character
+    \b      Match backspace character
+    +       Match one or more times (greedy)
+    +?      Match one or more times (non-greedy)
+    *       Match zero or more times (greedy)
+    *?      Match zero or more times (non-greedy)
+    ?       Match zero or once (non-greedy)
+    x|y     Match x or y (alternation operator)
+    \meta   Match one of the meta character: ^$().[]*+?|\
+    \xHH    Match byte with hex value 0xHH, e.g. \x4a
+    [...]   Match any character from set. Ranges like [a-z] are supported
+    [^...]  Match any character but ones from set
+
+  A pattern can start with (?i) to denote `ignore case`
+
+  Registers and Marks:
+  Both are supported but with the minimal features (same with other myriad details
+  that needs care).
+
+    Mark set:
+    [abcdghjklqwertyuiopzxcvbnm1234567890]
+    Special Marks:
+    - unnamed mark [`] jumps to the previous position
+
+    Register set:
+    [abcdghjklqwertyuiopzxsvbnm1234567890ABCDGHJKLQWERTYUIOPZXSVBNM]
+
+    Special Registers:
+    - unnamed ["] register (default)
+    - current filename [%] register
+    - last search [/] register
+    - last command line [:] register
+    - registers [+*] send|receive text to|from X clipboard (if xclip is available)
+    - blackhole [_] register, which stores nothing
+    - expression [=] register (experimental) (runtime code evaluation)
+    - CTRL('w') current word
+    - shared [`] register (accessed by all the editor instances)
+
+  Note that for uppercase [A-Z], the content is appended to the current content,
+  while for the [a-z] set, any previous content is replaced.
+  An uppercase register can be cleared, by using in Normal mode the "-" command,
+  prefixed with '"' and the register letter, e.g., "Z- for the "Z" register.
+
+  History Completion Semantics (command line and search):
+   - the ARROW_UP key starts from the last entry set in history, and scrolls down
+     to the past entries
+
+   - the ARROW_DOWN key starts from the first entry, and scrolls up to most recent
+
+  Glob Support:
+    (for now)
+    - this is limited to just one directory depth
+    - it uses only '*'
+    - and understands (or should):
+      `*'
+      `/some/dir/*'
+      `*string' or `string*string' or `string*'
+        (likewise for directories)
+
+    Note: many commands have a --recursive option
+
+  Menus:
+  Many completions (and there are many) are based on menus.
+    Semantics and Keys:
+    Navigation keys:
+    - left and right (for left and right motions)
+      the left key should move the focus to the previous item on line, unless the
+      focus is on the first item in line, which in that case should focus to the
+      previous item (the last one on the previous line, unless is on the first line
+      which in that case should jump to the last item (the last item to the last
+      line))
+
+    - the right key should jump to the next item, unless the focus is on the last
+      item, which in that case should focus to the next item (the first one on the
+      next line, unless is on the last line, which in that case should jump to the
+      first item (the first item to the first line))
+
+    - page down/up keys for page down|up motions
+
+    - tab key is like the right key
+
+    Decision keys:
+    - Enter accepts selection; the function should return the focused item to the
+      caller
+
+    - Spacebar can also accept selection if it is enabled by the caller. That is
+      because a space can change the initial pattern|seed which calculates the
+      displayed results. But using the spacebar speeds a lot of those operations,
+      so in most cases is enabled, even in cases like CTRL('n') in insert mode.
+
+    - Escape key aborts the operation
+
+  In all the cases the window state should be restored afterwards.
+
+  The sample Application that provides the main() function, can also read
+  from standard input to an unnamed buffer. Thus it can be used as a pager:
+
+     git diff "$@" | vedas --ftype=diff --pager "$@"
+
+  Searching Files:
+  This is a really quite basic emulation of quickfix vim's windows, written quite
+  early at the development, so there has to be some discipline when is being used,
+  as there a couple of things that need care.
+
+  The command :vgrep it takes a pattern and at least a filename as argument[s]:
+
+    :vgrep --pat=`pattern' [-r|--recursive] file[s]
+
+  This should open a unique window intended only for searches and re-accessible
+  with:
+
+    :searches  (though it might be wise a `:copen' alias (to match vim's expectation))
+
+  This window should open a frame at the bottom, with the results (if any) and it
+  will set the pointer to the first item from the sorted and unique in items list.
+
+  A carriage return should open the filename at the specific line number at the
+  frame 0.
+
+  A `q' on the results frame (the last one), will quit the window and focus again
+  to the previous state (as it acts like a pager).
+
+  This command can search recursively and skips (as a start) any object file.
+
+  Note that because it is a really basic implementation, some unexpected results
+  might occur, if there is no usage discipline of this feature (for instance :bd
+  can bring some confusion to the layout and the functionality).
+
+  Spelling:
+  The application can provide spelling capabilities, using very simple code, based
+  on an idea by Peter Norvig at:
+  http://norvig.com/spell-correct.html
+
+  The algorithms for transforming the `word', except the case handling are based
+  on the checkmate_spell project at: https://github.com/syb0rg/checkmate
+
+  Almost same code at: https://github.com/marcelotoledo/spelling_corrector
+
+  Copyright  (C)  2007  Marcelo Toledo <marcelo@marcelotoledo.com>
+
+  Version: 1.0
+  Keywords: spell corrector
+  Author: Marcelo Toledo <marcelo@marcelotoledo.com>
+  Maintainer: Marcelo Toledo <marcelo@marcelotoledo.com>
+  URL: http://marcelotoledo.com
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
+
+  The word database is from:
+  https://github.com/first20hours/google-10000-english
+  Data files are derived from the Google Web Trillion Word Corpus, as described
+  by Thorsten Brants and Alex Franz
+  http://googleresearch.blogspot.com/2006/08/all-our-n-gram-are-belong-to-you.html
+  and distributed by the Linguistic Data Consortium:
+  http://www.ldc.upenn.edu/Catalog/CatalogEntry.jsp?catalogId=LDC2006T13.
+  Subsets of this corpus distributed by Peter Novig:
+  http://norvig.com/ngrams/
+  Corpus editing and cleanup by Josh Kaufman.
+
+  The above dictionary contains the 10000 most frequently used english words,
+  and can be extended through the application by pressing 'a' on the dialog.
+
+  This implementation offers ways to check for mispelling words.
+  1. using the command line :spell --range=`range'
+  2. on visual linewise mode, by pressing `S' or by using tab completion
+  3. on visual characterize mode, by pressing `S' or by using tab completion
+  4. on 'W' in normal mode
+  5. on 'F' in normal mode (file operation mode)
+
+  As it is a very simple approach with really few lines of code, it it is obvious
+  that there is not guarantee, that will find and correct all the mispelled words
+  in the document, though it can be taught with proper usage.
+
+  This is the initial implementation and some more work is needed to make it more
+  accurate, though for a start is serves its purpose quite satisfactory, plus there
+  is no requirement and already helped me to this document.
+
+  Saving and Restoring current layout.
+  Setting at the runtime:
+
+    :set --save-image=1 --image-name=name --persistent-layout=1
+
+  This will save the current editor, window and buffer instances.
+  If not a name was given, by default will be the basename (minus the extension) of
+  the current buffer.
+
+  To restore the saved layout, issue on invocation:
+
+     E --load-file=name
 </pre>

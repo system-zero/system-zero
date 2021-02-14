@@ -1,6 +1,6 @@
 API      := 0
 REV      := 0
-VERSION  :=  $(API).$(REV)
+VERSION  := $(API).$(REV)
 
 # macOS doesn't have realpath by default (available through coreutils)
 # THISDIR := $(shell realpath .)
@@ -16,6 +16,8 @@ SYS           := $(SYSKERNEL)-$(SYSARCH)
 SRCDIR         = $(THISDIR)/src
 
 SYSDIR        := $(THISDIR)/sys/$(SYSARCH)
+SYSBINDIR      = $(SYSDIR)/bin
+SYSLIBDIR      = $(SYSDIR)/lib
 
 DEBUG         := 1
 

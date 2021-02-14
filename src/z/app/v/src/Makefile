@@ -94,6 +94,7 @@ FLAGS += -lterm-$(VERSION) -lfile-$(VERSION)
 
 V_WM_STATIC_FLAGS  = -ldir-$(VERSION) -lreadline-$(VERSION) -lvideo-$(VERSION)
 V_WM_STATIC_FLAGS += -lvstring-$(VERSION) -lpath-$(VERSION)
+V_WM_STATIC_FLAGS += -lsys-$(VERSION) -lsmap-$(VERSION)
 
 v-wm-shared:
 	$(CC) $(V_WM).c $(FLAGS) -o $(SYSBINDIR)/$(V_WM)-shared

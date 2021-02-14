@@ -10,6 +10,8 @@
 
 #define MAX_FRAMES 3
 
+#define DEFAULT_LANG_MODE  "en"
+
 #define DEFAULT_SHIFTWIDTH 0
 #define DEFAULT_PROMPT_CHAR ':'
 #define DEFAULT_ON_EMPTY_LINE_STRING "~"
@@ -98,8 +100,8 @@
 
 #define Notword ".,?/+*-=~%<>[](){}\\'\";"
 #define Notword_len 22
-#define Notfname "|][\""
-#define Notfname_len 4
+#define Notfname "|][{}\":;*?><,()"
+#define Notfname_len 15
 
 /* The following macros, are visual assistants and allow us to understand the
  * various boolean function arguments (both, in the function signature, but
@@ -384,6 +386,7 @@ typedef int  (*BufNormalEnd_cb) (buf_t **, utf8, int, int);
 typedef int  (*BufNormalOng_cb) (buf_t **, int);
 typedef int  (*Balanced_cb) (buf_t **, int, int);
 typedef int  (*ExprRegister_cb) (ed_t *, buf_t *, int);
+typedef utf8 (*LangGetKey_cb) (ed_t *, char *);
 typedef char *(*FtypeOpenFnameUnderCursor_cb) (char *, size_t, size_t);
 typedef dim_t **(*WinDimCalc_cb) (win_t *, int, int, int, int);
 typedef string_t *(*FtypeAutoIndent_cb) (buf_t *, row_t *);
@@ -488,6 +491,8 @@ struct bufinfo_t {
     at_frame,
     cur_idx,
     is_writable;
+
+  long autosave;
 
   size_t
     num_bytes,
@@ -652,7 +657,7 @@ typedef struct error_T {
 } error_T;
 
 typedef struct buf_iter_self {
-  void (*free) (buf_t *, bufiter_t *);
+  void (*release) (buf_t *, bufiter_t *);
 
   bufiter_t
     *(*new)  (buf_t *, int),
@@ -746,6 +751,7 @@ typedef struct buf_set_self {
     (*on_emptyline) (buf_t *, char *),
     (*video_first_row) (buf_t *, int),
     (*show_statusline) (buf_t *, int);
+
 } buf_set_self;
 
 typedef struct buf_syn_self {
@@ -1124,8 +1130,10 @@ typedef struct ed_set_self {
     (*topline) (ed_t *, buf_t *),
     (*readline_cb) (ed_t *, BufReadline_cb),
     (*lang_map) (ed_t *, int[][26]),
+    (*lang_mode) (ed_t *, char *),
     (*record_cb) (ed_t *, Record_cb),
     (*at_exit_cb) (ed_t *, EdAtExit_cb),
+    (*lang_getkey) (ed_t *, LangGetKey_cb),
     (*i_record_cb) (ed_t *, IRecord_cb),
     (*expr_reg_cb) (ed_t *, ExprRegister_cb),
     (*init_record_cb) (ed_t *, InitRecord_cb),

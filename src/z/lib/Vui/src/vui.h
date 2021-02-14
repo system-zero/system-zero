@@ -95,7 +95,7 @@ typedef struct menu_opts {
   .video = NULL,                            \
   .term = NULL,                             \
   .process_list_cb = NULL,                  \
-  .getch_cb = IO.getkey,                    \
+  .getch_cb = Input.getkey,                 \
   .user_data_first = NULL,                  \
   .user_data_second = NULL,                 \
   __VA_ARGS__                               \

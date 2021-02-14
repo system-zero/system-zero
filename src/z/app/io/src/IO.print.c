@@ -10,13 +10,13 @@
 
 static int IO_print (char *buf, int parse_escapes) {
   ifnot (parse_escapes)
-    return IO.print (buf);
+    return Stdout.print (buf);
 
   string_t *out = IO.parse_escapes (buf);
   if (NULL is out)
     return NOTOK;
 
-  idx_t nbytes = IO.print (out->bytes);
+  idx_t nbytes = Stdout.print (out->bytes);
   String.release (out);
   return nbytes;
 }

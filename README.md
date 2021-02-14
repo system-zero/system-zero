@@ -602,12 +602,7 @@ The meaning of the existance of Rust is to become a safe system language, that
 will offer, close to C[++] performance, with a model that is called  borrowing
 and owning. To do that, the genious programmers, created a new tottaly system,
 but which is nothing like that as before, so programmers should dedicate  some
-time to understand. In a sense this is called evolution, as researching, it is
-is really the path that we have to walk.  But it is not that easy, for  almost
-everyone to pick up quickly, no matter the available documentation  resources.
-So it looks complicated, some say that is even more complicated than C++. C++
-can also be considered as a safe language, if the programmer  choose the  safe
-mechanisms that C++ offers, for a small price of this abstraction.
+time to understand.
 
 We know that C is not safe.  It doesn't do any automatic memory managment, and
 the compiler it will not prevent you or even warn you usually, from blowing up
@@ -616,41 +611,28 @@ worries for a better world. But...
 
 To be continued ...
 
-License: I  understand the UNLICENSE license  kind of thought We  do not need.
-laws and licenses to make the right thing                                    .
+License: I  understand the UNLICENSE license  kind of thought. We  do not need
+laws and licenses to make the right thing.
 
 But I respect a lot the GNU philosophy and I feel that we owe a lot to the GNU
 project. We  can be sure, that  we wouldn't be here  if it wasn't the  GPL and
 GNU.
 
-That is the reason for the GPL2. However,  and I do not know if it is possible
-I would like to release it and with  the UNLICENSE or to the Public Domain, or
-to even  more liberal licenses. But  i do not  know them nor i  can understand
-these laws, so i  plead guilty beforehand. In any case my  actual law obeys in
-common sense  and an inner will  to do what  i have to  do by my own,  and not
-because i have to do  because they told me to do. Our law  is and it should be
-streaming from the gained conscience.
+That is the reason for the GPL2. However, our actual law should obey in common
+sense and an inner will, to do what we have to do by our own, and not  because
+we have to do, because they told us to do. Our law should be  straming  by the
+gained consience.
 
 ## Acknowledgements and References:
 
-- [Mir: A jit compiler library.](https://github.com/vnmakarov/mir)
-   
-- [Tinycc: A tiny C compiler.](https://repo.or.cz/tinycc)
-   
-- [Tinyscript: A very simple scripting language.](https://github.com/totalspectrum/tinyscript)
-   
-- [Zig: A generar purpose programming language.](https://ziglang.org/)
-   
-- [Dictu: A simple programming language.](https://github.com/dictu-lang/Dictu)
-   
-- [VoidLinux : A Linux distribution without systemd.](https://voidlinux.org/)
-   
-- [Tagha: A small process virtual machine.](https://github.com/assyrianic/Tagha)
-   
-- [Crafting Interpreters.](https://github.com/munificent/craftinginterpreters)
-   
-- [Build Your Own Lisp.](https://github.com/orangeduck/BuildYourOwnLisp)
-   
-- [A Programming Language in Javascript.](http://lisperator.net/pltut/)
-   
-- [Linux From Scratch.](https://linuxfromscratch.org)
+* [Mir: A jit compiler library.](https://github.com/vnmakarov/mir)
+* [Tinycc: A tiny C compiler.](https://repo.or.cz/tinycc)
+* [Tinyscript: A very simple scripting language.](https://github.com/totalspectrum/tinyscript)
+* [Zig: A generar purpose programming language.](https://ziglang.org/)
+* [Dictu: A simple programming language.](https://github.com/dictu-lang/Dictu)
+* [VoidLinux : A Linux distribution without systemd.](https://voidlinux.org/)
+* [Tagha: A small process virtual machine.](https://github.com/assyrianic/Tagha)
+* [Crafting Interpreters.](https://github.com/munificent/craftinginterpreters)
+* [Build Your Own Lisp.](https://github.com/orangeduck/BuildYourOwnLisp)
+* [A Programming Language in Javascript.](http://lisperator.net/pltut/)
+* [Linux From Scratch.](https://linuxfromscratch.org)

@@ -329,7 +329,7 @@ static readline_t *readline_complete_last_arg (readline_t *this) {
 
   this->last_component->current = this->last_component->head;
 
-  readline_t *lthis = readline_new (this->user_data, this->term, IO.getkey, this->prompt_row,
+  readline_t *lthis = readline_new (this->user_data, this->term, Input.getkey, this->prompt_row,
       1, this->num_cols, this->video);
 
   lthis->at_beg = readline_last_arg_at_beg;
@@ -617,7 +617,7 @@ static readline_t *readline_complete_history (readline_t *this, int *idx, int di
 
   while (lidx < *idx) { it = it->next; lidx++; }
 
-  readline_t *lthis = readline_new (this->user_data, this->term, IO.getkey, this->prompt_row,
+  readline_t *lthis = readline_new (this->user_data, this->term, Input.getkey, this->prompt_row,
       1, this->num_cols, this->video);
 
   lthis->prompt_row = this->first_row - 1;

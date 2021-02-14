@@ -39,7 +39,7 @@ int main (int argc, char **argv) {
   size = File.size (argv[0]);
 
 print:
-  fprintf (stdout, "%zd\n", size);
+  Stdout.print_fmt ("%zd\n", size);
 
   return retval;
 }

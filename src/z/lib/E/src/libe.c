@@ -165,7 +165,7 @@ static menu_t *ed_menu_new (ed_t *this, buf_t *buf, MenuProcessList_cb cb) {
 static string_t *buf_input_box (buf_t *this, int row, int col,
                             int abort_on_escape, char *buf) {
   string_t *str = NULL;
-  readline_t *rl = Readline.new ($my(root), $my(term_ptr), IO.getkey, row,
+  readline_t *rl = Readline.new ($my(root), $my(term_ptr), Input.getkey, row,
       col, $my(dim)->num_cols - col + 1, $my(video));
 
   rl->opts &= ~READLINE_OPT_HAS_HISTORY_COMPLETION;
@@ -230,7 +230,7 @@ static dim_t **ed_dim_calc (ed_t *this, int num_rows, int num_frames,
 
   if (num_rows < rows) {
     Term.reset ($my(term));
-    fprintf (stderr, "Available LINES are less than the required to be functional\n");
+    Stderr.print ("Available LINES are less than the required to be functional\n");
     exit (1);
   }
 
@@ -1163,7 +1163,7 @@ static int buf_interpret (buf_t **thisp, char *malloced) {
   free (malloced);
 
   Term.set_mode ($my(term_ptr), 'r');
-  IO.getkey (STDIN_FILENO);
+  Input.getkey (STDIN_FILENO);
   Term.set ($my(term_ptr));
 
   if (retval is I_ERR_SYNTAX)
@@ -1496,6 +1496,10 @@ static int buf_com_set (buf_t *this, readline_t *rl) {
   ifnot (NULL is arg)
     Root.set.persistent_layout ($OurRoot, atoi (arg->bytes));
 
+  arg = Readline.get.anytype_arg (rl, "lang-mode");
+  ifnot (NULL is arg)
+    Ed.set.lang_mode ($my(root), arg->bytes);
+
   if (Readline.arg.exists (rl, "backupfile")) {
     arg = Readline.get.anytype_arg (rl, "backup-suffix");
     self(set.backup, 1, (NULL is arg ? BACKUP_SUFFIX : arg->bytes));
@@ -1710,7 +1714,7 @@ static int mark_get_idx (int c) {
 
 static int buf_mark_set (buf_t *this, int mark) {
   if (mark < 0) {
-    mark = mark_get_idx (IO.getkey (STDIN_FILENO));
+    mark = mark_get_idx (Input.getkey (STDIN_FILENO));
     if (-1 is mark) return NOTHING_TODO;
   }
 
@@ -1725,7 +1729,7 @@ static int buf_mark_set (buf_t *this, int mark) {
 }
 
 static int buf_mark_jump (buf_t *this) {
-  int c = mark_get_idx (IO.getkey (STDIN_FILENO));
+  int c = mark_get_idx (Input.getkey (STDIN_FILENO));
   if (-1 is c) return NOTHING_TODO;
 
   mark_t *mark = &$my(marks)[c];
@@ -1777,7 +1781,7 @@ theend:
   return DONE;
 }
 
-static void buf_iter_free (buf_t *unused, bufiter_t *this) {
+static void buf_iter_release (buf_t *unused, bufiter_t *this) {
   (void) unused;
   if (NULL is this) return;
   free (this);
@@ -1823,7 +1827,7 @@ static int __env_check_directory__ (char *dir, char *dir_descr,
   int retval = OK;
 
   if (NULL is dir) {
-    fprintf (stderr, "Fatal Error: NULL (%s) directory argument\n", dir_descr);
+    Stderr.print_fmt ("Fatal Error: NULL (%s) directory argument\n", dir_descr);
     retval = 1;
     goto theend;
   }
@@ -1831,39 +1835,39 @@ static int __env_check_directory__ (char *dir, char *dir_descr,
   int fexists = File.exists (dir);
 
   ifnot (fexists)
-    if (-1 is mkdir (dir, S_IRWXU)) {
-      fprintf (stderr, "Fatal Error: Cannot create %s directory\n", dir);
+    if (NOTOK is Dir.make_parents (dir, S_IRWXU, DirOpts())) {
+      Stderr.print_fmt ("Fatal Error: Cannot create %s directory\n", dir);
       retval = errno;
       goto theend;
     }
 
   if (-1 is access (dir, R_OK)) {
-    fprintf (stderr, "Fatal Error: %s, (%s) directory, Is Not Readable\n", dir_descr, dir);
+    Stderr.print_fmt ("Fatal Error: %s, (%s) directory, Is Not Readable\n", dir_descr, dir);
     retval = errno;
     goto theend;
   }
 
   if (-1 is access (dir, W_OK)) {
-    fprintf (stderr, "Fatal Error: %s, (%s) directory, Is Not Writable\n", dir_descr, dir);
+    Stderr.print_fmt ("Fatal Error: %s, (%s) directory, Is Not Writable\n", dir_descr, dir);
     retval = errno;
     goto theend;
   }
 
   if (-1 is access (dir, X_OK)) {
-    fprintf (stderr, "Fatal Error: %s, (%s) directory, Has Not Execution Bits\n", dir_descr, dir);
+    Stderr.print_fmt ("Fatal Error: %s, (%s) directory, Has Not Execution Bits\n", dir_descr, dir);
     retval = errno;
     goto theend;
   }
 
   struct stat st;
   if (-1 is stat (dir, &st)) {
-    fprintf (stderr, "Fatal Error: %s, (%s) directory, Can not stat()\n", dir_descr, dir);
+    Stderr.print_fmt ("Fatal Error: %s, (%s) directory, Can not stat()\n", dir_descr, dir);
     retval = errno;
     goto theend;
   }
 
   ifnot (S_ISDIR (st.st_mode)) {
-    fprintf (stderr, "Fatal Error: %s, (%s) directory, Is Not A Directory\n", dir_descr, dir);
+    Stderr.print_fmt ("Fatal Error: %s, (%s) directory, Is Not A Directory\n", dir_descr, dir);
     retval = errno;
     goto theend;
   }
@@ -1872,7 +1876,7 @@ static int __env_check_directory__ (char *dir, char *dir_descr,
     char mode_string[12];
     File.mode.stat_to_string (mode_string, st.st_mode);
     ifnot (Cstring.eq (mode_string, "drwx------")) {
-      fprintf (stderr, "Warning: (%s) directory |%s| permissions is not 0700 or drwx------\n",
+      Stderr.print_fmt ("Warning: (%s) directory |%s| permissions is not 0700 or drwx------\n",
          dir_descr, dir);
 
       if (exit_on_warning) {
@@ -1895,62 +1899,20 @@ static venv_t *venv_new (void) {
   env->uid = getuid ();
   env->gid = getgid ();
 
-  errno = 0;
-  struct passwd *pswd = getpwuid (env->uid);
-  if (NULL is pswd) {
-    char *user = getenv ("USERNAME");
-    if (NULL is user) {
-      #ifdef USERNAME
-      env->user_name = String.new_with (USERNAME);
-      #else
-      fprintf (stderr, "Can not read password record %s\n", strerror (errno));
-      exit (1);
-      #endif
-    } else
-      env->user_name = String.new_with (user);
-  } else
-    env->user_name = String.new_with (pswd->pw_name);
+  env->path = String.new_with (Sys.get.env_value ("PATH"));
+  env->user_name = String.new_with (Sys.get.env_value ("USERNAME"));
+  env->group_name = String.new_with (Sys.get.env_value ("GROUPNAME"));
+  env->home_dir = String.new_with  (Sys.get.env_value ("HOME"));
 
-  struct group *gr = getgrgid (env->gid);
-  if (NULL is gr) {
-    char *group = getenv ("GROUPNAME");
-    if (NULL is group) {
-      #ifdef GROUPNAME
-      env->group_name = String.new_with (GROUPNAME);
-      #else
-      fprintf (stderr, "Can not read group record %s\n", strerror (errno));
-      exit (1);
-      #endif
-    } else
-      env->group_name = String.new_with (group);
-  } else
-    env->group_name = String.new_with (gr->gr_name);
+  if (env->home_dir->bytes[env->home_dir->num_bytes - 1] is DIR_SEP)
+    String.clear_at (env->home_dir, env->home_dir->num_bytes - 1);
 
   char *term_name = getenv ("TERM");
   if (NULL is term_name) {
-    fprintf (stderr, "TERM environment variable isn't set\n");
+    Stderr.print_fmt ("TERM environment variable isn't set\n");
     env->term_name = String.new (1);
   } else
     env->term_name = String.new_with (term_name);
-
-  char *hdir = getenv ("HOME");
-  ifnot (NULL is hdir)
-    env->home_dir = String.new_with (hdir);
-  else {
-    ifnot (NULL is pswd)
-      env->home_dir = String.new_with (pswd->pw_dir);
-    else {
-      #ifdef HOMEDIR
-      env->home_dir = String.new_with (HOMEDIR);
-      #else
-      fprintf (stderr, "HOME environment variable isn't set\n");
-      exit (1);
-      #endif
-    }
-  }
-
-  if (hdir[env->home_dir->num_bytes - 1] is DIR_SEP)
-    String.clear_at (env->home_dir, env->home_dir->num_bytes - 1);
 
   if (env->uid)
     __env_check_directory__ (env->home_dir->bytes, "home directory", 1, 0, 0);
@@ -1984,9 +1946,6 @@ static venv_t *venv_new (void) {
     __env_check_directory__ (env->i_dir->bytes, "integrated interpreter directory", 1, 1, 0);
   if (env->uid)
     __env_check_directory__ (STR_FMT("%s/scripts", env->i_dir->bytes), "integrated interpreter scripts directory", 1, 1, 0);
-
-  char *path = getenv ("PATH");
-  env->path = (path is NULL) ? NULL : String.new_with (path);
 
   env->env_str = String.new (8);
 
@@ -2279,7 +2238,7 @@ static void buf_set_autosave (buf_t *this, long minutes) {
   if (minutes > (60 * 24)) minutes = (60 * 24);
   $my(autosave) = minutes * 60;
   ifnot ($my(saved_sec))
-    Sys.get.clock_sec (DEFAULT_CLOCK);
+    $my(saved_sec) = Sys.get.clock_sec (DEFAULT_CLOCK);
 }
 
 static void buf_set_on_emptyline (buf_t *this, char *str) {
@@ -2778,6 +2737,7 @@ static bufinfo_t *buf_get_info_as_type (buf_t *this) {
   info->is_writable = (($my(flags) & FILE_IS_WRITABLE) ? 1 : 0);
   info->num_bytes = self(get.size);
   info->num_lines = self(get.num_lines);
+  info->autosave = $my(autosave);
   return info;
 }
 
@@ -2940,6 +2900,10 @@ static buf_t *win_buf_new (win_t *win, buf_opts opts) {
   buf_normal_right (this, opts.at_column - 1, DONOT_DRAW);
 
   return this;
+}
+
+static int win_isit_special_type (win_t *this) {
+  return ($my(type) is VED_WIN_SPECIAL_TYPE);
 }
 
 static void win_set_min_rows (win_t *this, int rows) {
@@ -3881,7 +3845,7 @@ static int buf_search (buf_t *this, char com, char *str, utf8 cc) {
 
   MSG(" ");
 
-  readline_t *rl = Readline.new ($my(root), $my(term_ptr), IO.getkey,
+  readline_t *rl = Readline.new ($my(root), $my(term_ptr), Input.getkey,
       *$my(prompt_row_ptr), 1, $my(dim)->num_cols, $my(video));
 
   rl->error = readline_error;
@@ -4553,7 +4517,7 @@ static utf8 buf_quest (buf_t *this, char *qu, utf8 *chs, int len) {
   SEND_ESC_SEQ ($my(video)->fd, TERM_CURSOR_HIDE);
   utf8 c;
   for (;;) {
-    c = IO.getkey (STDIN_FILENO);
+    c = Input.getkey (STDIN_FILENO);
     for (int i = 0; i < len; i++)
       if (chs[i] is c) goto theend;
   }
@@ -4710,7 +4674,7 @@ static int ed_quit (ed_t *ed, int force, int global) {
   win_t *w = ed->head;
 
  while (w) {
-    if ($from(w, type) is VED_WIN_SPECIAL_TYPE) goto winnext;
+    if (win_isit_special_type (w)) goto winnext;
 
     buf_t *this = w->head;
     while (this isnot NULL) {
@@ -5279,7 +5243,7 @@ static int buf_normal_replace_character (buf_t *this) {
   self(Action.set_with_current, Action, REPLACE_LINE);
   self(undo.push, Action);
 
-  utf8 c = IO.getkey (STDIN_FILENO);
+  utf8 c = Input.getkey (STDIN_FILENO);
 
   return self(normal.replace_character_with, c);
 }
@@ -5846,7 +5810,7 @@ static int buf_normal_handle_W (buf_t **thisp) {
     if (c is $myroots(word_actions_chars)[i]) {
       bufiter_t *it = self(iter.new, this->cur_idx);
       retval = $myroots(word_actions_cb)[i] (thisp, fidx, lidx, it, word, c, action);
-      self(iter.free, it);
+      self(iter.release, it);
     }
 
   return retval;
@@ -6011,7 +5975,7 @@ static int buf_normal_handle_F (buf_t **thisp) {
 static int buf_normal_handle_ctrl_w (buf_t **thisp) {
   buf_t *this = *thisp;
 
-  utf8 c = IO.getkey (STDIN_FILENO);
+  utf8 c = Input.getkey (STDIN_FILENO);
 
   switch (c) {
     case CTRL('w'):
@@ -6078,7 +6042,7 @@ static int buf_normal_handle_g (buf_t **thisp, int count) {
 
   if (1 isnot count) return self(normal.goto_linenr, count, DRAW);
 
-  utf8 c = IO.getkey (STDIN_FILENO);
+  utf8 c = Input.getkey (STDIN_FILENO);
   switch (c) {
     case 'g':
       return self(normal.bof, DRAW);
@@ -6113,7 +6077,7 @@ static int buf_normal_handle_G (buf_t *this, int count) {
 
 static int buf_normal_handle_comma (buf_t **thisp) {
   buf_t *this = *thisp;
-  utf8 c = IO.getkey (STDIN_FILENO);
+  utf8 c = Input.getkey (STDIN_FILENO);
   switch (c) {
     case 'n':
       return buf_change (thisp, VED_COM_BUF_CHANGE_NEXT);
@@ -6150,7 +6114,7 @@ static int buf_normal_handle_comma (buf_t **thisp) {
 
 static int buf_handle_ctrl_x (buf_t **thisp) {
   buf_t *this = *thisp;
-  utf8 c = IO.getkey (STDIN_FILENO);
+  utf8 c = Input.getkey (STDIN_FILENO);
   switch (c) {
     case 'l':
     case CTRL('l'):
@@ -6606,14 +6570,14 @@ static int buf_delete_inner (buf_t *this, utf8 c, int regidx) {
 static int buf_normal_handle_c (buf_t **thisp, int count, int regidx) {
   (void) count;
   buf_t *this = *thisp;
-  utf8 c = IO.getkey (STDIN_FILENO);
+  utf8 c = Input.getkey (STDIN_FILENO);
   switch (c) {
     case 'w':
       self(delete.word, regidx);
       return selfp(insert.mode, 'c', NULL);
 
     case 'i':
-      c = IO.getkey (STDIN_FILENO);
+      c = Input.getkey (STDIN_FILENO);
       if (NOTHING_TODO is buf_delete_inner (this, c, regidx))
         return NOTHING_TODO;
 
@@ -6624,7 +6588,7 @@ static int buf_normal_handle_c (buf_t **thisp, int count, int regidx) {
 }
 
 static int buf_normal_handle_d (buf_t *this, int count, int reg) {
-  utf8 c = IO.getkey (STDIN_FILENO);
+  utf8 c = Input.getkey (STDIN_FILENO);
   switch (c) {
     case 'G':
     case END_KEY:
@@ -6824,7 +6788,7 @@ do {                                        \
 #define VIS_HNDL_CASE_REG(reg)                                              \
   case '"':                                                                 \
     if (-1 isnot (reg)) goto theend;                                        \
-    (reg) = ed_reg_get_idx ($my(root), IO.getkey (STDIN_FILENO)); \
+    (reg) = ed_reg_get_idx ($my(root), Input.getkey (STDIN_FILENO)); \
     continue
 
 #define VIS_HNDL_CASE_INT(count)                                            \
@@ -6979,7 +6943,7 @@ static int buf_normal_visual_lw (buf_t **thisp) {
     $my(vis)[0].lidx = this->cur_idx;
     dbuf (this);
 
-    c = IO.getkey (STDIN_FILENO);
+    c = Input.getkey (STDIN_FILENO);
 
 handle_char:
     switch (c) {
@@ -7278,7 +7242,7 @@ static int buf_normal_visual_cw (buf_t **thisp) {
   for (;;) {
     $my(vis)[0].lidx = $mycur(cur_col_idx);
     drow (this);
-    utf8 c = IO.getkey (STDIN_FILENO);
+    utf8 c = Input.getkey (STDIN_FILENO);
 
 handle_char:
     switch (c) {
@@ -7432,7 +7396,7 @@ static int buf_normal_visual_bw (buf_t *this) {
     $my(vis)[0].lidx = $mycur(cur_col_idx);
     dbuf (this);
 
-    utf8 c = IO.getkey (STDIN_FILENO);
+    utf8 c = Input.getkey (STDIN_FILENO);
 
 handle_char:
     switch (c) {
@@ -7822,10 +7786,10 @@ static int ed_win_change (ed_t *this, buf_t **bufp, int com, char *name,
       int tmp_idx = cidx;
       for (;;) {
         win_t *w = self(get.win_by_idx, idx);
-        if (idx is tmp_idx)
+        if (idx is tmp_idx or w is NULL)
           return NOTHING_TODO;
 
-        if ($from(w, type) is VED_WIN_SPECIAL_TYPE) {
+        if (win_isit_special_type (w)) {
           if (com is VED_COM_WIN_CHANGE_PREV) {
             if (idx is 0) idx = this->num_items - 1;
             else idx--;
@@ -8064,7 +8028,7 @@ static int ed_sh_popen (ed_t *ed, buf_t *this, char *com,
 theend:
   ifnot (redir_stdout) {
     Term.set_mode (term, 'r');
-    IO.getkey (STDIN_FILENO);
+    Input.getkey (STDIN_FILENO);
     Term.set (term);
   }
 
@@ -8986,7 +8950,7 @@ static int ed_get_num_readline_commands (ed_t *this) {
 static void readline_reg (readline_t *rl) {
   ed_t *this = (ed_t *) rl->user_data[READLINE_ED_USER_DATA_IDX];
 
-  int regidx = ed_reg_get_idx (this, IO.getkey (STDIN_FILENO));
+  int regidx = ed_reg_get_idx (this, Input.getkey (STDIN_FILENO));
   if (NOTOK is regidx) return;
 
   buf_t *buf = self(get.current_buf);
@@ -9010,7 +8974,7 @@ static int buf_test_key (buf_t *this) {
   char str[128]; char bin[32]; char chr[8]; int len;
   for (;;) {
     Cursor.hide ($my(term_ptr));
-    c = IO.getkey (STDIN_FILENO);
+    c = Input.getkey (STDIN_FILENO);
     snprintf (str, 128, "dec: %d hex: 0x%x octal: 0%o bin: %s char: %s",
         c, c, c, Cstring.itoa (c, bin, 2), Ustring.character (c, chr, &len));
     MSG(str);
@@ -9317,7 +9281,7 @@ theend:
   } else
     self(Action.free, Action);
 
-  self(iter.free, iter);
+  self(iter.release, iter);
   Spell.release (spell, SPELL_DONOT_CLEAR_DICTIONARY);
   return retval;
 }
@@ -9411,7 +9375,7 @@ static int buf_spell_cw_mode_cb (buf_t **thisp, int fidx, int lidx, string_t *st
 
   bufiter_t *iter = self(iter.new, -1);
   int retval = buf_spell_word_cb (thisp, fidx, lidx, iter, str->bytes, c, action);
-  self(iter.free, iter);
+  self(iter.release, iter);
   return retval;
 }
 
@@ -9471,6 +9435,26 @@ static void ed_free_readline_cbs (ed_t *this) {
   free ($my(readline_cbs));
 }
 
+/* This is for normal mode. Better not to mix those two. This is for convenience
+ * when the keyboard layout has been changed through the system */
+static void ed_set_lang_map (ed_t *this, int lmap[][26]) {
+  for (int i = 0; i < 2; i++)
+    for (int j = 0; j < ('z' - 'a') + 1; j++)
+      $my(lmap)[i][j] = lmap[i][j];
+}
+
+/* As this intented for insert mode, though it might be used elsewhere. */
+static void ed_set_lang_getkey (ed_t *this, LangGetKey_cb cb) {
+  $my(lang_getkey) = cb;
+}
+
+static void ed_set_lang_mode (ed_t *this, char *lang_mode) {
+  size_t len = bytelen (lang_mode);
+  if (len > 7) return;
+
+  Cstring.cp ($my(lang_mode), 8, lang_mode, len);
+}
+
 static void ed_set_normal_on_g_cb (ed_t *this, BufNormalOng_cb cb) {
   $my(num_on_normal_g_cbs)++;
   ifnot ($my(num_on_normal_g_cbs) - 1)
@@ -9518,7 +9502,7 @@ static int buf_readline (buf_t **thisp, readline_t *rl) {
 
   int retval = NOTHING_TODO;
 
-  int is_special_win = $myparents(type) is VED_WIN_SPECIAL_TYPE;
+  int is_special_win = win_isit_special_type ($my(parent));
 
   if (rl->state & READLINE_EXEC) goto exec;
 
@@ -9968,7 +9952,7 @@ static buf_t *buf_insert_char_rout (buf_t *this, utf8 c, string_t *cur_insert) {
 static int buf_insert_reg (buf_t **thisp, string_t *cur_insert) {
   buf_t *this = *thisp;
   MSG ("insert register (charwise mode):");
-  int regidx = ed_reg_get_idx ($my(root), IO.getkey (STDIN_FILENO));
+  int regidx = ed_reg_get_idx ($my(root), Input.getkey (STDIN_FILENO));
   if (NOTOK is regidx) return NOTHING_TODO;
 
   if (ERROR is ed_reg_special_set ($my(root), this, regidx))
@@ -9995,6 +9979,13 @@ static int buf_insert_reg (buf_t **thisp, string_t *cur_insert) {
   $my(flags) |= BUF_IS_MODIFIED;
   self(draw_current_row);
   return DONE;
+}
+
+static utf8 ed_lang_getkey (ed_t *this) {
+  if (NULL is $my(lang_getkey) or Cstring.eq ($my(lang_mode), "en"))
+    return Input.getkey (STDIN_FILENO);
+
+  return $my(lang_getkey) (this, $my(lang_mode));
 }
 
 static int buf_insert_mode (buf_t **thisp, utf8 com, char *bytes) {
@@ -10066,7 +10057,8 @@ theloop:
 
 get_char:
     ed_check_msg_status ($my(root));
-    c = IO.getkey (STDIN_FILENO);
+
+    c = ed_lang_getkey ($my(root));
 
 handle_char:
     if (c > 0x7f)
@@ -10349,7 +10341,7 @@ static int ed_get_num_win (ed_t *this, int count_special) {
   int num = 0;
   win_t *it = this->head;
   while (it) {
-    ifnot ($from(it, type) is VED_WIN_SPECIAL_TYPE) num++;
+    ifnot (win_isit_special_type (it)) num++;
     it = it->next;
   }
   return num;
@@ -10362,10 +10354,6 @@ static int ed_get_min_rows (ed_t *this) {
 
 static int ed_get_num_special_win (ed_t *this) {
   return $my(num_special_win);
-}
-
-static int win_isit_special_type (win_t *this) {
-  return ($my(type) is VED_WIN_SPECIAL_TYPE);
 }
 
 static buf_t *ed_get_bufname (ed_t *this, char *fname) {
@@ -11170,12 +11158,6 @@ static void ed_set_state (ed_t *this, int state) {
   $my(state) = state;
 }
 
-static void ed_set_lang_map (ed_t *this, int lmap[][26]) {
-  for (int i = 0; i < 2; i++)
-    for (int j = 0; j < ('z' - 'a') + 1; j++)
-      $my(lmap)[i][j] = lmap[i][j];
-}
-
 static void ed_init_special_win (ed_t *this) {
   ed_get_scratch_buf (this);
   ed_msg_buf (this);
@@ -11334,11 +11316,11 @@ handle_com:
       if ($from(ed, record))
         ed_deinit_record (ed);
       else
-        ed_init_record (ed, IO.getkey (STDIN_FILENO) - '1');
+        ed_init_record (ed, Input.getkey (STDIN_FILENO) - '1');
       break;
 
     case '@':
-      retval = ed_interpr_record (ed, IO.getkey (STDIN_FILENO) - '1');
+      retval = ed_interpr_record (ed, Input.getkey (STDIN_FILENO) - '1');
       break;
 
     case '.':
@@ -11627,7 +11609,7 @@ static int ed_loop (ed_t *ed, buf_t *this) {
 
 get_char:
     ed_check_msg_status (ed);
-    c = IO.getkey (STDIN_FILENO);
+    c = Input.getkey (STDIN_FILENO);
 
 handle_char:
     switch (c) {
@@ -11635,7 +11617,7 @@ handle_char:
 
       case '"':
         if (-1 isnot regidx) goto exec_block;
-        regidx = ed_reg_get_idx (ed, IO.getkey (STDIN_FILENO));
+        regidx = ed_reg_get_idx (ed, Input.getkey (STDIN_FILENO));
         goto get_char;
 
       case '1'...'9':
@@ -11853,6 +11835,7 @@ static void ed_init_commands (ed_t *this) {
   ed_append_command_arg (this, "set", "--image-file=", 13);
   ed_append_command_arg (this, "set", "--image-name=", 13);
   ed_append_command_arg (this, "set", "--backupfile", 12);
+  ed_append_command_arg (this, "set", "--lang-mode=", 12);
   ed_append_command_arg (this, "set", "--tabwidth=", 11);
   ed_append_command_arg (this, "set", "--autosave=", 11);
   ed_append_command_arg (this, "set", "--ftype=", 8);
@@ -11875,7 +11858,7 @@ static void ed_init_commands (ed_t *this) {
 static void readline_expr_reg (readline_t *rl) {
   ed_t *this = (ed_t *) rl->user_data[READLINE_ED_USER_DATA_IDX];
 
-  int regidx = ed_reg_get_idx (this, IO.getkey (STDIN_FILENO));
+  int regidx = ed_reg_get_idx (this, Input.getkey (STDIN_FILENO));
 
   if (NOTOK is regidx) return;
 
@@ -11905,7 +11888,7 @@ static void readline_on_write (readline_t *rl) {
 }
 
 static readline_t *ed_readline_new (ed_t *this) {
-  readline_t *rl = Readline.new (this, $my(term), IO.getkey, $my(prompt_row),
+  readline_t *rl = Readline.new (this, $my(term), Input.getkey, $my(prompt_row),
       1, $my(dim)->num_cols, $my(video)) ;
   if ($my(commands) is NULL) ed_init_commands (this);
   rl->commands = $my(commands);
@@ -11956,16 +11939,18 @@ static ed_T *editor_new (void) {
         .dim = ed_set_dim,
         .state = ed_set_state,
         .topline = ed_set_topline,
-        .readline_cb = ed_set_readline_cb,
         .lang_map = ed_set_lang_map,
+        .lang_mode = ed_set_lang_mode,
         .state_bit = ed_set_state_bit,
         .record_cb = ed_set_record_cb,
         .at_exit_cb = ed_set_at_exit_cb,
         .exit_quick = ed_set_exit_quick,
+        .lang_getkey = ed_set_lang_getkey,
         .screen_size = ed_set_screen_size,
         .current_win = ed_set_current_win,
         .expr_reg_cb = ed_set_expr_reg_cb,
         .i_record_cb = ed_set_i_record_cb,
+        .readline_cb = ed_set_readline_cb,
         .word_actions = ed_set_word_actions,
         .on_normal_g_cb = ed_set_normal_on_g_cb,
         .init_record_cb = ed_set_init_record_cb,
@@ -12206,9 +12191,9 @@ static ed_T *editor_new (void) {
           .from_fp = buf_read_from_fp
         },
         .iter = (buf_iter_self) {
-          .free = buf_iter_free,
           .new = buf_iter_new,
-          .next = buf_iter_next
+          .next = buf_iter_next,
+          .release = buf_iter_release
         },
         .Action = (buf_Action_self) {
           .new = buf_Action_new,
@@ -12478,6 +12463,9 @@ static ed_t *ed_init (E_T *E, ed_opts opts) {
 
   this->name_gen = ('z' - 'a') + 1;
 
+  $my(lang_getkey) = NULL;
+  Cstring.cp ($my(lang_mode), 8, DEFAULT_LANG_MODE, 2);
+
   $my(num_readline_cbs) = $my(num_on_normal_g_cbs) =
   $my(num_lw_mode_cbs) = $my(num_cw_mode_cbs) =
   $my(num_at_exit_cbs) = $my(num_file_mode_cbs) = 0;
@@ -12711,6 +12699,8 @@ static string_t *E_create_image (E_T *this) {
         if (($from(buf, flags) & BUF_IS_SPECIAL)) goto next_buf;
         char *bufname = $from(buf, fname);
         char *ftype_name = $from(buf, ftype)->name;
+        long autosave = $from(buf, autosave);
+        if (autosave > 0) autosave /= 60;
         int cur_row_idx = buf->cur_idx;
 
         String.append_with (img, "\n");
@@ -12724,10 +12714,12 @@ static string_t *E_create_image (E_T *this) {
               "buf = win_buf_init (cwin, frame_zero, flags)\n"
               "buf_init_fname (buf, \"%s\")\n"
               "buf_set_ftype (buf, \"%s\")\n"
+              "buf_set_autosave (buf, %ld)\n"
               "buf_set_row_idx (buf, %d)\n"
               "win_append_buf (cwin, buf)\n",
             bufname,
             ftype_name,
+            autosave,
             cur_row_idx);
 
 next_buf:
@@ -13279,6 +13271,12 @@ ival_t i_buf_set_ftype (i_t *this, buf_t *buf, char *ftype) {
   return OK;
 }
 
+ival_t i_buf_set_autosave (i_t *this, buf_t *buf, long minutes) {
+  (void) this;
+  buf_set_autosave (buf, minutes);
+  return OK;
+}
+
 ival_t i_buf_set_row_idx (i_t *this, buf_t *buf, int row) {
   (void) this;
   buf_set_row_idx (buf, row, NO_OFFSET, 1);
@@ -13397,6 +13395,7 @@ struct ifun_t {
   { "ed_get_current_win",    (ival_t) i_ed_get_current_win, 1},
   { "ed_set_current_win",    (ival_t) i_ed_set_current_win, 2},
   { "buf_set_ftype",         (ival_t) i_buf_set_ftype, 2},
+  { "buf_set_autosave",      (ival_t) i_buf_set_autosave, 2},
   { "buf_set_row_idx",       (ival_t) i_buf_set_row_idx, 2},
   { "buf_normal_page_up",    (ival_t) i_buf_normal_page_up, 3},
   { "buf_normal_page_down",  (ival_t) i_buf_normal_page_down, 3},

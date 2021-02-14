@@ -110,7 +110,7 @@ static int auth_pam (auth_t *this, const char *pass) {
       &pamc, &pamh);
 
   if (retval isnot PAM_SUCCESS) {
-    fprintf (stderr, "pam_start(): %s\n", pam_strerror (pamh, retval));
+    Stderr.print_fmt ("pam_start(): %s\n", pam_strerror (pamh, retval));
     goto theend;
   }
 
@@ -124,7 +124,7 @@ static int auth_pam (auth_t *this, const char *pass) {
 
       retval = pam_set_item (pamh, PAM_TTY, ttydev);
       if (retval isnot PAM_SUCCESS) {
-        fprintf (stderr, "pam_set_item(): %s\n", pam_strerror (pamh, retval));
+        Stderr.print_fmt ("pam_set_item(): %s\n", pam_strerror (pamh, retval));
         goto theend;
       }
     }
@@ -217,7 +217,7 @@ static void *auth_get_user_data (auth_t *this) {
 }
 
 static int auth_get_passwd_default_cb (auth_t *this) {
-  IO.print ("passwd:");
+  Stdout.print ("passwd:");
 
   term_t *term = Term.new ();
   Term.raw_mode (term);
@@ -227,7 +227,7 @@ static int auth_get_passwd_default_cb (auth_t *this) {
   utf8 c;
   char buf[8];
   int len;
-  while ((c = IO.getkey (STDIN_FILENO)) isnot '\r') {
+  while ((c = Input.getkey (STDIN_FILENO)) isnot '\r') {
     len = 0;
     buf[0] = '\0';
     Ustring.character (c, buf, &len);
@@ -235,7 +235,7 @@ static int auth_get_passwd_default_cb (auth_t *this) {
     memset (buf, 0, sizeof (buf));
   }
 
-  IO.print ("\r\n");
+  Stdout.print ("\r\n");
 
   Term.orig_mode (term);
   Term.release (&term);
@@ -318,51 +318,51 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
   gid_t gid = getgid ();
 
   if (ROOT_UID is uid or ROOT_GID is gid) {
-    fprintf (stderr, "can not be called by the root user\n");
+    Stderr.print ("can not be called by the root user\n");
     return NULL;
   }
 
   errno = 0;
   struct passwd *pswd = getpwuid (uid);
   if (NULL is pswd) {
-    fprintf (stderr, "can not read password record %s\n", strerror (errno));
+    Stderr.print_fmt ("can not read password record %s\n", strerror (errno));
     return NULL;
   }
 
   size_t name_len = bytelen (pswd->pw_name);
 
   ifnot (name_len) {
-    fprintf (stderr, "user name has no length\n");
+    Stderr.print ("user name has no length\n");
     return NULL;
   }
 
   if (name_len > MAXLEN_USERNAME) {
-    fprintf (stderr, "user name exceeds maximum length %d\n", MAXLEN_USERNAME);
+    Stderr.print_fmt ("user name exceeds maximum length %d\n", MAXLEN_USERNAME);
     return NULL;
   }
 
   ifnot (NULL is user) {
     ifnot (Cstring.eq  (pswd->pw_name, user)) {
-      fprintf (stderr, "%s: invalid user\n", user);
+      Stderr.print_fmt ("%s: invalid user\n", user);
       return NULL;
     }
   }
 
   struct group *gr = getgrgid (gid);
   if (NULL is gr) {
-    fprintf (stderr, "can not read group record %s\n", strerror (errno));
+    Stderr.print_fmt ("can not read group record %s\n", strerror (errno));
     return NULL;
   }
 
   size_t group_len = bytelen (gr->gr_name);
 
   ifnot (group_len) {
-    fprintf (stderr, "group name has no length\n");
+    Stderr.print ("group name has no length\n");
     return NULL;
   }
 
   if (group_len > MAXLEN_USERNAME) {
-    fprintf (stderr, "group name exceeds maximum length %d\n", MAXLEN_USERNAME);
+    Stderr.print_fmt ("group name exceeds maximum length %d\n", MAXLEN_USERNAME);
     return NULL;
   }
 

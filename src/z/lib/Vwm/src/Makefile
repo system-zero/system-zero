@@ -83,6 +83,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -DTMPDIR='"$(SYSTMPDIR)"'
+LIBFLAGS += -lsys-$(VERSION)
 LIBFLAGS += -lstring-$(VERSION) -lustring-$(VERSION) -lcstring-$(VERSION)
 LIBFLAGS += -lvstring-$(VERSION)
 LIBFLAGS += -ldir-$(VERSION) -lterm-$(VERSION) -lfile-$(VERSION)

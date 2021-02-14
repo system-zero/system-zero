@@ -12,7 +12,6 @@
 
 #include <z/cenv.h>
 
-
 static vwm_t *init () {
   __VWM__ = __init_vwm__ ();
   return __VWM__;

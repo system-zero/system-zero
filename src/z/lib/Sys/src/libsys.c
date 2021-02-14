@@ -12,6 +12,7 @@
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
+#define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_PWD
 #define REQUIRE_GRP
 #define REQUIRE_SYS_TYPE      DONOT_DECLARE
@@ -149,47 +150,80 @@ static int sys_init_environment (sys_env_opts opts) {
       }
 
       if (opts.exit_on_error) {
-        fprintf (stderr, "Can not read group record %s\n", strerror (errno));
+        Stderr.print_fmt ("Can not read passwd record|%s|%d\n",
+            (0 is errno ? "" : strerror (errno)), errno);
         exit (1);
       }
 
     } while (0);
   }
 
-  struct group *gr = getgrgid (gid);
-  if (NULL is gr) {
-    char *group = getenv ("GROUPNAME");
-    if (NULL is group) {
-      #ifdef GROUPNAME
-      sys_set_env_as (GROUPNAME, "GROUPNAME", opts.overwrite);
-      #else
-        if (opts.return_on_error) {
-          return NOTOK;
-        }
+  errno = 0;
 
-        if (opts.exit_on_error) {
-          fprintf (stderr, "Can not read group record %s\n", strerror (errno));
-          exit (1);
-        }
-      #endif
-    } else
-      sys_set_env_as (group, "GROUPNAME", opts.overwrite);
-  } else
+  struct group *gr = getgrgid (gid);
+  ifnot (NULL is gr) {
     sys_set_env_as (gr->gr_name, "GROUPNAME", opts.overwrite);
+  } else {
+    do {
+      if (opts.groupname isnot NULL) {
+        sys_set_env_as (opts.groupname, "GROUPNAME", opts.overwrite);
+        break;
+      }
+
+      char *group = getenv ("GROUPNAME");
+      ifnot  (NULL is group) {
+        sys_set_env_as (group, "GROUPNAME", opts.overwrite);
+        break;
+      }
+
+      #ifdef GROUPNAME
+        sys_set_env_as (GROUPNAME, "GROUPNAME", opts.overwrite);
+        break;
+      #endif
+
+      if (opts.return_on_error) {
+        return NOTOK;
+      }
+
+      if (opts.exit_on_error) {
+        Stderr.print_fmt ("Can not read group record%s\n",
+            0 is errno ? "" : strerror (errno));
+         exit (1);
+      }
+    } while (0);
+  }
 
   char *hdir = getenv ("HOME");
   ifnot (NULL is hdir)
     sys_set_env_as (hdir, "HOME", opts.overwrite);
   else {
-    ifnot (NULL is pswd)
-      sys_set_env_as (pswd->pw_dir, "HOME", 1);
-    else {
+    do {
+      if (opts.home isnot NULL) {
+        sys_set_env_as (opts.home, "HOME", opts.overwrite);
+        break;
+      }
+
+      ifnot (NULL is pswd) {
+        sys_set_env_as (pswd->pw_dir, "HOME", opts.overwrite);
+        break;
+      }
+
       #ifdef HOME
-      sys_set_env_as (HOME, "HOME", opts.overwrite);
+        sys_set_env_as (HOME, "HOME", opts.overwrite);
       #else
-      sys_set_env_as (STR_FMT ("/home/%s", sys_get_env_value ("HOME")), "HOME", opts.overwrite);
-      #endif
-    }
+        sys_set_env_as (STR_FMT ("/home/%s", sys_get_env_value ("HOME")), "HOME", opts.overwrite);
+        #endif
+    } while (0);
+  }
+
+  char *term_name = getenv ("TERM");
+  ifnot (NULL is term_name)
+    sys_set_env_as (term_name, "TERM", opts.overwrite);
+  else {
+    if (opts.termname isnot NULL)
+      sys_set_env_as (opts.termname, "TERM", opts.overwrite);
+    else
+      sys_set_env_as ("unknown", "TERM", opts.overwrite);
   }
 
   struct utsname u;
@@ -275,6 +309,7 @@ public sys_T __init_sys__ (void) {
   __INIT__ (file);
   __INIT__ (smap);
   __INIT__ (dir);
+  __INIT__ (io);
 
   return (sys_T) {
     .self = (sys_self) {

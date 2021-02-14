@@ -17,7 +17,7 @@ static int sys_exec (char **argv) {
   execvp (argv[0], argv);
 
   if (errno) {
-    IO.print_fmt ("%s: %s\n", argv[0], strerror (errno));
+    Stderr.print_fmt ("%s: %s\n", argv[0], strerror (errno));
     return -1;
   }
 
@@ -26,12 +26,12 @@ static int sys_exec (char **argv) {
 
 static int sys_chroot (char *dir) {
   if (-1 is chroot (dir)) {
-    IO.print_fmt ("%s: %s\n", dir, strerror (errno));
+    Stderr.print_fmt ("%s: %s\n", dir, strerror (errno));
     return 1;
   }
 
   if (-1 is chdir ("/")) {
-    IO.print_fmt ("s %s\n", strerror (errno));
+    Stderr.print_fmt ("%s\n", strerror (errno));
     return 1;
   }
 

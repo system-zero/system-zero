@@ -15,6 +15,7 @@
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_PROC_TYPE    DECLARE
 #define REQUIRE_AUTH_TYPE    DECLARE
+#define REQUIRE_IO_TYPE      DECLARE
 
 #include <z/cenv.h>
 
@@ -28,7 +29,7 @@
 
 int main (int argc, char **argv) {
   if (geteuid()) {
-    fprintf (stderr, "%s: is not installed setuid\n", argv[0]);
+    Stderr.print_fmt ("%s: is not installed setuid\n", argv[0]);
     return 1;
   }
 
@@ -36,6 +37,7 @@ int main (int argc, char **argv) {
 
   __INIT__ (cstring);
   __INIT__ (string);
+  __INIT__ (io);
   __INIT__ (proc);
   __INIT__ (auth);
 
@@ -70,7 +72,7 @@ int main (int argc, char **argv) {
   }
 
   ifnot (nargc) {
-    fprintf (stderr, "not enough arguments: a program name is missing\n");
+    Stderr.print ("not enough arguments: a program name is missing\n");
     return 1;
   }
 
@@ -88,30 +90,30 @@ int main (int argc, char **argv) {
   int num_iter = 0;
 stat_again:
   if (++num_iter is 3) {
-    fprintf (stderr, "probably a race condition\n");
+    Stderr.print ("probably a race condition\n");
     goto theend;
   }
 
   struct stat st;
   if (-1 isnot stat (VSU_DIR, &st)) {
     ifnot (S_ISDIR (st.st_mode)) {
-      fprintf (stderr, "%s: is not a directory\n", VSU_DIR);
+      Stderr.print_fmt ("%s: is not a directory\n", VSU_DIR);
       goto theend;
     }
 
     if (st.st_uid isnot ROOT_UID or st.st_gid isnot ROOT_GID) {
-      fprintf (stderr, "%s: is not owned by root\n", VSU_DIR);
+      Stderr.print_fmt ("%s: is not owned by root\n", VSU_DIR);
       goto theend;
     }
 
   } else {
     if (-1 is mkdir (VSU_DIR, S_IRWXU)) {
-      fprintf (stderr, "%s: failed to create, %s\n", VSU_DIR, strerror (errno));
+      Stderr.print_fmt ("%s: failed to create, %s\n", VSU_DIR, strerror (errno));
       goto theend;
     }
 
     if (-1 is chown (VSU_DIR, ROOT_UID, ROOT_GID)) {
-      fprintf (stderr, "%s: failed to change ownership to root/root, %s\n", VSU_DIR,
+      Stderr.print_fmt ("%s: failed to change ownership to root/root, %s\n", VSU_DIR,
           strerror (errno));
       goto theend;
     }
@@ -132,24 +134,24 @@ stat_again:
     struct stat sta;
     if (-1 isnot stat (vsu_timestamp_file->bytes, &sta)) {
       ifnot (S_ISREG (sta.st_mode)) {
-        fprintf (stderr, "%s: is not a regular file\n", vsu_timestamp_file->bytes);
+        Stderr.print_fmt ("%s: is not a regular file\n", vsu_timestamp_file->bytes);
         goto theend;
       }
 
       if (sta.st_uid isnot ROOT_UID) {
-        fprintf (stderr, "%s: is not owned by root\n", vsu_timestamp_file->bytes);
+        Stderr.print_fmt ("%s: is not owned by root\n", vsu_timestamp_file->bytes);
         goto theend;
       }
 
       gid_t gid = Auth.get.gid (auth);
       if (gid isnot sta.st_gid) {
-        fprintf (stderr, "%s: group id does not match\n", vsu_timestamp_file->bytes);
+        Stderr.print_fmt ("%s: group id does not match\n", vsu_timestamp_file->bytes);
         goto theend;
       }
 
       struct timespec ts;
       if (-1 is clock_gettime (CLOCK_BOOTTIME, &ts)) {
-        fprintf (stderr, "clock_gettime() failed: %s\n",
+        Stderr.print_fmt ("clock_gettime() failed: %s\n",
             strerror (errno));
         goto theend;
       }
@@ -162,24 +164,24 @@ stat_again:
   }
 
   if (NOTOK is Auth.check (auth)) {
-    fprintf (stdout, "authorization failure\n");
+    Stdout.print ("authorization failure\n");
     goto theend;
   }
 
   if (-1 is setresgid (ROOT_GID, ROOT_GID, ROOT_GID)) {
-    fprintf (stderr, "setresgid() failed: %s\n",
+    Stderr.print_fmt ("setresgid() failed: %s\n",
         strerror (errno));
     goto theend;
   }
 
   if (-1 is initgroups (ROOT_NAME, ROOT_GID)) {
-    fprintf (stderr, "initgroups() failed: %s\n",
+    Stderr.print_fmt ("initgroups() failed: %s\n",
         strerror (errno));
     goto theend;
   }
 
   if (-1 is setresuid (ROOT_UID, ROOT_UID, ROOT_UID)) {
-    fprintf (stderr, "setresuid() failed: %s\n",
+    Stderr.print_fmt ("setresuid() failed: %s\n",
         strerror (errno));
     goto theend;
   }
@@ -188,13 +190,13 @@ stat_again:
     if (-1 is access (vsu_timestamp_file->bytes, F_OK)) {
       int fd = open (vsu_timestamp_file->bytes, O_CREAT, S_IRUSR|S_IWUSR);
       if (-1 is fd) {
-        fprintf (stderr, "open() failed to open %s: %s\n",
+        Stderr.print_fmt ("open() failed to open %s: %s\n",
             vsu_timestamp_file->bytes, strerror (errno));
         goto theend;
       }
 
       if (-1 is chown (vsu_timestamp_file->bytes, ROOT_UID, Auth.get.uid (auth))) {
-        fprintf (stderr, "%s: failed to change ownership to root, %s\n",
+        Stderr.print_fmt ("%s: failed to change ownership to root, %s\n",
             vsu_timestamp_file->bytes, strerror (errno));
         goto theend;
       }
@@ -202,7 +204,7 @@ stat_again:
     } else {
       int fd = open (vsu_timestamp_file->bytes, O_RDONLY|O_NOFOLLOW);
       if (-1 is fd) {
-        fprintf (stderr, "open() failed to open %s: %s\n",
+        Stderr.print_fmt ("open() failed to open %s: %s\n",
             vsu_timestamp_file->bytes, strerror (errno));
         goto theend;
       }
@@ -212,7 +214,7 @@ stat_again:
       ts[1].tv_nsec = UTIME_NOW;
 
       if (-1 is futimens (fd, ts)) {
-        fprintf (stderr, "futimens() failed to change timestamps: %s\n", strerror (errno));
+        Stderr.print_fmt ("futimens() failed to change timestamps: %s\n", strerror (errno));
         goto theend;
       }
     }

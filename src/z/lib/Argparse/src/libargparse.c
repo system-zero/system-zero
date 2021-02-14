@@ -3,7 +3,9 @@
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
 
+#define REQUIRE_STRING_TYPE   DONOT_DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
+#define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_ARGPARSE_TYPE DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -50,9 +52,9 @@ static int argparse_error (argparse_t *self, const argparse_option_t *opt,
                                             const char *reason, int flags) {
   (void) self;
   if (flags & OPT_LONG) {
-    fprintf(stderr, "error: option `--%s` %s\n", opt->long_name, reason);
+    Stderr.print_fmt ("error: option `--%s` %s\n", opt->long_name, reason);
   } else {
-    fprintf(stderr, "error: option `-%c` %s\n", opt->short_name, reason);
+    Stderr.print_fmt("error: option `-%c` %s\n", opt->short_name, reason);
   }
   return -1;
 }
@@ -152,7 +154,7 @@ static void argparse_options_check (const argparse_option_t *options) {
     case ARGPARSE_OPT_GROUP:
       continue;
     default:
-      fprintf(stderr, "wrong option type: %d", options->type);
+      Stderr.print_fmt ("wrong option type: %d", options->type);
       break;
     }
   }
@@ -229,18 +231,18 @@ static void argparse_describe (argparse_t *self, const char *description,
 
 static void argparse_print_usage (argparse_t *self) {
   if (self->usages) {
-    fprintf(stdout, "Usage: %s\n", *self->usages++);
+    Stdout.print_fmt ("Usage: %s\n", *self->usages++);
     while (*self->usages && **self->usages)
-      fprintf(stdout, "   or: %s\n", *self->usages++);
+      Stdout.print_fmt ("   or: %s\n", *self->usages++);
   } else {
-    fprintf(stdout, "Usage:\n");
+    Stdout.print_fmt ("Usage:\n");
   }
 
   // print description
   if (self->description)
-    fprintf(stdout, "%s\n", self->description);
+    Stdout.print_fmt ("%s\n", self->description);
 
-  fputc('\n', stdout);
+  Stdout.print ("\n");
 
   const argparse_option_t *options;
 
@@ -279,42 +281,40 @@ static void argparse_print_usage (argparse_t *self) {
     size_t pos = 0;
     int pad    = 0;
     if (options->type == ARGPARSE_OPT_GROUP) {
-      fputc('\n', stdout);
-      fprintf(stdout, "%s", options->help);
-      fputc('\n', stdout);
+      Stdout.print_fmt ("\n%s\n", options->help);
       continue;
     }
-    pos = fprintf(stdout, "    ");
+    pos = Stdout.print ("    ");
     if (options->short_name) {
-      pos += fprintf(stdout, "%s%c", // extension
-      (options)->flags & SHORT_OPT_HAS_NO_DASH ? "" : "-",
-      options->short_name);
+      pos += Stdout.print_fmt ("%s%c", // extension
+        (options)->flags & SHORT_OPT_HAS_NO_DASH ? "" : "-",
+         options->short_name);
     }
     if (options->long_name && options->short_name) {
-      pos += fprintf (stdout, ", ");
+      pos += Stdout.print (", ");
     }
     if (options->long_name) {
-      pos += fprintf (stdout, "--%s", options->long_name);
+      pos += Stdout.print_fmt ("--%s", options->long_name);
     }
     if (options->type == ARGPARSE_OPT_INTEGER) {
-      pos += fprintf (stdout, "=<int>");
+      pos += Stdout.print ("=<int>");
     } else if (options->type == ARGPARSE_OPT_FLOAT) {
-      pos += fprintf (stdout, "=<flt>");
+      pos += Stdout.print ("=<flt>");
     } else if (options->type == ARGPARSE_OPT_STRING) {
-      pos += fprintf (stdout, "=<str>");
+      pos += Stdout.print ("=<str>");
     }
     if (pos <= usage_opts_width) {
       pad = usage_opts_width - pos;
     } else {
-      fputc('\n', stdout);
+      Stdout.print ("\n");
       pad = usage_opts_width;
     }
-    fprintf (stdout, "%*s%s\n", pad + 2, "", options->help);
+    Stdout.print_fmt ("%*s%s\n", pad + 2, "", options->help);
   }
 
   // print epilog
   if (self->epilog)
-    fprintf (stdout, "%s\n", self->epilog);
+    Stdout.print_fmt ("%s\n", self->epilog);
 }
 
 static int argparse_parse (argparse_t *self, int argc, const char **argv) {
@@ -406,7 +406,7 @@ static int argparse_parse (argparse_t *self, int argc, const char **argv) {
     continue;
 
 unknown:
-    fprintf (stderr, "error: unknown option `%s`\n", self->argv[0]);
+    Stderr.print_fmt ("error: unknown option `%s`\n", self->argv[0]);
     argparse_print_usage (self);
     return -1;
   }
@@ -426,6 +426,7 @@ public int argparse_help_cb (argparse_t *self, const argparse_option_t *option) 
 }
 
 public argparse_T __init_argparse__ (void) {
+  __INIT__ (io);
   __INIT__ (cstring);
 
   return (argparse_T) {

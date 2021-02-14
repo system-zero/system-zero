@@ -1,6 +1,10 @@
 #ifndef IO_H
 #define IO_H
 
+#define Stderr IO.err
+#define Stdout IO.out
+#define Input  IO.input
+
 typedef utf8 (*IOGetkey) (int);
 
 typedef struct io_fd_self {
@@ -9,14 +13,28 @@ typedef struct io_fd_self {
     (*write) (int, char *, idx_t);
 } io_fd_self;
 
-typedef struct io_self {
-  io_fd_self fd;
-
+typedef struct io_err_self {
   idx_t
     (*print) (const char *),
     (*print_fmt) (const char *, ...);
+} io_err_self;
 
+typedef struct io_out_self {
+  idx_t
+    (*print) (const char *),
+    (*print_fmt) (const char *, ...);
+} io_out_self;
+
+typedef struct io_input_self {
   utf8 (*getkey) (int);
+} io_input_self;
+
+typedef struct io_self {
+  io_fd_self fd;
+  io_err_self err;
+  io_out_self out;
+  io_input_self input;
+
   string_t *(*parse_escapes) (char *);
 } io_self;
 

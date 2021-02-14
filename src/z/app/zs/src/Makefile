@@ -71,9 +71,9 @@ endif
 
 FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION)
 FLAGS += -lsh-$(VERSION) -lproc-$(VERSION) -lrline-$(VERSION)
-FLAGS += -lio-$(VERSION) -lstring-$(VERSION)
+FLAGS += -lio-$(VERSION) -lstring-$(VERSION) -lsys-$(VERSION) -lsmap-$(VERSION)
 
-Z_ZS_STATIC_FLAGS := -lpath-$(VERSION) -lustring-$(VERSION)
+Z_ZS_STATIC_FLAGS := -lpath-$(VERSION) -lustring-$(VERSION) -lfile-$(VERSION)
 
 zs: zs-shared zs-static
 

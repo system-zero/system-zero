@@ -244,6 +244,7 @@ Z_SU        := $(ZC_SU)
   BASE_FLAGS     = -I$(SYSINCDIR) -L$(Z_SYSLIBDIR)
   BASE_FLAGS    += -g -O2 -march=native -fdollars-in-identifiers
   BASE_FLAGS    += -DDECLARE=1 -DDONOT_DECLARE=0
+
   DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
 
   ifeq (-$(CC), -clang)
@@ -255,7 +256,7 @@ Z_SU        := $(ZC_SU)
 
   # we use rpath in this early stage, so we do not need to run ldconfig
   ifeq ($(RPATH), 1)
-    BASE_FLAGS    += -Wl,-rpath=$(Z_SYSLIBDIR):$(SYSLIBDIR)
+    BASE_FLAGS    += -Wl,-rpath=$(Z_SYSLIBDIR):$(SYSLIBDIR):/lib/z:/lib
   endif
 
   ZARGS  = NS=$(ZNAME)
@@ -598,11 +599,13 @@ clean-libreadline-static:
 	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libvwm-shared: Env cenv libstring-shared libcstring-shared \
-               libustring-shared libdir-shared libfile-shared
+               libustring-shared libdir-shared libfile-shared \
+               libsys-shared
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libvwm-static: Env cenv libstring-static libcstring-static \
-               libustring-static libdir-static libfile-static
+               libustring-static libdir-static libfile-static\
+               libreadline-static libsys-static
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libvwm-shared:
@@ -611,10 +614,12 @@ clean-libvwm-shared:
 clean-libvwm-static:
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-zs-shared: Env cenv libcstring-shared libsh-shared librline-shared
+zs-shared: Env cenv libcstring-shared libsh-shared librline-shared\
+           libsys-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
-zs-static: Env cenv libcstring-static libsh-static librline-static
+zs-static: Env cenv libcstring-static libsh-static librline-static\
+           libsys-static
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
 clean-zs-shared:

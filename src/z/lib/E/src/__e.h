@@ -455,10 +455,10 @@ typedef struct buf_prop {
   win_t *parent;
 
   char
-    *fname,
-    *basename,
-    *extname,
     *cwd,
+    *fname,
+    *extname,
+    *basename,
     *backupfile,
      backup_suffix[8],
      mode[MAXLEN_MODE];
@@ -622,6 +622,9 @@ typedef struct ed_prop {
     file_mode_chars_len,
     word_actions_chars_len;
 
+  char lang_mode[8];
+  LangGetKey_cb lang_getkey;
+
   char
     *lw_mode_actions,
     *cw_mode_actions,
@@ -735,6 +738,7 @@ static int  buf_insert_complete_filename (buf_t **);
 static int  buf_grep_on_normal (buf_t **, utf8, int, int);
 static int  buf_open_fname_under_cursor (buf_t **, int, int, int, int);
 
+static void ed_set_lang_mode (ed_t *, char *);
 static void ed_resume (ed_t *);
 static void ed_suspend (ed_t *);
 static void ed_record (ed_t *, char *, ...);
@@ -758,7 +762,7 @@ static readline_t *ed_readline_new (ed_t *);
 ({                                                        \
   utf8 cc__;                                              \
   while ((idx_) < 8) {                                    \
-    cc__ = IO.getkey (STDIN_FILENO);                      \
+    cc__ = Input.getkey (STDIN_FILENO);                      \
                                                           \
     if (IS_DIGIT (cc__))                                  \
       (intbuf_)[(idx_)++] = cc__;                         \
@@ -782,7 +786,7 @@ static readline_t *ed_readline_new (ed_t *);
       Video.paint_rows_with ($my(video), frow, fcol, lcol, sbuf->bytes);  \
       SEND_ESC_SEQ ($my(video)->fd, TERM_CURSOR_HIDE);                    \
     }                                                                     \
-    cc__ = IO.getkey (STDIN_FILENO);                                      \
+    cc__ = Input.getkey (STDIN_FILENO);                                      \
                                                                           \
     if (IS_DIGIT (cc__)) {                                                \
       nr = (10 * nr) + (cc__ - '0');                                      \

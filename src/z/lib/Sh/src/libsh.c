@@ -14,6 +14,7 @@
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_PROC_TYPE    DECLARE
+#define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_SH_TYPE      DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -131,7 +132,7 @@ static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
   FILE *fp = NULL;
   if (sh->redir_type is REDIR_NOCLOBBER) {
     if (0 is access (file->bytes, F_OK)) {
-      fprintf (stderr, "%s: exists, use the >| operator to continue writting\n",
+      Stderr.print_fmt ("%s: exists, use the >| operator to continue writting\n",
           file->bytes);
       return OK;
     }
@@ -522,6 +523,7 @@ static int sh_exec (sh_t *this, char *buf) {
 }
 
 public sh_T __init_sh__ (void) {
+  __INIT__ (io);
   __INIT__ (proc);
   __INIT__ (string);
   __INIT__ (cstring);

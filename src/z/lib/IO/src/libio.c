@@ -76,16 +76,31 @@ static idx_t io_fd_write (int fd, char *buf, idx_t len) {
   return tbts - len;
 }
 
-static idx_t io_print (const char *buf) {
+static idx_t io_out_print (const char *buf) {
   idx_t nbytes = fprintf (stdout, "%s", buf);
   fflush (stdout);
   return nbytes;
 }
 
-static idx_t io_print_fmt (const char *fmt, ...) {
+static idx_t io_out_print_fmt (const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   idx_t nbytes = vfprintf (stdout, fmt, ap);
+  va_end(ap);
+  fflush (stdout);
+  return nbytes;
+}
+
+static idx_t io_err_print (const char *buf) {
+  idx_t nbytes = fprintf (stderr, "%s", buf);
+  fflush (stdout);
+  return nbytes;
+}
+
+static idx_t io_err_print_fmt (const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  idx_t nbytes = vfprintf (stderr, fmt, ap);
   va_end(ap);
   fflush (stdout);
   return nbytes;
@@ -134,7 +149,7 @@ theerror:
  * It also handles UTF8 byte sequences and it should return the integer represantation
  * of such sequence */
 
-static utf8 io_getkey (int infd) {
+static utf8 io_input_getkey (int infd) {
   char c;
   int n;
   char buf[5];
@@ -301,10 +316,18 @@ public io_T __init_io__ (void) {
 
   return (io_T) {
     .self = (io_self) {
-      .print = io_print,
-      .print_fmt = io_print_fmt,
       .parse_escapes = io_parse_escapes,
-      .getkey = io_getkey,
+      .out = (io_out_self) {
+        .print = io_out_print,
+        .print_fmt = io_out_print_fmt
+      },
+      .err = (io_err_self) {
+        .print = io_err_print,
+        .print_fmt = io_err_print_fmt
+      },
+      .input = (io_input_self) {
+        .getkey = io_input_getkey
+      },
       .fd = (io_fd_self) {
         .read = io_fd_read,
         .write = io_fd_write

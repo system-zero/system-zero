@@ -27,6 +27,7 @@
 #define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_READLINE_TYPE DECLARE
 #define REQUIRE_VIDEO_TYPE    DECLARE
+#define REQUIRE_SYS_TYPE      DECLARE
 #define REQUIRE_VWM_TYPE      DONOT_DECLARE
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
@@ -271,21 +272,18 @@ static vwm_term *vwm_new_term (vwm_t *this) {
 
   vwm_term *term = Term.new ();
 
-  char *term_name = getenv ("TERM");
-
-  if (NULL is term_name) {
-    fprintf (stderr, "TERM environment variable isn't set\n");
-    term->name = Cstring.dup ("vt100", 5);
-  } else {
-    if (Cstring.eq_n (term_name, "linux", 5))
-      term->name = Cstring.dup ("linux", 5);
-    else if (Cstring.eq_n (term_name, "xterm", 5))
-      term->name = Cstring.dup ("xterm", 5);
-    else if (Cstring.eq_n (term_name, "rxvt-unicode", 12))
-      term->name = Cstring.dup ("xterm", 5);
-    else
-      term->name = Cstring.dup (term_name, bytelen (term_name));
-  }
+  char *term_name = Sys.get.env_value ("TERM");
+   FILE *fp = fopen ("/tmp/env", "w");
+   fprintf (fp, "%s\n", term_name);
+   fclose (fp);
+  if (Cstring.eq_n (term_name, "linux", 5))
+    term->name = Cstring.dup ("linux", 5);
+  else if (Cstring.eq_n (term_name, "xterm", 5))
+    term->name = Cstring.dup ("xterm", 5);
+  else if (Cstring.eq_n (term_name, "rxvt-unicode", 12))
+    term->name = Cstring.dup ("xterm", 5);
+  else
+    term->name = Cstring.dup (term_name, bytelen (term_name));
 
   $my(term) = term;
 
@@ -440,19 +438,28 @@ static int vwm_set_tmpdir (vwm_t *this, char *dir, size_t len) {
   if (NULL is $my(tmpdir))
     $my(tmpdir) = String.new (32);
 
+  int num_tries = 0;
+
+do_dir:
   String.clear ($my(tmpdir));
 
-  if (NULL is dir or dir[0] is '\0')
-    String.append_with($my(tmpdir), TMPDIR);
-  else
+  if (++num_tries is 3)
+    goto theerror;
+
+  if (NULL is dir or dir[0] is '\0') {
+    if (num_tries is 1)
+      String.append_with($my(tmpdir), TMPDIR);
+    else
+      String.append_with($my(tmpdir), "/tmp");
+  } else
     String.append_with_len ($my(tmpdir), dir, len);
 
   String.append_byte ($my(tmpdir), '/');
   String.append_with($my(tmpdir), V_STR_FMT_LEN (64, "%d-vwm_tmpdir", getpid ()));
 
   if (-1 is access ($my(tmpdir)->bytes, F_OK)) {
-    if (-1 is mkdir ($my(tmpdir)->bytes, S_IRWXU))
-      goto theerror;
+    if (-1 is Dir.make_parents ($my(tmpdir)->bytes, S_IRWXU, DirOpts(.err = 0)))
+      goto do_dir;
   } else {
     ifnot (Dir.is_directory ($my(tmpdir)->bytes))
       goto theerror;
@@ -468,14 +475,6 @@ theerror:
   return NOTOK;
 }
 
-/* This is an extended version of the same function of the kilo editor at:
- * https://github.com/antirez/kilo.git
- *
- * It should work the same, under xterm, rxvt-unicode, st and linux terminals.
- * It also handles UTF8 byte sequences and it should return the integer represantation
- * of such sequence
- */
-
 static utf8 vwm_getkey (vwm_t *this, int infd) {
   (void) this;
   return IO.getkey (infd);
@@ -487,6 +486,7 @@ static vwm_win *vwm_set_current_at (vwm_t *this, int idx) {
     if (NULL isnot cur_win)
       $my(last_win) = cur_win;
   }
+
   return $my(current);
 }
 
@@ -2401,7 +2401,11 @@ static int frame_set_log (vwm_frame *this, char *fname, int remove_log) {
   self(release_log);
 
   if (NULL is fname or fname[0] is '\0') {
+    if (NULL is this->root->prop->tmpdir)
+      return NOTOK;
+
     tmpfname_t *t = File.tmpfname.new (this->root->prop->tmpdir->bytes, "libvwm");
+
     if (-1 is t->fd)
       return NOTOK;
 
@@ -3345,7 +3349,7 @@ static int vwm_spawn (vwm_t *this, char **argv) {
     setenv ("COLUMNS", lcols, 1);
 
     execvp (argv[0], argv);
-    fprintf (stderr, "execvp failed\n");
+    Stderr.print ("execvp failed\n");
     _exit (1);
   }
 
@@ -3356,12 +3360,12 @@ static int vwm_spawn (vwm_t *this, char **argv) {
 
   ifnot (WIFEXITED (status)) {
     status = -1;
-    fprintf (stderr, "Failed to invoke %s\n", argv[0]);
+    Stderr.print_fmt ("Failed to invoke %s\n", argv[0]);
     goto theend;
   }
 
   ifnot (status is WEXITSTATUS (status))
-    fprintf (stderr, "Proc %s terminated with exit status: %d", argv[0], status);
+    Stderr.print_fmt ("Proc %s terminated with exit status: %d", argv[0], status);
 
 theend:
   Term.raw_mode ($my(term));
@@ -3407,6 +3411,7 @@ static pid_t frame_fork (vwm_frame *frame) {
     if (-1 is grantpt (fd)) goto theerror;
     if (-1 is unlockpt (fd)) goto theerror;
     char *name = ptsname (fd); if (NULL is name) goto theerror;
+
     Cstring.cp (frame->tty_name, MAX_TTYNAME, name, MAX_TTYNAME - 1);
   } else
     fd = frame->fd;
@@ -3469,7 +3474,7 @@ static pid_t frame_fork (vwm_frame *frame) {
     if (retval is 1) {
       execvp (frame->argv[0], frame->argv);
 
-      fprintf (stderr, "execvp() failed for command: '%s'\n", frame->argv[0]);
+      Stderr.print_fmt ("execvp() failed for command: '%s'\n", frame->argv[0]);
       _exit (1);
     }
   }
@@ -3595,11 +3600,17 @@ static int vwm_main (vwm_t *this) {
   Vwin.set.separators (win, DRAW);
 
   vwm_frame *frame = win->head;
+
   while (frame) {
     if (frame->argv is NULL)
       Vframe.set.command (frame, $my(default_app)->bytes);
 
-    Vframe.fork (frame);
+    if (-1 is Vframe.fork (frame)) {
+      vwm_frame *tmp = frame->next;
+      Vwin.delete_frame (win, frame, DONOT_DRAW);
+      frame = tmp;
+      continue;
+    }
 
     frame = frame->next;
   }
@@ -3779,6 +3790,9 @@ static int vwm_default_rline_cb (vwm_t *this, vwm_win *win, vwm_frame *frame, vo
   rl->first_chars[2] = '@';
   rl->first_chars_len = 3;
   rl->trigger_first_char_completion = 1;
+  rl->user_data[1] = win;
+  rl->user_data[2] = frame;
+
   //rl->tab_completion = readline_tab_completion;
   //rl->last_component_push = readline_last_component_push_cb;
   //rl->history = $my(history)->readline;
@@ -3786,9 +3800,6 @@ static int vwm_default_rline_cb (vwm_t *this, vwm_win *win, vwm_frame *frame, vo
   (void) this; (void) win; (void) frame; (void) object;
 
   rl = Readline.edit (rl);
-FILE *fpp = fopen ("/tmp/wm_rline", "w");
-fprintf (fpp, "%c %d\n", rl->c, rl->c);
-fclose (fpp);
 
   return OK;
 }
@@ -3999,14 +4010,14 @@ getc_again:
 
 mutable public void __alloc_error_handler__ (int err, size_t size,
                            char *file, const char *func, int line) {
-  fprintf (stderr, "MEMORY_ALLOCATION_ERROR\n");
-  fprintf (stderr, "File: %s\nFunction: %s\nLine: %d\n", file, func, line);
-  fprintf (stderr, "Size: %zd\n", size);
+  Stderr.print ("MEMORY_ALLOCATION_ERROR\n");
+  Stderr.print_fmt ("File: %s\nFunction: %s\nLine: %d\n", file, func, line);
+  Stderr.print_fmt ("Size: %zd\n", size);
 
   if (err is INTEGEROVERFLOW_ERROR)
-    fprintf (stderr, "Error: Integer Overflow Error\n");
+    Stderr.print ("Error: Integer Overflow Error\n");
   else
-    fprintf (stderr, "Error: Not Enouch Memory\n");
+    Stderr.print ("Error: Not Enouch Memory\n");
 
   __deinit_vwm__ (&__VWM__);
 
@@ -4016,6 +4027,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 public vwm_t *__init_vwm__ (void) {
   __INIT__ (io);
   __INIT__ (dir);
+  __INIT__ (sys);
   __INIT__ (term);
   __INIT__ (file);
   __INIT__ (string);
@@ -4024,6 +4036,8 @@ public vwm_t *__init_vwm__ (void) {
   __INIT__ (ustring);
   __INIT__ (readline);
   __INIT__ (video);
+
+  Sys.init_environment (SysEnvOpts(.termname = "vt100"));
 
   AllocErrorHandler = __alloc_error_handler__;
 
@@ -4243,5 +4257,8 @@ public void __deinit_vwm__ (vwm_t **thisp) {
 
   free (this->prop);
   free (this);
+
+  __deinit_sys__ ();
+
   *thisp = NULL;
 }

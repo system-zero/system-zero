@@ -12,6 +12,7 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_SH_TYPE      DECLARE
+#define REQUIRE_SYS_TYPE     DECLARE
 #define REQUIRE_RLINE_TYPE   DECLARE
 
 #include <z/cenv.h>
@@ -60,30 +61,32 @@ static rline_t *zs_init_rline (char *histfile) {
 }
 
 static int zs_builtins (char *line, Vstring_t *cdpath) {
+  Cstring.trim.end (line, ' ');
+
   if (Cstring.eq (line, "exit")) {
     free (line);
     return ZS_RETURN;
   }
 
-  if (Cstring.eq_n (line, "cd ", 3)) {
-    char *path = line + 3;
-    ifnot (*path)
-      return ZS_CONTINUE; // handle $HOME
+  if (Cstring.eq_n (line, "cd", 2)) {
+    char *path = line + 2;
+    while (*path is ' ') path++;
 
-    if (Cstring.eq (path, "-")) {
+    ifnot (*path) {
+      path = Sys.get.env_value ("HOME");
+    } else  if (Cstring.eq (path, "-")) {
+      // handle -1, -2, ...
       if (cdpath->tail->prev isnot NULL)
         path = cdpath->tail->prev->data->bytes;
       else
         return ZS_CONTINUE;
     }
 
-    // handle -1, -2, ...
-
     if (Cstring.eq (path, cdpath->tail->data->bytes))
       return ZS_CONTINUE;
 
     if (-1 is chdir (path))
-      fprintf (stderr, "cd: %s\n", strerror (errno));
+      Stderr.print_fmt ("cd: %s %s\n", path, strerror (errno));
 
     Vstring.append_with (cdpath, path);
     return ZS_CONTINUE;
@@ -98,7 +101,7 @@ static int zs_interactive (sh_t *this) {
 
   char *cwd = Dir.current ();
   if (NULL is cwd) {
-    IO.print ("cannot determinate current directory\n");
+    Stderr.print ("cannot determinate current directory\n");
     return NOTOK;
   }
 
@@ -153,10 +156,13 @@ theend:
 int main (int argc, char **argv) {
   __INIT__ (io);
   __INIT__ (sh);
+  __INIT__ (sys);
   __INIT__ (dir);
   __INIT__ (rline);
   __INIT__ (vstring);
   __INIT__ (cstring);
+
+  Sys.init_environment (SysEnvOpts());
 
   char dir[MAXLEN_DIR]; dir[0] = '\0';
   char command[MAXLEN_COMMAND]; command[0] = '\0';
@@ -192,6 +198,8 @@ int main (int argc, char **argv) {
   retval = Sh.exec (this, command);
 
 theend:
+  __deinit_sys__ ();
+
   Sh.release (this);
   return retval;
 }

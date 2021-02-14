@@ -23,7 +23,7 @@ static int dir_make_print (FILE *fp, const char *fmt, ...) {
   struct stat st;
 
   if (-1 is stat (dir, &st)) {
-    fprintf (stderr, "stat: %s, %s\n", dir, strerror (errno));
+    Stderr.print_fmt ("stat: %s, %s\n", dir, strerror (errno));
     return OK;
   }
 
@@ -74,7 +74,7 @@ int main (int argc, char **argv) {
     mode_t m = File.mode.from_octal_string (mode_string);
 
     ifnot (m) {
-      fprintf (stderr, APPNAME ": not a valid mode %s\n", mode_string);
+      Stderr.print_fmt (APPNAME ": not a valid mode %s\n", mode_string);
       return 1;
     }
 
