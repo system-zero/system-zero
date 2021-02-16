@@ -127,7 +127,7 @@ static int readline_menu_at_end (readline_t **rl) {
 
 static char *vui_menu_create (menu_t *this) {
   readline_t *rl = Readline.new (this->user_data[0], this->term, this->getch,
-     this->prompt_row - 2,  1, this->num_cols, this->video);
+     this->prompt_row, 1, this->num_cols, this->video);
   rl->at_beg = readline_menu_at_beg;
   rl->at_end = readline_menu_at_end;
   rl->user_data[READLINE_MENU_USER_DATA_IDX - 1] = this->user_data[1];
@@ -195,6 +195,7 @@ init_list:;
   }
 
   mod = this->list->num_items % num;
+
   num_cols = (num * maxlen);
   num_rows = (this->list->num_items / num) + (mod isnot 0);
   // +  (this->header->num_bytes isnot 0);
@@ -237,6 +238,7 @@ init_list:;
     }
 
     int ridx, iidx = 0; int start_row = 0;
+
     for (ridx = 0; ridx < rend_rows; ridx++) {
       start_row = first_row + ridx;
       String.append_with_fmt (render, TERM_GOTO_PTR_POS_FMT, start_row, first_col);
@@ -253,12 +255,12 @@ init_list:;
       }
 
       if (mod)
-        for (int i = mod + 1; i < num; i++)
+        for (int i = mod; i < num; i++)
           for (int j = 0; j < maxlen; j++)
             String.append_byte (render, ' ');
    }
 
-//    String.append_with (render, TERM_CURSOR_SHOW);
+  //    String.append_with (render, TERM_CURSOR_SHOW);
 
     IO.fd.write (this->fd, render->bytes, render->num_bytes);
 

@@ -128,6 +128,8 @@ static int sys_man (buf_t **bufp, char *word, int section) {
   buf_t *this = Ed.get.scratch_buf (ed);
   Buf.clear (this);
 
+  int flags = (ED_PROC_READ_STDOUT|ED_PROC_READ_STDERR|ED_PROC_WAIT_AT_END);
+
   if (File.exists (word)) {
     if (Path.is_absolute (word))
       com = String.new_with_fmt ("%s %s", man_exec->bytes, word);
@@ -137,7 +139,7 @@ static int sys_man (buf_t **bufp, char *word, int section) {
       free (cwdir);
     }
 
-    retval = Ed.sh.popen (ed, this, com->bytes, 1, 1, NULL);
+    retval = Ed.sh.popen (ed, this, com->bytes, flags, NULL);
     goto theend;
   }
 
@@ -152,7 +154,7 @@ static int sys_man (buf_t **bufp, char *word, int section) {
   for (int i = 1; i < 9; i++) {
     sections[section] = 1;
     total_sections++;
-    retval = Ed.sh.popen (ed, this, com->bytes, 1, 1, NULL);
+    retval = Ed.sh.popen (ed, this, com->bytes, flags, NULL);
     ifnot (retval) break;
 
     while (sections[section] and total_sections < 8) {
@@ -250,7 +252,7 @@ static int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
     string_t *sbinfo = __ex_buf_serial_info__ (binfo);
     Ed.append.toscratch (ced, DONOT_CLEAR, sbinfo->bytes);
     String.release (sbinfo);
-    Buf.free.info (*thisp, &binfo);
+    Buf.release.info (*thisp, &binfo);
   }
 
   if (win) {
@@ -259,7 +261,7 @@ static int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
     string_t *swinfo = __ex_win_serial_info__ (winfo);
     Ed.append.toscratch (ced, DONOT_CLEAR, swinfo->bytes);
     String.release (swinfo);
-    Win.free_info (cw, &winfo);
+    Win.release_info (cw, &winfo);
   }
 
   if (ed) {
@@ -267,7 +269,7 @@ static int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
     string_t *seinfo = __ex_ed_serial_info__ (einfo);
     Ed.append.toscratch (ced, DONOT_CLEAR, seinfo->bytes);
     String.release (seinfo);
-    Ed.free_info (ced, &einfo);
+    Ed.release_info (ced, &einfo);
   }
 
   Ed.scratch (ced, thisp, NOT_AT_EOF);

@@ -209,6 +209,12 @@
 #define NOT       (0 << 0)
 #define UNSET     NOT
 
+#define ED_PROC_DONOT_WAIT_AT_END 0
+
+#define ED_PROC_WAIT_AT_END (1 << 0)
+#define ED_PROC_READ_STDOUT (1 << 1)   // both correspond to PROC_READ_STD*
+#define ED_PROC_READ_STDERR (1 << 2)
+
 #define MSG_SET_RESET       (1 << 0)
 #define MSG_SET_APPEND      (1 << 1)
 #define MSG_SET_OPEN        (1 << 2)
@@ -760,7 +766,7 @@ typedef struct buf_syn_self {
 } buf_syn_self;
 
 typedef struct buf_ftype_self {
-  void (*free) (buf_t *);
+  void (*release) (buf_t *);
 
   ftype_t
      *(*init) (buf_t *, int, FtypeAutoIndent_cb),
@@ -790,13 +796,13 @@ typedef struct buf_current_self {
     *(*replace_with) (buf_t *, char *);
 } buf_current_self;
 
-typedef struct buf_free_self {
+typedef struct buf_release_self {
   void
      (*line) (buf_t *),
      (*info) (buf_t *, bufinfo_t **),
      (*row) (buf_t *, row_t *),
      (*rows) (buf_t *);
-} buf_free_self;
+} buf_release_self;
 
 typedef struct buf_row_self {
   row_t
@@ -812,7 +818,7 @@ typedef struct buf_read_self {
 typedef struct buf_Action_self {
   Action_t *(*new) (buf_t *);
   void
-    (*free) (buf_t *, Action_t *),
+    (*release) (buf_t *, Action_t *),
     (*set_with) (buf_t *, Action_t *, int, int, char *, size_t),
     (*set_with_current) (buf_t *, Action_t *, int);
 } buf_Action_self;
@@ -823,12 +829,12 @@ typedef struct buf_action_self {
     *(*new_with) (buf_t *, int, int, char *, size_t);
 
   void
-    (*free) (buf_t *, action_t *);
+    (*release) (buf_t *, action_t *);
 } buf_action_self;
 
 typedef struct buf_undo_self {
   void
-    (*free) (buf_t *),
+    (*release) (buf_t *),
     (*init) (buf_t *),
     (*push) (buf_t *, Action_t *),
     (*clear) (buf_t *);
@@ -920,7 +926,7 @@ typedef struct buf_jump_self {
 
 typedef struct buf_jumps_self {
   void
-     (*free) (buf_t *),
+     (*release) (buf_t *),
      (*init) (buf_t *);
 } buf_jumps_self;
 
@@ -947,7 +953,7 @@ typedef struct buf_self {
   buf_syn_self syn;
   buf_row_self row;
   buf_isit_self isit;
-  buf_free_self free;
+  buf_release_self release;
   buf_undo_self undo;
   buf_redo_self redo;
   buf_read_self read;
@@ -1056,7 +1062,7 @@ typedef struct win_self {
   win_frame_self frame;
 
   void
-    (*free_info) (win_t *, wininfo_t **),
+    (*release_info) (win_t *, wininfo_t **),
     (*draw) (win_t *);
 
   int
@@ -1202,7 +1208,7 @@ typedef struct ed_menu_self {
 } ed_menu_self;
 
 typedef struct ed_sh_self {
-  int (*popen) (ed_t *, buf_t *, char *, int, int, ProcRead_cb);
+  int (*popen) (ed_t *, buf_t *, char *, int, ProcRead_cb);
 } ed_sh_self;
 
 typedef struct edhistory_set_self {
@@ -1250,8 +1256,8 @@ typedef struct ed_self {
   ed_readjust_self readjust;
 
   void
-    (*free) (ed_t *),
-    (*free_info) (ed_t *, edinfo_t **),
+    (*release) (ed_t *),
+    (*release_info) (ed_t *, edinfo_t **),
     (*record) (ed_t *, char *, ...),
     (*suspend) (ed_t *),
     (*resume) (ed_t *),
