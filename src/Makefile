@@ -145,6 +145,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Smap_Type            = Smap
     Z_SMAP_SRCDIR        = $(Z_SRCLIBDIR)/$(Smap_Type)/src
 
+    # Vmap Type
+    Vmap_Type            = Vmap
+    Z_VMAP_SRCDIR        = $(Z_SRCLIBDIR)/$(Vmap_Type)/src
+
     # Re Type
     Re_Type              = Re
     Z_RE_SRCDIR          = $(Z_SRCLIBDIR)/$(Re_Type)/src
@@ -473,6 +477,18 @@ clean-libsmap-shared:
 
 clean-libsmap-static:
 	@cd $(Z_SMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libvmap-shared: Env cenv libcstring-shared
+	@cd $(Z_VMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libvmap-static: Env cenv libcstring-static
+	@cd $(Z_VMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libvmap-shared:
+	@cd $(Z_VMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libvmap-static:
+	@cd $(Z_VMAP_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libre-shared: Env cenv libcstring-shared libstring-shared libustring-shared
 	@cd $(Z_RE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
@@ -827,7 +843,7 @@ zero-clean-shared:\
               clean-libre-shared clean-libspell-shared\
               clean-libe-shared clean-libi-shared clean-libjson-shared\
               clean-libreadline-shared clean-libsys-shared\
-              clean-libvui-shared\
+              clean-libvui-shared clean-libvmap-shared\
               clean-zs-shared clean-zsu-shared clean-dir-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared
@@ -847,7 +863,7 @@ zero-clean-static:\
               clean-libre-static clean-libspell-static\
               clean-libe-static clean-libi-static clean-libjson-static\
               clean-libreadline-static clean-libsys-static\
-              clean-libvui-static\
+              clean-libvui-static clean-libvmap-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static\
               clean-file-static clean-io-static clean-term-static\
