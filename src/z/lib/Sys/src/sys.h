@@ -41,11 +41,19 @@ typedef struct sys_env_opts {
   .gid = -1,            \
   __VA_ARGS__ }
 
+typedef struct sys_log_self {
+  int (*init) (char *);
+  void (*append_message) (char *);
+  string_t *(*messages) (void);
+} sys_log_self;
+
 typedef struct sys_self {
   sys_get_self get;
   sys_set_self set;
+  sys_log_self log;
 
   int (*init_environment) (sys_env_opts);
+
   string_t *(*which) (char *, char *);
 
 } sys_self;

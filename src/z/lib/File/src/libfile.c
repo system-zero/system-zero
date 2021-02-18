@@ -124,12 +124,8 @@ static char *file_mode_stat_to_string (char *mode_string, mode_t mode) {
   return mode_string;
 }
 
-static Vstring_t *file_readlines (char *file, Vstring_t *lines,
-                                 FileReadLines_cb cb, void *obj) {
-  Vstring_t *llines = lines;
-  if (NULL is llines) llines = Vstring.new ();
-  if (-1 is access (file, F_OK|R_OK)) goto theend;
-  FILE *fp = fopen (file, "r");
+static Vstring_t *file_readlines_from_fp (FILE *fp, Vstring_t *lines,
+                                FileReadLines_cb cb, void *user_data) {
   char *buf = NULL;
   size_t len;
   ssize_t nread;
@@ -137,18 +133,33 @@ static Vstring_t *file_readlines (char *file, Vstring_t *lines,
   if (cb isnot NULL) {
     int num = 0;
     while (-1 isnot (nread = getline (&buf, &len, fp))) {
-      cb (llines, buf, nread, ++num, obj);
+      cb (lines, buf, nread, ++num, user_data);
     }
   } else {  /* by default an array of lines */
     while (-1 isnot (nread = getline (&buf, &len, fp))) {
       buf[nread - 1] = '\0';
-      Vstring.current.append_with (llines, buf);
+      Vstring.current.append_with (lines, buf);
     }
   }
 
-  fclose (fp);
   ifnot (buf is NULL) free (buf);
 
+  return lines;
+}
+
+static Vstring_t *file_readlines (char *file, Vstring_t *lines,
+                          FileReadLines_cb cb, void *user_data) {
+  Vstring_t *llines = lines;
+  if (NULL is llines) llines = Vstring.new ();
+  if (-1 is access (file, F_OK|R_OK)) goto theend;
+
+  FILE *fp = fopen (file, "r");
+  if (fp is NULL)
+    return NULL;
+
+  llines = file_readlines_from_fp (fp, llines, cb, user_data);
+
+  fclose (fp);
 theend:
   return llines;
 }
@@ -283,7 +294,6 @@ public file_T __init_file__ (void) {
       .write = file_write,
       .append = file_append,
       .exists = file_exists,
-      .readlines = file_readlines,
       .is_rwx = file_is_rwx,
       .is_elf = file_is_elf,
       .is_reg = file_is_reg,
@@ -291,6 +301,8 @@ public file_T __init_file__ (void) {
       .is_readable = file_is_readable,
       .is_writable = file_is_writable,
       .is_executable = file_is_executable,
+      .readlines = file_readlines,
+      .readlines_from_fp = file_readlines_from_fp,
       .tmpfname = (file_tmpfname_self) {
         .new = file_tmpfname_new,
         .release = file_tmpfname_release

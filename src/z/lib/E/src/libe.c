@@ -1184,7 +1184,7 @@ static int buf_evaluate_lw_mode_cb (buf_t **thisp, int fidx, int lidx, Vstring_t
   if (c isnot '@') return NO_CALLBACK_FUNCTION;
 
   buf_t *this = *thisp;
-  ifnot ($from($my(root), env)->uid)
+  ifnot ($OurRoots(uid))
     return NO_CALLBACK_FUNCTION;
 
   char *str = Vstring.to.cstring (vstr, ADD_NL);
@@ -1893,80 +1893,50 @@ theend:
   return retval;
 }
 
-static venv_t *venv_new (void) {
-  venv_t *env = Alloc (sizeof (venv_t));
-  env->pid = getpid ();
-  env->uid = getuid ();
-  env->gid = getgid ();
+static void venv_new (ed_T *this) {
+  $OurRoots(uid) = (uid_t) atoi (Sys.get.env_value ("UID"));
+  $OurRoots(pid) = (pid_t) atoi (Sys.get.env_value ("PID"));
 
-  env->path = String.new_with (Sys.get.env_value ("PATH"));
-  env->user_name = String.new_with (Sys.get.env_value ("USERNAME"));
-  env->group_name = String.new_with (Sys.get.env_value ("GROUPNAME"));
-  env->home_dir = String.new_with  (Sys.get.env_value ("HOME"));
-
-  if (env->home_dir->bytes[env->home_dir->num_bytes - 1] is DIR_SEP)
-    String.clear_at (env->home_dir, env->home_dir->num_bytes - 1);
-
-  char *term_name = getenv ("TERM");
-  if (NULL is term_name) {
-    Stderr.print_fmt ("TERM environment variable isn't set\n");
-    env->term_name = String.new (1);
-  } else
-    env->term_name = String.new_with (term_name);
-
-  if (env->uid)
-    __env_check_directory__ (env->home_dir->bytes, "home directory", 1, 0, 0);
+  if ($OurRoots(uid))
+    __env_check_directory__ (Sys.get.env_value ("HOME"), "home directory", 1, 0, 0);
 
 #ifndef LIBVED_DIR
-  env->my_dir = String.new_with_fmt ("%s/.libved", env->home_dir->bytes);
+  Sys.set.env_as (STR_FMT ("%s/.libved", Sys.get.env_value ("HOME"), "E_DIR", 1);
 #else
-  env->my_dir = String.new_with (LIBVED_DIR);
+  Sys.set.env_as (LIBVED_DIR, "E_DIR", 1);
 #endif
-  if (env->uid)
-    __env_check_directory__ (env->my_dir->bytes, "libved directory", 1, 0, 0);
+ char *e_dir = Sys.get.env_value ("E_DIR");
+  if ($OurRoots(uid))
+    __env_check_directory__ (e_dir, "libved directory", 1, 0, 0);
 
 #ifndef LIBVED_TMPDIR
-  env->tmp_dir = String.new_with_fmt ("%s/tmp", env->my_dir->bytes);
+  Sys.set.env_as (STR_FMT ("%s/tmp", e_dir), "E_TMPDIR", 1);
 #else
-  env->tmp_dir = String.new_with (LIBVED_TMPDIR);
+  Sys.set.env_as (LIBVED_TMPDIR, "E_TMPDIR", 1);
 #endif
-  if (env->uid)
-    __env_check_directory__ (env->tmp_dir->bytes, "temp directory", 1, 1, 0);
+  char *tmp_dir = Sys.get.env_value ("E_TMPDIR");
+  if ($OurRoots(uid))
+    __env_check_directory__ (tmp_dir, "editor temp directory", 1, 1, 0);
 
 #ifndef LIBVED_DATADIR
-  env->data_dir = String.new_with_fmt ("%s/data", env->my_dir->bytes);
+  Sys.set.env_as (STR_FMT ("%s/data", e_dir), "E_DATADIR", 1);
 #else
-  env->data_dir = String.new_with (LIBVED_DATADIR);
+  Sys.set.env_as (LIBVED_DATADIR, "E_DATADIR", 1);
 #endif
-  if (env->uid)
-    __env_check_directory__ (env->data_dir->bytes, "data directory", 1, 1, 0);
+  char *data_dir = Sys.get.env_value ("E_DATADIR");
+  if ($OurRoots(uid))
+    __env_check_directory__ (data_dir, "editor data directory", 1, 1, 0);
 
-  env->i_dir = String.new_with_fmt ("%s/e", env->data_dir->bytes);
-  if (env->uid)
-    __env_check_directory__ (env->i_dir->bytes, "integrated interpreter directory", 1, 1, 0);
-  if (env->uid)
-    __env_check_directory__ (STR_FMT("%s/scripts", env->i_dir->bytes), "integrated interpreter scripts directory", 1, 1, 0);
+  Sys.set.env_as (STR_FMT ("%s/e", data_dir), "I_DIR", 1);
+  if ($OurRoots(uid)) {
+    char *i_dir = Sys.get.env_value ("I_DIR");
+    __env_check_directory__ (i_dir, "integrated interpreter directory", 1, 1, 0);
 
-  env->env_str = String.new (8);
-
-  return env;
-}
-
-static void venv_release (venv_t **env) {
-  if (NULL is env) return;
-
-  String.release ((*env)->group_name);
-  String.release ((*env)->user_name);
-  String.release ((*env)->term_name);
-  String.release ((*env)->home_dir);
-  String.release ((*env)->env_str);
-  String.release ((*env)->path);
-  String.release ((*env)->i_dir);
-  String.release ((*env)->my_dir);
-  String.release ((*env)->tmp_dir);
-  String.release ((*env)->data_dir);
-
-  free (*env); *env = NULL;
+    size_t len = bytelen (i_dir + 8);
+    char scripts[len + 1];
+    Cstring.cp_fmt (scripts, len + 1, "%s/scripts", i_dir);
+    __env_check_directory__ (scripts, "integrated interpreter scripts directory", 1, 1, 0);
+  }
 }
 
 static void history_release (hist_t **hist) {
@@ -3550,14 +3520,14 @@ static char *ed_error_string (ed_t *this, int err) {
   return $my(ed_str)->bytes;
 }
 
-static void ed_set_topline (ed_t *ed, buf_t *this) {
+static void ed_set_topline (ed_t *ed UNUSED, buf_t *this) {
   time_t tim = time (NULL);
   struct tm *tm = localtime (&tim);
 
   String.replace_with_fmt ($myroots(topline), TERM_SET_COLOR_FMT,
-      $myroots(env)->uid ? COLOR_TOPLINE : COLOR_SU);
+      $OurRoots(uid) is 0  ? COLOR_SU : COLOR_TOPLINE);
   String.append_with_fmt ($myroots(topline), "[%s] [pid %d]",
-    $my(mode), $from(ed, env)->pid);
+    $my(mode), $OurRoots(pid));
 
   char tmnow[32];
   size_t len = strftime (tmnow, sizeof (tmnow), "[%a %d %H:%M:%S]", tm);
@@ -4649,7 +4619,7 @@ thenext_condition:
 
 thediff:;
 
-  tmpfname_t *tmpn = File.tmpfname.new ($myroots(env)->tmp_dir->bytes, $my(basename));
+  tmpfname_t *tmpn = File.tmpfname.new (Sys.get.env_value ("E_TMPDIR"), $my(basename));
   if (NULL is tmpn or -1 is tmpn->fd) goto theend;
 
   char com[MAXLEN_COM];
@@ -8635,7 +8605,8 @@ static int ed_complete_filename (menu_t *menu) {
       }
     }
 
-    Cstring.cp (dir, PATH_MAX, $myroots(env)->home_dir->bytes, $myroots(env)->home_dir->num_bytes);
+    char *home = Sys.get.env_value ("HOME");
+    Cstring.cp (dir, PATH_MAX, home, bytelen (home));
 
     joinpath = 1;
     goto getlist;
@@ -10581,15 +10552,14 @@ static string_t *ed_history_set_search_file (ed_t *this, char *file) {
     else
       hs_file = String.replace_with (hs_file, file);
   } else {
+    char *data_dir = Sys.get.env_value ("E_DATADIR");
     if (NULL is hs_file)
-      hs_file = String.new_with (
-          Root.get.env ($OurRoot, "data_dir")->bytes);
+      hs_file = String.new_with (data_dir);
     else
-      hs_file = String.replace_with (hs_file,
-          Root.get.env ($OurRoot, "data_dir")->bytes);
+      hs_file = String.replace_with (hs_file, data_dir);
 
     String.append_with_fmt (hs_file, "/.%s_libved_hist_search",
-        Root.get.env ($OurRoot, "user_name")->bytes);
+        Sys.get.env_value ("USERNAME"));
   }
 
   $my(hs_file) = hs_file;
@@ -10605,15 +10575,14 @@ static string_t *ed_history_set_readline_file (ed_t *this, char *file) {
     else
       hrl_file = String.replace_with (hrl_file, file);
   } else {
+    char *data_dir = Sys.get.env_value ("E_DATADIR");
     if (NULL is hrl_file)
-      hrl_file = String.new_with (
-          Root.get.env ($OurRoot, "data_dir")->bytes);
+      hrl_file = String.new_with (data_dir);
     else
-      hrl_file = String.replace_with (hrl_file,
-          Root.get.env ($OurRoot, "data_dir")->bytes);
+      hrl_file = String.replace_with (hrl_file, data_dir);
 
     String.append_with_fmt (hrl_file, "/.%s_libved_hist_readline",
-        Root.get.env ($OurRoot, "user_name")->bytes);
+        Sys.get.env_value ("USERNAME"));
   }
 
   $my(hrl_file) = hrl_file;
@@ -10653,7 +10622,7 @@ static void ed_history_add_lines (ed_t *this, Vstring_t *hist, int what) {
 }
 
 static void ed_history_read (ed_t *this) {
-  if (0 is $my(env)->uid) return;
+  ifnot ($OurRoots(uid)) return;
 
   Vstring_t *lines = NULL;
 
@@ -10673,7 +10642,7 @@ static void ed_history_read (ed_t *this) {
 }
 
 static void ed_history_write (ed_t *this) {
-  if (0 is $my(env)->uid) return;
+  ifnot ($OurRoots(uid)) return;
 
   FILE *fp = fopen ($my(hs_file)->bytes, "w");
   if (NULL is fp) goto hrl_file;
@@ -10784,7 +10753,7 @@ static void ed_set_word_actions_default (ed_t *this) {
 
   self(set.word_actions, chars, ARRLEN(chars), actions, buf_word_actions_cb);
 
-  if ($my(env)->uid) {
+  if ($OurRoots(uid)) {
     utf8 spc[] = {'S'}; char spact[] = "Spell selected word";
     self(set.word_actions, spc, ARRLEN(spc), spact, buf_spell_word_cb);
   }
@@ -10915,7 +10884,7 @@ static void ed_set_lw_mode_actions_default (ed_t *this) {
   utf8 vc[] = {'v'}; char vact[] = "validate string for invalid utf8 sequences";
   self(set.lw_mode_actions, vc, 1, vact, buf_validate_utf8_lw_mode_cb);
 
-  if ($my(env)->uid) {
+  if ($OurRoots(uid)) {
     utf8 ev[] = {'@'}; char evact[] = "@evaluate selected lines";
     self(set.lw_mode_actions, ev, 1, evact, buf_evaluate_lw_mode_cb);
 
@@ -11005,7 +10974,7 @@ theend:
 }
 
 static void ed_set_line_mode_actions_default (ed_t *this) {
-  ifnot ($my(env)->uid) return;
+  ifnot ($OurRoots(uid)) return;
 
   utf8 chars[] = {'`', '+', '*'};
   char actions[] =
@@ -11078,7 +11047,7 @@ static int buf_file_mode_actions_cb (buf_t **thisp, utf8 c, char *action) {
 
      case '@':
       retval = NOTOK;
-      ifnot ($from($my(root), env)->uid) break;
+      ifnot ($OurRoots(uid)) break;
 
       if (0 is (($my(flags) & BUF_IS_SPECIAL)) and
           0 is Cstring.eq ($my(basename), UNNAMED)) {
@@ -11127,7 +11096,7 @@ static int buf_file_mode_actions_cb (buf_t **thisp, utf8 c, char *action) {
 }
 
 static void ed_set_file_mode_actions_default (ed_t *this) {
-  ifnot ($my(env)->uid) return;
+  ifnot ($OurRoots(uid)) return;
 
   utf8 chars[] = {'w', 'v', '@'};
   char actions[] =
@@ -11230,7 +11199,6 @@ static void ed_release (ed_t *this) {
     Video.release ($my(video));
 
     history_release (&$my(history));
-    //venv_release (&$my(env));
 
     for (int i = 0; i < NUM_REGISTERS; i++) {
       if (i is REG_SHARED) continue;
@@ -12482,7 +12450,6 @@ static ed_T *editor_new (void) {
 
   $my(video) = NULL;
   $my(term)  = NULL;
-  $my(env)   = NULL;
 
   return this;
 }
@@ -12534,7 +12501,6 @@ static ed_t *ed_init (E_T *E, ed_opts opts) {
   $my(Me) = E->__Ed__;
 
   $my(term) = $from($my(Me), term);
-  $my(env)  = $from($my(Me), env);
 
   $my(__Win__)     = &E->__Ed__->__Win__;
   $my(__Buf__)     = &E->__Ed__->__Buf__;
@@ -12715,31 +12681,12 @@ static int E_delete (E_T *this, int idx, int force_current) {
 }
 
 static int E_set_i_dir (E_T *__e__, char *dir) {
-  ed_T *this = __e__->__Ed__;
+  (void) __e__;
   if (NOTOK is __env_check_directory__ (dir, "interpreter directory", 0, 0, 0))
     return NOTOK;
 
-  String.replace_with ($my(env)->i_dir, dir);
+  Sys.set.env_as (dir, "I_DIR", 1);
   return OK;
-}
-
-static string_t *__venv_get__ (ed_T *this, string_t *v) {
-  String.replace_with_len ($my(env)->env_str, v->bytes, v->num_bytes);
-  return $my(env)->env_str;
-}
-
-static string_t *E_get_env (E_T *__e__, char *name) {
-  ed_T *this = __e__->__Ed__;
-  if (Cstring.eq (name, "group_name"))  return __venv_get__ (this, $my(env)->group_name);
-  if (Cstring.eq (name, "user_name"))  return __venv_get__ (this, $my(env)->user_name);
-  if (Cstring.eq (name, "term_name")) return __venv_get__ (this, $my(env)->term_name);
-  if (Cstring.eq (name, "home_dir")) return __venv_get__ (this, $my(env)->home_dir);
-  if (Cstring.eq (name, "path")) return __venv_get__ (this, $my(env)->path);
-  if (Cstring.eq (name, "i_dir")) return __venv_get__(this, $my(env)->i_dir);
-  if (Cstring.eq (name, "my_dir")) return __venv_get__ (this,  $my(env)->my_dir);
-  if (Cstring.eq (name, "tmp_dir")) return __venv_get__ (this, $my(env)->tmp_dir);
-  if (Cstring.eq (name, "data_dir")) return __venv_get__ (this, $my(env)->data_dir);
-  return NULL;
 }
 
 static ed_t *E_set_current (E_T *this, int idx) {
@@ -12932,7 +12879,7 @@ static int E_save_image (E_T *this, char *name) {
 
   ifnot (Path.is_absolute (fname->bytes)) {
     String.prepend_with (fname, "/scripts/");
-    String.prepend_with (fname, self(get.env, "i_dir")->bytes);
+    String.prepend_with (fname, Sys.get.env_value ("I_DIR"));
   }
 
   String.append_with (fname, "i");
@@ -13274,11 +13221,11 @@ exit_all:
   return retval;
 }
 
-static ed_T *ed_init_prop (ed_T *this) {
+static ed_T *ed_init_prop (E_T *__E__, ed_T *this) {
   $my(__Win__)     = &this->__Win__;
   $my(__Buf__)     = &this->__Buf__;
   $my(__I__)       = &this->__I__;
-  $my(__E__)       = $my(__E__);
+  $my(__E__)       = __E__;
   $my(__Msg__)     = &this->__Msg__;
   $my(__Error__)   = &this->__Error__;
 
@@ -13289,14 +13236,14 @@ static ed_T *ed_init_prop (ed_T *this) {
   return this;
 }
 
-static int Ed_init (ed_T *this) {
-  ed_init_prop (this);
+static int Ed_init (E_T *__E__, ed_T *this) {
+  ed_init_prop (__E__, this);
 
   $my(term) = Term.new ();
-  $my(env)  = venv_new ();
 
-  Spell.set.dictionary (STR_FMT ("%s/spell/spell.txt",
-      __venv_get__ (this, $my(env)->data_dir)->bytes));
+  venv_new (this);
+
+  Spell.set.dictionary (STR_FMT ("%s/spell/spell.txt", Sys.get.env_value ("E_DATADIR")));
 
   Term.set_state_bit ($my(term), (TERM_DONOT_CLEAR_SCREEN|TERM_DONOT_SAVE_SCREEN|TERM_DONOT_RESTORE_SCREEN));
 
@@ -13501,15 +13448,6 @@ ival_t i_buf_search (i_t *this, buf_t *buf, char com, char *str, int c) {
   return retval;
 }
 
-ival_t i_print_env (i_t *this, ed_t *ed, char *str) {
-  (void) ed;
-  E_T *iroot = I.get.user_data (this);
-  string_t *env = E_get_env (iroot, str);
-  free (str);
-  I.print_bytes (this, env->bytes);
-  return I_OK;
-}
-
 struct ifun_t {
   const char *name;
   ival_t val;
@@ -13547,7 +13485,6 @@ struct ifun_t {
   { "win_append_buf",        (ival_t) i_win_append_buf, 2},
   { "win_set_current_buf",   (ival_t) i_win_set_current_buf, 3},
   { "win_get_current_buf",   (ival_t) i_win_get_current_buf, 1},
-  { "print_env",             (ival_t) i_print_env, 2},
   { NULL, 0, 0}
 };
 
@@ -13576,7 +13513,7 @@ static i_T *__init_this_i__ (E_T *this) {
 static int E_load_file (E_T *this, char *fn) {
   i_t *i = I.init_instance (__I__, IOpts (
     .define_funs_cb = i_define_funs_default_cb,
-    .idir = E_get_env (this, "i_dir")->bytes));
+    .idir = Sys.get.env_value ("I_DIR")));
 
   I.set.user_data (i, this);
 
@@ -13604,7 +13541,6 @@ public E_T *__init_ed__ (char *name) {
       .create_image = E_create_image,
       .get = (E_get_self) {
         .num = E_get_num,
-        .env = E_get_env,
         .idx = E_get_idx,
         .head = E_get_head,
         .next = E_get_next,
@@ -13648,7 +13584,7 @@ public E_T *__init_ed__ (char *name) {
 
   __init_this_i__ (this);
 
-  if (NOTOK is Ed_init (this->__Ed__)) {
+  if (NOTOK is Ed_init (this, this->__Ed__)) {
     __deinit_ed__ (&this);
     return NULL;
   }
@@ -13670,7 +13606,6 @@ public E_T *__init_ed__ (char *name) {
 static void ed_deallocate_prop (ed_T *this) {
   if ($myprop is NULL) return;
   Term.release (&$my(term));
-  venv_release (&$my(env));
   free ($myprop);
   $myprop = NULL;
 }
@@ -13707,6 +13642,7 @@ public void __deinit_ed__ (E_T **thisp) {
 
   __deinit_sys__ ();
   __deinit_spell__ (&spellType);
+  __deinit_vui__ (&vuiType);
 
   if ($my(num_at_exit_cbs)) free ($my(at_exit_cbs));
 

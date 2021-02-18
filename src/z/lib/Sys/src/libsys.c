@@ -8,7 +8,7 @@
 
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
-#define REQUIRE_VSTRING_TYPE  DONOT_DECLARE
+#define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
@@ -19,7 +19,17 @@
 
 #include <z/cenv.h>
 
+typedef struct log_t {
+  string_t *file;
+  FILE *fp;
+  Vstring_t *messages;
+} log_t;
+
+static log_t *__LOG__ = NULL;
 static Smap_t *__ENV__ = NULL;
+
+static sys_T __SYS__;
+static int is_initialized = 0;
 
 static string_t *sys_set_env_as (char *val, char *as, int replace) {
   if (NULL is __ENV__)
@@ -55,7 +65,10 @@ static char *sys_get_env_value (char *as) {
 
   char *val = Cstring.byte.in_str (env->bytes, '=');
   if (NULL is val) return NULL;
-  return ++val;
+
+  if (*(++val) is '\0') return NULL;
+
+  return val;
 }
 
 static long sys_get_clock_sec (clockid_t clock_id) {
@@ -118,7 +131,7 @@ static int sys_init_environment (sys_env_opts opts) {
 
   char *path = getenv ("PATH");
   if (NULL is path)
-    sys_set_env_as ("/bin:/usr/bin:/usr/local/bin", "PATH", opts.overwrite);
+    sys_set_env_as (SYSTEM_PATH, "PATH", opts.overwrite);
   else
     sys_set_env_as (path, "PATH", opts.overwrite);
 
@@ -194,27 +207,31 @@ static int sys_init_environment (sys_env_opts opts) {
   }
 
   char *hdir = getenv ("HOME");
+  string_t *home = NULL;
+
   ifnot (NULL is hdir)
-    sys_set_env_as (hdir, "HOME", opts.overwrite);
+    home = sys_set_env_as (hdir, "HOME", opts.overwrite);
   else {
     do {
       if (opts.home isnot NULL) {
-        sys_set_env_as (opts.home, "HOME", opts.overwrite);
+        home = sys_set_env_as (opts.home, "HOME", opts.overwrite);
         break;
       }
 
       ifnot (NULL is pswd) {
-        sys_set_env_as (pswd->pw_dir, "HOME", opts.overwrite);
+        home = sys_set_env_as (pswd->pw_dir, "HOME", opts.overwrite);
         break;
       }
 
       #ifdef HOME
-        sys_set_env_as (HOME, "HOME", opts.overwrite);
+        home = sys_set_env_as (HOME, "HOME", opts.overwrite);
       #else
-        sys_set_env_as (STR_FMT ("/home/%s", sys_get_env_value ("HOME")), "HOME", opts.overwrite);
-        #endif
+        home = sys_set_env_as (STR_FMT (DIR_SEP_STR "home" DIR_SEP_STR "%s", sys_get_env_value ("USERNAME")), "HOME", opts.overwrite);
+      #endif
     } while (0);
   }
+
+  String.trim_end (home, DIR_SEP);
 
   char *term_name = getenv ("TERM");
   ifnot (NULL is term_name)
@@ -303,17 +320,103 @@ theend:
   return info;
 }
 
+static void sys_release_log (void) {
+  if (NULL is __LOG__) return;
+
+  ifnot (NULL is __LOG__->file)
+    String.release (__LOG__->file);
+
+  ifnot (NULL is __LOG__->fp)
+    fclose (__LOG__->fp);
+
+  Vstring.release (__LOG__->messages);
+  free (__LOG__);
+  __LOG__ = NULL;
+}
+
+static void sys_log_append_message (char *msg) {
+  if (NULL is __LOG__ or NULL is msg) return;
+
+  size_t len = bytelen (msg);
+  ifnot (len) return;
+
+  ifnot (NULL is __LOG__->fp) {
+    fprintf (__LOG__->fp, "%s\n", msg);
+    return;
+  }
+
+  Vstring.append_with_len (__LOG__->messages, msg, len);
+}
+
+static string_t *sys_log_messages (void) {
+  if (NULL is __LOG__) return NULL;
+
+  ifnot (NULL is __LOG__->messages)
+    return Vstring.join (__LOG__->messages, "\n");
+
+  if (NULL is __LOG__->fp) return NULL;
+  Vstring_t *lines = File.readlines_from_fp (__LOG__->fp, NULL, NULL, NULL);
+  if (NULL is lines) return NULL;
+  return Vstring.join (lines, "\n");
+}
+
+static int sys_log_init (char *file) {
+  ifnot (NULL is __LOG__) {
+    ifnot (NULL is file) {
+      ifnot (NULL is __LOG__->file)
+        String.replace_with (__LOG__->file, file);
+      else
+        __LOG__->file = String.new_with (file);
+
+      ifnot (NULL is __LOG__->fp)
+        fclose (__LOG__->fp);
+
+      __LOG__->fp = fopen (__LOG__->file->bytes, "w+");
+      if (NULL is __LOG__->fp) {
+        sys_release_log ();
+        return NOTOK;
+      }
+    }
+
+    return OK;
+  }
+
+  __LOG__ = Alloc (sizeof (log_t));
+  __LOG__ ->messages = NULL;
+  __LOG__ ->file = NULL;
+  __LOG__ ->fp = NULL;
+
+  ifnot (NULL is file) {
+    __LOG__->file = String.new_with (file);
+    __LOG__->fp = fopen (__LOG__->file->bytes, "w+");
+    if (NULL is __LOG__->fp) {
+      sys_release_log ();
+      return NOTOK;
+    }
+  }
+
+  return OK;
+}
+
 public sys_T __init_sys__ (void) {
+  if (is_initialized) return __SYS__;
+
   __INIT__ (string);
   __INIT__ (cstring);
+  __INIT__ (vstring);
   __INIT__ (file);
   __INIT__ (smap);
   __INIT__ (dir);
   __INIT__ (io);
 
-  return (sys_T) {
+  __SYS__ = (sys_T) {
     .self = (sys_self) {
       .which = sys_which,
+      .log = (sys_log_self) {
+        .init = sys_log_init,
+        .messages = sys_log_messages,
+        .append_message = sys_log_append_message
+      },
       .init_environment = sys_init_environment,
       .get = (sys_get_self) {
         .env = sys_get_env,
@@ -326,8 +429,12 @@ public sys_T __init_sys__ (void) {
       }
     }
   };
+
+  is_initialized++;
+  return __SYS__;
 }
 
 public void __deinit_sys__ (void) {
   Smap.release (__ENV__);
+  sys_release_log ();
 }

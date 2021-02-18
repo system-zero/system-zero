@@ -1,20 +1,8 @@
 #ifndef IMAP_HDR
 #define IMAP_HDR
 
+typedef struct Imap_t Imap_t;
 typedef struct imap_t imap_t;
-
-struct imap_t {
-  char *key;
-  int   val;
-  imap_t *next;
-};
-
-typedef struct Imap_t {
-  imap_t **slots;
-  size_t
-    num_slots,
-    num_keys;
-} Imap_t;
 
 typedef struct imap_self {
   void
@@ -27,7 +15,7 @@ typedef struct imap_self {
     (*get) (Imap_t *, char *),
     (*key_exists) (Imap_t *, char *);
 
-  uint
+  int
     (*set) (Imap_t *, char *, int),
     (*set_with_keylen) (Imap_t *, char *);
 } imap_self;

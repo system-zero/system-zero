@@ -543,25 +543,6 @@ typedef struct win_prop {
   dim_t **frames_dim;
 } win_prop;
 
-typedef struct venv_t {
-  pid_t pid;
-  uid_t uid;
-  gid_t gid;
-
-  string_t
-    *user_name,
-    *group_name,
-    *term_name,
-    *my_dir,
-    *home_dir,
-    *tmp_dir,
-    *data_dir,
-    *path,
-    *display,
-    *env_str,
-    *i_dir;
-} venv_t;
-
 typedef struct ed_prop {
   char
     *name,
@@ -576,8 +557,6 @@ typedef struct ed_prop {
   buf_T *__Buf__;
   win_T *__Win__;
   i_T   *__I__;
-
-  venv_t *env;
 
   int
     state,
@@ -684,6 +663,9 @@ typedef struct ed_prop {
 } ed_prop;
 
 typedef struct E_prop {
+  uid_t uid;
+  pid_t pid;
+
   char
     name[MAXLEN_ED_NAME],
     *image_name,

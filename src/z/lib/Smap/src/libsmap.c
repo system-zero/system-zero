@@ -5,6 +5,19 @@
 
 #include <z/cenv.h>
 
+struct smap_t {
+  char *key;
+  string_t *val;
+  smap_t *next;
+};
+
+struct Smap_t {
+  smap_t **slots;
+  size_t
+    num_slots,
+    num_keys;
+};
+
 static void smap_release_slot (smap_t *item) {
   MAP_RELEASE_SLOT(item, smap_t, String.release);
 }
@@ -28,15 +41,15 @@ static string_t *smap_get (Smap_t *smap, char *key) {
   return NULL;
 }
 
-static uint smap_set (Smap_t *smap, char *key, string_t *val) {
+static int smap_set (Smap_t *smap, char *key, string_t *val) {
   string_t *old = smap_get (smap, key);
 
-  uint idx = MAP_SET(smap_t, smap, key, val);
+  MAP_SET(smap_t, smap, key, val);
 
   ifnot (NULL is old)
     String.release (old);
 
-  return idx;
+  return OK;
 }
 
 static int smap_key_exists (Smap_t *smap, char *key) {

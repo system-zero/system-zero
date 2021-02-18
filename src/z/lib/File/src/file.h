@@ -43,7 +43,9 @@ typedef struct file_self {
     (*write) (char *, char *, ssize_t),
     (*append) (char *, char *, ssize_t);
 
-  Vstring_t *(*readlines) (char *, Vstring_t *, FileReadLines_cb, void *);
+  Vstring_t
+    *(*readlines) (char *, Vstring_t *, FileReadLines_cb, void *),
+    *(*readlines_from_fp) (FILE *, Vstring_t *, FileReadLines_cb, void *);
 } file_self;
 
 typedef struct file_T {

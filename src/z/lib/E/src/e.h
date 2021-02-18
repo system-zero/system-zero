@@ -1333,8 +1333,6 @@ typedef struct E_get_self {
 
   term_t *(*term) (E_T *);
 
-  string_t *(*env) (E_T *, char *);
-
   IDefineFuns_cb (*i_define_funs_cb) (E_T *);
 
   i_T *(*iclass) (E_T *);

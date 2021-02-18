@@ -477,7 +477,7 @@ theerror:
 
 static utf8 vwm_getkey (vwm_t *this, int infd) {
   (void) this;
-  return IO.getkey (infd);
+  return Input.getkey (infd);
 }
 
 static vwm_win *vwm_set_current_at (vwm_t *this, int idx) {
@@ -3617,8 +3617,6 @@ static int vwm_main (vwm_t *this) {
 
   win->is_initialized = 1;
 
-#define forever for (;;)
-
   forever {
     win = $my(current);
     if (NULL is win) {
@@ -3779,7 +3777,7 @@ static void vwm_win_to_video (vwm_t *this, vwm_win *win) {
 }
 
 static int vwm_default_rline_cb (vwm_t *this, vwm_win *win, vwm_frame *frame, void *object) {
-  readline_t *rl = Readline.new (this, $my(term), IO.getkey, $my(num_rows) - 1,
+  readline_t *rl = Readline.new (this, $my(term), Input.getkey, $my(num_rows) - 1,
     1, $my(num_cols), $my(video));
   vwm_init_commands (this);
   vwm_win_to_video (this, win);

@@ -1,20 +1,8 @@
 #ifndef SMAP_HDR
 #define SMAP_HDR
 
+typedef struct Smap_t Smap_t;
 typedef struct smap_t smap_t;
-
-struct smap_t {
-  char *key;
-  string_t *val;
-  smap_t *next;
-};
-
-typedef struct Smap_t {
-  smap_t **slots;
-  size_t
-    num_slots,
-    num_keys;
-} Smap_t;
 
 typedef struct smap_self {
   void
@@ -29,7 +17,7 @@ typedef struct smap_self {
   string_t
     *(*get) (Smap_t *, char *);
 
-  uint
+  int
     (*set) (Smap_t *, char *, string_t *);
 } smap_self;
 

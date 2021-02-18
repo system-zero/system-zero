@@ -556,25 +556,152 @@ environment.
 But first lets build this really tiny vim clone:
 ```sh
   make e-shared
+  make e-static
 ```
 
 See the [documentation](data/docs/editor.md) about the provided functionality.
 
-## Development Environment.
+## Chrooting.
 
-At  this  point, it  is  true,  that we  can  change  our root  directory,  by
-"chrooting" to our sys directory.
+A chroot jail, is an isolated environment, useful as a build  environment,  or
+to run unsafe applications without the danger to damage the host system.
+
+This achieved by using the underlying `chroot()` system call, that changes the
+root directory ([ch]ange [root]) for the current process, to a given directory
+tree. Such a process can not access files outside of this directroy tree.
+
+From the root directory of this distribution  (assumed a default installation),
+issue:
 
 ```sh
-  zsu Sys.chroot sys/x86_64 /bin/zs-static
+# This is a here-document, where the string within the EOF delimiters, becomes
+# the standard input for the cat command, which redirects its input to a file.
+#
+# We also surrounded the first EOF delimiter with quotes, so the text it won't
+# be subject for parameter expansion, e.g., `uname -m` would be tranformed  in
+# that system to "x86_64" otherwise.
+#
+# The first line is called a "shebang", and  it is the UNIX way to execute the
+# specified program. In this case we call the system shell, which owe to parse
+# and execute POSIX compatible scripts.
+#
+# After the redirection, we set the executable permission bits to this file, so
+# we can execute directly this script. Otherwise we should call the interpreter
+# explicitly, and pass the file as an argument, e.g. simple as: `sh file`.
+#
+# At the end, we execute this script passing our shell as an argument.
+#
+# Note, that the hash symbol ('#') is considered as a start of a comment and so
+# the above lines and this one, are ignored by the shell.
+
+cat <<- 'EOF' >chroot.sh
+#!/bin/sh
+
+CHROOT=sys/`uname -m`
+
+umount_sys_and_exit () {
+  umount $CHROOT/dev/pts
+  umount $CHROOT/dev
+  umount $CHROOT/tmp
+  umount $CHROOT/proc
+  umount $CHROOT/sys
+
+  exit $1
+}
+
+mount_sys () {
+  mount -o bind /dev    $CHROOT/dev      || umount_sys_and_exit 1
+  mount -t devpts none  $CHROOT/dev/pts  || umount_sys_and_exit 1
+  mount -t tmpfs tmpfs  $CHROOT/tmp      || umount_sys_and_exit 1
+  mount -t proc proc    $CHROOT/proc     || umount_sys_and_exit 1
+  mount -t sysfs sysfs  $CHROOT/sys      || umount_sys_and_exit 1
+}
+
+make_sys_hierarchy () {
+  test -d "$CHROOT/dev"  || mkdir $CHROOT/dev         || exit 1
+  test -d "$CHROOT/sys"  || mkdir $CHROOT/sys         || exit 1
+  test -d "$CHROOT/proc" || mkdir $CHROOT/proc        || exit 1
+  test -d "$CHROOT/tmp"  || mkdir -m 1777 $CHROOT/tmp || exit 1
+}
+
+if [ ! -d "$CHROOT" ]; then
+  printf "$CHROOT not a directory\n"
+  exit 1;
+fi
+
+make_sys_hierarchy
+mount_sys
+Sys.chroot $CHROOT "$@"
+umount_sys_and_exit 0
+EOF
+
+chmod 755 chroot.sh
+
+zsu chroot.sh /bin/zs-static
 ```
+A few observations.
 
-And though is an isolated environment, it is also true, that we can not really
-continue development, without a proper environment. That is development tools,
-like  a compiler  and a  libc.  We have  also  to create  a proper  hierarchy,
-character devices, a password database and so on.
+First we observe, that we need special priviliges to execute this scripts,  as
+the chroot system call requires such priviliges. In fact our UID and GID (user
+and group identification respectively) are both 0, which are the user/group id
+for the root user. This can be fixed, if we extend our chroot tool, to set the
+uid and gid of the called process, to some given by the user arguments. And we
+can probably do that, if the chroot mechanism was safe enough. But it isn't.
 
-Quite a number of realizations.
+It has been long [demonstrated](data/docs/escaping_from_a_chroot_jail.md), and
+proved by development and history, that you can actually escape from  a chroot
+jail. Hardly ideal.
+
+Also observe, that we can only run static compiled objects. Such objects,  are
+collections of other possibly objects, that are linked into the program at the
+compiled time, and which are archived together to form a standalone object.
+Because of that, they don't require at the runtime their dependencies, but are
+a lot larger objects than their shared counterparts, and should  be recompiled
+everytime a dependency has been modified. They are initialized faster, but are
+less gently with the resources as they do not share them with other executables.
+There are practical but not economical.
+
+But lets see the dependencies of a shared object:
+```sh
+  ldd sys/`uname -m`/bin/zs-shared
+```
+(and its output that is shortened here for brevity)
+```sh
+  libdir-0.0.so => libdir-0.0.so (0x00007f61bb3ce000)
+  libvstring-0.0.so => libvstring-0.0.so (0x00007f61bb3c8000)
+  ... more internal libraries
+  linux-vdso.so.1 (0x00007ffcb6197000)
+  libc.so.6 => /lib/libc.so.6 (0x00007f61bb1d1000)
+  /lib/ld-linux-x86-64.so.2 (0x00007f61bb3db000)
+```
+Of all we are more interested about the last three.
+
+The vdso.so (virtual dynamic shared object) library executes system calls in user
+space, instead of kernel space. These are implentation kernel details, and out of
+scope for us mere humans, but see `man vdso` for more information.
+
+Then there is the standard C library (`libc`). All the libraries are prefixed with
+lib in their name. And we yet have to install a libc in our environment. Of course
+we can use the one by the host if we want!
+
+The last one `ld.so` is the one we care here most. This is a program that locates
+and loads shared libraries (like the libc in this case). It's stored in a section
+in an ELF object.
+```sh
+  readelf -l  sys/`uname -m`/bin/zs-shared | grep "interpreter"
+```
+[Requesting program interpreter: /lib/ld-linux-x86-64.so.2]
+
+So it is true, that we can't really continue development without installed first
+a proper development environment.
+
+We have also to create a proper hierarchy, character devices, a password database
+and so on. For some of the reasons, we also "binded" our /dev[ice] directory  and
+some special devices, to our system directory.  We also created and mounted  some
+special directories, like /proc and /sys, with a special filesystem type, which a
+Linux system requires to be functional.
+
+## Development Environment.
 
 But what are our  choices? Should we continue with C?  A scripting language is
 also  an option.  The  Rust language  is  also an  option, as  it  is the  zig
@@ -597,12 +724,11 @@ Quite attractive reasons and all of them without using external tools.
 But it has not yet reached in a stable milestone, plus it still requires LLVM,
 as it can not yet compile itself.
 
-There is also Rust, as we actually are living in the kingdom of Rust.
+There is also Rust, in fact we are actually living in the kingdom of Rust.
 The meaning of the existance of Rust is to become a safe system language, that
 will offer, close to C[++] performance, with a model that is called  borrowing
-and owning. To do that, the genious programmers, created a new tottaly system,
-but which is nothing like that as before, so programmers should dedicate  some
-time to understand.
+and owning, which is a bright new system, that programmers should  adjust  and
+dedicate some time to understand.
 
 We know that C is not safe.  It doesn't do any automatic memory managment, and
 the compiler it will not prevent you or even warn you usually, from blowing up

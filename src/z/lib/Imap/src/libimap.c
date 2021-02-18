@@ -4,6 +4,19 @@
 
 #include <z/cenv.h>
 
+struct imap_t {
+  char *key;
+  int   val;
+  imap_t *next;
+};
+
+struct Imap_t {
+  imap_t **slots;
+  size_t
+    num_slots,
+    num_keys;
+};
+
 static void imap_release_slot (imap_t *item) {
   MAP_RELEASE_SLOT(item, imap_t, (void));
 }
@@ -27,12 +40,14 @@ static int imap_get (Imap_t *imap, char *key) {
   return 0;
 }
 
-static uint imap_set (Imap_t *imap, char *key, int val) {
-  return MAP_SET(imap_t, imap, key, val);
+static int imap_set (Imap_t *imap, char *key, int val) {
+  MAP_SET(imap_t, imap, key, val);
+  return OK;
 }
 
-static uint imap_set_with_keylen (Imap_t *imap, char *key) {
-  return MAP_SET(imap_t, imap, key, bytelen (key));
+static int imap_set_with_keylen (Imap_t *imap, char *key) {
+  MAP_SET(imap_t, imap, key, bytelen (key));
+  return OK;
 }
 
 static int imap_key_exists (Imap_t *imap, char *key) {

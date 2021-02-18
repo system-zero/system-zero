@@ -131,6 +131,10 @@ typedef unsigned int  uint;
 typedef unsigned char uchar;
 typedef unsigned long ulong;
 
+#ifndef SYSTEM_PATH
+#define SYSTEM_PATH "/bin:/usr/local/bin:/usr/bin"
+#endif
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096  /* bytes in a path name */
 #endif
@@ -369,6 +373,15 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
   buf_;                                                               \
 })
 #endif /* VA_ARGS_GET_FMT_STR */
+
+#ifndef STR_FMT_WITH_LEN
+#define STR_FMT_WITH_LEN(len_, fmt_, ...)                             \
+({                                                                    \
+  char buf_[len_];                                                    \
+  snprintf (buf_, len_, fmt_, __VA_ARGS__);                           \
+  buf_;                                                               \
+})
+#endif
 
 #ifndef STR_FMT
 #define STR_FMT(fmt_, ...)                                            \
@@ -1005,6 +1018,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SMAP_TYPE
 #endif /* REQUIRE_SMAP_TYPE */
 
+#ifdef REQUIRE_VMAP_TYPE
+  #ifndef VMAP_TYPE_HDR
+  #define VMAP_TYPE_HDR
+  #include <z/vmap.h>
+  #endif /* VMAP_TYPE_HDR */
+
+  #if (REQUIRE_VMAP_TYPE == DECLARE)
+  static  vmap_T vmapType;
+  #define Vmap   vmapType.self
+  #endif
+
+#undef REQUIRE_VMAP_TYPE
+#endif /* REQUIRE_VMAP_TYPE */
+
 #ifdef REQUIRE_ARGPARSE_TYPE
   #ifndef ARGPARSE_TYPE_HDR
   #define ARGPARSE_TYPE_HDR
@@ -1139,7 +1166,7 @@ typedef ptrdiff_t idx_t;
   #endif
 
   #ifndef SHELL
-  #define SHELL "zs"
+  #define SHELL "zs-static"
   #endif
 
   #ifndef EDITOR
@@ -1447,7 +1474,7 @@ do {                                                                \
       _map_->slots[_idx_] = _it_;                       \
       _map_->num_keys++;                                \
     }                                                   \
-    _idx_;                                              \
+    _it_;                                               \
   })
   #endif /* MAP_MACROS_HDR */
 

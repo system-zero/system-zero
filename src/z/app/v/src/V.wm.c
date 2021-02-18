@@ -18,8 +18,6 @@ static vwm_t *init () {
 }
 
 int main (int argc, char **argv) {
-  (void) argc; (void) argv;
-
   __INIT__ (term);
   __INIT_APP__;
 
