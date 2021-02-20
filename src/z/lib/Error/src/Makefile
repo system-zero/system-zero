@@ -1,4 +1,4 @@
-THIS_LIBNAME = vwm
+THIS_LIBNAME = error
 
 NS      :=
 API     := 0
@@ -82,16 +82,16 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -DTMPDIR='"$(SYSTMPDIR)"'
-LIBFLAGS += -lsys-$(VERSION) -lerror-$(VERSION)
-LIBFLAGS += -lstring-$(VERSION) -lustring-$(VERSION) -lcstring-$(VERSION)
-LIBFLAGS += -lvstring-$(VERSION)
-LIBFLAGS += -ldir-$(VERSION) -lterm-$(VERSION) -lfile-$(VERSION)
-LIBFLAGS += -lreadline-$(VERSION) -lvideo-$(VERSION)
+LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
 
 all: shared static
 
-prereq: Env
+prereq: Env generate-lib
+
+generate-lib:
+	@$(TEST) ! -f generate_lib || $(RM) -v generate_lib
+	@$(CC) -Wall -o generate_lib generate_lib.c
+	@./generate_lib
 
 shared: prereq header $(THIS_SHAREDLIB)
 $(THIS_SHAREDLIB):

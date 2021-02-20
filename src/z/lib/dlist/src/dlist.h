@@ -1,5 +1,5 @@
-#ifndef DLIST_HDR
-#define DLIST_HDR
+#ifndef LIST_HDR
+#define LIST_HDR
 
 #ifndef DListAppend
 #define DListAppend(list_, node_)                        \
@@ -53,7 +53,7 @@
   do {                                                  \
     if (0 > __idx__) __idx__ += (list_)->num_items;     \
     if (__idx__ < 0 or __idx__ >= (list_)->num_items) { \
-      __idx__ = INDEX_ERROR;                            \
+      __idx__ = EINDEX;                                 \
       break;                                            \
     }                                                   \
     int cur_idx_ = (list_)->cur_idx;                    \
@@ -123,7 +123,7 @@ do {                                                    \
   do {                                                  \
     if (0 > idx__) idx__ += (list_)->num_items;         \
     if (idx__ < 0 or idx__ >= (list_)->num_items) {     \
-      idx__ = INDEX_ERROR;                              \
+      idx__ = EINDEX;                                   \
       break;                                            \
     }                                                   \
     if (idx__ is (list_)->cur_idx) break;               \
@@ -147,7 +147,7 @@ do {                                                    \
   int __idx__ = DListSetCurrent (list_, idx_);          \
   type_ *cnode_ = NULL;                                 \
   do {                                                  \
-    if (__idx__ is INDEX_ERROR) break;                  \
+    if (__idx__ is EINDEX) break;                       \
     cnode_ = DListPopCurrent (list_, type_);            \
     if (cur_idx is __idx__) break;                      \
     if (cur_idx > __idx__) cur_idx--;                   \
@@ -165,7 +165,7 @@ do {                                                    \
   do {                                                  \
     if (0 > idx__) idx__ += (list_)->num_items;         \
     if (idx__ < 0 or idx__ >= (list_)->num_items) {     \
-      idx__ = INDEX_ERROR;                              \
+      idx__ = EINDEX;                                   \
       break;                                            \
     }                                                   \
     if ((list_)->num_items / 2 < idx__) {               \
@@ -185,7 +185,7 @@ do {                                                    \
 #ifndef DListGetIdx
 #define DListGetIdx(list_, type_, node_)                \
 ({                                                      \
-  int idx__ = INDEX_ERROR;                              \
+  int idx__ = EINDEX;                                   \
   type_ *node__ = (list_)->head;                        \
   if (list_->num_items isnot 0 and NULL isnot node__) { \
     idx__ = -1;                                         \
@@ -259,4 +259,4 @@ do {                                                    \
 })
 #endif /* DListAppendCurrent */
 
-#endif /* DLIST_HDR */
+#endif /* LIST_HDR */

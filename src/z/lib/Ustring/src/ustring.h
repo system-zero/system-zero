@@ -1,5 +1,5 @@
-#ifndef USTRING_H
-#define USTRING_H
+#ifndef USTRING_HDR
+#define USTRING_HDR
 
 #ifndef TO_LOWER
 #define TO_LOWER 0
@@ -77,4 +77,4 @@ typedef struct ustring_T {
 
 public ustring_T __init_ustring__ (void);
 
-#endif /* CSTRING_H */
+#endif /* USTRING_HDR */

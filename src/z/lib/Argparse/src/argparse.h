@@ -1,5 +1,5 @@
-#ifndef ARGPARSE
-#define ARGPARSE
+#ifndef ARGPARSE_HDR
+#define ARGPARSE_HDR
 
 typedef struct argparse_t argparse_t;
 typedef struct argparse_option_t argparse_option_t;
@@ -82,4 +82,4 @@ typedef struct argparse_T {
 public int argparse_help_cb (argparse_t *, const argparse_option_t *);
 public argparse_T __init_argparse__ (void);
 
-#endif /* ARGPARSE */
+#endif /* ARGPARSE_HDR */

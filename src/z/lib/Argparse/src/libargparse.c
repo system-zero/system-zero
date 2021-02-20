@@ -6,6 +6,7 @@
 #define REQUIRE_STRING_TYPE   DONOT_DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
+#define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_ARGPARSE_TYPE DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -108,7 +109,7 @@ static int argparse_getvalue (argparse_t *self, const argparse_option_t *opt, in
         return argparse_error (self, opt, "requires a value", flags);
       }
       if (errno)
-        return argparse_error (self, opt, strerror(errno), flags);
+        return argparse_error (self, opt, Error.errno_string (errno), flags);
       if (s[0] != '\0')
         return argparse_error (self, opt, "expects an integer value", flags);
       break;
@@ -125,7 +126,7 @@ static int argparse_getvalue (argparse_t *self, const argparse_option_t *opt, in
         return argparse_error (self, opt, "requires a value", flags);
         }
       if (errno)
-        return argparse_error (self, opt, strerror(errno), flags);
+        return argparse_error (self, opt, Error.errno_string (errno), flags);
       if (s[0] != '\0')
         return argparse_error (self, opt, "expects a numerical value", flags);
       break;
@@ -427,6 +428,7 @@ public int argparse_help_cb (argparse_t *self, const argparse_option_t *option) 
 
 public argparse_T __init_argparse__ (void) {
   __INIT__ (io);
+  __INIT__ (error);
   __INIT__ (cstring);
 
   return (argparse_T) {

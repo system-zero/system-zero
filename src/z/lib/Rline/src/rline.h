@@ -1,5 +1,5 @@
-#ifndef RLINE_H
-#define RLINE_H
+#ifndef RLINE_HDR
+#define RLINE_HDR
 
 typedef struct rline_t rline_t;
 
@@ -57,4 +57,4 @@ typedef struct rline_T {
 } rline_T;
 
 public rline_T __init_rline__ (void);
-#endif /* RLINE_H */
+#endif /* RLINE_HDR */

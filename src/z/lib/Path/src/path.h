@@ -1,5 +1,5 @@
-#ifndef PATH_H
-#define PATH_H
+#ifndef PATH_HDR
+#define PATH_HDR
 
 typedef struct path_self {
   char
@@ -19,5 +19,5 @@ typedef struct path_T {
 
 public path_T __init_path__ (void);
 
-#endif /* PATH_H */
+#endif /* PATH_HDR */
 

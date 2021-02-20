@@ -5,9 +5,11 @@
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_STAT
+
 #define REQUIRE_STRING_TYPE  DONOT_DECLARE
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 
@@ -23,7 +25,7 @@ static int dir_make_print (FILE *fp, const char *fmt, ...) {
   struct stat st;
 
   if (-1 is stat (dir, &st)) {
-    Stderr.print_fmt ("stat: %s, %s\n", dir, strerror (errno));
+    Stderr.print_fmt ("stat: %s, %s\n", dir, Error.errno_string (errno));
     return OK;
   }
 
@@ -38,9 +40,10 @@ static int dir_make_print (FILE *fp, const char *fmt, ...) {
 }
 
 int main (int argc, char **argv) {
+  __INIT__ (error);
+  __INIT__ (dir);
   __INIT__ (file);
   __INIT__ (cstring);
-  __INIT__ (dir);
 
   __INIT_APP__;
 

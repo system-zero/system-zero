@@ -89,7 +89,7 @@ clean-static:\
 #-----------------------------------------------#
 T_SANE = $(NAME).sane
 
-T_SANE_STATIC_FLAGS :=
+T_SANE_STATIC_FLAGS := -lerror-$(VERSION)
 # -largparse-$(VERSION)
 # -ldir-$(VERSION) -lpath-$(VERSION)\
 # -lvstring-$(VERSION) -lstring-$(VERSION)\

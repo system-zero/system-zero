@@ -1,5 +1,5 @@
-#ifndef LIBVSTRING_H
-#define LIBVSTRING_H
+#ifndef VSTRING_HDR
+#define VSTRING_HDR
 
 typedef struct vstring_t vstring_t;
 
@@ -77,4 +77,4 @@ typedef struct vstring_T {
 
 public vstring_T __init_vstring__ (void);
 
-#endif /* LIBVSTRING_H */
+#endif /* VSTRING_HDR */

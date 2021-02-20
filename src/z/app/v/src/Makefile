@@ -90,11 +90,11 @@ V_WM = $(NAME).wm
 
 FLAGS += -lvwm-$(VERSION)
 FLAGS += -lcstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION)
-FLAGS += -lterm-$(VERSION) -lfile-$(VERSION)
+FLAGS += -lterm-$(VERSION) -lfile-$(VERSION) -lsmap-$(VERSION)
 
 V_WM_STATIC_FLAGS  = -ldir-$(VERSION) -lreadline-$(VERSION) -lvideo-$(VERSION)
 V_WM_STATIC_FLAGS += -lvstring-$(VERSION) -lpath-$(VERSION)
-V_WM_STATIC_FLAGS += -lsys-$(VERSION) -lsmap-$(VERSION)
+V_WM_STATIC_FLAGS += -lsys-$(VERSION) -lerror-$(VERSION) -lsmap-$(VERSION)
 
 v-wm-shared:
 	$(CC) $(V_WM).c $(FLAGS) -o $(SYSBINDIR)/$(V_WM)-shared

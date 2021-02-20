@@ -1,5 +1,5 @@
-#ifndef PROC_H
-#define PROC_H
+#ifndef PROC_HDR
+#define PROC_HDR
 
 typedef struct proc_t proc_t;
 typedef struct Proc_t Proc_t;
@@ -64,4 +64,4 @@ typedef struct proc_T {
 
 public proc_T  __init_proc__ (void);
 
-#endif /* PROC_H */
+#endif /* PROC_HDR */

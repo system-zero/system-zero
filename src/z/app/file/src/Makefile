@@ -91,7 +91,7 @@ F_SIZE = $(NAME).size
 F_SIZE_STATIC_FLAGS = -ldir-$(VERSION) -lpath-$(VERSION)\
                       -lvstring-$(VERSION) -lstring-$(VERSION)\
                       -lcstring-$(VERSION) -largparse-$(VERSION)\
-                      -lustring-$(VERSION)
+                      -lustring-$(VERSION) -lerror-$(VERSION)
 
 file-size-shared:
 	$(CC) $(F_SIZE).c $(FLAGS) -o $(SYSBINDIR)/$(F_SIZE)-shared

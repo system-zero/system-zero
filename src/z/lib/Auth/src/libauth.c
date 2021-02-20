@@ -25,6 +25,7 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_TERM_TYPE    DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_AUTH_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -325,7 +326,7 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
   errno = 0;
   struct passwd *pswd = getpwuid (uid);
   if (NULL is pswd) {
-    Stderr.print_fmt ("can not read password record %s\n", strerror (errno));
+    Stderr.print_fmt ("can not read password record %s\n", Error.errno_string (errno));
     return NULL;
   }
 
@@ -350,7 +351,7 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
 
   struct group *gr = getgrgid (gid);
   if (NULL is gr) {
-    Stderr.print_fmt ("can not read group record %s\n", strerror (errno));
+    Stderr.print_fmt ("can not read group record %s\n", Error.errno_string (errno));
     return NULL;
   }
 
@@ -398,11 +399,12 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
 }
 
 public auth_T  __init_auth__ (void) {
+  __INIT__ (io);
+  __INIT__ (term);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (ustring);
-  __INIT__ (io);
-  __INIT__ (term);
 
   return (auth_T) {
     .self = (auth_self) {

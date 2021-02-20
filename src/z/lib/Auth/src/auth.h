@@ -1,5 +1,5 @@
-#ifndef LIBAUTH_H
-#define LIBAUTH_H
+#ifndef LIBAUTH_HDR
+#define LIBAUTH_HDR
 
 #ifndef AUTH_TEST_PROG
 #define AUTH_TEST_PROG "sudo"
@@ -73,4 +73,4 @@ typedef struct auth_T {
 
 auth_T __init_auth__ (void);
 
-#endif /* LIBAUTH_H */
+#endif /* LIBAUTH_HDR */

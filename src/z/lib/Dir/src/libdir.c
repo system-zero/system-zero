@@ -18,6 +18,7 @@
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_DIR_TYPE     DONOT_DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 
 #include <z/cenv.h>
 #include "__dir.h"
@@ -244,7 +245,7 @@ static int dir_make (char *dir, mode_t mode, dir_opts opts) {
     if (errno is EEXIST)
       return (dir_is_directory (dir) ? OK : NOTOK);
 
-    DIR_ERROR ("mkdir: %s, %s\n", dir, strerror (errno));
+    DIR_ERROR ("mkdir: %s, %s\n", dir, Error.errno_string (errno));
 
     return NOTOK;
   }
@@ -293,7 +294,7 @@ static int dir_rm  (char *dir, dir_opts opts) {
   int retval =rmdir (dir);
 
   if (retval isnot OK)
-    DIR_ERROR ("rmdir: %s %s\n", dir, strerror (errno));
+    DIR_ERROR ("rmdir: %s %s\n", dir, Error.errno_string (errno));
   else
     DIR_MSG ("removed directory: %s\n", dir);
 
@@ -337,6 +338,7 @@ static int dir_rm_parents (char *dir, dir_opts opts) {
 
 public dir_T __init_dir__ (void) {
   __INIT__(path);
+  __INIT__(error);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (vstring);

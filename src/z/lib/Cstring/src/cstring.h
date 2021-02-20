@@ -1,5 +1,5 @@
-#ifndef CSTRING_H
-#define CSTRING_H
+#ifndef CSTRING_HDR
+#define CSTRING_HDR
 
 #define CSTRING_TOK_OK    OK
 #define CSTRING_TOK_NOTOK NOTOK
@@ -59,4 +59,4 @@ typedef struct cstring_T {
 
 public cstring_T __init_cstring__ (void);
 
-#endif /* CSTRING_H */
+#endif /* CSTRING_HDR */

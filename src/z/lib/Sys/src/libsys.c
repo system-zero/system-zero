@@ -5,6 +5,8 @@
 #define REQUIRE_SYS_UNAME
 #define REQUIRE_SYS_TYPES
 #define REQUIRE_TIME
+#define REQUIRE_PWD
+#define REQUIRE_GRP
 
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
@@ -13,8 +15,7 @@
 #define REQUIRE_DIR_TYPE      DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
-#define REQUIRE_PWD
-#define REQUIRE_GRP
+#define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_SYS_TYPE      DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -164,7 +165,7 @@ static int sys_init_environment (sys_env_opts opts) {
 
       if (opts.exit_on_error) {
         Stderr.print_fmt ("Can not read passwd record|%s|%d\n",
-            (0 is errno ? "" : strerror (errno)), errno);
+            (0 is errno ? "" : Error.errno_string (errno)), errno);
         exit (1);
       }
 
@@ -200,7 +201,7 @@ static int sys_init_environment (sys_env_opts opts) {
 
       if (opts.exit_on_error) {
         Stderr.print_fmt ("Can not read group record%s\n",
-            0 is errno ? "" : strerror (errno));
+            0 is errno ? "" : Error.errno_string (errno));
          exit (1);
       }
     } while (0);
@@ -401,13 +402,14 @@ static int sys_log_init (char *file) {
 public sys_T __init_sys__ (void) {
   if (is_initialized) return __SYS__;
 
+  __INIT__ (io);
+  __INIT__ (dir);
+  __INIT__ (file);
+  __INIT__ (smap);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (vstring);
-  __INIT__ (file);
-  __INIT__ (smap);
-  __INIT__ (dir);
-  __INIT__ (io);
 
   __SYS__ = (sys_T) {
     .self = (sys_self) {

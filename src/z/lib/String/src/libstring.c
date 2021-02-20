@@ -2,6 +2,7 @@
 
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
+
 #define REQUIRE_STRING_TYPE DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -231,7 +232,7 @@ static int string_delete_numbytes_at (string_t *this, int num, int idx) {
 
   if (idx < 0 or idx >= (int) this->num_bytes or
       idx + num > (int) this->num_bytes)
-    return INDEX_ERROR;
+    return EINDEX;
 
   if (idx + num isnot (int) this->num_bytes)
     byte_cp (this->bytes + idx, this->bytes + idx + num,

@@ -84,7 +84,7 @@ static void video_render_set_from_to (video_t *this, int frow, int lrow) {
 static void video_draw_row_at (video_t *this, int at) {
   int idx = at - 1;
 
-  if (DListSetCurrent(this, idx) is INDEX_ERROR) return;
+  if (DListSetCurrent(this, idx) is EINDEX) return;
 
   vstring_t *row = this->current;
   String.replace_with_fmt (this->tmp_render,
@@ -117,14 +117,14 @@ static void video_draw_all (video_t *this) {
 }
 
 static void video_set_row_with (video_t *this, int idx, char *bytes) {
-  if (DListSetCurrent (this, idx) is INDEX_ERROR) return;
+  if (DListSetCurrent (this, idx) is EINDEX) return;
   vstring_t *row = this->current;
   String.replace_with (row->data, bytes);
 }
 
 static void video_row_hl_at (video_t *this, int idx, int color,
                                                int fidx, int lidx) {
-  if (DListSetCurrent (this, idx) is INDEX_ERROR) return;
+  if (DListSetCurrent (this, idx) is EINDEX) return;
   vstring_t *row = this->current;
   if (fidx >= (int) row->data->num_bytes) return;
   if (lidx >= (int) row->data->num_bytes) lidx = row->data->num_bytes - 1;

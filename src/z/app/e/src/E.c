@@ -19,6 +19,7 @@
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
+#define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_E_TYPE        DECLARE
 #define REQUIRE_IMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_SMAP_TYPE     DONOT_DECLARE
@@ -83,11 +84,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
   Stderr.print ("MEMORY_ALLOCATION_ERROR\n");
   Stderr.print_fmt ("File: %s\nFunction: %s\nLine: %d\n", file, func, line);
   Stderr.print_fmt ("Size: %zd\n", size);
-
-  if (err is INTEGEROVERFLOW_ERROR)
-    Stderr.print ("Error: Integer Overflow Error\n");
-  else
-    Stderr.print ("Error: Not Enouch Memory\n");
+  Stderr.print_fmt ("%s\n", Error.errno_string (err));
 
   ifnot (NULL is __E__) __deinit_ed__ (&__E__);
 
@@ -656,15 +653,16 @@ static void __init_ext__ (ed_t *this, ed_opts opts) {
 }
 
 int main (int argc, char **argv) {
+  __INIT__ (dir);
   __INIT__ (sys);
+  __INIT__ (path);
+  __INIT__ (file);
   __INIT__ (term);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (vstring);
   __INIT__ (cstring);
   __INIT__ (readline);
-  __INIT__ (path);
-  __INIT__ (file);
-  __INIT__ (dir);
 
   Sys.init_environment (SysEnvOpts());
 

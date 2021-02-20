@@ -83,6 +83,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -lcstring-$(VERSION)
+LIBFLAGS += -lerror-$(VERSION)
 
 all: shared static
 

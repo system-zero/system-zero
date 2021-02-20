@@ -56,6 +56,7 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_USTRING_TYPE DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_I_TYPE       DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -1295,7 +1296,7 @@ static int i_eval_file (i_t *this, const char *filename) {
   int r = OK;
   FILE *fp = fopen (filename, "r");
   if (NULL is fp) {
-    this->print_fmt_bytes (this->err_fp, "%s\n", strerror (errno));
+    this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
     return NOTOK;
   }
 
@@ -1666,6 +1667,7 @@ static ival_t I_print_byte (i_t *this, char byte) {
 public i_T *__init_i__ (void) {
   __INIT__ (path);
   __INIT__ (file);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (vstring);

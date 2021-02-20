@@ -28,6 +28,7 @@
 #define REQUIRE_READLINE_TYPE DECLARE
 #define REQUIRE_VIDEO_TYPE    DECLARE
 #define REQUIRE_SYS_TYPE      DECLARE
+#define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_VWM_TYPE      DONOT_DECLARE
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
@@ -482,7 +483,7 @@ static utf8 vwm_getkey (vwm_t *this, int infd) {
 
 static vwm_win *vwm_set_current_at (vwm_t *this, int idx) {
   vwm_win *cur_win = $my(current);
-  if (INDEX_ERROR isnot DListSetCurrent ($myprop, idx)) {
+  if (EINDEX isnot DListSetCurrent ($myprop, idx)) {
     if (NULL isnot cur_win)
       $my(last_win) = cur_win;
   }
@@ -524,7 +525,7 @@ static int vwm_get_num_wins (vwm_t *this) {
 
 static int vwm_get_win_idx (vwm_t *this, vwm_win *win) {
   int idx = DListGetIdx ($myprop, vwm_win, win);
-  if (idx is INDEX_ERROR)
+  if (idx is EINDEX)
     return NOTOK;
 
   return idx;
@@ -3207,7 +3208,7 @@ static vwm_frame *win_get_frame_at (vwm_win *this, int idx) {
 
 static int win_get_frame_idx (vwm_win *this, vwm_frame *frame) {
   int idx = DListGetIdx (this, vwm_frame, frame);
-  if (idx is INDEX_ERROR)
+  if (idx is EINDEX)
     return NOTOK;
 
   return idx;
@@ -4011,11 +4012,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
   Stderr.print ("MEMORY_ALLOCATION_ERROR\n");
   Stderr.print_fmt ("File: %s\nFunction: %s\nLine: %d\n", file, func, line);
   Stderr.print_fmt ("Size: %zd\n", size);
-
-  if (err is INTEGEROVERFLOW_ERROR)
-    Stderr.print ("Error: Integer Overflow Error\n");
-  else
-    Stderr.print ("Error: Not Enouch Memory\n");
+  Stderr.print_fmt ("%s\n", Error.errno_string (err));
 
   __deinit_vwm__ (&__VWM__);
 
@@ -4028,6 +4025,7 @@ public vwm_t *__init_vwm__ (void) {
   __INIT__ (sys);
   __INIT__ (term);
   __INIT__ (file);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (vstring);

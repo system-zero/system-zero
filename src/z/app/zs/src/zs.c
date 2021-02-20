@@ -6,6 +6,7 @@
 #define REQUIRE_TIME
 #define REQUIRE_SYS_STAT
 #define REQUIRE_SIGNAL
+
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_STRING_TYPE  DONOT_DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
@@ -14,6 +15,7 @@
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_SYS_TYPE     DECLARE
 #define REQUIRE_RLINE_TYPE   DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 
 #include <z/cenv.h>
 
@@ -86,7 +88,7 @@ static int zs_builtins (char *line, Vstring_t *cdpath) {
       return ZS_CONTINUE;
 
     if (-1 is chdir (path))
-      Stderr.print_fmt ("cd: %s %s\n", path, strerror (errno));
+      Stderr.print_fmt ("cd: %s %s\n", path, Error.errno_string (errno));
 
     Vstring.append_with (cdpath, path);
     return ZS_CONTINUE;
@@ -158,6 +160,7 @@ int main (int argc, char **argv) {
   __INIT__ (sh);
   __INIT__ (sys);
   __INIT__ (dir);
+  __INIT__ (error);
   __INIT__ (rline);
   __INIT__ (vstring);
   __INIT__ (cstring);

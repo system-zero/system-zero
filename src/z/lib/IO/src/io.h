@@ -1,9 +1,10 @@
-#ifndef IO_H
-#define IO_H
+#ifndef IO_HDR
+#define IO_HDR
 
 #define Stderr IO.err
 #define Stdout IO.out
 #define Input  IO.input
+#define FD     IO.fd
 
 typedef utf8 (*IOGetkey) (int);
 
@@ -44,4 +45,4 @@ typedef struct io_T {
 
 public io_T __init_io__ (void);
 
-#endif /* IO_H */
+#endif /* IO_HDR */

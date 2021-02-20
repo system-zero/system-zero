@@ -68,7 +68,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -lauth-$(VERSION) -lcstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION) -lproc-$(VERSION) -lpam
-FLAGS += -lio-$(VERSION) -lterm-$(VERSION)
+FLAGS += -lio-$(VERSION) -lterm-$(VERSION) -lerror-$(VERSION)
 
 SHARED_FLAGS = $(FLAGS)
 STATIC_FLAGS = $(FLAGS) $(STATIC_CFLAGS) -ldl

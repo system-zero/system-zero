@@ -1,5 +1,5 @@
-#ifndef LIBVED_H
-#define LIBVED_H
+#ifndef E_HDR
+#define E_HDR
 
 #define MYNAME "veda"
 
@@ -654,13 +654,13 @@ typedef struct msg_T {
   msg_self self;
 } msg_T;
 
-typedef struct error_self {
+typedef struct eerror_self {
   char *(*string) (ed_t *, int);
-} error_self;
+} eerror_self;
 
-typedef struct error_T {
-  error_self self;
-} error_T;
+typedef struct eerror_T {
+  eerror_self self;
+} eerror_T;
 
 typedef struct buf_iter_self {
   void (*release) (buf_t *, bufiter_t *);
@@ -1285,7 +1285,7 @@ typedef struct ed_T {
   i_T __I__;
 
   msg_T __Msg__;
-  error_T __Error__;
+  eerror_T __EError__;
 } ed_T;
 
 typedef struct E_unset_self {
@@ -1377,4 +1377,4 @@ public void __deinit_ed__ (E_T **);
 public mutable size_t tostderr (char *);
 public mutable size_t tostdout (char *);
 
-#endif /* LIBVED_H */
+#endif /* E_HDR */

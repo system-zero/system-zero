@@ -7,6 +7,7 @@
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_SYS_TYPE     DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -17,7 +18,7 @@ static int sys_exec (char **argv) {
   execvp (argv[0], argv);
 
   if (errno) {
-    Stderr.print_fmt ("%s: %s\n", argv[0], strerror (errno));
+    Stderr.print_fmt ("%s: %s\n", argv[0], Error.errno_string (errno));
     return -1;
   }
 
@@ -26,12 +27,12 @@ static int sys_exec (char **argv) {
 
 static int sys_chroot (char *dir) {
   if (-1 is chroot (dir)) {
-    Stderr.print_fmt ("%s: %s\n", dir, strerror (errno));
+    Stderr.print_fmt ("%s: %s\n", dir, Error.errno_string (errno));
     return 1;
   }
 
   if (-1 is chdir ("/")) {
-    Stderr.print_fmt ("%s\n", strerror (errno));
+    Stderr.print_fmt ("%s\n", Error.errno_string (errno));
     return 1;
   }
 
@@ -41,6 +42,7 @@ static int sys_chroot (char *dir) {
 int main (int argc, char **argv) {
   __INIT__ (sys);
   __INIT__ (file);
+  __INIT__ (error);
   __INIT__ (string);
 
   Sys.init_environment (SysEnvOpts());

@@ -1,5 +1,5 @@
-#ifndef STRING_H
-#define STRING_H
+#ifndef STRINGT_HDR
+#define STRINGT_HDR
 
 typedef struct string_t {
   size_t  num_bytes;
@@ -45,4 +45,4 @@ typedef struct string_T {
 
 public string_T __init_string__ (void);
 
-#endif /* STRING_H */
+#endif /* STRINGT_HDR */

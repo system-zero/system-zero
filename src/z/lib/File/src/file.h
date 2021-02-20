@@ -1,5 +1,5 @@
-#ifndef FILE_H
-#define FILE_H
+#ifndef FILE_HDR
+#define FILE_HDR
 
 typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
 
@@ -54,4 +54,4 @@ typedef struct file_T {
 
 public file_T __init_file__ (void);
 
-#endif /* FILE_H */
+#endif /* FILE_HDR */

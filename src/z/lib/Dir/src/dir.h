@@ -1,5 +1,5 @@
-#ifndef DIR_H
-#define DIR_H
+#ifndef DIR_HDR
+#define DIR_HDR
 
 #define DIRWALK_MAX_DEPTH 1024
 #define NOT_ALLOWED_IN_A_DIRECTORY_NAME "\t\n"
@@ -96,4 +96,4 @@ typedef struct dir_T {
 
 public dir_T __init_dir__ (void);
 
-#endif /* DIR_H */
+#endif /* DIR_HDR */

@@ -70,7 +70,9 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
-FLAGS += -ldir-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION) -largparse-$(VERSION) -lio-$(VERSION)
+FLAGS += -ldir-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION)
+FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
+FLAGS += -lerror-$(VERSION)
 
 dir: shared static
 

@@ -87,7 +87,7 @@ clean-static:\
 #-----------------------------------------------#
 I_PRINT = $(NAME).print
 
-I_PRINT_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION)
+I_PRINT_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION) -lerror-$(VERSION)
 
 io-print-shared:
 	$(CC) $(I_PRINT).c $(FLAGS) -o $(SYSBINDIR)/$(I_PRINT)-shared

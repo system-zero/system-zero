@@ -135,57 +135,12 @@ enum {
   REG_RDONLY
 };
 
-#define SYS_ERRORS "\
-1:  EPERM     Operation not permitted,\
-2:  ENOENT    No such file or directory,\
-3:  ESRCH     No such process,\
-4:  EINTR     Interrupted system call,\
-5:  EIO       I/O error,\
-6:  ENXIO     No such device or address,\
-7:  E2BIG     Argument list too long,\
-8:  ENOEXEC   Exec format error,\
-9:  EBADF     Bad file number,\
-10: ECHILD    No child processes,\
-11: EAGAIN    Try again,\
-12: ENOMEM    Out of memory,\
-13: EACCES    Permission denied,\
-14: EFAULT    Bad address,\
-15: ENOTBLK   Block device required,\
-16: EBUSY     Device or resource busy,\
-17: EEXIST    File exists,\
-18: EXDEV     Cross-device link,\
-19: ENODEV    No such device,\
-20: ENOTDIR   Not a directory,\
-21: EISDIR    Is a directory,\
-22: EINVAL    Invalid argument,\
-23: ENFILE    File table overflow,\
-24: EMFILE    Too many open files,\
-25: ENOTTY    Not a typewriter,\
-26: ETXTBSY   Text file busy,\
-27: EFBIG     File too large,\
-28: ENOSPC    No space left on device,\
-29: ESPIPE    Illegal seek,\
-30: EROFS     Read-only file system,\
-31: EMLINK    Too many links,\
-32: EPIPE     Broken pipe,\
-33: EDOM      Math argument out of domain of func,\
-34: ERANGE    Math result not representable,\
-35: EDEADLK   Resource deadlock would occur,\
-36: ENAMETOOLONG File name too long,\
-37: ENOLCK    No record locks available,\
-38: ENOSYS    Invalid system call number,\
-39: ENOTEMPTY Directory not empty,\
-40: ELOOP     Too many symbolic links encountered"
-
 #define ED_ERRORS "\
 -3: RE_UNBALANCHED_BRACKETS_ERROR Unbalanced brackets in the pattern,\
 -22: RL_ARG_AWAITING_STRING_OPTION_ERROR Awaiting a string after =,\
 -23: RL_ARGUMENT_MISSING_ERROR Awaiting argument after dash,\
 -24: RL_UNTERMINATED_QUOTED_STRING_ERROR Quoted String is unterminated,\
--25: RL_UNRECOGNIZED_OPTION Unrecognized option,\
--1000: INDEX_ERROR Index is out of range,\
--1001: NULL_PTR_ERROR NULL Pointer,\
--1002: INTEGEROVERFLOW_ERROR Integer overflow"
+-25: RL_UNRECOGNIZED_OPTION Unrecognized option"
 
 enum {
   MSG_FILE_EXISTS_AND_NO_FORCE = 1,
@@ -219,7 +174,7 @@ enum {
 13:can not get current directory!!!."
 
 #define MSG_ERRNO(errno__) \
-  Msg.error ($my(root), Error.string ($my(root), errno__))
+  Msg.error ($my(root), EError.string ($my(root), errno__))
 
 #define VED_MSG_ERROR(err__, ...) \
   Msg.error ($my(root), Msg.fmt ($my(root), err__, ##__VA_ARGS__))
@@ -239,7 +194,7 @@ enum {
   E_T *__E__;                    \
   __me__ ## _T *Me;              \
   msg_T *__Msg__;                \
-  error_T *__Error__
+  eerror_T *__EError__
 
 typedef struct reg_t {
   string_t *data;
@@ -809,7 +764,7 @@ static readline_t *ed_readline_new (ed_t *);
 #define Buf My(__Buf__)
 
 #define Msg My(__Msg__)
-#define Error My(__Error__)
+#define EError My(__EError__)
 
 #define Screen termType.self.screen
 #define Cursor termType.self.cursor

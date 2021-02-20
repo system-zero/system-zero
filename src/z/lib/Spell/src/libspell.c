@@ -7,6 +7,7 @@
 #define REQUIRE_USTRING_TYPE  DECLARE
 #define REQUIRE_IMAP_TYPE     DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
+#define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_SPELL_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -248,7 +249,7 @@ static int spell_init_dictionary (spell_t *spell, string_t *dic, int num_words, 
     spell->retval = SPELL_ERROR;
     Vstring.append_with_fmt (spell->messages,
         "dictionary is not readable: |%s|\n" "errno: %d, error: %s",
-        dic->bytes, errno, strerror (errno));
+        dic->bytes, errno, Error.errno_string (errno));
     return spell->retval;
   }
 
@@ -271,12 +272,13 @@ static spell_t *spell_new (void) {
 }
 
 public spell_T __init_spell__ (void) {
+  __INIT__ (file);
+  __INIT__ (imap);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (vstring);
   __INIT__ (ustring);
-  __INIT__ (file);
-  __INIT__ (imap);
 
   __SPELL__ = (spell_T) {
     .self = (spell_self) {

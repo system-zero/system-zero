@@ -1,7 +1,7 @@
-#ifndef C_H
-#define C_H
+#ifndef C_HDR
+#define C_HDR
 
-/* This is our hble C (as c).
+/* This is our humble C (as c) environment.
  * Quite many of conveniences!
  * Focusing mainly on an uncontrollable, i'm afraid, expressionism.
  * But also some, and standardized by now, macros.
@@ -243,17 +243,12 @@ typedef unsigned long ulong;
 #define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
-/* start safe */
-#define __ROOT_ERROR__         -10000
-/* reserve some space
- * (maybe we map from EPERM (1) to ELOOP (40) at least, one day) */
-#define __BASE_ERROR__         (__ROOT_ERROR__ - 200)
-/* we want those two at least - for now */
-#define INDEX_ERROR            (__BASE_ERROR__ - 1)
-#define INTEGEROVERFLOW_ERROR  (__BASE_ERROR__ - 2)
+#define __BASE_ERROR__         -10000
+#define EINDEX                 (__BASE_ERROR__ - 1)
+#define EINTEGEROVERFLOW       (__BASE_ERROR__ - 2)
 
-#ifndef ALLOC_H
-#define ALLOC_H
+#ifndef ALLOC_HDR
+#define ALLOC_HDR
 
        /* Our alloc exits hard */
 /* we set up an informative handler */
@@ -302,7 +297,7 @@ AllocErrorHandlerF AllocErrorHandler;
 #define Alloc(size) ({                                                \
   void *ptr__ = NULL;                                                 \
   if (MEM_IS_INT_OVERFLOW (1, (size))) {                              \
-    errno = INTEGEROVERFLOW_ERROR;                                    \
+    errno = EINTEGEROVERFLOW;                                         \
     AllocErrorHandler (errno, (size),  __FILE__, __func__, __LINE__); \
   } else {                                                            \
     if (NULL == (ptr__ = __CALLOC__ (1, (size))))                     \
@@ -314,7 +309,7 @@ AllocErrorHandlerF AllocErrorHandler;
 #define Realloc(ptr, size) ({                                         \
   void *ptr__ = NULL;                                                 \
   if (MEM_IS_INT_OVERFLOW (1, (size))) {                              \
-    errno = INTEGEROVERFLOW_ERROR;                                    \
+    errno = EINTEGEROVERFLOW;                                         \
     AllocErrorHandler (errno, (size),  __FILE__, __func__, __LINE__); \
   } else {                                                            \
     if (NULL == (ptr__ = __REALLOC__ ((ptr), (size))))                \
@@ -330,7 +325,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
   fprintf (stderr, "File: %s\nFunction: %s\nLine: %d\n", file, func, line);
   fprintf (stderr, "Size: %zd\n", size);
 
-  if (err is INTEGEROVERFLOW_ERROR)
+  if (err is EINTEGEROVERFLOW)
     fprintf (stderr, "Error: Integer Overflow Error\n");
   else
     fprintf (stderr, "Error: Not Enouch Memory\n");
@@ -341,7 +336,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 }
 */
 
-#endif /* ALLOC_H */
+#endif /* ALLOC_HDR */
 
 #ifndef VA_ARGS_GET_FMT_STR
 /* from man printf(3) Linux Programmer's Manual */
@@ -489,7 +484,7 @@ typedef ptrdiff_t idx_t;
 /* We don't define anywhere in our codebase that macro, so they are
  * defined by default (but others might want them off). */
 
-#endif /* C_H */
+#endif /* C_HDR */
 
 /* our environment */
 
@@ -764,6 +759,7 @@ typedef ptrdiff_t idx_t;
 #undef APPLICATION
 #endif /* APPLICATION */
 
+
 #ifdef REQUIRE_DLIST_TYPE
   #ifndef DLIST_TYPE_HDR
   #define DLIST_TYPE_HDR
@@ -772,6 +768,20 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_DLIST_TYPE
 #endif /* REQUIRE_DLIST_TYPE */
+
+#ifdef REQUIRE_ERROR_TYPE
+  #ifndef ERROR_TYPE_HDR
+  #define ERROR_TYPE_HDR
+  #include <z/error.h>
+  #endif /* ERROR_TYPE_HDR */
+
+  #if (REQUIRE_ERROR_TYPE == DECLARE)
+  static  error_T errorType;
+  #define Error   errorType.self
+  #endif
+
+#undef REQUIRE_ERROR_TYPE
+#endif /* REQUIRE_ERROR_TYPE */
 
 #ifdef REQUIRE_STRING_TYPE
   #ifndef STRING_TYPE_HDR
@@ -1139,14 +1149,14 @@ typedef ptrdiff_t idx_t;
   #endif /* E_TYPE_HDR */
 
   #if (REQUIRE_E_TYPE == DECLARE)
-  typedef E_T     e_T;
-  static  e_T  *__E__ = NULL;
-  #define E     __E__->self
-  #define Ed    __E__->__Ed__->self
-  #define Win   __E__->__Ed__->__Win__.self
-  #define Buf   __E__->__Ed__->__Buf__.self
-  #define Msg   __E__->__Ed__->__Msg__.self
-  #define Error __E__->__Ed__->__Error__.self
+  typedef E_T      e_T;
+  static  e_T   *__E__ = NULL;
+  #define E      __E__->self
+  #define Ed     __E__->__Ed__->self
+  #define Win    __E__->__Ed__->__Win__.self
+  #define Buf    __E__->__Ed__->__Buf__.self
+  #define Msg    __E__->__Ed__->__Msg__.self
+  #define EError __E__->__Ed__->__EError__.self
   #endif
 
 #undef REQUIRE_E_TYPE

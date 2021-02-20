@@ -1,11 +1,11 @@
-#ifndef SH_H
-#define SH_H
+#ifndef SH_HDR
+#define SH_HDR
 
 typedef struct sh_t sh_t;
 
 typedef struct sh_self {
   sh_t *(*new) (void);
-  
+
   void
     (*release) (sh_t *),
     (*release_list) (sh_t *);
@@ -20,4 +20,4 @@ typedef struct sh_T {
 
 public sh_T __init_sh__ (void);
 
-#endif /* SH_H */
+#endif /* SH_HDR */

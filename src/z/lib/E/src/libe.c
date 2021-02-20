@@ -44,6 +44,7 @@
 #define REQUIRE_VIDEO_TYPE    DECLARE
 #define REQUIRE_VUI_TYPE      DECLARE
 #define REQUIRE_READLINE_TYPE DECLARE
+#define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_LIST_STACK_MACROS
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
@@ -2168,7 +2169,7 @@ static int buf_set_row_idx (buf_t *this, int idx, int ofs, int col) {
 
   do {
     idx = DListSetCurrent (this, idx);
-    if (idx is INDEX_ERROR) {
+    if (idx is EINDEX) {
       idx--;
       continue;
     }
@@ -2805,7 +2806,7 @@ static buf_t *win_buf_init (win_t *w, int at_frame, int flags) {
   $my(__I__)       = $myparents(__I__);
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
-  $my(__Error__)   = $myparents(__Error__);
+  $my(__EError__)  = $myparents(__EError__);
 
   $my(term_ptr) = $myroots(term);
   $my(msg_row_ptr) = &$myroots(msg_row);
@@ -2903,7 +2904,7 @@ static buf_t *win_set_current_buf (win_t *w, int idx, int draw) {
 
   int lidx = DListSetCurrent (w, idx);
 
-  if (lidx is INDEX_ERROR) return NULL;
+  if (lidx is EINDEX) return NULL;
 
   if (cur_idx isnot lidx) w->prev_idx = cur_idx;
 
@@ -3112,7 +3113,7 @@ static win_t *ed_win_init (ed_t *ed, char *name, WinDimCalc_cb dim_calc_cb) {
   $my(__I__)       = $myparents(__I__);
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
-  $my(__Error__)   = $myparents(__Error__);
+  $my(__EError__)  = $myparents(__EError__);
 
   $my(video) = $myparents(video);
   $my(min_rows) = 1;
@@ -3496,16 +3497,18 @@ static void ed_msg_send_fmt (ed_t *this, int color, char *fmt, ...) {
 }
 
 static char *ed_error_string (ed_t *this, int err) {
+  int exists = Error.exists (err);
+  if (exists) {
+    String.replace_with ($my(ed_str), Error.errno_string (err));
+    return $my(ed_str)->bytes;
+  }
+
   char ebuf[MAXLEN_ERR_MSG];
   ebuf[0] = '\0';
   char epat[16];
   snprintf (epat, 16, "%d:", err);
 
-  char *sp = strstr (SYS_ERRORS, epat);
-  if (sp is NULL) {
-    snprintf (epat, 16, "%d:",  err);
-    sp = strstr (ED_ERRORS, epat);
-  }
+  char *sp = strstr (ED_ERRORS, epat);
 
   if (sp is NULL) return NULL;
   int i;
@@ -10477,7 +10480,7 @@ static buf_t *ed_get_bufname (ed_t *this, char *fname) {
 
 static win_t *ed_set_current_win (ed_t *this, int idx) {
   int cur_idx = this->cur_idx;
-  if (INDEX_ERROR isnot DListSetCurrent (this, idx))
+  if (EINDEX isnot DListSetCurrent (this, idx))
     this->prev_idx = cur_idx;
   return this->current;
 }
@@ -12420,21 +12423,18 @@ static ed_T *editor_new (void) {
         .write_fmt = ed_msg_write_fmt
       },
     },
-    .__Error__ = (error_T) {
-      .self = (error_self) {
+    .__EError__ = (eerror_T) {
+      .self = (eerror_self) {
         .string = ed_error_string
       },
     },
   };
 
-  __INIT__ (string);
-  __INIT__ (cstring);
-  __INIT__ (vstring);
-  __INIT__ (ustring);
   __INIT__ (re);
   __INIT__ (io);
   __INIT__ (dir);
   __INIT__ (sys);
+  __INIT__ (vui);
   __INIT__ (file);
   __INIT__ (path);
   __INIT__ (term);
@@ -12443,8 +12443,12 @@ static ed_T *editor_new (void) {
   __INIT__ (proc);
   __INIT__ (spell);
   __INIT__ (video);
+  __INIT__ (error);
+  __INIT__ (string);
+  __INIT__ (cstring);
+  __INIT__ (vstring);
+  __INIT__ (ustring);
   __INIT__ (readline);
-  __INIT__ (vui);
 
   Sys.init_environment (SysEnvOpts());
 
@@ -12507,7 +12511,7 @@ static ed_t *ed_init (E_T *E, ed_opts opts) {
   $my(__I__)       = &E->__Ed__->__I__;
   $my(__E__)       = E;
   $my(__Msg__)     = &E->__Ed__->__Msg__;
-  $my(__Error__)   = &E->__Ed__->__Error__;
+  $my(__EError__)  = &E->__Ed__->__EError__;
 
   $my(has_topline) = $my(has_msgline) = $my(has_promptline) = 1;
 
@@ -12693,7 +12697,7 @@ static ed_t *E_set_current (E_T *this, int idx) {
   int cur_idx = $my(cur_idx);
   if (cur_idx is idx) return $my(current);
 
-  if (INDEX_ERROR is DListSetCurrent ($myprop, idx))
+  if (EINDEX is DListSetCurrent ($myprop, idx))
     return NULL;
 
   $my(prev_idx) = cur_idx;
@@ -13227,7 +13231,7 @@ static ed_T *ed_init_prop (E_T *__E__, ed_T *this) {
   $my(__I__)       = &this->__I__;
   $my(__E__)       = __E__;
   $my(__Msg__)     = &this->__Msg__;
-  $my(__Error__)   = &this->__Error__;
+  $my(__EError__)  = &this->__EError__;
 
   $my(Me) = this;
   $my(video) = NULL;
