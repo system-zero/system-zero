@@ -310,7 +310,7 @@ static void readline_write (readline_t *this) {
     Video.draw.row_at (this->video, orig_first_row++);
 
   readline_render (this);
-  IO.fd.write (this->fd, this->render->bytes, this->render->num_bytes);
+  FD.write (this->fd, this->render->bytes, this->render->num_bytes);
   this->state &= ~READLINE_WRITE;
 }
 
@@ -329,13 +329,13 @@ static readline_t *readline_complete_last_arg (readline_t *this) {
 
   this->last_component->current = this->last_component->head;
 
-  readline_t *lthis = readline_new (this->user_data, this->term, Input.getkey, this->prompt_row,
-      1, this->num_cols, this->video);
+  readline_t *lthis = readline_new (this->user_data, this->term, Input.getkey,
+      this->prompt_row - 1,  1, this->num_cols, this->video);
 
   lthis->at_beg = readline_last_arg_at_beg;
   lthis->at_end = readline_set_break_state;
 
-  lthis->prompt_row = this->first_row - 1;
+  lthis->opts &= ~READLINE_OPT_CLEAR_PROMPTLINE_AT_END;
   lthis->prompt_char = 0;
 
 loop_again:
@@ -372,7 +372,7 @@ thesuccess:
 theend:
   readline_clear (lthis);
   readline_release (lthis);
-  Video.draw.row_at (this->video, this->first_row); // is minus one
+  Video.draw.row_at (this->video, this->prompt_row);
   return this;
 }
 
@@ -617,10 +617,10 @@ static readline_t *readline_complete_history (readline_t *this, int *idx, int di
 
   while (lidx < *idx) { it = it->next; lidx++; }
 
-  readline_t *lthis = readline_new (this->user_data, this->term, Input.getkey, this->prompt_row,
-      1, this->num_cols, this->video);
+  readline_t *lthis = readline_new (this->user_data, this->term, Input.getkey,
+      this->prompt_row - 1, 1, this->num_cols, this->video);
 
-  lthis->prompt_row = this->first_row - 1;
+  lthis->opts &= ~READLINE_OPT_CLEAR_PROMPTLINE_AT_END;
   lthis->prompt_char = 0;
 
   ReadlineAtBeg_cb at_beg = this->at_beg;
@@ -699,7 +699,7 @@ thesuccess:
 
 theend:
   readline_clear (lthis);
-  Video.draw.row_at (this->video, this->first_row); // is minus one
+  Video.draw.row_at (this->video, this->prompt_row);
   readline_release (lthis);
   this->at_beg = at_beg;
   this->at_end = at_end;

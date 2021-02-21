@@ -480,8 +480,8 @@ to 2.
 
 Now consider this shell session, which is using standard coreutils tools:
 ```sh
-  $ mkdir -v ../a/-n
-  mkdir: created  directory '../a/-n
+  $ mkdir test && cd test && mkdir -v ../test/-n
+  mkdir: created  directory '../test/-n
   $ ls
   -n/
   $ echo something > file
