@@ -1,11 +1,6 @@
 #ifndef IO_HDR
 #define IO_HDR
 
-#define Stderr IO.err
-#define Stdout IO.out
-#define Input  IO.input
-#define FD     IO.fd
-
 typedef utf8 (*IOGetkey) (int);
 
 typedef struct io_fd_self {

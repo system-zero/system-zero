@@ -199,7 +199,9 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     #   head/current/tail pointers
     #   int cur_idx; int num_items; 
     # for any item in the list, it is assumed prev/next pointers
-    Z_DLIST_SRCDIR      := $(Z_SRCLIBDIR)/dlist/src
+    Z_LIST_SRCDIR      := $(Z_SRCLIBDIR)/list/src
+    # it is also includes a list stack implementation
+    # it requires a next pointer
 
   # C applicarion namespace
   Z_SRCAPPDIR  = $(Z_SRCDIR)/app
@@ -282,11 +284,11 @@ cenv: Env
 clean-cenv:
 	@cd $(Z_CENV_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean
 #----------------------------------------------------------#
-dlist: Env
-	@cd $(Z_DLIST_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
+list: Env
+	@cd $(Z_LIST_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
-clean-dlist:
-	@cd $(Z_DLIST_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean
+clean-list:
+	@cd $(Z_LIST_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean
 #----------------------------------------------------------#
 libstring-shared: Env cenv
 	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
@@ -364,10 +366,10 @@ clean-libauth-shared:
 clean-libauth-static:
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libproc-shared: Env cenv dlist libcstring-shared
+libproc-shared: Env cenv list libcstring-shared
 	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libproc-static: Env cenv dlist libcstring-static
+libproc-static: Env cenv list libcstring-static
 	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libproc-shared:
@@ -588,14 +590,14 @@ clean-libjson-shared:
 clean-libjson-static:
 	@cd $(Z_JSON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libe-shared: Env cenv dlist libstring-shared libcstring-shared libvstring-shared libustring-shared\
+libe-shared: Env cenv list libstring-shared libcstring-shared libvstring-shared libustring-shared\
              libpath-shared libfile-shared libdir-shared libterm-shared libio-shared\
              libre-shared libimap-shared libsmap-shared libi-shared\
              libproc-shared libvui-shared\
              libsys-shared libspell-shared libvideo-shared libreadline-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libe-static: Env cenv dlist libstring-static libcstring-static libvstring-static libustring-static\
+libe-static: Env cenv list libstring-static libcstring-static libvstring-static libustring-static\
              libpath-static libfile-static libdir-static libterm-static libio-static\
              libre-static libimap-static libsmap-static libi-static\
              libproc-static libvui-static\
@@ -833,7 +835,7 @@ clean-v-static:
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
-zero-shared:  Env cenv dlist\
+zero-shared:  Env cenv list\
               libstring-shared libustring-shared libcstring-shared\
               libvstring-shared libdir-shared\
               libproc-shared libauth-shared librline-shared\
@@ -846,7 +848,7 @@ zero-shared:  Env cenv dlist\
               sys-shared
 
 static: zero-clean-static zero-static
-zero-static:  Env cenv dlist\
+zero-static:  Env cenv list\
               libstring-static libustring-static libcstring-static\
               libvstring-static libdir-static\
               libproc-static libauth-static librline-static\
@@ -860,7 +862,7 @@ zero-static:  Env cenv dlist\
 
 clean-shared: zero-clean-shared
 zero-clean-shared:\
-              clean-cenv clean-dlist\
+              clean-cenv clean-list\
               clean-libstring-shared clean-libustring-shared\
               clean-libcstring-shared clean-libvstring-shared\
               clean-libdir-shared\
@@ -882,7 +884,7 @@ zero-clean-shared:\
 
 clean-static: zero-clean-static
 zero-clean-static:\
-              clean-cenv clean-dlist\
+              clean-cenv clean-list\
               clean-libstring-static clean-libustring-static\
               clean-libcstring-static clean-libvstring-static\
               clean-libdir-static\

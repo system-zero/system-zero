@@ -4,7 +4,7 @@
 #ifndef DListAppend
 #define DListAppend(list_, node_)                        \
 ({                                                       \
-  if ((list_)->head is NULL) {                           \
+  if ((list_)->head == NULL) {                           \
     (list_)->head = (node_);                             \
     (list_)->tail = (node_);                             \
     (list_)->current = (list_)->head;                    \
@@ -52,7 +52,7 @@
   int __idx__ = idx_;                                   \
   do {                                                  \
     if (0 > __idx__) __idx__ += (list_)->num_items;     \
-    if (__idx__ < 0 or __idx__ >= (list_)->num_items) { \
+    if (__idx__ < 0 || __idx__ >= (list_)->num_items) { \
       __idx__ = EINDEX;                                 \
       break;                                            \
     }                                                   \
@@ -71,7 +71,7 @@
 ({                                                      \
 type_ *node_ = NULL;                                    \
 do {                                                    \
-  if ((list_)->tail is NULL) break;                     \
+  if ((list_)->tail == NULL) break;                     \
   node_ = (list_)->tail;                                \
   (list_)->tail->prev->next = NULL;                     \
   (list_)->tail = (list_)->tail->prev;                  \
@@ -86,21 +86,21 @@ do {                                                    \
 ({                                                      \
 type_ *node_ = NULL;                                    \
 do {                                                    \
-  if ((list_)->current is NULL) break;                  \
+  if ((list_)->current == NULL) break;                  \
   node_ = (list_)->current;                             \
-  if (1 is (list_)->num_items) {                        \
+  if (1 == (list_)->num_items) {                        \
     (list_)->head = NULL;                               \
     (list_)->tail = NULL;                               \
     (list_)->current = NULL;                            \
     break;                                              \
   }                                                     \
-  if (0 is (list_)->cur_idx) {                          \
+  if (0 == (list_)->cur_idx) {                          \
     (list_)->current = (list_)->current->next;          \
     (list_)->current->prev = NULL;                      \
     (list_)->head = (list_)->current;                   \
     break;                                              \
   }                                                     \
-  if ((list_)->cur_idx is (list_)->num_items - 1) {     \
+  if ((list_)->cur_idx == (list_)->num_items - 1) {     \
     (list_)->current = (list_)->current->prev;          \
     (list_)->current->next = NULL;                      \
     (list_)->cur_idx--;                                 \
@@ -111,7 +111,7 @@ do {                                                    \
   (list_)->current->prev->next = (list_)->current->next;\
   (list_)->current = (list_)->current->next;            \
 } while (0);                                            \
-  if (node_ isnot NULL) (list_)->num_items--;           \
+  if (node_ != NULL) (list_)->num_items--;              \
   node_;                                                \
 })
 #endif /* DListPopCurrent */
@@ -122,11 +122,11 @@ do {                                                    \
   int idx__ = idx_;                                     \
   do {                                                  \
     if (0 > idx__) idx__ += (list_)->num_items;         \
-    if (idx__ < 0 or idx__ >= (list_)->num_items) {     \
+    if (idx__ < 0 || idx__ >= (list_)->num_items) {     \
       idx__ = EINDEX;                                   \
       break;                                            \
     }                                                   \
-    if (idx__ is (list_)->cur_idx) break;               \
+    if (idx__ == (list_)->cur_idx) break;               \
     int idx___ = (list_)->cur_idx;                      \
     (list_)->cur_idx = idx__;                           \
     if (idx___ < idx__)                                 \
@@ -147,9 +147,9 @@ do {                                                    \
   int __idx__ = DListSetCurrent (list_, idx_);          \
   type_ *cnode_ = NULL;                                 \
   do {                                                  \
-    if (__idx__ is EINDEX) break;                       \
+    if (__idx__ == EINDEX) break;                       \
     cnode_ = DListPopCurrent (list_, type_);            \
-    if (cur_idx is __idx__) break;                      \
+    if (cur_idx == __idx__) break;                      \
     if (cur_idx > __idx__) cur_idx--;                   \
     DListSetCurrent (list_, cur_idx);                   \
   } while (0);                                          \
@@ -164,7 +164,7 @@ do {                                                    \
   int idx__ = idx_;                                     \
   do {                                                  \
     if (0 > idx__) idx__ += (list_)->num_items;         \
-    if (idx__ < 0 or idx__ >= (list_)->num_items) {     \
+    if (idx__ < 0 || idx__ >= (list_)->num_items) {     \
       idx__ = EINDEX;                                   \
       break;                                            \
     }                                                   \
@@ -187,11 +187,11 @@ do {                                                    \
 ({                                                      \
   int idx__ = EINDEX;                                   \
   type_ *node__ = (list_)->head;                        \
-  if (list_->num_items isnot 0 and NULL isnot node__) { \
+  if (list_->num_items != 0 && NULL != node__) {        \
     idx__ = -1;                                         \
     do {                                                \
       idx__++;                                          \
-      if (node__ is node_ or node__ is (list_)->tail)   \
+      if (node__ == node_ || node__ == (list_)->tail)   \
         break;                                          \
       node__ = node__->next;                            \
     } while (1);                                        \
@@ -201,9 +201,9 @@ do {                                                    \
 #endif /* DListGetIdx */
 
 #ifndef DListPrependCurrent
-#define DListPrependCurrent(list_, node_)                           \
+#define DListPrependCurrent(list_, node_)                         \
 ({                                                                \
-  if ((list_)->current is NULL) {                                 \
+  if ((list_)->current == NULL) {                                 \
     (list_)->head = (node_);                                      \
     (list_)->tail = (node_);                                      \
     (list_)->cur_idx = 0;                                         \
@@ -231,13 +231,13 @@ do {                                                    \
 #ifndef DListAppendCurrent
 #define DListAppendCurrent(list_, node_)               \
 ({                                                     \
-  if ((list_)->current is NULL) {                      \
+  if ((list_)->current == NULL) {                      \
     (list_)->head = (node_);                           \
     (list_)->tail = (node_);                           \
     (list_)->cur_idx = 0;                              \
     (list_)->current = (list_)->head;                  \
   } else {                                             \
-    if ((list_)->cur_idx is (list_)->num_items - 1) {  \
+    if ((list_)->cur_idx == (list_)->num_items - 1) {  \
       (list_)->current->next = (node_);                \
       (node_)->prev = (list_)->current;                \
       (list_)->current = (node_);                      \
@@ -258,5 +258,74 @@ do {                                                    \
   (list_)->current;                                    \
 })
 #endif /* DListAppendCurrent */
+
+#ifndef ListStackFree
+#define ListStackFree(list_, type_)                    \
+do {                                                   \
+  type_ *item_ = (list_)->head;                        \
+  while (item_ != NULL) {                              \
+    type_ *tmp_ = item_->next;                         \
+    free (item_);                                      \
+    item_ = tmp_;                                      \
+  }                                                    \
+} while (0)
+#endif /* ListStackFree */
+
+#ifndef ListStackAppend
+#define ListStackAppend(list_, type_, node_)           \
+({                                                     \
+  type_ *item_ = (node_);                              \
+  while (item_ && item_->next) item_ = item_->next;    \
+  item_->next = NULL;                                  \
+  item_ = (list_)->head;                               \
+  if (item_ == NULL) {                                 \
+    (list_)->head = (node_);                           \
+  } else {                                             \
+    while (item_->next != NULL) item_ = item_->next;   \
+    item_->next = (node_);                             \
+  }                                                    \
+  (list_);                                             \
+})
+#endif /* ListStackAppend */
+
+#ifndef ListStackPush
+#define ListStackPush(list_, node_)                    \
+({                                                     \
+  if ((list_)->head == NULL) {                         \
+    (list_)->head = (node_);                           \
+    (list_)->head->next = NULL;                        \
+  } else {                                             \
+    (node_)->next = (list_)->head;                     \
+    (list_)->head = (node_);                           \
+  }                                                    \
+                                                       \
+ (list_);                                              \
+})
+#endif /* ListStackPush */
+
+#ifndef ListStackPop
+#define ListStackPop(list_, type_)                     \
+({                                                     \
+  type_ *node_ = (list_)->head;                        \
+  if (node_ != NULL)                                   \
+    (list_)->head = (list_)->head->next;               \
+                                                       \
+  node_;                                               \
+})
+#endif /* ListStackPop */
+
+#ifndef ListStackPopTail
+#define ListStackPopTail(list_, type_)                 \
+({                                                     \
+  type_ *node_ = (list_)->head;                        \
+  type_ *tmp_ = NULL;                                  \
+  while (node_->next) {                                \
+    tmp_ = node_;                                      \
+    node_ = node_->next;                               \
+  }                                                    \
+  if (tmp_) tmp_->next = NULL;                         \
+  node_;                                               \
+})
+#endif /* ListStackPopTail */
 
 #endif /* LIST_HDR */

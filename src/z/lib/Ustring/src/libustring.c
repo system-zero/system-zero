@@ -2,7 +2,8 @@
 
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
-#define REQUIRE_DLIST_TYPE
+
+#define REQUIRE_LIST_MACROS
 #define REQUIRE_USTRING_TYPE DONOT_DECLARE
 
 #include <z/cenv.h>

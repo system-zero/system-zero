@@ -199,7 +199,6 @@ enum {
 typedef struct reg_t {
   string_t *data;
   reg_t *next;
-  reg_t *prev;
 } reg_t;
 
 typedef struct Reg_t {
@@ -765,11 +764,6 @@ static readline_t *ed_readline_new (ed_t *);
 
 #define Msg My(__Msg__)
 #define EError My(__EError__)
-
-#define Screen termType.self.screen
-#define Cursor termType.self.cursor
-
-#define Menu Vui.menu
 
 #define $OurRoot  $my(__E__)
 #define $OurRoots(__p__) $my(__E__)->prop->__p__

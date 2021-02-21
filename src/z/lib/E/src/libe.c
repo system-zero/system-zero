@@ -24,7 +24,6 @@
 #define REQUIRE_TIME
 #define REQUIRE_DIRENT
 
-#define REQUIRE_DLIST_TYPE
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_USTRING_TYPE  DECLARE
@@ -45,9 +44,9 @@
 #define REQUIRE_VUI_TYPE      DECLARE
 #define REQUIRE_READLINE_TYPE DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
-#define REQUIRE_LIST_STACK_MACROS
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
+#define REQUIRE_LIST_MACROS
 
 #include <z/cenv.h>
 
@@ -4261,7 +4260,7 @@ static int buf_selection_to_X_word_actions_cb (buf_t **thisp, int fidx, int lidx
   return DONE;
 }
 
-static void reg_free (Reg_t *rg) {
+static void reg_release (Reg_t *rg) {
   reg_t *reg = rg->head;
   while (reg) {
     reg_t *tmp = reg->next;
@@ -4287,7 +4286,7 @@ static Reg_t *ed_reg_get (ed_t *this, int regidx) {
 
 static Reg_t *ed_reg_new (ed_t *this, int regidx) {
   Reg_t *rg = ed_reg_get (this, regidx);
-  reg_free (rg);
+  reg_release (rg);
   return rg;
 }
 
@@ -4298,7 +4297,6 @@ static void ed_reg_init_all (ed_t *this) {
   $my(regs)[REG_RDONLY].head = Alloc (sizeof (reg_t));
   $my(regs)[REG_RDONLY].head->data = String.new_with ("     ");
   $my(regs)[REG_RDONLY].head->next = NULL;
-  $my(regs)[REG_RDONLY].head->prev = NULL;
 }
 
 static int ed_reg_get_idx (ed_t *this, int c) {
@@ -4358,7 +4356,6 @@ static Reg_t *ed_reg_push_r (ed_t *this, int regidx, int type, reg_t *reg) {
     it = it->next;
   }
 
-  reg->prev = it;
   reg->next = NULL;
   it->next = reg;
 
@@ -5780,7 +5777,7 @@ static utf8 buf_complete_word_actions (buf_t *this, char *action) {
   }
 
 theend:                                     /* avoid list (de|re)allocation */
-  //menu->state &= ~MENU_LIST_IS_ALLOCATED; /* list will be free'd at ed_free() */
+  //menu->state &= ~MENU_LIST_IS_ALLOCATED; /* list will be free'd at ed_release() */
   Menu.release (menu);
   return c;
 }
@@ -6418,12 +6415,20 @@ static int buf_normal_put (buf_t *this, int regidx, utf8 com) {
   row_t *currow = this->current;
   int currow_idx = this->cur_idx;
 
+  Reg_t tmprg;  // the compiler complains otherwise
+  Reg_t *revrg = NULL;
+
   if (com is 'P') {
-    reg->prev = NULL;
-    for (;;) {
-      if (NULL is reg->next) break;
-      reg_t *t = reg; reg = reg->next; reg->prev = t;
+    /* reverse */
+    revrg = &tmprg;
+    revrg->head = NULL;
+    while (reg) {
+      reg_t *t = reg->next;
+      ListStackPush (revrg, reg);
+      reg = t;
     }
+
+    reg = revrg->head;
   }
 
   int linewise_num = 0;
@@ -6451,10 +6456,19 @@ static int buf_normal_put (buf_t *this, int regidx, utf8 com) {
     }
 
     ListStackPush (Action, action);
-    if (com is 'P')
-      reg = reg->prev;
-    else
-      reg = reg->next;
+
+    reg = reg->next;
+  }
+
+  if (com is 'P') {
+    /* reverse again */
+    reg = revrg->head;
+    rg->head = NULL;
+    while (reg) {
+      reg_t *t = reg->next;
+      ListStackPush (rg, reg);
+      reg = t;
+    }
   }
 
   self(undo.push, Action);
@@ -11205,7 +11219,7 @@ static void ed_release (ed_t *this) {
 
     for (int i = 0; i < NUM_REGISTERS; i++) {
       if (i is REG_SHARED) continue;
-      reg_free (&$my(regs)[i]);
+      reg_release (&$my(regs)[i]);
     }
 
     for (int i = 0; i <= NUM_RECORDS; i++)
@@ -11491,7 +11505,7 @@ handle_com:
       (&$my(regs)[REG_RDONLY])->head->data->bytes[1] = '\0';
       (&$my(regs)[REG_RDONLY])->head->data->num_bytes = 1;
       (&$my(regs)[REG_RDONLY])->head->next = NULL;
-      (&$my(regs)[REG_RDONLY])->head->prev = NULL;
+     // (&$my(regs)[REG_RDONLY])->head->prev = NULL;
       retval = self(normal.put, REG_RDONLY, 'P'); break;
 
     case 'p':
@@ -11667,7 +11681,7 @@ handle_com:
     case '-':
     case '_':
       if ('A' <= REGISTERS[regidx] and REGISTERS[regidx] <= 'Z') {
-        reg_free (&$myroots(regs)[regidx]);
+        reg_release (&$myroots(regs)[regidx]);
         retval = DONE;
       } else
           retval = NOTHING_TODO;
@@ -13630,7 +13644,7 @@ public void __deinit_ed__ (E_T **thisp) {
   for (int i = 0; i < $my(num_at_exit_cbs); i++)
     $my(at_exit_cbs)[i] ();
 
-  reg_free (&$my(shared_reg)[0]);
+  reg_release (&$my(shared_reg)[0]);
 
   if ($my(image_name) isnot NULL)
     free ($my(image_name));

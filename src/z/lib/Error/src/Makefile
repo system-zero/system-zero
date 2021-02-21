@@ -86,10 +86,9 @@ LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
 
 all: shared static
 
-prereq: Env generate-lib
+prereq: Env generate_lib
 
-generate-lib:
-	@$(TEST) ! -f generate_lib || $(RM) -v generate_lib
+generate_lib:
 	@$(CC) -Wall -o generate_lib generate_lib.c
 	@./generate_lib
 
@@ -111,15 +110,18 @@ $(SYSINCDIR)/$(THIS_HEADER):
 
 clean: clean-shared clean-static clean-header
 
-clean-shared: clean-header
+clean-shared: clean-header clean-generator
 	@$(TEST) ! -f $(THIS_SHAREDLIB) || $(RM) $(THIS_SHAREDLIB)
 	@$(TEST) ! -L $(SYSLIBDIR)/lib$(THIS_LIBNAME).so || $(RM) $(SYSLIBDIR)/lib$(THIS_LIBNAME).so
 
-clean-static: clean-header
+clean-static: clean-header clean-generator
 	@$(TEST) ! -f $(THIS_STATICLIB) || $(RM)  $(THIS_STATICLIB)
 
 clean-header:
 	@$(TEST) ! -f $(SYSINCDIR)/$(THIS_HEADER) || $(RM) $(SYSINCDIR)/$(THIS_HEADER)
+
+clean-generator:
+	@$(TEST) ! -f generate_lib || $(RM) generate_lib
 
 AR = ar rs
 TEST = test

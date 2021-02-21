@@ -1,12 +1,12 @@
 NS :=
-THIS_HEADER  = dlist.h
+THIS_HEADER  = list.h
 
 THISDIR := $(shell (cd . && pwd))
 
 SYSDIR    := $(THISDIR)/../sys
 SYSINCDIR  = $(SYSDIR)/include/$(NS)
 
-dlist: $(SYSINCDIR)/$(THIS_HEADER)
+list: $(SYSINCDIR)/$(THIS_HEADER)
 
 header: Env clean-header $(SYSINCDIR)/$(THIS_HEADER)
 

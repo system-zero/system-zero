@@ -760,14 +760,14 @@ typedef ptrdiff_t idx_t;
 #endif /* APPLICATION */
 
 
-#ifdef REQUIRE_DLIST_TYPE
-  #ifndef DLIST_TYPE_HDR
-  #define DLIST_TYPE_HDR
-  #include <z/dlist.h>
-  #endif /* DLIST_TYPE_HDR */
+#ifdef REQUIRE_LIST_MACROS
+  #ifndef LIST_MACROS_HDR
+  #define LIST_MACROS_HDR
+  #include <z/list.h>
+  #endif /* LIST_MACROS_HDR */
 
-#undef REQUIRE_DLIST_TYPE
-#endif /* REQUIRE_DLIST_TYPE */
+#undef REQUIRE_LIST_MACROS
+#endif /* REQUIRE_LIST_MACROS */
 
 #ifdef REQUIRE_ERROR_TYPE
   #ifndef ERROR_TYPE_HDR
@@ -846,8 +846,13 @@ typedef ptrdiff_t idx_t;
   #endif /* IO_TYPE_HDR */
 
   #if (REQUIRE_IO_TYPE == DECLARE)
-  static  io_T ioType;
-  #define IO   ioType.self
+  static  io_T   ioType;
+  #define IO     ioType.self
+  #define Stderr ioType.self.err
+  #define Stdout ioType.self.out
+  #define Input  ioType.self.input
+  #define FD     ioType.self.fd
+
   #endif
 
 #undef REQUIRE_IO_TYPE
@@ -967,6 +972,8 @@ typedef ptrdiff_t idx_t;
   #if (REQUIRE_TERM_TYPE == DECLARE)
   static  term_T termType;
   #define Term   termType.self
+  #define Screen termType.self.screen
+  #define Cursor termType.self.cursor
   #endif
 
 #undef REQUIRE_TERM_TYPE
@@ -1123,6 +1130,7 @@ typedef ptrdiff_t idx_t;
   #if (REQUIRE_VUI_TYPE == DECLARE)
   static  vui_T vuiType;
   #define Vui   vuiType.self
+  #define Menu  vuiType.self.menu
   #endif
 
 #undef REQUIRE_VUI_TYPE
@@ -1189,69 +1197,6 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_VWM_TYPE
 #endif /* REQUIRE_VWM_TYPE */
-
-#ifdef REQUIRE_LIST_STACK_MACROS
-#define ListStackFree(list, type)                                   \
-do {                                                                \
-  type *item = (list)->head;                                        \
-  while (item != NULL) {                                            \
-    type *tmp = item->next;                                         \
-    free (item);                                                    \
-    item = tmp;                                                     \
-  }                                                                 \
-} while (0)
-
-#define ListStackAppend(list, type, node)                           \
-({                                                                  \
-  type *item = (node);                                              \
-  while (item and item->next) item = item->next;                    \
-  item->next = NULL;                                                \
-  item = (list)->head;                                              \
-  if (item == NULL) {                                               \
-    (list)->head = (node);                                          \
-    (list)->head->prev = NULL;                                      \
-  } else {                                                          \
-    while (item->next != NULL) item = item->next;                   \
-    (node)->prev = item;                                            \
-    item->next = (node);                                            \
-  }                                                                 \
-  (list);                                                           \
-})
-
-#define ListStackPush(list, node)                                   \
-({                                                                  \
-  if ((list)->head == NULL) {                                       \
-    (list)->head = (node);                                          \
-    (list)->head->next = NULL;                                      \
-  } else {                                                          \
-    (node)->next = (list)->head;                                    \
-    (list)->head = (node);                                          \
-  }                                                                 \
-                                                                    \
- (list);                                                            \
-})
-
-#define ListStackPop(list_, type_)                                  \
-({                                                                  \
-  type_ *node_ = (list_)->head;                                     \
-  if (node_ != NULL)                                                \
-    (list_)->head = (list_)->head->next;                            \
-                                                                    \
-  node_;                                                            \
-})
-
-#define ListStackPopTail(list_, type_)                              \
-({                                                                  \
-  type_ *node_ = (list_)->head;                                     \
-  type_ *tmp_ = NULL;                                               \
-  while (node_->next) {                                             \
-    tmp_ = node_;                                                   \
-    node_ = node_->next;                                            \
-  }                                                                 \
-  if (tmp_) tmp_->next = NULL;                                      \
-  node_;                                                            \
-})
-#endif /* LIST_STACK_MACROS */
 
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR

@@ -444,7 +444,7 @@ receive the argument by reading the standard input. Here is the relevant code:
 ```C
   ifnot (FdReferToATerminal (STDIN_FILENO)) {
     char dname[MAXLEN_PATH];
-    if (NOTOK is Io.fd.read (STDIN_FILENO, directory_name, MAXLEN_PATH))
+    if (NOTOK is IO.fd.read (STDIN_FILENO, directory_name, MAXLEN_PATH))
       ... logic to handle the error, as the function call was unsuccesfull
     else
       ...  continue logic below, as our request completed with success, and now
@@ -587,7 +587,7 @@ issue:
 #
 # After the redirection, we set the executable permission bits to this file, so
 # we can execute directly this script. Otherwise we should call the interpreter
-# explicitly, and pass the file as an argument, e.g. simple as: `sh file`.
+# explicitly, and pass the file as an argument, e.g. simply as: `sh file`.
 #
 # At the end, we execute this script passing our shell as an argument.
 #
@@ -641,12 +641,12 @@ zsu chroot.sh /bin/zs-static
 ```
 A few observations.
 
-First we observe, that we need special priviliges to execute this scripts,  as
+First we observe, that we need special priviliges to  execute this script,  as
 the chroot system call requires such priviliges. In fact our UID and GID (user
 and group identification respectively) are both 0, which are the user/group id
 for the root user. This can be fixed, if we extend our chroot tool, to set the
 uid and gid of the called process, to some given by the user arguments. And we
-can probably do that, if the chroot mechanism was safe enough. But it isn't.
+could probably do that, if the chroot mechanism was safe enough. But it isn't.
 
 It has been long [demonstrated](data/docs/escaping_from_a_chroot_jail.md), and
 proved by development and history, that you can actually escape from  a chroot
@@ -659,7 +659,7 @@ Because of that, they don't require at the runtime their dependencies, but are
 a lot larger objects than their shared counterparts, and should  be recompiled
 everytime a dependency has been modified. They are initialized faster, but are
 less gently with the resources as they do not share them with other executables.
-There are practical but not economical.
+There are could be practical in cases, but not economical.
 
 But lets see the dependencies of a shared object:
 ```sh
@@ -676,30 +676,34 @@ But lets see the dependencies of a shared object:
 ```
 Of all we are more interested about the last three.
 
-The vdso.so (virtual dynamic shared object) library executes system calls in user
-space, instead of kernel space. These are implentation kernel details, and out of
-scope for us mere humans, but see `man vdso` for more information.
+The vdso.so (virtual dynamic shared object) is a library,  that  executes  system
+calls in the user space, instead of the kernel space.  These are  kernel  internal
+implentation details, but rather out of scope for us mere humans, but see `man vdso`
+for more information if desired.
 
 Then there is the standard C library (`libc`). All the libraries are prefixed with
-lib in their name. And we yet have to install a libc in our environment. Of course
-we can use the one by the host if we want!
+lib in their name. But we yet have to install a libc in our environment. Of course
+we can use the one by the host if we want!  So the missing of a libc,  which  is a
+requirenment, is one of the reasons that we can not run shared binaries.
 
-The last one `ld.so` is the one we care here most. This is a program that locates
-and loads shared libraries (like the libc in this case). It's stored in a section
-in an ELF object.
+The last one `ld.so` is the one we care here most.  This  is a program that locates
+and loads shared libraries (like the libc in this case) and which it is stored in a
+special section (.interp) in an ELF object, but it can also be  executed   directly
+from the command line. The below command displays this specific information.
 ```sh
   readelf -l  sys/`uname -m`/bin/zs-shared | grep "interpreter"
+  # outputs
+  [Requesting program interpreter: /lib/ld-linux-x86-64.so.2]
 ```
-[Requesting program interpreter: /lib/ld-linux-x86-64.so.2]
 
 So it is true, that we can't really continue development without installed first
 a proper development environment.
 
 We have also to create a proper hierarchy, character devices, a password database
-and so on. For some of the reasons, we also "binded" our /dev[ice] directory  and
-some special devices, to our system directory.  We also created and mounted  some
-special directories, like /proc and /sys, with a special filesystem type, which a
-Linux system requires to be functional.
+and so on. For some of these reasons, we've also "binded" our /dev[ice] directory
+and some special devices, to our system directory.  We also  created  and mounted
+some special directories, like /proc and /sys and with a special filesystem type,
+which a Linux system requires to be functional.
 
 ## Development Environment.
 
@@ -746,8 +750,8 @@ GNU.
 
 That is the reason for the GPL2. However, our actual law should obey in common
 sense and an inner will, to do what we have to do by our own, and not  because
-we have to do, because they told us to do. Our law should be  straming  by the
-gained consience.
+we have to do, because they told us to do. Our law should be streaming  by the
+gained consience. Hopefully one day.
 
 ## Acknowledgements and References:
 
@@ -756,7 +760,7 @@ gained consience.
 * [Tinyscript: A very simple scripting language.](https://github.com/totalspectrum/tinyscript)
 * [Zig: A generar purpose programming language.](https://ziglang.org/)
 * [Dictu: A simple programming language.](https://github.com/dictu-lang/Dictu)
-* [VoidLinux : A Linux distribution without systemd.](https://voidlinux.org/)
+* [VoidLinux: A Linux distribution without systemd.](https://voidlinux.org/)
 * [Tagha: A small process virtual machine.](https://github.com/assyrianic/Tagha)
 * [Crafting Interpreters.](https://github.com/munificent/craftinginterpreters)
 * [Build Your Own Lisp.](https://github.com/orangeduck/BuildYourOwnLisp)
