@@ -33,8 +33,9 @@ typedef struct video_set_self {
 
 typedef struct video_draw_self {
   void
+    (*all) (video_t *),
     (*row_at) (video_t *, int),
-    (*all) (video_t *);
+    (*rows_from_to) (video_t *, int, int);
 
   int
     (*bytes) (video_t *, char *, size_t);

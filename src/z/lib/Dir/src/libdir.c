@@ -23,6 +23,10 @@
 #include <z/cenv.h>
 #include "__dir.h"
 
+/* TODO:
+   - add and expose error
+ */
+
 static int dir_is_directory (char *dname) {
   struct stat st;
   if (NOTOK is stat (dname, &st)) return 0;

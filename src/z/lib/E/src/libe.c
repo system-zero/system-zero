@@ -9020,11 +9020,11 @@ static void ed_append_command_arg (ed_t *this, char *com, char *argname, size_t 
 }
 
 static void ed_append_readline_commands (ed_t *this, char **commands,
-                     int commands_len, int num_args[], int flags[]) {
-  int len = $my(num_commands) + commands_len;
+                     int num_commands, int num_args[], int flags[]) {
+  int len = $my(num_commands) + num_commands;
 
   ifnot ($my(num_commands))
-    $my(commands) = Alloc (sizeof (readline_com_t) * (commands_len + 1));
+    $my(commands) = Alloc (sizeof (readline_com_t) * (num_commands + 1));
   else
     $my(commands) = Realloc ($my(commands), sizeof (readline_com_t) * (len + 1));
 
@@ -12012,7 +12012,7 @@ static readline_t *ed_readline_new (ed_t *this) {
       1, $my(dim)->num_cols, $my(video)) ;
   if ($my(commands) is NULL) ed_init_commands (this);
   rl->commands = $my(commands);
-  rl->commands_len = $my(num_commands);
+  rl->num_commands = $my(num_commands);
   rl->first_chars[0] = '~';
   rl->first_chars[1] = '`';
   rl->first_chars[2] = '@';

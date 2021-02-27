@@ -16,12 +16,12 @@
 #define REQUIRE_DIRENT
 #define REQUIRE_SIGNAL
 
-#define REQUIRE_LIST_MACROS
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_USTRING_TYPE  DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
+#define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_TERM_TYPE     DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
@@ -29,7 +29,9 @@
 #define REQUIRE_VIDEO_TYPE    DECLARE
 #define REQUIRE_SYS_TYPE      DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
+#define REQUIRE_VUI_TYPE      DECLARE
 #define REQUIRE_VWM_TYPE      DONOT_DECLARE
+#define REQUIRE_LIST_MACROS
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
 
@@ -207,19 +209,23 @@ struct vwm_prop {
     *shell,
     *editor,
     *tmpdir,
+    *datadir,
+    *shared_str,
     *default_app,
+    *history_file,
     *sequences_fname,
     *unimplemented_fname;
 
   FILE
-    *unimplemented_fp,
-    *sequences_fp;
+    *sequences_fp,
+    *unimplemented_fp;
 
   int
     state,
-    name_gen,
-    num_rows,
     num_cols,
+    num_rows,
+    name_gen,
+    shared_int,
     need_resize,
     first_column;
 
@@ -227,8 +233,8 @@ struct vwm_prop {
 
   vwm_win
     *head,
-    *current,
     *tail,
+    *current,
     *last_win;
 
   int
@@ -239,10 +245,11 @@ struct vwm_prop {
   readline_com_t **commands;
   int num_commands;
 
+  readline_hist_t *readline_history;
+
   void *objects[NUM_OBJECTS];
 
-  VwmOnTab_cb on_tab_cb;
-  VwmRLine_cb rline_cb;
+  VwmReadline_cb readline_cb;
   VwmEditFile_cb edit_file_cb;
 
   int num_at_exit_cbs;
@@ -347,17 +354,13 @@ static void vwm_set_default_app (vwm_t *this, char *app) {
   String.append_with_len ($my(default_app), app, len);
 }
 
-static void vwm_set_on_tab_cb (vwm_t *this, VwmOnTab_cb cb) {
-  $my(on_tab_cb) = cb;
-}
-
 static void vwm_set_object (vwm_t *this, void *object, int idx) {
   if (idx >= NUM_OBJECTS or idx < 0) return;
   $my(objects)[idx] = object;
 }
 
-static void vwm_set_rline_cb (vwm_t *this, VwmRLine_cb cb) {
-  $my(rline_cb) = cb;
+static void vwm_set_readline_cb (vwm_t *this, VwmReadline_cb cb) {
+  $my(readline_cb) = cb;
 }
 
 static void vwm_set_edit_file_cb (vwm_t *this, VwmEditFile_cb cb) {
@@ -449,14 +452,14 @@ do_dir:
 
   if (NULL is dir or dir[0] is '\0') {
     if (num_tries is 1)
-      String.append_with($my(tmpdir), TMPDIR);
+      String.append_with ($my(tmpdir), TMPDIR);
     else
-      String.append_with($my(tmpdir), "/tmp");
+      String.append_with ($my(tmpdir), "/tmp");
   } else
     String.append_with_len ($my(tmpdir), dir, len);
 
   String.append_byte ($my(tmpdir), '/');
-  String.append_with($my(tmpdir), V_STR_FMT_LEN (64, "%d-vwm_tmpdir", getpid ()));
+  String.append_with ($my(tmpdir), V_STR_FMT_LEN (64, "%d-vwm_tmpdir", getpid ()));
 
   if (-1 is access ($my(tmpdir)->bytes, F_OK)) {
     if (-1 is Dir.make_parents ($my(tmpdir)->bytes, S_IRWXU, DirOpts(.err = 0)))
@@ -476,9 +479,229 @@ theerror:
   return NOTOK;
 }
 
+static void vwm_unset_datadir (vwm_t *this) {
+  String.release ($my(datadir));
+  $my(datadir) = NULL;
+}
+
+static int vwm_set_datadir (vwm_t *this, char *dir, size_t len) {
+  if (NULL is $my(datadir))
+    $my(datadir) = String.new (32);
+
+  int num_tries = 0;
+
+do_dir:
+  String.clear ($my(datadir));
+
+  if (++num_tries is 3)
+    goto theerror;
+
+  if (NULL is dir or dir[0] is '\0') {
+    if (num_tries is 1)
+      String.append_with ($my(datadir), DATADIR);
+    else
+      String.append_with ($my(datadir), Sys.get.env_value ("HOME"));
+
+    String.append_with ($my(datadir), "/v");
+  } else
+    String.append_with_len ($my(datadir), dir, len);
+
+  if (-1 is access ($my(datadir)->bytes, F_OK)) {
+    if (-1 is Dir.make_parents ($my(datadir)->bytes, S_IRWXU, DirOpts(.err = 0)))
+      goto do_dir;
+  } else {
+    ifnot (Dir.is_directory ($my(datadir)->bytes))
+      goto theerror;
+
+    if (-1 is access ($my(datadir)->bytes, W_OK|R_OK|X_OK))
+      goto theerror;
+  }
+
+  return OK;
+
+theerror:
+  self(unset.datadir);
+  return NOTOK;
+}
+
+static void vwm_set_history_file (vwm_t *this, char *file) {
+  ifnot (Sys.get.env_value_as_int ("UID")) return;
+
+  if (NULL is $my(history_file))
+    $my(history_file) = String.new (16);
+
+  if (NULL is file or *file is '\0') {
+    if ($my(datadir) isnot NULL) {
+      String.replace_with_fmt ($my(history_file), "%s/.readline_hist_%s",
+          $my(datadir)->bytes, Sys.get.env_value ("USERNAME"));
+    } else
+      String.replace_with_fmt ($my(history_file), "%s/.readline_hist_%s",
+          Sys.get.env_value ("HOME"), Sys.get.env_value ("USERNAME"));
+  } else
+    String.replace_with ($my(history_file), file);
+}
+
+static void vwm_history_add_lines (vwm_t *this, Vstring_t *hist) {
+  if (NULL is hist) return;
+
+  vstring_t *it = hist->head;
+  while (it) {
+    char *sp = Cstring.trim.end (it->data->bytes, '\n');
+    sp = Cstring.trim.end (sp, ' ');
+    readline_t *rl = Readline.new (this, $my(term), Input.getkey, $my(num_rows) - 1,
+        1, $my(num_cols), $my(video));
+    rl->history = $my(readline_history);
+    Readline.insert_with_len (rl, it->data->bytes, bytelen (sp));
+    Readline.history.push (rl);
+    it = it->next;
+  }
+}
+
+static void vwm_history_read (vwm_t *this) {
+  ifnot (Sys.get.env_value_as_int ("UID")) return;
+
+  Vstring_t *lines = NULL;
+
+  if (File.exists ($my(history_file)->bytes)) {
+    lines = File.readlines ($my(history_file)->bytes, NULL, NULL, NULL);
+    vwm_history_add_lines (this, lines);
+  }
+
+  Vstring.release (lines);
+}
+
+static void vwm_history_write (vwm_t *this) {
+  ifnot (Sys.get.env_value_as_int ("UID")) return;
+
+  FILE *fp = fopen ($my(history_file)->bytes, "w");
+  if (NULL is fp) return;
+
+  readline_hist_item_t *hrl = $my(readline_history)->tail;
+  while (hrl) {
+    string_t *line = Vstring.join (hrl->data->line, "");
+    fprintf (fp, "%s\n", line->bytes);
+    String.release (line);
+    hrl = hrl->prev;
+  }
+
+  fclose (fp);
+}
+
 static utf8 vwm_getkey (vwm_t *this, int infd) {
   (void) this;
   return Input.getkey (infd);
+}
+
+static void readline_realloc_command_arg (readline_com_t *rlcom, int num) {
+  int orig_num = rlcom->num_args;
+  rlcom->num_args = num;
+  rlcom->args = Realloc (rlcom->args, sizeof (char *) * (rlcom->num_args + 1));
+  for (int i = orig_num; i <= num; i++)
+    rlcom->args[i] = NULL;
+}
+
+static void vwm_readline_append_command_arg (vwm_t *this, char *com, char *argname, size_t len) {
+  if (len <= 0) len = bytelen (argname);
+
+  int i = 0;
+  while (i < $my(num_commands)) {
+    if (Cstring.eq ($my(commands)[i]->com, com)) {
+      int idx = 0;
+      int found = 0;
+      while (idx < $my(commands)[i]->num_args) {
+        if (NULL is $my(commands)[i]->args[idx]) {
+          $my(commands)[i]->args[idx] = Cstring.dup (argname, len);
+          found = 1;
+          break;
+        }
+        idx++;
+      }
+
+      ifnot (found) {
+        readline_realloc_command_arg ($my(commands)[i], $my(commands)[i]->num_args + 1);
+        $my(commands)[i]->args[$my(commands)[i]->num_args - 1] = Cstring.dup (argname, len);
+      }
+
+      return;
+    }
+    i++;
+  }
+}
+
+static void vwm_readline_append_command (vwm_t *this, char *command,
+                       size_t command_len, int num_args) {
+  int len = $my(num_commands) + 1;
+
+  ifnot ($my(num_commands))
+    $my(commands) = Alloc (sizeof (readline_com_t) * (2));
+  else
+    $my(commands) = Realloc ($my(commands), sizeof (readline_com_t) * (len + 1));
+
+  int idx = $my(num_commands);
+
+  $my(commands)[idx] = Alloc (sizeof (readline_com_t));
+  $my(commands)[idx]->com = Alloc (command_len + 1);
+  Cstring.cp ($my(commands)[idx]->com, command_len + 1, command, command_len);
+
+  ifnot (num_args)
+    $my(commands)[idx]->args = NULL;
+  else {
+    $my(commands)[idx]->args = Alloc (sizeof (char *) * ((int) num_args + 1));
+    for (int k = 0; k <= num_args; k++)
+      $my(commands)[idx]->args[k] = NULL;
+  }
+
+  $my(commands)[idx]->num_args = num_args;
+  $my(commands)[idx + 1] = NULL;
+  $my(num_commands)++;
+}
+
+static void vwm_deinit_commands (vwm_t *this) {
+  if (NULL is $my(commands)) return;
+
+  int i = 0;
+  while ($my(commands)[i]) {
+    free ($my(commands)[i]->com);
+    if ($my(commands)[i]->args isnot NULL) {
+      int j = 0;
+      while ($my(commands)[i]->args[j] isnot NULL)
+        free ($my(commands)[i]->args[j++]);
+      free ($my(commands)[i]->args);
+      }
+
+    free ($my(commands)[i]);
+    i++;
+  }
+
+  free ($my(commands));
+  $my(commands) = NULL;
+  $my(num_commands) = 0;
+}
+
+static void vwm_init_commands (vwm_t *this) {
+  if ($my(num_commands)) return;
+
+  vwm_readline_append_command     (this, "quit", 4, 0);
+
+  vwm_readline_append_command     (this, "win_draw", 8, 0);
+
+  vwm_readline_append_command     (this, "frame_clear", 11, 0);
+  vwm_readline_append_command_arg (this, "frame_clear", "--clear-log=", 12);
+  vwm_readline_append_command_arg (this, "frame_clear", "--clear-video-mem=", 18);
+
+  vwm_readline_append_command     (this, "frame_delete", 12, 0);
+
+  vwm_readline_append_command     (this, "split_and_fork", 14, 0);
+  vwm_readline_append_command_arg (this, "split_and_fork", "--command={", 11);
+
+  vwm_readline_append_command     (this, "set", 3, 0);
+  vwm_readline_append_command_arg (this, "set", "--log-file=", 11);
+
+  vwm_readline_append_command     (this, "win_new", 7, 0);
+  vwm_readline_append_command_arg (this, "win_new", "--num-frames=", 13);
+  vwm_readline_append_command_arg (this, "win_new", "--command={", 11);
+  vwm_readline_append_command_arg (this, "win_new", "--focus=", 8);
+  vwm_readline_append_command_arg (this, "win_new", "--draw=", 7);
 }
 
 static vwm_win *vwm_set_current_at (vwm_t *this, int idx) {
@@ -497,6 +720,12 @@ static void vwm_set_mode_key (vwm_t *this, char c) {
 
 static char vwm_get_mode_key (vwm_t *this) {
   return $my(mode_key);
+}
+
+static readline_com_t **vwm_get_commands (vwm_t *this, int *num_commands) {
+  vwm_init_commands (this);
+  *num_commands = $my(num_commands);
+  return $my(commands);
 }
 
 static int vwm_get_lines (vwm_t *this) {
@@ -565,6 +794,19 @@ static char *vwm_get_editor (vwm_t *this) {
 
 static char *vwm_get_default_app (vwm_t *this) {
   return $my(default_app)->bytes;
+}
+
+static void vwm_release_readline_history (vwm_t *this) {
+  readline_hist_t *hrl = $my(readline_history);
+  readline_hist_item_t *it = hrl->head;
+  while (it isnot NULL) {
+    readline_hist_item_t *tmp = it->next;
+    Readline.release (it->data);
+    free (it);
+    it = tmp;
+  }
+
+  free (hrl);
 }
 
 static void frame_release_info (vframe_info *finfo) {
@@ -3296,6 +3538,8 @@ static vwm_win *vwm_new_win (vwm_t *this, char *name, win_opts opts) {
     Vwin.draw (win);
   }
 
+  win->is_initialized = 1;
+
   return win;
 }
 
@@ -3547,6 +3791,9 @@ static void vwm_handle_sigwinch (vwm_t *this) {
     win = win->next;
   }
 
+  Video.release ($my(video));
+  $my(video) = Video.new (STDOUT_FILENO, $my(num_rows), $my(num_cols), 1, 1);
+
   win = $my(current);
 
   Vwin.draw (win);
@@ -3739,51 +3986,425 @@ frame_next:
   return NOTOK;
 }
 
-static int vwm_default_on_tab_cb (vwm_t *this, vwm_win *win, vwm_frame *frame, void *object) {
-  (void) this; (void) win; (void) frame; (void) object;
-  return OK;
-}
-
-static void vwm_init_commands (vwm_t *this) {
-  if ($my(num_commands)) return;
-  $my(commands) = Alloc (sizeof (readline_com_t) * 2);
-  $my(num_commands) = 2;
-//  int i = 0;
-//  for (i = 0; i < $my(num_commands); i++) {
-  $my(commands)[0] = Alloc (sizeof (readline_com_t));
-  $my(commands)[1] = Alloc (sizeof (readline_com_t));
-  $my(commands)[0]->com = Alloc (8);
-  Cstring.cp ($my(commands)[0]->com, 8, "win_new", 7);
-  $my(commands)[0]->com = Alloc (12);
-  Cstring.cp ($my(commands)[0]->com, 12, "frame_clear", 11);
-}
-
 static void vwm_win_to_video (vwm_t *this, vwm_win *win) {
-  if (NULL is $my(video)) {
-    $my(video) = Video.new (STDOUT_FILENO, $my(num_rows), $my(num_cols),
-      1, 1);
-  }
+  if (NULL is $my(video))
+    $my(video) = Video.new (STDOUT_FILENO, $my(num_rows), $my(num_cols), 1, 1);
 
   int video_row = 0;
   vwm_frame *frame = win->head;
+
+  int num_separators = win->num_separators;
+
   while (frame) {
+    ifnot (frame->is_visible) goto next_frame;
+
     for (int i = 0; i < frame->num_rows; i++) {
       char buf[(frame->num_cols * 3) + 2];
       int len = vt_video_line_to_str (frame->videomem[i], buf, frame->num_cols);
-      (void) len;
+      if (buf[len - 1] is '\n')
+        buf[len - 1] = '\0';
       Video.set.row_with ($my(video), video_row++, buf);
     }
-    frame = frame->next;
+
+    if (num_separators) {
+      Video.set.row_with ($my(video), video_row++, win->separators_buf->bytes);
+      num_separators--;
+    }
+
+    next_frame: frame = frame->next;
   }
 }
 
-static int vwm_default_rline_cb (vwm_t *this, vwm_win *win, vwm_frame *frame, void *object) {
-  readline_t *rl = Readline.new (this, $my(term), Input.getkey, $my(num_rows) - 1,
-    1, $my(num_cols), $my(video));
-  vwm_init_commands (this);
+static int readline_complete_filename  (menu_t *menu) {
+  vwm_t *this = menu->user_data[0];
+  char dir[PATH_MAX];
+  int joinpath;
+
+  if (menu->state & MENU_FINALIZE) goto finalize;
+
+  dir[0] = '\0';
+  joinpath = 0;
+
+  if (menu->state & MENU_INIT) {
+    menu->state &= ~MENU_INIT;
+  } else
+    Menu.release_list (menu);
+
+  char *sp = (menu->patlen is 0) ? NULL : menu->pat + menu->patlen - 1;
+  char *end = sp;
+
+  if (NULL is sp) {
+    char *cwd = Dir.current ();
+    Cstring.cp (dir, PATH_MAX, cwd, PATH_MAX - 1);
+    free (cwd);
+    end = NULL;
+    goto getlist;
+  }
+
+  if ('~' is menu->pat[0]) {
+    if (menu->patlen is 1) {
+      end = NULL;
+    } else {
+      end = menu->pat + 1;
+      if (*end is DIR_SEP) {
+        if (*(end + 1))
+          end++;
+        else
+          end = NULL;
+      }
+    }
+
+    char *home = Sys.get.env_value ("HOME");
+    Cstring.cp (dir, PATH_MAX, home, bytelen (home));
+
+    joinpath = 1;
+    goto getlist;
+  }
+
+  if (Dir.is_directory (menu->pat) and bytelen (Path.basename (menu->pat)) > 1) {
+    Cstring.cp (dir, PATH_MAX, menu->pat, menu->patlen);
+    end = NULL;
+    joinpath = 1;
+    goto getlist;
+  }
+
+  if (sp is menu->pat) {
+   if (*sp is DIR_SEP) {
+      dir[0] = *sp; dir[1] = '\0';
+      joinpath = 1;
+      end = NULL;
+    } else {
+      char *cwd = Dir.current ();
+      Cstring.cp (dir, PATH_MAX, cwd, PATH_MAX - 1);
+      free (cwd);
+      end = sp;
+    }
+
+    goto getlist;
+  }
+
+  if (*sp is DIR_SEP) {
+    Cstring.cp (dir, PATH_MAX, menu->pat, menu->patlen);
+    end = NULL;
+    joinpath = 1;
+    goto getlist;
+  }
+
+  while (sp > menu->pat and *(sp - 1) isnot DIR_SEP) sp--;
+  if (sp is menu->pat) {
+    end = sp;
+    char *cwd = Dir.current ();
+    Cstring.cp (dir, PATH_MAX, cwd, PATH_MAX - 1);
+    free (cwd);
+    goto getlist;
+  }
+
+  end = sp;
+  sp = menu->pat;
+  int i = 0;
+  while (sp < end) dir[i++] = *sp++;
+  dir[i] = '\0';
+  joinpath = 1;
+
+getlist:;
+  int endlen = (NULL is end) ? 0 : bytelen (end);
+  dirlist_t *dlist = Dir.list (dir, 0);
+
+  if (NULL is dlist) {
+    menu->state |= MENU_QUIT;
+    return NOTOK;
+  }
+
+  Vstring_t *vs = Vstring.new ();
+  vstring_t *it = dlist->list->head;
+
+  $my(shared_int) = joinpath;
+  String.replace_with ($my(shared_str), dir);
+
+  while (it) {
+    if (end is NULL or (Cstring.eq_n (it->data->bytes, end, endlen))) {
+      Vstring.add.sort_and_uniq (vs, it->data->bytes);
+    }
+
+    it = it->next;
+  }
+
+  dlist->release (dlist);
+
+  menu->list = vs;
+  menu->state |= (MENU_LIST_IS_ALLOCATED|MENU_REINIT_LIST);
+  String.replace_with (menu->header, menu->pat);
+
+  return OK;
+
+finalize:
+  menu->state &= ~MENU_FINALIZE;
+
+  if ($my(shared_int)) {
+    if ($my(shared_str)->bytes[$my(shared_str)->num_bytes - 1] is DIR_SEP)
+      String.clear_at ($my(shared_str), $my(shared_str)->num_bytes - 1);
+
+    int len = menu->patlen + $my(shared_str)->num_bytes + 1;
+    char tmp[len + 1];
+    snprintf (tmp, len + 1, "%s%c%s", $my(shared_str)->bytes, DIR_SEP, menu->pat);
+    String.replace_with ($my(shared_str), tmp);
+  } else
+    String.replace_with ($my(shared_str), menu->pat);
+
+  if (Dir.is_directory ($my(shared_str)->bytes))
+    menu->state |= MENU_REDO;
+  else
+    menu->state |= MENU_DONE;
+
+  return OK;
+}
+
+static int readline_complete_arg (menu_t *menu) {
+  vwm_t *this = menu->user_data[0];
+  readline_com_t **commands = menu->user_data[2];
+
+  int com = $my(shared_int);
+  char *line = $my(shared_str)->bytes;
+
+  if (commands[com]->args is NULL) {
+    return NOTOK;
+  }
+
+  if (menu->state & MENU_INIT) {
+    menu->state &= ~MENU_INIT;
+  } else
+    Menu.release_list (menu);
+
+  Vstring_t *args = Vstring.new ();
+
+  int i = 0;
+
+  ifnot (menu->patlen) {
+    while (commands[com]->args[i])
+      Vstring.add.sort_and_uniq (args, commands[com]->args[i++]);
+  } else {
+    while (commands[com]->args[i]) {
+      if (Cstring.eq_n (commands[com]->args[i], menu->pat, menu->patlen))
+        if (NULL is Cstring.bytes_in_str (line, commands[com]->args[i]) or
+        	Cstring.eq (commands[com]->args[i], "--fname=") or
+        	Cstring.eq_n (commands[com]->args[i], "--command=", 10))
+          Vstring.add.sort_and_uniq (args, commands[com]->args[i]);
+      i++;
+    }
+  }
+
+  ifnot (args->num_items) {
+    menu->state |= MENU_QUIT;
+    Vstring.release (args);
+    return NOTOK;
+  }
+
+  menu->list = args;
+  menu->state |= (MENU_LIST_IS_ALLOCATED|MENU_REINIT_LIST);
+  String.replace_with (menu->header, menu->pat);
+
+  return OK;
+}
+
+static int readline_complete_command (menu_t *menu) {
+  readline_com_t **commands = menu->user_data[2];
+  int num_commands = *(int *) menu->user_data[3];
+
+  if (menu->state & MENU_INIT) {
+    menu->state &= ~MENU_INIT;
+  } else
+    Menu.release_list (menu);
+
+  Vstring_t *coms = Vstring.new ();
+  int i = 0;
+
+  ifnot (menu->patlen) {
+    while (commands[i])
+      Vstring.add.sort_and_uniq (coms, commands[i++]->com);
+  } else {
+    while (i < num_commands) {
+      ifnot (Cstring.cmp_n (commands[i]->com, menu->pat, menu->patlen))
+        Vstring.add.sort_and_uniq (coms, commands[i]->com);
+      i++;
+    }
+  }
+
+  ifnot (coms->num_items) {
+    menu->state |= MENU_QUIT;
+    Vstring.release (coms);
+    return NOTOK;
+  }
+
+  menu->list = coms;
+  menu->state |= (MENU_LIST_IS_ALLOCATED|MENU_REINIT_LIST);
+  String.replace_with (menu->header, menu->pat);
+
+  return OK;
+}
+
+static int readline_tab_completion (readline_t *rl) {
+  vwm_t *this = (vwm_t *) rl->user_data[0];
+
+  ifnot (rl->line->num_items) return READLINE_OK;
+
+  int retval = READLINE_OK;
+  vwm_win *win = rl->user_data[1];
+  (void) win;
+
+  string_t *currline = NULL;  // otherwise segfaults on certain conditions
+redo:;
+  currline = Vstring.join (rl->line, "");
+  char *sp = currline->bytes + rl->line->cur_idx;
+  char *cur = sp;
+
+  while (sp > currline->bytes and *(sp - 1) isnot ' ') sp--;
+  int fidx = sp - currline->bytes;
+  size_t tok_stacklen = (cur - sp) + 1;
+  char tok[tok_stacklen];
+  int toklen = 0;
+  while (sp < cur) tok[toklen++] = *sp++;
+  tok[toklen] = '\0';
+
+  int orig_len = toklen;
+  int type = 0;
+
+  if (fidx is 0) {
+    type |= READLINE_TOK_COMMAND;
+  } else {
+    Readline.parse_command (rl);
+
+    $my(shared_int) = rl->com;
+    String.replace_with ($my(shared_str), currline->bytes);
+
+    if (rl->com isnot READLINE_NO_COMMAND) {
+      if (Cstring.eq_n (tok, "--fname=", 8)) {
+        type |= READLINE_TOK_ARG_FILENAME;
+        int len = 8 + (tok[8] is '"');
+        char tmp[toklen - len + 1];
+        int i;
+        for (i = len; i < toklen; i++) tmp[i-len] = tok[i];
+        tmp[i-len] = '\0';
+        Cstring.cp (tok, tok_stacklen, tmp, i-len);
+        toklen = i-len;
+      } else if (tok[0] is '-') {
+        type |= READLINE_TOK_ARG;
+        ifnot (NULL is Cstring.byte.in_str (tok, '='))
+          type |= READLINE_TOK_ARG_OPTION;
+      } else {
+        type |= READLINE_TOK_ARG_FILENAME;
+      }
+    }
+  }
+
+  String.release (currline);
+
+  ifnot (type) return retval;
+
+  int (*process_list) (menu_t *) = NULL;
+
+  if (type & READLINE_TOK_ARG_FILENAME)
+    process_list = readline_complete_filename;
+  else if (type & READLINE_TOK_COMMAND)
+    process_list = readline_complete_command;
+  else if (type & READLINE_TOK_ARG)
+    process_list = readline_complete_arg;
+
+  menu_t *menu = Menu.new (MenuOpts (
+    .user_data_first = this,
+    .user_data_second = win,
+    .user_data_third = rl->commands,
+    .user_data_fourth = &rl->num_commands,
+    .video = $my(video),
+    .term = $my(term),
+    .first_row = $my(num_rows) - 2,
+    .last_row  = $my(num_rows) - 2,
+    .first_col = 0,
+    .prompt_row = $my(num_rows) - 1,
+    .state = MENU_INIT,
+    .process_list_cb = process_list,
+    .pat = tok,
+    .patlen = toklen));
+
+  if ((retval = menu->retval) is NOTOK) goto theend;
+
+  if (type & READLINE_TOK_ARG_FILENAME)
+    menu->clear_and_continue_on_backspace = 1;
+
+  menu->return_if_one_item = 1;
+
+  char *item;
+  for (;;) {
+    item = Menu.create (menu);
+
+    if (NULL is item) goto theend;
+    if (menu->state & MENU_QUIT) break;
+   // if (type & READLINE_TOK_ARG and Cstring.eq_n ("--command=", item, 10))
+   //    Msg.send (this, COLOR_WARNING, "--command argument should be enclosed in a pair of '{}' braces");
+
+    if (type & READLINE_TOK_COMMAND or type & READLINE_TOK_ARG) break;
+
+    menu->patlen = bytelen (item);
+    Cstring.cp (menu->pat, MAXLEN_PATTERN, item, menu->patlen);
+
+    if (type & READLINE_TOK_ARG_FILENAME) menu->state |= MENU_FINALIZE;
+
+    if (menu->process_list (menu) is NOTOK) goto theend;
+
+    if (menu->state & (MENU_REDO|MENU_DONE)) break;
+    if (menu->state & MENU_QUIT) goto theend;
+  }
+
+  if (type & READLINE_TOK_ARG_FILENAME) {
+    ifnot (menu->state & MENU_REDO) {
+   //   if (rl->com isnot VED_COM_READ_SHELL and rl->com isnot VED_COM_SHELL) {
+
+        String.prepend_with ($my(shared_str), "--fname=\"");
+        String.append_byte ($my(shared_str), '"');
+      }
+
+    item = $my(shared_str)->bytes;
+  }
+
+  ifnot (type & READLINE_TOK_ARG_OPTION) {
+    DListSetCurrent (rl->line, fidx);
+    int lidx = fidx + orig_len;
+    while (fidx++ < lidx) {
+      vstring_t *tmp = DListPopCurrent (rl->line, vstring_t);
+      String.release (tmp->data);
+      free (tmp);
+    }
+  }
+
+  Readline.insert_with_len (rl, item, bytelen (item));
+
+  if (menu->state & MENU_REDO) {
+    Menu.release (menu);
+    goto redo;
+  }
+
+theend:
+  Menu.release (menu);
+  return READLINE_OK;
+}
+
+static string_t *filter_readline (string_t *);
+static string_t *filter_readline (string_t *line) {
+  char *sp = Cstring.bytes_in_str (line->bytes, "--fname=");
+  if (NULL is sp) return line;
+  String.delete_numbytes_at (line, 8, sp - line->bytes);
+  return filter_readline (line);
+}
+
+static readline_t *vwm_readline_edit (vwm_t *this, vwm_win *win,
+  vwm_frame *frame, readline_com_t **commands, int num_commands) {
+
   vwm_win_to_video (this, win);
-  rl->commands = $my(commands);
-  rl->commands_len = $my(num_commands);
+
+  readline_t *rl = Readline.new (this, $my(term), Input.getkey, $my(num_rows) - 1,
+      1, $my(num_cols), $my(video));
+
+  rl->commands = commands;
+  rl->num_commands = num_commands;
   rl->first_chars[0] = '~';
   rl->first_chars[1] = '`';
   rl->first_chars[2] = '@';
@@ -3791,16 +4412,158 @@ static int vwm_default_rline_cb (vwm_t *this, vwm_win *win, vwm_frame *frame, vo
   rl->trigger_first_char_completion = 1;
   rl->user_data[1] = win;
   rl->user_data[2] = frame;
+  rl->history = $my(readline_history);
 
-  //rl->tab_completion = readline_tab_completion;
+  rl->tab_completion = readline_tab_completion;
   //rl->last_component_push = readline_last_component_push_cb;
-  //rl->history = $my(history)->readline;
   //rl->last_component = $my(rl_last_component);
-  (void) this; (void) win; (void) frame; (void) object;
 
-  rl = Readline.edit (rl);
+  Readline.edit (rl);
 
-  return OK;
+  if (rl->c is '\r')
+    Readline.parse (rl);
+
+  return rl;
+}
+
+static int vwm_command_mode (vwm_t *this, vwm_win *win, vwm_frame *frame) {
+  int retval = NOTOK;
+  if ($my(readline_cb) isnot NULL) {
+    retval = $my(readline_cb) (this, win, frame, $my(objects));
+    return retval;
+  }
+
+  vwm_init_commands (this);
+
+  int win_changed = 0;
+  string_t *com = NULL;
+
+  readline_t *rl = vwm_readline_edit (this, win, frame, $my(commands), $my(num_commands));
+
+  if (rl->c isnot '\r') goto theend;
+
+  com = Readline.get.command (rl);
+
+  if (Cstring.eq (com->bytes, "win_new")) {
+    string_t *a_draw = Readline.get.anytype_arg (rl, "draw");
+    string_t *a_focus = Readline.get.anytype_arg (rl, "focus");
+    string_t *a_num_frames = Readline.get.anytype_arg (rl, "num-frames");
+    Vstring_t *a_commands  = Readline.get.anytype_args (rl, "command");
+
+    int draw  = (NULL is a_draw  ? 1 : atoi (a_draw->bytes));
+    int focus = (NULL is a_focus ? 1 : atoi (a_focus->bytes));
+    int num_frames = (NULL is a_num_frames ? 1 : atoi (a_num_frames->bytes));
+    if (num_frames is 0 or num_frames > MAX_FRAMES) num_frames = 1;
+
+    char *command = self(get.default_app);
+
+    win_opts w_opts = WinOpts (
+        .num_rows = self(get.lines),
+        .num_cols = self(get.columns),
+        .num_frames = num_frames,
+        .max_frames = MAX_FRAMES,
+        .draw = draw,
+        .focus = focus);
+
+    if (NULL is a_commands) {
+      for (int i = 0; i < num_frames; i++)
+        w_opts.frame_opts[i].command = command;
+    } else {
+      int num = 0;
+      vstring_t *it = a_commands->head;
+      while (it and num < num_frames) {
+        w_opts.frame_opts[num++].command = filter_readline (it->data)->bytes;
+        it = it->next;
+      }
+
+      while (num < num_frames)
+        w_opts.frame_opts[num++].command = command;
+    }
+
+    self(new.win, NULL, w_opts);
+
+    Vstring.release (a_commands);
+
+    win_changed = 1;
+    retval = OK;
+    goto theend;
+
+   } else if (Cstring.eq (com->bytes, "quit")) {
+    $my(state) |= VWM_QUIT;
+    retval = VWM_QUIT;
+    goto theend;
+
+  } else if (Cstring.eq (com->bytes, "frame_delete")) {
+    Vwin.delete_frame (win, frame, DRAW);
+    retval = OK;
+    goto theend;
+
+  } else if (Cstring.eq (com->bytes, "frame_clear")) {
+    $my(state) |= (VFRAME_CLEAR_VIDEO_MEM|VFRAME_CLEAR_LOG);
+    string_t *clear_log = Readline.get.anytype_arg (rl, "clear-log");
+    string_t *clear_mem = Readline.get.anytype_arg (rl, "clear-video-mem");
+
+    ifnot (NULL is clear_log)
+      if (atoi (clear_log->bytes) is 0)
+        $my(state) &= ~VFRAME_CLEAR_LOG;
+
+    ifnot (NULL is clear_mem)
+      if (atoi (clear_log->bytes) is 0)
+        $my(state) &= ~VFRAME_CLEAR_VIDEO_MEM;
+
+    Vframe.clear (frame, $my(state));
+
+    retval = OK;
+    goto theend;
+
+  } else if (Cstring.eq (com->bytes, "split_and_fork")) {
+    vwm_frame *n_frame = Vwin.add_frame (win, 0, NULL, DRAW);
+    if (NULL is n_frame) goto theend;
+
+    string_t *command = Readline.get.anytype_arg (rl, "command");
+    if (NULL is command) {
+      Vframe.set.command (n_frame, self(get.default_app));
+    } else {
+      command = filter_readline (command);
+      Vframe.set.command (n_frame, command->bytes);
+    }
+
+    Vframe.fork (n_frame);
+
+    retval = OK;
+    goto theend;
+
+  } else if (Cstring.eq (com->bytes, "set")) {
+    string_t *log_file = Readline.get.anytype_arg (rl, "log-file");
+    if (NULL is log_file) goto theend;
+
+    int set_log = atoi (log_file->bytes);
+    if (set_log)
+      Vframe.set.log (frame, NULL, 1);
+    else
+      Vframe.release_log (frame);
+
+    retval = OK;
+    goto theend;
+
+  } else if (Cstring.eq (com->bytes, "win_draw")) {
+    Vwin.draw (win);
+    retval = OK;
+    goto theend;
+  }
+
+theend:
+  if (OK is retval)
+    Readline.history.push (rl);
+  else
+    Readline.release (rl);
+
+  String.release (com);
+
+  ifnot (win_changed)
+    Video.draw.rows_from_to ($my(video), $my(num_rows) - 1, $my(num_rows));
+
+  return retval;
 }
 
 static int vwm_process_input (vwm_t *this, vwm_win *win, vwm_frame *frame, char *input_buf) {
@@ -3841,18 +4604,10 @@ getc_again:
     case ESCAPE_KEY:
       break;
 
-    case '\t': {
-        int retval = $my(on_tab_cb) (this, win, frame, $my(objects)[VWMED_OBJECT]);
-        if (retval is VWM_QUIT or ($my(state) & VWM_QUIT))
-          return VWM_QUIT;
-      }
-      break;
-
     case ':': {
-        int retval = $my(rline_cb) (this, win, frame, $my(objects)[VWMED_OBJECT]);
+        int retval = vwm_command_mode (this, win, frame);
         if (retval is VWM_QUIT or ($my(state) & VWM_QUIT))
           return VWM_QUIT;
-
       }
       break;
 
@@ -4023,15 +4778,17 @@ public vwm_t *__init_vwm__ (void) {
   __INIT__ (io);
   __INIT__ (dir);
   __INIT__ (sys);
+  __INIT__ (vui);
   __INIT__ (term);
+  __INIT__ (path);
   __INIT__ (file);
   __INIT__ (error);
+  __INIT__ (video);
   __INIT__ (string);
   __INIT__ (cstring);
   __INIT__ (vstring);
   __INIT__ (ustring);
   __INIT__ (readline);
-  __INIT__ (video);
 
   Sys.init_environment (SysEnvOpts(.termname = "vt100"));
 
@@ -4065,6 +4822,7 @@ public vwm_t *__init_vwm__ (void) {
         .columns = vwm_get_columns,
         .num_wins = vwm_get_num_wins,
         .mode_key = vwm_get_mode_key,
+        .commands = vwm_get_commands,
         .current_win = vwm_get_current_win,
         .default_app = vwm_get_default_app,
         .current_frame = vwm_get_current_frame,
@@ -4077,13 +4835,14 @@ public vwm_t *__init_vwm__ (void) {
         .shell =  vwm_set_shell,
         .editor = vwm_set_editor,
         .tmpdir = vwm_set_tmpdir,
-        .mode_key = vwm_set_mode_key,
         .object = vwm_set_object,
+        .datadir = vwm_set_datadir,
+        .mode_key = vwm_set_mode_key,
+        .at_exit_cb = vwm_set_at_exit_cb,
         .current_at = vwm_set_current_at,
         .default_app = vwm_set_default_app,
-        .rline_cb = vwm_set_rline_cb,
-        .on_tab_cb = vwm_set_on_tab_cb,
-        .at_exit_cb = vwm_set_at_exit_cb,
+        .readline_cb = vwm_set_readline_cb,
+        .history_file = vwm_set_history_file,
         .edit_file_cb = vwm_set_edit_file_cb,
         .process_input_cb = vwm_set_process_input_cb,
         .debug = (vwm_set_debug_self) {
@@ -4093,6 +4852,7 @@ public vwm_t *__init_vwm__ (void) {
       },
       .unset = (vwm_unset_self) {
         .tmpdir = vwm_unset_tmpdir,
+        .datadir = vwm_unset_datadir,
         .debug = (vwm_unset_debug_self) {
           .sequences = vwm_unset_debug_sequences,
           .unimplemented = vwm_unset_debug_unimplemented
@@ -4101,6 +4861,15 @@ public vwm_t *__init_vwm__ (void) {
       .new = (vwm_new_self) {
         .win = vwm_new_win,
         .term = vwm_new_term
+      },
+      .readline = (vwm_readline_self) {
+        .edit = vwm_readline_edit,
+        .append_command = vwm_readline_append_command,
+        .append_command_arg = vwm_readline_append_command_arg
+      },
+      .history = (vwm_history_self) {
+        .read = vwm_history_read,
+        .write = vwm_history_write
       }
     },
     .win = (vwm_win_self) {
@@ -4187,9 +4956,12 @@ public vwm_t *__init_vwm__ (void) {
   $my(editor) = String.new_with (EDITOR);
   $my(shell) = String.new_with (SHELL);
   $my(default_app) = String.new_with (DEFAULT_APP);
+  $my(shared_str) = String.new (16);
+
   $my(mode_key) = MODE_KEY;
 
   $my(num_items) = 0;
+  $my(shared_int) = 0;
   $my(cur_idx) = -1;
   $my(head) = $my(tail) = $my(current) = NULL;
   $my(name_gen) = ('z' - 'a') + 1;
@@ -4199,11 +4971,16 @@ public vwm_t *__init_vwm__ (void) {
 
   self(new.term);
 
-  $my(num_commands) = 0;
-  self(set.rline_cb, vwm_default_rline_cb);
-  self(set.on_tab_cb, vwm_default_on_tab_cb);
   self(set.edit_file_cb, vwm_default_edit_file_cb);
   self(set.tmpdir, NULL, 0);
+  self(set.datadir, NULL, 0);
+  self(set.history_file, NULL);
+
+  $my(num_commands) = 0;
+  $my(readline_cb) = NULL;
+  $my(readline_history) = Alloc (sizeof (readline_hist_t));
+  $my(readline_history)->history_idx = 0;
+  self(history.read);
 
   $my(sequences_fp) = NULL;
   $my(sequences_fname) = NULL;
@@ -4234,6 +5011,17 @@ public void __deinit_vwm__ (vwm_t **thisp) {
     win = tmp;
   }
 
+  self(history.write);
+
+  vwm_release_readline_history (this);
+  vwm_deinit_commands (this);
+  String.release ($my(shared_str));
+
+  __deinit_vui__ (&vuiType);
+
+  ifnot (NULL is $my(video))
+    Video.release ($my(video));
+
   for (int i = 0; i < $my(num_at_exit_cbs); i++)
     $my(at_exit_cbs)[i] (this);
 
@@ -4246,7 +5034,9 @@ public void __deinit_vwm__ (vwm_t **thisp) {
   self(unset.debug.sequences);
   self(unset.debug.unimplemented);
   self(unset.tmpdir);
+  self(unset.datadir);
 
+  String.release ($my(history_file));
   String.release ($my(editor));
   String.release ($my(shell));
   String.release ($my(default_app));

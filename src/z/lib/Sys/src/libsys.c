@@ -72,6 +72,12 @@ static char *sys_get_env_value (char *as) {
   return val;
 }
 
+static int sys_get_env_value_as_int (char *as) {
+  char *val = sys_get_env_value (as);
+  if (NULL is val) return 0;
+  return atoi (val);
+}
+
 static long sys_get_clock_sec (clockid_t clock_id) {
   struct timespec cspec;
   clock_gettime (clock_id, &cspec);
@@ -424,7 +430,8 @@ public sys_T __init_sys__ (void) {
         .env = sys_get_env,
         .env_value = sys_get_env_value,
         .clock_sec = sys_get_clock_sec,
-        .battery_info = sys_battery_info
+        .battery_info = sys_battery_info,
+        .env_value_as_int = sys_get_env_value_as_int
       },
       .set = (sys_set_self) {
         .env_as = sys_set_env_as

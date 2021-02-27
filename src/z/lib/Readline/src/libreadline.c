@@ -275,7 +275,8 @@ static void readline_render (readline_t *this) {
     }
   }
 
-  while (cidx++ < this->num_cols - 1) String.append_byte (this->render, ' ');
+  //while (cidx++ < this->num_cols - 1) String.append_byte (this->render, ' ');
+  while (cidx++ < this->num_cols - 2) String.append_byte (this->render, ' ');
 
   String.append_with_fmt (this->render, "%s%s", TERM_COLOR_RESET,
     (this->state & READLINE_CURSOR_HIDE) ? "" : TERM_CURSOR_SHOW);
@@ -310,6 +311,7 @@ static void readline_write (readline_t *this) {
     Video.draw.row_at (this->video, orig_first_row++);
 
   readline_render (this);
+
   FD.write (this->fd, this->render->bytes, this->render->num_bytes);
   this->state &= ~READLINE_WRITE;
 }
@@ -388,6 +390,7 @@ static readline_t *readline_edit (readline_t *this) {
   if (this->state & READLINE_WRITE) {
     if (this->state & READLINE_IS_VISIBLE) {
       this->on_write (this);
+
       readline_write (this);
     } else
       this->state &= ~READLINE_WRITE;
@@ -706,7 +709,7 @@ theend:
   return this;
 }
 
-static void readline_write_and_break (readline_t *this){
+static void readline_write_and_break (readline_t *this) {
   this->state |= (READLINE_WRITE|READLINE_BREAK);
   readline_edit (this);
 }
@@ -742,7 +745,7 @@ get_command:
   this->com = READLINE_NO_COMMAND;
 
   int i = 0;
-  for (i = 0; i < this->commands_len; i++) {
+  for (i = 0; i < this->num_commands; i++) {
     if (Cstring.eq (this->commands[i]->com, com)) {
       this->com = i;
       break;
@@ -859,7 +862,7 @@ arg_type:
         else {
           arg->type |= READLINE_ARG_ANYTYPE;
           int found_arg = 0;
-          if (this->com < this->commands_len) {
+          if (this->com < this->num_commands) {
             int idx = 0;
             while (idx < this->commands[this->com]->num_args) {
               ifnot (NULL is this->commands[this->com]->args[idx]) {

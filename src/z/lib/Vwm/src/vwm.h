@@ -66,8 +66,7 @@ typedef term_t vwm_term;
 typedef void (*FrameProcessOutput_cb) (vwm_frame *, char *, int);
 typedef void (*FrameUnimplemented_cb) (vwm_frame *, const char *, int, int);
 typedef void (*VwmAtExit_cb) (vwm_t *);
-typedef int  (*VwmOnTab_cb) (vwm_t *, vwm_win *, vwm_frame *, void *);
-typedef int  (*VwmRLine_cb) (vwm_t *, vwm_win *, vwm_frame *, void *);
+typedef int  (*VwmReadline_cb) (vwm_t *, vwm_win *, vwm_frame *, void **);
 typedef int  (*VwmEditFile_cb) (vwm_t *, vwm_frame *, char *, void *);
 typedef int  (*FrameAtFork_cb) (vwm_frame *, vwm_t *, vwm_win *);
 typedef int  (*ProcessInput_cb) (vwm_t *, vwm_win *, vwm_frame *, utf8);
@@ -344,6 +343,8 @@ typedef struct vwm_get_self {
 
   vwm_term *(*term) (vwm_t *);
   vwm_frame *(*current_frame) (vwm_t *);
+
+  readline_com_t **(*commands) (vwm_t *, int *);
 } vwm_get_self;
 
 typedef struct vwm_unset_debug_self {
@@ -354,7 +355,9 @@ typedef struct vwm_unset_debug_self {
 
 typedef struct vwm_unset_self {
   vwm_unset_debug_self debug;
-  void (*tmpdir) (vwm_t *);
+  void
+    (*tmpdir) (vwm_t *),
+    (*datadir) (vwm_t *);
 } vwm_unset_self;
 
 typedef struct vwm_set_debug_self {
@@ -374,14 +377,16 @@ typedef struct vwm_set_self {
     (*editor) (vwm_t *, char *),
     (*object) (vwm_t *, void *, int),
     (*mode_key) (vwm_t *, char),
-    (*rline_cb) (vwm_t *, VwmRLine_cb),
-    (*on_tab_cb) (vwm_t *, VwmOnTab_cb),
     (*at_exit_cb) (vwm_t *, VwmAtExit_cb),
+    (*readline_cb) (vwm_t *, VwmReadline_cb),
     (*default_app) (vwm_t *, char *),
     (*edit_file_cb) (vwm_t *, VwmEditFile_cb),
+    (*history_file) (vwm_t *, char *),
     (*process_input_cb) (vwm_t *, ProcessInput_cb);
 
-  int (*tmpdir) (vwm_t *, char *, size_t);
+  int
+    (*tmpdir) (vwm_t *, char *, size_t),
+    (*datadir) (vwm_t *, char *, size_t);
 
   vwm_win *(*current_at) (vwm_t *, int);
 
@@ -392,11 +397,27 @@ typedef struct vwm_new_self {
   vwm_term *(*term) (vwm_t *);
 } vwm_new_self;
 
+typedef struct vwm_readline_self {
+  void
+    (*append_command) (vwm_t *, char *, size_t, int),
+    (*append_command_arg) (vwm_t *, char *, char *, size_t);
+
+  readline_t *(*edit) (vwm_t *, vwm_win *, vwm_frame *, readline_com_t **, int); 
+} vwm_readline_self;
+
+typedef struct vwm_history_self {
+  void
+    (*read) (vwm_t *),
+    (*write)(vwm_t *);
+} vwm_history_self;
+
 typedef struct vwm_self {
    vwm_new_self new;
    vwm_get_self get;
    vwm_set_self set;
    vwm_unset_self unset;
+   vwm_readline_self readline;
+   vwm_history_self history;
 
   void
     (*change_win) (vwm_t *, vwm_win *, int, int),

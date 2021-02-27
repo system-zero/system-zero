@@ -21,6 +21,7 @@ typedef       PrintMsg_cb   DirPrintMsg_cb;
 typedef       PrintMsg_cb   DirPrintErr_cb;
 typedef       PrintMsg_cb   DirPrintWarn_cb;
 
+/* TODO: add user defined objects */
 struct dir_opts {
   int
     err,

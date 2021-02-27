@@ -70,7 +70,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
-FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
+FLAGS += -largparse-$(VERSION) -lio-$(VERSION) -lvui-$(VERSION)
 
 v: shared static
 
@@ -95,7 +95,7 @@ FLAGS += -lterm-$(VERSION) -lfile-$(VERSION) -lsmap-$(VERSION)
 V_WM_STATIC_FLAGS  = -ldir-$(VERSION) -lreadline-$(VERSION) -lvideo-$(VERSION)
 V_WM_STATIC_FLAGS += -lvstring-$(VERSION) -lpath-$(VERSION)
 V_WM_STATIC_FLAGS += -lsys-$(VERSION) -lerror-$(VERSION) -lsmap-$(VERSION)
-
+V_WM_STATIC_FLAGS += -lvui-$(VERSION)
 v-wm-shared:
 	$(CC) $(V_WM).c $(FLAGS) -o $(SYSBINDIR)/$(V_WM)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(V_WM)-shared $(SYSBINDIR)/$(V_WM)

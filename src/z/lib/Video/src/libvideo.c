@@ -81,17 +81,40 @@ static void video_render_set_from_to (video_t *this, int frow, int lrow) {
   String.append_with (this->render, TERM_CURSOR_SHOW);
 }
 
+static void render_append_row_at (video_t *this, vstring_t *row, int at) {
+  String.append_with_fmt (this->tmp_render,
+      "%s" TERM_GOTO_PTR_POS_FMT "%s%s%s" TERM_GOTO_PTR_POS_FMT,
+      TERM_CURSOR_HIDE, at, this->first_col, TERM_LINE_CLR_EOL,
+      row->data->bytes, TERM_CURSOR_SHOW, this->row_pos, this->col_pos);
+}
+
+static void video_draw_rows_from_to (video_t *this, int first, int last) {
+  if (first > last or first <= 0 or last > this->num_rows) return;
+
+  int fidx = first - 1;
+  int lidx = last - 1;
+
+  DListSetCurrent(this, fidx);
+  vstring_t *cur = this->current;
+
+  String.clear (this->tmp_render);
+
+  for (int i = fidx; i <= lidx; i++) {
+    render_append_row_at (this, cur, i + 1);
+    cur = cur->next;
+  }
+
+  video_flush (this, this->tmp_render);
+}
+
 static void video_draw_row_at (video_t *this, int at) {
   int idx = at - 1;
 
   if (DListSetCurrent(this, idx) is EINDEX) return;
 
+  String.clear (this->tmp_render);
   vstring_t *row = this->current;
-  String.replace_with_fmt (this->tmp_render,
-      "%s" TERM_GOTO_PTR_POS_FMT "%s%s%s" TERM_GOTO_PTR_POS_FMT,
-      TERM_CURSOR_HIDE, at, this->first_col, TERM_LINE_CLR_EOL,
-      row->data->bytes, TERM_CURSOR_SHOW, this->row_pos, this->col_pos);
-
+  render_append_row_at (this, row, at);
   video_flush (this, this->tmp_render);
 }
 
@@ -230,7 +253,8 @@ public video_T __init_video__ (void) {
       },
       .draw = (video_draw_self) {
         .all = video_draw_all,
-        .row_at = video_draw_row_at
+        .row_at = video_draw_row_at,
+        .rows_from_to = video_draw_rows_from_to
       }
     }
   };

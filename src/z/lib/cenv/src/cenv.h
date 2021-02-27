@@ -228,6 +228,10 @@ typedef unsigned long ulong;
 #define IS_HEX(c_)      ((IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
 #endif
 
+/* TODO: 
+  #define PERM_PRIVATE  S_IRWXU
+ */
+
 #define REG_CHAR   '-'
 #define BLK_CHAR   'b'
 #define CHR_CHAR   'c'

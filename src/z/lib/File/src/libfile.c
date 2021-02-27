@@ -15,6 +15,17 @@
 
 #include <z/cenv.h>
 
+/* TODO:
+  - FileState file_touch (char *file, FileState ());
+    FileState:
+      (.retval, .state, .error, .perm, .mode, .struct timespec times[2],
+       .self)
+  - FileState file_chmod (char *file, FileState());
+ */
+
+/* Public TODO:
+   StateRetval = fun (args, SomeState()).retval
+ */
 static int file_is_reg (const char *fname) {
   struct stat st;
   if (NOTOK is stat (fname, &st)) return 0;

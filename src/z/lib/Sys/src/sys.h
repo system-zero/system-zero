@@ -8,6 +8,8 @@ typedef struct sys_set_self {
 typedef struct sys_get_self {
   char *(*env_value) (char *);
 
+  int (*env_value_as_int) (char *);
+
   string_t
     *(*env) (char *),
     *(*error_string) (int),

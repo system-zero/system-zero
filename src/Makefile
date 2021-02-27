@@ -640,13 +640,17 @@ clean-libreadline-shared:
 clean-libreadline-static:
 	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libvwm-shared: Env cenv libstring-shared libcstring-shared \
-               libustring-shared libdir-shared libfile-shared \
+libvwm-shared: Env cenv list libstring-shared libcstring-shared\
+               libustring-shared libdir-shared libfile-shared\
+               libvideo-shared libio-shared libterm-shared\
+               libvui-shared\
                libreadline-shared libsys-shared liberror-shared
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libvwm-static: Env cenv libstring-static libcstring-static \
+libvwm-static: Env cenv list libstring-static libcstring-static\
                libustring-static libdir-static libfile-static\
+               libvideo-static libio-static libterm-static\
+               libvui-static\
                libreadline-static libsys-static liberror-static
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
@@ -822,10 +826,11 @@ clean-sys-static:
   ZA_V_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_V)/src
 
 v-shared: cenv libvwm-shared libstring-shared libfile-shared libio-shared libargparse-shared\
-   libterm-shared
+          libterm-shared zs-static
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-v-static: cenv libvwm-static libstring-static libfile-static libio-static libargparse-static
+v-static: cenv libvwm-static libstring-static libfile-static libio-static libargparse-static\
+          libterm-static zs-static
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-v-shared:

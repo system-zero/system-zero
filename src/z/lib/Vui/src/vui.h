@@ -6,7 +6,7 @@ typedef struct menu_t menu_t;
 
 typedef int (*MenuProcessList_cb) (menu_t *);
 
-#define MENU_NUM_USER_DATA 2
+#define MENU_NUM_USER_DATA 4
 #define READLINE_MENU_USER_DATA_IDX  2
 
 #define MENU_INIT              (1 << 0)
@@ -76,6 +76,8 @@ typedef struct menu_opts {
   IOGetkey getch_cb;
   void *user_data_first;
   void *user_data_second;
+  void *user_data_third;
+  void *user_data_fourth;
 } menu_opts;
 
 #define MenuOpts(...) (menu_opts) {         \
@@ -98,6 +100,8 @@ typedef struct menu_opts {
   .getch_cb = Input.getkey,                 \
   .user_data_first = NULL,                  \
   .user_data_second = NULL,                 \
+  .user_data_third = NULL,                  \
+  .user_data_fourth = NULL,                 \
   __VA_ARGS__                               \
 }
 

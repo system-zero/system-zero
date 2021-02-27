@@ -144,7 +144,7 @@ struct readline_t {
   string_t *render;
 
   readline_com_t **commands;
-  int commands_len;
+  int num_commands;
 
   Vstring_t *last_component;
   readline_hist_t  *history;

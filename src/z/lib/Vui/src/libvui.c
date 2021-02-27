@@ -57,6 +57,8 @@ static menu_t *vui_menu_new (menu_opts opts) {
   this->state |= opts.state;
   this->user_data[0] = opts.user_data_first;
   this->user_data[1] = opts.user_data_second;
+  this->user_data[2] = opts.user_data_third;
+  this->user_data[3] = opts.user_data_fourth;
 
   this->orig_first_row = opts.first_row;
   this->num_rows = this->last_row - this->first_row + 1;
@@ -162,7 +164,7 @@ init_list:;
   int first_col = this->first_col;
   int orig_beh  = this->return_if_one_item;
 
-  ifnot (this->list->num_items) goto theend;
+  if (NULL is this->list or 0 is this->list->num_items) goto theend;
 
   vstring_t *it = this->list->head;
 
@@ -237,13 +239,14 @@ init_list:;
       String.append_with_fmt (render, "%s%s", this->header->bytes, TERM_COLOR_RESET);
     }
 
-    int ridx, iidx = 0; int start_row = 0;
+    int ridx, iidx = 0; int start_row = 0; int num_items = 0;
 
     for (ridx = 0; ridx < rend_rows; ridx++) {
       start_row = first_row + ridx;
       String.append_with_fmt (render, TERM_GOTO_PTR_POS_FMT, start_row, first_col);
 
       for (iidx = 0; iidx < num and iidx + (ridx  * num) + (frow_idx * num) < this->list->num_items; iidx++) {
+        num_items++;
         int len = ((int) it->data->num_bytes > maxlen ? maxlen : (int) it->data->num_bytes);
         char item[len + 1];
         Cstring.cp (item, len + 1, it->data->bytes, len);
@@ -253,6 +256,8 @@ init_list:;
         String.append_with_fmt (render, fmt, color, item, TERM_COLOR_RESET);
         it = it->next;
       }
+
+      mod = num_items % num;
 
       if (mod)
         for (int i = mod; i < num; i++)
