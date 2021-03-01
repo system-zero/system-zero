@@ -3724,15 +3724,15 @@ static char *buf_get_current_word (buf_t *this,
 
 #define SEARCH_FREE                               \
 ({                                                \
-  String.release (sch->pat);                     \
-  ListStackFree (sch, search_t);                     \
+  String.release (sch->pat);                      \
+  ListStackClear (sch, search_t);                 \
   ifnot (NULL is sch->prefix) free (sch->prefix); \
   ifnot (NULL is sch->match) free (sch->match);   \
   free (sch);                                     \
 })
 
 #define SEARCH_PUSH(idx_, row_)                   \
-  search_t *s_ = Alloc (sizeof (search_t));              \
+  search_t *s_ = Alloc (sizeof (search_t));       \
   s_->idx = (idx_);                               \
   s_->row  = (row_);                              \
   ListStackPush (sch, s_)
@@ -13311,14 +13311,12 @@ ival_t i_e_set_persistent_layout (i_t *this, int val) {
 ival_t i_e_set_image_name (i_t *this, char *name) {
   E_T *iroot = I.get.user_data (this);
   IRoot.set.image_name (iroot, name);
-  free (name);
   return I_OK;
 }
 
 ival_t i_e_set_image_file (i_t *this, char *file) {
   E_T *iroot = I.get.user_data (this);
   IRoot.set.image_file (iroot, file);
-  free (file);
   return I_OK;
 }
 
@@ -13360,14 +13358,12 @@ ival_t i_ed_set_current_win (i_t *this, ed_t *ed, int idx) {
 ival_t i_buf_init_fname (i_t *this, buf_t *buf, char *fn) {
   (void) this;
   buf_init_fname (buf, fn);
-  free (fn);
   return OK;
 }
 
 ival_t i_buf_set_ftype (i_t *this, buf_t *buf, char *ftype) {
   E_T *iroot = I.get.user_data (this);
   buf_set_ftype (buf, ed_syn_get_ftype_idx ($from(iroot, current), ftype));
-  free (ftype);
   return OK;
 }
 
@@ -13395,8 +13391,6 @@ ival_t i_buf_substitute (i_t *this, buf_t *buf, char *pat, char *sub, int global
   if (fidx is lidx) fidx = lidx = buf->cur_idx;
 
   ival_t val = buf_substitute (buf, pat, sub, global, interactive, fidx, lidx);
-  free (sub);
-  free (pat);
   return val;
 }
 
@@ -13455,14 +13449,12 @@ ival_t i_buf_normal_change_case (i_t *this, buf_t *buf) {
 ival_t i_buf_insert_string (i_t *this, buf_t *buf, char *str, int draw) {
   (void) this;
   int retval = buf_insert_string (buf, str, bytelen (str), draw);
-  free (str);
   return retval;
 }
 
 ival_t i_buf_search (i_t *this, buf_t *buf, char com, char *str, int c) {
   (void) this;
   int retval = buf_search (buf, com, str, c);
-  free (str);
   return retval;
 }
 

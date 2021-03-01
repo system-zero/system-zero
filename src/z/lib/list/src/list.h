@@ -259,8 +259,8 @@ do {                                                    \
 })
 #endif /* DListAppendCurrent */
 
-#ifndef ListStackFree
-#define ListStackFree(list_, type_)                    \
+#ifndef ListStackClear
+#define ListStackClear(list_, type_)                   \
 do {                                                   \
   type_ *item_ = (list_)->head;                        \
   while (item_ != NULL) {                              \

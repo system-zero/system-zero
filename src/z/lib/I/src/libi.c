@@ -9,10 +9,10 @@
  * - added ignore_next_char() to ignore next char in parseptr
  * - print* function references got a FILE * argument
  * - remove abort() and disable exit()
- * - add is, isnot, true, false, ifnot, OK and NOTOK keywords
- * - add println (that emit a newline character, while print does not)
+ * - added is, isnot, true, false, ifnot, OK and NOTOK keywords
+ * - added println (that emit a newline character, while print does not)
  * - add the ability to pass literal strings when calling C defined functions
- *   (note that they should be free'd after usage)
+ *   (note that they should be free'd automatically after ending the script)
  * - print functions can print multibyte characters
  * - quite of many changes that integrates Tinyscript to this environment
  */
@@ -130,6 +130,13 @@ typedef struct i_prop {
   int current_idx;
 } i_prop;
 
+typedef struct malloced_string malloced_string;
+
+struct malloced_string {
+  char *data;
+  malloced_string *next;
+};
+
 typedef struct i_t {
   char name[32];
   string_t
@@ -178,6 +185,8 @@ typedef struct i_t {
   IDefineFuns_cb define_funs_cb;
 
   void *user_data;
+
+  malloced_string *head;
 
   i_t *next;
 } i_t;
@@ -229,6 +238,17 @@ static inline int is_notquote (int chr) {
 
 static inline int is_operator (int c) {
   return NULL isnot Cstring.byte.in_str ("+-/*%=<>&|^", c);
+}
+
+static void i_release_malloced_strings (i_t *this) {
+  malloced_string *item = this->head;
+  while (item isnot NULL) {
+    malloced_string *tmp = item->next;
+    free (item->data);
+    free (item);
+    item = tmp;
+  }
+  this->head = NULL;
 }
 
 static void i_set_message (i_t *this, int append, char *msg) {
@@ -583,15 +603,17 @@ static int i_do_next_token (i_t *this, int israw) {
 
       if (cc is -1) return I_TOK_SYNTAX_ERR;
 
-      char *ibuf = Alloc (len + 1);
+      malloced_string *mbuf = Alloc (sizeof (malloced_string));
+      mbuf->data = Alloc (len + 1);
       for (size_t i = 0; i < len; i++) {
         c = i_get_char (this);
-        ibuf[i] = c;
+        mbuf->data[i] = c;
       }
-      ibuf[len] = '\0';
+      mbuf->data[len] = '\0';
 
+      ListStackPush (this, mbuf);
       c = i_get_char (this);
-      this->tokenVal = (ival_t) ibuf;
+      this->tokenVal = (ival_t) mbuf->data;
       i_reset_token (this);
     }
 
@@ -1314,7 +1336,9 @@ static int i_define (i_t *this, const char *name, int typ, ival_t val) {
 static int i_eval_string (i_t *this, const char *buf, int saveStrings, int topLevel) {
   this->script_buffer = buf;
   istring_t x = i_istring_new (buf);
-  return i_parse_string (this, x, saveStrings, topLevel);
+  int retval = i_parse_string (this, x, saveStrings, topLevel);
+  i_release_malloced_strings (this);
+  return retval;
 }
 
 static int i_eval_file (i_t *this, const char *filename) {
@@ -1356,6 +1380,7 @@ static void i_release (i_t **thisp) {
   i_t *this = *thisp;
   String.release (this->idir);
   String.release (this->message);
+  i_release_malloced_strings (this);
   free (this->arena);
   free (this);
   *thisp = NULL;

@@ -610,12 +610,12 @@ clean-libe-shared:
 clean-libe-static:
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libi-shared: Env cenv libstring-shared libcstring-shared\
+libi-shared: Env cenv list libstring-shared libcstring-shared\
              libvstring-shared libustring-shared libpath-shared libfile-shared\
              liberror-shared
 	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libi-static: Env cenv libstring-static libcstring-static\
+libi-static: Env cenv list libstring-static libcstring-static\
              libvstring-static libustring-static libpath-static libfile-static\
              liberror-static
 	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
