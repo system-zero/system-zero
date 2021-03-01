@@ -57,6 +57,7 @@
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_USTRING_TYPE DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
+#define REQUIRE_LIST_MACROS
 #define REQUIRE_I_TYPE       DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -141,8 +142,11 @@ typedef struct i_t {
     mem_size,
     max_script_size;
 
+  const char *script_buffer;
+
   char *arena;
   int
+    didReturn,
     linenum,
     state;
 
@@ -187,7 +191,7 @@ static int i_parse_stmt (i_t *, int);
 static int i_parse_expr (i_t *, ival_t *);
 
 static inline int is_space (int c) {
-  return (c is ' ') or (c is '\t');
+  return (c is ' ') or (c is '\t') or (c is '\r');
 }
 
 static inline int is_digit (int c) {
@@ -221,6 +225,10 @@ static inline int is_identifier (int c) {
 static inline int is_notquote (int chr) {
   uchar c = (unsigned char) chr;
   return NULL is Cstring.byte.in_str ("\"\n", c);
+}
+
+static inline int is_operator (int c) {
+  return NULL isnot Cstring.byte.in_str ("+-/*%=<>&|^", c);
 }
 
 static void i_set_message (i_t *this, int append, char *msg) {
@@ -338,28 +346,36 @@ static istring_t i_dup_string (i_t *this, istring_t orig) {
 }
 
 static int i_err_ptr (i_t *this, int err) {
+  const char *keep = i_StringGetPtr (this->parseptr);
+  char *sp = (char *) keep;
+  while (sp > this->script_buffer and 0 is Cstring.byte.in_str (";\n", *(sp - 1)))
+    sp--;
+
+  i_StringSetPtr (&this->parseptr, sp);
   i_print_string (this, this->err_fp, this->parseptr);
+  i_StringSetPtr (&this->parseptr, keep);
+
   this->print_bytes (this->err_fp, TERM_RESET "\n");
   return err;
 }
 
 static int i_syntax_error (i_t *this, const char *msg) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "SYNTAX ERROR: %s\nbefore: ", msg);
+  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "SYNTAX ERROR: %s\n", msg);
   return i_err_ptr (this, I_ERR_SYNTAX);
 }
 
 static int i_arg_mismatch (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "argument mismatch before:");
+  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "argument mismatch:");
   return i_err_ptr (this, I_ERR_BADARGS);
 }
 
 static int i_too_many_args (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "too many arguments before:");
+  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "too many arguments:");
   return i_err_ptr (this, I_ERR_TOOMANYARGS);
 }
 
 static int i_unknown_symbol (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "unknown symbol before:");
+  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "unknown symbol:");
   return i_err_ptr (this, I_ERR_UNKNOWN_SYM);
 }
 
@@ -437,11 +453,7 @@ static void i_get_span (i_t *this, int (*testfn) (int)) {
   if (c isnot -1) i_unget_char (this);
 }
 
-static int isoperator (int c) {
-  return NULL isnot Cstring.byte.in_str ("+-/*=<>&|^", c);
-}
-
-static Sym * i_lookup_sym (i_t *this, istring_t name) {
+static Sym *i_lookup_sym (i_t *this, istring_t name) {
   Sym *s = this->symptr;
 
   while ((ival_t) s > (ival_t) this->arena) {
@@ -524,8 +536,8 @@ static int i_do_next_token (i_t *this, int israw) {
       }
     }
 
-  } else if (isoperator (c)) {
-    i_get_span (this, isoperator);
+  } else if (is_operator (c)) {
+    i_get_span (this, is_operator);
     this->tokenSym = sym = i_lookup_sym (this, this->token);
     if (sym) {
       r = sym->type;
@@ -602,8 +614,9 @@ static int i_next_raw_token (i_t *this) {
 
 static int i_push (i_t *this, ival_t x) {
   --this->valptr;
+
   if ((ival_t) this->valptr < (ival_t) this->symptr)
-    return I_ERR_NOMEM;
+    return i_out_of_mem (this);
 
   *this->valptr = x;
   return I_OK;
@@ -662,11 +675,11 @@ static Sym *i_define_sym (i_t *this, istring_t name, int typ, ival_t value) {
   return s;
 }
 
-static Sym * i_define_var (i_t *this, istring_t name) {
+static Sym *i_define_var (i_t *this, istring_t name) {
   return i_define_sym (this, name, INT, 0);
 }
 
-static istring_t i_cstring_new (const char *str) {
+static istring_t i_istring_new (const char *str) {
   istring_t x;
   i_StringSetLen (&x, bytelen (str));
   i_StringSetPtr (&x, str);
@@ -732,7 +745,7 @@ static int i_parse_char (i_t *this, ival_t *vp, istring_t token) {
 static int i_parse_string (i_t *this, istring_t str, int saveStrings, int topLevel) {
   int c,  r;
   istring_t savepc = this->parseptr;
-  Sym* savesymptr = this->symptr;
+  Sym *savesymptr = this->symptr;
 
   this->parseptr = str;
 
@@ -812,10 +825,14 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, UserFunc *uf) {
     int i;
     int err;
     Sym* savesymptr = this->symptr;
+
     for (i = 0; i < expectargs; i++)
       i_define_sym (this, uf->argName[i], INT, this->fArgs[i]);
 
+    this->didReturn = 0;
     err = i_parse_string (this, uf->body, 0, 0);
+    this->didReturn = 0;
+
     *vp = this->fResult;
     this->symptr = savesymptr;
     this->state &= ~(FUNC_CALL_USRFUNC);
@@ -920,6 +937,15 @@ static int i_parse_stmt (i_t *this, int saveStrings) {
   ival_t val;
   int err = I_OK;
 
+  if (this->didReturn) {
+    do {
+      c = i_get_char (this);
+    } while (c >= 0 and c isnot '\n' and c isnot ';' and c isnot '}');
+    i_unget_char (this);
+    i_next_token (this);
+    return I_OK;
+  }
+
   c = this->curToken;
 
   if (c is I_TOK_VARDEF) {
@@ -935,7 +961,8 @@ static int i_parse_stmt (i_t *this, int saveStrings) {
 
     this->tokenSym = i_define_var (this, name);
 
-    ifnot (this->tokenSym) return I_ERR_NOMEM;
+    ifnot (this->tokenSym)
+      return i_out_of_mem (this);
 
     c = I_TOK_VAR;
     /* fall through */
@@ -962,7 +989,6 @@ static int i_parse_stmt (i_t *this, int saveStrings) {
     if (err isnot I_OK) return err;
 
     s->value = val;
-
   } else if (c is I_TOK_BUILTIN or c is USRFUNC) {
     err = i_parse_primary (this, &val);
     return err;
@@ -1133,6 +1159,7 @@ static int i_parse_func_def (i_t *this, int saveStrings) {
 
   name = this->token;
   c = i_next_token (this);
+
   uf = (UserFunc *) i_stack_alloc (this, sizeof (*uf));
   ifnot (uf) return i_out_of_mem (this);
 
@@ -1154,6 +1181,7 @@ static int i_parse_func_def (i_t *this, int saveStrings) {
   }
 
   uf->body = body;
+
   sym = i_define_sym (this, name, USRFUNC | (nargs << 8), (ival_t) uf);
   ifnot (sym) return i_out_of_mem (this);
 
@@ -1198,6 +1226,7 @@ static int i_parse_return (i_t *this) {
   err = i_parse_expr (this, &this->fResult);
   // terminate the script
   i_StringSetLen (&this->parseptr, 0);
+  this->didReturn = 1;
   return err;
 }
 
@@ -1218,21 +1247,22 @@ again:
 }
 
 // builtin
-static ival_t i_prod (ival_t x, ival_t y) { return x*y; }
-static ival_t i_quot (ival_t x, ival_t y) { return x/y; }
-static ival_t i_sum (ival_t x, ival_t y) { return x+y; }
-static ival_t i_diff (ival_t x, ival_t y) { return x-y; }
-static ival_t i_bitand (ival_t x, ival_t y) { return x&y; }
-static ival_t i_bitor (ival_t x, ival_t y) { return x|y; }
-static ival_t i_bitxor (ival_t x, ival_t y) { return x^y; }
-static ival_t i_shl (ival_t x, ival_t y) { return x<<y; }
-static ival_t i_shr (ival_t x, ival_t y) { return x>>y; }
-static ival_t i_equals (ival_t x, ival_t y) { return x==y; }
-static ival_t i_ne (ival_t x, ival_t y) { return x!=y; }
-static ival_t i_lt (ival_t x, ival_t y) { return x<y; }
-static ival_t i_le (ival_t x, ival_t y) { return x<=y; }
-static ival_t i_gt (ival_t x, ival_t y) { return x>y; }
-static ival_t i_ge (ival_t x, ival_t y) { return x>=y; }
+static ival_t i_ne (ival_t x, ival_t y) { return x != y; }
+static ival_t i_lt (ival_t x, ival_t y) { return x < y; }
+static ival_t i_le (ival_t x, ival_t y) { return x <= y; }
+static ival_t i_gt (ival_t x, ival_t y) { return x > y; }
+static ival_t i_ge (ival_t x, ival_t y) { return x >= y; }
+static ival_t i_mod  (ival_t x, ival_t y) { return x % y; }
+static ival_t i_sum  (ival_t x, ival_t y) { return x + y; }
+static ival_t i_shl  (ival_t x, ival_t y) { return x << y; }
+static ival_t i_shr  (ival_t x, ival_t y) { return x >> y; }
+static ival_t i_prod (ival_t x, ival_t y) { return x * y; }
+static ival_t i_quot (ival_t x, ival_t y) { return x / y; }
+static ival_t i_diff (ival_t x, ival_t y) { return x - y; }
+static ival_t i_bitor (ival_t x, ival_t y) { return x | y; }
+static ival_t i_bitand (ival_t x, ival_t y) { return x & y; }
+static ival_t i_bitxor (ival_t x, ival_t y) { return x ^ y; }
+static ival_t i_equals (ival_t x, ival_t y) { return x == y; }
 
 static struct def {
   const char *name;
@@ -1255,6 +1285,7 @@ static struct def {
   // operators
   { "*",     BINOP(1), (ival_t) i_prod },
   { "/",     BINOP(1), (ival_t) i_quot },
+  { "%",     BINOP(1), (ival_t) i_mod },
   { "+",     BINOP(2), (ival_t) i_sum },
   { "-",     BINOP(2), (ival_t) i_diff },
   { "&",     BINOP(3), (ival_t) i_bitand },
@@ -1275,13 +1306,14 @@ static struct def {
 
 static int i_define (i_t *this, const char *name, int typ, ival_t val) {
   Sym *s;
-  s = i_define_sym (this, i_cstring_new (name), typ, val);
+  s = i_define_sym (this, i_istring_new (name), typ, val);
   if (NULL is s) return i_out_of_mem (this);
   return I_OK;
 }
 
 static int i_eval_string (i_t *this, const char *buf, int saveStrings, int topLevel) {
-  istring_t x = i_cstring_new (buf);
+  this->script_buffer = buf;
+  istring_t x = i_istring_new (buf);
   return i_parse_string (this, x, saveStrings, topLevel);
 }
 
@@ -1465,25 +1497,40 @@ static int i_print_byte (FILE *fp, int c) {
   return i_print_fmt_bytes (fp, "%c", c);
 }
 
-ival_t i_print_str (i_t *this, ival_t str) {
-  char *sp = (char *) str;
+ival_t i_print_str (i_t *this, char *str) {
+  char *sp = str;
   int nbytes = 0;
   while (*sp)
     nbytes += this->print_byte (this->out_fp, *sp++);
-  return I_OK;
+  return nbytes;
 }
 
-ival_t i_println_str (i_t *this, ival_t str) {
+ival_t i_println_str (i_t *this, char *str) {
   int nbytes = i_print_str (this, str);
   this->print_byte (this->out_fp, '\n');
   return nbytes + 1;
 }
 
-ival_t i_release_str (i_t *this, ival_t str) {
+ival_t i_not (i_t *this, ival_t value) {
   (void) this;
-  char *sp = (char *) str;
-  free (sp);
+  return !value;
+}
+
+ival_t i_bool (i_t *this, ival_t value) {
+  (void) this;
+  return !!value;
+}
+
+ival_t i_free (i_t *this, void *value) {
+  (void) this;
+  ifnot (NULL is value)
+    free (value);
   return I_OK;
+}
+
+void *i_alloc (i_t *this, ival_t size) {
+  (void) this;
+  return Alloc ((uint) size);
 }
 
 struct i_def_fun_t {
@@ -1491,9 +1538,12 @@ struct i_def_fun_t {
   ival_t val;
   int nargs;
 } i_def_funs[] = {
-  { "print_str",             (ival_t) i_print_str, 1},
-  { "println_str",           (ival_t) i_println_str, 1},
-  { "free_str",              (ival_t) i_release_str, 1},
+  { "not",             (ival_t) i_not, 1},
+  { "bool",            (ival_t) i_bool, 1},
+  { "free",            (ival_t) i_free, 1},
+  { "alloc",           (ival_t) i_alloc, 1},
+  { "print_str",       (ival_t) i_print_str, 1},
+  { "println_str",     (ival_t) i_println_str, 1},
   { NULL, 0, 0}
 };
 
@@ -1545,6 +1595,7 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
   opts = i_default_options (this, opts);
 
   this->arena = (char *) Alloc (opts.mem_size);
+  this->didReturn = 0;
   this->mem_size = opts.mem_size;
   this->print_byte = opts.print_byte;
   this->print_fmt_bytes = opts.print_fmt_bytes;
