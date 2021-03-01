@@ -11,9 +11,11 @@
  * - remove abort() and disable exit()
  * - added is, isnot, true, false, ifnot, OK and NOTOK keywords
  * - added println (that emit a newline character, while print does not)
- * - add the ability to pass literal strings when calling C defined functions
- *   (note that they should be free'd automatically after ending the script)
+ * - added the ability to pass literal strings when calling C defined functions
+ *   (note that they are freed automatically after ending the script)
  * - print functions can print multibyte characters
+ * - added C-strings support (note that same rules with C apply to this interface)
+ *   (that means out of bound operations and that those should be freed by the user) 
  * - quite of many changes that integrates Tinyscript to this environment
  */
 
@@ -1558,6 +1560,99 @@ void *i_alloc (i_t *this, ival_t size) {
   return Alloc ((uint) size);
 }
 
+ival_t i_cstring_bytelen (i_t *this, char *str) {
+  (void) this;
+  return bytelen (str);
+}
+
+ival_t i_cstring_cp (i_t *this, char *dest, ival_t size, char *src, ival_t len) {
+  (void) this;
+  return Cstring.cp (dest, size, src, len);
+}
+
+static ival_t i_cstring_trim_end (i_t *this, char *str, ival_t ch) {
+  (void) this;
+  return (ival_t) Cstring.trim.end (str, ch);
+}
+
+static ival_t i_cstring_byte_cp (i_t *this, char *dest, const char *src, ival_t size) {
+  (void) this;
+  return Cstring.byte.cp (dest, src, size);
+}
+
+static ival_t i_cstring_byte_cp_all (i_t *this, char *dest, const char *src, ival_t size) {
+  (void) this;
+  return Cstring.byte.cp_all (dest, src, size);
+}
+
+static ival_t i_cstring_byte_mv (i_t *this, char *dest, ival_t len, ival_t to_idx, ival_t from_idx, ival_t nelem) {
+  (void) this;
+  return Cstring.byte.mv (dest, len, to_idx, from_idx, nelem);
+}
+
+static ival_t i_cstring_byte_in_str (i_t *this, char *str, ival_t ch) {
+  (void) this;
+  return (ival_t) Cstring.byte.in_str (str, ch);
+}
+
+static ival_t i_cstring_byte_in_str_r (i_t *this, char *str, ival_t ch) {
+  (void) this;
+  return (ival_t) Cstring.byte.in_str_r (str, ch);
+}
+
+static ival_t i_cstring_byte_null_in_str (i_t *this, char *str) {
+  (void) this;
+  return (ival_t) Cstring.byte.null_in_str (str);
+}
+
+static ival_t i_cstring_dup (i_t *this, char *str, ival_t size) {
+  (void) this;
+  return (ival_t) Cstring.dup (str, size);
+}
+
+static ival_t i_cstring_new (i_t *this, ival_t len) {
+  (void) this;
+  char *new = Alloc ((uint) len + 1);
+  return (ival_t) new;
+}
+
+static ival_t i_cstring_new_with (i_t *this, char *str) {
+  (void) this;
+  size_t len = bytelen (str);
+  char *new = Alloc (len + 1);
+  Cstring.cp (new, len + 1, str, len);
+  return (ival_t) new;
+}
+
+static ival_t i_cstring_substr (i_t *this, char *dest, size_t len, char *src, size_t src_len, size_t idx) {
+  (void) this;
+  return (ival_t) Cstring.substr (dest, len, src, src_len, idx);
+}
+
+static ival_t i_cstring_bytes_in_str (i_t *this, char *str, char *substr) {
+  (void) this;
+  return (ival_t) Cstring.bytes_in_str (str, substr);
+}
+
+static ival_t i_cstring_eq (i_t *this, char *sa, char *sb) {
+  (void) this;
+  return Cstring.eq (sa, sb);
+}
+
+static ival_t i_cstring_eq_n (i_t *this, char *sa, char *sb, ival_t n) {
+  (void) this;
+  return Cstring.eq_n (sa, sb, n);
+}
+
+static ival_t i_cstring_cmp_n (i_t *this, char *sa, char *sb, ival_t n) {
+  (void) this;
+  return Cstring.cmp_n (sa, sb, n);
+}
+
+static ival_t i_cstring_cat (i_t *this, char *dest, ival_t size, char *src) {
+  (void) this;
+  return Cstring.cat (dest, size, src);
+}
 struct i_def_fun_t {
   const char *name;
   ival_t val;
@@ -1569,16 +1664,28 @@ struct i_def_fun_t {
   { "alloc",           (ival_t) i_alloc, 1},
   { "print_str",       (ival_t) i_print_str, 1},
   { "println_str",     (ival_t) i_println_str, 1},
+  { "cstring_cp",      (ival_t) i_cstring_cp, 4},
+  { "cstring_eq",      (ival_t) i_cstring_eq, 2},
+  { "cstring_new",     (ival_t) i_cstring_new, 1},
+  { "cstring_dup",     (ival_t) i_cstring_dup, 2},
+  { "cstring_cat",     (ival_t) i_cstring_cat, 3},
+  { "cstring_eq_n",    (ival_t) i_cstring_eq_n, 3},
+  { "cstring_cmp_n",   (ival_t) i_cstring_cmp_n, 3},
+  { "cstring_substr",  (ival_t) i_cstring_substr, 5},
+  { "cstring_bytelen", (ival_t) i_cstring_bytelen, 1},
+  { "cstring_byte_mv", (ival_t) i_cstring_byte_mv, 5},
+  { "cstring_byte_cp", (ival_t) i_cstring_byte_cp, 3},
+  { "cstring_new_with",(ival_t) i_cstring_new_with, 1},
+  { "cstring_trim_end",(ival_t) i_cstring_trim_end, 2},
+  { "cstring_byte_cp_all", (ival_t) i_cstring_byte_cp_all, 3},
+  { "cstring_byte_in_str", (ival_t) i_cstring_byte_in_str, 2},
+  { "cstring_bytes_in_str", (ival_t) i_cstring_bytes_in_str, 2},
+  { "cstring_byte_in_str_r", (ival_t) i_cstring_byte_in_str_r, 2},
+  { "cstring_byte_null_in_str", (ival_t) i_cstring_byte_null_in_str, 1},
   { NULL, 0, 0}
 };
 
 static int i_define_funs_default_cb (i_t *this) {
-/*  int err;
-  for (int i = 0; ifuns[i].name; i++) {
-    if (I_OK isnot (err = i_define (this, ifuns[i].name, CFUNC (ifuns[i].nargs), ifuns[i].val)))
-      return err;
-  }
-*/
   (void) this;
   return I_OK;
 }
