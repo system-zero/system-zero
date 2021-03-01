@@ -15,6 +15,7 @@ typedef struct Vmap_t {
 typedef struct vmap_t {
   char *key;
   void *val;
+  int is_constant;
   VmapRelease_cb release;
   vmap_t *next;
 } vmap_t;
@@ -48,14 +49,19 @@ static void *vmap_get (Vmap_t *vmap, char *key) {
   return NULL;
 }
 
-static int vmap_set (Vmap_t *vmap, char *key, void *val, VmapRelease_cb cb) {
+static int vmap_set (Vmap_t *vmap, char *key, void *val, VmapRelease_cb cb, int is_constant) {
   if (NULL is cb) return NOTOK;
 
   uint idx = 0;
   vmap_t *old = MAP_GET(vmap_t, vmap, key, idx);
+  ifnot (NULL is old) {
+    if (old->is_constant)
+      return NOTOK;
+  }
 
   vmap_t *item = MAP_SET(vmap_t, vmap, key, val);
   item->release = cb;
+  item->is_constant = is_constant;
 
   ifnot (NULL is old)
     old->release (old->val);

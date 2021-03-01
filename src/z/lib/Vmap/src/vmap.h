@@ -20,7 +20,7 @@ typedef struct vmap_self {
     *(*get) (Vmap_t *, char *);
 
   int
-    (*set) (Vmap_t *, char *, void *, VmapRelease_cb);
+    (*set) (Vmap_t *, char *, void *, VmapRelease_cb, int);
 } vmap_self;
 
 typedef struct vmap_T {

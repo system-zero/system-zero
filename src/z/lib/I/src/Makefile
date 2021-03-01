@@ -85,7 +85,7 @@ endif
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
 LIBFLAGS += -lstring-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)
 LIBFLAGS += -lustring-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION)
-LIBFLAGS += -lerror-$(VERSION)
+LIBFLAGS += -lerror-$(VERSION) -lvmap-$(VERSION)
 
 all: shared static
 
