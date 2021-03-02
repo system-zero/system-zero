@@ -31,8 +31,6 @@ typedef struct i_opts {
   char  *name;
   char  *idir;
   int    name_gen;
-  size_t mem_size;
-  size_t max_script_size;
   FILE  *err_fp;
   FILE  *out_fp;
 
@@ -46,7 +44,6 @@ typedef struct i_opts {
 } i_opts;
 
 #define IOpts(...) (i_opts) { \
-  .mem_size = 0,              \
   .print_byte = NULL,         \
   .print_bytes = NULL,        \
   .print_fmt_bytes = NULL,    \
@@ -57,7 +54,6 @@ typedef struct i_opts {
   .name = NULL,               \
   .idir = NULL,               \
   .name_gen = 97,             \
-  .max_script_size = 1 << 16, \
   .user_data = NULL,          \
   __VA_ARGS__}
 
@@ -98,7 +94,7 @@ typedef struct i_self {
     (*init) (i_T *, i_t *, i_opts),
     (*eval_file) (i_t *, const char *),
     (*load_file) (i_T *, i_t *, char *),
-    (*eval_string) (i_t *, const char *, int, int);
+    (*eval_string) (i_t *, const char *);
 
   ival_t
     (*print_byte) (i_t *, char),

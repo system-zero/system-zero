@@ -1158,7 +1158,7 @@ static int buf_interpret (buf_t **thisp, char *malloced) {
 
   Term.reset ($my(term_ptr));
 
-  int retval = I.eval_string (in, str, 1, 1);
+  int retval = I.eval_string (in, str);
 
   free (malloced);
 
@@ -11300,7 +11300,7 @@ static int ed_i_record_default (ed_t *this, Vstring_t *rec) {
 
   I.set.user_data (in, $OurRoot);
 
-  int retval = I.eval_string (in, str, 1, 1);
+  int retval = I.eval_string (in, str);
 
   free (str);
 

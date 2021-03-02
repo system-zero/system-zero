@@ -68,7 +68,7 @@ eval:
   ifnot (evalbuf->num_bytes) goto theend;
 
   i_t *i = I.init_instance (In, IOpts());
-  retval = I.eval_string (i, evalbuf->bytes, 0, 1);
+  retval = I.eval_string (i, evalbuf->bytes);
   __deinit_i__ (&In);
 
 theend:

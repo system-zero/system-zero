@@ -16,8 +16,11 @@
  * - print functions can print multibyte characters
  * - added C-strings support (note that same danger rules with C apply to this interface)
  *   (that means out of bound operations and that those should be freed by the user) 
- * - define symbols by using a map type
- * - quite of many changes that integrates Tinyscript to this environment
+ * - define symbols by using a hash/map type
+ * - removed arena and operations based on its existance
+ * - and quite of many changes that integrates Tinyscript to this environment
+ * Note, that tinyscript scripts should be run without modification, except
+ * probably the print functions.
  */
 
 /* Tinyscript interpreter
@@ -107,6 +110,7 @@
 #define I_TOK_CHAR       'C'
 
 #define MAX_BUILTIN_PARAMS 9
+#define MAXLEN_UFUNC_NAME  64
 
 typedef struct istring_t {
   unsigned len_;
@@ -118,15 +122,14 @@ typedef struct sym_t {
   ival_t value;
 } sym_t;
 
-typedef struct ufunc {
-  istring_t body;
+typedef struct userfunc {
+  char *body;
   int nargs;
-  istring_t argName[MAX_BUILTIN_PARAMS];
-} UserFunc;
+  char argName[MAX_BUILTIN_PARAMS][MAXLEN_UFUNC_NAME];
+} Ufunc;
 
 typedef struct i_prop {
   int name_gen;
-  size_t default_size;
 
   i_t *head;
   int num_instances;
@@ -140,17 +143,24 @@ struct malloced_string {
   malloced_string *next;
 };
 
+typedef struct i_stackval_t i_stackval_t;
+
+struct i_stackval_t {
+  ival_t data;
+  i_stackval_t *next;
+};
+
+typedef struct i_stack {
+  i_stackval_t *head;
+} i_stack;
+
+
 typedef struct i_t {
   char
     name[32],
-    ns[MAXLEN_NAME],
-    *arena;
+    ns[MAXLEN_NAME];
 
   const char *script_buffer;
-
-  size_t
-    mem_size,
-    max_script_size;
 
   int
     state,
@@ -170,15 +180,17 @@ typedef struct i_t {
   malloced_string *head;
 
   ival_t
-    *valptr,
      fResult,
      tokenVal,  // for symbolic tokens, the symbol's value
      fArgs[MAX_BUILTIN_PARAMS];
+
+  i_stack stack[1];
 
   sym_t
     *tokenSymbol;
 
   Vmap_t *symbols;
+  Vmap_t *user_functions;
 
   FILE
     *err_fp,
@@ -202,7 +214,7 @@ typedef struct i_t {
 #define TERM_RESET  "\033[m"
 #define MAX_EXPR_LEVEL 5
 
-static int i_parse_stmt (i_t *, int);
+static int i_parse_stmt (i_t *);
 static int i_parse_expr (i_t *, ival_t *);
 
 static inline int is_space (int c) {
@@ -347,32 +359,6 @@ static void i_print_number (i_t *this, ival_t v) {
   }
 }
 
-static char *i_stack_alloc (i_t *this, int len) {
-  int mask = sizeof (ival_t) -1;
-  ival_t base;
-
-  len = (len + mask) & ~mask;
-  base = ((ival_t) this->valptr) - len;
-  if (base < (ival_t) this->arena)
-    return NULL;
-
-  this->valptr = (ival_t *) base;
-  return (char *) base;
-}
-
-static istring_t i_dup_string (i_t *this, istring_t orig) {
-  istring_t x;
-  char *ptr;
-  unsigned len = i_StringGetLen (orig);
-  ptr = i_stack_alloc (this, len);
-  if (ptr)
-    Cstring.byte.cp (ptr, i_StringGetPtr (orig), len);
-
-  i_StringSetLen (&x, len);
-  i_StringSetPtr (&x, ptr);
-  return x;
-}
-
 static int i_err_ptr (i_t *this, int err) {
   const char *keep = i_StringGetPtr (this->parseptr);
   char *sp = (char *) keep;
@@ -405,11 +391,6 @@ static int i_too_many_args (i_t *this) {
 static int i_unknown_symbol (i_t *this) {
   this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "unknown symbol:");
   return i_err_ptr (this, I_ERR_UNKNOWN_SYM);
-}
-
-static int i_out_of_mem (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, ERROR_COLOR "out of memory" TERM_RESET "\n");
-  return I_ERR_NOMEM;
 }
 
 static void i_reset_token (i_t *this) {
@@ -479,6 +460,12 @@ static void i_get_span (i_t *this, int (*testfn) (int)) {
   while (testfn (c));
 
   if (c isnot -1) i_unget_char (this);
+}
+
+static void i_release_user_function (void *user_function) {
+  Ufunc *uf = (Ufunc *) user_function;
+  free (uf->body);
+  free (uf);
 }
 
 static void i_release_sym (void *sym) {
@@ -576,11 +563,15 @@ static int i_do_next_token (i_t *this, int israw) {
     // check for special tokens
     ifnot (israw) {
       this->tokenSymbol = symbol = i_lookup_symbol (this, this->token);
+
       if (symbol) {
         r = symbol->type & 0xff;
+
         this->tokenArgs = (symbol->type >> 8) & 0xff;
+
         if (r < '@')
           r = I_TOK_VAR;
+
         this->tokenVal = symbol->value;
       }
     }
@@ -665,22 +656,17 @@ static int i_next_raw_token (i_t *this) {
   return i_do_next_token (this, 1);
 }
 
-static int i_push (i_t *this, ival_t x) {
-  --this->valptr;
-
-  if ((ival_t) this->valptr < (ival_t) this->arena)
-    return i_out_of_mem (this);
-
-  *this->valptr = x;
-  return I_OK;
+static void i_stack_push (i_t *this, ival_t x) {
+  i_stackval_t *item = Alloc (sizeof (i_stackval_t));
+  item->data = x;
+  ListStackPush (this->stack, item);
 }
 
-static ival_t i_pop (i_t *this) {
-  ival_t r = 0;
-  if ((ival_t) this->valptr < (ival_t) (this->arena + this->mem_size))
-    r = *(this)->valptr++;
-
-  return r;
+static ival_t i_stack_pop (i_t *this) {
+  i_stackval_t *item = ListStackPop (this->stack, i_stackval_t);
+  ival_t data = item->data;
+  free (item);
+  return data;
 }
 
 static ival_t i_string_to_num (istring_t s) {
@@ -730,9 +716,7 @@ static int i_parse_expr_list (i_t *this) {
     err = i_parse_expr (this, &v);
     if (err isnot I_OK) return err;
 
-    err = i_push (this, v);
-
-    if (err isnot I_OK) return err;
+    i_stack_push (this, v);
 
     count++;
 
@@ -777,8 +761,7 @@ static int i_parse_char (i_t *this, ival_t *vp, istring_t token) {
   return I_OK;
 }
 
-static int i_parse_string (i_t *this, istring_t str, int saveStrings, int topLevel) {
- (void) topLevel;
+static int i_parse_string (i_t *this, istring_t str) {
   int c,  r;
   istring_t savepc = this->parseptr;
 
@@ -794,7 +777,7 @@ static int i_parse_string (i_t *this, istring_t str, int saveStrings, int topLev
 
     if (c < 0) break;
 
-    r = i_parse_stmt (this, saveStrings);
+    r = i_parse_stmt (this);
     if (r isnot I_OK) return r;
 
     c = this->curToken;
@@ -811,7 +794,7 @@ static int i_parse_string (i_t *this, istring_t str, int saveStrings, int topLev
   return I_OK;
 }
 
-static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, UserFunc *uf) {
+static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, Ufunc *uf) {
   int paramCount = 0;
   int expectargs;
   int c;
@@ -848,7 +831,7 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, UserFunc *uf) {
   // pop em off
   while (paramCount > 0) {
     --paramCount;
-    this->fArgs[paramCount] = i_pop (this);
+    this->fArgs[paramCount] = i_stack_pop (this);
   }
 
   if (uf) {
@@ -858,10 +841,10 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, UserFunc *uf) {
     int err;
 
     for (i = 0; i < expectargs; i++)
-      i_define_symbol (this, uf->argName[i], INT, this->fArgs[i]);
+      i_define_symbol (this, i_istring_new (uf->argName[i]), INT, this->fArgs[i]);
 
     this->didReturn = 0;
-    err = i_parse_string (this, uf->body, 0, 0);
+    err = i_parse_string (this,  i_istring_new (uf->body));
     this->didReturn = 0;
 
     *vp = this->fResult;
@@ -934,7 +917,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
       return this->syntax_error (this, "user defined function, not declared");
 
     this->state |= FUNC_CALL_USRFUNC;
-    err = i_parse_func_call (this, NULL, vp, (UserFunc *)symbol->value);
+    err = i_parse_func_call (this, NULL, vp, (Ufunc *)symbol->value);
     i_next_token (this);
     return err;
 
@@ -963,7 +946,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
  * a temporary string)
  */
 
-static int i_parse_stmt (i_t *this, int saveStrings) {
+static int i_parse_stmt (i_t *this) {
   int c;
   istring_t name;
   ival_t val;
@@ -986,10 +969,7 @@ static int i_parse_stmt (i_t *this, int saveStrings) {
     if (c isnot I_TOK_SYMBOL)
       return this->syntax_error (this, "expected symbol");
 
-    if (saveStrings)
-      name = i_dup_string (this, this->token);
-    else
-      name = this->token;
+    name = this->token;
 
     this->tokenSymbol = i_define_var_symbol (this, name);
 
@@ -1024,8 +1004,8 @@ static int i_parse_stmt (i_t *this, int saveStrings) {
     return err;
 
   } else if (this->tokenSymbol and this->tokenVal) {
-    int (*func) (i_t *, int) = (void *) this->tokenVal;
-    err = (*func) (this, saveStrings);
+    int (*func) (i_t *) = (void *) this->tokenVal;
+    err = (*func) (this);
 
   } else return this->syntax_error (this, "unknown token");
 
@@ -1118,9 +1098,9 @@ static int i_parse_if (i_t *this) {
     return err;
 
   if (cond)
-    err = i_parse_string (this, ifpart, 0, 0);
+    err = i_parse_string (this, ifpart);
   else if (haveelse)
-    err = i_parse_string (this, elsepart, 0, 0);
+    err = i_parse_string (this, elsepart);
 
   if (err is I_OK and 0 is cond) err = I_ERR_OK_ELSE;
   return err;
@@ -1135,15 +1115,15 @@ static int i_parse_ifnot (i_t *this) {
     return err;
 
   if (!cond)
-    err = i_parse_string (this, ifpart, 0, 0);
+    err = i_parse_string (this, ifpart);
   else if (haveelse)
-    err = i_parse_string (this, elsepart, 0, 0);
+    err = i_parse_string (this, elsepart);
 
   if (err is I_OK and 0 isnot cond) err = I_ERR_OK_ELSE;
   return err;
 }
 
-static int i_parse_var_list (i_t *this, UserFunc *uf, int saveStrings) {
+static int i_parse_var_list (i_t *this, Ufunc *uf) {
   int c;
   int nargs = 0;
   c = i_next_raw_token (this);
@@ -1151,15 +1131,21 @@ static int i_parse_var_list (i_t *this, UserFunc *uf, int saveStrings) {
   for (;;) {
     if (c is I_TOK_SYMBOL) {
       istring_t name = this->token;
-      if (saveStrings)
-        name = i_dup_string (this, name);
 
       if (nargs >= MAX_BUILTIN_PARAMS)
         return i_too_many_args (this);
 
-      uf->argName[nargs] = name;
+      size_t len = i_StringGetLen (name);
+      if (len >= MAXLEN_UFUNC_NAME)
+        return this->syntax_error (this, "function name exceeded maximum length (64)");
+
+      const char *ptr = i_StringGetPtr (name);
+      Cstring.cp (uf->argName[nargs], MAXLEN_UFUNC_NAME, ptr, len);
+
       nargs++;
+
       c = i_next_token (this);
+
       if (c is ')') break;
 
       if (c is ',')
@@ -1167,7 +1153,6 @@ static int i_parse_var_list (i_t *this, UserFunc *uf, int saveStrings) {
 
     } else if (c is ')')
       break;
-
     else
       return this->syntax_error (this, "var definition, unxpected token");
   }
@@ -1176,12 +1161,11 @@ static int i_parse_var_list (i_t *this, UserFunc *uf, int saveStrings) {
   return nargs;
 }
 
-static int i_parse_func_def (i_t *this, int saveStrings) {
+static int i_parse_func_def (i_t *this) {
   istring_t name;
   istring_t body;
   int c;
   int nargs = 0;
-  UserFunc *uf;
 
   c = i_next_raw_token (this); // do not interpret the symbol
   if (c isnot I_TOK_SYMBOL) return this->syntax_error (this, "fun definition, not a symbol");
@@ -1189,12 +1173,13 @@ static int i_parse_func_def (i_t *this, int saveStrings) {
   name = this->token;
   c = i_next_token (this);
 
-  uf = (UserFunc *) i_stack_alloc (this, sizeof (*uf));
-  ifnot (uf) return i_out_of_mem (this);
+  Ufunc *uf = Alloc (sizeof (Ufunc));
 
   uf->nargs = 0;
+
   if (c is '(') {
-    nargs = i_parse_var_list (this, uf, saveStrings);
+    nargs = i_parse_var_list (this, uf);
+
     if (nargs < 0) return nargs;
 
     c = i_next_token (this);
@@ -1204,13 +1189,13 @@ static int i_parse_func_def (i_t *this, int saveStrings) {
 
   body = this->token;
 
-  if (saveStrings) {
-    name = i_dup_string (this, name);
-    body = i_dup_string (this, body);
-  }
+  size_t len = i_StringGetLen (body);
+  uf->body = Alloc (len + 1);
+  Cstring.cp (uf->body, len + 1, i_StringGetPtr (body), len);
 
-  uf->body = body;
-
+  char key[len + 1];
+  Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
+  Vmap.set (this->user_functions, key, uf, i_release_user_function, 0);
   i_define_symbol (this, name, USRFUNC | (nargs << 8), (ival_t) uf);
 
   i_next_token (this);
@@ -1337,30 +1322,48 @@ static int i_define (i_t *this, const char *name, int typ, ival_t val) {
   return I_OK;
 }
 
-static int i_eval_string (i_t *this, const char *buf, int saveStrings, int topLevel) {
+static int i_eval_string (i_t *this, const char *buf) {
   this->script_buffer = buf;
   istring_t x = i_istring_new (buf);
-  int retval = i_parse_string (this, x, saveStrings, topLevel);
+  int retval = i_parse_string (this, x);
   i_release_malloced_strings (this);
   return retval;
 }
 
 static int i_eval_file (i_t *this, const char *filename) {
-  char script[this->max_script_size];
-
   ifnot (File.exists (filename)) {
     this->print_fmt_bytes (this->err_fp, "%s: doesn't exists\n", filename);
     return NOTOK;
   }
 
-  int r = OK;
   FILE *fp = fopen (filename, "r");
   if (NULL is fp) {
     this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
     return NOTOK;
   }
 
-  r = fread (script, 1, this->max_script_size, fp);
+  if (-1 is fseek (fp, 0, SEEK_END)) {
+    fclose (fp);
+    this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
+    return NOTOK;
+  }
+
+  long n = ftell (fp);
+
+  if (-1 is n) {
+    fclose (fp);
+    this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
+    return NOTOK;
+  }
+
+  if (-1 is fseek (fp, 0, SEEK_SET)) {
+    fclose (fp);
+    this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
+    return NOTOK;
+  }
+
+  char script[n + 1];
+  int r = fread (script, 1, n, fp);
   fclose (fp);
 
   if (r <= 0) {
@@ -1368,8 +1371,15 @@ static int i_eval_file (i_t *this, const char *filename) {
     return NOTOK;
   }
 
-  script[r] = 0;
-  r = i_eval_string (this, script, 0, 1);
+  if (r > n) {
+    this->print_fmt_bytes (this->err_fp, "race condition, aborts now\n");
+    return NOTOK;
+  }
+
+  script[r] = '\0';
+
+  r = i_eval_string (this, script);
+
   if (r isnot I_OK) {
     char *err_msg[] = {"NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
         "BAD ARGUMENTS", "TOO MANY ARGUMENTS"};
@@ -1386,7 +1396,7 @@ static void i_release (i_t **thisp) {
   String.release (this->message);
   i_release_malloced_strings (this);
   Vmap.release (this->symbols);
-  free (this->arena);
+  Vmap.release (this->user_functions);
   free (this);
   *thisp = NULL;
 }
@@ -1694,9 +1704,7 @@ static int i_define_funs_default_cb (i_t *this) {
 }
 
 static i_opts i_default_options (i_t *this, i_opts opts) {
-  if (0 >= opts.mem_size)
-    opts.mem_size = $my(default_size);
-
+  (void) this;
   if (NULL is opts.print_bytes)
     opts.print_bytes = i_print_bytes;
 
@@ -1729,21 +1737,19 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
 
   opts = i_default_options (this, opts);
 
-  this->arena = (char *) Alloc (opts.mem_size);
   this->didReturn = 0;
-  this->mem_size = opts.mem_size;
   this->print_byte = opts.print_byte;
   this->print_fmt_bytes = opts.print_fmt_bytes;
   this->print_bytes = opts.print_bytes;
   this->syntax_error = opts.syntax_error;
   this->err_fp = opts.err_fp;
   this->out_fp = opts.out_fp;
-  this->max_script_size = opts.max_script_size;
   this->user_data = opts.user_data;
   this->define_funs_cb = opts.define_funs_cb;
   this->state = 0;
 
   this->symbols = Vmap.new (32);
+  this->user_functions = Vmap.new (32);
 
   if (NULL is opts.idir)
     this->idir = String.new (32);
@@ -1751,8 +1757,6 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
     this->idir = String.new_with (opts.idir);
 
   this->message = String.new (32);
-
-  this->valptr = (ival_t *) (this->arena + this->mem_size);
 
   for (i = 0; idefs[i].name; i++) {
     err = i_define (this, idefs[i].name, idefs[i].toktype, idefs[i].val);
@@ -1896,7 +1900,6 @@ public i_T *__init_i__ (void) {
   };
 
   $my(name_gen) = ('z' - 'a') + 1;
-  $my(default_size) = 1 << 12;
 
   $my(head) = NULL;
   $my(num_instances) = 0;
