@@ -13,11 +13,13 @@
  * - added println (that emit a newline character, while print does not)
  * - added the ability to pass literal strings when calling C defined functions
  *   (note that they are freed automatically after ending the script)
- * - print functions can print multibyte characters
  * - added C-strings support (note that same danger rules with C apply to this interface)
  *   (that means out of bound operations and that those should be freed by the user) 
  * - define symbols by using a hash/map type
  * - removed arena and operations based on its existance
+ * - added multibyte support for subscripted chars e.g., 'c', so 'α' will return 945
+ * - print functions can print multibyte characters
+ * - parse escape sequences when printing
  * - and quite of many changes that integrates Tinyscript to this environment
  * Note, that tinyscript scripts should be run without modification, except
  * probably the print functions.
@@ -63,6 +65,7 @@
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_USTRING_TYPE DECLARE
 #define REQUIRE_VMAP_TYPE    DECLARE
+#define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_LIST_MACROS
 #define REQUIRE_I_TYPE       DONOT_DECLARE
@@ -299,27 +302,6 @@ static inline void i_StringSetLen (istring_t *s, unsigned len) {
 static inline void i_StringSetPtr (istring_t *s, const char *ptr) {
   s->ptr_ = ptr;
 }
-
-/*
-static int i_StringEq (istring_t ai, istring_t bi) {
-  const char *a, *b;
-  size_t i, len;
-
-  len = i_StringGetLen (ai);
-  if (len isnot i_StringGetLen (bi))
-    return 0;
-
-  a = i_StringGetPtr (ai);
-  b = i_StringGetPtr (bi);
-
-  for (i = 0; i < len; i++) {
-    if (*a isnot *b) return 0;
-    a++; b++;
-  }
-
-  return 1;
-}
-*/
 
 static void i_print_string (i_t *this, FILE *fp, istring_t s) {
   unsigned len = i_StringGetLen (s);
@@ -604,9 +586,10 @@ static int i_do_next_token (i_t *this, int israw) {
     r = I_TOK_STRING;
 
   } else if (c is '"') {
-    if (0 is (this->state & FUNCTION_ARGUMENT_SCOPE) or
-        (this->state & FUNC_CALL_USRFUNC)) {
-      this->state &= ~(FUNC_CALL_USRFUNC);
+    if (0 is (this->state & FUNCTION_ARGUMENT_SCOPE)) {
+      // or
+      //  (this->state & FUNC_CALL_USRFUNC)) {
+      //this->state &= ~(FUNC_CALL_USRFUNC);
       i_reset_token (this);
       i_get_span (this, is_notquote);
       c = i_get_char (this);
@@ -1523,7 +1506,11 @@ static int i_get_current_idx (i_T *this) {
 }
 
 static int i_print_bytes (FILE *fp, const char *bytes) {
-  return fprintf (fp, "%s", bytes);
+  string_t *parsed = IO.parse_escapes ((char *)bytes);
+  if (NULL is parsed) return 0;
+  int nbytes = fprintf (fp, "%s", parsed->bytes);
+  String.release (parsed);
+  return nbytes;
 }
 
 static int i_print_fmt_bytes (FILE *fp, const char *fmt, ...) {
@@ -1538,17 +1525,21 @@ static int i_print_byte (FILE *fp, int c) {
 }
 
 ival_t i_print_str (i_t *this, char *str) {
-  char *sp = str;
-  int nbytes = 0;
-  while (*sp)
-    nbytes += this->print_byte (this->out_fp, *sp++);
-  return nbytes;
+  return i_print_bytes (this->out_fp, str);
 }
 
 ival_t i_println_str (i_t *this, char *str) {
   int nbytes = i_print_str (this, str);
   this->print_byte (this->out_fp, '\n');
   return nbytes + 1;
+}
+
+static ival_t I_print_bytes (i_t *this, char *bytes) {
+  return this->print_bytes (this->out_fp, bytes);
+}
+
+static ival_t I_print_byte (i_t *this, char byte) {
+  return this->print_byte (this->out_fp, byte);
 }
 
 ival_t i_not (i_t *this, ival_t value) {
@@ -1847,15 +1838,8 @@ static int i_load_file (i_T *__i__, i_t *this, char *fn) {
   return i_eval_file (this, fn);
 }
 
-static ival_t I_print_bytes (i_t *this, char *bytes) {
-  return this->print_bytes (this->out_fp, bytes);
-}
-
-static ival_t I_print_byte (i_t *this, char byte) {
-  return this->print_byte (this->out_fp, byte);
-}
-
 public i_T *__init_i__ (void) {
+  __INIT__ (io);
   __INIT__ (path);
   __INIT__ (file);
   __INIT__ (vmap);
