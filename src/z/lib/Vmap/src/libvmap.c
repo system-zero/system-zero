@@ -53,6 +53,7 @@ static int vmap_set (Vmap_t *vmap, char *key, void *val, VmapRelease_cb cb, int 
   if (NULL is cb) return NOTOK;
 
   uint idx = 0;
+
   vmap_t *old = MAP_GET(vmap_t, vmap, key, idx);
   ifnot (NULL is old) {
     if (old->is_constant)

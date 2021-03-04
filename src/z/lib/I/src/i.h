@@ -15,7 +15,9 @@ enum {
   I_ERR_NOMEM = -2,
   I_NOTOK = -1,
   I_OK = 0,
-  I_ERR_OK_ELSE = 1
+  I_ERR_OK_ELSE = 1,
+  I_ERR_BREAK = 2,
+  I_ERR_CONTINUE = 3
 };
 typedef int (*IPrintByte_cb) (FILE *, int);
 typedef int (*IPrintBytes_cb) (FILE *, const char *);

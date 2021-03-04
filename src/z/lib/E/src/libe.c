@@ -745,7 +745,8 @@ char *i_shebangs[] = {"#!/bin/env i", NULL};
 char i_operators[] = "+:-*^><=|&~.()[]{}/";
 char *i_keywords[] = {
   "while I", "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
-  "isnot I", "print F", "println F", "true V", "false V", "OK V", "NOTOK V", NULL
+  "isnot I", "print F", "println F", "true V", "false V", "OK V", "NOTOK V",
+  "break I", "continue I", "bool V", "not V", "const V", "free F", "alloc F", NULL
 };
 
 char i_singleline_comment[] = "#";

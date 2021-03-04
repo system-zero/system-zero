@@ -1,4 +1,4 @@
-[zero point draft]
+------------------------- [ zero point draft ] -------------------------------
 ## Description
 
 This is  to describe and implement  a functional computer system,  with as few
@@ -740,6 +740,14 @@ the system with out of bound operations, or integer overflows.  I respect  the
 worries for a better world. But...
 
 To be continued ...
+
+## Tools
+So far, we've implemented:
+  - a rather stable ala vim editor (tiny, independent and with interesting features)
+  - a rather stable ala screen terminal window manager
+  - a shell at the prototyping level (nothing much here)
+  - a sudo like utility (needs audit to be considered safe)
+  - a really really tiny [interpreter](data/docs/i.md)
 
 License: I  understand the UNLICENSE license  kind of thought. We  do not need
 laws and licenses to make the right thing.

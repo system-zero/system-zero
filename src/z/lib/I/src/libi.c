@@ -12,17 +12,25 @@
  * - added is, isnot, true, false, ifnot, OK and NOTOK keywords
  * - added println (that emit a newline character, while print does not)
  * - added the ability to pass literal strings when calling C defined functions
- *   (note that they are freed automatically after ending the script)
+ *   (those they ought to be freed automatically after ending the script)
+ * - added the ability to assign literal strings
+ *   (those they should be freed by the user)
+ *   (when assigning such a variable to another, the behavior is undefined)
+ * - added constant type objects (those can not be reassigned)
  * - added C-strings support (note that same danger rules with C apply to this interface)
  *   (that means out of bound operations and that those should be freed by the user) 
  * - define symbols by using a hash/map type
- * - removed arena and operations based on its existance
+ * - removed memory arena and operations based on its existance
+ *   (that means that there is no case of out of memory operations)
  * - added multibyte support for subscripted chars e.g., 'c', so 'α' will return 945
  * - print functions can print multibyte characters
  * - parse escape sequences when printing
  * - and quite of many changes that integrates Tinyscript to this environment
- * Note, that tinyscript scripts should be run without modification, except
- * probably the print functions.
+ * Note, that tinyscript scripts should be run without modifications, except
+ * probably to the print functions.
+ * Generally speaking, introducing string support, might made the language a
+ * bit more flexible and practical, but at the same time and quite possible,
+ * introduce bugs.
  */
 
 /* Tinyscript interpreter
@@ -83,11 +91,14 @@
 #define USRFUNC  'f'  // user defined a procedure; number of operands in high 8 bits
 #define TOK_BINOP 'o'
 
-#define OUT_OF_FUNCTION_ARGUMENT_SCOPE 1 << 0
+//#define OUT_OF_FUNCTION_ARGUMENT_SCOPE (1 << 0)
 //#define FUNCTION_SCOPE                 1 << 1
-#define FUNCTION_ARGUMENT_SCOPE        1 << 2
-#define FUNC_CALL_BUILTIN              1 << 3
-#define FUNC_CALL_USRFUNC              1 << 4
+#define FUNCTION_ARGUMENT_SCOPE        (1 << 2)
+#define FUNC_CALL_BUILTIN              (1 << 3)
+#define FUNC_CALL_USRFUNC              (1 << 4)
+#define AT_LOOP                        (1 << 5)
+#define BREAK                          (1 << 6)
+#define CONTINUE                       (1 << 7)
 
 #define BINOP(x) (((x) << 8) + TOK_BINOP)
 #define CFUNC(x) (((x) << 8) + BUILTIN)
@@ -111,6 +122,9 @@
 #define I_TOK_SYNTAX_ERR 'Z'
 #define I_TOK_RETURN     'r'
 #define I_TOK_CHAR       'C'
+#define I_TOK_CONSTDEF   'c'
+#define I_TOK_BREAK      'b'
+#define I_TOK_CONTINUE   'O'
 
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_UFUNC_NAME  64
@@ -122,6 +136,7 @@ typedef struct istring_t {
 
 typedef struct sym_t {
   int type;
+  int is_const;
   ival_t value;
 } sym_t;
 
@@ -144,6 +159,7 @@ typedef struct malloced_string malloced_string;
 struct malloced_string {
   char *data;
   malloced_string *next;
+  int is_const;
 };
 
 typedef struct i_stackval_t i_stackval_t;
@@ -261,12 +277,14 @@ static inline int is_operator (int c) {
   return NULL isnot Cstring.byte.in_str ("+-/*%=<>&|^", c);
 }
 
-static void i_release_malloced_strings (i_t *this) {
+static void i_release_malloced_strings (i_t *this, int release_const) {
   malloced_string *item = this->head;
   while (item isnot NULL) {
     malloced_string *tmp = item->next;
-    free (item->data);
-    free (item);
+    if (item->is_const is 0 or (item->is_const and release_const)) {
+      free (item->data);
+      free (item);
+    }
     item = tmp;
   }
   this->head = NULL;
@@ -301,6 +319,13 @@ static inline void i_StringSetLen (istring_t *s, unsigned len) {
 
 static inline void i_StringSetPtr (istring_t *s, const char *ptr) {
   s->ptr_ = ptr;
+}
+
+static istring_t i_StringNew (const char *str) {
+  istring_t x;
+  i_StringSetLen (&x, bytelen (str));
+  i_StringSetPtr (&x, str);
+  return x;
 }
 
 static void i_print_string (i_t *this, FILE *fp, istring_t s) {
@@ -451,10 +476,12 @@ static void i_release_user_function (void *user_function) {
 }
 
 static void i_release_sym (void *sym) {
+  if (sym is NULL) return;
   free (sym);
+  sym = NULL;
 }
 
-static sym_t *i_define_symbol (i_t *this, istring_t name, int typ, ival_t value) {
+static sym_t *i_define_symbol (i_t *this, istring_t name, int typ, ival_t value, int is_const) {
   if (i_StringGetPtr (name) is NULL) return NULL;
 
   size_t len = i_StringGetLen (name);
@@ -464,8 +491,10 @@ static sym_t *i_define_symbol (i_t *this, istring_t name, int typ, ival_t value)
   sym_t *sym = Alloc (sizeof (sym_t));
   sym->type = typ;
   sym->value = value;
+  sym->is_const = is_const;
 
-  Vmap.set (this->symbols, key, sym, i_release_sym, 0);
+  if (NOTOK is Vmap.set (this->symbols, key, sym, i_release_sym, is_const))
+    return NULL;
 
   return sym;
 }
@@ -477,8 +506,8 @@ static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
   return Vmap.get (this->symbols, key);
 }
 
-static sym_t *i_define_var_symbol (i_t *this, istring_t name) {
-  return i_define_symbol (this, name, INT, 0);
+static sym_t *i_define_var_symbol (i_t *this, istring_t name, int is_const) {
+  return i_define_symbol (this, name, INT, 0, is_const);
 }
 
 static int i_do_next_token (i_t *this, int israw) {
@@ -586,41 +615,45 @@ static int i_do_next_token (i_t *this, int israw) {
     r = I_TOK_STRING;
 
   } else if (c is '"') {
-    if (0 is (this->state & FUNCTION_ARGUMENT_SCOPE)) {
-      // or
-      //  (this->state & FUNC_CALL_USRFUNC)) {
-      //this->state &= ~(FUNC_CALL_USRFUNC);
-      i_reset_token (this);
-      i_get_span (this, is_notquote);
-      c = i_get_char (this);
-      if (c < 0) return I_TOK_SYNTAX_ERR;
-      i_ignore_last_token (this);
+    size_t len = 0;
+    int pc = 0;
+    int cc = 0;
+
+    while (pc = cc, (cc = i_peek_char (this, len)) isnot -1) {
+      if ('"' is cc and pc isnot '\\') break;
+      len++;
+    }
+
+    if (cc is -1)
+      return this->syntax_error (this, "unended string, a '\"' is missing");
+
+    ifnot (this->state & FUNCTION_ARGUMENT_SCOPE) {
+      char *str = Alloc (len + 1);
+      for (size_t i = 0; i < len; i++) {
+        c = i_get_char (this);
+        str[i] = c;
+      }
+      str[len] = '\0';
+      this->tokenVal = (ival_t) str;
+
     } else {
       this->state &= ~(FUNC_CALL_BUILTIN);
-      size_t len = 0;
-      int pc = 0;
-      int cc = 0;
-
-      while (pc = cc, (cc = i_peek_char (this, len)) isnot -1) {
-        if ('"' is cc and pc isnot '\\') break;
-        len++;
-      }
-
-      if (cc is -1) return I_TOK_SYNTAX_ERR;
-
       malloced_string *mbuf = Alloc (sizeof (malloced_string));
       mbuf->data = Alloc (len + 1);
       for (size_t i = 0; i < len; i++) {
         c = i_get_char (this);
         mbuf->data[i] = c;
       }
+
       mbuf->data[len] = '\0';
 
       ListStackPush (this, mbuf);
-      c = i_get_char (this);
+      mbuf->is_const = 0;
       this->tokenVal = (ival_t) mbuf->data;
-      i_reset_token (this);
     }
+
+    c = i_get_char (this);
+    i_reset_token (this);
 
     r = I_TOK_STRING;
 
@@ -681,13 +714,6 @@ static ival_t i_HexStringToNum (istring_t s) {
       r = 16 * r + (c - 'a' + 10);
   }
   return r;
-}
-
-static istring_t i_istring_new (const char *str) {
-  istring_t x;
-  i_StringSetLen (&x, bytelen (str));
-  i_StringSetPtr (&x, str);
-  return x;
 }
 
 static int i_parse_expr_list (i_t *this) {
@@ -761,6 +787,7 @@ static int i_parse_string (i_t *this, istring_t str) {
     if (c < 0) break;
 
     r = i_parse_stmt (this);
+
     if (r isnot I_OK) return r;
 
     c = this->curToken;
@@ -788,21 +815,23 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, Ufunc *uf) {
     expectargs = this->tokenArgs;
 
   c = i_next_token (this);
+
   if (c isnot '(') return this->syntax_error (this, "expected open parentheses");
 
   this->state |= FUNCTION_ARGUMENT_SCOPE;
 
   c = i_next_token (this);
+
   if (c isnot ')') {
     paramCount = i_parse_expr_list (this);
     c = this->curToken;
     if (paramCount < 0) {
-      this->state &= ~(OUT_OF_FUNCTION_ARGUMENT_SCOPE);
+      this->state &= ~(FUNCTION_ARGUMENT_SCOPE);
       return paramCount;
     }
   }
 
-  this->state &= ~(OUT_OF_FUNCTION_ARGUMENT_SCOPE);
+  this->state &= ~(FUNCTION_ARGUMENT_SCOPE);
 
   if (c isnot ')')
     return this->syntax_error (this, "expected closed parentheses");
@@ -824,10 +853,10 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, Ufunc *uf) {
     int err;
 
     for (i = 0; i < expectargs; i++)
-      i_define_symbol (this, i_istring_new (uf->argName[i]), INT, this->fArgs[i]);
+      i_define_symbol (this, i_StringNew (uf->argName[i]), INT, this->fArgs[i], 0);
 
     this->didReturn = 0;
-    err = i_parse_string (this,  i_istring_new (uf->body));
+    err = i_parse_string (this,  i_StringNew (uf->body));
     this->didReturn = 0;
 
     *vp = this->fResult;
@@ -842,6 +871,7 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, Ufunc *uf) {
   }
 
   i_next_token (this);
+
   return I_OK;
 }
 
@@ -862,7 +892,8 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
 
       if (c is ')') {
         i_next_token (this);
-        this->state &= ~(OUT_OF_FUNCTION_ARGUMENT_SCOPE);
+
+        this->state &= ~(FUNCTION_ARGUMENT_SCOPE);
         return I_OK;
       }
     }
@@ -881,6 +912,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
 
   } else if (c is I_TOK_CHAR) {
       err = i_parse_char (this, vp, this->token);
+
       i_next_token (this);
       return err;
 
@@ -901,6 +933,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
 
     this->state |= FUNC_CALL_USRFUNC;
     err = i_parse_func_call (this, NULL, vp, (Ufunc *)symbol->value);
+
     i_next_token (this);
     return err;
 
@@ -908,6 +941,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
     // binary operator
     Opfunc op = (Opfunc) this->tokenVal;
     ival_t v;
+
     i_next_token (this);
     err = i_parse_expr (this, &v);
     if (err is I_OK)
@@ -917,17 +951,13 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
 
   } else if (c is I_TOK_STRING) {
     *vp = this->tokenVal;
+
     i_next_token (this);
     return I_OK;
 
   } else
     return this->syntax_error (this, "syntax error");
 }
-
-/* parse one statement
- * 1 is true if we need to save strings we encounter (we've been passed
- * a temporary string)
- */
 
 static int i_parse_stmt (i_t *this) {
   int c;
@@ -939,22 +969,54 @@ static int i_parse_stmt (i_t *this) {
     do {
       c = i_get_char (this);
     } while (c >= 0 and c isnot '\n' and c isnot ';' and c isnot '}');
+
     i_unget_char (this);
     i_next_token (this);
+
     return I_OK;
   }
 
   c = this->curToken;
 
-  if (c is I_TOK_VARDEF) {
+  if (c is I_TOK_BREAK) {
+    if (this->state & AT_LOOP) {
+      this->state |= BREAK;
+      return I_ERR_BREAK;
+    }
+
+    return this->syntax_error (this, "break is not in a loop");
+  }
+
+  if (c is I_TOK_CONTINUE) {
+    if (this->state & AT_LOOP) {
+      this->state |= CONTINUE;
+      return I_ERR_CONTINUE;
+    }
+
+    return this->syntax_error (this, "continue is not in a loop");
+  }
+
+  if (c is I_TOK_VARDEF or c is I_TOK_CONSTDEF) {
+    int is_const = c is I_TOK_CONSTDEF;
+
     // a definition var a=x
     c = i_next_raw_token (this); // we want to get VAR_SYMBOL directly
+
     if (c isnot I_TOK_SYMBOL)
       return this->syntax_error (this, "expected symbol");
 
     name = this->token;
 
-    this->tokenSymbol = i_define_var_symbol (this, name);
+    ifnot (i_StringGetLen (name))
+      return this->syntax_error (this, "unknown symbol");
+
+    this->tokenSymbol = i_define_var_symbol (this, name, is_const);
+
+    if (NULL is this->tokenSymbol) {
+      if (is_const)
+        return this->syntax_error (this, "can not reassign to a constant");
+      return this->syntax_error (this, "unknown error");
+    }
 
     c = I_TOK_VAR;
     /* fall through */
@@ -967,6 +1029,7 @@ static int i_parse_stmt (i_t *this) {
     sym_t *symbol = this->tokenSymbol;
 
     c = i_next_token (this);
+
     // we expect the "=" operator, so verify that it is "="
     if (i_StringGetPtr (this->token)[0] isnot '=' or
         i_StringGetLen(this->token) isnot 1)
@@ -977,11 +1040,17 @@ static int i_parse_stmt (i_t *this) {
       return i_unknown_symbol (this);
     }
 
+   if (symbol->is_const and symbol->value isnot 0)
+     return this->syntax_error (this, "can not reassign to a constant");
+
     i_next_token (this);
+
     err = i_parse_expr (this, &val);
+
     if (err isnot I_OK) return err;
 
     symbol->value = val;
+
   } else if (c is I_TOK_BUILTIN or c is USRFUNC) {
     err = i_parse_primary (this, &val);
     return err;
@@ -1015,11 +1084,14 @@ static int i_parse_expr_level (i_t *this, int max_level, ival_t *vp) {
     if (level > max_level) break;
 
     Opfunc op = (Opfunc) this->tokenVal;
+
     i_next_token (this);
+
     err = i_parse_primary (this, &rhs);
     if (err isnot I_OK) return err;
 
     c = this->curToken;
+
     while ((c & 0xff) is I_TOK_BINOP) {
       int nextlevel = (c >> 8) & 0xff;
       if (level <= nextlevel) break;
@@ -1039,6 +1111,7 @@ static int i_parse_expr_level (i_t *this, int max_level, ival_t *vp) {
 
 static int i_parse_expr (i_t *this, ival_t *vp) {
   int err = i_parse_primary (this, vp);
+
   if (err is I_OK)
     err = i_parse_expr_level (this, MAX_EXPR_LEVEL, vp);
 
@@ -1052,6 +1125,7 @@ static int i_parse_if_rout (i_t *this, ival_t *cond, int *haveelse, istring_t *i
   *haveelse = 0;
 
   c = i_next_token (this);
+
   err = i_parse_expr (this, cond);
   if (err isnot I_OK) return err;
 
@@ -1059,13 +1133,17 @@ static int i_parse_if_rout (i_t *this, ival_t *cond, int *haveelse, istring_t *i
   if (c isnot I_TOK_STRING) return this->syntax_error (this, "parsing if, not a string");
 
   *ifpart = this->token;
+
   c = i_next_token (this);
+
   if (c is I_TOK_ELSE) {
     c = i_next_token (this);
+
     if (c isnot I_TOK_STRING) return this->syntax_error (this, "parsing else, not a string");
 
     *elsepart = this->token;
     *haveelse = 1;
+
     i_next_token (this);
   }
 
@@ -1154,6 +1232,7 @@ static int i_parse_func_def (i_t *this) {
   if (c isnot I_TOK_SYMBOL) return this->syntax_error (this, "fun definition, not a symbol");
 
   name = this->token;
+
   c = i_next_token (this);
 
   Ufunc *uf = Alloc (sizeof (Ufunc));
@@ -1179,9 +1258,10 @@ static int i_parse_func_def (i_t *this) {
   char key[len + 1];
   Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
   Vmap.set (this->user_functions, key, uf, i_release_user_function, 0);
-  i_define_symbol (this, name, USRFUNC | (nargs << 8), (ival_t) uf);
+  i_define_symbol (this, name, USRFUNC | (nargs << 8), (ival_t) uf, 0);
 
   i_next_token (this);
+
   return I_OK;
 }
 
@@ -1230,14 +1310,24 @@ static int i_parse_while (i_t *this) {
   int err;
   istring_t savepc = this->parseptr;
 
+  this->state |= AT_LOOP;
+
 again:
+  this->state &= ~BREAK;
+  this->state &= ~CONTINUE;
+
   err = i_parse_if (this);
+  if (this->state & BREAK) goto out;
+
   if (err is I_ERR_OK_ELSE) {
     return I_OK;
-  } else if (err is I_OK) {
+  } else if (err is I_OK or this->state & CONTINUE) {
     this->parseptr = savepc;
     goto again;
   }
+
+out:
+  this->state &= ~AT_LOOP;
 
   return err;
 }
@@ -1265,15 +1355,18 @@ static struct def {
   int toktype;
   ival_t val;
 } idefs[] = {
-  { "var",     I_TOK_VARDEF,  (ival_t) 0 },
-  { "else",    I_TOK_ELSE,    (ival_t) 0 },
-  { "if",      I_TOK_IF,      (ival_t) i_parse_if },
-  { "ifnot",   I_TOK_IFNOT,   (ival_t) i_parse_ifnot },
-  { "while",   I_TOK_WHILE,   (ival_t) i_parse_while },
-  { "println", I_TOK_PRINTLN, (ival_t) i_parse_println },
-  { "print",   I_TOK_PRINT,   (ival_t) i_parse_print },
-  { "func",    I_TOK_FUNCDEF, (ival_t) i_parse_func_def },
-  { "return",  I_TOK_RETURN,  (ival_t) i_parse_return },
+  { "var",     I_TOK_VARDEF,   (ival_t) 0 },
+  { "const",   I_TOK_CONSTDEF, (ival_t) 0 },
+  { "else",    I_TOK_ELSE,     (ival_t) 0 },
+  { "break",   I_TOK_BREAK,    (ival_t) 0 },
+  { "continue",I_TOK_CONTINUE, (ival_t) 0 },
+  { "if",      I_TOK_IF,       (ival_t) i_parse_if },
+  { "ifnot",   I_TOK_IFNOT,    (ival_t) i_parse_ifnot },
+  { "while",   I_TOK_WHILE,    (ival_t) i_parse_while },
+  { "println", I_TOK_PRINTLN,  (ival_t) i_parse_println },
+  { "print",   I_TOK_PRINT,    (ival_t) i_parse_print },
+  { "func",    I_TOK_FUNCDEF,  (ival_t) i_parse_func_def },
+  { "return",  I_TOK_RETURN,   (ival_t) i_parse_return },
   { "true",    INT, (ival_t) 1},
   { "false",   INT, (ival_t) 0},
   { "OK",      INT, (ival_t) 0},
@@ -1301,15 +1394,15 @@ static struct def {
 };
 
 static int i_define (i_t *this, const char *name, int typ, ival_t val) {
-  i_define_symbol (this, i_istring_new (name), typ, val);
+  i_define_symbol (this, i_StringNew (name), typ, val, 0);
   return I_OK;
 }
 
 static int i_eval_string (i_t *this, const char *buf) {
   this->script_buffer = buf;
-  istring_t x = i_istring_new (buf);
+  istring_t x = i_StringNew (buf);
   int retval = i_parse_string (this, x);
-  i_release_malloced_strings (this);
+  i_release_malloced_strings (this, 0);
   return retval;
 }
 
@@ -1377,7 +1470,7 @@ static void i_release (i_t **thisp) {
   i_t *this = *thisp;
   String.release (this->idir);
   String.release (this->message);
-  i_release_malloced_strings (this);
+  i_release_malloced_strings (this, 1);
   Vmap.release (this->symbols);
   Vmap.release (this->user_functions);
   free (this);
