@@ -1,11 +1,6 @@
 # A tiny language that is derived from [tinyscript](https://github.com/totalspectrum/tinyscript).
 
-## Syntax, Semantics and Extensions to tinyscript. Note that because tinyscript is
-intented to run on memory constrained environments, does not have neither a single
-dependency.  This version uses dynamic allocation,  thus made  it  much  easier to
-extend. Except its usefulness in internal applications, it is  being  used  mainly
-to prototype syntax and semantics.
-
+## Syntax, Semantics.
 ```js
 # Comment
 
@@ -30,7 +25,7 @@ ifnot (condition) { ... }
 # `while` loop
 while (condition) { ... }
 # You can use `break` to break out of the loop and `continue` to continue with
-# the next iteration. Both they are not present upstream.
+# the next iteration. Both they are not present to tinyscript.
 
 # Function declaration.
 func name ([arg,..]) { ... }
@@ -58,9 +53,22 @@ const c = "constant"
 # Variables or Constants initialized with string literals, should be freed explicitly.
 # The C-string interface offers some ways to create and manage C-strings. Those share
 # many rules with C, and dangers too!
+
+# functions can be defined in arbitrary nested level
+
+func fu () {
+  func fua () {
+    func fub () {
+    ...
+    }
+    ...
+  }
+  ...
+}
+
 ```
 
-## All the keywords and Operators.
+## keywords and Operators.
 ```js
 # var     -  variable definition
 # const   -  constant definition (not at tinyscript)
@@ -78,33 +86,40 @@ const c = "constant"
 # false   -  0
 # OK      -  0 (not at tinyscript)
 # NOTOK   -  -1 (not at tinyscript)
-# *       -  product
+# *       -  multiplication
 # /       -  division
 # %       -  modulo
-# +       -  summary
+# +       -  addition
 # -       -  subtract
 # &       -  bit and
 # |       -  bit or
 # ^       -  bit xor
 # >>      -  shift right
 # <<      -  shift left
-# =       -  equal (not used)
-# is      -  equal (not at tinyscript)
-# <>      -  not equal (not used)
-# isnot   -  not equal (not at tinyscript)
-# <       -  less
-# <=      -  less or equal
-# >       -  greater
-# >=      -  greater or equal
+# and     -  logical and
+# &&      -  likewise
+# or      -  logical or
+# ||      -  likewise
+# is      -  equal
+# ==      -  likewise
+# isnot   -  not equal
+# !=      -  likewise
+# lt      -  less than
+# <       -  likewise
+# le      -  less or equal
+# <=      -  likewise
+# gt      -  greater than
+# >       -  likewise
+# ge      -  greater or equal
+# >=      -  likewise
 
-# Upstream extensions (from stdlib).
-# not         -  !value
-# bool        -  !!value
-# free        -  release memory  (as ts_free)
-# alloc       -  allocate memory (as ts_malloc)
-
-# Extended functions.
-# realloc     -  reallocate memory
+# Functions
+# not     -  !value
+# bool    -  !!value
+# free    -  release memory  (as ts_free)
+# alloc   -  allocate memory (as ts_malloc)
+# array   -  create an integer array
+# realloc -  reallocate memory
 # println_str -  print string and also emit a new line
 # print_str   -  print string
 
@@ -130,5 +145,11 @@ const c = "constant"
 
 # Other bindings from this distribution, might be added in the future.
 ```
-Note, that it should be very slow interpreter, but the core code is about 1000 lines,
-and binds perfectly in C. Values are passed as pointers (casted to intptr_t).
+Note that because tinyscript is intented to run on memory constrained environments,
+does not have neither a single dependency.  This version  uses  dynamic allocation,
+thus made  it much  easier to extend. Except its usefulness in internal applications,
+already as it is now, it is being used mainly to prototype syntax and semantics, and
+to be familiar with consepts by experimenting.
+
+Also note, that it should be a very slow interpreter, but the core is about 1000 lines
+of code, and it binds quite well in C. As such there no expectations and illusions.

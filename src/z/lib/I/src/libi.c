@@ -25,40 +25,12 @@
  * - added multibyte support for subscripted chars e.g., 'c', so 'α' will return 945
  * - print functions can print multibyte characters
  * - parse escape sequences when printing
- * - and quite of many changes that integrates Tinyscript to this environment
- * Note, that tinyscript scripts should be run without modifications, except
- * probably to the print functions.
- * Generally speaking, introducing string support, might made the language a
- * bit more flexible and practical, but at the same time and quite possible,
- * introduce bugs.
- */
-
-/* Tinyscript interpreter
- *
- * Copyright 2016 Total Spectrum Software Inc.
- *
- * +--------------------------------------------------------------------
- * ¦  TERMS OF USE: MIT License
- * +--------------------------------------------------------------------
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files
- * (the "Software"), to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * +--------------------------------------------------------------------
+ * - functions can be defined in arbitrary nested depth
+ * - and quite of many changes that integrates the original code to this environment
+ * Note, that tinyscript scripts are not guaranteed to run without modifications.
+ * Generally speaking, this implementation except its usefulness (as it is provides
+ * a scripting environment to applications), is being used mostly as a prototype to
+ * set semantics.
  */
 
 #define LIBRARY "i"
@@ -76,6 +48,7 @@
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_LIST_MACROS
+#define REQUIRE_MAP_MACROS
 #define REQUIRE_I_TYPE       DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -87,6 +60,7 @@
 //#define STRING   0x1  // string
 //#define OPERATOR 0x2  // operator; precedence in high 8 bits
 //#define ARG      0x3  // argument; value is offset on stack
+#define ARRAY    0x4  // integer array
 #define BUILTIN  'B'  // builtin: number of operands in high 8 bits
 #define USRFUNC  'f'  // user defined a procedure; number of operands in high 8 bits
 #define TOK_BINOP 'o'
@@ -125,6 +99,8 @@
 #define I_TOK_CONSTDEF   'c'
 #define I_TOK_BREAK      'b'
 #define I_TOK_CONTINUE   'O'
+#define I_TOK_ARY        'y'
+#define I_TOK_ARYDEF     'Y'
 
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_UFUNC_NAME  64
@@ -136,20 +112,6 @@ typedef struct istring_t {
   const char *ptr_;
 } istring_t;
 
-typedef struct sym_t {
-  int type;
-  int is_const;
-  ival_t value;
-} sym_t;
-
-typedef struct i_prop {
-  int name_gen;
-
-  i_t *head;
-  int num_instances;
-  int current_idx;
-} i_prop;
-
 typedef struct malloced_string malloced_string;
 
 struct malloced_string {
@@ -157,6 +119,12 @@ struct malloced_string {
   malloced_string *next;
   int is_const;
 };
+
+typedef struct sym_t {
+  int type;
+  int is_const;
+  ival_t value;
+} sym_t;
 
 typedef struct i_stackval_t i_stackval_t;
 
@@ -169,7 +137,16 @@ typedef struct i_stack {
   i_stackval_t *head;
 } i_stack;
 
-typedef struct funType funT;
+typedef struct funstack_t funstack_t;
+
+struct funstack_t {
+  funT *f;
+  funstack_t *next;
+};
+
+typedef struct fun_stack {
+  funstack_t *head;
+} fun_stack;
 
 struct funType {
   istring_t
@@ -180,43 +157,38 @@ struct funType {
   char argName[MAX_BUILTIN_PARAMS][MAXLEN_UFUNC_NAME];
 
   Vmap_t *symbols;
-  int sym_idx;
 
   funT
-    *parent,
+    *root,
     *prev,
     *next;
 };
-
-typedef struct funstack_t funstack_t;
-struct funstack_t {
-  funT *f;
-  funstack_t *next;
-};
-
-typedef struct fun_stack {
-  funstack_t *head;
-} fun_stack;
 
 typedef struct funNewArgs {
   istring_t name;
   istring_t body;
   int nargs;
-  int set_as_current;
+  int num_symbols;
   funT *parent;
+  funT *root;
 } funNewArgs;
 
-#if 0
-#define funNew(...) (funNewArgs) { \
-  .name = NULL,                    \
-  .body = NULL,                    \
-  .nargs = 0,                      \
-  .set_as_current = 0,             \
-  .parent = NULL,                  \
+#define funNew(...) (funNewArgs) {   \
+  .nargs = 0,                        \
+  .num_symbols = MAP_DEFAULT_LENGTH, \
+  .parent = NULL,                    \
+  .root = NULL,                      \
   __VA_ARGS__}
-#endif
 
-typedef struct i_t {
+struct i_prop {
+  int name_gen;
+
+  i_t *head;
+  int num_instances;
+  int current_idx;
+};
+
+struct i_t {
   funT *function;
   funT *current_function;
   fun_stack funstack[1];
@@ -269,7 +241,7 @@ typedef struct i_t {
   IDefineFuns_cb define_funs_cb;
 
   i_t *next;
-} i_t;
+};
 
 #define ERROR_COLOR "\033[31m"
 #define TERM_RESET  "\033[m"
@@ -277,6 +249,7 @@ typedef struct i_t {
 
 static int i_parse_stmt (i_t *);
 static int i_parse_expr (i_t *, ival_t *);
+static int i_parse_primary (i_t *, ival_t *);
 
 static inline int is_space (int c) {
   return (c is ' ') or (c is '\t') or (c is '\r');
@@ -307,7 +280,7 @@ static inline int is_idpunct (int c) {
 }
 
 static inline int is_identifier (int c) {
-  return is_alpha (c) or is_idpunct (c);
+  return is_alpha (c) or is_idpunct (c) or is_digit (c);
 }
 
 static inline int is_notquote (int chr) {
@@ -316,7 +289,11 @@ static inline int is_notquote (int chr) {
 }
 
 static inline int is_operator (int c) {
-  return NULL isnot Cstring.byte.in_str ("+-/*%=<>&|^", c);
+  return NULL isnot Cstring.byte.in_str ("+-!/*%=<>&|^", c);
+}
+
+static inline int is_operator_span (int c) {
+  return NULL isnot Cstring.byte.in_str ("=<>&|^", c);
 }
 
 static void i_release_malloced_strings (i_t *this, int release_const) {
@@ -370,7 +347,7 @@ static char *i_StringToCstr (char *buf, istring_t src, int srclen) {
 }
 #endif
 
-static istring_t i_StringNew (const char *str) {
+static inline istring_t i_StringNew (const char *str) {
   istring_t x;
   i_StringSetLen (&x, bytelen (str));
   i_StringSetPtr (&x, str);
@@ -447,6 +424,11 @@ static int i_too_many_args (i_t *this) {
 static int i_unknown_symbol (i_t *this) {
   this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "unknown symbol:");
   return i_err_ptr (this, I_ERR_UNKNOWN_SYM);
+}
+
+static int i_out_of_bounds (i_t *this) {
+  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "out of bounds:");
+  return i_err_ptr (this, I_ERR_OUTOFBOUNDS);
 }
 
 static void i_reset_token (i_t *this) {
@@ -531,24 +513,25 @@ static funT *fun_new (funNewArgs options) {
   uf->name = options.name;
   uf->body = options.body;
   uf->nargs = options.nargs;
-  uf->parent = uf->prev = options.parent;
+  uf->prev = options.parent;
+  uf->root = options.root;
   uf->next = NULL;
-  uf->sym_idx  = -1;
-  uf->symbols = Vmap.new (32);
+  uf->symbols = Vmap.new (options.num_symbols);
   return uf;
 }
 
 static funT *Fun_new (i_t *this, funNewArgs options) {
   funT *f = fun_new (options);
+
   funT *parent = options.parent;
 
   if (parent is NULL) {
-    this->function = this->current_function = f;
+    this->function = this->current_function = f->root = f;
     return f;
   }
 
   f->prev = parent;
-
+  f->root = this->function;
   return f;
 }
 
@@ -559,6 +542,10 @@ static void i_release_sym (void *sym) {
   if ((this->type & 0xff) is I_TOK_USRFUNC) {
     funT *f = (funT *) this->value;
     fun_release (&f);
+  }
+
+  if ((this->type & 0xff) is ARRAY) {
+    free ((char *) this->value);
   }
 
   free (this);
@@ -678,16 +665,18 @@ static int i_do_next_token (i_t *this, int israw) {
         r = symbol->type & 0xff;
 
         this->tokenArgs = (symbol->type >> 8) & 0xff;
-
-        if (r < '@')
-          r = I_TOK_VAR;
+        if (r == ARRAY)
+          r = I_TOK_ARY;
+        else
+          if (r < '@')
+             r = I_TOK_VAR;
 
         this->tokenVal = symbol->value;
       }
     }
 
   } else if (is_operator (c)) {
-    i_get_span (this, is_operator);
+    i_get_span (this, is_operator_span);
 
     this->tokenSymbol = symbol = i_lookup_symbol (this, this->token);
 
@@ -826,6 +815,115 @@ static ival_t i_HexStringToNum (istring_t s) {
       r = 16 * r + (c - 'a' + 10);
   }
   return r;
+}
+
+/* Initial Array Interface by MickeyDelp <mickey at delptronics dot com> */
+
+// assign a value or list of values to an array
+static int i_array_assign (i_t *this, ival_t *ary, ival_t ix) {
+  int err;
+  ival_t val;
+  do {
+    if (ix < 0 or ix >= ary[0]) {
+      return i_out_of_bounds (this);
+    }
+
+    i_next_token (this);
+
+    err = i_parse_expr (this, &val);
+    if (err isnot I_OK) return err;
+
+    ary[ix + 1] = val;
+    ix++;
+  } while (this->curToken is ',');
+
+   return I_OK;
+}
+
+// handle defining an array
+static int i_parse_array_def (i_t *this) {
+  istring_t name;
+  int c;
+  int err;
+  ival_t len;
+
+  c = i_next_raw_token (this);
+
+  if (c isnot I_TOK_SYMBOL) {
+    return this->syntax_error (this, "syntax error");
+  }
+
+  name = this->token;
+
+  c = i_next_token (this);
+
+  if (c isnot '(')
+    return this->syntax_error (this, "syntax error");
+
+  err = i_parse_primary (this, &len);
+  if (err isnot I_OK)
+    return err;
+
+  len++;
+
+  char *ary =  Alloc (sizeof (ival_t) * len);
+
+  memset (ary, 0, len * sizeof (ival_t));
+
+  ((ival_t*)ary)[0] = len - 1;
+
+  this->tokenSymbol = i_define_symbol (this, this->current_function, name, ARRAY, (ival_t) ary, 0);
+
+  if (i_StringGetPtr (this->token)[0] is '=' and i_StringGetLen (this->token) is 1)
+    return i_array_assign (this, (ival_t *)ary, 0);
+
+  return I_OK;
+}
+
+// handle setting an array value
+static int i_parse_array_set (i_t *this) {
+  int err;
+  ival_t ix = 0;
+
+  ival_t *ary = (ival_t *) this->tokenVal;
+
+  int c = i_next_token (this);
+
+  if (c is '(') {
+    err = i_parse_primary (this, &ix);
+    if (err isnot I_OK)
+      return err;
+  }
+
+  if (i_StringGetPtr (this->token)[0] isnot '=' or i_StringGetLen (this->token) isnot 1)
+    return this->syntax_error (this, "syntax error");
+
+  return i_array_assign (this, ary, ix);
+}
+
+// handle getting an array value
+static int i_parse_array_get (i_t *this, ival_t *vp) {
+  ival_t* ary = (ival_t *) this->tokenVal;
+
+  int c = i_next_token (this);
+
+  if (c is '(') {
+    ival_t ix;
+    int err = i_parse_primary (this, &ix);
+    if (err isnot I_OK)
+      return err;
+
+    if (ix < -1 or ix >= ary[0])
+      return i_out_of_bounds (this);
+
+    *vp = ary[ix + 1];
+  } else {
+    // if no parens, then return the pointer to the array
+    // needed for passing to C functions
+    *vp = (ival_t ) ary;
+  }
+
+  return I_OK;
 }
 
 static int i_parse_expr_list (i_t *this) {
@@ -1044,6 +1142,9 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
     i_next_token (this);
     return I_OK;
 
+  } else if (c is I_TOK_ARY) {
+     return i_parse_array_get (this, vp);
+
   } else if (c is I_TOK_BUILTIN) {
     Cfunc op = (Cfunc) this->tokenVal;
     this->state |= FUNC_CALL_BUILTIN;
@@ -1079,7 +1180,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
     return I_OK;
 
   } else
-    return this->syntax_error (this, "asyntax error");
+    return this->syntax_error (this, "syntax error");
 }
 
 static int i_parse_stmt (i_t *this) {
@@ -1173,6 +1274,9 @@ static int i_parse_stmt (i_t *this) {
     if (err isnot I_OK) return err;
 
     symbol->value = val;
+
+ } else if (c is I_TOK_ARY) {
+   err = i_parse_array_set (this);
 
   } else if (c is I_TOK_BUILTIN or c is USRFUNC) {
     err = i_parse_primary (this, &val);
@@ -1359,9 +1463,9 @@ static int i_parse_func_def (i_t *this) {
 
   name = this->token;
 
-  funT *uf = Fun_new (this, (funNewArgs) {
+  funT *uf = Fun_new (this, funNew (
     .name = name, .parent = this->current_function
-    });
+    ));
 
   c = i_next_token (this);
 
@@ -1491,7 +1595,6 @@ static int i_eval_string (i_t *this, const char *buf) {
   istring_t x = i_StringNew (buf);
   int retval = i_parse_string (this, x);
   i_release_malloced_strings (this, 0);
-  fun_release (&this->function);
   return retval;
 }
 
@@ -1557,12 +1660,11 @@ static int i_eval_file (i_t *this, const char *filename) {
 static void i_release (i_t **thisp) {
   if (NULL is *thisp) return;
   i_t *this = *thisp;
+
   String.release (this->idir);
   String.release (this->message);
   i_release_malloced_strings (this, 1);
-
-
-//  fun_release (&this->function);
+  fun_release (&this->function);
 
   free (this);
   *thisp = NULL;
@@ -1863,6 +1965,8 @@ static ival_t i_bitor (ival_t x, ival_t y) { return x | y; }
 static ival_t i_bitand (ival_t x, ival_t y) { return x & y; }
 static ival_t i_bitxor (ival_t x, ival_t y) { return x ^ y; }
 static ival_t i_equals (ival_t x, ival_t y) { return x == y; }
+static ival_t i_logical_and (ival_t x, ival_t y) { return x && y; }
+static ival_t i_logical_or (ival_t x, ival_t y) { return x || y; }
 
 static struct def {
   const char *name;
@@ -1885,25 +1989,33 @@ static struct def {
   { "false",   INT, (ival_t) 0},
   { "OK",      INT, (ival_t) 0},
   { "NOTOK",   INT, (ival_t) -1},
-  // operators
-  { "*",     BINOP(1), (ival_t) i_prod },
-  { "/",     BINOP(1), (ival_t) i_quot },
-  { "%",     BINOP(1), (ival_t) i_mod },
-  { "+",     BINOP(2), (ival_t) i_sum },
-  { "-",     BINOP(2), (ival_t) i_diff },
-  { "&",     BINOP(3), (ival_t) i_bitand },
-  { "|",     BINOP(3), (ival_t) i_bitor },
-  { "^",     BINOP(3), (ival_t) i_bitxor },
-  { ">>",    BINOP(3), (ival_t) i_shr },
-  { "<<",    BINOP(3), (ival_t) i_shl },
-  { "=",     BINOP(4), (ival_t) i_equals },
-  { "is",    BINOP(4), (ival_t) i_equals },
-  { "isnot", BINOP(4), (ival_t) i_ne },
-  { "<>",    BINOP(4), (ival_t) i_ne },
-  { "<",     BINOP(4), (ival_t) i_lt },
-  { "<=",    BINOP(4), (ival_t) i_le },
-  { ">",     BINOP(4), (ival_t) i_gt },
-  { ">=",    BINOP(4), (ival_t) i_ge },
+  { "array",   I_TOK_ARYDEF, (ival_t) i_parse_array_def },
+  { "*",       BINOP(1), (ival_t) i_prod },
+  { "/",       BINOP(1), (ival_t) i_quot },
+  { "%",       BINOP(1), (ival_t) i_mod },
+  { "+",       BINOP(2), (ival_t) i_sum },
+  { "-",       BINOP(2), (ival_t) i_diff },
+  { "&",       BINOP(3), (ival_t) i_bitand },
+  { "|",       BINOP(3), (ival_t) i_bitor },
+  { "^",       BINOP(3), (ival_t) i_bitxor },
+  { ">>",      BINOP(3), (ival_t) i_shr },
+  { "<<",      BINOP(3), (ival_t) i_shl },
+  { "==",      BINOP(4), (ival_t) i_equals },
+  { "is",      BINOP(4), (ival_t) i_equals },
+  { "!=",      BINOP(4), (ival_t) i_ne },
+  { "isnot",   BINOP(4), (ival_t) i_ne },
+  { "<",       BINOP(4), (ival_t) i_lt },
+  { "lt",      BINOP(4), (ival_t) i_lt },
+  { "<=",      BINOP(4), (ival_t) i_le },
+  { "le",      BINOP(4), (ival_t) i_le },
+  { ">",       BINOP(4), (ival_t) i_gt },
+  { "gt",      BINOP(4), (ival_t) i_gt },
+  { ">=",      BINOP(4), (ival_t) i_ge },
+  { "ge",      BINOP(4), (ival_t) i_ge },
+  { "&&",      BINOP(5), (ival_t) i_logical_and },
+  { "and",     BINOP(5), (ival_t) i_logical_and },
+  { "||",      BINOP(5), (ival_t) i_logical_or },
+  { "or",      BINOP(5), (ival_t) i_logical_or },
   { NULL, 0, 0 }
 };
 
@@ -1999,7 +2111,7 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
 
   Cstring.cp (this->global, NS_GLOBAL_LEN + 1, NS_GLOBAL, NS_GLOBAL_LEN);
 
-  Fun_new (this, (funNewArgs) {.name = i_StringNew (this->global)});
+  Fun_new (this, funNew (.name = i_StringNew (this->global), .num_symbols = 256));
 
   for (i = 0; idefs[i].name; i++) {
     err = i_define (this, idefs[i].name, idefs[i].toktype, idefs[i].val);

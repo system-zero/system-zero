@@ -4,10 +4,12 @@
 typedef struct i_t i_t;
 typedef struct i_prop i_prop;
 typedef struct i_T i_T;
+typedef struct funType funT;
 
 #define I_CFUNC(x) (((x) << 8) + 'B')
 
 enum {
+  I_ERR_OUTOFBOUNDS = -7,
   I_ERR_TOOMANYARGS = -6,
   I_ERR_BADARGS = -5,
   I_ERR_UNKNOWN_SYM = -4,
@@ -19,6 +21,7 @@ enum {
   I_ERR_BREAK = 2,
   I_ERR_CONTINUE = 3
 };
+
 typedef int (*IPrintByte_cb) (FILE *, int);
 typedef int (*IPrintBytes_cb) (FILE *, const char *);
 typedef int (*IPrintFmtBytes_cb) (FILE *, const char *, ...);

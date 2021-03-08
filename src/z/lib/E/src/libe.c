@@ -742,11 +742,14 @@ char c_balanced_pairs[] = "[](){}";
 
 char *i_extensions[] = {".i", NULL};
 char *i_shebangs[] = {"#!/bin/env i", NULL};
-char i_operators[] = "+:-*^><=|&~.()[]{}/";
+char i_operators[] = "+-%*^><=|& .(){}!";
+
 char *i_keywords[] = {
-  "while I", "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
-  "isnot I", "print F", "println F", "true V", "false V", "OK V", "NOTOK V",
-  "break I", "continue I", "bool V", "not V", "const V", "free F", "alloc F", NULL
+  "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
+  "isnot I", "break I", "continue I",  "while I", "and I", "or I",
+  "bool V", "not V", "const V", "free F", "alloc F",
+  "ge I", "gt I", "le I", "lt I", "array V",
+  "true V", "false V", "OK V", "NOTOK V", NULL
 };
 
 char i_singleline_comment[] = "#";
