@@ -1364,48 +1364,51 @@ typedef ptrdiff_t idx_t;
 
   #define MAP_DEFAULT_LENGTH 32
 
-  #define MAP_HASH_KEY(__map__, __key__) ({     \
-    ssize_t hs = 5381; int i = 0;               \
-    while (key[i])                              \
-       hs = ((hs << 5) + hs) + key[i++];        \
-    hs % __map__->num_slots;                    \
+  #define MAP_HASH_KEY(__map__, __key__) ({                   \
+    ssize_t hs = 5381; int i = 0;                             \
+    while (key[i])                                            \
+       hs = ((hs << 5) + hs) + key[i++];                      \
+    hs % __map__->num_slots;                                  \
   })
 
-  #define MAP_RELEASE_SLOT(_it, _tp, _fun)      \
-  ({                                            \
-    while (_it) {                               \
-      _tp *_tmp = _it->next;                    \
-      free (_it->key);                          \
-      _fun (_it->val);                          \
-      free (_it);                               \
-      _it = _tmp;                               \
-    }                                           \
+  #define MAP_RELEASE_SLOT(_it, _tp, _fun)                    \
+  ({                                                          \
+    while (_it) {                                             \
+      _tp *_tmp = _it->next;                                  \
+      free (_it->key);                                        \
+      _fun (_it->val);                                        \
+      free (_it);                                             \
+      _it = _tmp;                                             \
+    }                                                         \
   })
 
-  #define MAP_CLEAR(_map, _fun)                 \
-  ({                                            \
-    for (size_t i = 0; i < map->num_slots; i++) \
-      _fun (map->slots[i]);                     \
-    map->num_keys = 0;                          \
+  #define MAP_CLEAR(_map, _fun)                               \
+  ({                                                          \
+    for (size_t i = 0; i < _map->num_slots; i++) {            \
+      ifnot (  _map->slots[i]) continue;\
+      _fun (_map->slots[i]);                                  \
+      _map->slots[i] = 0;                                     \
+    }                                                         \
+    _map->num_keys = 0;                                       \
   })
 
-  #define MAP_RELEASE(_map, _fun)               \
-  do {                                          \
-    if (_map is NULL) return;                   \
-    _fun (_map);                                \
-    free (_map->slots);                         \
-    free (_map);                                \
+  #define MAP_RELEASE(_map, _fun)                             \
+  do {                                                        \
+    if (_map is NULL) return;                                 \
+    _fun (_map);                                              \
+    free (_map->slots);                                       \
+    free (_map);                                              \
   } while (0)
 
-  #define MAP_NEW(_TP, _tp, _num)                            \
-  ({                                                         \
-    _TP *_map = Alloc (sizeof (_TP));                        \
-    int _num_slots = (_num < 1 ? MAP_DEFAULT_LENGTH : _num); \
-    _map->slots = Alloc (sizeof (_tp *) * num_slots);        \
-    _map->num_slots = _num_slots;                            \
-    _map->num_keys = 0;                                      \
-    for (;--_num_slots >= 0;) _map->slots[_num_slots] = 0;   \
-    _map;                                                    \
+  #define MAP_NEW(_TP, _tp, _num)                             \
+  ({                                                          \
+     _TP *_map = Alloc (sizeof (_TP));                        \
+     int _num_slots = (_num < 1 ? MAP_DEFAULT_LENGTH : _num); \
+     _map->slots = Alloc (sizeof (_tp *) * num_slots);        \
+     _map->num_slots = _num_slots;                            \
+     _map->num_keys = 0;                                      \
+     for (;--_num_slots >= 0;) _map->slots[_num_slots] = 0;   \
+     _map;                                                    \
   })
 
   #define MAP_GET(_tp, _map, _key, _idx)        \
@@ -1415,6 +1418,27 @@ typedef ptrdiff_t idx_t;
     while (_slot) {                             \
       if (Cstring.eq (_slot->key, _key)) break; \
       _slot = _slot->next;                      \
+    }                                           \
+    _slot;                                      \
+  })
+
+  #define MAP_POP(_tp, _map, _key, _idx)        \
+  ({                                            \
+    _idx = MAP_HASH_KEY (_map, _key);           \
+    _tp *_slot = _map->slots[_idx];             \
+    _tp *_prev = _slot;                         \
+    while (_slot) {                             \
+      if (Cstring.eq (_slot->key, _key)) {      \
+        _prev->next = _slot->next;              \
+        break;                                  \
+      }                                         \
+      _prev = _slot;                            \
+      _slot = _slot->next;                      \
+    }                                           \
+    if (_slot != NULL) {                        \
+      _map->num_keys--;                         \
+      if (_prev == _slot)                       \
+        _map->slots[_idx] = _slot->next;        \
     }                                           \
     _slot;                                      \
   })

@@ -745,8 +745,8 @@ To be continued ...
 So far, we've implemented:
   - a rather stable ala vim editor (tiny, independent and with interesting features)
   - a rather stable ala screen terminal window manager
-  - a shell at the prototyping level (nothing much here)
-  - a sudo like utility (needs audit to be considered safe)
+  - a very early draft (at the prototyping level) shell utility
+  - an early draft of a sudo like utility (audit review required)
   - a really really tiny [interpreter](data/docs/i.md)
 
 License: I  understand the UNLICENSE license  kind of thought. We  do not need

@@ -92,7 +92,7 @@
 #define TOK_BINOP 'o'
 
 //#define OUT_OF_FUNCTION_ARGUMENT_SCOPE (1 << 0)
-//#define FUNCTION_SCOPE                 1 << 1
+//#define FUNCTION_SCOPE                 (1 << 1)
 #define FUNCTION_ARGUMENT_SCOPE        (1 << 2)
 #define FUNC_CALL_BUILTIN              (1 << 3)
 #define FUNC_CALL_USRFUNC              (1 << 4)
@@ -128,6 +128,8 @@
 
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_UFUNC_NAME  64
+#define NS_GLOBAL          "global"
+#define NS_GLOBAL_LEN      6
 
 typedef struct istring_t {
   unsigned len_;
@@ -139,12 +141,6 @@ typedef struct sym_t {
   int is_const;
   ival_t value;
 } sym_t;
-
-typedef struct userfunc {
-  char *body;
-  int nargs;
-  char argName[MAX_BUILTIN_PARAMS][MAXLEN_UFUNC_NAME];
-} Ufunc;
 
 typedef struct i_prop {
   int name_gen;
@@ -173,11 +169,61 @@ typedef struct i_stack {
   i_stackval_t *head;
 } i_stack;
 
+typedef struct funType funT;
+
+struct funType {
+  istring_t
+    name,
+    body;
+
+  int nargs;
+  char argName[MAX_BUILTIN_PARAMS][MAXLEN_UFUNC_NAME];
+
+  Vmap_t *symbols;
+  int sym_idx;
+
+  funT
+    *parent,
+    *prev,
+    *next;
+};
+
+typedef struct funstack_t funstack_t;
+struct funstack_t {
+  funT *f;
+  funstack_t *next;
+};
+
+typedef struct fun_stack {
+  funstack_t *head;
+} fun_stack;
+
+typedef struct funNewArgs {
+  istring_t name;
+  istring_t body;
+  int nargs;
+  int set_as_current;
+  funT *parent;
+} funNewArgs;
+
+#if 0
+#define funNew(...) (funNewArgs) { \
+  .name = NULL,                    \
+  .body = NULL,                    \
+  .nargs = 0,                      \
+  .set_as_current = 0,             \
+  .parent = NULL,                  \
+  __VA_ARGS__}
+#endif
 
 typedef struct i_t {
+  funT *function;
+  funT *current_function;
+  fun_stack funstack[1];
+
   char
-    name[32],
-    ns[MAXLEN_NAME];
+    global[NS_GLOBAL_LEN + 1],
+    name[32];
 
   const char *script_buffer;
 
@@ -208,9 +254,6 @@ typedef struct i_t {
   sym_t
     *tokenSymbol;
 
-  Vmap_t *symbols;
-  Vmap_t *user_functions;
-
   FILE
     *err_fp,
     *out_fp;
@@ -227,7 +270,6 @@ typedef struct i_t {
 
   i_t *next;
 } i_t;
-
 
 #define ERROR_COLOR "\033[31m"
 #define TERM_RESET  "\033[m"
@@ -320,6 +362,13 @@ static inline void i_StringSetLen (istring_t *s, unsigned len) {
 static inline void i_StringSetPtr (istring_t *s, const char *ptr) {
   s->ptr_ = ptr;
 }
+
+#if DEBUG
+static char *i_StringToCstr (char *buf, istring_t src, int srclen) {
+  Cstring.cp (buf, srclen + 1, i_StringGetPtr (src), srclen);
+  return buf;
+}
+#endif
 
 static istring_t i_StringNew (const char *str) {
   istring_t x;
@@ -469,19 +518,55 @@ static void i_get_span (i_t *this, int (*testfn) (int)) {
   if (c isnot -1) i_unget_char (this);
 }
 
-static void i_release_user_function (void *user_function) {
-  Ufunc *uf = (Ufunc *) user_function;
-  free (uf->body);
-  free (uf);
+static void fun_release (funT **thisp) {
+  if (*thisp is NULL) return;
+  funT *this = *thisp;
+  Vmap.release (this->symbols);
+  free (this);
+  *thisp = NULL;
+}
+
+static funT *fun_new (funNewArgs options) {
+  funT *uf = Alloc (sizeof (funT));
+  uf->name = options.name;
+  uf->body = options.body;
+  uf->nargs = options.nargs;
+  uf->parent = uf->prev = options.parent;
+  uf->next = NULL;
+  uf->sym_idx  = -1;
+  uf->symbols = Vmap.new (32);
+  return uf;
+}
+
+static funT *Fun_new (i_t *this, funNewArgs options) {
+  funT *f = fun_new (options);
+  funT *parent = options.parent;
+
+  if (parent is NULL) {
+    this->function = this->current_function = f;
+    return f;
+  }
+
+  f->prev = parent;
+
+  return f;
 }
 
 static void i_release_sym (void *sym) {
   if (sym is NULL) return;
-  free (sym);
-  sym = NULL;
+  sym_t *this = (sym_t *) sym;
+
+  if ((this->type & 0xff) is I_TOK_USRFUNC) {
+    funT *f = (funT *) this->value;
+    fun_release (&f);
+  }
+
+  free (this);
+  this = NULL;
 }
 
-static sym_t *i_define_symbol (i_t *this, istring_t name, int typ, ival_t value, int is_const) {
+static sym_t *i_define_symbol (i_t *this, funT *f, istring_t name, int typ, ival_t value, int is_const) {
+  (void) this;
   if (i_StringGetPtr (name) is NULL) return NULL;
 
   size_t len = i_StringGetLen (name);
@@ -493,8 +578,10 @@ static sym_t *i_define_symbol (i_t *this, istring_t name, int typ, ival_t value,
   sym->value = value;
   sym->is_const = is_const;
 
-  if (NOTOK is Vmap.set (this->symbols, key, sym, i_release_sym, is_const))
+  if (NOTOK is Vmap.set (f->symbols, key, sym, i_release_sym, is_const)) {
+    free (sym);
     return NULL;
+  }
 
   return sym;
 }
@@ -503,11 +590,23 @@ static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
   size_t len = i_StringGetLen (name);
   char key[len + 1];
   Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
-  return Vmap.get (this->symbols, key);
+
+  sym_t *sym = NULL;
+
+  funT *f = this->current_function;
+  while (NULL isnot f) {
+    sym = Vmap.get (f->symbols, key);
+
+    ifnot (NULL is sym) return sym;
+
+    f = f->prev;
+  }
+
+  return NULL;
 }
 
-static sym_t *i_define_var_symbol (i_t *this, istring_t name, int is_const) {
-  return i_define_symbol (this, name, INT, 0, is_const);
+static sym_t *i_define_var_symbol (i_t *this, funT *f, istring_t name, int is_const) {
+  return i_define_symbol (this, f, name, INT, 0, is_const);
 }
 
 static int i_do_next_token (i_t *this, int israw) {
@@ -685,6 +784,19 @@ static ival_t i_stack_pop (i_t *this) {
   return data;
 }
 
+static void i_fun_stack_push (i_t *this, funT *f) {
+  funstack_t *item = Alloc (sizeof (funstack_t));
+  item->f = f;
+  ListStackPush (this->funstack, item);
+}
+
+static funT *i_fun_stack_pop (i_t *this) {
+  funstack_t *item = ListStackPop (this->funstack, funstack_t);
+  funT *f = item->f;
+  free (item);
+  return f;
+}
+
 static ival_t i_string_to_num (istring_t s) {
   ival_t r = 0;
   int c;
@@ -804,7 +916,7 @@ static int i_parse_string (i_t *this, istring_t str) {
   return I_OK;
 }
 
-static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, Ufunc *uf) {
+static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
   int paramCount = 0;
   int expectargs;
   int c;
@@ -852,12 +964,22 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, Ufunc *uf) {
     int i;
     int err;
 
+    //Vmap.clear (uf->symbols);
+
     for (i = 0; i < expectargs; i++)
-      i_define_symbol (this, i_StringNew (uf->argName[i]), INT, this->fArgs[i], 0);
+      i_define_symbol (this, uf, i_StringNew (uf->argName[i]), INT, this->fArgs[i], 0);
 
     this->didReturn = 0;
-    err = i_parse_string (this,  i_StringNew (uf->body));
+    i_fun_stack_push (this, this->current_function);
+    this->current_function = uf;
+
+    err = i_parse_string (this, uf->body);
+
+    if (uf->prev)
+      this->current_function = i_fun_stack_pop (this);
     this->didReturn = 0;
+
+    Vmap.clear (uf->symbols);
 
     *vp = this->fResult;
     this->state &= ~(FUNC_CALL_USRFUNC);
@@ -882,6 +1004,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
   int c, err;
 
   c = this->curToken;
+
   if (c is '(') {
     this->state |= FUNCTION_ARGUMENT_SCOPE;
     i_next_token (this);
@@ -932,7 +1055,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
       return this->syntax_error (this, "user defined function, not declared");
 
     this->state |= FUNC_CALL_USRFUNC;
-    err = i_parse_func_call (this, NULL, vp, (Ufunc *)symbol->value);
+    err = i_parse_func_call (this, NULL, vp, (funT *)symbol->value);
 
     i_next_token (this);
     return err;
@@ -956,7 +1079,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
     return I_OK;
 
   } else
-    return this->syntax_error (this, "syntax error");
+    return this->syntax_error (this, "asyntax error");
 }
 
 static int i_parse_stmt (i_t *this) {
@@ -1010,7 +1133,7 @@ static int i_parse_stmt (i_t *this) {
     ifnot (i_StringGetLen (name))
       return this->syntax_error (this, "unknown symbol");
 
-    this->tokenSymbol = i_define_var_symbol (this, name, is_const);
+    this->tokenSymbol = i_define_var_symbol (this, this->current_function, name, is_const);
 
     if (NULL is this->tokenSymbol) {
       if (is_const)
@@ -1184,9 +1307,11 @@ static int i_parse_ifnot (i_t *this) {
   return err;
 }
 
-static int i_parse_var_list (i_t *this, Ufunc *uf) {
+static int i_parse_var_list (i_t *this, funT *uf) {
   int c;
   int nargs = 0;
+
+  //c = i_next_token (this);
   c = i_next_raw_token (this);
 
   for (;;) {
@@ -1205,17 +1330,19 @@ static int i_parse_var_list (i_t *this, Ufunc *uf) {
 
       nargs++;
 
+      //c = i_next_raw_token (this);
       c = i_next_token (this);
 
       if (c is ')') break;
 
       if (c is ',')
-        c = i_next_token (this);
+        //c = i_next_token (this);
+        c = i_next_raw_token (this);
 
     } else if (c is ')')
       break;
     else
-      return this->syntax_error (this, "var definition, unxpected token");
+      return this->syntax_error (this, "var definition, unexpected token");
   }
 
   uf->nargs = nargs;
@@ -1224,7 +1351,6 @@ static int i_parse_var_list (i_t *this, Ufunc *uf) {
 
 static int i_parse_func_def (i_t *this) {
   istring_t name;
-  istring_t body;
   int c;
   int nargs = 0;
 
@@ -1233,14 +1359,19 @@ static int i_parse_func_def (i_t *this) {
 
   name = this->token;
 
+  funT *uf = Fun_new (this, (funNewArgs) {
+    .name = name, .parent = this->current_function
+    });
+
   c = i_next_token (this);
 
-  Ufunc *uf = Alloc (sizeof (Ufunc));
-
-  uf->nargs = 0;
-
   if (c is '(') {
+    i_fun_stack_push (this, this->current_function);
+    this->current_function = uf;
+
     nargs = i_parse_var_list (this, uf);
+
+    this->current_function = i_fun_stack_pop (this);
 
     if (nargs < 0) return nargs;
 
@@ -1249,16 +1380,9 @@ static int i_parse_func_def (i_t *this) {
 
   if (c isnot I_TOK_STRING) return this->syntax_error (this, "fun definition, not a string");
 
-  body = this->token;
+  uf->body = this->token;
 
-  size_t len = i_StringGetLen (body);
-  uf->body = Alloc (len + 1);
-  Cstring.cp (uf->body, len + 1, i_StringGetPtr (body), len);
-
-  char key[len + 1];
-  Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
-  Vmap.set (this->user_functions, key, uf, i_release_user_function, 0);
-  i_define_symbol (this, name, USRFUNC | (nargs << 8), (ival_t) uf, 0);
+  i_define_symbol (this, this->current_function, name, USRFUNC | (nargs << 8), (ival_t) uf, 0);
 
   i_next_token (this);
 
@@ -1299,7 +1423,9 @@ static int i_parse_print (i_t *this) {
 static int i_parse_return (i_t *this) {
   int err;
   i_next_token (this);
+
   err = i_parse_expr (this, &this->fResult);
+
   // terminate the script
   i_StringSetLen (&this->parseptr, 0);
   this->didReturn = 1;
@@ -1309,7 +1435,7 @@ static int i_parse_return (i_t *this) {
 static int i_parse_while (i_t *this) {
   int err;
   istring_t savepc = this->parseptr;
-
+  int len = i_StringGetLen (this->parseptr);
   this->state |= AT_LOOP;
 
 again:
@@ -1317,84 +1443,46 @@ again:
   this->state &= ~CONTINUE;
 
   err = i_parse_if (this);
-  if (this->state & BREAK) goto out;
+
+  if (this->state & BREAK) {
+    const char *savepcptr = i_StringGetPtr (savepc);
+    const char *parseptr = i_StringGetPtr (this->parseptr);
+    while (savepcptr isnot parseptr) {savepcptr++; len--;}
+    i_StringSetLen (&this->parseptr, len);
+
+    int c;
+    int brackets = 2;
+
+    do {
+      c = i_get_char (this);
+      if (c is '}')
+        --brackets;
+      else if (c is '{')
+        ++brackets;
+      ifnot (brackets) break;
+    } while (c >= 0);
+    if (brackets)
+      return this->syntax_error (this, "a closed bracket is missing");
+
+    i_next_token (this);
+    err = I_ERR_OK_ELSE;
+  }
 
   if (err is I_ERR_OK_ELSE) {
+    this->state &= ~AT_LOOP;
     return I_OK;
   } else if (err is I_OK or this->state & CONTINUE) {
-    this->parseptr = savepc;
+    i_StringSetPtr (&this->parseptr, i_StringGetPtr (savepc));
+    i_StringSetLen (&this->parseptr, len);
     goto again;
   }
 
-out:
   this->state &= ~AT_LOOP;
-
   return err;
 }
 
-// builtin
-static ival_t i_ne (ival_t x, ival_t y) { return x != y; }
-static ival_t i_lt (ival_t x, ival_t y) { return x < y; }
-static ival_t i_le (ival_t x, ival_t y) { return x <= y; }
-static ival_t i_gt (ival_t x, ival_t y) { return x > y; }
-static ival_t i_ge (ival_t x, ival_t y) { return x >= y; }
-static ival_t i_mod  (ival_t x, ival_t y) { return x % y; }
-static ival_t i_sum  (ival_t x, ival_t y) { return x + y; }
-static ival_t i_shl  (ival_t x, ival_t y) { return x << y; }
-static ival_t i_shr  (ival_t x, ival_t y) { return x >> y; }
-static ival_t i_prod (ival_t x, ival_t y) { return x * y; }
-static ival_t i_quot (ival_t x, ival_t y) { return x / y; }
-static ival_t i_diff (ival_t x, ival_t y) { return x - y; }
-static ival_t i_bitor (ival_t x, ival_t y) { return x | y; }
-static ival_t i_bitand (ival_t x, ival_t y) { return x & y; }
-static ival_t i_bitxor (ival_t x, ival_t y) { return x ^ y; }
-static ival_t i_equals (ival_t x, ival_t y) { return x == y; }
-
-static struct def {
-  const char *name;
-  int toktype;
-  ival_t val;
-} idefs[] = {
-  { "var",     I_TOK_VARDEF,   (ival_t) 0 },
-  { "const",   I_TOK_CONSTDEF, (ival_t) 0 },
-  { "else",    I_TOK_ELSE,     (ival_t) 0 },
-  { "break",   I_TOK_BREAK,    (ival_t) 0 },
-  { "continue",I_TOK_CONTINUE, (ival_t) 0 },
-  { "if",      I_TOK_IF,       (ival_t) i_parse_if },
-  { "ifnot",   I_TOK_IFNOT,    (ival_t) i_parse_ifnot },
-  { "while",   I_TOK_WHILE,    (ival_t) i_parse_while },
-  { "println", I_TOK_PRINTLN,  (ival_t) i_parse_println },
-  { "print",   I_TOK_PRINT,    (ival_t) i_parse_print },
-  { "func",    I_TOK_FUNCDEF,  (ival_t) i_parse_func_def },
-  { "return",  I_TOK_RETURN,   (ival_t) i_parse_return },
-  { "true",    INT, (ival_t) 1},
-  { "false",   INT, (ival_t) 0},
-  { "OK",      INT, (ival_t) 0},
-  { "NOTOK",   INT, (ival_t) -1},
-  // operators
-  { "*",     BINOP(1), (ival_t) i_prod },
-  { "/",     BINOP(1), (ival_t) i_quot },
-  { "%",     BINOP(1), (ival_t) i_mod },
-  { "+",     BINOP(2), (ival_t) i_sum },
-  { "-",     BINOP(2), (ival_t) i_diff },
-  { "&",     BINOP(3), (ival_t) i_bitand },
-  { "|",     BINOP(3), (ival_t) i_bitor },
-  { "^",     BINOP(3), (ival_t) i_bitxor },
-  { ">>",    BINOP(3), (ival_t) i_shr },
-  { "<<",    BINOP(3), (ival_t) i_shl },
-  { "=",     BINOP(4), (ival_t) i_equals },
-  { "is",    BINOP(4), (ival_t) i_equals },
-  { "isnot", BINOP(4), (ival_t) i_ne },
-  { "<>",    BINOP(4), (ival_t) i_ne },
-  { "<",     BINOP(4), (ival_t) i_lt },
-  { "<=",    BINOP(4), (ival_t) i_le },
-  { ">",     BINOP(4), (ival_t) i_gt },
-  { ">=",    BINOP(4), (ival_t) i_ge },
-  { NULL, 0, 0 }
-};
-
 static int i_define (i_t *this, const char *name, int typ, ival_t val) {
-  i_define_symbol (this, i_StringNew (name), typ, val, 0);
+  i_define_symbol (this, this->function, i_StringNew (name), typ, val, 0);
   return I_OK;
 }
 
@@ -1403,6 +1491,7 @@ static int i_eval_string (i_t *this, const char *buf) {
   istring_t x = i_StringNew (buf);
   int retval = i_parse_string (this, x);
   i_release_malloced_strings (this, 0);
+  fun_release (&this->function);
   return retval;
 }
 
@@ -1471,8 +1560,10 @@ static void i_release (i_t **thisp) {
   String.release (this->idir);
   String.release (this->message);
   i_release_malloced_strings (this, 1);
-  Vmap.release (this->symbols);
-  Vmap.release (this->user_functions);
+
+
+//  fun_release (&this->function);
+
   free (this);
   *thisp = NULL;
 }
@@ -1635,34 +1726,39 @@ static ival_t I_print_byte (i_t *this, char byte) {
   return this->print_byte (this->out_fp, byte);
 }
 
-ival_t i_not (i_t *this, ival_t value) {
+static ival_t i_not (i_t *this, ival_t value) {
   (void) this;
   return !value;
 }
 
-ival_t i_bool (i_t *this, ival_t value) {
+static ival_t i_bool (i_t *this, ival_t value) {
   (void) this;
   return !!value;
 }
 
-ival_t i_free (i_t *this, void *value) {
+static ival_t i_free (i_t *this, void *value) {
   (void) this;
   ifnot (NULL is value)
     free (value);
   return I_OK;
 }
 
-void *i_alloc (i_t *this, ival_t size) {
+static void *i_alloc (i_t *this, ival_t size) {
   (void) this;
   return Alloc ((uint) size);
 }
 
-ival_t i_cstring_bytelen (i_t *this, char *str) {
+static void *i_realloc (i_t *this, ival_t obj, ival_t size) {
+  (void) this;
+  return Realloc ((void *)obj, (uint) size);
+}
+
+static ival_t i_cstring_bytelen (i_t *this, char *str) {
   (void) this;
   return bytelen (str);
 }
 
-ival_t i_cstring_cp (i_t *this, char *dest, ival_t size, char *src, ival_t len) {
+static ival_t i_cstring_cp (i_t *this, char *dest, ival_t size, char *src, ival_t len) {
   (void) this;
   return Cstring.cp (dest, size, src, len);
 }
@@ -1750,6 +1846,67 @@ static ival_t i_cstring_cat (i_t *this, char *dest, ival_t size, char *src) {
   (void) this;
   return Cstring.cat (dest, size, src);
 }
+
+static ival_t i_ne (ival_t x, ival_t y) { return x != y; }
+static ival_t i_lt (ival_t x, ival_t y) { return x < y; }
+static ival_t i_le (ival_t x, ival_t y) { return x <= y; }
+static ival_t i_gt (ival_t x, ival_t y) { return x > y; }
+static ival_t i_ge (ival_t x, ival_t y) { return x >= y; }
+static ival_t i_mod  (ival_t x, ival_t y) { return x % y; }
+static ival_t i_sum  (ival_t x, ival_t y) { return x + y; }
+static ival_t i_shl  (ival_t x, ival_t y) { return x << y; }
+static ival_t i_shr  (ival_t x, ival_t y) { return x >> y; }
+static ival_t i_prod (ival_t x, ival_t y) { return x * y; }
+static ival_t i_quot (ival_t x, ival_t y) { return x / y; }
+static ival_t i_diff (ival_t x, ival_t y) { return x - y; }
+static ival_t i_bitor (ival_t x, ival_t y) { return x | y; }
+static ival_t i_bitand (ival_t x, ival_t y) { return x & y; }
+static ival_t i_bitxor (ival_t x, ival_t y) { return x ^ y; }
+static ival_t i_equals (ival_t x, ival_t y) { return x == y; }
+
+static struct def {
+  const char *name;
+  int toktype;
+  ival_t val;
+} idefs[] = {
+  { "var",     I_TOK_VARDEF,   (ival_t) 0 },
+  { "const",   I_TOK_CONSTDEF, (ival_t) 0 },
+  { "else",    I_TOK_ELSE,     (ival_t) 0 },
+  { "break",   I_TOK_BREAK,    (ival_t) 0 },
+  { "continue",I_TOK_CONTINUE, (ival_t) 0 },
+  { "if",      I_TOK_IF,       (ival_t) i_parse_if },
+  { "ifnot",   I_TOK_IFNOT,    (ival_t) i_parse_ifnot },
+  { "while",   I_TOK_WHILE,    (ival_t) i_parse_while },
+  { "println", I_TOK_PRINTLN,  (ival_t) i_parse_println },
+  { "print",   I_TOK_PRINT,    (ival_t) i_parse_print },
+  { "func",    I_TOK_FUNCDEF,  (ival_t) i_parse_func_def },
+  { "return",  I_TOK_RETURN,   (ival_t) i_parse_return },
+  { "true",    INT, (ival_t) 1},
+  { "false",   INT, (ival_t) 0},
+  { "OK",      INT, (ival_t) 0},
+  { "NOTOK",   INT, (ival_t) -1},
+  // operators
+  { "*",     BINOP(1), (ival_t) i_prod },
+  { "/",     BINOP(1), (ival_t) i_quot },
+  { "%",     BINOP(1), (ival_t) i_mod },
+  { "+",     BINOP(2), (ival_t) i_sum },
+  { "-",     BINOP(2), (ival_t) i_diff },
+  { "&",     BINOP(3), (ival_t) i_bitand },
+  { "|",     BINOP(3), (ival_t) i_bitor },
+  { "^",     BINOP(3), (ival_t) i_bitxor },
+  { ">>",    BINOP(3), (ival_t) i_shr },
+  { "<<",    BINOP(3), (ival_t) i_shl },
+  { "=",     BINOP(4), (ival_t) i_equals },
+  { "is",    BINOP(4), (ival_t) i_equals },
+  { "isnot", BINOP(4), (ival_t) i_ne },
+  { "<>",    BINOP(4), (ival_t) i_ne },
+  { "<",     BINOP(4), (ival_t) i_lt },
+  { "<=",    BINOP(4), (ival_t) i_le },
+  { ">",     BINOP(4), (ival_t) i_gt },
+  { ">=",    BINOP(4), (ival_t) i_ge },
+  { NULL, 0, 0 }
+};
+
 struct i_def_fun_t {
   const char *name;
   ival_t val;
@@ -1759,6 +1916,7 @@ struct i_def_fun_t {
   { "bool",            (ival_t) i_bool, 1},
   { "free",            (ival_t) i_free, 1},
   { "alloc",           (ival_t) i_alloc, 1},
+  { "realloc",         (ival_t) i_realloc, 2},
   { "print_str",       (ival_t) i_print_str, 1},
   { "println_str",     (ival_t) i_println_str, 1},
   { "cstring_cp",      (ival_t) i_cstring_cp, 4},
@@ -1832,15 +1990,16 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
   this->define_funs_cb = opts.define_funs_cb;
   this->state = 0;
 
-  this->symbols = Vmap.new (32);
-  this->user_functions = Vmap.new (32);
-
   if (NULL is opts.idir)
     this->idir = String.new (32);
   else
     this->idir = String.new_with (opts.idir);
 
   this->message = String.new (32);
+
+  Cstring.cp (this->global, NS_GLOBAL_LEN + 1, NS_GLOBAL, NS_GLOBAL_LEN);
+
+  Fun_new (this, (funNewArgs) {.name = i_StringNew (this->global)});
 
   for (i = 0; idefs[i].name; i++) {
     err = i_define (this, idefs[i].name, idefs[i].toktype, idefs[i].val);

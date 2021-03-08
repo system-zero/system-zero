@@ -302,10 +302,10 @@ clean-libstring-shared:
 clean-libstring-static:
 	@cd $(Z_STRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libustring-shared: Env cenv
+libustring-shared: Env cenv list
 	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libustring-static: Env cenv
+libustring-static: Env cenv list
 	@cd $(Z_USTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libustring-shared:
@@ -326,10 +326,10 @@ clean-libcstring-shared:
 clean-libcstring-static:
 	@cd $(Z_CSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libvstring-shared: Env cenv libstring-shared libcstring-shared
+libvstring-shared: Env cenv list libstring-shared libcstring-shared
 	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libvstring-static: Env cenv libstring-static libcstring-static
+libvstring-static: Env cenv list libstring-static libcstring-static
 	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libvstring-shared:
@@ -414,11 +414,11 @@ clean-libfile-shared:
 clean-libfile-static:
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libargparse-shared: Env cenv libstring-shared libcstring-shared\
+libargparse-shared: Env cenv libio-shared libstring-shared libcstring-shared\
                     libvstring-shared libdir-shared liberror-shared
 	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libargparse-static: Env cenv libstring-static libcstring-static\
+libargparse-static: Env cenv libio-static libstring-static libcstring-static\
                     libvstring-static libdir-static liberror-static
 	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
@@ -428,10 +428,10 @@ clean-libargparse-shared:
 clean-libargparse-static:
 	@cd $(Z_ARGPARSE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libio-shared: Env cenv
+libio-shared: Env cenv libstring-shared libustring-shared
 	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libio-static: Env cenv
+libio-static: Env cenv libstring-static libustring-static
 	@cd $(Z_IO_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libio-shared:
@@ -612,12 +612,12 @@ clean-libe-static:
 #----------------------------------------------------------#
 libi-shared: Env cenv list libstring-shared libcstring-shared\
              libvstring-shared libustring-shared libpath-shared libfile-shared\
-             liberror-shared libvmap-shared
+             liberror-shared libvmap-shared libio-shared
 	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libi-static: Env cenv list libstring-static libcstring-static\
              libvstring-static libustring-static libpath-static libfile-static\
-             liberror-static libvmap-static
+             liberror-static libvmap-static libio-static
 	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libi-shared:
@@ -775,10 +775,10 @@ clean-term-static:
   ZA_I          = i
   ZA_I_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_I)/src
 
-i-shared: libi-shared
+i-shared: libargparse-shared libi-shared
 	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-i-static: libi-static
+i-static: libargparse-static libi-static
 	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-i-shared:

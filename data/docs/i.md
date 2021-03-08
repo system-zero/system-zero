@@ -1,8 +1,10 @@
 # A tiny language that is derived from [tinyscript](https://github.com/totalspectrum/tinyscript).
 
-## Syntax, Semantics and Extensions to tinyscript. Note that tinyscript is intented
-to run on memory constrained environments, so does not have by default, neither  a
-single dependency.
+## Syntax, Semantics and Extensions to tinyscript. Note that because tinyscript is
+intented to run on memory constrained environments, does not have neither a single
+dependency.  This version uses dynamic allocation,  thus made  it  much  easier to
+extend. Except its usefulness in internal applications, it is  being  used  mainly
+to prototype syntax and semantics.
 
 ```js
 # Comment
@@ -102,6 +104,7 @@ const c = "constant"
 # alloc       -  allocate memory (as ts_malloc)
 
 # Extended functions.
+# realloc     -  reallocate memory
 # println_str -  print string and also emit a new line
 # print_str   -  print string
 
@@ -115,14 +118,14 @@ const c = "constant"
 # cstring_cmp_n - like strcmp
 # cstring_substr - substring of a string
 # cstring_bytelen - cstring length
-# cstring_byte_mv - almost like memmove (adds a null byte)
-# cstring_byte_cp - almost like memcpy (adds a null byte)
+# cstring_byte_mv - almost like memmove (stops at the first null byte)
+# cstring_byte_cp - almost like memcpy (stops at the first null byte)
 # cstring_byte_cp_all - like memcpy
 # cstring_new_with - C-string new with a given string
 # cstring_trim_end - trim from the end
-# cstring_byte_in_str - strchr
-# cstring_bytes_in_str - strstr
-# cstring_byte_in_str_r - strrchr
+# cstring_byte_in_str - like strchr
+# cstring_bytes_in_str - like strstr
+# cstring_byte_in_str_r - like strrchr
 # cstring_byte_null_in_str - find the null byte
 
 # Other bindings from this distribution, might be added in the future.

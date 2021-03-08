@@ -328,4 +328,21 @@ do {                                                   \
 })
 #endif /* ListStackPopTail */
 
-#endif /* LIST_HDR */
+#ifndef DListItemAppend
+#define DListItemAppend(src_, node_)                   \
+({                                                     \
+  if (node_ != NULL) {                                 \
+    if ((src_ == NULL) {                               \
+      (node_)->next = NULL;                            \
+      (node_)->prev = NULL;                            \
+    } else {                                           \
+      (node_)->prev = (src_);                          \
+      (node_)->next = (src_)->next;                    \
+      (src_)->next = (node_);                          \
+    }                                                  \
+  }                                                    \
+  (node_);                                             \
+})
+#endif /* DListItemAppend */
+
+ #endif /* LIST_HDR */

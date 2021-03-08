@@ -1,3 +1,4 @@
+#define REQUIRE_STDIO
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_VMAP_TYPE     DONOT_DECLARE
@@ -23,8 +24,8 @@ typedef struct vmap_t {
 static void vmap_release_slot (vmap_t *item) {
   while (item) {
     vmap_t *tmp = item->next;
-    free (item->key);
     item->release (item->val);
+    free (item->key);
     free (item);
     item = tmp;
   }
@@ -42,6 +43,20 @@ static Vmap_t *vmap_new (int num_slots) {
   return MAP_NEW(Vmap_t, vmap_t, num_slots);
 }
 
+static void *vmap_pop (Vmap_t *vmap, char *key) {
+  uint idx = 0;
+  vmap_t *item = MAP_POP(vmap_t, vmap, key, idx);
+
+  ifnot (NULL is item) {
+    void *val = item->val;
+    free (item->key);
+    free (item);
+    return val;
+  }
+
+  return NULL;
+}
+
 static void *vmap_get (Vmap_t *vmap, char *key) {
   uint idx = 0;
   vmap_t *item = MAP_GET(vmap_t, vmap, key, idx);
@@ -55,6 +70,7 @@ static int vmap_set (Vmap_t *vmap, char *key, void *val, VmapRelease_cb cb, int 
   uint idx = 0;
 
   vmap_t *old = MAP_GET(vmap_t, vmap, key, idx);
+
   ifnot (NULL is old) {
     if (old->is_constant)
       return NOTOK;
@@ -83,10 +99,11 @@ public vmap_T __init_vmap__ (void) {
   return (vmap_T) {
     .self = (vmap_self) {
       .new = vmap_new,
-      .release = vmap_release,
-      .clear = vmap_clear,
       .get = vmap_get,
       .set = vmap_set,
+      .pop = vmap_pop,
+      .clear = vmap_clear,
+      .release = vmap_release,
       .key_exists = vmap_key_exists
     }
   };
