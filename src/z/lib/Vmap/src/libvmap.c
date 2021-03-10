@@ -15,7 +15,7 @@ typedef struct Vmap_t {
 
 typedef struct vmap_t {
   char *key;
-  void *val;
+  void *value;
   int is_constant;
   VmapRelease_cb release;
   vmap_t *next;
@@ -24,7 +24,7 @@ typedef struct vmap_t {
 static void vmap_release_slot (vmap_t *item) {
   while (item) {
     vmap_t *tmp = item->next;
-    item->release (item->val);
+    item->release (item->value);
     free (item->key);
     free (item);
     item = tmp;
@@ -48,10 +48,10 @@ static void *vmap_pop (Vmap_t *vmap, char *key) {
   vmap_t *item = MAP_POP(vmap_t, vmap, key, idx);
 
   ifnot (NULL is item) {
-    void *val = item->val;
+    void *value = item->value;
     free (item->key);
     free (item);
-    return val;
+    return value;
   }
 
   return NULL;
@@ -60,11 +60,11 @@ static void *vmap_pop (Vmap_t *vmap, char *key) {
 static void *vmap_get (Vmap_t *vmap, char *key) {
   uint idx = 0;
   vmap_t *item = MAP_GET(vmap_t, vmap, key, idx);
-  ifnot (NULL is item) return item->val;
+  ifnot (NULL is item) return item->value;
   return NULL;
 }
 
-static int vmap_set (Vmap_t *vmap, char *key, void *val, VmapRelease_cb cb, int is_constant) {
+static int vmap_set (Vmap_t *vmap, char *key, void *value, VmapRelease_cb cb, int is_constant) {
   if (NULL is cb) return NOTOK;
 
   uint idx = 0;
@@ -76,12 +76,12 @@ static int vmap_set (Vmap_t *vmap, char *key, void *val, VmapRelease_cb cb, int 
       return NOTOK;
   }
 
-  vmap_t *item = MAP_SET(vmap_t, vmap, key, val);
+  vmap_t *item = MAP_SET(vmap_t, vmap, key, value);
   item->release = cb;
   item->is_constant = is_constant;
 
   ifnot (NULL is old)
-    old->release (old->val);
+    old->release (old->value);
 
   return OK;
 }
@@ -90,6 +90,21 @@ static int vmap_key_exists (Vmap_t *vmap, char *key) {
   uint idx = 0;
   vmap_t *item = MAP_GET(vmap_t, vmap, key, idx);
   return (NULL isnot item);
+}
+
+static Vmap_t *vmap_clone (Vmap_t *vmap, VmapCopy_cb copy) {
+  Vmap_t *new = vmap_new (vmap->num_slots);
+
+  for (size_t i = 0; i < vmap->num_slots; i++) {
+    vmap_t *item = vmap->slots[i];
+    while (item) {
+      void *value = copy (item->value);
+      vmap_set (new, item->key, value, item->release, item->is_constant);
+      item = item->next;
+    }
+  }
+
+  return new;
 }
 
 public vmap_T __init_vmap__ (void) {
@@ -103,6 +118,7 @@ public vmap_T __init_vmap__ (void) {
       .set = vmap_set,
       .pop = vmap_pop,
       .clear = vmap_clear,
+      .clone = vmap_clone,
       .release = vmap_release,
       .key_exists = vmap_key_exists
     }

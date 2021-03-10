@@ -915,7 +915,6 @@ all: shared static
 Env: checkuid makeenv checkenv
 
 checkuid:
-	@echo 1
 	@if [ $(UID) = 0 ]; then echo "You can not run this makefile as the root user"; exit 1; fi
 
 makeenv:

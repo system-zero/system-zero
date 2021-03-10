@@ -45,6 +45,26 @@ func test () {
     return fuda (c)
   }
 
+  func fibo_tail (n, a, b) {
+    ifnot (n) {
+      return a
+    }
+
+    if (n is 1) {
+      return b
+    }
+
+    return fibo_tail (n -1, b,  a + b)
+  }
+
+  func fibo_recursive (n) {
+    if (n < 2) {
+      return n
+    }
+
+    return fibo_recursive (n - 1) + fibo_recursive (n - 2)
+   }
+
   print_str ("test 1 - ")
   retval = fu (11)
 
@@ -104,6 +124,17 @@ func test () {
     println_str ("[NOTOK] logical OR")
   } else { ok () }
 
+  print_str ("test 8 - ")
+  retval = fibo_tail (92, 0, 1)
+  if (retval isnot 7540113804746346429) {
+    notok ("awaiting 7540113804746346429 got: ", retval)
+  } else { ok () }
+
+  print_str ("test 9 - ")
+  retval = fibo_recursive (12)
+  if (retval isnot 144) {
+    notok ("awaiting 144 got: ", retval)
+  } else { ok () }
 }
 
 test ()
@@ -117,7 +148,7 @@ func test_array (len) {
     return x(-1)
   }
 
-  print_str ("test 8 - ")
+  print_str ("test 10 - ")
   retval = ar_length ()
   if (retval isnot len) {
     notok ("awaiting 10 got: ", retval)
@@ -128,7 +159,7 @@ func test_array (len) {
     return x(idx)
   }
 
-  print_str ("test 9 - ")
+  print_str ("test 11 - ")
   retval = ar_set_at (len - 1, 20)
   if (retval isnot 20) {
     notok ("awaiting 20 got: ", retval)
@@ -146,11 +177,31 @@ func test_array (len) {
 
   x(0) = 100, 200, 300, 400, 500, 600, 700, 800, 900
 
-  print_str ("test 10 - ")
+  print_str ("test 12 - ")
   retval = ar_sum ()
   if (retval isnot 4520) {
     notok ("awaiting 4520 got: ", retval)
   } else { ok () }
+
+  func fibo_array (n) {
+    array f (n + 2)
+    f(0) = 0, 1
+
+    var i = 2
+    while (i <= n) {
+      f (i) = f (i - 1) + f(i - 2)
+      i = i + 1
+    }
+
+    return f (n)
+  }
+
+  print_str ("test 13 - ")
+  retval = fibo_array (92)
+  if (retval isnot 7540113804746346429) {
+    notok ("awaiting 7540113804746346429 got: ", retval)
+  } else { ok () }
+
 }
 
 test_array (10)

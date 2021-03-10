@@ -4,6 +4,8 @@
 typedef struct Imap_t Imap_t;
 typedef struct imap_t imap_t;
 
+typedef void (*ImapSetValue_cb) (int *);
+
 typedef struct imap_self {
   void
     (*release) (Imap_t *),
@@ -17,6 +19,7 @@ typedef struct imap_self {
 
   int
     (*set) (Imap_t *, char *, int),
+    (*set_by_callback) (Imap_t *, char *, ImapSetValue_cb),
     (*set_with_keylen) (Imap_t *, char *);
 } imap_self;
 

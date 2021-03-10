@@ -1,6 +1,6 @@
 # A tiny language that is derived from [tinyscript](https://github.com/totalspectrum/tinyscript).
 
-## Syntax, Semantics.
+## Syntax and Semantics (early draft).
 ```js
 # Comment
 
@@ -46,15 +46,16 @@ var i = 10
 var i = 12
 # It might work, but there is no guarrantee.
 
-# Constant type (those types can not be reassigned) (not at tinyscript).
+# Constant type (those types can not be reassigned)
 const c = "constant"
-# But they might be modified, so not exactly a constant.
+# But they might be modified (for now), so not exactly a constant.
 
 # Variables or Constants initialized with string literals, should be freed explicitly.
 # The C-string interface offers some ways to create and manage C-strings. Those share
 # many rules with C, and dangers too!
 
-# functions can be defined in arbitrary nested level
+# functions can be defined in arbitrary nested level, in fact a whole unit can be a
+function
 
 func fu () {
   func fua () {
@@ -67,25 +68,31 @@ func fu () {
 }
 
 ```
+A [test unit script](../tests/interpreter_semantics.i) serves as a description.
+
+*Note* that recursion can be guaranteed, but it is also dictated by system's stack
+limits, so it is vulnerable to stack overflows. Thus do not have to be used, other
+with algorithms, that are not going to go to big depth. Iterations versions are also
+going to execute a lot faster by a big margin.
 
 ## keywords and Operators.
-```js
+```sh
 # var     -  variable definition
-# const   -  constant definition (not at tinyscript)
+# const   -  constant definition
 # if      -  if conditional
-# ifnot   -  ifnot conditional (not at tinyscript)
+# ifnot   -  ifnot conditional
 # else    -  else clause
 # while   -  while loop
-# println -  print numbers and a new line  (not at tinyscript)
+# println -  print numbers and a new line
 # print   -  print numbers
 # func    -  function definition
 # return  -  return statement
-# break   -  break statement (not at tinyscript)
-# continue-  continue statement (not at tinyscript)
+# break   -  break statement
+# continue-  continue statement
 # true    -  1
 # false   -  0
-# OK      -  0 (not at tinyscript)
-# NOTOK   -  -1 (not at tinyscript)
+# OK      -  0
+# NOTOK   -  -1
 # *       -  multiplication
 # /       -  division
 # %       -  modulo
@@ -116,8 +123,8 @@ func fu () {
 # Functions
 # not     -  !value
 # bool    -  !!value
-# free    -  release memory  (as ts_free)
-# alloc   -  allocate memory (as ts_malloc)
+# free    -  release memory
+# alloc   -  allocate memory
 # array   -  create an integer array
 # realloc -  reallocate memory
 # println_str -  print string and also emit a new line
@@ -129,7 +136,7 @@ func fu () {
 # cstring_eq  -  C-string equals
 # cstring_eq_n-  C-string equals first nth (like strncmp)
 # cstring_dup -  C-string duplicate
-# cstring_cat -  C-string append (string should be large)
+# cstring_cat -  C-string append (allocated string should be large enough)
 # cstring_cmp_n - like strcmp
 # cstring_substr - substring of a string
 # cstring_bytelen - cstring length
@@ -151,5 +158,17 @@ thus made  it much  easier to extend. Except its usefulness in internal applicat
 already as it is now, it is being used mainly to prototype syntax and semantics, and
 to be familiar with consepts by experimenting.
 
-Also note, that it should be a very slow interpreter, but the core is about 1000 lines
-of code, and it binds quite well in C. As such there no expectations and illusions.
+Also note, that it is probably a slow interpreter, but the core is about 1000 lines
+of code, and it binds quite well in C. As such there no expectations and illusions,
+only practicability and joy to have C scripting, by spending five minutes to learn
+a language.
+
+# Aplication Programming Interface.
+```C
+  #define I   In->self
+  i_T *In = __init_i__ ();
+  i_t *i = I.init_instance (In, IOpts());
+  char *bytes = "func f (n) { println (n+1)}";
+  retval = I.eval_string (i, bytes);
+  __deinit_i__ (&In);
+```

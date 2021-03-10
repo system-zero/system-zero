@@ -7,7 +7,7 @@
 
 struct smap_t {
   char *key;
-  string_t *val;
+  string_t *value;
   smap_t *next;
 };
 
@@ -37,14 +37,14 @@ static Smap_t *smap_new (int num_slots) {
 static string_t *smap_get (Smap_t *smap, char *key) {
   uint idx = 0;
   smap_t *item = MAP_GET(smap_t, smap, key, idx);
-  ifnot (NULL is item) return item->val;
+  ifnot (NULL is item) return item->value;
   return NULL;
 }
 
-static int smap_set (Smap_t *smap, char *key, string_t *val) {
+static int smap_set (Smap_t *smap, char *key, string_t *value) {
   string_t *old = smap_get (smap, key);
 
-  MAP_SET(smap_t, smap, key, val);
+  MAP_SET(smap_t, smap, key, value);
 
   ifnot (NULL is old)
     String.release (old);

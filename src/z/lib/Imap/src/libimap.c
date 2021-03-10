@@ -6,7 +6,7 @@
 
 struct imap_t {
   char *key;
-  int   val;
+  int   value;
   imap_t *next;
 };
 
@@ -36,18 +36,24 @@ static Imap_t *imap_new (int num_slots) {
 static int imap_get (Imap_t *imap, char *key) {
   uint idx = 0;
   imap_t *item = MAP_GET(imap_t, imap, key, idx);
-  ifnot (NULL is item) return item->val;
+  ifnot (NULL is item) return item->value;
   return 0;
 }
 
 static int imap_set (Imap_t *imap, char *key, int val) {
-  MAP_SET(imap_t, imap, key, val);
-  return OK;
+  imap_t *m = MAP_SET(imap_t, imap, key, val);
+  return m->value;
 }
 
 static int imap_set_with_keylen (Imap_t *imap, char *key) {
-  MAP_SET(imap_t, imap, key, bytelen (key));
-  return OK;
+  imap_t *m = MAP_SET(imap_t, imap, key, bytelen (key));
+  return m->value;
+}
+
+static int imap_set_by_callback (Imap_t *imap, char *key, ImapSetValue_cb cb) {
+  imap_t *m = MAP_NEW_ITEM(imap_t, imap, key);
+  cb (&m->value);
+  return m->value;
 }
 
 static int imap_key_exists (Imap_t *imap, char *key) {
@@ -62,12 +68,13 @@ public imap_T __init_imap__ (void) {
   return (imap_T) {
     .self = (imap_self) {
       .new = imap_new,
-      .release = imap_release,
-      .clear = imap_clear,
       .get = imap_get,
       .set = imap_set,
-      .set_with_keylen = imap_set_with_keylen,
-      .key_exists = imap_key_exists
+      .clear = imap_clear,
+      .release = imap_release,
+      .key_exists = imap_key_exists,
+      .set_by_callback = imap_set_by_callback,
+      .set_with_keylen = imap_set_with_keylen
     }
   };
 }

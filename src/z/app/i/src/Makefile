@@ -88,7 +88,9 @@ clean-static:\
 #-----------------------------------------------#
 I = $(NAME)
 
-I_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION) -ldir-$(VERSION) -lpath-$(VERSION)
+I_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION) -ldir-$(VERSION)
+I_STATIC_FLAGS += -lpath-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
+I_STATIC_FLAGS += -lerror-$(VERSION)
 
 i-shared:
 	$(CC) $(I).c $(FLAGS) -o $(SYSBINDIR)/$(I)-shared

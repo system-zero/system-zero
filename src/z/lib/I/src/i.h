@@ -29,6 +29,7 @@ typedef int (*ISyntaxError_cb) (i_t *, const char *);
 typedef int (*IDefineFuns_cb) (i_t *);
 
 typedef intptr_t ival_t;
+
 typedef ival_t (*Cfunc) (i_t *, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t);
 typedef ival_t (*Opfunc) (ival_t, ival_t);
 

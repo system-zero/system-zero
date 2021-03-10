@@ -45,6 +45,7 @@
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_USTRING_TYPE DECLARE
 #define REQUIRE_VMAP_TYPE    DECLARE
+#define REQUIRE_IMAP_TYPE    DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_LIST_MACROS
@@ -65,14 +66,11 @@
 #define USRFUNC  'f'  // user defined a procedure; number of operands in high 8 bits
 #define TOK_BINOP 'o'
 
-//#define OUT_OF_FUNCTION_ARGUMENT_SCOPE (1 << 0)
-//#define FUNCTION_SCOPE                 (1 << 1)
-#define FUNCTION_ARGUMENT_SCOPE        (1 << 2)
-#define FUNC_CALL_BUILTIN              (1 << 3)
-#define FUNC_CALL_USRFUNC              (1 << 4)
-#define AT_LOOP                        (1 << 5)
-#define BREAK                          (1 << 6)
-#define CONTINUE                       (1 << 7)
+#define FUNCTION_ARGUMENT_SCOPE        (1 << 0)
+#define FUNC_CALL_BUILTIN              (1 << 1)
+#define AT_LOOP                        (1 << 2)
+#define BREAK                          (1 << 3)
+#define CONTINUE                       (1 << 4)
 
 #define BINOP(x) (((x) << 8) + TOK_BINOP)
 #define CFUNC(x) (((x) << 8) + BUILTIN)
@@ -103,7 +101,7 @@
 #define I_TOK_ARYDEF     'Y'
 
 #define MAX_BUILTIN_PARAMS 9
-#define MAXLEN_UFUNC_NAME  64
+#define MAXLEN_SYMBOL_LEN  64
 #define NS_GLOBAL          "global"
 #define NS_GLOBAL_LEN      6
 
@@ -148,13 +146,24 @@ typedef struct fun_stack {
   funstack_t *head;
 } fun_stack;
 
+typedef struct symbolstack_t symbolstack_t;
+
+struct symbolstack_t {
+  Vmap_t *symbols;
+  symbolstack_t *next;
+};
+
+typedef struct symbol_stack {
+  symbolstack_t *head;
+} symbol_stack;
+
 struct funType {
-  istring_t
-    name,
-    body;
+  char funname[MAXLEN_SYMBOL_LEN + 1];
+
+  istring_t body;
 
   int nargs;
-  char argName[MAX_BUILTIN_PARAMS][MAXLEN_UFUNC_NAME];
+  char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL_LEN];
 
   Vmap_t *symbols;
 
@@ -165,7 +174,8 @@ struct funType {
 };
 
 typedef struct funNewArgs {
-  istring_t name;
+  const char *name;
+  size_t namelen;
   istring_t body;
   int nargs;
   int num_symbols;
@@ -174,6 +184,8 @@ typedef struct funNewArgs {
 } funNewArgs;
 
 #define funNew(...) (funNewArgs) {   \
+  .name = NULL,                      \
+  .namelen = 0,                      \
   .nargs = 0,                        \
   .num_symbols = MAP_DEFAULT_LENGTH, \
   .parent = NULL,                    \
@@ -191,11 +203,12 @@ struct i_prop {
 struct i_t {
   funT *function;
   funT *current_function;
-  fun_stack funstack[1];
 
-  char
-    global[NS_GLOBAL_LEN + 1],
-    name[32];
+  fun_stack funstack[1];
+  symbol_stack symbolstack[1];
+  Imap_t *refcount;
+
+  char name[32];
 
   const char *script_buffer;
 
@@ -340,13 +353,6 @@ static inline void i_StringSetPtr (istring_t *s, const char *ptr) {
   s->ptr_ = ptr;
 }
 
-#if DEBUG
-static char *i_StringToCstr (char *buf, istring_t src, int srclen) {
-  Cstring.cp (buf, srclen + 1, i_StringGetPtr (src), srclen);
-  return buf;
-}
-#endif
-
 static inline istring_t i_StringNew (const char *str) {
   istring_t x;
   i_StringSetLen (&x, bytelen (str));
@@ -394,15 +400,22 @@ static void i_print_number (i_t *this, ival_t v) {
 
 static int i_err_ptr (i_t *this, int err) {
   const char *keep = i_StringGetPtr (this->parseptr);
+  size_t len = i_StringGetLen (this->parseptr);
+
   char *sp = (char *) keep;
   while (sp > this->script_buffer and 0 is Cstring.byte.in_str (";\n", *(sp - 1)))
     sp--;
 
   i_StringSetPtr (&this->parseptr, sp);
+  i_StringSetLen (&this->parseptr, len + (keep - sp));
+
   i_print_string (this, this->err_fp, this->parseptr);
+
   i_StringSetPtr (&this->parseptr, keep);
+  i_StringSetLen (&this->parseptr, len);
 
   this->print_bytes (this->err_fp, TERM_RESET "\n");
+
   return err;
 }
 
@@ -510,7 +523,7 @@ static void fun_release (funT **thisp) {
 
 static funT *fun_new (funNewArgs options) {
   funT *uf = Alloc (sizeof (funT));
-  uf->name = options.name;
+  Cstring.cp (uf->funname, MAXLEN_SYMBOL_LEN, options.name, options.namelen);
   uf->body = options.body;
   uf->nargs = options.nargs;
   uf->prev = options.parent;
@@ -537,16 +550,16 @@ static funT *Fun_new (i_t *this, funNewArgs options) {
 
 static void i_release_sym (void *sym) {
   if (sym is NULL) return;
+
   sym_t *this = (sym_t *) sym;
 
-  if ((this->type & 0xff) is I_TOK_USRFUNC) {
+  if ((this->type & 0xff) is USRFUNC) {
     funT *f = (funT *) this->value;
     fun_release (&f);
   }
 
-  if ((this->type & 0xff) is ARRAY) {
+  if ((this->type & 0xff) is ARRAY)
     free ((char *) this->value);
-  }
 
   free (this);
   this = NULL;
@@ -597,15 +610,14 @@ static sym_t *i_define_var_symbol (i_t *this, funT *f, istring_t name, int is_co
 }
 
 static int i_do_next_token (i_t *this, int israw) {
-  int c;
-  int r = -1;
+  int r = I_NOTOK;
 
   sym_t *symbol = NULL;
   this->tokenSymbol = NULL;
 
   i_reset_token (this);
 
-  c = i_ignore_ws (this);
+  int c = i_ignore_ws (this);
 
   if (c is '\\' and i_peek_char (this, 0) is '\n') {
     this->linenum++;
@@ -665,7 +677,7 @@ static int i_do_next_token (i_t *this, int israw) {
         r = symbol->type & 0xff;
 
         this->tokenArgs = (symbol->type >> 8) & 0xff;
-        if (r == ARRAY)
+        if (r is ARRAY)
           r = I_TOK_ARY;
         else
           if (r < '@')
@@ -786,6 +798,41 @@ static funT *i_fun_stack_pop (i_t *this) {
   return f;
 }
 
+static void *i_clone_sym_item (void *item) {
+  sym_t *sym = (void *) item;
+
+  sym_t *new = Alloc (sizeof (sym_t));
+
+  new->type = sym->type;
+  new->is_const = sym->is_const;
+
+  if ((new->type & 0xff) is ARRAY) {
+    char *a = (char *) sym->value;
+    size_t len = a[0];
+    char *ary =  Alloc (sizeof (ival_t) * len);
+    for (size_t i = 0; i < len + 1; i++)
+      ary[i] = a[i];
+    new->value = (ival_t) ary;
+    return new;
+  }
+
+  new->value = sym->value;
+  return new;
+}
+
+static void i_symbol_stack_push (i_t *this, Vmap_t *symbols) {
+  symbolstack_t *item = Alloc (sizeof (symbolstack_t));
+  item->symbols = Vmap.clone (symbols, i_clone_sym_item);
+  ListStackPush (this->symbolstack, item);
+}
+
+static Vmap_t *i_symbol_stack_pop (i_t *this) {
+  symbolstack_t *item = ListStackPop (this->symbolstack, symbolstack_t);
+  Vmap_t *symbols = item->symbols;
+  free (item);
+  return symbols;
+}
+
 static ival_t i_string_to_num (istring_t s) {
   ival_t r = 0;
   int c;
@@ -866,11 +913,11 @@ static int i_parse_array_def (i_t *this) {
 
   len++;
 
-  char *ary =  Alloc (sizeof (ival_t) * len);
+  char *ary = Alloc (sizeof (ival_t) * len);
 
   memset (ary, 0, len * sizeof (ival_t));
 
-  ((ival_t*)ary)[0] = len - 1;
+  ((ival_t *) ary)[0] = len - 1;
 
   this->tokenSymbol = i_define_symbol (this, this->current_function, name, ARRAY, (ival_t) ary, 0);
 
@@ -1014,6 +1061,14 @@ static int i_parse_string (i_t *this, istring_t str) {
   return I_OK;
 }
 
+static void i_fun_refcount_incr (int *count) {
+  (*count)++;
+}
+
+static void i_fun_refcount_decr (int *count) {
+  (*count)--;
+}
+
 static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
   int paramCount = 0;
   int expectargs;
@@ -1062,25 +1117,37 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
     int i;
     int err;
 
-    //Vmap.clear (uf->symbols);
+    int refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_incr);
+    if (refcount > 1) {
+      i_symbol_stack_push (this, this->current_function->symbols);
+      Vmap.clear (uf->symbols);
+    }
 
     for (i = 0; i < expectargs; i++)
       i_define_symbol (this, uf, i_StringNew (uf->argName[i]), INT, this->fArgs[i], 0);
 
     this->didReturn = 0;
+
     i_fun_stack_push (this, this->current_function);
+
     this->current_function = uf;
 
     err = i_parse_string (this, uf->body);
 
-    if (uf->prev)
-      this->current_function = i_fun_stack_pop (this);
+    this->current_function = i_fun_stack_pop (this);
+
     this->didReturn = 0;
 
-    Vmap.clear (uf->symbols);
+    refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_decr);
+
+    ifnot (refcount)
+      Vmap.clear (uf->symbols);
+    else {
+      Vmap.release (uf->symbols);
+      this->current_function->symbols = i_symbol_stack_pop (this);
+    }
 
     *vp = this->fResult;
-    this->state &= ~(FUNC_CALL_USRFUNC);
     return err;
   } else {
     *vp = op (this, this->fArgs[0], this->fArgs[1], this->fArgs[2],
@@ -1105,6 +1172,7 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
 
   if (c is '(') {
     this->state |= FUNCTION_ARGUMENT_SCOPE;
+
     i_next_token (this);
     err = i_parse_expr (this, vp);
 
@@ -1155,9 +1223,9 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
     ifnot (symbol)
       return this->syntax_error (this, "user defined function, not declared");
 
-    this->state |= FUNC_CALL_USRFUNC;
-    err = i_parse_func_call (this, NULL, vp, (funT *)symbol->value);
+    funT *uf = (funT *) symbol->value;
 
+    err = i_parse_func_call (this, NULL, vp, uf);
     i_next_token (this);
     return err;
 
@@ -1203,7 +1271,8 @@ static int i_parse_stmt (i_t *this) {
   c = this->curToken;
 
   if (c is I_TOK_BREAK) {
-    if (this->state & AT_LOOP) {
+
+  if (this->state & AT_LOOP) {
       this->state |= BREAK;
       return I_ERR_BREAK;
     }
@@ -1357,6 +1426,7 @@ static int i_parse_if_rout (i_t *this, ival_t *cond, int *haveelse, istring_t *i
   if (err isnot I_OK) return err;
 
   c = this->curToken;
+
   if (c isnot I_TOK_STRING) return this->syntax_error (this, "parsing if, not a string");
 
   *ifpart = this->token;
@@ -1426,11 +1496,11 @@ static int i_parse_var_list (i_t *this, funT *uf) {
         return i_too_many_args (this);
 
       size_t len = i_StringGetLen (name);
-      if (len >= MAXLEN_UFUNC_NAME)
-        return this->syntax_error (this, "function name exceeded maximum length (64)");
+      if (len >= MAXLEN_SYMBOL_LEN)
+        return this->syntax_error (this, "argument name exceeded maximum length (64)");
 
       const char *ptr = i_StringGetPtr (name);
-      Cstring.cp (uf->argName[nargs], MAXLEN_UFUNC_NAME, ptr, len);
+      Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL_LEN, ptr, len);
 
       nargs++;
 
@@ -1462,15 +1532,19 @@ static int i_parse_func_def (i_t *this) {
   if (c isnot I_TOK_SYMBOL) return this->syntax_error (this, "fun definition, not a symbol");
 
   name = this->token;
+  size_t len = i_StringGetLen (name);
+  if (len >= MAXLEN_SYMBOL_LEN)
+    return this->syntax_error (this, "function name exceeded maximum length (64)");
 
   funT *uf = Fun_new (this, funNew (
-    .name = name, .parent = this->current_function
+    .name = i_StringGetPtr (name), .namelen = len, .parent = this->current_function
     ));
 
   c = i_next_token (this);
 
   if (c is '(') {
     i_fun_stack_push (this, this->current_function);
+
     this->current_function = uf;
 
     nargs = i_parse_var_list (this, uf);
@@ -1482,7 +1556,7 @@ static int i_parse_func_def (i_t *this) {
     c = i_next_token (this);
   }
 
-  if (c isnot I_TOK_STRING) return this->syntax_error (this, "fun definition, not a string");
+  if (c isnot I_TOK_STRING) return this->syntax_error (this, "function definition, not a string");
 
   uf->body = this->token;
 
@@ -1499,6 +1573,7 @@ static int i_parse_print_rout (i_t *this) {
 
 print_more:
   c = i_next_token (this);
+
   if (c is I_TOK_STRING) {
     i_print_string (this, this->out_fp, this->token);
     i_next_token (this);
@@ -1663,6 +1738,7 @@ static void i_release (i_t **thisp) {
 
   String.release (this->idir);
   String.release (this->message);
+  Imap.release (this->refcount);
   i_release_malloced_strings (this, 1);
   fun_release (&this->function);
 
@@ -1796,6 +1872,7 @@ static int i_print_bytes (FILE *fp, const char *bytes) {
   if (NULL is parsed) return 0;
   int nbytes = fprintf (fp, "%s", parsed->bytes);
   String.release (parsed);
+  fflush (fp);
   return nbytes;
 }
 
@@ -2109,9 +2186,8 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
 
   this->message = String.new (32);
 
-  Cstring.cp (this->global, NS_GLOBAL_LEN + 1, NS_GLOBAL, NS_GLOBAL_LEN);
-
-  Fun_new (this, funNew (.name = i_StringNew (this->global), .num_symbols = 256));
+  Fun_new (this,
+      funNew (.name = NS_GLOBAL, .namelen = NS_GLOBAL_LEN, .num_symbols = 256));
 
   for (i = 0; idefs[i].name; i++) {
     err = i_define (this, idefs[i].name, idefs[i].toktype, idefs[i].val);
@@ -2135,6 +2211,8 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
     i_release (&this);
     return err;
   }
+
+  this->refcount = Imap.new (256);
 
   i_append_instance (interp, this);
 
@@ -2207,6 +2285,7 @@ public i_T *__init_i__ (void) {
   __INIT__ (path);
   __INIT__ (file);
   __INIT__ (vmap);
+  __INIT__ (imap);
   __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
