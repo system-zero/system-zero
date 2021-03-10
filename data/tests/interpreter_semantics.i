@@ -1,15 +1,4 @@
-
-func ok () {
-  println_str ("[OK]")
-}
-
-func notok (msg, val) {
-  print_str ("[NOTOK] ")
-  print_str (msg);
-  println (val)
-}
-
-println_str ("--[ BEG ]--")
+print ("--[ BEG ]--\n")
 
 func test () {
 
@@ -65,76 +54,82 @@ func test () {
     return fibo_recursive (n - 1) + fibo_recursive (n - 2)
    }
 
-  print_str ("test 1 - ")
   retval = fu (11)
+  print ("test 1 - ")
 
   if (retval isnot 11) {
-    notok ("awaiting 11 got: ", retval)
+    print (stderr, "[NOTOK] awaiting 11 got: ${retval}\n");
   } else {
-    ok ()
+    print ("[OK]\n")
   }
 
-  print_str ("test 2 - ")
+  print ("test 2 - ")
   retval = fua (11, 12)
 
   if (fua (11, 12) isnot 23) {
-    notok ("awaiting 23 got: ", retval)
+    print (stderr, "[NOTOK] awaiting 23 got: ${retval}\n")
   } else {
-    ok ()
+    print ("[OK]\n")
   }
 
-  print_str ("test 3 - ")
+  print ("test 3 - ")
   retval = fub (10)
 
   if (retval isnot 11) {
-    notok ("awaiting 11 got: ", retval)
+    print (stderr, "[NOTOK] awaiting 11 got: ${retval}\n")
   } else {
-    ok ()
+    print ("[OK]\n")
   }
 
-  print_str ("test 4 - ")
+  print ("test 4 - ")
   retval = fuc (10, 20, 30)
 
   if (retval isnot 60) {
-    notok ("awaiting 60 got: ", retval)
+    print (stderr, "[NOTOK] awaiting 60 got: ${retval}\n")
   } else {
-    ok ()
+    print ("[OK]\n")
   }
 
-  print_str ("test 5 - ")
+  print ("test 5 - ")
   retval = fue (20)
 
   if (retval isnot 41) {
-    notok ("awaiting 50 got: ", retval)
+    print (stderr, "[NOTOK] awaiting 41 got: ${retval}\n")
   } else {
-    ok ()
+    print ("[OK]\n")
   }
 
-  print_str ("test 6 - ")
+  print ("test 6 - ")
   if ((1 is 1) and (1 is 1) and ((1 is 1) and (2 is 2)) && \
       ((1 isnot 2) && (1 isnot 2))) {
-    ok ()
+    print ("[OK]\n")
   } else {
-    println_str ("[NOTOK] logical AND")
+    print (stderr, "[NOTOK] logical AND\n")
   }
 
-  print_str ("test 7 - ")
+  print ("test 7 - ")
   if ((2 < 1) or (2 > 2) or (1 isnot 1) or (2 != 2) || \
       ((2 lt 2) || (1 gt 2) || (1 ge 2) || (2 le 1))) {
-    println_str ("[NOTOK] logical OR")
-  } else { ok () }
+    print (stderr, "[NOTOK] logical OR\n")
+  } else {
+    print ("[OK]\n")
+  }
 
-  print_str ("test 8 - ")
+  print ("test 8 - ")
   retval = fibo_tail (92, 0, 1)
   if (retval isnot 7540113804746346429) {
-    notok ("awaiting 7540113804746346429 got: ", retval)
-  } else { ok () }
+    print (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
 
-  print_str ("test 9 - ")
+  print ("test 9 - ")
   retval = fibo_recursive (12)
   if (retval isnot 144) {
-    notok ("awaiting 144 got: ", retval)
-  } else { ok () }
+    print (stderr, "[NOTOK] awaiting 144 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
 }
 
 test ()
@@ -148,22 +143,26 @@ func test_array (len) {
     return x(-1)
   }
 
-  print_str ("test 10 - ")
+  print ("test 10 - ")
   retval = ar_length ()
   if (retval isnot len) {
-    notok ("awaiting 10 got: ", retval)
-  } else { ok () }
+    print (stderr, "[NOTOK] awaiting 10 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
 
   func ar_set_at (idx, y) {
     x(idx) = y
     return x(idx)
   }
 
-  print_str ("test 11 - ")
+  print ("test 11 - ")
   retval = ar_set_at (len - 1, 20)
   if (retval isnot 20) {
-    notok ("awaiting 20 got: ", retval)
-  } else { ok () }
+    print (stderr, "[NOTOK] awaiting 20 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
 
   func ar_sum () {
     var sum = 0
@@ -177,11 +176,13 @@ func test_array (len) {
 
   x(0) = 100, 200, 300, 400, 500, 600, 700, 800, 900
 
-  print_str ("test 12 - ")
+  print ("test 12 - ")
   retval = ar_sum ()
   if (retval isnot 4520) {
-    notok ("awaiting 4520 got: ", retval)
-  } else { ok () }
+    print (stderr, "[NOTOK] awaiting 4520 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
 
   func fibo_array (n) {
     array f (n + 2)
@@ -196,14 +197,16 @@ func test_array (len) {
     return f (n)
   }
 
-  print_str ("test 13 - ")
+  print ("test 13 - ")
   retval = fibo_array (92)
   if (retval isnot 7540113804746346429) {
-    notok ("awaiting 7540113804746346429 got: ", retval)
-  } else { ok () }
+    print (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
 
 }
 
 test_array (10)
 
-println_str ("--[ END ] --")
+print ("--[ END ] --\n")

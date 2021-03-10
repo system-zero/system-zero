@@ -57,15 +57,6 @@
 #define $myprop    this->prop
 #define $my(__v__) $myprop->__v__
 
-#define INT      0x0  // integer
-//#define STRING   0x1  // string
-//#define OPERATOR 0x2  // operator; precedence in high 8 bits
-//#define ARG      0x3  // argument; value is offset on stack
-#define ARRAY    0x4  // integer array
-#define BUILTIN  'B'  // builtin: number of operands in high 8 bits
-#define USRFUNC  'f'  // user defined a procedure; number of operands in high 8 bits
-#define TOK_BINOP 'o'
-
 #define FUNCTION_ARGUMENT_SCOPE        (1 << 0)
 #define FUNC_CALL_BUILTIN              (1 << 1)
 #define AT_LOOP                        (1 << 2)
@@ -75,30 +66,38 @@
 #define BINOP(x) (((x) << 8) + TOK_BINOP)
 #define CFUNC(x) (((x) << 8) + BUILTIN)
 
+#define INT      0x0  // integer
+//#define STRING   0x1  // string
+//#define OPERATOR 0x2  // operator; precedence in high 8 bits
+//#define ARG      0x3  // argument; value is offset on stack
+#define ARRAY    0x4  // integer array
+#define BUILTIN  'B'  // builtin: number of operands in high 8 bits
+#define USRFUNC  'f'  // user defined a procedure; number of operands in high 8 bits
+#define TOK_BINOP 'o'
+
 #define I_TOK_SYMBOL     'A'
-#define I_TOK_NUMBER     'N'
-#define I_TOK_HEX_NUMBER 'X'
-#define I_TOK_STRING     'S'
-#define I_TOK_IF         'i'
-#define I_TOK_IFNOT      'I'
-#define I_TOK_ELSE       'e'
-#define I_TOK_WHILE      'w'
-#define I_TOK_PRINT      'p'
-#define I_TOK_PRINTLN    'P'
-#define I_TOK_VAR        'v'
-#define I_TOK_VARDEF     'V'
 #define I_TOK_BUILTIN    'B'
-#define I_TOK_BINOP      'o'
-#define I_TOK_FUNCDEF    'F'
-#define I_TOK_USRFUNC    'f'
-#define I_TOK_SYNTAX_ERR 'Z'
-#define I_TOK_RETURN     'r'
 #define I_TOK_CHAR       'C'
-#define I_TOK_CONSTDEF   'c'
-#define I_TOK_BREAK      'b'
+#define I_TOK_FUNCDEF    'F'
+#define I_TOK_IFNOT      'I'
+#define I_TOK_NUMBER     'N'
 #define I_TOK_CONTINUE   'O'
-#define I_TOK_ARY        'y'
+#define I_TOK_PRINT      'P'
+#define I_TOK_STRING     'S'
+#define I_TOK_VARDEF     'V'
+#define I_TOK_HEX_NUMBER 'X'
 #define I_TOK_ARYDEF     'Y'
+#define I_TOK_SYNTAX_ERR 'Z'
+#define I_TOK_BREAK      'b'
+#define I_TOK_CONSTDEF   'c'
+#define I_TOK_ELSE       'e'
+#define I_TOK_USRFUNC    'f'
+#define I_TOK_IF         'i'
+#define I_TOK_BINOP      'o'
+#define I_TOK_RETURN     'r'
+#define I_TOK_VAR        'v'
+#define I_TOK_WHILE      'w'
+#define I_TOK_ARY        'y'
 
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_SYMBOL_LEN  64
@@ -256,8 +255,6 @@ struct i_t {
   i_t *next;
 };
 
-#define ERROR_COLOR "\033[31m"
-#define TERM_RESET  "\033[m"
 #define MAX_EXPR_LEVEL 5
 
 static int i_parse_stmt (i_t *);
@@ -360,41 +357,13 @@ static inline istring_t i_StringNew (const char *str) {
   return x;
 }
 
-static void i_print_string (i_t *this, FILE *fp, istring_t s) {
+static void i_print_istring (i_t *this, FILE *fp, istring_t s) {
   unsigned len = i_StringGetLen (s);
   const char *ptr = (const char *) i_StringGetPtr (s);
   while (len > 0) {
     this->print_byte (fp, *ptr);
     ptr++;
     --len;
-  }
-}
-
-static void i_print_number (i_t *this, ival_t v) {
-  unsigned long x;
-  unsigned base = 10;
-  int prec = 1;
-  int digits = 0;
-  int c;
-  char buf[32];
-
-  if (v < 0) {
-    this->print_byte (this->out_fp, '-');
-    x = -v;
-  } else
-    x = v;
-
-  while (x > 0 or digits < prec) {
-    c = x % base;
-    x = x / base;
-    if (c < 10) c += '0';
-    else c = (c - 10) + 'a';
-    buf[digits++] = c;
-  }
-
-  while (digits > 0) {
-    --digits;
-    this->print_byte (this->out_fp, buf[digits]);
   }
 }
 
@@ -409,38 +378,38 @@ static int i_err_ptr (i_t *this, int err) {
   i_StringSetPtr (&this->parseptr, sp);
   i_StringSetLen (&this->parseptr, len + (keep - sp));
 
-  i_print_string (this, this->err_fp, this->parseptr);
+  i_print_istring (this, this->err_fp, this->parseptr);
 
   i_StringSetPtr (&this->parseptr, keep);
   i_StringSetLen (&this->parseptr, len);
 
-  this->print_bytes (this->err_fp, TERM_RESET "\n");
+  this->print_bytes (this->err_fp, "\n");
 
   return err;
 }
 
 static int i_syntax_error (i_t *this, const char *msg) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "SYNTAX ERROR: %s\n", msg);
+  this->print_fmt_bytes (this->err_fp, "\nSYNTAX ERROR: %s\n", msg);
   return i_err_ptr (this, I_ERR_SYNTAX);
 }
 
 static int i_arg_mismatch (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "argument mismatch:");
+  this->print_fmt_bytes (this->err_fp, "\nargument mismatch:");
   return i_err_ptr (this, I_ERR_BADARGS);
 }
 
 static int i_too_many_args (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "too many arguments:");
+  this->print_fmt_bytes (this->err_fp, "\ntoo many arguments:");
   return i_err_ptr (this, I_ERR_TOOMANYARGS);
 }
 
 static int i_unknown_symbol (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "unknown symbol:");
+  this->print_fmt_bytes (this->err_fp, "\nunknown symbol:");
   return i_err_ptr (this, I_ERR_UNKNOWN_SYM);
 }
 
 static int i_out_of_bounds (i_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\n" ERROR_COLOR "out of bounds:");
+  this->print_fmt_bytes (this->err_fp, "\nout of bounds:");
   return i_err_ptr (this, I_ERR_OUTOFBOUNDS);
 }
 
@@ -1329,7 +1298,7 @@ static int i_parse_stmt (i_t *this) {
       return this->syntax_error (this, "expected =");
 
     ifnot (symbol) {
-      i_print_string (this, this->err_fp, name);
+      i_print_istring (this, this->err_fp, name);
       return i_unknown_symbol (this);
     }
 
@@ -1344,8 +1313,8 @@ static int i_parse_stmt (i_t *this) {
 
     symbol->value = val;
 
- } else if (c is I_TOK_ARY) {
-   err = i_parse_array_set (this);
+  } else if (c is I_TOK_ARY) {
+    err = i_parse_array_set (this);
 
   } else if (c is I_TOK_BUILTIN or c is USRFUNC) {
     err = i_parse_primary (this, &val);
@@ -1567,36 +1536,148 @@ static int i_parse_func_def (i_t *this) {
   return I_OK;
 }
 
-static int i_parse_print_rout (i_t *this) {
-  int c;
-  int err = I_OK;
+static int i_parse_print (i_t *this) {
+  int err = I_NOTOK;
 
-print_more:
-  c = i_next_token (this);
+  string_t *str = String.new (32);
 
-  if (c is I_TOK_STRING) {
-    i_print_string (this, this->out_fp, this->token);
-    i_next_token (this);
-  } else {
-    ival_t val;
-    err = i_parse_expr (this, &val);
-    if (err isnot I_OK) return err;
+  int c = i_ignore_ws (this);
 
-    i_print_number (this, val);
+  if (c isnot '(') {
+    this->print_bytes (this->err_fp, "string fmt error, awaiting (\n");
+    i_err_ptr (this, I_NOTOK);
+    goto theend;
   }
 
-  if (this->curToken is ',') goto print_more;
+  c = i_ignore_ws (this);
+
+  FILE *fp = this->out_fp;
+
+  /* for now */
+  if (c is 's' and Cstring.eq_n (i_StringGetPtr (this->parseptr), "tderr,", 6)) {
+    fp = stderr;
+    for (int i = 0; i < 6; i++)
+      i_ignore_next_char (this);
+    c = i_ignore_ws (this);
+  }
+
+  if (c isnot '"') {
+    this->print_bytes (this->err_fp, "string fmt error, awaiting double quote\n");
+    i_err_ptr (this, I_NOTOK);
+    goto theend;
+  }
+
+  int prev = c;
+
+  for (;;) {
+    c = i_get_char (this);
+    if (c is '"') {
+      if (prev isnot '\\')
+        break;
+
+      String.append_byte (str, '"');
+      prev = '"';
+      c = i_get_char (this);
+    }
+
+    if (c is '\\') {
+      if (prev is '\\' or i_peek_char (this, 1) isnot '$') {
+        prev = str->bytes[str->num_bytes - 1];
+        String.append_byte (str, '\\');
+      } else  prev = '\\';
+
+      c = i_get_char (this);
+    }
+
+    if (c is '$') {
+      if (prev is '\\') {
+        String.append_byte (str, '$');
+        prev = '$';
+        continue;
+      }
+      prev = c;
+      c = i_get_char (this);
+      if (c isnot '{') {
+        this->print_bytes (this->err_fp, "string fmt error, awaiting {\n");
+        i_err_ptr (this, I_NOTOK);
+        goto theend;
+      }
+
+      char sym[MAXLEN_SYMBOL_LEN];
+      int len = 0;
+      prev = c;
+      while ((c = i_get_char (this))) {
+        if (c is -1) {
+          this->print_bytes (this->err_fp, "string fmt error, unended string\n");
+          i_err_ptr (this, I_NOTOK);
+          goto theend;
+        }
+
+        if (c is '}') break;
+
+        sym[len++] = c;
+        prev = c;
+      }
+
+      ifnot (len) {
+        this->print_bytes (this->err_fp, "string fmt error, awaiting symbol\n");
+        i_err_ptr (this, I_NOTOK);
+        goto theend;
+      }
+      sym[len] = '\0';
+      istring_t x = i_StringNew (sym);
+      sym_t *symbol = i_lookup_symbol (this, x);
+
+      if (NULL is symbol) {
+        this->print_fmt_bytes (this->err_fp, "string fmt error, unknown symbol %s\n", sym);
+        i_err_ptr (this, I_NOTOK);
+        goto theend;
+      }
+      // for now
+      String.append_with_fmt (str, "%d", symbol->value);
+
+      continue;
+    }
+
+    String.append_byte (str, c);
+  }
+
+  c = i_get_char (this);
+
+  if (c isnot ')') {
+    this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
+    i_err_ptr (this, I_NOTOK);
+    goto theend;
+  }
+
+  if (I_NOTOK is this->print_bytes (fp, str->bytes)) {
+    this->print_bytes (this->err_fp, "error while printing string\n");
+    fprintf (this->err_fp, "%s\n", str->bytes);
+    goto theend;
+  }
+
+  i_next_token (this);
+
+  err = I_OK;
+
+theend:
+  String.release (str);
   return err;
 }
 
-static int i_parse_println (i_t *this) {
-  int err = i_parse_print_rout (this);
-  this->print_byte (this->out_fp, '\n');
-  return err;
-}
-
-static int i_parse_print (i_t *this) {
-  return i_parse_print_rout (this);
+/* ignore */
+static int i_print_cstring (i_t *this, char *ptr) {
+  istring_t savepc = this->parseptr;
+  size_t len = bytelen (ptr);
+  char b[len + 5];
+  b[0] = '('; b[1] = '\"';
+  Cstring.cp (b+2, len + 1, ptr, len);
+  Cstring.cat (b, len + 20, "\")");
+  istring_t x = i_StringNew (b);
+  this->parseptr = x;
+  int retval = i_parse_print (this);
+  this->parseptr = savepc;
+  return retval;
 }
 
 static int i_parse_return (i_t *this) {
@@ -1869,7 +1950,7 @@ static int i_get_current_idx (i_T *this) {
 
 static int i_print_bytes (FILE *fp, const char *bytes) {
   string_t *parsed = IO.parse_escapes ((char *)bytes);
-  if (NULL is parsed) return 0;
+  if (NULL is parsed) return I_NOTOK;
   int nbytes = fprintf (fp, "%s", parsed->bytes);
   String.release (parsed);
   fflush (fp);
@@ -1887,15 +1968,11 @@ static int i_print_byte (FILE *fp, int c) {
   return i_print_fmt_bytes (fp, "%c", c);
 }
 
+/*
 ival_t i_print_str (i_t *this, char *str) {
   return i_print_bytes (this->out_fp, str);
 }
-
-ival_t i_println_str (i_t *this, char *str) {
-  int nbytes = i_print_str (this, str);
-  this->print_byte (this->out_fp, '\n');
-  return nbytes + 1;
-}
+*/
 
 static ival_t I_print_bytes (i_t *this, char *bytes) {
   return this->print_bytes (this->out_fp, bytes);
@@ -2058,7 +2135,6 @@ static struct def {
   { "if",      I_TOK_IF,       (ival_t) i_parse_if },
   { "ifnot",   I_TOK_IFNOT,    (ival_t) i_parse_ifnot },
   { "while",   I_TOK_WHILE,    (ival_t) i_parse_while },
-  { "println", I_TOK_PRINTLN,  (ival_t) i_parse_println },
   { "print",   I_TOK_PRINT,    (ival_t) i_parse_print },
   { "func",    I_TOK_FUNCDEF,  (ival_t) i_parse_func_def },
   { "return",  I_TOK_RETURN,   (ival_t) i_parse_return },
@@ -2106,8 +2182,7 @@ struct i_def_fun_t {
   { "free",            (ival_t) i_free, 1},
   { "alloc",           (ival_t) i_alloc, 1},
   { "realloc",         (ival_t) i_realloc, 2},
-  { "print_str",       (ival_t) i_print_str, 1},
-  { "println_str",     (ival_t) i_println_str, 1},
+  { "printCstr",       (ival_t) i_print_cstring, 1},
   { "cstring_cp",      (ival_t) i_cstring_cp, 4},
   { "cstring_eq",      (ival_t) i_cstring_eq, 2},
   { "cstring_new",     (ival_t) i_cstring_new, 1},

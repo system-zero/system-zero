@@ -1,7 +1,7 @@
 # A tiny language that is derived from [tinyscript](https://github.com/totalspectrum/tinyscript).
 
 ## Syntax and Semantics (early draft).
-```js
+```sh
 # Comment
 
 # Assignment
@@ -16,16 +16,16 @@ ifnot (condition) { ... }
 # Both can get an `else` clause, that is executed when the first block is not
 # executed.
 
-# Note that a statement ends up with a semicolon or in a new line character.
+# Note that a statement ends up with a semicolon or with a new line character.
 # A backslash `\` at the end of the line is a continuation character, so the
-# statement continues in the next line. Tinyscript does not have this feature.
+# statement continues in the next line.
 
 # Note also, that blocks are enclosed in braces and are mandatory.
 
 # `while` loop
 while (condition) { ... }
 # You can use `break` to break out of the loop and `continue` to continue with
-# the next iteration. Both they are not present to tinyscript.
+# the next iteration.
 
 # Function declaration.
 func name ([arg,..]) { ... }
@@ -34,7 +34,7 @@ func name ([arg,..]) { ... }
 # Tinyscript does not have this feature. Those strings are being freed at the
 # end of the evaluation or at the deinitialization.
 
-# Assign to a string literal (not at tinyscript).
+# Assign to a string literal
 var str = "alalal"
 
 # This can be freed and reassigned.
@@ -83,8 +83,6 @@ going to execute a lot faster by a big margin.
 # ifnot   -  ifnot conditional
 # else    -  else clause
 # while   -  while loop
-# println -  print numbers and a new line
-# print   -  print numbers
 # func    -  function definition
 # return  -  return statement
 # break   -  break statement
@@ -121,16 +119,17 @@ going to execute a lot faster by a big margin.
 # >=      -  likewise
 
 # Functions
+# print   -  print a "string ${sym} with interpolation expressions"
+             it can optionally take `stderr` as a first argument to output to `stderr`,
+             instead of `stdout`. Note that `sym` must be in visible scope.
 # not     -  !value
 # bool    -  !!value
 # free    -  release memory
 # alloc   -  allocate memory
 # array   -  create an integer array
 # realloc -  reallocate memory
-# println_str -  print string and also emit a new line
-# print_str   -  print string
 
-# C string interface (Cstring Type from this distribution)
+# for testing reasons a C string interface (Cstring Type from this distribution)
 # cstring_new -  C-string new (allocate memory)
 # cstring_cp  -  C-string copy
 # cstring_eq  -  C-string equals
