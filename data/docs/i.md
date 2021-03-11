@@ -69,6 +69,15 @@ func fu () {
   ...
 }
 
+# print function
+#  prints a "string ${sym} with interpolation expressions". It can optionally
+#  take `stderr`, as its first argument, to redirect output to standard error
+#  stream, instead of standard output. Note that `sym` must be in visible scope.
+#  ${sym} expressions, can take an optional parameter to indicate a directive,
+#  like $(%s, sym}. Valid directives are:
+#     - %s to print sym as a c string
+#     - %p to print sym as a pointer address
+#     - %d to print sym as a decimal (this is the default, so it can be omited)
 ```
 A [test unit script](../tests/interpreter_semantics.i) serves as a description.
 
@@ -121,10 +130,6 @@ going to execute a lot faster by a big margin.
 # >=      -  likewise
 
 # Functions
-# print   -  print a "string ${sym} with interpolation expressions". It can optionally
-             take `stderr`, as its first argument, to redirect output to standard errorr
-             stream, instead of standard output. Note that `sym` must be in visible
-             scope.
 # not     -  !value
 # bool    -  !!value
 # free    -  release memory

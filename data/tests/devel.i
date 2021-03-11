@@ -1,7 +1,7 @@
 # ignore 
 
-var m1 = "Testing Instrunctions\n\n"
-var m2 = "free strings and allocate memory again\n\n"
+var m1 = "Testing Instrunctions\n"
+var m2 = "free strings and allocate memory again\n"
 
 var RELEASE       = 1
 var DONOT_RELEASE = 0
@@ -14,7 +14,7 @@ func f1 {
 
   func msg_and_release (ma, mb, rel) {
     print ("msg_and_release [TODO: __FUNC__]\n")
-    print ("${ma} ${mb}\n")
+    print ("${%s, ma}${%s, mb}\n")
 
     if (rel) {
       print ("release condition met ${rel}\n")
@@ -25,10 +25,12 @@ func f1 {
 
   msg_and_release (m1, m2, RELEASE)
 
-  m1 = "Re initialize them "
-  m1 = "and print again\n"
+  m1 = "Re initialize them"
+  m2 = " and print again\n"
 
   msg_and_release (m1, m2, DONOT_RELEASE)
+  free (m1);
+  free (m2);
 }
 
 f1()

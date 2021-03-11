@@ -1,4 +1,9 @@
 ------------------------- [ zero point draft ] -------------------------------
+
+[0.0 State](#ZERO_POINT_ZERO_STATE)
+
+[Skip the description and goto install instructions](#ZERO_POINT_ZERO_INSTRUCTIONS)
+
 ## Description
 
 This is  to describe and implement  a functional computer system,  with as few
@@ -741,13 +746,29 @@ worries for a better world. But...
 
 To be continued ...
 
-## Tools
+## ZERO_POINT_ZERO_INSTRUCTIONS
+```sh
+  # shared targets
+  make shared && make e-shared && make i-shared && make v-shared
+
+  # static targets
+  make static && make e-static && make i-static && make v-static
+```
+
+## ZERO_POINT_ZERO_STATE
 So far, we've implemented:
-  - a rather stable ala vim editor (tiny, independent and with interesting features)
-  - a rather stable ala screen terminal window manager
-  - a very early draft (at the prototyping level) shell utility
+  - a rather stable ala [vim](www.vim.org) [editor](data/docs/editor.md)
+  - a rather stable [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
+  - a very early draft (at the prototyping level) [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility] (data/docs/zs.md)
   - an early draft of a sudo like utility (audit review required)
   - a really really tiny [interpreter](data/docs/i.md)
+  - a couple of commands that initialize the libraries (for development reasons)
+
+## ZERO_POINT_ZERO_CONCLUSION
+  ... todo
+
+## ZERO_POINT_DEVELOPMENT
+  ... todo
 
 License: I  understand the UNLICENSE license  kind of thought. We  do not need
 laws and licenses to make the right thing.

@@ -1621,6 +1621,7 @@ static int i_parse_print (i_t *this) {
   }
 
   int prev = c;
+  char directive = 'd';
 
   for (;;) {
     c = i_get_char (this);
@@ -1648,6 +1649,7 @@ static int i_parse_print (i_t *this) {
         prev = '$';
         continue;
       }
+
       prev = c;
       c = i_get_char (this);
       if (c isnot '{') {
@@ -1657,6 +1659,34 @@ static int i_parse_print (i_t *this) {
       }
 
       char sym[MAXLEN_SYMBOL_LEN];
+      int tmp = prev;
+
+      c = i_get_char (this);
+      prev = c;
+
+      if (c is '%') {
+        c = i_get_char (this);
+        if (c isnot 's' and c isnot 'p' and c isnot 'd') {
+          this->print_fmt_bytes (this->err_fp, "string fmt error, unknown directive\n");
+          i_err_ptr (this, I_NOTOK);
+          goto theend;
+        } else
+          directive = c;
+
+        if (i_peek_char (this, 0) isnot ',' and i_peek_char (this, 1) isnot ' ') {
+          this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma and a space after directive\n");
+          i_err_ptr (this, I_NOTOK);
+          goto theend;
+        }
+
+        i_get_char (this); i_get_char (this);
+
+      } else
+        i_unget_char (this);
+
+      c = prev;
+      prev = tmp;
+
       int len = 0;
       prev = c;
       while ((c = i_get_char (this))) {
@@ -1687,8 +1717,15 @@ static int i_parse_print (i_t *this) {
         i_err_ptr (this, I_NOTOK);
         goto theend;
       }
-      // for now
-      String.append_with_fmt (str, "%d", symbol->value);
+
+      if (directive is 's')
+        String.append_with_fmt (str, "%s", symbol->value);
+      else if (directive is 'p')
+        String.append_with_fmt (str, "%p", symbol->value);
+      else
+        String.append_with_fmt (str, "%d", symbol->value);
+
+      directive = 'd';
 
       continue;
     }
@@ -1717,20 +1754,6 @@ static int i_parse_print (i_t *this) {
 theend:
   String.release (str);
   return err;
-}
-
-/* ignore */
-static int i_print_cstring (i_t *this, char *ptr) {
-  istring_t savepc = this->parseptr;
-  size_t len = bytelen (ptr);
-  char buf[len + 5];
-  Cstring.cp_fmt (buf, len + 5, "(\"%s\")", ptr);
-fprintf (stdout, "|%s|\n", buf);
-  istring_t x = i_StringNew (buf);
-  this->parseptr = x;
-  int retval = i_parse_print (this);
-  this->parseptr = savepc;
-  return retval;
 }
 
 static int i_parse_return (i_t *this) {
@@ -2239,7 +2262,6 @@ struct i_def_fun_t {
   { "free",            (ival_t) i_free, 1},
   { "alloc",           (ival_t) i_alloc, 1},
   { "realloc",         (ival_t) i_realloc, 2},
-  { "printCstr",       (ival_t) i_print_cstring, 1},
   { "cstring_cp",      (ival_t) i_cstring_cp, 4},
   { "cstring_eq",      (ival_t) i_cstring_eq, 2},
   { "cstring_new",     (ival_t) i_cstring_new, 1},
