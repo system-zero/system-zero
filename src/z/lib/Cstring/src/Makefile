@@ -39,6 +39,8 @@ BASE_FLAGS  := -g -O2 -march=native -fdollars-in-identifiers
 
 DEBUG_FLAGS := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
 
+DEBUG := 1
+
 # -Wno-override-init: is for designated initializers and both compilers complain.
 # it is included in extra in gcc, but clang needs this unconditionally
 ifneq ($(DEBUG), 1)
@@ -77,7 +79,6 @@ ifeq (-$(CC), -gcc)
   #  FLAGS += -Wimplicit-fallthrough=0
 endif
 
-DEBUG := 0
 ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif

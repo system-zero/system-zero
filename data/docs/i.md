@@ -30,12 +30,12 @@ while (condition) { ... }
 # Function declaration.
 func name ([arg,..]) { ... }
 
-# You can pass a string literal as an argument to a user or to a C function.
-# Tinyscript does not have this feature. Those strings are being freed at the
-# end of the evaluation or at the deinitialization.
+# You can pass a string literal as an argument to a user defined function, or to a
+# C function. Those strings are being freed at the end of the evaluation or at the
+# deinitialization.
 
 # Assign to a string literal
-var str = "alalal"
+var str = "oh lala"
 
 # This can be freed and reassigned.
 free (str)
@@ -50,12 +50,14 @@ var i = 12
 const c = "constant"
 # But they might be modified (for now), so not exactly a constant.
 
-# Variables or Constants initialized with string literals, should be freed explicitly.
+# Variables or Constants that are initialized with string literals, should be freed
+# explicitly.
+
 # The C-string interface offers some ways to create and manage C-strings. Those share
 # many rules with C, and dangers too!
 
-# functions can be defined in arbitrary nested level, in fact a whole unit can be a
-function
+# Functions can be defined in arbitrary nested level, in fact a whole unit can be a
+# function
 
 func fu () {
   func fua () {
@@ -119,9 +121,10 @@ going to execute a lot faster by a big margin.
 # >=      -  likewise
 
 # Functions
-# print   -  print a "string ${sym} with interpolation expressions"
-             it can optionally take `stderr` as a first argument to output to `stderr`,
-             instead of `stdout`. Note that `sym` must be in visible scope.
+# print   -  print a "string ${sym} with interpolation expressions". It can optionally
+             take `stderr`, as its first argument, to redirect output to standard errorr
+             stream, instead of standard output. Note that `sym` must be in visible
+             scope.
 # not     -  !value
 # bool    -  !!value
 # free    -  release memory

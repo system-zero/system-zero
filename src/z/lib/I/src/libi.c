@@ -54,8 +54,33 @@
 
 #include <z/cenv.h>
 
-#define $myprop    this->prop
-#define $my(__v__) $myprop->__v__
+#define $myprop      this->prop
+#define $my(__v__)   $myprop->__v__
+
+#define MAX_BUILTIN_PARAMS 9
+#define MAXLEN_SYMBOL_LEN  64
+#define NS_GLOBAL          "global"
+#define NS_GLOBAL_LEN      6
+
+#ifdef DEBUG
+
+static  int  CURIDX = 0;
+static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
+
+#define $CUR_IDX      CURIDX
+#define $PREV_FUNC    PREVFUNC
+#define $CUR_FUNC     __func__
+#define $CUR_SCOPE    this->curScope->funname
+#define $CUR_TOKEN    this->curToken
+#define $CUR_VALUE    (ival_t) this->tokenVal
+#define $CODE_PATH   fprintf (this->err_fp,                                    \
+  "CurIdx   : %d,  PrevFunc : %s,\n"                                              \
+  "CurFunc  : %s,  CurScope : %s,\n" \
+  "CurToken : ['%c', %d], CurValue : %ld\n\n",   \
+  $CUR_IDX++, $PREV_FUNC,                                                       \
+  $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                  \
+  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN);
+#endif
 
 #define FUNCTION_ARGUMENT_SCOPE        (1 << 0)
 #define FUNC_CALL_BUILTIN              (1 << 1)
@@ -98,11 +123,6 @@
 #define I_TOK_VAR        'v'
 #define I_TOK_WHILE      'w'
 #define I_TOK_ARY        'y'
-
-#define MAX_BUILTIN_PARAMS 9
-#define MAXLEN_SYMBOL_LEN  64
-#define NS_GLOBAL          "global"
-#define NS_GLOBAL_LEN      6
 
 typedef struct istring_t {
   unsigned len_;
@@ -201,7 +221,7 @@ struct i_prop {
 
 struct i_t {
   funT *function;
-  funT *current_function;
+  funT *curScope;
 
   fun_stack funstack[1];
   symbol_stack symbolstack[1];
@@ -307,6 +327,9 @@ static inline int is_operator_span (int c) {
 }
 
 static void i_release_malloced_strings (i_t *this, int release_const) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   malloced_string *item = this->head;
   while (item isnot NULL) {
     malloced_string *tmp = item->next;
@@ -508,7 +531,7 @@ static funT *Fun_new (i_t *this, funNewArgs options) {
   funT *parent = options.parent;
 
   if (parent is NULL) {
-    this->function = this->current_function = f->root = f;
+    this->function = this->curScope = f->root = f;
     return f;
   }
 
@@ -535,6 +558,9 @@ static void i_release_sym (void *sym) {
 }
 
 static sym_t *i_define_symbol (i_t *this, funT *f, istring_t name, int typ, ival_t value, int is_const) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   (void) this;
   if (i_StringGetPtr (name) is NULL) return NULL;
 
@@ -556,13 +582,16 @@ static sym_t *i_define_symbol (i_t *this, funT *f, istring_t name, int typ, ival
 }
 
 static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   size_t len = i_StringGetLen (name);
   char key[len + 1];
   Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
 
   sym_t *sym = NULL;
 
-  funT *f = this->current_function;
+  funT *f = this->curScope;
   while (NULL isnot f) {
     sym = Vmap.get (f->symbols, key);
 
@@ -579,6 +608,9 @@ static sym_t *i_define_var_symbol (i_t *this, funT *f, istring_t name, int is_co
 }
 
 static int i_do_next_token (i_t *this, int israw) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int r = I_NOTOK;
 
   sym_t *symbol = NULL;
@@ -888,7 +920,7 @@ static int i_parse_array_def (i_t *this) {
 
   ((ival_t *) ary)[0] = len - 1;
 
-  this->tokenSymbol = i_define_symbol (this, this->current_function, name, ARRAY, (ival_t) ary, 0);
+  this->tokenSymbol = i_define_symbol (this, this->curScope, name, ARRAY, (ival_t) ary, 0);
 
   if (i_StringGetPtr (this->token)[0] is '=' and i_StringGetLen (this->token) is 1)
     return i_array_assign (this, (ival_t *)ary, 0);
@@ -943,6 +975,9 @@ static int i_parse_array_get (i_t *this, ival_t *vp) {
 }
 
 static int i_parse_expr_list (i_t *this) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int err, c;
   int count = 0;
   ival_t v;
@@ -1039,6 +1074,9 @@ static void i_fun_refcount_decr (int *count) {
 }
 
 static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int paramCount = 0;
   int expectargs;
   int c;
@@ -1088,7 +1126,7 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
 
     int refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_incr);
     if (refcount > 1) {
-      i_symbol_stack_push (this, this->current_function->symbols);
+      i_symbol_stack_push (this, this->curScope->symbols);
       Vmap.clear (uf->symbols);
     }
 
@@ -1097,13 +1135,13 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
 
     this->didReturn = 0;
 
-    i_fun_stack_push (this, this->current_function);
+    i_fun_stack_push (this, this->curScope);
 
-    this->current_function = uf;
+    this->curScope = uf;
 
     err = i_parse_string (this, uf->body);
 
-    this->current_function = i_fun_stack_pop (this);
+    this->curScope = i_fun_stack_pop (this);
 
     this->didReturn = 0;
 
@@ -1113,7 +1151,7 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
       Vmap.clear (uf->symbols);
     else {
       Vmap.release (uf->symbols);
-      this->current_function->symbols = i_symbol_stack_pop (this);
+      this->curScope->symbols = i_symbol_stack_pop (this);
     }
 
     *vp = this->fResult;
@@ -1135,6 +1173,9 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
 // returns 0 if valid, non-zero if syntax error
 // puts result into *vp
 static int i_parse_primary (i_t *this, ival_t *vp) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int c, err;
 
   c = this->curToken;
@@ -1221,6 +1262,9 @@ static int i_parse_primary (i_t *this, ival_t *vp) {
 }
 
 static int i_parse_stmt (i_t *this) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int c;
   istring_t name;
   ival_t val;
@@ -1272,7 +1316,7 @@ static int i_parse_stmt (i_t *this) {
     ifnot (i_StringGetLen (name))
       return this->syntax_error (this, "unknown symbol");
 
-    this->tokenSymbol = i_define_var_symbol (this, this->current_function, name, is_const);
+    this->tokenSymbol = i_define_var_symbol (this, this->curScope, name, is_const);
 
     if (NULL is this->tokenSymbol) {
       if (is_const)
@@ -1336,6 +1380,9 @@ static int i_parse_stmt (i_t *this) {
 // level 0 is the lowest level (highest precedence)
 // result goes in *vp
 static int i_parse_expr_level (i_t *this, int max_level, ival_t *vp) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int err = I_OK;
   int c;
   ival_t lhs;
@@ -1375,6 +1422,9 @@ static int i_parse_expr_level (i_t *this, int max_level, ival_t *vp) {
 }
 
 static int i_parse_expr (i_t *this, ival_t *vp) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int err = i_parse_primary (this, vp);
 
   if (err is I_OK)
@@ -1451,6 +1501,9 @@ static int i_parse_ifnot (i_t *this) {
 }
 
 static int i_parse_var_list (i_t *this, funT *uf) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   int c;
   int nargs = 0;
 
@@ -1506,19 +1559,19 @@ static int i_parse_func_def (i_t *this) {
     return this->syntax_error (this, "function name exceeded maximum length (64)");
 
   funT *uf = Fun_new (this, funNew (
-    .name = i_StringGetPtr (name), .namelen = len, .parent = this->current_function
+    .name = i_StringGetPtr (name), .namelen = len, .parent = this->curScope
     ));
 
   c = i_next_token (this);
 
   if (c is '(') {
-    i_fun_stack_push (this, this->current_function);
+    i_fun_stack_push (this, this->curScope);
 
-    this->current_function = uf;
+    this->curScope = uf;
 
     nargs = i_parse_var_list (this, uf);
 
-    this->current_function = i_fun_stack_pop (this);
+    this->curScope = i_fun_stack_pop (this);
 
     if (nargs < 0) return nargs;
 
@@ -1529,7 +1582,7 @@ static int i_parse_func_def (i_t *this) {
 
   uf->body = this->token;
 
-  i_define_symbol (this, this->current_function, name, USRFUNC | (nargs << 8), (ival_t) uf, 0);
+  i_define_symbol (this, this->curScope, name, USRFUNC | (nargs << 8), (ival_t) uf, 0);
 
   i_next_token (this);
 
@@ -1624,6 +1677,7 @@ static int i_parse_print (i_t *this) {
         i_err_ptr (this, I_NOTOK);
         goto theend;
       }
+
       sym[len] = '\0';
       istring_t x = i_StringNew (sym);
       sym_t *symbol = i_lookup_symbol (this, x);
@@ -1669,11 +1723,10 @@ theend:
 static int i_print_cstring (i_t *this, char *ptr) {
   istring_t savepc = this->parseptr;
   size_t len = bytelen (ptr);
-  char b[len + 5];
-  b[0] = '('; b[1] = '\"';
-  Cstring.cp (b+2, len + 1, ptr, len);
-  Cstring.cat (b, len + 20, "\")");
-  istring_t x = i_StringNew (b);
+  char buf[len + 5];
+  Cstring.cp_fmt (buf, len + 5, "(\"%s\")", ptr);
+fprintf (stdout, "|%s|\n", buf);
+  istring_t x = i_StringNew (buf);
   this->parseptr = x;
   int retval = i_parse_print (this);
   this->parseptr = savepc;
@@ -1747,6 +1800,10 @@ static int i_define (i_t *this, const char *name, int typ, ival_t val) {
 }
 
 static int i_eval_string (i_t *this, const char *buf) {
+#ifdef DEBUG
+  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN);
+  $CODE_PATH
+#endif
   this->script_buffer = buf;
   istring_t x = i_StringNew (buf);
   int retval = i_parse_string (this, x);

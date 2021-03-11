@@ -79,7 +79,7 @@ endif
 
 DEBUG := 0
 ifneq ($(DEBUG), 0)
-  FLAGS += $(DEBUG_FLAGS)
+  FLAGS += -DDEBUG $(DEBUG_FLAGS)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)

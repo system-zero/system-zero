@@ -261,12 +261,13 @@ Z_SU        := $(ZC_SU)
     BASE_FLAGS  +=  -Wno-unused-command-line-argument
   endif
 
-  DEBUG         := 1
+  DEBUG         := 0
+  DEBUG_SYMBOLS := 1
   RPATH         := 1
 
   # we use rpath in this early stage, so we do not need to run ldconfig
   ifeq ($(RPATH), 1)
-    BASE_FLAGS    += -Wl,-rpath=$(Z_SYSLIBDIR):$(SYSLIBDIR):/lib/z:/lib
+    BASE_FLAGS  += -Wl,-rpath=$(Z_SYSLIBDIR):$(SYSLIBDIR):/lib/z:/lib
   endif
 
   ZARGS  = NS=$(ZNAME)
@@ -276,6 +277,10 @@ Z_SU        := $(ZC_SU)
   MARGS += BASE_FLAGS='$(BASE_FLAGS)'
   MARGS += USERNAME=$(USERNAME) GROUPNAME=$(GROUPNAME)
   MARGS += HOME=$(HOME) UID=$(UID) GID=$(GID) TERM=$(TERM)
+  ifeq ($(DEBUG_SYMBOLS), 1)
+    MARGS += DEBUG_FLAGS='$(DEBUG_FLAGS)'
+  endif
+
 
 #----------------------------------------------------------#
 cenv: Env
