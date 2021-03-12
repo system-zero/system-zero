@@ -313,11 +313,6 @@ static inline int is_identifier (int c) {
   return is_alpha (c) or is_idpunct (c) or is_digit (c);
 }
 
-static inline int is_notquote (int chr) {
-  uchar c = (unsigned char) chr;
-  return NULL is Cstring.byte.in_str ("\"\n", c);
-}
-
 static inline int is_operator (int c) {
   return NULL isnot Cstring.byte.in_str ("+-!/*%=<>&|^", c);
 }
@@ -2097,12 +2092,12 @@ static ival_t i_free (i_t *this, void *value) {
 
 static void *i_alloc (i_t *this, ival_t size) {
   (void) this;
-  return Alloc ((uint) size);
+  return Alloc ((size_t) size);
 }
 
 static void *i_realloc (i_t *this, ival_t obj, ival_t size) {
   (void) this;
-  return Realloc ((void *)obj, (uint) size);
+  return Realloc ((void *)obj, (size_t) size);
 }
 
 static ival_t i_cstring_bytelen (i_t *this, char *str) {
@@ -2157,7 +2152,7 @@ static ival_t i_cstring_dup (i_t *this, char *str, ival_t size) {
 
 static ival_t i_cstring_new (i_t *this, ival_t len) {
   (void) this;
-  char *new = Alloc ((uint) len + 1);
+  char *new = Alloc ((size_t) len + 1);
   return (ival_t) new;
 }
 

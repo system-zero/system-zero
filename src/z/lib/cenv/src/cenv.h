@@ -294,32 +294,32 @@ AllocErrorHandlerF AllocErrorHandler;
  */
 
 #define MUL_NO_OVERFLOW ((size_t) 1 << (sizeof (size_t) * 4))
-#define MEM_IS_INT_OVERFLOW(nmemb, ssize)                             \
- (((nmemb) >= MUL_NO_OVERFLOW || (ssize) >= MUL_NO_OVERFLOW) &&       \
-  (nmemb) > 0 && SIZE_MAX / (nmemb) < (ssize))
+#define MEM_IS_INT_OVERFLOW(nmemb_, ssize_)                            \
+ (((nmemb_) >= MUL_NO_OVERFLOW || (ssize_) >= MUL_NO_OVERFLOW) &&      \
+  (nmemb_) > 0 && SIZE_MAX / (nmemb_) < (ssize_))
 
-#define Alloc(size) ({                                                \
-  void *ptr__ = NULL;                                                 \
-  if (MEM_IS_INT_OVERFLOW (1, (size))) {                              \
-    errno = EINTEGEROVERFLOW;                                         \
-    AllocErrorHandler (errno, (size),  __FILE__, __func__, __LINE__); \
-  } else {                                                            \
-    if (NULL == (ptr__ = __CALLOC__ (1, (size))))                     \
-      AllocErrorHandler (errno, (size), __FILE__, __func__, __LINE__);\
-    }                                                                 \
-  ptr__;                                                              \
+#define Alloc(size_) ({                                                \
+  void *ptr__ = NULL;                                                  \
+  if (MEM_IS_INT_OVERFLOW (1, (size_))) {                              \
+    errno = EINTEGEROVERFLOW;                                          \
+    AllocErrorHandler (errno, (size_),  __FILE__, __func__, __LINE__); \
+  } else {                                                             \
+    if (NULL == (ptr__ = __CALLOC__ (1, (size_))))                     \
+      AllocErrorHandler (errno, (size_), __FILE__, __func__, __LINE__);\
+    }                                                                  \
+  ptr__;                                                               \
   })
 
-#define Realloc(ptr, size) ({                                         \
-  void *ptr__ = NULL;                                                 \
-  if (MEM_IS_INT_OVERFLOW (1, (size))) {                              \
-    errno = EINTEGEROVERFLOW;                                         \
-    AllocErrorHandler (errno, (size),  __FILE__, __func__, __LINE__); \
-  } else {                                                            \
-    if (NULL == (ptr__ = __REALLOC__ ((ptr), (size))))                \
-      AllocErrorHandler (errno, (size), __FILE__, __func__, __LINE__);\
-    }                                                                 \
-  ptr__;                                                              \
+#define Realloc(ptr_, size_) ({                                        \
+  void *ptr__ = NULL;                                                  \
+  if (MEM_IS_INT_OVERFLOW (1, (size_))) {                              \
+    errno = EINTEGEROVERFLOW;                                          \
+    AllocErrorHandler (errno, (size_),  __FILE__, __func__, __LINE__); \
+  } else {                                                             \
+    if (NULL == (ptr__ = __REALLOC__ ((ptr_), (size_))))               \
+      AllocErrorHandler (errno, (size_), __FILE__, __func__, __LINE__);\
+    }                                                                  \
+  ptr__;                                                               \
   })
 
 /*

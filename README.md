@@ -754,6 +754,9 @@ To be continued ...
   # static targets
   make static && make e-static && make i-static && make v-static
 ```
+The development environment is gcc, but it should be compiled with  clang and
+tinycc compilers, without a warning. In case of a warning it is considered an
+error. Note that the interpreter, it crashes when it is compiled with tinycc.
 
 ## ZERO_POINT_ZERO_STATE
 So far, we've implemented:

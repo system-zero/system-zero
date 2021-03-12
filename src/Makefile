@@ -259,6 +259,7 @@ Z_SU        := $(ZC_SU)
 
   ifeq (-$(CC), -clang)
     BASE_FLAGS  +=  -Wno-unused-command-line-argument
+    BASE_FLAGS  +=  -Wno-override-init
   endif
 
   DEBUG         := 0
