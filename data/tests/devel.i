@@ -29,6 +29,7 @@ func f1 {
   m2 = " and print again\n"
 
   msg_and_release (m1, m2, DONOT_RELEASE)
+
   free (m1);
   free (m2);
 }

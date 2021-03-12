@@ -1,8 +1,8 @@
 ------------------------- [ zero point draft ] -------------------------------
 
-[0.0 State](#ZERO_POINT_ZERO_STATE)
+[0.0 State](#ZERO_POINT_ZERO_STATE).
 
-[Skip the description and goto install instructions](#ZERO_POINT_ZERO_INSTRUCTIONS)
+[Skip the description and goto the install instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
 
 ## Description
 
@@ -757,9 +757,9 @@ To be continued ...
 
 ## ZERO_POINT_ZERO_STATE
 So far, we've implemented:
-  - a rather stable ala [vim](www.vim.org) [editor](data/docs/editor.md)
+  - a rather stable ala [vim](http://www.vim.org) [editor](data/docs/editor.md)
   - a rather stable [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
-  - a very early draft (at the prototyping level) [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility] (data/docs/zs.md)
+  - a very early draft (at the prototyping level) [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility](data/docs/zs.md)
   - an early draft of a sudo like utility (audit review required)
   - a really really tiny [interpreter](data/docs/i.md)
   - a couple of commands that initialize the libraries (for development reasons)
@@ -770,8 +770,9 @@ So far, we've implemented:
 ## ZERO_POINT_DEVELOPMENT
   ... todo
 
-License: I  understand the UNLICENSE license  kind of thought. We  do not need
-laws and licenses to make the right thing.
+## License:
+I  understand the UNLICENSE license  kind of thought. We  do not need laws and
+licenses to make the right thing.
 
 But I respect a lot the GNU philosophy and I feel that we owe a lot to the GNU
 project. We  can be sure, that  we wouldn't be here  if it wasn't the  GPL and

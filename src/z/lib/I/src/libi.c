@@ -1666,8 +1666,9 @@ static int i_parse_print (i_t *this) {
 
       if (c is '%') {
         c = i_get_char (this);
-        if (c isnot 's' and c isnot 'p' and c isnot 'd') {
-          this->print_fmt_bytes (this->err_fp, "string fmt error, unknown directive\n");
+        if (c isnot 's' and c isnot 'p' and c isnot 'd' and
+            c isnot 'o' and c isnot 'x') {
+          this->print_fmt_bytes (this->err_fp, "string fmt error, unsupported directive [%c]\n", c);
           i_err_ptr (this, I_NOTOK);
           goto theend;
         } else
@@ -1718,12 +1719,27 @@ static int i_parse_print (i_t *this) {
         goto theend;
       }
 
-      if (directive is 's')
-        String.append_with_fmt (str, "%s", symbol->value);
-      else if (directive is 'p')
-        String.append_with_fmt (str, "%p", symbol->value);
-      else
-        String.append_with_fmt (str, "%d", symbol->value);
+      switch (directive) {
+        case 's':
+          String.append_with_fmt (str, "%s", symbol->value);
+          break;
+
+        case 'p':
+          String.append_with_fmt (str, "%p", symbol->value);
+          break;
+
+        case 'o':
+          String.append_with_fmt (str, "0%o", symbol->value);
+          break;
+
+        case 'x':
+          String.append_with_fmt (str, "0x%x", symbol->value);
+          break;
+
+        case 'd':
+        default:
+          String.append_with_fmt (str, "%d", symbol->value);
+      }
 
       directive = 'd';
 

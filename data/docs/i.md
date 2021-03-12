@@ -13,12 +13,14 @@ if (condition) { statement[s]... }
 # `ifnot` conditional: the block is executed if the condition is zero
 ifnot (condition) { ... }
 
-# Both can get an `else` clause, that is executed when the first block is not
+# Both can  get an `else` clause, that is executed when the first block is not
 # executed.
 
 # Note that a statement ends up with a semicolon or with a new line character.
-# A backslash `\` at the end of the line is a continuation character, so the
-# statement continues in the next line.
+# A backslash `\` at the end of the line is a continuation  character, so  the
+# statement continues in the next line. Note that in this case,  '\' should be
+# followed immediately be a new line character, otherwise  it is considered an
+# error.
 
 # Note also, that blocks are enclosed in braces and are mandatory.
 
@@ -54,7 +56,7 @@ const c = "constant"
 # explicitly.
 
 # The C-string interface offers some ways to create and manage C-strings. Those share
-# many rules with C, and dangers too!
+# many rules with C, and the same dangers too!
 
 # Functions can be defined in arbitrary nested level, in fact a whole unit can be a
 # function
@@ -74,10 +76,14 @@ func fu () {
 #  take `stderr`, as its first argument, to redirect output to standard error
 #  stream, instead of standard output. Note that `sym` must be in visible scope.
 #  ${sym} expressions, can take an optional parameter to indicate a directive,
-#  like $(%s, sym}. Valid directives are:
-#     - %s to print sym as a c string
-#     - %p to print sym as a pointer address
-#     - %d to print sym as a decimal (this is the default, so it can be omited)
+#  like ${%s, sym}. Valid directives are:
+#    - %s to print the symbol as a C string
+#    - %p to print the symbol as a pointer address
+#    - %o to print the symbol as an octal (a 0 (zero) is prefixed in the output)
+#    - %x to print the symbol as a hexadecimal (a 0x is prefixed in the output)
+#    - %d to print the symbol as a decimal (this is the default, so it can be omited)
+#  Note that there should be a space after the comma, otherwise it is considered
+#  as an error.
 ```
 A [test unit script](../tests/interpreter_semantics.i) serves as a description.
 
