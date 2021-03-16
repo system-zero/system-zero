@@ -1,6 +1,8 @@
 print ("--[ BEG ]--\n")
 
-func test () {
+var test_num = 0
+
+func semantics () {
 
   var retval = 0
   var a = 1
@@ -55,7 +57,8 @@ func test () {
    }
 
   retval = fu (11)
-  print ("test 1 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
 
   if (retval isnot 11) {
     print (stderr, "[NOTOK] awaiting 11 got: ${retval}\n");
@@ -63,7 +66,8 @@ func test () {
     print ("[OK]\n")
   }
 
-  print ("test 2 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = fua (11, 12)
 
   if (fua (11, 12) isnot 23) {
@@ -72,7 +76,8 @@ func test () {
     print ("[OK]\n")
   }
 
-  print ("test 3 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = fub (10)
 
   if (retval isnot 11) {
@@ -81,7 +86,8 @@ func test () {
     print ("[OK]\n")
   }
 
-  print ("test 4 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = fuc (10, 20, 30)
 
   if (retval isnot 60) {
@@ -90,7 +96,8 @@ func test () {
     print ("[OK]\n")
   }
 
-  print ("test 5 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = fue (20)
 
   if (retval isnot 41) {
@@ -99,7 +106,8 @@ func test () {
     print ("[OK]\n")
   }
 
-  print ("test 6 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   if ((1 is 1) and (1 is 1) and ((1 is 1) and (2 is 2)) && \
       ((1 isnot 2) && (1 isnot 2))) {
     print ("[OK]\n")
@@ -107,7 +115,8 @@ func test () {
     print (stderr, "[NOTOK] logical AND\n")
   }
 
-  print ("test 7 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   if ((2 < 1) or (2 > 2) or (1 isnot 1) or (2 != 2) || \
       ((2 lt 2) || (1 gt 2) || (1 ge 2) || (2 le 1))) {
     print (stderr, "[NOTOK] logical OR\n")
@@ -115,7 +124,8 @@ func test () {
     print ("[OK]\n")
   }
 
-  print ("test 8 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = fibo_tail (92, 0, 1)
   if (retval isnot 7540113804746346429) {
     print (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}\n")
@@ -123,16 +133,66 @@ func test () {
     print ("[OK]\n")
   }
 
-  print ("test 9 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = fibo_recursive (12)
   if (retval isnot 144) {
     print (stderr, "[NOTOK] awaiting 144 got: ${retval}\n")
   } else {
     print ("[OK]\n")
   }
+
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
+  retval = lambda ((x, y) {
+    if (x <= 100) {return x * 2} else {return y * 2}}) (100, 200)
+
+  if (retval isnot 200) {
+    print (stderr, "[NOTOK] awaiting 200 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
+  retval = lambda ((x, y) {
+    if (x <= 100) {return x * 2} else {return y * 2}}) (101, 200)
+  if (retval isnot 400) {
+    print (stderr, "[NOTOK] awaiting 400 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
+  retval = lambda ((x) {return x * 2}) (10) + \
+           lambda ((y) {return y / 2}) (20) + \
+           lambda ((z) {return z % 2}) (21) + 11
+
+  if (retval isnot 42) {
+    print (stderr, "[NOTOK] awaiting 42 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
+  retval = lambda ((x, y) {
+    var xl = x + y
+    return lambda ((k) { return k * 2}) (x) + \
+           lambda ((z) {
+             var i = lambda ((x) {return x + 100}) (z)
+             return (z * 2) + i }) (xl)
+  }) (50, 100)
+
+  if (retval isnot 650) {
+    print (stderr, "[NOTOK] awaiting 650 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
 }
 
-test ()
+semantics ()
 
 func test_array (len) {
   var retval = 0
@@ -143,7 +203,8 @@ func test_array (len) {
     return x(-1)
   }
 
-  print ("test 10 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = ar_length ()
   if (retval isnot len) {
     print (stderr, "[NOTOK] awaiting 10 got: ${retval}\n")
@@ -156,7 +217,8 @@ func test_array (len) {
     return x(idx)
   }
 
-  print ("test 11 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = ar_set_at (len - 1, 20)
   if (retval isnot 20) {
     print (stderr, "[NOTOK] awaiting 20 got: ${retval}\n")
@@ -176,7 +238,8 @@ func test_array (len) {
 
   x(0) = 100, 200, 300, 400, 500, 600, 700, 800, 900
 
-  print ("test 12 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = ar_sum ()
   if (retval isnot 4520) {
     print (stderr, "[NOTOK] awaiting 4520 got: ${retval}\n")
@@ -197,7 +260,8 @@ func test_array (len) {
     return f (n)
   }
 
-  print ("test 13 - ")
+  test_num = test_num + 1;
+  print ("test ${test_num} - ")
   retval = fibo_array (92)
   if (retval isnot 7540113804746346429) {
     print (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}\n")

@@ -69,9 +69,11 @@ static int vmap_set (Vmap_t *vmap, char *key, void *value, VmapRelease_cb cb, in
 
   uint idx = 0;
 
+  void *old_value = NULL;
   vmap_t *old = MAP_GET(vmap_t, vmap, key, idx);
 
   ifnot (NULL is old) {
+    old_value = old->value;
     if (old->is_constant)
       return NOTOK;
   }
@@ -81,7 +83,7 @@ static int vmap_set (Vmap_t *vmap, char *key, void *value, VmapRelease_cb cb, in
   item->is_constant = is_constant;
 
   ifnot (NULL is old)
-    old->release (old->value);
+    old->release (old_value);
 
   return OK;
 }

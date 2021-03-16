@@ -1011,6 +1011,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_I_TYPE
 #endif /* REQUIRE_I_TYPE */
 
+#ifdef REQUIRE_L_TYPE
+  #ifndef L_TYPE_HDR
+  #define L_TYPE_HDR
+  #include <z/l.h>
+  #endif /* L_TYPE_HDR */
+
+  #if (REQUIRE_L_TYPE == DECLARE)
+  static  i_T iType;	
+  #define I   iType.self
+  #endif
+
+#undef REQUIRE_L_TYPE
+#endif /* REQUIRE_L_TYPE */
+
 #ifdef REQUIRE_IMAP_TYPE
   #ifndef IMAP_TYPE_HDR
   #define IMAP_TYPE_HDR

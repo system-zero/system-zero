@@ -26,6 +26,7 @@
  * - print functions can print multibyte characters
  * - parse escape sequences when printing
  * - functions can be defined in arbitrary nested depth
+ * - lambda functions
  * - and quite of many changes that integrates the original code to this environment
  * Note, that tinyscript scripts are not guaranteed to run without modifications.
  * Generally speaking, this implementation except its usefulness (as it is provides
@@ -236,6 +237,11 @@ struct i_t {
 
   const char *script_buffer;
 
+  char curFunName[MAXLEN_SYMBOL_LEN + 1];
+  funT *curFunDef;
+
+  sym_t *curSym;
+
   int
     curState,
     exitValue,
@@ -286,6 +292,8 @@ struct i_t {
 static int i_parse_stmt (i_t *);
 static int i_parse_expr (i_t *, ival_t *);
 static int i_parse_primary (i_t *, ival_t *);
+static int i_parse_func_def (i_t *);
+static int i_next_token (i_t *);
 
 static inline int is_space (int c) {
   return (c is ' ') or (c is '\t') or (c is '\r');
@@ -565,8 +573,8 @@ static sym_t *i_define_symbol (i_t *this, funT *f, istring_t name, int typ, ival
     goto body;
   }
   $CODE_PATH
-#endif
 body:
+#endif
   (void) this;
   if (i_StringGetPtr (name) is NULL) return NULL;
 
@@ -588,12 +596,14 @@ body:
 }
 
 static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   size_t len = i_StringGetLen (name);
   char key[len + 1];
   Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
+
+#ifdef DEBUG
+  fprintf (this->err_fp, "Queried Symbol: %s\n", key);
+  $CODE_PATH
+#endif
 
   sym_t *sym = NULL;
 
@@ -611,6 +621,26 @@ static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
 
 static sym_t *i_define_var_symbol (i_t *this, funT *f, istring_t name, int is_const) {
   return i_define_symbol (this, f, name, INT, 0, is_const);
+}
+
+static int i_lambda (i_t *this) {
+  Cstring.cp (this->curFunName, MAXLEN_SYMBOL_LEN + 1, "anonymous", 9);
+
+  i_ignore_ws (this);
+
+  this->curFunDef = NULL;
+
+  int err = i_parse_func_def (this);
+  if (err isnot I_OK)
+    return err;
+
+  this->tokenSymbol = this->curSym;
+  funT *lambda = this->curFunDef;
+  this->tokenArgs = lambda->nargs;
+  this->tokenValue = this->tokenSymbol->value;
+
+  this->curFunName[0] = '\0';
+  return (this->tokenSymbol->type & 0xff);
 }
 
 static int i_do_next_token (i_t *this, int israw) {
@@ -678,19 +708,25 @@ static int i_do_next_token (i_t *this, int israw) {
 
     // check for special tokens
     ifnot (israw) {
-      this->tokenSymbol = symbol = i_lookup_symbol (this, this->curStrToken);
+      if (Cstring.eq_n ("lambda", i_StringGetPtr (this->curStrToken), 6)) {
+        r = i_lambda (this);
+        if (r < I_OK)
+          return this->syntax_error (this, "lambda error");
+      } else {
+        this->tokenSymbol = symbol = i_lookup_symbol (this, this->curStrToken);
 
-      if (symbol) {
-        r = symbol->type & 0xff;
+        if (symbol) {
+          r = symbol->type & 0xff;
 
-        this->tokenArgs = (symbol->type >> 8) & 0xff;
-        if (r is ARRAY)
-          r = I_TOK_ARY;
-        else
-          if (r < '@')
-             r = I_TOK_VAR;
+          this->tokenArgs = (symbol->type >> 8) & 0xff;
+          if (r is ARRAY)
+            r = I_TOK_ARY;
+          else
+            if (r < '@')
+              r = I_TOK_VAR;
 
-        this->tokenValue = symbol->value;
+          this->tokenValue = symbol->value;
+        }
       }
     }
 
@@ -1098,7 +1134,12 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
 
   c = i_next_token (this);
 
-  if (c isnot '(') return this->syntax_error (this, "expected open parentheses");
+  if (c isnot '(') {
+    i_unget_char (this);
+    *vp = (ival_t) uf;
+    return I_OK;
+  }
+    //return this->syntax_error (this, "expected open parentheses");
 
   this->curState |= FUNCTION_ARGUMENT_SCOPE;
 
@@ -1134,10 +1175,15 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
     int i;
     int err;
 
-    int refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_incr);
-    if (refcount > 1) {
-      i_symbol_stack_push (this, this->curScope->symbols);
-      Vmap.clear (uf->symbols);
+    int refcount = 0;
+
+    int is_anonymous = Cstring.eq (uf->funname, "anonymous");
+    ifnot (is_anonymous) {
+      refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_incr);
+      if (refcount > 1) {
+        i_symbol_stack_push (this, this->curScope->symbols);
+        Vmap.clear (uf->symbols);
+      }
     }
 
     for (i = 0; i < expectargs; i++)
@@ -1155,13 +1201,15 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
 
     this->didReturn = 0;
 
-    refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_decr);
+    ifnot (is_anonymous) {
+      refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_decr);
 
-    ifnot (refcount)
-      Vmap.clear (uf->symbols);
-    else {
-      Vmap.release (uf->symbols);
-      this->curScope->symbols = i_symbol_stack_pop (this);
+      ifnot (refcount)
+          Vmap.clear (uf->symbols);
+        else {
+          Vmap.release (uf->symbols);
+          this->curScope->symbols = i_symbol_stack_pop (this);
+        }
     }
 
     *vp = this->funResult;
@@ -1295,7 +1343,7 @@ static int i_parse_stmt (i_t *this) {
 
   if (c is I_TOK_BREAK) {
 
-  if (this->curState & AT_LOOP) {
+    if (this->curState & AT_LOOP) {
       this->curState |= BREAK;
       return I_ERR_BREAK;
     }
@@ -1361,7 +1409,7 @@ static int i_parse_stmt (i_t *this) {
 
     i_next_token (this);
 
-    err = i_parse_expr (this, &val);
+     err = i_parse_expr (this, &val);
 
     if (err isnot I_OK) return err;
 
@@ -1513,6 +1561,55 @@ static int i_parse_ifnot (i_t *this) {
   return err;
 }
 
+static int i_parse_while (i_t *this) {
+  int err;
+  istring_t savepc = this->parsePtr;
+  int len = i_StringGetLen (this->parsePtr);
+  this->curState |= AT_LOOP;
+
+again:
+  this->curState &= ~BREAK;
+  this->curState &= ~CONTINUE;
+
+  err = i_parse_if (this);
+
+  if (this->curState & BREAK) {
+    const char *savepcptr = i_StringGetPtr (savepc);
+    const char *parsePtr = i_StringGetPtr (this->parsePtr);
+    while (savepcptr isnot parsePtr) {savepcptr++; len--;}
+    i_StringSetLen (&this->parsePtr, len);
+
+    int c;
+    int brackets = 2;
+
+    do {
+      c = i_get_char (this);
+      if (c is '}')
+        --brackets;
+      else if (c is '{')
+        ++brackets;
+      ifnot (brackets) break;
+    } while (c >= 0);
+    if (brackets)
+      return this->syntax_error (this, "a closed bracket is missing");
+
+    i_next_token (this);
+    err = I_ERR_OK_ELSE;
+  }
+
+  if (err is I_ERR_OK_ELSE) {
+    this->curState &= ~AT_LOOP;
+    return I_OK;
+  } else if (err is I_OK or this->curState & CONTINUE) {
+    i_StringSetPtr (&this->parsePtr, i_StringGetPtr (savepc));
+    i_StringSetLen (&this->parsePtr, len);
+    goto again;
+  }
+
+  this->curState &= ~AT_LOOP;
+  return err;
+}
+
 static int i_parse_var_list (i_t *this, funT *uf) {
 #ifdef DEBUG
   $CODE_PATH
@@ -1559,20 +1656,29 @@ static int i_parse_var_list (i_t *this, funT *uf) {
 }
 
 static int i_parse_func_def (i_t *this) {
+#ifdef DEBUG
+  $CODE_PATH
+#endif
   istring_t name;
   int c;
   int nargs = 0;
+  size_t len = 0;
 
-  c = i_next_raw_token (this); // do not interpret the symbol
-  if (c isnot I_TOK_SYMBOL) return this->syntax_error (this, "fun definition, not a symbol");
+  ifnot (this->curFunName[0]) {
+    c = i_next_raw_token (this); // do not interpret the symbol
+    if (c isnot I_TOK_SYMBOL) return this->syntax_error (this, "function definition, not a symbol");
 
-  name = this->curStrToken;
-  size_t len = i_StringGetLen (name);
-  if (len >= MAXLEN_SYMBOL_LEN)
-    return this->syntax_error (this, "function name exceeded maximum length (64)");
+    name = this->curStrToken;
+    len = i_StringGetLen (name);
+    if (len >= MAXLEN_SYMBOL_LEN)
+      return this->syntax_error (this, "function name exceeded maximum length (64)");
+  } else {
+    name = i_StringNew (this->curFunName);
+    len = bytelen (this->curFunName);
+  }
 
   funT *uf = Fun_new (this, funNew (
-    .name = i_StringGetPtr (name), .namelen = len, .parent = this->curScope
+   .name = i_StringGetPtr (name), .namelen = len, .parent = this->curScope
     ));
 
   c = i_next_token (this);
@@ -1595,7 +1701,8 @@ static int i_parse_func_def (i_t *this) {
 
   uf->body = this->curStrToken;
 
-  i_define_symbol (this, this->curScope, name, USRFUNC | (nargs << 8), (ival_t) uf, 0);
+  this->curSym = i_define_symbol (this, this->curScope, name, (USRFUNC | (nargs << 8)), (ival_t) uf, 0);
+  this->curFunDef = uf;
 
   i_next_token (this);
 
@@ -1816,55 +1923,6 @@ static int i_parse_return (i_t *this) {
   return err;
 }
 
-static int i_parse_while (i_t *this) {
-  int err;
-  istring_t savepc = this->parsePtr;
-  int len = i_StringGetLen (this->parsePtr);
-  this->curState |= AT_LOOP;
-
-again:
-  this->curState &= ~BREAK;
-  this->curState &= ~CONTINUE;
-
-  err = i_parse_if (this);
-
-  if (this->curState & BREAK) {
-    const char *savepcptr = i_StringGetPtr (savepc);
-    const char *parsePtr = i_StringGetPtr (this->parsePtr);
-    while (savepcptr isnot parsePtr) {savepcptr++; len--;}
-    i_StringSetLen (&this->parsePtr, len);
-
-    int c;
-    int brackets = 2;
-
-    do {
-      c = i_get_char (this);
-      if (c is '}')
-        --brackets;
-      else if (c is '{')
-        ++brackets;
-      ifnot (brackets) break;
-    } while (c >= 0);
-    if (brackets)
-      return this->syntax_error (this, "a closed bracket is missing");
-
-    i_next_token (this);
-    err = I_ERR_OK_ELSE;
-  }
-
-  if (err is I_ERR_OK_ELSE) {
-    this->curState &= ~AT_LOOP;
-    return I_OK;
-  } else if (err is I_OK or this->curState & CONTINUE) {
-    i_StringSetPtr (&this->parsePtr, i_StringGetPtr (savepc));
-    i_StringSetLen (&this->parsePtr, len);
-    goto again;
-  }
-
-  this->curState &= ~AT_LOOP;
-  return err;
-}
-
 static int i_define (i_t *this, const char *name, int typ, ival_t val) {
   i_define_symbol (this, this->function, i_StringNew (name), typ, val, 0);
   return I_OK;
@@ -2081,6 +2139,7 @@ static int i_get_current_idx (i_T *this) {
 }
 
 static int i_print_bytes (FILE *fp, const char *bytes) {
+  if (NULL is bytes) return 0;
   string_t *parsed = IO.parse_escapes ((char *)bytes);
   if (NULL is parsed) return I_NOTOK;
   int nbytes = fprintf (fp, "%s", parsed->bytes);

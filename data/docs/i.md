@@ -71,6 +71,10 @@ func fu () {
   ...
 }
 
+# lambda
+#   syntax: lambda ([([arg], ...)] {body}) ([arg], ...)
+# It is like a function declaration without a name, enclosed in parentheses.
+#
 # print function
 #  prints a "string ${sym} with interpolation expressions". It can optionally
 #  take `stderr`, as its first argument, to redirect output to standard error

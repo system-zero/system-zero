@@ -169,6 +169,9 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     I_Type               = I
     Z_I_SRCDIR           = $(Z_SRCLIBDIR)/$(I_Type)/src
 
+    La_Type              = La
+    Z_LA_SRCDIR          = $(Z_SRCLIBDIR)/$(La_Type)/src
+
     # Video Type
     Video_Type           = Video
     Z_VIDEO_SRCDIR       = $(Z_SRCLIBDIR)/$(Video_Type)/src
@@ -632,6 +635,22 @@ clean-libi-shared:
 clean-libi-static:
 	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libl-shared: Env cenv list libstring-shared libcstring-shared\
+             libvstring-shared libustring-shared libpath-shared libfile-shared\
+             liberror-shared libvmap-shared libio-shared
+	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libl-static: Env cenv list libstring-static libcstring-static\
+             libvstring-static libustring-static libpath-static libfile-static\
+             liberror-static libvmap-static libio-static
+	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libl-shared:
+	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libl-static:
+	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 libreadline-shared: Env cenv libstring-shared libcstring-shared \
              libvstring-shared libustring-shared libpath-shared libfile-shared
 	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
@@ -792,6 +811,22 @@ clean-i-shared:
 
 clean-i-static:
 	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#----------------------------------------------------------#
+  # L
+  ZA_L          = l
+  ZA_L_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_L)/src
+
+l-shared: libargparse-shared libl-shared
+	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+l-static: libargparse-static libl-static
+	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-l-shared:
+	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-l-static:
+	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
   # e
   ZA_E          = e
