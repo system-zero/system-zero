@@ -8,9 +8,9 @@
  * - syntax_error() got a char * argument, that describes the error
  * - added ignore_next_char() to ignore next char in parsePtr
  * - print* function references got a FILE * argument
- * - remove abort() and disable exit()
+ * - remove abort()
+ * - exit() terminates current script
  * - added is, isnot, true, false, ifnot, OK and NOTOK keywords
- * - added println (that emit a newline character, while print does not)
  * - added the ability to pass literal strings when calling C defined functions
  *   (those they ought to be freed automatically after ending the script)
  * - added the ability to assign literal strings
@@ -27,7 +27,9 @@
  * - parse escape sequences when printing
  * - functions can be defined in arbitrary nested depth
  * - lambda functions
- * - and quite of many changes that integrates the original code to this environment
+ * - [*+-/%|&]= operators
+ * - and numerous changes that integrates and adjust the original code, to
+ *   this environment
  * Note, that tinyscript scripts are not guaranteed to run without modifications.
  * Generally speaking, this implementation except its usefulness (as it is provides
  * a scripting environment to applications), is being used mostly as a prototype to
@@ -77,7 +79,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define $CODE_PATH   fprintf (this->err_fp,                                     \
   "CurIdx   : %d,  PrevFunc : %s,\n"                                            \
   "CurFunc  : %s,  CurScope : %s,\n"                                            \
-  "CurToken : ['%c', %d], CurValue : %ld\n",                                    \
+  "CurToken : ['%c', %d], CurValue : %d\n",                                    \
   $CUR_IDX++, $PREV_FUNC,                                                       \
   $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                   \
   Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN); \
@@ -1101,8 +1103,7 @@ static int i_parse_string (i_t *this, istring_t str) {
     if (c is '\n' or c is ';' or c < 0) {
       if (c is '\n') this->lineNum++;
       continue;
-    }
-    else
+    } else
       return this->syntax_error (this, "evaluated string failed, unknown token");
   }
 
@@ -1394,27 +1395,53 @@ static int i_parse_stmt (i_t *this) {
 
     c = i_next_token (this);
 
-    // we expect the "=" operator, so verify that it is "="
-    if (i_StringGetPtr (this->curStrToken)[0] isnot '=' or
-        i_StringGetLen(this->curStrToken) isnot 1)
-      return this->syntax_error (this, "expected =");
+    const char *ptr = i_StringGetPtr (this->curStrToken);
+    int len = i_StringGetLen (this->curStrToken);
+    ifnot (len)
+      return this->syntax_error (this, "expected [+/*-]=");
+
+    int operator = *ptr;
+    if (operator isnot '=') {
+      if (*(ptr + 1) isnot '=')
+        return this->syntax_error (this, "expected =");
+
+      if (len > 2)
+        return this->syntax_error (this, "expected [+/*-]=");
+    }
 
     ifnot (symbol) {
       i_print_istring (this, this->err_fp, name);
       return i_unknown_symbol (this);
     }
 
-   if (symbol->is_const and symbol->value isnot 0)
+    if (symbol->is_const and symbol->value isnot 0)
      return this->syntax_error (this, "can not reassign to a constant");
 
-    i_next_token (this);
+    ptr += len;
+    while (*ptr is ' ') ptr++;
+    int is_un =  *ptr is '~';
 
-     err = i_parse_expr (this, &val);
+    i_next_token (this);
+    if (is_un)
+      i_next_token (this);
+
+    err = i_parse_expr (this, &val);
 
     if (err isnot I_OK) return err;
 
-    symbol->value = val;
+    if (is_un) val = ~val;
 
+    switch (operator) {
+      case '=': symbol->value = val; break;
+      case '+': symbol->value += val; break;
+      case '-': symbol->value -= val; break;
+      case '/': symbol->value /= val; break;
+      case '*': symbol->value *= val; break;
+      case '%': symbol->value %= val; break;
+      case '|': symbol->value |= val; break;
+      case '&': symbol->value &= val; break;
+      default: return this->syntax_error (this, "unknown operator");
+    }
   } else if (c is I_TOK_ARY) {
     err = i_parse_array_set (this);
 

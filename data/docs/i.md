@@ -58,6 +58,17 @@ const c = "constant"
 # The C-string interface offers some ways to create and manage C-strings. Those share
 # many rules with C, and the same dangers too!
 
+# Comparison operators:
+# == or is, != or isnot, > or gt, < or lt, >= or ge, <= or le
+
+# Arithmetic operators: +, -, *, /, % and [*+-/%]=
+
+# Logical operators: && or and, || or or
+
+# Bitwise operators: |, ^, >>, <<, and [|&]=
+
+# All the operators should have the same semantics with C.
+#
 # Functions can be defined in arbitrary nested level, in fact a whole unit can be a
 # function
 
