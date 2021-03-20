@@ -96,7 +96,7 @@ clean-static:\
 E = $(NAME)
 
 E_STATIC_FLAGS  = -lustring-$(VERSION) -lre-$(VERSION) -lspell-$(VERSION)
-E_STATIC_FLAGS += -lvideo-$(VERSION)
+E_STATIC_FLAGS += -lvideo-$(VERSION) -lvmap-$(VERSION)
 
 e-shared:
 	$(CC) $(E).c $(FLAGS) -o $(SYSBINDIR)/$(E)-shared

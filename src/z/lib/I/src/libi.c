@@ -98,13 +98,13 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define BINOP(x) (((x) << 8) + TOK_BINOP)
 #define CFUNC(x) (((x) << 8) + BUILTIN)
 
-#define INT      0x0  // integer
+#define INT       0x0   // integer
 //#define STRING   0x1  // string
 //#define OPERATOR 0x2  // operator; precedence in high 8 bits
 //#define ARG      0x3  // argument; value is offset on stack
-#define ARRAY    0x4  // integer array
-#define BUILTIN  'B'  // builtin: number of operands in high 8 bits
-#define USRFUNC  'f'  // user defined a procedure; number of operands in high 8 bits
+#define ARRAY     0x4   // integer array
+#define BUILTIN   'B'   // builtin: number of operands in high 8 bits
+#define USRFUNC   'f'   // user defined a procedure; number of operands in high 8 bits
 #define TOK_BINOP 'o'
 
 #define I_TOK_SYMBOL     'A'
@@ -190,7 +190,7 @@ struct funType {
   istring_t body;
 
   int nargs;
-  char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL_LEN];
+  char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL_LEN + 1];
 
   Vmap_t *symbols;
 
@@ -1419,7 +1419,7 @@ static int i_parse_stmt (i_t *this) {
 
     ptr += len;
     while (*ptr is ' ') ptr++;
-    int is_un =  *ptr is '~';
+    int is_un = *ptr is '~';
 
     i_next_token (this);
     if (is_un)

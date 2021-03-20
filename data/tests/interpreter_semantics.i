@@ -333,8 +333,8 @@ func test_array (len) {
     var sum = 0
     var idx = 0
     while (idx < ar_length ()) {
-	    sum = sum + x(idx)
-    	idx = idx + 1
+	    sum += x(idx)
+    	idx += 1
     }
     return sum
   }
@@ -356,8 +356,8 @@ func test_array (len) {
 
     var i = 2
     while (i <= n) {
-      f (i) = f (i - 1) + f(i - 2)
-      i = i + 1
+      f (i) = f (i - 1) + f (i - 2)
+      i += 1
     }
 
     return f (n)

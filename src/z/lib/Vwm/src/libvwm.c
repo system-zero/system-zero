@@ -1,3 +1,9 @@
+/* this was pulled from: https://github.com/agathoklisx/libv
+ * the escape mechanism algorithm was derived from the splitvt utility
+ * by Sam Lantinga, Splitvt 1.6.6  3/11/2006 (slouken at devolution dot com)
+ * which is licensed with GPL2, and it is included within this directory
+ */
+
 #define LIBRARY "Vwm"
 
 #define REQUIRE_STDIO
@@ -201,7 +207,7 @@ struct vwm_win {
 };
 
 struct vwm_prop {
-  vwm_term  *term;
+  term_t  *term;
 
   char mode_key;
 
@@ -247,7 +253,7 @@ struct vwm_prop {
 
   readline_hist_t *readline_history;
 
-  void *objects[NUM_OBJECTS];
+  void *user_data[NUM_OBJECTS];
 
   VwmReadline_cb readline_cb;
   VwmEditFile_cb edit_file_cb;
@@ -275,15 +281,13 @@ static void fd_set_size (int fd, int rows, int cols) {
   ioctl (fd, TIOCSWINSZ, &wsiz);
 }
 
-static vwm_term *vwm_new_term (vwm_t *this) {
+static term_t *vwm_new_term (vwm_t *this) {
   ifnot (NULL is $my(term)) return $my(term);
 
-  vwm_term *term = Term.new ();
+  term_t *term = Term.new ();
 
   char *term_name = Sys.get.env_value ("TERM");
-   FILE *fp = fopen ("/tmp/env", "w");
-   fprintf (fp, "%s\n", term_name);
-   fclose (fp);
+
   if (Cstring.eq_n (term_name, "linux", 5))
     term->name = Cstring.dup ("linux", 5);
   else if (Cstring.eq_n (term_name, "xterm", 5))
@@ -330,7 +334,7 @@ static void vwm_set_size (vwm_t *this, int rows, int cols, int first_col) {
   $my(first_column) = first_col;
 }
 
-static void vwm_set_term  (vwm_t *this, vwm_term *term) {
+static void vwm_set_term  (vwm_t *this, term_t *term) {
   $my(term) = term;
 }
 
@@ -356,7 +360,7 @@ static void vwm_set_default_app (vwm_t *this, char *app) {
 
 static void vwm_set_object (vwm_t *this, void *object, int idx) {
   if (idx >= NUM_OBJECTS or idx < 0) return;
-  $my(objects)[idx] = object;
+  $my(user_data)[idx] = object;
 }
 
 static void vwm_set_readline_cb (vwm_t *this, VwmReadline_cb cb) {
@@ -736,9 +740,9 @@ static int vwm_get_columns (vwm_t *this) {
   return $my(term)->num_cols;
 }
 
-static void *vwm_get_object (vwm_t *this, int idx) {
+static void *vwm_get_user_data_at (vwm_t *this, int idx) {
   if (idx >= NUM_OBJECTS or idx < 0) return NULL;
-  return $my(objects)[idx];
+  return $my(user_data)[idx];
 }
 
 static char *vwm_get_tmpdir (vwm_t *this) {
@@ -776,7 +780,7 @@ static vwm_frame *vwm_get_current_frame (vwm_t *this) {
   return $my(current)->current;
 }
 
-static vwm_term *vwm_get_term (vwm_t *this) {
+static term_t *vwm_get_term (vwm_t *this) {
   return $my(term);
 }
 
@@ -3403,7 +3407,7 @@ static int frame_edit_log (vwm_frame *frame) {
     write (frame->logfd, buf, len);
   }
 
-  $my(edit_file_cb) (this, frame, frame->logfile->bytes, $my(objects)[VWMED_OBJECT]);
+  $my(edit_file_cb) (this, frame, frame->logfile->bytes, $my(user_data)[E_OBJECT]);
 
   vt_video_add_log_lines (frame);
   Vwin.draw (win);
@@ -3867,6 +3871,7 @@ static int vwm_main (vwm_t *this) {
 
   forever {
     win = $my(current);
+
     if (NULL is win) {
       retval = OK;
       break;
@@ -4222,7 +4227,7 @@ static int readline_complete_command (menu_t *menu) {
     while (commands[i])
       Vstring.add.sort_and_uniq (coms, commands[i++]->com);
   } else {
-    while (i < num_commands) {
+    while (commands[i]) {
       ifnot (Cstring.cmp_n (commands[i]->com, menu->pat, menu->patlen))
         Vstring.add.sort_and_uniq (coms, commands[i]->com);
       i++;
@@ -4408,7 +4413,8 @@ static readline_t *vwm_readline_edit (vwm_t *this, vwm_win *win,
   rl->first_chars[0] = '~';
   rl->first_chars[1] = '`';
   rl->first_chars[2] = '@';
-  rl->first_chars_len = 3;
+  rl->first_chars[3] = '!';
+  rl->first_chars_len = 4;
   rl->trigger_first_char_completion = 1;
   rl->user_data[1] = win;
   rl->user_data[2] = frame;
@@ -4427,23 +4433,33 @@ static readline_t *vwm_readline_edit (vwm_t *this, vwm_win *win,
 }
 
 static int vwm_command_mode (vwm_t *this, vwm_win *win, vwm_frame *frame) {
+  string_t *com = NULL;
   int retval = NOTOK;
+  int win_changed = 0;
+  readline_t *rl;
+
+  VwmReadlineArgs args = VwmReadline();
+
   if ($my(readline_cb) isnot NULL) {
-    retval = $my(readline_cb) (this, win, frame, $my(objects));
-    return retval;
+    args = $my(readline_cb) (args);
+    retval = args.retval;
+    com = args.com;
+    win_changed = args.win_changed;
+    rl = args.rl;
+
+    if (args.state & VWM_READLINE_END) goto theend;
+    if (args.state & VWM_READLINE_PARSE) goto parse;
   }
 
   vwm_init_commands (this);
 
-  int win_changed = 0;
-  string_t *com = NULL;
-
-  readline_t *rl = vwm_readline_edit (this, win, frame, $my(commands), $my(num_commands));
+  rl = vwm_readline_edit (this, win, frame, $my(commands), $my(num_commands));
 
   if (rl->c isnot '\r') goto theend;
 
   com = Readline.get.command (rl);
 
+parse:
   if (Cstring.eq (com->bytes, "win_new")) {
     string_t *a_draw = Readline.get.anytype_arg (rl, "draw");
     string_t *a_focus = Readline.get.anytype_arg (rl, "focus");
@@ -4814,7 +4830,6 @@ public vwm_t *__init_vwm__ (void) {
         .shell = vwm_get_shell,
         .state = vwm_get_state,
         .lines = vwm_get_lines,
-        .object = vwm_get_object,
         .editor = vwm_get_editor,
         .tmpdir = vwm_get_tmpdir,
         .win_at = vwm_get_win_at,
@@ -4825,6 +4840,7 @@ public vwm_t *__init_vwm__ (void) {
         .commands = vwm_get_commands,
         .current_win = vwm_get_current_win,
         .default_app = vwm_get_default_app,
+        .user_data_at = vwm_get_user_data_at,
         .current_frame = vwm_get_current_frame,
         .current_win_idx = vwm_get_current_win_idx
       },
@@ -4967,7 +4983,7 @@ public vwm_t *__init_vwm__ (void) {
   $my(name_gen) = ('z' - 'a') + 1;
   $my(num_at_exit_cbs) = 0;
   $my(process_input_cbs) = 0;
-  $my(objects)[VWMED_OBJECT] = NULL;
+  $my(user_data)[E_OBJECT] = NULL;
 
   self(new.term);
 

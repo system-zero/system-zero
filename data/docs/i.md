@@ -149,6 +149,13 @@ going to execute a lot faster by a big margin.
 # >       -  likewise
 # ge      -  greater or equal
 # >=      -  likewise
+# +=      -  increment variable value and assign the result
+# -=      -  decrement variable   -||-
+# *=      -  multiply  variable   -||-
+# /=      -  divide    variable   -||-
+# %=      -  modulo    variable   -||-
+# |=      -  bit or    variable   -||-
+# &=      -  bit and   variable   -||-
 
 # Functions
 # not     -  !value
@@ -180,23 +187,24 @@ going to execute a lot faster by a big margin.
 
 # Other bindings from this distribution, might be added in the future.
 ```
-Note that because tinyscript is intented to run on memory constrained environments,
-does not have neither a single dependency.  This version  uses  dynamic allocation,
-thus made  it much  easier to extend. Except its usefulness in internal applications,
-already as it is now, it is being used mainly to prototype syntax and semantics, and
-to be familiar with consepts by experimenting.
+Note that the original code was stressed a bit to do things that wasn't destined to
+do. Tinyscript is intented to run on memory constrained environments, so it uses  a
+memory arena, stack allocated at the initialization. This uses  dynamic  allocation,
+thus it provides flexibility, and avoids out of memory operations.
 
 Also note, that it is probably a slow interpreter, but the core is about 1000 lines
 of code, and it binds quite well in C. As such there no expectations and illusions,
-only practicability and joy to have C scripting, by spending five minutes to learn
-a language.
+only practicability and joy, to have scripting in C applications, by spending  five
+minutes to learn a language.
+
+The syntax is strict in places, to easy parsing.
 
 # Aplication Programming Interface.
 ```C
   #define I   In->self
   i_T *In = __init_i__ ();
   i_t *i = I.init_instance (In, IOpts());
-  char *bytes = "func f (n) { println (n+1)}";
+  char *bytes = "func f (n) { var i = 10; print ("i is ${i}\n)}";
   retval = I.eval_string (i, bytes);
   __deinit_i__ (&In);
 ```

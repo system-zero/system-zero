@@ -34,7 +34,7 @@ static int is_initialized = 0;
 
 static string_t *sys_set_env_as (char *val, char *as, int replace) {
   if (NULL is __ENV__)
-    __ENV__ = Smap.new (2);
+    __ENV__ = Smap.new (32);
 
   string_t *old = Smap.get (__ENV__, as);
 
@@ -119,7 +119,7 @@ static string_t *sys_which (char *ex, char *path) {
 }
 
 static int sys_init_environment (sys_env_opts opts) {
-/* yet to be done:
+ /* yet to be done:
   * return_a_proper error; for now return NOTOK
   * print the error? option
   * file_pointer option
@@ -239,6 +239,56 @@ static int sys_init_environment (sys_env_opts opts) {
   }
 
   String.trim_end (home, DIR_SEP);
+
+  char *tdir = getenv ("TMPDIR");
+  string_t *tmpdir = NULL;
+
+  ifnot (NULL is tdir)
+    tmpdir = sys_set_env_as (tdir, "TMPDIR", opts.overwrite);
+  else {
+    do {
+      if (opts.tmpdir isnot NULL) {
+        tmpdir = sys_set_env_as (opts.tmpdir, "TMPDIR", opts.overwrite);
+        break;
+      }
+
+      #ifdef TMPDIR
+        tmpdir = sys_set_env_as (TMPDIR, "TMPDIR", opts.overwrite);
+      #else
+        tmpdir = sys_set_env_as (DIR_SEP_STR "tmp", "TMPDIR", opts.overwrite);
+     #endif
+    } while (0);
+  }
+
+  String.trim_end (tmpdir, DIR_SEP);
+
+  char *ddir = getenv ("DATADIR");
+  string_t *datadir = NULL;
+
+  ifnot (NULL is ddir)
+    datadir = sys_set_env_as (ddir, "DATADIR", opts.overwrite);
+  else {
+    do {
+      if (opts.datadir isnot NULL) {
+        datadir = sys_set_env_as (opts.datadir, "DATADIR", opts.overwrite);
+        break;
+      }
+
+      if (getenv ("CHROOT") isnot NULL) {
+        datadir = sys_set_env_as (DIR_SEP_STR "data", "DATADIR", opts.overwrite);
+        break;
+      }
+
+      #ifdef DATADIR
+        datadir = sys_set_env_as (DATADIR, "DATADIR", opts.overwrite);
+      #else
+        datadir = sys_set_env_as (STR_FMT ("%s/.v",
+          Cstring.byte.in_str (home->bytes, '=') + 1), "DATADIR", opts.overwrite);
+      #endif
+    } while (0);
+  }
+
+  String.trim_end (datadir, DIR_SEP);
 
   char *term_name = getenv ("TERM");
   ifnot (NULL is term_name)
@@ -444,6 +494,10 @@ public sys_T __init_sys__ (void) {
 }
 
 public void __deinit_sys__ (void) {
-  Smap.release (__ENV__);
+  ifnot (NULL is __ENV__) {
+    Smap.release (__ENV__);
+    __ENV__ = NULL;
+  }
+
   sys_release_log ();
 }

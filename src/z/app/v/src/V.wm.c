@@ -53,7 +53,7 @@ int main (int argc, char **argv) {
 
   vwm_t *this = init ();
 
-  vwm_term *term =  Vwm.get.term (this);
+  term_t *term =  Vwm.get.term (this);
 
   Term.raw_mode (term);
 

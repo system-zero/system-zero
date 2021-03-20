@@ -196,6 +196,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Vwm_Type           = Vwm
     Z_VWM_SRCDIR       = $(Z_SRCLIBDIR)/$(Vwm_Type)/src
 
+    # V Type
+    V_Type             = V
+    Z_V_SRCDIR         = $(Z_SRCLIBDIR)/$(V_Type)/src
+
     # though not a type, this is a rich double linked list
     # which is implemented with macros, so to gain abstraction.
     # a compatible container should include:
@@ -685,6 +689,18 @@ clean-libvwm-shared:
 clean-libvwm-static:
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libv-shared: Env cenv libvwm-shared
+	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libv-static: Env cenv list libvwm-static
+	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libv-shared:
+	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libv-static:
+	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared\
            libsys-shared liberror-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
@@ -867,11 +883,11 @@ clean-sys-static:
   ZA_V_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_V)/src
 
 v-shared: cenv libvwm-shared libstring-shared libfile-shared libio-shared libargparse-shared\
-          libterm-shared zs-static
+          libterm-shared zs-static libv-shared
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
 v-static: cenv libvwm-static libstring-static libfile-static libio-static libargparse-static\
-          libterm-static zs-static
+          libterm-static zs-static libv-static
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-v-shared:

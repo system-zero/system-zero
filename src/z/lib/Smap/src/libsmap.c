@@ -27,7 +27,9 @@ static void smap_clear (Smap_t *map) {
 }
 
 static void smap_release (Smap_t *map) {
+  if (NULL is map) return;
   MAP_RELEASE(map, smap_clear);
+  map = NULL;
 }
 
 static Smap_t *smap_new (int num_slots) {

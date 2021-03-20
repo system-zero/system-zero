@@ -299,7 +299,6 @@ static cstring_tok *cstring_tokenize (cstring_tok *this,
     ts->num_tokens = 0;
     ts->tokens = Alloc (sizeof (char *));
     ts->length = NULL;
-      //;Alloc (sizeof (int));
   }
 
   char *sp = buf;

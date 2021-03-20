@@ -737,17 +737,17 @@ char c_singleline_comment[] = "//";
 char c_multiline_comment_start[] = "/*";
 char c_multiline_comment_end[] = "*/";
 char c_multiline_comment_continuation[] = " * ";
-char c_operators[] = "+:?-%*^><=|&~.()[]{}!";
+char c_operators[] = "+:?-%*^><=/|&~.()[]{}!";
 char c_balanced_pairs[] = "[](){}";
 
 char *i_extensions[] = {".i", NULL};
 char *i_shebangs[] = {"#!/bin/env i", NULL};
-char i_operators[] = "+-%*^><=|& .(){}!";
+char i_operators[] = "+-%*^><=/|& .(){}!";
 
 char *i_keywords[] = {
   "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
   "isnot I", "break I", "continue I",  "while I", "and I", "or I",
-  "bool V", "not V", "const V", "free F", "alloc F",
+  "bool V", "not V", "const V", "free F", "alloc F", "lambda F",
   "ge I", "gt I", "le I", "lt I", "array V",
   "true V", "false V", "OK V", "NOTOK V", NULL
 };

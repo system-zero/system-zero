@@ -1,4 +1,4 @@
-THIS_LIBNAME = sys
+THIS_LIBNAME = v
 
 NS      :=
 API     := 0
@@ -63,11 +63,6 @@ STATIC_CFLAGS := -static
 
 FLAGS         := $(BASE_FLAGS)
 
-USERNAME  := (shell id -un)
-GROUPNAME := (shell id -gn)
-
-FLAGS += -DUSERNAME='"$(USERNAME)"' -DGROUPNAME='"$(GROUPNAME)"'
-
 CHECK_PTR_BOUNDS_FLAGS := -mmpx -fcheck-pointer-bounds
 
 CHECK_PTR_BOUNDS := 0
@@ -88,8 +83,10 @@ ifneq ($(DEBUG), 0)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
-LIBFLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lcstring-$(VERSION)
-LIBFLAGS += -ldir-$(VERSION) -lerror-$(VERSION) -lsmap-$(VERSION)
+LIBFLAGS += -lvwm-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)
+LIBFLAGS += -lstring-$(VERSION) -lpath-$(VERSION) -li-$(VERSION)
+LIBFLAGS += -lsys-$(VERSION) -lfile-$(VERSION) -lerror-$(VERSION) -largparse-$(VERSION)
+LIBFLAGS += -lutil
 
 all: shared static
 

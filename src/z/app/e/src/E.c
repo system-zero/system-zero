@@ -343,7 +343,7 @@ char *__ex_NULL_ARRAY[] = {NULL};
 char *make_filenames[] = {"Makefile", NULL};
 char *make_extensions[] = {".Makefile", NULL};
 char *make_keywords[] = {
-  "ifeq I", "ifneq I", "endif I", "else I", "ifdef I", NULL};
+  "ifeq I", "ifneq I", "endif I", "else I", "ifdef I", "ifndef I", NULL};
 
 char *sh_extensions[] = {".sh", ".bash", NULL};
 char *sh_shebangs[] = {"#!/bin/sh", "#!/bin/bash", NULL};

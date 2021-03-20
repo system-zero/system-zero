@@ -592,6 +592,15 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SYS_TYPES
 #endif /* REQUIRE_SYS_TYPES */
 
+#ifdef REQUIRE_SYS_SOCKET
+  #ifndef SYS_SOCKET_HDR
+  #define SYS_SOCKET_HDR
+  #include <sys/socket.h>
+  #endif /* SYS_SOCKET_HDR */
+
+#undef REQUIRE_SYS_SOCKET
+#endif /* REQUIRE_SYS_SOCKET */
+
 #ifdef REQUIRE_SYS_SELECT
   #ifndef SYS_SELECT_HDR
   #define SYS_SELECT_HDR
@@ -600,6 +609,15 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_SYS_SELECT
 #endif /* REQUIRE_SYS_SELECT */
+
+#ifdef REQUIRE_SYS_UN
+  #ifndef SYS_UN_HDR
+  #define SYS_UN_HDR
+  #include <sys/un.h>
+  #endif /* SYS_UN_HDR */
+
+#undef REQUIRE_SYS_UN
+#endif /* REQUIRE_SYS_UN */
 
 #ifdef REQUIRE_SYS_UNAME
   #ifndef SYS_UNAME_HDR
@@ -1216,6 +1234,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_VWM_TYPE
 #endif /* REQUIRE_VWM_TYPE */
 
+#ifdef REQUIRE_V_TYPE
+  #ifndef V_TYPE_HDR
+  #define V_TYPE_HDR
+  #include <z/v.h>
+  #endif /* V_TYPE_HDR */
+
+  #if (REQUIRE_V_TYPE == DECLARE)
+  static  v_t *__V__;
+  #define V    __V__->self
+  #endif
+
+#undef REQUIRE_V_TYPE
+#endif /* REQUIRE_V_TYPE */
+
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR
   #define KEYS_MACROS_HDR
@@ -1398,10 +1430,10 @@ typedef ptrdiff_t idx_t;
 
   #define MAP_CLEAR(_map, _fun)                               \
   ({                                                          \
-    for (size_t i = 0; i < _map->num_slots; i++) {            \
-      ifnot (_map->slots[i]) continue;                        \
-      _fun (_map->slots[i]);                                  \
-      _map->slots[i] = 0;                                     \
+    for (size_t i_ = 0; i_ < _map->num_slots; i_++) {         \
+      ifnot (_map->slots[i_]) continue;                       \
+      _fun (_map->slots[i_]);                                 \
+      _map->slots[i_] = NULL;                                 \
     }                                                         \
     _map->num_keys = 0;                                       \
   })
@@ -1412,6 +1444,7 @@ typedef ptrdiff_t idx_t;
     _fun (_map);                                              \
     free (_map->slots);                                       \
     free (_map);                                              \
+    _map = NULL;                                              \
   } while (0)
 
   #define MAP_NEW(_TP, _tp, _num)                             \
@@ -1421,7 +1454,7 @@ typedef ptrdiff_t idx_t;
      _map->slots = Alloc (sizeof (_tp *) * num_slots);        \
      _map->num_slots = _num_slots;                            \
      _map->num_keys = 0;                                      \
-     for (;--_num_slots >= 0;) _map->slots[_num_slots] = 0;   \
+     for (;--_num_slots >= 0;) _map->slots[_num_slots] = NULL;\
      _map;                                                    \
   })
 
@@ -1457,16 +1490,16 @@ typedef ptrdiff_t idx_t;
     _slot;                                      \
   })
 
-  #define MAP_SET(_tp_, _map_, _key_, _val)             \
+  #define MAP_SET(_tp_, _map_, _key_, _val_)            \
   ({                                                    \
     uint _idx_ = 0;                                     \
     _tp_ *_it_ = MAP_GET(_tp_, _map_, _key_, _idx_);    \
     ifnot (NULL is _it_) {                              \
-      _it_->value = _val;                               \
+      _it_->value = _val_;                              \
     } else {                                            \
       _it_ = Alloc (sizeof (_tp_));                     \
       _it_->key = Cstring.dup (_key_, bytelen (_key_)); \
-      _it_->value = _val;                               \
+      _it_->value = _val_;                              \
       _it_->next = _map_->slots[_idx_];                 \
       _map_->slots[_idx_] = _it_;                       \
       _map_->num_keys++;                                \
