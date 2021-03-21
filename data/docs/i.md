@@ -1,5 +1,35 @@
 # A tiny language that is derived from [tinyscript](https://github.com/totalspectrum/tinyscript).
 
+The main advantage of this interpreter, is that it can be modified and integrated
+in any environment and desire. As far I know, there aren't public users nor  that
+exists a normal language specification. The main usage of tinyscript is  embedded
+memory constrained systems, so it had to be compact. The main core is little more
+than a thousand of lines of code, but despite its compact size, it is capable  to
+support even complex tasks, since it binds enough well with C.
+
+This development stressed quite bit the original code to do things that it wasn't
+destined to do, so to provide flexibility and a bit of a desired expressionism.
+It is also uses dynamic allocations from the heap, while the original code  uses
+a stack allocated memory arena at initialization, thus avoids any out of  memory
+operations. It also provides multibyte support, lambda functions, signed integers,
+the ability to pass and create literal strings, nested functions, new keywords and
+common established operators, incompatible print function that supports ${symbol}
+interpolation expressions, ..., and quite of many internal changes. This version
+doesn't have any static declared symbols, as it creates and passes in every function
+an indepented instance of the interpreter.
+
+As such, tinyscript scripts, may not run without modifications, but not many.
+
+Note, that it is probably a slow interpreter, as such there no major  expectations
+and illusions, only practicability and joy, to have scripting in C applications, by
+spending five minutes to learn a language.
+
+The syntax is strict in places, to easy parsing and to do as much as possible with
+as less we can. As such there are cases, that might be mishandled, and even if they
+are valid syntax, they might be considered as an error, or vice versa.
+Generally speaking, all tokens should be space separated, except  after an open  or
+before a closed parenthesis.
+
 ## Syntax and Semantics (early draft).
 ```sh
 # Comment
@@ -189,21 +219,6 @@ going to execute a lot faster by a big margin.
 
 # Other bindings from this distribution, might be added in the future.
 ```
-Note that the original code was stressed a bit to do things that wasn't destined to
-do. Tinyscript is intented to run on memory constrained environments, so it uses  a
-memory arena, stack allocated at the initialization. This uses  dynamic  allocation,
-thus it provides flexibility, and avoids out of memory operations.
-
-Also note, that it is probably a slow interpreter, but the core is about 1000 lines
-of code, and it binds quite well in C. As such there no expectations and illusions,
-only practicability and joy, to have scripting in C applications, by spending  five
-minutes to learn a language.
-
-The syntax is strict in places, to easy parsing and to do as much as possible with
-as less we can. As such there are cases, that might be mishandled, and even if they
-are valid syntax, they might be considered as an error, or vice versa.
-Generally speaking, all tokens should be space separated, except  after an open  or
-before a closed parenthesis.
 
 # Aplication Programming Interface.
 ```C

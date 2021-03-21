@@ -355,6 +355,14 @@ func semantics () {
     print ("[OK]\n")
   }
 
+  var c = 'α'
+  test_num += 1
+  print ("test ${test_num} - ")
+  if (c isnot 945) {
+    print (stderr, "[NOTOK] awaiting 945 got ${c}\n")
+  } else {
+    print ("[OK]\n")
+  }
 }
 
 semantics ()

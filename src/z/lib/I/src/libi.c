@@ -95,17 +95,15 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define BREAK                          (1 << 3)
 #define CONTINUE                       (1 << 4)
 
-#define BINOP(x) (((x) << 8) + TOK_BINOP)
-#define CFUNC(x) (((x) << 8) + BUILTIN)
+#define BINOP(x) (((x) << 8) + BINOP_TYPE)
+#define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
-#define INT       0x0   // integer
-//#define STRING   0x1  // string
-//#define OPERATOR 0x2  // operator; precedence in high 8 bits
-//#define ARG      0x3  // argument; value is offset on stack
-#define ARRAY     0x4   // integer array
-#define BUILTIN   'B'   // builtin: number of operands in high 8 bits
-#define USRFUNC   'f'   // user defined a procedure; number of operands in high 8 bits
-#define TOK_BINOP 'o'
+#define INT_TYPE     0x0
+#define CSTRING_TYPE 0x1
+#define ARRAY_TYPE   0x4  // integer array
+#define CFUNC_TYPE   'B'  // builtin: number of operands in high 8 bits
+#define UFUNC_TYPE   'f'
+#define BINOP_TYPE   'o'
 
 #define I_TOK_SYMBOL     'A'
 #define I_TOK_BUILTIN    'B'
@@ -485,7 +483,7 @@ static void i_unget_char (i_t *this) {
 
 static int i_ignore_ws (i_t *this) {
   int c;
-  int reset = 0;
+
   for (;;) {
     c = i_get_char (this);
 
@@ -563,12 +561,12 @@ static void i_release_sym (void *sym) {
 
   sym_t *this = (sym_t *) sym;
 
-  if ((this->type & 0xff) is USRFUNC) {
+  if ((this->type & 0xff) is UFUNC_TYPE) {
     funT *f = (funT *) this->value;
     fun_release (&f);
   }
 
-  if ((this->type & 0xff) is ARRAY)
+  if ((this->type & 0xff) is ARRAY_TYPE)
     free ((char *) this->value);
 
   free (this);
@@ -629,7 +627,7 @@ static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
 }
 
 static sym_t *i_define_var_symbol (i_t *this, funT *f, istring_t name, int is_const) {
-  return i_define_symbol (this, f, name, INT, 0, is_const);
+  return i_define_symbol (this, f, name, INT_TYPE, 0, is_const);
 }
 
 static int i_lambda (i_t *this) {
@@ -680,7 +678,7 @@ static int i_do_next_token (i_t *this, int israw) {
 
     r = c;
 
-  } else if (IS_DIGIT (c) or (c is '-' and IS_DIGIT (i_peek_char (this, 0)))) {
+  } else if (is_digit (c) or (c is '-' and is_digit (i_peek_char (this, 0)))) {
     if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", i_peek_char (this, 0))
         and is_hexchar (i_peek_char(this, 1))) {
       i_get_char (this);
@@ -709,7 +707,6 @@ static int i_do_next_token (i_t *this, int israw) {
           break;
         }
       } while (--max isnot 0);
-
   } else if (is_alpha (c)) {
     i_get_span (this, is_identifier);
 
@@ -728,7 +725,7 @@ static int i_do_next_token (i_t *this, int israw) {
           r = symbol->type & 0xff;
 
           this->tokenArgs = (symbol->type >> 8) & 0xff;
-          if (r is ARRAY)
+          if (r is ARRAY_TYPE)
             r = I_TOK_ARY;
           else
             if (r < '@')
@@ -755,7 +752,9 @@ static int i_do_next_token (i_t *this, int israw) {
     i_reset_token (this);
     while (bracket > 0) {
       c = i_get_char (this);
-      if (c < 0) return I_TOK_SYNTAX_ERR;
+
+      /* this is necessary for multibyte chars */
+      if ((uchar) c < 0) return I_TOK_SYNTAX_ERR;
 
       if (c is '}')
         --bracket;
@@ -858,7 +857,7 @@ static void *i_clone_sym_item (void *item) {
   new->type = sym->type;
   new->is_const = sym->is_const;
 
-  if ((new->type & 0xff) is ARRAY) {
+  if ((new->type & 0xff) is ARRAY_TYPE) {
     char *a = (char *) sym->value;
     size_t len = a[0];
     char *ary =  Alloc (sizeof (ival_t) * len);
@@ -975,7 +974,7 @@ static int i_parse_array_def (i_t *this) {
 
   ((ival_t *) ary)[0] = len - 1;
 
-  this->tokenSymbol = i_define_symbol (this, this->curScope, name, ARRAY, (ival_t) ary, 0);
+  this->tokenSymbol = i_define_symbol (this, this->curScope, name, ARRAY_TYPE, (ival_t) ary, 0);
 
   if (i_StringGetPtr (this->curStrToken)[0] is '=' and i_StringGetLen (this->curStrToken) is 1)
     return i_array_assign (this, (ival_t *)ary, 0);
@@ -1057,19 +1056,18 @@ static int i_parse_char (i_t *this, ival_t *vp, istring_t token) {
 
   if (ptr[0] is '\'') return this->syntax_error (this, "error while getting a char token ");
   if (ptr[0] is '\\') {
-    /* if (i_StringGetLen(token) != 2) return SyntaxError(); */
-    if (ptr[1] is 'n') { *vp = '\n'; return I_OK; }
-    if (ptr[1] is 't') { *vp = '\t'; return I_OK; }
-    if (ptr[1] is 'r') { *vp = '\r'; return I_OK; }
-    if (ptr[1] is '\\') { *vp = '\\'; return I_OK; }
-    if (ptr[1] is '\'') { *vp = '\''; return I_OK; }
+    if (ptr[1] is 'n')  { *vp = '\n'; goto theend; }
+    if (ptr[1] is 't')  { *vp = '\t'; goto theend; }
+    if (ptr[1] is 'r')  { *vp = '\r'; goto theend; }
+    if (ptr[1] is '\\') { *vp = '\\'; goto theend; }
+    if (ptr[1] is '\'') { *vp = '\''; goto theend; }
     return this->syntax_error (this, "unknown escape sequence");
   }
 
   if (ptr[0] >= ' ' and ptr[0] <= '~') {
     if (ptr[1] is '\'') {
       *vp = ptr[0];
-      return I_OK;
+      goto theend;
     } else {
       return this->syntax_error (this, "error while taking character literal");
     }
@@ -1083,6 +1081,8 @@ static int i_parse_char (i_t *this, ival_t *vp, istring_t token) {
     return this->syntax_error (this, "error while taking character literal");
 
   *vp = c;
+
+theend:
   return I_OK;
 }
 
@@ -1199,7 +1199,7 @@ static int i_parse_func_call (i_t *this, Cfunc op, ival_t *vp, funT *uf) {
     }
 
     for (i = 0; i < expectargs; i++)
-      i_define_symbol (this, uf, i_StringNew (uf->argName[i]), INT, this->funArgs[i], 0);
+      i_define_symbol (this, uf, i_StringNew (uf->argName[i]), INT_TYPE, this->funArgs[i], 0);
 
     this->didReturn = 0;
 
@@ -1456,7 +1456,7 @@ static int i_parse_stmt (i_t *this) {
   } else if (c is I_TOK_ARY) {
     err = i_parse_array_set (this);
 
-  } else if (c is I_TOK_BUILTIN or c is USRFUNC) {
+  } else if (c is I_TOK_BUILTIN or c is UFUNC_TYPE) {
     err = i_parse_primary (this, &val);
     return err;
 
@@ -1739,7 +1739,7 @@ static int i_parse_func_def (i_t *this) {
 
   uf->body = this->curStrToken;
 
-  this->curSym = i_define_symbol (this, this->curScope, name, (USRFUNC | (nargs << 8)), (ival_t) uf, 0);
+  this->curSym = i_define_symbol (this, this->curScope, name, (UFUNC_TYPE | (nargs << 8)), (ival_t) uf, 0);
   this->curFunDef = uf;
 
   i_next_token (this);
@@ -2397,10 +2397,10 @@ static struct def {
   { "func",    I_TOK_FUNCDEF,  (ival_t) i_parse_func_def },
   { "return",  I_TOK_RETURN,   (ival_t) i_parse_return },
   { "exit",    I_TOK_EXIT,     (ival_t) i_parse_exit },
-  { "true",    INT, (ival_t) 1},
-  { "false",   INT, (ival_t) 0},
-  { "OK",      INT, (ival_t) 0},
-  { "NOTOK",   INT, (ival_t) -1},
+  { "true",    INT_TYPE, (ival_t) 1},
+  { "false",   INT_TYPE, (ival_t) 0},
+  { "OK",      INT_TYPE, (ival_t) 0},
+  { "NOTOK",   INT_TYPE, (ival_t) -1},
   { "array",   I_TOK_ARYDEF, (ival_t) i_parse_array_def },
   { "*",       BINOP(1), (ival_t) i_prod },
   { "/",       BINOP(1), (ival_t) i_quot },
