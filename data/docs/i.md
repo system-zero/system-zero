@@ -202,6 +202,8 @@ minutes to learn a language.
 The syntax is strict in places, to easy parsing and to do as much as possible with
 as less we can. As such there are cases, that might be mishandled, and even if they
 are valid syntax, they might be considered as an error, or vice versa.
+Generally speaking, all tokens should be space separated, except  after an open  or
+before a closed parenthesis.
 
 # Aplication Programming Interface.
 ```C

@@ -455,6 +455,12 @@ static int i_peek_char (i_t *this, unsigned int n) {
   return *(i_StringGetPtr (this->parsePtr) + n);
 }
 
+static int i_prev_char (i_t *this, unsigned int n) {
+  if ((i_StringGetPtr (this->parsePtr) - n) <= this->script_buffer)
+    return -1;
+  return *(i_StringGetPtr (this->parsePtr) - n);
+}
+
 static int i_get_char (i_t *this) {
   unsigned int len = i_StringGetLen (this->parsePtr);
 
@@ -479,12 +485,13 @@ static void i_unget_char (i_t *this) {
 
 static int i_ignore_ws (i_t *this) {
   int c;
+  int reset = 0;
   for (;;) {
     c = i_get_char (this);
 
-    if (is_space (c)) {
+    if (is_space (c))
       i_reset_token (this);
-    } else
+    else
       break;
   }
 
@@ -673,7 +680,7 @@ static int i_do_next_token (i_t *this, int israw) {
 
     r = c;
 
-  } else if (IS_DIGIT (c)) {
+  } else if (IS_DIGIT (c) or (c is '-' and IS_DIGIT (i_peek_char (this, 0)))) {
     if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", i_peek_char (this, 0))
         and is_hexchar (i_peek_char(this, 1))) {
       i_get_char (this);
@@ -883,12 +890,16 @@ static ival_t i_string_to_num (istring_t s) {
   int c;
   const char *ptr = i_StringGetPtr (s);
   int len = i_StringGetLen (s);
+  int is_sign = *ptr is '-';
+  if (is_sign) ptr++;
+
   while (len-- > 0) {
     c = *ptr++;
     ifnot (is_digit (c)) break;
     r = 10 * r + (c - '0');
   }
-  return r;
+
+  return (is_sign ? -r : r);
 }
 
 static ival_t i_HexStringToNum (istring_t s) {

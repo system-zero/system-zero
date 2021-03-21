@@ -45,7 +45,7 @@ func semantics () {
       return b
     }
 
-    return fibo_tail (n -1, b,  a + b)
+    return fibo_tail (n - 1, b, a + b)
   }
 
   func fibo_recursive (n) {
@@ -293,7 +293,6 @@ func semantics () {
     print ("[OK]\n")
   }
 
-
   var n = 10
 
   test_num += 1
@@ -318,6 +317,42 @@ func semantics () {
         }
       }
     }
+  }
+
+  var r = (-12 + -30)
+  test_num += 1
+  print ("test ${test_num} - ")
+  if (r isnot -42) {
+    print (stderr, "[NOTOK] awaiting -42 got ${r}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  r = (-12 - -30)
+  test_num += 1
+  print ("test ${test_num} - ")
+  if (r isnot 18) {
+    print (stderr, "[NOTOK] awaiting 18 got ${r}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  r = (-12 * -30)
+  test_num += 1
+  print ("test ${test_num} - ")
+  if (r isnot 360) {
+    print (stderr, "[NOTOK] awaiting 360 got ${r}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  r = (-12 % -30)
+  test_num += 1
+  print ("test ${test_num} - ")
+  if (r isnot -12) {
+    print (stderr, "[NOTOK] awaiting -12 got ${r}\n")
+  } else {
+    print ("[OK]\n")
   }
 
 }

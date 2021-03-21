@@ -6,6 +6,9 @@ typedef struct i_prop i_prop;
 typedef struct i_T i_T;
 typedef struct funType funT;
 
+//typedef intptr_t ival_t;
+typedef int_least64_t ival_t;
+
 #define I_CFUNC(x) (((x) << 8) + 'B')
 
 enum {
@@ -28,8 +31,6 @@ typedef int (*IPrintBytes_cb) (FILE *, const char *);
 typedef int (*IPrintFmtBytes_cb) (FILE *, const char *, ...);
 typedef int (*ISyntaxError_cb) (i_t *, const char *);
 typedef int (*IDefineFuns_cb) (i_t *);
-
-typedef intptr_t ival_t;
 
 typedef ival_t (*Cfunc) (i_t *, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t, ival_t);
 typedef ival_t (*Opfunc) (ival_t, ival_t);

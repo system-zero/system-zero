@@ -761,7 +761,7 @@ the interpreter, it crashes when it is compiled with tinycc.
 ## ZERO_POINT_ZERO_STATE
 So far, we've implemented:
   - a rather stable ala [vim](http://www.vim.org) [editor](data/docs/editor.md)
-  - a rather stable [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager with ](data/docs/v.md)
+  - a rather stable [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
   - a very early draft of a [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility](data/docs/zs.md)
   - an early draft of a sudo like utility (audit review required)
   - a tiny [interpreter](data/docs/i.md)
