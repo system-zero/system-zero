@@ -1624,7 +1624,7 @@ again:
     err = I_ERR_OK_ELSE;
   }
 
-  if (err is I_ERR_OK_ELSE) {
+  if (err is I_ERR_OK_ELSE or this->didReturn) {
     this->curState &= ~AT_LOOP;
     return I_OK;
   } else if (err is I_OK or this->curState & CONTINUE) {
@@ -1738,6 +1738,7 @@ static int i_parse_func_def (i_t *this) {
 
 static int i_parse_print (i_t *this) {
   int err = I_NOTOK;
+  ival_t value;
 
   string_t *str = String.new (32);
 
@@ -1835,6 +1836,30 @@ static int i_parse_print (i_t *this) {
       c = prev;
       prev = tmp;
 
+      if (c is '(') {
+        const char *saved_ptr = i_StringGetPtr (this->parsePtr);
+
+        i_next_token (this);
+
+        err = i_parse_expr (this, &value);
+        if (err isnot I_OK) {
+          this->print_bytes (this->err_fp, "string fmt error, while evaluating expression\n");
+          i_err_ptr (this, I_NOTOK);
+          goto theend;
+        }
+
+        const char *ptr = i_StringGetPtr (this->parsePtr);
+        while (ptr isnot saved_ptr) {
+          if (*ptr is '}')
+            goto append_value;
+          ptr--;
+        }
+
+        this->print_bytes (this->err_fp, "string fmt error, awaiting }\n");
+        i_err_ptr (this, I_NOTOK);
+        goto theend;
+      }
+
       int len = 0;
       prev = c;
       while ((c = i_get_char (this))) {
@@ -1866,26 +1891,30 @@ static int i_parse_print (i_t *this) {
         goto theend;
       }
 
+      value = symbol->value;
+
+      append_value:
+
       switch (directive) {
         case 's':
-          String.append_with_fmt (str, "%s", symbol->value);
+          String.append_with_fmt (str, "%s", value);
           break;
 
         case 'p':
-          String.append_with_fmt (str, "%p", symbol->value);
+          String.append_with_fmt (str, "%p", value);
           break;
 
         case 'o':
-          String.append_with_fmt (str, "0%o", symbol->value);
+          String.append_with_fmt (str, "0%o", value);
           break;
 
         case 'x':
-          String.append_with_fmt (str, "0x%x", symbol->value);
+          String.append_with_fmt (str, "0x%x", value);
           break;
 
         case 'd':
         default:
-          String.append_with_fmt (str, "%d", symbol->value);
+          String.append_with_fmt (str, "%d", value);
       }
 
       directive = 'd';

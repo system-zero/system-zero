@@ -99,6 +99,8 @@ func fu () {
 #    - %d to print the symbol as a decimal (this is the default, so it can be omited)
 #  Note that there should be a space after the comma, otherwise it is considered
 #  as an error.
+#  If `sym` is enclosed in parentheses then it is considered and evaluated as an
+#  expression, e.g., var i = 10; print ("i is ${%d, (i * 2)}\n")
 ```
 A [test unit script](../tests/interpreter_semantics.i) serves as a description.
 
@@ -197,7 +199,9 @@ of code, and it binds quite well in C. As such there no expectations and illusio
 only practicability and joy, to have scripting in C applications, by spending  five
 minutes to learn a language.
 
-The syntax is strict in places, to easy parsing.
+The syntax is strict in places, to easy parsing and to do as much as possible with
+as less we can. As such there are cases, that might be mishandled, and even if they
+are valid syntax, they might be considered as an error, or vice versa.
 
 # Aplication Programming Interface.
 ```C

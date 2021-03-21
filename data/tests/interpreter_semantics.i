@@ -293,6 +293,33 @@ func semantics () {
     print ("[OK]\n")
   }
 
+
+  var n = 10
+
+  test_num += 1
+  print ("test ${test_num} - ")
+  if (n isnot 10) {
+    print (stderr, "[NOTOK] awaiting n != 10\n")
+  } else {
+    if (n isnot 10) {
+      print (stderr, "[NOTOK] awaiting n != 10\n")
+    } else {
+      if (n isnot 10) {
+        print (stderr, "[NOTOK] awaiting n != 10\n")
+      } else {
+        if (n isnot 10) {
+          print (stderr, "[NOTOK] awaiting n != 10\n")
+        } else {
+          if (n is 10) {
+            print ("[OK]\n")
+          } else {
+            print (stderr, "[NOTOK] awaiting n == 10\n")
+          }
+        }
+      }
+    }
+  }
+
 }
 
 semantics ()

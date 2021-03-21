@@ -1556,8 +1556,8 @@ static ftype_t *buf_syn_init_i (buf_t *this) {
   int idx = Ed.syn.get_ftype_idx ($my(root), "i");
   return self(ftype.set, idx, FtypeOpts (
       .autoindent = buf_autoindent_c,
-      .tabwidth = 2,
-      .tab_indents = 1,
+      .shiftwidth = C_DEFAULT_SHIFTWIDTH,
+      .tab_indents = C_TAB_ON_INSERT_MODE_INDENTS,
       .balanced = buf_balanced_obj
       ));
 }
