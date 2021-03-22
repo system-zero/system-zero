@@ -30,7 +30,15 @@ are valid syntax, they might be considered as an error, or vice versa.
 Generally speaking, all tokens should be space separated, except  after an open  or
 before a closed parenthesis.
 
-## Syntax and Semantics (early draft).
+*Note* that recursion can be guaranteed, but it is also dictated by system's stack
+limits, so it is vulnerable to stack overflows. Thus do not have to be used, other
+with algorithms, that are not going to go to big depth. Iterations versions are also
+going to execute a lot faster by a big margin.
+
+A [test unit script](../tests/interpreter_semantics.i) serves as a description of the
+semantics of the language, while it is early to be considered as stable.
+
+## Syntax and Semantics
 ```sh
 # Comment
 
@@ -132,12 +140,6 @@ func fu () {
 #  If `sym` is enclosed in parentheses then it is considered and evaluated as an
 #  expression, e.g., var i = 10; print ("i is ${%d, (i * 2)}\n")
 ```
-A [test unit script](../tests/interpreter_semantics.i) serves as a description.
-
-*Note* that recursion can be guaranteed, but it is also dictated by system's stack
-limits, so it is vulnerable to stack overflows. Thus do not have to be used, other
-with algorithms, that are not going to go to big depth. Iterations versions are also
-going to execute a lot faster by a big margin.
 
 ## keywords and Operators.
 ```sh

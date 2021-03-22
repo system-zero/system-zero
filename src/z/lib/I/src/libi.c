@@ -1,39 +1,7 @@
-/* Derived from Tinyscript project at:
- * https://github.com/totalspectrum/
- * 
- * - added dynamic allocation
- * - ability to create more than one instance
- * - an instance is being passed as the first function argument
- * - \ as the last character in the line is a continuation character
- * - syntax_error() got a char * argument, that describes the error
- * - added ignore_next_char() to ignore next char in parsePtr
- * - print* function references got a FILE * argument
- * - remove abort()
- * - exit() terminates current script
- * - added is, isnot, true, false, ifnot, OK and NOTOK keywords
- * - added the ability to pass literal strings when calling C defined functions
- *   (those they ought to be freed automatically after ending the script)
- * - added the ability to assign literal strings
- *   (those they should be freed by the user)
- *   (when assigning such a variable to another, the behavior is undefined)
- * - added constant type objects (those can not be reassigned)
- * - added C-strings support (note that same danger rules with C apply to this interface)
- *   (that means out of bound operations and that those should be freed by the user) 
- * - define symbols by using a hash/map type
- * - removed memory arena and operations based on its existance
- *   (that means that there is no case of out of memory operations)
- * - added multibyte support for subscripted chars e.g., 'c', so 'α' will return 945
- * - print functions can print multibyte characters
- * - parse escape sequences when printing
- * - functions can be defined in arbitrary nested depth
- * - lambda functions
- * - [*+-/%|&]= operators
- * - and numerous changes that integrates and adjust the original code, to
- *   this environment
- * Note, that tinyscript scripts are not guaranteed to run without modifications.
- * Generally speaking, this implementation except its usefulness (as it is provides
- * a scripting environment to applications), is being used mostly as a prototype to
- * set semantics.
+/* Derived from the Tinyscript project at:
+ * https://github.com/totalspectrum/ (see LICENSE included in this directory)
+ *
+ * See data/docs/i.md for details about syntax and semantics.
  */
 
 #define LIBRARY "i"
@@ -79,7 +47,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define $CODE_PATH   fprintf (this->err_fp,                                     \
   "CurIdx   : %d,  PrevFunc : %s,\n"                                            \
   "CurFunc  : %s,  CurScope : %s,\n"                                            \
-  "CurToken : ['%c', %d], CurValue : %d\n",                                    \
+  "CurToken : ['%c', %d], CurValue : %ld\n",                                    \
   $CUR_IDX++, $PREV_FUNC,                                                       \
   $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                   \
   Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN); \
@@ -131,7 +99,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define I_TOK_ARY        'y'
 
 typedef struct istring_t {
-  unsigned len_;
+  uint len_;
   const char *ptr_;
 } istring_t;
 
@@ -350,15 +318,15 @@ static void i_set_message_fmt (i_t *this, int append, char *fmt, ...) {
   i_set_message (this, append, bytes);
 }
 
-static inline unsigned i_StringGetLen (istring_t s) {
-  return (unsigned)s.len_;
+static inline uint i_StringGetLen (istring_t s) {
+  return (uint)s.len_;
 }
 
 static inline const char *i_StringGetPtr (istring_t s) {
   return (const char *)(ival_t)s.ptr_;
 }
 
-static inline void i_StringSetLen (istring_t *s, unsigned len) {
+static inline void i_StringSetLen (istring_t *s, uint len) {
   s->len_ = len;
 }
 
@@ -374,7 +342,7 @@ static inline istring_t i_StringNew (const char *str) {
 }
 
 static void i_print_istring (i_t *this, FILE *fp, istring_t s) {
-  unsigned len = i_StringGetLen (s);
+  uint len = i_StringGetLen (s);
   const char *ptr = (const char *) i_StringGetPtr (s);
   while (len > 0) {
     this->print_byte (fp, *ptr);
@@ -391,8 +359,19 @@ static int i_err_ptr (i_t *this, int err) {
   while (sp > this->script_buffer and 0 is Cstring.byte.in_str (";\n", *(sp - 1)))
     sp--;
 
+  size_t n_len = (keep - sp);
+
   i_StringSetPtr (&this->parsePtr, sp);
-  i_StringSetLen (&this->parsePtr, len + (keep - sp));
+  i_StringSetLen (&this->parsePtr, n_len);
+
+  sp = (char *) keep;
+  int linenum = 0;
+  while (*sp++)
+    if (*sp is '\n')
+      if (++linenum > 9) break;
+
+  n_len += (sp - keep);
+  i_StringSetLen (&this->parsePtr, n_len);
 
   i_print_istring (this, this->err_fp, this->parsePtr);
 
@@ -448,19 +427,19 @@ static void i_ignore_next_char (i_t *this) {
   i_StringSetLen (&this->parsePtr, i_StringGetLen (this->parsePtr) - 1);
 }
 
-static int i_peek_char (i_t *this, unsigned int n) {
+static int i_peek_char (i_t *this, uint n) {
   if (i_StringGetLen (this->parsePtr) <= n) return -1;
   return *(i_StringGetPtr (this->parsePtr) + n);
 }
 
-static int i_prev_char (i_t *this, unsigned int n) {
+static int i_prev_char (i_t *this, uint n) {
   if ((i_StringGetPtr (this->parsePtr) - n) <= this->script_buffer)
     return -1;
   return *(i_StringGetPtr (this->parsePtr) - n);
 }
 
 static int i_get_char (i_t *this) {
-  unsigned int len = i_StringGetLen (this->parsePtr);
+  uint len = i_StringGetLen (this->parsePtr);
 
   ifnot (len) return -1;
 
@@ -753,8 +732,7 @@ static int i_do_next_token (i_t *this, int israw) {
     while (bracket > 0) {
       c = i_get_char (this);
 
-      /* this is necessary for multibyte chars */
-      if ((uchar) c < 0) return I_TOK_SYNTAX_ERR;
+      if (c is I_NOTOK) return I_TOK_SYNTAX_ERR;
 
       if (c is '}')
         --bracket;
