@@ -1029,19 +1029,19 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_I_TYPE
 #endif /* REQUIRE_I_TYPE */
 
-#ifdef REQUIRE_L_TYPE
-  #ifndef L_TYPE_HDR
-  #define L_TYPE_HDR
-  #include <z/l.h>
-  #endif /* L_TYPE_HDR */
+#ifdef REQUIRE_LA_TYPE
+  #ifndef LA_TYPE_HDR
+  #define LA_TYPE_HDR
+  #include <z/la.h>
+  #endif /* LA_TYPE_HDR */
 
-  #if (REQUIRE_L_TYPE == DECLARE)
-  static  i_T iType;	
-  #define I   iType.self
+  #if (REQUIRE_LA_TYPE == DECLARE)
+  static  la_T __LA__;	
+  #define La   __LA__.self
   #endif
 
-#undef REQUIRE_L_TYPE
-#endif /* REQUIRE_L_TYPE */
+#undef REQUIRE_LA_TYPE
+#endif /* REQUIRE_LA_TYPE */
 
 #ifdef REQUIRE_IMAP_TYPE
   #ifndef IMAP_TYPE_HDR

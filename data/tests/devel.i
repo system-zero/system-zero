@@ -1,6 +1,6 @@
 # ignore 
 
-var m1 = "Testing Instrunctions\n"
+var m1 = "Testing Instructions\n"
 var m2 = "free strings and allocate memory again\n"
 
 var RELEASE       = 1

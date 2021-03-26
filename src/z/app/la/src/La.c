@@ -1,4 +1,4 @@
-#define APPLICATION "L"
+#define APPLICATION "La"
 #define APP_OPTS    "script"
 
 #define REQUIRE_STDIO
@@ -10,12 +10,9 @@
 #define REQUIRE_CSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_USTRING_TYPE DONOT_DECLARE
-#define REQUIRE_L_TYPE       DECLARE
+#define REQUIRE_LA_TYPE      DECLARE
 
 #include <z/cenv.h>
-
-//typedef struct i_t l_t;
-//typedef I_t L_t;
 
 static int __readfile_cb (Vstring_t *notused, char *line, size_t size, int nth, void *user_data) {
   (void) notused; (void) nth;
@@ -26,8 +23,8 @@ static int __readfile_cb (Vstring_t *notused, char *line, size_t size, int nth, 
 }
 
 int main (int argc, char **argv) {
-  i_T *In = __init_i__ ();
-  iType = *In;
+  la_T *LaN = __init_la__ ();
+  __LA__ = *LaN;
 
   __INIT__ (string);
   __INIT__ (file);
@@ -70,9 +67,9 @@ int main (int argc, char **argv) {
 eval:
   ifnot (evalbuf->num_bytes) goto theend;
 
-  i_t *i = I.init_instance (In, IOpts());
-  retval = I.eval_string (i, evalbuf->bytes);
-  __deinit_i__ (&In);
+  la_t *la = La.init_instance (LaN, LaOpts());
+  retval = La.eval_string (la, evalbuf->bytes);
+  __deinit_la__ (&LaN);
 
 theend:
   String.release (evalbuf);

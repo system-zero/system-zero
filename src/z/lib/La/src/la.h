@@ -1,9 +1,9 @@
-#ifndef I_HDR
-#define I_HDR
+#ifndef LA_HDR
+#define LA_HDR
 
-typedef struct i_T i_T;
-typedef struct i_t i_t;
-typedef struct i_prop i_prop;
+typedef struct la_T la_T;
+typedef struct la_t la_t;
+typedef struct la_prop la_prop;
 typedef struct funType funT;
 typedef struct ValueType ValueType;
 
@@ -16,6 +16,7 @@ typedef integer     pointer;
 #define NUMBER_TYPE    (1 << 0)
 #define INTEGER_TYPE   (1 << 1)
 #define CSTRING_TYPE   (1 << 2)
+#define ARRAY_TYPE     (1 << 3)
 #define POINTER_TYPE   INTEGER_TYPE
 #define MEMSIZE_TYPE   INTEGER_TYPE
 
@@ -46,48 +47,48 @@ typedef ValueType VALUE;
 #define AS_MEMSIZE AS_INT
 #define    MEMSIZE    INT
 
-typedef VALUE (*Cfunc) (i_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
+typedef VALUE (*Cfunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*Opfunc) (VALUE, VALUE);
 
 enum {
-  I_ERR_OUTOFBOUNDS = -7,
-  I_ERR_TOOMANYARGS = -6,
-  I_ERR_BADARGS = -5,
-  I_ERR_UNKNOWN_SYM = -4,
-  I_ERR_SYNTAX = -3,
-  I_ERR_NOMEM = -2,
-  I_NOTOK = -1,
-  I_OK = 0,
-  I_ERR_OK_ELSE = 1,
-  I_ERR_BREAK = 2,
-  I_ERR_CONTINUE = 3,
-  I_ERR_EXIT = 4
+  LA_ERR_OUTOFBOUNDS = -7,
+  LA_ERR_TOOMANYARGS = -6,
+  LA_ERR_BADARGS = -5,
+  LA_ERR_UNKNOWN_SYM = -4,
+  LA_ERR_SYNTAX = -3,
+  LA_ERR_NOMEM = -2,
+  LA_NOTOK = -1,
+  LA_OK = 0,
+  LA_ERR_OK_ELSE = 1,
+  LA_ERR_BREAK = 2,
+  LA_ERR_CONTINUE = 3,
+  LA_ERR_EXIT = 4
 };
 
 /* Interface */
-typedef int (*IPrintByte_cb) (FILE *, int);
-typedef int (*IPrintBytes_cb) (FILE *, const char *);
-typedef int (*IPrintFmtBytes_cb) (FILE *, const char *, ...);
-typedef int (*ISyntaxError_cb) (i_t *, const char *);
-typedef int (*IDefineFuns_cb) (i_t *);
+typedef int (*LaPrintByte_cb) (FILE *, int);
+typedef int (*LaPrintBytes_cb) (FILE *, const char *);
+typedef int (*LaPrintFmtBytes_cb) (FILE *, const char *, ...);
+typedef int (*LaSyntaxError_cb) (la_t *, const char *);
+typedef int (*LaDefineFuns_cb) (la_t *);
 
-typedef struct i_opts {
+typedef struct la_opts {
   char  *name;
-  char  *idir;
+  char  *la_dir;
   int    name_gen;
   FILE  *err_fp;
   FILE  *out_fp;
 
-  IPrintByte_cb print_byte;
-  IPrintBytes_cb print_bytes;
-  IPrintFmtBytes_cb print_fmt_bytes;
-  ISyntaxError_cb syntax_error;
-  IDefineFuns_cb define_funs_cb;
+  LaPrintByte_cb print_byte;
+  LaPrintBytes_cb print_bytes;
+  LaPrintFmtBytes_cb print_fmt_bytes;
+  LaSyntaxError_cb syntax_error;
+  LaDefineFuns_cb define_funs_cb;
 
   void *user_data;
-} i_opts;
+} la_opts;
 
-#define IOpts(...) (i_opts) { \
+#define LaOpts(...) (la_opts) { \
   .print_byte = NULL,         \
   .print_bytes = NULL,        \
   .print_fmt_bytes = NULL,    \
@@ -96,62 +97,62 @@ typedef struct i_opts {
   .err_fp = stderr,           \
   .out_fp = stdout,           \
   .name = NULL,               \
-  .idir = NULL,               \
+  .la_dir = NULL,             \
   .name_gen = 97,             \
   .user_data = NULL,          \
   __VA_ARGS__}
 
-typedef struct i_get_self {
-  i_t *(*current) (i_T *);
-  void *(*user_data) (i_t *);
+typedef struct la_get_self {
+  la_t *(*current) (la_T *);
+  void *(*user_data) (la_t *);
   char
-    *(*eval_str) (i_t *),
-    *(*message) (i_t *);
-  int   (*current_idx) (i_T *);
-} i_get_self;
+    *(*eval_str) (la_t *),
+    *(*message) (la_t *);
+  int (*current_idx) (la_T *);
+} la_get_self;
 
-typedef struct i_set_self {
-  i_t *(*current) (i_T *, int);
-
-  void
-    (*idir) (i_t *, char *),
-    (*user_data) (i_t *, void *),
-    (*define_funs_cb) (i_t *, IDefineFuns_cb);
-
-} i_set_self;
-
-typedef struct i_self {
-  i_get_self get;
-  i_set_self set;
+typedef struct la_set_self {
+  la_t *(*current) (la_T *, int);
 
   void
-    (*release) (i_t **),
-    (*remove_instance) (i_T *, i_t *);
+    (*la_dir) (la_t *, char *),
+    (*user_data) (la_t *, void *),
+    (*define_funs_cb) (la_t *, LaDefineFuns_cb);
 
-  i_t
-    *(*new) (i_T *),
-    *(*init_instance) (i_T *, i_opts),
-    *(*append_instance) (i_T *, i_t *);
+} la_set_self;
+
+typedef struct la_self {
+  la_get_self get;
+  la_set_self set;
+
+  void
+    (*release) (la_t **),
+    (*remove_instance) (la_T *, la_t *);
+
+  la_t
+    *(*new) (la_T *),
+    *(*init_instance) (la_T *, la_opts),
+    *(*append_instance) (la_T *, la_t *);
 
   int
-    (*def) (i_t *, const char *, int, VALUE),
-    (*init) (i_T *, i_t *, i_opts),
-    (*eval_file) (i_t *, const char *),
-    (*load_file) (i_T *, i_t *, char *),
-    (*eval_string) (i_t *, const char *);
+    (*def) (la_t *, const char *, int, VALUE),
+    (*init) (la_T *, la_t *, la_opts),
+    (*eval_file) (la_t *, const char *),
+    (*load_file) (la_T *, la_t *, char *),
+    (*eval_string) (la_t *, const char *);
 
   VALUE
-    (*print_byte) (i_t *, char),
-    (*print_bytes) (i_t *, char *);
+    (*print_byte) (la_t *, char),
+    (*print_bytes) (la_t *, char *);
 
-} i_self;
+} la_self;
 
-struct i_T {
-  i_self self;
-  i_prop *prop;
+struct la_T {
+  la_self self;
+  la_prop *prop;
 };
 
-public i_T *__init_i__ (void);
-public void __deinit_i__ (i_T **);
+public la_T *__init_la__ (void);
+public void __deinit_la__ (la_T **);
 
-#endif /* I_HDR */
+#endif /* LA_HDR */

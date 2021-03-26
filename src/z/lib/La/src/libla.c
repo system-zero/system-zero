@@ -4,7 +4,7 @@
  * See data/docs/i.md for details about syntax and semantics.
  */
 
-#define LIBRARY "i"
+#define LIBRARY "la"
 
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
@@ -21,7 +21,7 @@
 #define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_LIST_MACROS
 #define REQUIRE_MAP_MACROS
-#define REQUIRE_L_TYPE       DONOT_DECLARE
+#define REQUIRE_LA_TYPE      DONOT_DECLARE
 
 #include <z/cenv.h>
 
@@ -35,10 +35,10 @@
 
 #ifdef DEBUG
 
-static  int  CURIDX = 0;
+static  int  CURLaDX = 0;
 static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 
-#define $CUR_IDX      CURIDX
+#define $CUR_LaDX      CURLaDX
 #define $PREV_FUNC    PREVFUNC
 #define $CUR_FUNC     __func__
 #define $CUR_SCOPE    this->curScope->funname
@@ -48,11 +48,11 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
   "CurIdx   : %d,  PrevFunc : %s,\n"                                            \
   "CurFunc  : %s,  CurScope : %s,\n"                                            \
   "CurToken : ['%c', %d], CurValue : %ld\n",                                    \
-  $CUR_IDX++, $PREV_FUNC,                                                       \
+  $CUR_LaDX++, $PREV_FUNC,                                                       \
   $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                   \
   Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN); \
   fprintf (this->err_fp, "CurStringToken : ['");                                \
-  i_print_istring (this, this->err_fp, this->curStrToken);                      \
+  la_print_istring (this, this->err_fp, this->curStrToken);                      \
   fprintf (this->err_fp, "']\n\n");
 #endif
 
@@ -65,45 +65,40 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
-#define TS_COMPAT    // code hasn't been really written
-#ifdef  TS_COMPAT
-#define ARRAY_TYPE 8 // an upstream's integer array
-#endif
-
 #define CFUNC_TYPE       'B'  // builtin: number of operands in high 8 bits
 #define UFUNC_TYPE       'f'
 #define BINOP_TYPE       'o'
 
-#define I_TOK_SYMBOL     'A'
-#define I_TOK_BUILTIN    'B'
-#define I_TOK_CHAR       'C'
-#define I_TOK_FUNCDEF    'F'
-#define I_TOK_IFNOT      'I'
-#define I_TOK_CONTINUE   'O'
-#define I_TOK_PRINT      'P'
-#define I_TOK_RETURN     'R'
-#define I_TOK_STRING     'S'
-#define I_TOK_VARDEF     'V'
-#define I_TOK_EXIT       'X'
-#define I_TOK_ARYDEF     'Y'
-#define I_TOK_SYNTAX_ERR 'Z'
-#define I_TOK_BREAK      'b'
-#define I_TOK_CONSTDEF   'c'
-#define I_TOK_DOUBLE     'd'
-#define I_TOK_ELSE       'e'
-#define I_TOK_USRFUNC    'f'
-#define I_TOK_IF         'i'
-#define I_TOK_NUMBER     'n'
-#define I_TOK_BINOP      'o'
-#define I_TOK_VAR        'v'
-#define I_TOK_WHILE      'w'
-#define I_TOK_HEX_NUMBER 'x'
-#define I_TOK_ARY        'y'
+#define LA_TOKEN_SYMBOL     'A'
+#define LA_TOKEN_BUILTIN    'B'
+#define LA_TOKEN_CHAR       'C'
+#define LA_TOKEN_FUNCDEF    'F'
+#define LA_TOKEN_IFNOT      'I'
+#define LA_TOKEN_CONTINUE   'O'
+#define LA_TOKEN_PRINT      'P'
+#define LA_TOKEN_RETURN     'R'
+#define LA_TOKEN_STRING     'S'
+#define LA_TOKEN_VARDEF     'V'
+#define LA_TOKEN_EXIT       'X'
+#define LA_TOKEN_ARYDEF     'Y'
+#define LA_TOKEN_SYNTAX_ERR 'Z'
+#define LA_TOKEN_BREAK      'b'
+#define LA_TOKEN_CONSTDEF   'c'
+#define LA_TOKEN_DOUBLE     'd'
+#define LA_TOKEN_ELSE       'e'
+#define LA_TOKEN_USRFUNC    'f'
+#define LA_TOKEN_IF         'i'
+#define LA_TOKEN_NUMBER     'n'
+#define LA_TOKEN_BINOP      'o'
+#define LA_TOKEN_VAR        'v'
+#define LA_TOKEN_WHILE      'w'
+#define LA_TOKEN_HEX_NUMBER 'x'
+#define LA_TOKEN_ARY        'y'
 
-typedef struct istring_t {
+typedef struct la_string {
   uint len_;
   const char *ptr_;
-} istring_t;
+} la_string;
 
 typedef struct malloced_string malloced_string;
 
@@ -119,16 +114,16 @@ typedef struct sym_t {
   VALUE value;
 } sym_t;
 
-typedef struct i_stackval_t i_stackval_t;
+typedef struct stackval_t stackval_t;
 
-struct i_stackval_t {
+struct stackval_t {
   VALUE data;
-  i_stackval_t *next;
+  stackval_t *next;
 };
 
-typedef struct i_stack {
-  i_stackval_t *head;
-} i_stack;
+typedef struct stack {
+  stackval_t *head;
+} stack;
 
 typedef struct funstack_t funstack_t;
 
@@ -155,7 +150,7 @@ typedef struct symbol_stack {
 struct funType {
   char funname[MAXLEN_SYMBOL_LEN + 1];
 
-  istring_t body;
+  la_string body;
 
   int nargs;
   char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL_LEN + 1];
@@ -171,7 +166,7 @@ struct funType {
 typedef struct funNewArgs {
   const char *name;
   size_t namelen;
-  istring_t body;
+  la_string body;
   int nargs;
   int num_symbols;
   funT *parent;
@@ -187,15 +182,15 @@ typedef struct funNewArgs {
   .root = NULL,                      \
   __VA_ARGS__}
 
-struct i_prop {
+struct la_prop {
   int name_gen;
 
-  i_t *head;
+  la_t *head;
   int num_instances;
   int current_idx;
 };
 
-struct i_t {
+struct la_t {
   funT *function;
   funT *curScope;
 
@@ -221,10 +216,10 @@ struct i_t {
     didReturn;
 
   string_t
-    *idir,
+    *la_dir,
     *message;
 
-  istring_t
+  la_string
     curStrToken, // the actual string representing the token
     parsePtr;    // acts as instruction pointer
 
@@ -235,7 +230,7 @@ struct i_t {
      tokenValue, // for symbolic tokens, the symbol's value
      funArgs[MAX_BUILTIN_PARAMS];
 
-  i_stack stack[1];
+  stack stack[1];
 
   sym_t
     *tokenSymbol;
@@ -244,43 +239,44 @@ struct i_t {
     *err_fp,
     *out_fp;
 
-  i_prop *prop;
+  la_prop *prop;
 
   void *user_data;
 
-  IPrintByte_cb print_byte;
-  IPrintBytes_cb print_bytes;
-  IPrintFmtBytes_cb print_fmt_bytes;
-  ISyntaxError_cb syntax_error;
-  IDefineFuns_cb define_funs_cb;
+  LaPrintByte_cb print_byte;
+  LaPrintBytes_cb print_bytes;
+  LaPrintFmtBytes_cb print_fmt_bytes;
+  LaSyntaxError_cb syntax_error;
+  LaDefineFuns_cb define_funs_cb;
 
-  i_t *next;
+  la_t *next;
 };
 
 #define MAX_EXPR_LEVEL 5
 
-static int i_parse_stmt (i_t *);
-static int i_parse_expr (i_t *, VALUE *);
-static int i_parse_primary (i_t *, VALUE *);
-static int i_parse_func_def (i_t *);
-static int i_next_token (i_t *);
-static VALUE i_prod (VALUE x, VALUE y);
-static VALUE i_sum  (VALUE x, VALUE y);
-static VALUE i_diff (VALUE x, VALUE y);
-static VALUE i_quot (VALUE x, VALUE y);
-static VALUE i_mod  (VALUE x, VALUE y);
-static VALUE i_bset (VALUE x, VALUE y);
-static VALUE i_bnot (VALUE x, VALUE y);
+static int la_parse_stmt (la_t *);
+static int la_parse_expr (la_t *, VALUE *);
+static int la_parse_primary (la_t *, VALUE *);
+static int la_parse_func_def (la_t *);
+static int la_next_token (la_t *);
+static VALUE la_prod (VALUE x, VALUE y);
+static VALUE la_sum  (VALUE x, VALUE y);
+static VALUE la_diff (VALUE x, VALUE y);
+static VALUE la_quot (VALUE x, VALUE y);
+static VALUE la_mod  (VALUE x, VALUE y);
+static VALUE la_bset (VALUE x, VALUE y);
+static VALUE la_bnot (VALUE x, VALUE y);
 
-static char *i_typeof_as_string (VALUE val) {
+static char *la_typeof_as_string (VALUE val) {
   switch (val.type) {
-    case INTEGER_TYPE: return "INTEGER_TYPE";
-    case NUMBER_TYPE:  return "NUMBER_TYPE";
-    default:           return "UNKNOWN_TYPE";
+    case INTEGER_TYPE: return "IntegerType";
+    case NUMBER_TYPE:  return "NumberType";
+    case ARRAY_TYPE:   return "ArrayType";
+    default:           return "UnknownType";
   }
 }
 
-static void i_set_message (i_t *this, int append, char *msg) {
+static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
   if (append)
     String.append_with (this->message, msg);
@@ -288,39 +284,39 @@ static void i_set_message (i_t *this, int append, char *msg) {
     String.replace_with (this->message, msg);
 }
 
-static void i_set_message_fmt (i_t *this, int append, char *fmt, ...) {
+static void la_set_message_fmt (la_t *this, int append, char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
-  i_set_message (this, append, bytes);
+  la_set_message (this, append, bytes);
 }
 
-static inline uint i_StringGetLen (istring_t s) {
+static inline uint la_StringGetLen (la_string s) {
   return (uint)s.len_;
 }
 
-static inline const char *i_StringGetPtr (istring_t s) {
+static inline const char *la_StringGetPtr (la_string s) {
   return (const char *)s.ptr_;
 }
 
-static inline void i_StringSetLen (istring_t *s, uint len) {
+static inline void la_StringSetLen (la_string *s, uint len) {
   s->len_ = len;
 }
 
-static inline void i_StringSetPtr (istring_t *s, const char *ptr) {
+static inline void la_StringSetPtr (la_string *s, const char *ptr) {
   s->ptr_ = ptr;
 }
 
-static inline istring_t i_StringNew (const char *str) {
-  istring_t x;
-  i_StringSetLen (&x, bytelen (str));
-  i_StringSetPtr (&x, str);
+static inline la_string la_StringNew (const char *str) {
+  la_string x;
+  la_StringSetLen (&x, bytelen (str));
+  la_StringSetPtr (&x, str);
   return x;
 }
 
-static void i_print_istring (i_t *this, FILE *fp, istring_t s) {
-  uint len = i_StringGetLen (s);
-  const char *ptr = (const char *) i_StringGetPtr (s);
+static void la_print_istring (la_t *this, FILE *fp, la_string s) {
+  uint len = la_StringGetLen (s);
+  const char *ptr = (const char *) la_StringGetPtr (s);
   while (len > 0) {
     this->print_byte (fp, *ptr);
     ptr++;
@@ -328,9 +324,9 @@ static void i_print_istring (i_t *this, FILE *fp, istring_t s) {
   }
 }
 
-static int i_err_ptr (i_t *this, int err) {
-  const char *keep = i_StringGetPtr (this->parsePtr);
-  size_t len = i_StringGetLen (this->parsePtr);
+static int la_err_ptr (la_t *this, int err) {
+  const char *keep = la_StringGetPtr (this->parsePtr);
+  size_t len = la_StringGetLen (this->parsePtr);
 
   char *sp = (char *) keep;
   while (sp > this->script_buffer and 0 is Cstring.byte.in_str (";\n", *(sp - 1)))
@@ -338,8 +334,8 @@ static int i_err_ptr (i_t *this, int err) {
 
   size_t n_len = (keep - sp);
 
-  i_StringSetPtr (&this->parsePtr, sp);
-  i_StringSetLen (&this->parsePtr, n_len);
+  la_StringSetPtr (&this->parsePtr, sp);
+  la_StringSetLen (&this->parsePtr, n_len);
 
   sp = (char *) keep;
   int linenum = 0;
@@ -348,93 +344,93 @@ static int i_err_ptr (i_t *this, int err) {
       if (++linenum > 9) break;
 
   n_len += (sp - keep);
-  i_StringSetLen (&this->parsePtr, n_len);
+  la_StringSetLen (&this->parsePtr, n_len);
 
-  i_print_istring (this, this->err_fp, this->parsePtr);
+  la_print_istring (this, this->err_fp, this->parsePtr);
 
-  i_StringSetPtr (&this->parsePtr, keep);
-  i_StringSetLen (&this->parsePtr, len);
+  la_StringSetPtr (&this->parsePtr, keep);
+  la_StringSetLen (&this->parsePtr, len);
 
   this->print_bytes (this->err_fp, "\n");
 
   return err;
 }
 
-static int i_syntax_error (i_t *this, const char *msg) {
+static int la_syntax_error (la_t *this, const char *msg) {
   this->print_fmt_bytes (this->err_fp, "\nSYNTAX ERROR: %s\n", msg);
-  return i_err_ptr (this, I_ERR_SYNTAX);
+  return la_err_ptr (this, LA_ERR_SYNTAX);
 }
 
-static int i_arg_mismatch (i_t *this) {
+static int la_arg_mismatch (la_t *this) {
   this->print_fmt_bytes (this->err_fp, "\nargument mismatch:");
-  return i_err_ptr (this, I_ERR_BADARGS);
+  return la_err_ptr (this, LA_ERR_BADARGS);
 }
 
-static int i_too_many_args (i_t *this) {
+static int la_too_many_args (la_t *this) {
   this->print_fmt_bytes (this->err_fp, "\ntoo many arguments:");
-  return i_err_ptr (this, I_ERR_TOOMANYARGS);
+  return la_err_ptr (this, LA_ERR_TOOMANYARGS);
 }
 
-static int i_unknown_symbol (i_t *this) {
+static int la_unknown_symbol (la_t *this) {
   this->print_fmt_bytes (this->err_fp, "\nunknown symbol:");
-  return i_err_ptr (this, I_ERR_UNKNOWN_SYM);
+  return la_err_ptr (this, LA_ERR_UNKNOWN_SYM);
 }
 
-static int i_out_of_bounds (i_t *this) {
+static int la_out_of_bounds (la_t *this) {
   this->print_fmt_bytes (this->err_fp, "\nout of bounds:");
-  return i_err_ptr (this, I_ERR_OUTOFBOUNDS);
+  return la_err_ptr (this, LA_ERR_OUTOFBOUNDS);
 }
 
-static void i_reset_token (i_t *this) {
-  i_StringSetLen (&this->curStrToken, 0);
-  i_StringSetPtr (&this->curStrToken, i_StringGetPtr (this->parsePtr));
+static void la_reset_token (la_t *this) {
+  la_StringSetLen (&this->curStrToken, 0);
+  la_StringSetPtr (&this->curStrToken, la_StringGetPtr (this->parsePtr));
 }
 
-static void i_ignore_last_token (i_t *this) {
-  i_StringSetLen (&this->curStrToken, i_StringGetLen (this->curStrToken) - 1);
+static void la_ignore_last_token (la_t *this) {
+  la_StringSetLen (&this->curStrToken, la_StringGetLen (this->curStrToken) - 1);
 }
 
-static void i_ignore_first_token (i_t *this) {
-  i_StringSetPtr (&this->curStrToken, i_StringGetPtr (this->curStrToken) + 1);
-  i_StringSetLen (&this->curStrToken, i_StringGetLen (this->curStrToken) - 1);
+static void la_ignore_first_token (la_t *this) {
+  la_StringSetPtr (&this->curStrToken, la_StringGetPtr (this->curStrToken) + 1);
+  la_StringSetLen (&this->curStrToken, la_StringGetLen (this->curStrToken) - 1);
 }
 
-static void i_ignore_next_char (i_t *this) {
-  i_StringSetPtr (&this->parsePtr, i_StringGetPtr (this->parsePtr) + 1);
-  i_StringSetLen (&this->parsePtr, i_StringGetLen (this->parsePtr) - 1);
+static void la_ignore_next_char (la_t *this) {
+  la_StringSetPtr (&this->parsePtr, la_StringGetPtr (this->parsePtr) + 1);
+  la_StringSetLen (&this->parsePtr, la_StringGetLen (this->parsePtr) - 1);
 }
 
-static int i_peek_char (i_t *this, uint n) {
-  if (i_StringGetLen (this->parsePtr) <= n) return -1;
-  return *(i_StringGetPtr (this->parsePtr) + n);
+static int la_peek_char (la_t *this, uint n) {
+  if (la_StringGetLen (this->parsePtr) <= n) return -1;
+  return *(la_StringGetPtr (this->parsePtr) + n);
 }
 
-static int i_prev_char (i_t *this, uint n) {
-  if ((i_StringGetPtr (this->parsePtr) - n) <= this->script_buffer)
+static int la_prev_char (la_t *this, uint n) {
+  if ((la_StringGetPtr (this->parsePtr) - n) <= this->script_buffer)
     return -1;
-  return *(i_StringGetPtr (this->parsePtr) - n);
+  return *(la_StringGetPtr (this->parsePtr) - n);
 }
 
-static int i_get_char (i_t *this) {
-  uint len = i_StringGetLen (this->parsePtr);
+static int la_get_char (la_t *this) {
+  uint len = la_StringGetLen (this->parsePtr);
 
   ifnot (len) return -1;
 
-  const char *ptr = i_StringGetPtr (this->parsePtr);
+  const char *ptr = la_StringGetPtr (this->parsePtr);
   int c = *ptr++;
 
   --len;
 
-  i_StringSetPtr (&this->parsePtr, ptr);
-  i_StringSetLen (&this->parsePtr, len);
-  i_StringSetLen (&this->curStrToken, i_StringGetLen (this->curStrToken) + 1);
+  la_StringSetPtr (&this->parsePtr, ptr);
+  la_StringSetLen (&this->parsePtr, len);
+  la_StringSetLen (&this->curStrToken, la_StringGetLen (this->curStrToken) + 1);
   return c;
 }
 
-static void i_unget_char (i_t *this) {
-  i_StringSetLen (&this->parsePtr, i_StringGetLen (this->parsePtr) + 1);
-  i_StringSetPtr (&this->parsePtr, i_StringGetPtr (this->parsePtr) - 1);
-  i_ignore_last_token (this);
+static void la_unget_char (la_t *this) {
+  la_StringSetLen (&this->parsePtr, la_StringGetLen (this->parsePtr) + 1);
+  la_StringSetPtr (&this->parsePtr, la_StringGetPtr (this->parsePtr) - 1);
+  la_ignore_last_token (this);
 }
 
 static inline int is_space (int c) {
@@ -477,53 +473,53 @@ static inline int is_operator_span (int c) {
   return NULL isnot Cstring.byte.in_str ("=<>&|^", c);
 }
 
-static inline int is_number (i_t *this, int c, int *token_type) {
-  *token_type = I_TOK_NUMBER;
+static inline int is_number (la_t *this, int c, int *token_type) {
+  *token_type = LA_TOKEN_NUMBER;
 
   int dot_found = 0;
   int plus_found = 0;
   int minus_found = 0;
 
-  c = i_get_char (this);
+  c = la_get_char (this);
 
   if (c is '-' or c is '+')
-    return I_NOTOK;
+    return LA_NOTOK;
 
   goto parse;
 
   for (;;) {
-    c = i_get_char (this);
+    c = la_get_char (this);
 
     parse:
     if (c is '-' or '+' is c) {
-      if (*token_type isnot I_TOK_DOUBLE) return I_NOTOK;
+      if (*token_type isnot LA_TOKEN_DOUBLE) return LA_NOTOK;
       if (c is '-') {
-        if (minus_found++) return I_NOTOK;
-        else if (plus_found++) return I_NOTOK;
+        if (minus_found++) return LA_NOTOK;
+        else if (plus_found++) return LA_NOTOK;
       }
 
-      int cc = i_peek_char (this, 0);
-      ifnot (is_digit (cc)) return I_NOTOK;
+      int cc = la_peek_char (this, 0);
+      ifnot (is_digit (cc)) return LA_NOTOK;
       continue;
     }
 
     if (c is '.') {
-      *token_type = I_TOK_DOUBLE;
+      *token_type = LA_TOKEN_DOUBLE;
 
-      if (dot_found++) return I_NOTOK;
-      ifnot (is_digit (i_peek_char (this, 0))) return I_NOTOK;
+      if (dot_found++) return LA_NOTOK;
+      ifnot (is_digit (la_peek_char (this, 0))) return LA_NOTOK;
       continue;
     }
 
     if (c is 'e' or c is 'E') {
-      *token_type = I_TOK_DOUBLE;
+      *token_type = LA_TOKEN_DOUBLE;
 
-      int cc = i_peek_char (this, 0);
+      int cc = la_peek_char (this, 0);
       if (0 is is_digit (cc) or
           cc isnot '-' or
           cc isnot '.' or
           cc isnot '+') {
-        return I_NOTOK;
+        return LA_NOTOK;
       }
 
       continue;
@@ -532,19 +528,19 @@ static inline int is_number (i_t *this, int c, int *token_type) {
     ifnot (is_digit (c)) break;
   }
 
-  if (c isnot -1) i_unget_char (this);
+  if (c isnot -1) la_unget_char (this);
 
-  return I_OK;
+  return LA_OK;
 }
 
-static int i_ignore_ws (i_t *this) {
+static int la_ignore_ws (la_t *this) {
   int c;
 
   for (;;) {
-    c = i_get_char (this);
+    c = la_get_char (this);
 
     if (is_space (c))
-      i_reset_token (this);
+      la_reset_token (this);
     else
       break;
   }
@@ -552,13 +548,13 @@ static int i_ignore_ws (i_t *this) {
   return c;
 }
 
-static void i_get_span (i_t *this, int (*testfn) (int)) {
+static void la_get_span (la_t *this, int (*testfn) (int)) {
   int c;
   do
-    c = i_get_char (this);
+    c = la_get_char (this);
   while (testfn (c));
 
-  if (c isnot -1) i_unget_char (this);
+  if (c isnot -1) la_unget_char (this);
 }
 
 static void fun_release (funT **thisp) {
@@ -581,7 +577,7 @@ static funT *fun_new (funNewArgs options) {
   return uf;
 }
 
-static funT *Fun_new (i_t *this, funNewArgs options) {
+static funT *Fun_new (la_t *this, funNewArgs options) {
   funT *f = fun_new (options);
 
   funT *parent = options.parent;
@@ -596,7 +592,7 @@ static funT *Fun_new (i_t *this, funNewArgs options) {
   return f;
 }
 
-static void i_release_malloced_strings (i_t *this, int release_const) {
+static void la_release_malloced_strings (la_t *this, int release_const) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
@@ -612,7 +608,7 @@ static void i_release_malloced_strings (i_t *this, int release_const) {
   this->head = NULL;
 }
 
-static void i_release_sym (void *sym) {
+static void la_release_sym (void *sym) {
   if (sym is NULL) return;
 
   sym_t *this = (sym_t *) sym;
@@ -629,28 +625,28 @@ static void i_release_sym (void *sym) {
   this = NULL;
 }
 
-static sym_t *i_define_symbol (i_t *this, funT *f, istring_t name, int typ, VALUE value, int is_const) {
+static sym_t *la_define_symbol (la_t *this, funT *f, la_string name, int typ, VALUE value, int is_const) {
 #ifdef DEBUG
-  if ($CUR_IDX < 65) {
-    $CUR_IDX++;
+  if ($CUR_LaDX < 65) {
+    $CUR_LaDX++;
     goto body;
   }
   $CODE_PATH
 body:
 #endif
   (void) this;
-  if (i_StringGetPtr (name) is NULL) return NULL;
+  if (la_StringGetPtr (name) is NULL) return NULL;
 
-  size_t len = i_StringGetLen (name);
+  size_t len = la_StringGetLen (name);
   char key[len + 1];
-  Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
+  Cstring.cp (key, len + 1, la_StringGetPtr (name), len);
 
   sym_t *sym = Alloc (sizeof (sym_t));
   sym->type = typ;
   sym->value = value;
   sym->is_const = is_const;
 
-  if (NOTOK is Vmap.set (f->symbols, key, sym, i_release_sym, is_const)) {
+  if (NOTOK is Vmap.set (f->symbols, key, sym, la_release_sym, is_const)) {
     free (sym);
     return NULL;
   }
@@ -658,10 +654,10 @@ body:
   return sym;
 }
 
-static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
-  size_t len = i_StringGetLen (name);
+static sym_t *la_lookup_symbol (la_t *this, la_string name) {
+  size_t len = la_StringGetLen (name);
   char key[len + 1];
-  Cstring.cp (key, len + 1, i_StringGetPtr (name), len);
+  Cstring.cp (key, len + 1, la_StringGetPtr (name), len);
 
 #ifdef DEBUG
   fprintf (this->err_fp, "Queried Symbol: %s\n", key);
@@ -683,20 +679,20 @@ static sym_t *i_lookup_symbol (i_t *this, istring_t name) {
   return NULL;
 }
 
-static sym_t *i_define_var_symbol (i_t *this, funT *f, istring_t name, int is_const) {
+static sym_t *la_define_var_symbol (la_t *this, funT *f, la_string name, int is_const) {
   VALUE none = INT(0);
-  return i_define_symbol (this, f, name, INTEGER_TYPE, none, is_const);
+  return la_define_symbol (this, f, name, INTEGER_TYPE, none, is_const);
 }
 
-static int i_lambda (i_t *this) {
+static int la_lambda (la_t *this) {
   Cstring.cp (this->curFunName, MAXLEN_SYMBOL_LEN + 1, "anonymous", 9);
 
-  i_ignore_ws (this);
+  la_ignore_ws (this);
 
   this->curFunDef = NULL;
 
-  int err = i_parse_func_def (this);
-  if (err isnot I_OK)
+  int err = la_parse_func_def (this);
+  if (err isnot LA_OK)
     return err;
 
   this->tokenSymbol = this->curSym;
@@ -708,84 +704,84 @@ static int i_lambda (i_t *this) {
   return (this->tokenSymbol->type & 0xff);
 }
 
-static int i_do_next_token (i_t *this, int israw) {
+static int la_do_next_token (la_t *this, int israw) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
-  int r = I_NOTOK;
+  int r = LA_NOTOK;
 
   sym_t *symbol = NULL;
   this->tokenSymbol = NULL;
 
-  i_reset_token (this);
+  la_reset_token (this);
 
-  int c = i_ignore_ws (this);
+  int c = la_ignore_ws (this);
 
-  if (c is '\\' and i_peek_char (this, 0) is '\n') {
+  if (c is '\\' and la_peek_char (this, 0) is '\n') {
     this->lineNum++;
-    i_ignore_next_char (this);
-    i_reset_token (this);
-    c = i_ignore_ws (this);
+    la_ignore_next_char (this);
+    la_reset_token (this);
+    c = la_ignore_ws (this);
   }
 
   if (c is '#') {
     do
-      c = i_get_char (this);
+      c = la_get_char (this);
     while (c >= 0 and c isnot '\n');
     this->lineNum++;
 
     r = c;
 
-  } else if (is_digit (c) or (c is '-' and is_digit (i_peek_char (this, 0)))) {
-    if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", i_peek_char (this, 0))
-        and is_hexchar (i_peek_char(this, 1))) {
-      i_get_char (this);
-      i_ignore_first_token (this);
-      i_ignore_first_token (this);
-      i_get_span (this, is_hexchar);
-      r = I_TOK_HEX_NUMBER;
+  } else if (is_digit (c) or (c is '-' and is_digit (la_peek_char (this, 0)))) {
+    if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", la_peek_char (this, 0))
+        and is_hexchar (la_peek_char(this, 1))) {
+      la_get_char (this);
+      la_ignore_first_token (this);
+      la_ignore_first_token (this);
+      la_get_span (this, is_hexchar);
+      r = LA_TOKEN_HEX_NUMBER;
     } else {
-      if (I_NOTOK is is_number (this, c, &r))
+      if (LA_NOTOK is is_number (this, c, &r))
         return this->syntax_error (this, "error while tokenizing a number");
     }
   } else if (c is '\'') {
-      c = i_get_char (this); // get first
-      if (c is '\\') i_get_char (this);
+      c = la_get_char (this); // get first
+      if (c is '\\') la_get_char (this);
       int max = 4;
-      r = I_TOK_SYNTAX_ERR;
+      r = LA_TOKEN_SYNTAX_ERR;
 
       /* multibyte support */
       do {
-        c = i_get_char (this);
+        c = la_get_char (this);
         if (c is '\'') {
-          i_ignore_first_token (this);
-          i_ignore_last_token (this);
-          r = I_TOK_CHAR;
+          la_ignore_first_token (this);
+          la_ignore_last_token (this);
+          r = LA_TOKEN_CHAR;
           break;
         }
       } while (--max isnot 0);
   } else if (is_alpha (c)) {
-    i_get_span (this, is_identifier);
+    la_get_span (this, is_identifier);
 
-    r = I_TOK_SYMBOL;
+    r = LA_TOKEN_SYMBOL;
     // check for special tokens
     ifnot (israw) {
-      if (Cstring.eq_n ("lambda", i_StringGetPtr (this->curStrToken), 6)) {
-        r = i_lambda (this);
-        if (r < I_OK)
+      if (Cstring.eq_n ("lambda", la_StringGetPtr (this->curStrToken), 6)) {
+        r = la_lambda (this);
+        if (r < LA_OK)
           return this->syntax_error (this, "lambda error");
       } else {
-        this->tokenSymbol = symbol = i_lookup_symbol (this, this->curStrToken);
+        this->tokenSymbol = symbol = la_lookup_symbol (this, this->curStrToken);
 
         if (symbol) {
           r = symbol->type & 0xff;
 
           this->tokenArgs = (symbol->type >> 8) & 0xff;
           if (r is ARRAY_TYPE)
-            r = I_TOK_ARY;
+            r = LA_TOKEN_ARY;
           else
             if (r < '@')
-              r = I_TOK_VAR;
+              r = LA_TOKEN_VAR;
 
           this->tokenValue = symbol->value;
         }
@@ -793,23 +789,23 @@ static int i_do_next_token (i_t *this, int israw) {
     }
 
   } else if (is_operator (c)) {
-    i_get_span (this, is_operator_span);
+    la_get_span (this, is_operator_span);
 
-    this->tokenSymbol = symbol = i_lookup_symbol (this, this->curStrToken);
+    this->tokenSymbol = symbol = la_lookup_symbol (this, this->curStrToken);
 
     if (symbol) {
       r = symbol->type;
       this->tokenValue = symbol->value;
     } else
-      r = I_TOK_SYNTAX_ERR;
+      r = LA_TOKEN_SYNTAX_ERR;
 
   } else if (c is '{') {
     int bracket = 1;
-    i_reset_token (this);
+    la_reset_token (this);
     while (bracket > 0) {
-      c = i_get_char (this);
+      c = la_get_char (this);
 
-      if (c is I_NOTOK) return I_TOK_SYNTAX_ERR;
+      if (c is LA_NOTOK) return LA_TOKEN_SYNTAX_ERR;
 
       if (c is '}')
         --bracket;
@@ -817,15 +813,15 @@ static int i_do_next_token (i_t *this, int israw) {
         ++bracket;
     }
 
-    i_ignore_last_token (this);
-    r = I_TOK_STRING;
+    la_ignore_last_token (this);
+    r = LA_TOKEN_STRING;
 
   } else if (c is '"') {
     size_t len = 0;
     int pc = 0;
     int cc = 0;
 
-    while (pc = cc, (cc = i_peek_char (this, len)) isnot -1) {
+    while (pc = cc, (cc = la_peek_char (this, len)) isnot -1) {
       if ('"' is cc and pc isnot '\\') break;
       len++;
     }
@@ -836,7 +832,7 @@ static int i_do_next_token (i_t *this, int israw) {
     ifnot (this->curState & FUNCTION_ARGUMENT_SCOPE) {
       char *str = Alloc (len + 1);
       for (size_t i = 0; i < len; i++) {
-        c = i_get_char (this);
+        c = la_get_char (this);
         str[i] = c;
       }
       str[len] = '\0';
@@ -847,7 +843,7 @@ static int i_do_next_token (i_t *this, int israw) {
       malloced_string *mbuf = Alloc (sizeof (malloced_string));
       mbuf->data = Alloc (len + 1);
       for (size_t i = 0; i < len; i++) {
-        c = i_get_char (this);
+        c = la_get_char (this);
         mbuf->data[i] = c;
       }
 
@@ -858,10 +854,10 @@ static int i_do_next_token (i_t *this, int israw) {
       this->tokenValue = CSTRING (mbuf->data);
     }
 
-    c = i_get_char (this);
-    i_reset_token (this);
+    c = la_get_char (this);
+    la_reset_token (this);
 
-    r = I_TOK_STRING;
+    r = LA_TOKEN_STRING;
 
   } else
     r = c;
@@ -870,41 +866,41 @@ static int i_do_next_token (i_t *this, int israw) {
   return r;
 }
 
-static int i_next_token (i_t *this) {
-  return i_do_next_token (this, 0);
+static int la_next_token (la_t *this) {
+  return la_do_next_token (this, 0);
 }
 
-static int i_next_raw_token (i_t *this) {
-  return i_do_next_token (this, 1);
+static int la_next_raw_token (la_t *this) {
+  return la_do_next_token (this, 1);
 }
 
-static void i_stack_push (i_t *this, VALUE x) {
-  i_stackval_t *item = Alloc (sizeof (i_stackval_t));
+static void stack_push (la_t *this, VALUE x) {
+  stackval_t *item = Alloc (sizeof (stackval_t));
   item->data = x;
   ListStackPush (this->stack, item);
 }
 
-static VALUE i_stack_pop (i_t *this) {
-  i_stackval_t *item = ListStackPop (this->stack, i_stackval_t);
+static VALUE stack_pop (la_t *this) {
+  stackval_t *item = ListStackPop (this->stack, stackval_t);
   VALUE data = item->data;
   free (item);
   return data;
 }
 
-static void i_fun_stack_push (i_t *this, funT *f) {
+static void la_fun_stack_push (la_t *this, funT *f) {
   funstack_t *item = Alloc (sizeof (funstack_t));
   item->f = f;
   ListStackPush (this->funstack, item);
 }
 
-static funT *i_fun_stack_pop (i_t *this) {
+static funT *la_fun_stack_pop (la_t *this) {
   funstack_t *item = ListStackPop (this->funstack, funstack_t);
   funT *f = item->f;
   free (item);
   return f;
 }
 
-static void *i_clone_sym_item (void *item) {
+static void *la_clone_sym_item (void *item) {
   sym_t *sym = (void *) item;
 
   sym_t *new = Alloc (sizeof (sym_t));
@@ -927,24 +923,24 @@ static void *i_clone_sym_item (void *item) {
   return new;
 }
 
-static void i_symbol_stack_push (i_t *this, Vmap_t *symbols) {
+static void la_symbol_stack_push (la_t *this, Vmap_t *symbols) {
   symbolstack_t *item = Alloc (sizeof (symbolstack_t));
-  item->symbols = Vmap.clone (symbols, i_clone_sym_item);
+  item->symbols = Vmap.clone (symbols, la_clone_sym_item);
   ListStackPush (this->symbolstack, item);
 }
 
-static Vmap_t *i_symbol_stack_pop (i_t *this) {
+static Vmap_t *la_symbol_stack_pop (la_t *this) {
   symbolstack_t *item = ListStackPop (this->symbolstack, symbolstack_t);
   Vmap_t *symbols = item->symbols;
   free (item);
   return symbols;
 }
 
-static VALUE i_string_to_num (istring_t s) {
+static VALUE la_string_to_num (la_string s) {
   integer r = 0;
   int c;
-  const char *ptr = i_StringGetPtr (s);
-  int len = i_StringGetLen (s);
+  const char *ptr = la_StringGetPtr (s);
+  int len = la_StringGetLen (s);
   int is_sign = *ptr is '-';
   if (is_sign) ptr++;
 
@@ -960,11 +956,11 @@ static VALUE i_string_to_num (istring_t s) {
   return result;
 }
 
-static VALUE i_HexStringToNum (istring_t s) {
+static VALUE la_HexStringToNum (la_string s) {
   integer r = 0;
   int c;
-  const char *ptr = i_StringGetPtr (s);
-  int len = i_StringGetLen (s);
+  const char *ptr = la_StringGetPtr (s);
+  int len = la_StringGetLen (s);
   while (len-- > 0) {
     c = *ptr++;
     ifnot (is_hexchar (c)) break;
@@ -983,7 +979,7 @@ static VALUE i_HexStringToNum (istring_t s) {
 /* Initial Array Interface by MickeyDelp <mickey at delptronics dot com> */
 
 // assign a value or list of values to an array
-static int i_array_assign (i_t *this, VALUE *ary, VALUE ix) {
+static int la_array_assign (la_t *this, VALUE *ary, VALUE ix) {
   int err;
   VALUE val;
 
@@ -992,43 +988,43 @@ static int i_array_assign (i_t *this, VALUE *ary, VALUE ix) {
   integer *ar = (integer *) AS_PTR((pointer) (*ary));
   do {
     if (idx < 0 or idx >= ar[0]) {
-      return i_out_of_bounds (this);
+      return la_out_of_bounds (this);
     }
 
-    i_next_token (this);
+    la_next_token (this);
 
-    err = i_parse_expr (this, &val);
-    if (err isnot I_OK) return err;
+    err = la_parse_expr (this, &val);
+    if (err isnot LA_OK) return err;
 
     ar[idx + 1] = AS_INT(val);
     idx++;
   } while (this->curToken is ',');
 
-   return I_OK;
+   return LA_OK;
 }
 
 // handle defining an array
-static int i_parse_array_def (i_t *this) {
-  istring_t name;
+static int la_parse_array_def (la_t *this) {
+  la_string name;
   int c;
   int err;
   VALUE len;
 
-  c = i_next_raw_token (this);
+  c = la_next_raw_token (this);
 
-  if (c isnot I_TOK_SYMBOL) {
+  if (c isnot LA_TOKEN_SYMBOL) {
     return this->syntax_error (this, "syntax error");
   }
 
   name = this->curStrToken;
 
-  c = i_next_token (this);
+  c = la_next_token (this);
 
   if (c isnot '(')
     return this->syntax_error (this, "syntax error");
 
-  err = i_parse_primary (this, &len);
-  if (err isnot I_OK)
+  err = la_parse_primary (this, &len);
+  if (err isnot LA_OK)
     return err;
 
   integer nlen = AS_INT(len);
@@ -1042,54 +1038,54 @@ static int i_parse_array_def (i_t *this) {
 
   VALUE ar = PTR((pointer) ary);
 
-  this->tokenSymbol = i_define_symbol (this, this->curScope, name, ARRAY_TYPE,
+  this->tokenSymbol = la_define_symbol (this, this->curScope, name, ARRAY_TYPE,
     ar, 0);
 
   VALUE at_idx = INT(0);
-  if (i_StringGetPtr (this->curStrToken)[0] is '=' and i_StringGetLen (this->curStrToken) is 1)
-    return i_array_assign (this, &ar, at_idx);
+  if (la_StringGetPtr (this->curStrToken)[0] is '=' and la_StringGetLen (this->curStrToken) is 1)
+    return la_array_assign (this, &ar, at_idx);
 
-  return I_OK;
+  return LA_OK;
 }
 
 // handle setting an array value
-static int i_parse_array_set (i_t *this) {
+static int la_parse_array_set (la_t *this) {
   int err;
   VALUE ix = INT(0);
 
   VALUE ary = this->tokenValue;
 
-  int c = i_next_token (this);
+  int c = la_next_token (this);
 
   if (c is '(') {
-    err = i_parse_primary (this, &ix);
-    if (err isnot I_OK)
+    err = la_parse_primary (this, &ix);
+    if (err isnot LA_OK)
       return err;
   }
 
-  if (i_StringGetPtr (this->curStrToken)[0] isnot '=' or i_StringGetLen (this->curStrToken) isnot 1)
+  if (la_StringGetPtr (this->curStrToken)[0] isnot '=' or la_StringGetLen (this->curStrToken) isnot 1)
     return this->syntax_error (this, "syntax error");
 
-  return i_array_assign (this, &ary, ix);
+  return la_array_assign (this, &ary, ix);
 }
 
 // handle getting an array value
-static int i_parse_array_get (i_t *this, VALUE *vp) {
+static int la_parse_array_get (la_t *this, VALUE *vp) {
   VALUE ar = this->tokenValue;
   integer *ary = (integer *) AS_PTR((pointer) (ar));
   integer len = ary[0];
 
-  int c = i_next_token (this);
+  int c = la_next_token (this);
 
   if (c is '(') {
     VALUE ix;
-    int err = i_parse_primary (this, &ix);
-    if (err isnot I_OK)
+    int err = la_parse_primary (this, &ix);
+    if (err isnot LA_OK)
       return err;
 
     integer idx = AS_INT(ix);
     if (idx < -1 or idx >= len)
-      return i_out_of_bounds (this);
+      return la_out_of_bounds (this);
 
     *vp = INT(ary[idx + 1]);
   } else {
@@ -1098,10 +1094,10 @@ static int i_parse_array_get (i_t *this, VALUE *vp) {
     *vp = ar;
   }
 
-  return I_OK;
+  return LA_OK;
 }
 
-static int i_parse_expr_list (i_t *this) {
+static int la_parse_expr_list (la_t *this) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
@@ -1110,23 +1106,23 @@ static int i_parse_expr_list (i_t *this) {
   VALUE v = INT(0);
 
   do {
-    err = i_parse_expr (this, &v);
-    if (err isnot I_OK) return err;
+    err = la_parse_expr (this, &v);
+    if (err isnot LA_OK) return err;
 
-    i_stack_push (this, v);
+    stack_push (this, v);
 
     count++;
 
     c = this->curToken;
-    if (c is ',') i_next_token (this);
+    if (c is ',') la_next_token (this);
   } while (c is ',');
 
   return count;
 }
 
-static int i_parse_char (i_t *this, VALUE *vp, istring_t token) {
+static int la_parse_char (la_t *this, VALUE *vp, la_string token) {
   VALUE v = INT(0);
-  const char *ptr = i_StringGetPtr (token);
+  const char *ptr = la_StringGetPtr (token);
 
   if (ptr[0] is '\'') return this->syntax_error (this, "error while getting a char token ");
   if (ptr[0] is '\\') {
@@ -1158,32 +1154,32 @@ static int i_parse_char (i_t *this, VALUE *vp, istring_t token) {
 
 theend:
   *vp = v;
-  return I_OK;
+  return LA_OK;
 }
 
-static int i_parse_string (i_t *this, istring_t str) {
+static int la_parse_string (la_t *this, la_string str) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
 
   int c,  r;
-  istring_t savepc = this->parsePtr;
+  la_string savepc = this->parsePtr;
 
   this->parsePtr = str;
 
   for (;;) {
-    c = i_next_token (this);
+    c = la_next_token (this);
 
     while (c is '\n' or c is ';') {
       if (c is '\n') this->lineNum++;
-      c = i_next_token (this);
+      c = la_next_token (this);
      }
 
     if (c < 0) break;
 
-    r = i_parse_stmt (this);
+    r = la_parse_stmt (this);
 
-    if (r isnot I_OK) return r;
+    if (r isnot LA_OK) return r;
 
     c = this->curToken;
     if (c is '\n' or c is ';' or c < 0) {
@@ -1195,18 +1191,18 @@ static int i_parse_string (i_t *this, istring_t str) {
 
   this->parsePtr = savepc;
 
-  return I_OK;
+  return LA_OK;
 }
 
-static void i_fun_refcount_incr (int *count) {
+static void la_fun_refcount_incr (int *count) {
   (*count)++;
 }
 
-static void i_fun_refcount_decr (int *count) {
+static void la_fun_refcount_decr (int *count) {
   (*count)--;
 }
 
-static int i_parse_func_call (i_t *this, Cfunc op, VALUE *vp, funT *uf) {
+static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
@@ -1219,21 +1215,21 @@ static int i_parse_func_call (i_t *this, Cfunc op, VALUE *vp, funT *uf) {
   else
     expectargs = this->tokenArgs;
 
-  c = i_next_token (this);
+  c = la_next_token (this);
 
   if (c isnot '(') {
-    i_unget_char (this);
+    la_unget_char (this);
     *vp = PTR((pointer)uf);
-    return I_OK;
+    return LA_OK;
   }
     //return this->syntax_error (this, "expected open parentheses");
 
   this->curState |= FUNCTION_ARGUMENT_SCOPE;
 
-  c = i_next_token (this);
+  c = la_next_token (this);
 
   if (c isnot ')') {
-    paramCount = i_parse_expr_list (this);
+    paramCount = la_parse_expr_list (this);
     c = this->curToken;
     if (paramCount < 0) {
       this->curState &= ~(FUNCTION_ARGUMENT_SCOPE);
@@ -1247,13 +1243,13 @@ static int i_parse_func_call (i_t *this, Cfunc op, VALUE *vp, funT *uf) {
     return this->syntax_error (this, "expected closed parentheses");
 
   if (expectargs isnot paramCount)
-    return i_arg_mismatch (this);
+    return la_arg_mismatch (this);
 
   // we now have "paramCount" items pushed on to the stack
   // pop em off
   while (paramCount > 0) {
     --paramCount;
-    this->funArgs[paramCount] = i_stack_pop (this);
+    this->funArgs[paramCount] = stack_pop (this);
   }
 
   if (uf) {
@@ -1266,36 +1262,36 @@ static int i_parse_func_call (i_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
     int is_anonymous = Cstring.eq (uf->funname, "anonymous");
     ifnot (is_anonymous) {
-      refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_incr);
+      refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_incr);
       if (refcount > 1) {
-        i_symbol_stack_push (this, this->curScope->symbols);
+        la_symbol_stack_push (this, this->curScope->symbols);
         Vmap.clear (uf->symbols);
       }
     }
 
     for (i = 0; i < expectargs; i++)
-      i_define_symbol (this, uf, i_StringNew (uf->argName[i]), INTEGER_TYPE, this->funArgs[i], 0);
+      la_define_symbol (this, uf, la_StringNew (uf->argName[i]), INTEGER_TYPE, this->funArgs[i], 0);
 
     this->didReturn = 0;
 
-    i_fun_stack_push (this, this->curScope);
+    la_fun_stack_push (this, this->curScope);
 
     this->curScope = uf;
 
-    err = i_parse_string (this, uf->body);
+    err = la_parse_string (this, uf->body);
 
-    this->curScope = i_fun_stack_pop (this);
+    this->curScope = la_fun_stack_pop (this);
 
     this->didReturn = 0;
 
     ifnot (is_anonymous) {
-      refcount = Imap.set_by_callback (this->refcount, uf->funname, i_fun_refcount_decr);
+      refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
 
       ifnot (refcount)
           Vmap.clear (uf->symbols);
         else {
           Vmap.release (uf->symbols);
-          this->curScope->symbols = i_symbol_stack_pop (this);
+          this->curScope->symbols = la_symbol_stack_pop (this);
         }
     }
 
@@ -1309,15 +1305,15 @@ static int i_parse_func_call (i_t *this, Cfunc op, VALUE *vp, funT *uf) {
     this->curState &= ~(FUNC_CALL_BUILTIN);
   }
 
-  i_next_token (this);
+  la_next_token (this);
 
-  return I_OK;
+  return LA_OK;
 }
 
 // parse a primary value; for now, just a number or variable
 // returns 0 if valid, non-zero if syntax error
 // puts result into *vp
-static int i_parse_primary (i_t *this, VALUE *vp) {
+static int la_parse_primary (la_t *this, VALUE *vp) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
@@ -1328,150 +1324,150 @@ static int i_parse_primary (i_t *this, VALUE *vp) {
   if (c is '(') {
     this->curState |= FUNCTION_ARGUMENT_SCOPE;
 
-    i_next_token (this);
+    la_next_token (this);
 
-    err = i_parse_expr (this, vp);
+    err = la_parse_expr (this, vp);
 
-    if (err is I_OK) {
+    if (err is LA_OK) {
       c = this->curToken;
 
       if (c is ')') {
-        i_next_token (this);
+        la_next_token (this);
 
         this->curState &= ~(FUNCTION_ARGUMENT_SCOPE);
-        return I_OK;
+        return LA_OK;
       }
     }
 
     return err;
 
-  } else if (c is I_TOK_NUMBER) {
-    VALUE val = i_string_to_num (this->curStrToken);
+  } else if (c is LA_TOKEN_NUMBER) {
+    VALUE val = la_string_to_num (this->curStrToken);
     *vp = val;
-    i_next_token (this);
-    return I_OK;
+    la_next_token (this);
+    return LA_OK;
 
-  } else if (c is I_TOK_DOUBLE) {
+  } else if (c is LA_TOKEN_DOUBLE) {
     char *endptr; char str[32];
-    Cstring.cp (str, 32, i_StringGetPtr (this->curStrToken), i_StringGetLen (this->curStrToken));
+    Cstring.cp (str, 32, la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
     double val = strtod (str, &endptr);
     *vp = NUMBER(val);
-    i_next_token (this);
-    return I_OK;
+    la_next_token (this);
+    return LA_OK;
 
-  } else if (c is I_TOK_HEX_NUMBER) {
-    *vp = i_HexStringToNum (this->curStrToken);
-    i_next_token (this);
-    return I_OK;
+  } else if (c is LA_TOKEN_HEX_NUMBER) {
+    *vp = la_HexStringToNum (this->curStrToken);
+    la_next_token (this);
+    return LA_OK;
 
-  } else if (c is I_TOK_CHAR) {
-      err = i_parse_char (this, vp, this->curStrToken);
+  } else if (c is LA_TOKEN_CHAR) {
+      err = la_parse_char (this, vp, this->curStrToken);
 
-      i_next_token (this);
+      la_next_token (this);
       return err;
 
-  } else if (c is I_TOK_VAR) {
+  } else if (c is LA_TOKEN_VAR) {
     *vp = this->tokenValue;
-    i_next_token (this);
-    return I_OK;
+    la_next_token (this);
+    return LA_OK;
 
-  } else if (c is I_TOK_ARY) {
-     return i_parse_array_get (this, vp);
+  } else if (c is LA_TOKEN_ARY) {
+     return la_parse_array_get (this, vp);
 
-  } else if (c is I_TOK_BUILTIN) {
+  } else if (c is LA_TOKEN_BUILTIN) {
     Cfunc op = (Cfunc) AS_PTR(this->tokenValue);
     this->curState |= FUNC_CALL_BUILTIN;
-    return i_parse_func_call (this, op, vp, NULL);
+    return la_parse_func_call (this, op, vp, NULL);
 
-  } else if (c is I_TOK_USRFUNC) {
+  } else if (c is LA_TOKEN_USRFUNC) {
     sym_t *symbol = this->tokenSymbol;
     ifnot (symbol)
       return this->syntax_error (this, "user defined function, not declared");
 
     funT *uf = (funT *) AS_PTR(symbol->value);
 
-    err = i_parse_func_call (this, NULL, vp, uf);
-    i_next_token (this);
+    err = la_parse_func_call (this, NULL, vp, uf);
+    la_next_token (this);
     return err;
 
-  } else if ((c & 0xff) is I_TOK_BINOP) {
+  } else if ((c & 0xff) is LA_TOKEN_BINOP) {
     // binary operator
     Opfunc op = (Opfunc) AS_PTR(this->tokenValue);
     VALUE v;
 
-    i_next_token (this);
-    err = i_parse_expr (this, &v);
-    if (err is I_OK)
+    la_next_token (this);
+    err = la_parse_expr (this, &v);
+    if (err is LA_OK)
       *vp = op (INT(0), v);
 
     return err;
 
-  } else if (c is I_TOK_STRING) {
+  } else if (c is LA_TOKEN_STRING) {
     *vp = this->tokenValue;
 
-    i_next_token (this);
-    return I_OK;
+    la_next_token (this);
+    return LA_OK;
 
   } else
     return this->syntax_error (this, "syntax error");
 }
 
-static int i_parse_stmt (i_t *this) {
+static int la_parse_stmt (la_t *this) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
   int c;
-  istring_t name;
+  la_string name;
   VALUE val;
-  int err = I_OK;
+  int err = LA_OK;
 
   if (this->didReturn) {
     do {
-      c = i_get_char (this);
+      c = la_get_char (this);
     } while (c >= 0 and c isnot '\n' and c isnot ';' and c isnot '}');
 
-    i_unget_char (this);
-    i_next_token (this);
+    la_unget_char (this);
+    la_next_token (this);
 
-    return I_OK;
+    return LA_OK;
   }
 
   c = this->curToken;
 
-  if (c is I_TOK_BREAK) {
+  if (c is LA_TOKEN_BREAK) {
 
     if (this->curState & AT_LOOP) {
       this->curState |= BREAK;
-      return I_ERR_BREAK;
+      return LA_ERR_BREAK;
     }
 
     return this->syntax_error (this, "break is not in a loop");
   }
 
-  if (c is I_TOK_CONTINUE) {
+  if (c is LA_TOKEN_CONTINUE) {
     if (this->curState & AT_LOOP) {
       this->curState |= CONTINUE;
-      return I_ERR_CONTINUE;
+      return LA_ERR_CONTINUE;
     }
 
     return this->syntax_error (this, "continue is not in a loop");
   }
 
-  if (c is I_TOK_VARDEF or c is I_TOK_CONSTDEF) {
-    int is_const = c is I_TOK_CONSTDEF;
+  if (c is LA_TOKEN_VARDEF or c is LA_TOKEN_CONSTDEF) {
+    int is_const = c is LA_TOKEN_CONSTDEF;
 
     // a definition var a=x
-    c = i_next_raw_token (this); // we want to get VAR_SYMBOL directly
+    c = la_next_raw_token (this); // we want to get VAR_SYMBOL directly
 
-    if (c isnot I_TOK_SYMBOL)
+    if (c isnot LA_TOKEN_SYMBOL)
       return this->syntax_error (this, "expected symbol");
 
     name = this->curStrToken;
 
-    ifnot (i_StringGetLen (name))
+    ifnot (la_StringGetLen (name))
       return this->syntax_error (this, "unknown symbol");
 
-    this->tokenSymbol = i_define_var_symbol (this, this->curScope, name, is_const);
+    this->tokenSymbol = la_define_var_symbol (this, this->curScope, name, is_const);
 
     if (NULL is this->tokenSymbol) {
       if (is_const)
@@ -1479,19 +1475,19 @@ static int i_parse_stmt (i_t *this) {
       return this->syntax_error (this, "unknown error");
     }
 
-    c = I_TOK_VAR;
+    c = LA_TOKEN_VAR;
     /* fall through */
   }
 
-  if (c is I_TOK_VAR) {
+  if (c is LA_TOKEN_VAR) {
     // is this a=expr?
     name = this->curStrToken;
     sym_t *symbol = this->tokenSymbol;
 
-    c = i_next_token (this);
+    c = la_next_token (this);
 
-    const char *ptr = i_StringGetPtr (this->curStrToken);
-    int len = i_StringGetLen (this->curStrToken);
+    const char *ptr = la_StringGetPtr (this->curStrToken);
+    int len = la_StringGetLen (this->curStrToken);
     ifnot (len)
       return this->syntax_error (this, "expected [+/*-]=");
 
@@ -1505,8 +1501,8 @@ static int i_parse_stmt (i_t *this) {
     }
 
     ifnot (symbol) {
-      i_print_istring (this, this->err_fp, name);
-      return i_unknown_symbol (this);
+      la_print_istring (this, this->err_fp, name);
+      return la_unknown_symbol (this);
     }
 
     if (symbol->is_const and AS_INT(symbol->value) isnot 0)
@@ -1516,46 +1512,46 @@ static int i_parse_stmt (i_t *this) {
     while (*ptr is ' ') ptr++;
     int is_un = *ptr is '~';
 
-    i_next_token (this);
+    la_next_token (this);
 
     if (is_un)
-      i_next_token (this);
+      la_next_token (this);
 
-    err = i_parse_expr (this, &val);
+    err = la_parse_expr (this, &val);
 
-    if (err isnot I_OK) return err;
+    if (err isnot LA_OK) return err;
 
     if (is_un)
       AS_INT(val) = ~AS_INT(val);
 
     switch (operator) {
       case '=': symbol->value = val; break;
-      case '+': symbol->value = i_sum (symbol->value, val); break;
-      case '-': symbol->value = i_diff (symbol->value, val); break;
-      case '/': symbol->value = i_quot (symbol->value, val); break;
-      case '*': symbol->value = i_prod (symbol->value, val); break;
-      case '%': symbol->value = i_mod  (symbol->value, val); break;
-      case '|': symbol->value = i_bset (symbol->value, val); break;
-      case '&': symbol->value = i_bnot (symbol->value, val); break;
+      case '+': symbol->value = la_sum (symbol->value, val); break;
+      case '-': symbol->value = la_diff (symbol->value, val); break;
+      case '/': symbol->value = la_quot (symbol->value, val); break;
+      case '*': symbol->value = la_prod (symbol->value, val); break;
+      case '%': symbol->value = la_mod  (symbol->value, val); break;
+      case '|': symbol->value = la_bset (symbol->value, val); break;
+      case '&': symbol->value = la_bnot (symbol->value, val); break;
       default: return this->syntax_error (this, "unknown operator");
     }
 
-  } else if (c is I_TOK_ARY) {
-    err = i_parse_array_set (this);
+  } else if (c is LA_TOKEN_ARY) {
+    err = la_parse_array_set (this);
 
-  } else if (c is I_TOK_BUILTIN or c is UFUNC_TYPE) {
-    err = i_parse_primary (this, &val);
+  } else if (c is LA_TOKEN_BUILTIN or c is UFUNC_TYPE) {
+    err = la_parse_primary (this, &val);
     return err;
 
   } else if (this->tokenSymbol and AS_INT(this->tokenValue)) {
-    int (*func) (i_t *) = (void *) AS_PTR(this->tokenValue);
+    int (*func) (la_t *) = (void *) AS_PTR(this->tokenValue);
     err = (*func) (this);
 
 
   } else return this->syntax_error (this, "unknown token");
 
-  if (err is I_ERR_OK_ELSE)
-    err = I_OK;
+  if (err is LA_ERR_OK_ELSE)
+    err = LA_OK;
 
   return err;
 }
@@ -1563,38 +1559,38 @@ static int i_parse_stmt (i_t *this) {
 // parse a level n expression
 // level 0 is the lowest level (highest precedence)
 // result goes in *vp
-static int i_parse_expr_level (i_t *this, int max_level, VALUE *vp) {
+static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
-  int err = I_OK;
+  int err = LA_OK;
   int c;
   VALUE lhs;
   VALUE rhs;
 
   lhs = *vp;
   c = this->curToken;
-  while ((c & 0xff) is I_TOK_BINOP) {
+  while ((c & 0xff) is LA_TOKEN_BINOP) {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
 
     Opfunc op = (Opfunc) AS_PTR(this->tokenValue);
 
-    i_next_token (this);
+    la_next_token (this);
 
-    err = i_parse_primary (this, &rhs);
+    err = la_parse_primary (this, &rhs);
 
-    if (err isnot I_OK) return err;
+    if (err isnot LA_OK) return err;
 
     c = this->curToken;
 
-    while ((c & 0xff) is I_TOK_BINOP) {
+    while ((c & 0xff) is LA_TOKEN_BINOP) {
       int nextlevel = (c >> 8) & 0xff;
       if (level <= nextlevel) break;
 
-      err = i_parse_expr_level (this, nextlevel, &rhs);
+      err = la_parse_expr_level (this, nextlevel, &rhs);
 
-      if (err isnot I_OK) return err;
+      if (err isnot LA_OK) return err;
 
       c = this->curToken;
     }
@@ -1606,19 +1602,19 @@ static int i_parse_expr_level (i_t *this, int max_level, VALUE *vp) {
   return err;
 }
 
-static int i_parse_expr (i_t *this, VALUE *vp) {
+static int la_parse_expr (la_t *this, VALUE *vp) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
-  int err = i_parse_primary (this, vp);
+  int err = la_parse_primary (this, vp);
 
-  if (err is I_OK)
-    err = i_parse_expr_level (this, MAX_EXPR_LEVEL, vp);
+  if (err is LA_OK)
+    err = la_parse_expr_level (this, MAX_EXPR_LEVEL, vp);
 
   return err;
 }
 
-static int i_parse_if_rout (i_t *this, VALUE *cond, int *haveelse, istring_t *ifpart, istring_t *elsepart) {
+static int la_parse_if_rout (la_t *this, VALUE *cond, int *haveelse, la_string *ifpart, la_string *elsepart) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
@@ -1627,90 +1623,90 @@ static int i_parse_if_rout (i_t *this, VALUE *cond, int *haveelse, istring_t *if
 
   *haveelse = 0;
 
-  c = i_next_token (this);
+  c = la_next_token (this);
 
-  err = i_parse_expr (this, cond);
-  if (err isnot I_OK) return err;
+  err = la_parse_expr (this, cond);
+  if (err isnot LA_OK) return err;
 
   c = this->curToken;
 
-  if (c isnot I_TOK_STRING) return this->syntax_error (this, "parsing if, not a string");
+  if (c isnot LA_TOKEN_STRING) return this->syntax_error (this, "parsing if, not a string");
 
   *ifpart = this->curStrToken;
 
-  c = i_next_token (this);
+  c = la_next_token (this);
 
-  if (c is I_TOK_ELSE) {
-    c = i_next_token (this);
+  if (c is LA_TOKEN_ELSE) {
+    c = la_next_token (this);
 
-    if (c isnot I_TOK_STRING) return this->syntax_error (this, "parsing else, not a string");
+    if (c isnot LA_TOKEN_STRING) return this->syntax_error (this, "parsing else, not a string");
 
     *elsepart = this->curStrToken;
     *haveelse = 1;
 
-    i_next_token (this);
+    la_next_token (this);
   }
 
-  return I_OK;
+  return LA_OK;
 }
 
-static int i_parse_if (i_t *this) {
-  istring_t ifpart, elsepart;
+static int la_parse_if (la_t *this) {
+  la_string ifpart, elsepart;
   int haveelse = 0;
   VALUE cond;
-  int err = i_parse_if_rout (this, &cond, &haveelse, &ifpart, &elsepart);
-  if (err isnot I_OK)
+  int err = la_parse_if_rout (this, &cond, &haveelse, &ifpart, &elsepart);
+  if (err isnot LA_OK)
     return err;
 
   if (AS_INT(cond))
-    err = i_parse_string (this, ifpart);
+    err = la_parse_string (this, ifpart);
   else if (haveelse)
-    err = i_parse_string (this, elsepart);
+    err = la_parse_string (this, elsepart);
 
-  if (err is I_OK and 0 is AS_INT(cond)) err = I_ERR_OK_ELSE;
+  if (err is LA_OK and 0 is AS_INT(cond)) err = LA_ERR_OK_ELSE;
   return err;
 }
 
-static int i_parse_ifnot (i_t *this) {
-  istring_t ifpart, elsepart;
+static int la_parse_ifnot (la_t *this) {
+  la_string ifpart, elsepart;
   int haveelse = 0;
   VALUE cond;
-  int err = i_parse_if_rout (this, &cond, &haveelse, &ifpart, &elsepart);
-  if (err isnot I_OK)
+  int err = la_parse_if_rout (this, &cond, &haveelse, &ifpart, &elsepart);
+  if (err isnot LA_OK)
     return err;
 
   if (0 is AS_INT(cond))
-    err = i_parse_string (this, ifpart);
+    err = la_parse_string (this, ifpart);
   else if (haveelse)
-    err = i_parse_string (this, elsepart);
+    err = la_parse_string (this, elsepart);
 
-  if (err is I_OK and 0 isnot AS_INT(cond)) err = I_ERR_OK_ELSE;
+  if (err is LA_OK and 0 isnot AS_INT(cond)) err = LA_ERR_OK_ELSE;
   return err;
 }
 
-static int i_parse_while (i_t *this) {
+static int la_parse_while (la_t *this) {
   int err;
-  istring_t savepc = this->parsePtr;
-  int len = i_StringGetLen (this->parsePtr);
+  la_string savepc = this->parsePtr;
+  int len = la_StringGetLen (this->parsePtr);
   this->curState |= AT_LOOP;
 
 again:
   this->curState &= ~BREAK;
   this->curState &= ~CONTINUE;
 
-  err = i_parse_if (this);
+  err = la_parse_if (this);
 
   if (this->curState & BREAK) {
-    const char *savepcptr = i_StringGetPtr (savepc);
-    const char *parsePtr = i_StringGetPtr (this->parsePtr);
+    const char *savepcptr = la_StringGetPtr (savepc);
+    const char *parsePtr = la_StringGetPtr (this->parsePtr);
     while (savepcptr isnot parsePtr) {savepcptr++; len--;}
-    i_StringSetLen (&this->parsePtr, len);
+    la_StringSetLen (&this->parsePtr, len);
 
     int c;
     int brackets = 2;
 
     do {
-      c = i_get_char (this);
+      c = la_get_char (this);
       if (c is '}')
         --brackets;
       else if (c is '{')
@@ -1720,16 +1716,16 @@ again:
     if (brackets)
       return this->syntax_error (this, "a closed bracket is missing");
 
-    i_next_token (this);
-    err = I_ERR_OK_ELSE;
+    la_next_token (this);
+    err = LA_ERR_OK_ELSE;
   }
 
-  if (err is I_ERR_OK_ELSE or this->didReturn) {
+  if (err is LA_ERR_OK_ELSE or this->didReturn) {
     this->curState &= ~AT_LOOP;
-    return I_OK;
-  } else if (err is I_OK or this->curState & CONTINUE) {
-    i_StringSetPtr (&this->parsePtr, i_StringGetPtr (savepc));
-    i_StringSetLen (&this->parsePtr, len);
+    return LA_OK;
+  } else if (err is LA_OK or this->curState & CONTINUE) {
+    la_StringSetPtr (&this->parsePtr, la_StringGetPtr (savepc));
+    la_StringSetLen (&this->parsePtr, len);
     goto again;
   }
 
@@ -1737,40 +1733,40 @@ again:
   return err;
 }
 
-static int i_parse_var_list (i_t *this, funT *uf) {
+static int la_parse_var_list (la_t *this, funT *uf) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
   int c;
   int nargs = 0;
 
-  //c = i_next_token (this);
-  c = i_next_raw_token (this);
+  //c = la_next_token (this);
+  c = la_next_raw_token (this);
 
   for (;;) {
-    if (c is I_TOK_SYMBOL) {
-      istring_t name = this->curStrToken;
+    if (c is LA_TOKEN_SYMBOL) {
+      la_string name = this->curStrToken;
 
       if (nargs >= MAX_BUILTIN_PARAMS)
-        return i_too_many_args (this);
+        return la_too_many_args (this);
 
-      size_t len = i_StringGetLen (name);
+      size_t len = la_StringGetLen (name);
       if (len >= MAXLEN_SYMBOL_LEN)
         return this->syntax_error (this, "argument name exceeded maximum length (64)");
 
-      const char *ptr = i_StringGetPtr (name);
+      const char *ptr = la_StringGetPtr (name);
       Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL_LEN, ptr, len);
 
       nargs++;
 
-      //c = i_next_raw_token (this);
-      c = i_next_token (this);
+      //c = la_next_raw_token (this);
+      c = la_next_token (this);
 
       if (c is ')') break;
 
       if (c is ',')
-        //c = i_next_token (this);
-        c = i_next_raw_token (this);
+        //c = la_next_token (this);
+        c = la_next_raw_token (this);
 
     } else if (c is ')')
       break;
@@ -1782,90 +1778,90 @@ static int i_parse_var_list (i_t *this, funT *uf) {
   return nargs;
 }
 
-static int i_parse_func_def (i_t *this) {
+static int la_parse_func_def (la_t *this) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
-  istring_t name;
+  la_string name;
   int c;
   int nargs = 0;
   size_t len = 0;
 
   ifnot (this->curFunName[0]) {
-    c = i_next_raw_token (this); // do not interpret the symbol
-    if (c isnot I_TOK_SYMBOL) return this->syntax_error (this, "function definition, not a symbol");
+    c = la_next_raw_token (this); // do not interpret the symbol
+    if (c isnot LA_TOKEN_SYMBOL) return this->syntax_error (this, "function definition, not a symbol");
 
     name = this->curStrToken;
-    len = i_StringGetLen (name);
+    len = la_StringGetLen (name);
     if (len >= MAXLEN_SYMBOL_LEN)
       return this->syntax_error (this, "function name exceeded maximum length (64)");
   } else {
-    name = i_StringNew (this->curFunName);
+    name = la_StringNew (this->curFunName);
     len = bytelen (this->curFunName);
   }
 
   funT *uf = Fun_new (this, funNew (
-   .name = i_StringGetPtr (name), .namelen = len, .parent = this->curScope
+   .name = la_StringGetPtr (name), .namelen = len, .parent = this->curScope
     ));
 
-  c = i_next_token (this);
+  c = la_next_token (this);
 
   if (c is '(') {
-    i_fun_stack_push (this, this->curScope);
+    la_fun_stack_push (this, this->curScope);
 
     this->curScope = uf;
 
-    nargs = i_parse_var_list (this, uf);
+    nargs = la_parse_var_list (this, uf);
 
-    this->curScope = i_fun_stack_pop (this);
+    this->curScope = la_fun_stack_pop (this);
 
     if (nargs < 0) return nargs;
 
-    c = i_next_token (this);
+    c = la_next_token (this);
   }
 
-  if (c isnot I_TOK_STRING) return this->syntax_error (this, "function definition, not a string");
+  if (c isnot LA_TOKEN_STRING) return this->syntax_error (this, "function definition, not a string");
 
   uf->body = this->curStrToken;
 
   VALUE v = PTR((pointer) uf);
-  this->curSym = i_define_symbol (this, this->curScope, name, (UFUNC_TYPE | (nargs << 8)), v, 0);
+  this->curSym = la_define_symbol (this, this->curScope, name, (UFUNC_TYPE | (nargs << 8)), v, 0);
   this->curFunDef = uf;
 
-  i_next_token (this);
+  la_next_token (this);
 
-  return I_OK;
+  return LA_OK;
 }
 
-static int i_parse_print (i_t *this) {
-  int err = I_NOTOK;
+static int la_parse_print (la_t *this) {
+  int err = LA_NOTOK;
   VALUE value;
 
   string_t *str = String.new (32);
 
-  int c = i_ignore_ws (this);
+  int c = la_ignore_ws (this);
 
   if (c isnot '(') {
     this->print_bytes (this->err_fp, "string fmt error, awaiting (\n");
-    i_err_ptr (this, I_NOTOK);
+    la_err_ptr (this, LA_NOTOK);
     goto theend;
   }
 
-  c = i_ignore_ws (this);
+  c = la_ignore_ws (this);
 
   FILE *fp = this->out_fp;
 
   /* for now */
-  if (c is 's' and Cstring.eq_n (i_StringGetPtr (this->parsePtr), "tderr,", 6)) {
+  if (c is 's' and Cstring.eq_n (la_StringGetPtr (this->parsePtr), "tderr,", 6)) {
     fp = stderr;
     for (int i = 0; i < 6; i++)
-      i_ignore_next_char (this);
-    c = i_ignore_ws (this);
+      la_ignore_next_char (this);
+    c = la_ignore_ws (this);
   }
 
   if (c isnot '"') {
     this->print_bytes (this->err_fp, "string fmt error, awaiting double quote\n");
-    i_err_ptr (this, I_NOTOK);
+    la_err_ptr (this, LA_NOTOK);
     goto theend;
   }
 
@@ -1873,23 +1869,23 @@ static int i_parse_print (i_t *this) {
   char directive = 'd';
 
   for (;;) {
-    c = i_get_char (this);
+    c = la_get_char (this);
     if (c is '"') {
       if (prev isnot '\\')
         break;
 
       String.append_byte (str, '"');
       prev = '"';
-      c = i_get_char (this);
+      c = la_get_char (this);
     }
 
     if (c is '\\') {
-      if (prev is '\\' or i_peek_char (this, 1) isnot '$') {
+      if (prev is '\\' or la_peek_char (this, 1) isnot '$') {
         prev = str->bytes[str->num_bytes - 1];
         String.append_byte (str, '\\');
       } else  prev = '\\';
 
-      c = i_get_char (this);
+      c = la_get_char (this);
     }
 
     if (c is '$') {
@@ -1900,56 +1896,56 @@ static int i_parse_print (i_t *this) {
       }
 
       prev = c;
-      c = i_get_char (this);
+      c = la_get_char (this);
       if (c isnot '{') {
         this->print_bytes (this->err_fp, "string fmt error, awaiting {\n");
-        i_err_ptr (this, I_NOTOK);
+        la_err_ptr (this, LA_NOTOK);
         goto theend;
       }
 
       char sym[MAXLEN_SYMBOL_LEN];
       int tmp = prev;
 
-      c = i_get_char (this);
+      c = la_get_char (this);
       prev = c;
 
       if (c is '%') {
-        c = i_get_char (this);
+        c = la_get_char (this);
         if (c isnot 's' and c isnot 'p' and c isnot 'd' and
             c isnot 'o' and c isnot 'x' and c isnot 'f') {
           this->print_fmt_bytes (this->err_fp, "string fmt error, unsupported directive [%c]\n", c);
-          i_err_ptr (this, I_NOTOK);
+          la_err_ptr (this, LA_NOTOK);
           goto theend;
         } else
           directive = c;
 
-        if (i_peek_char (this, 0) isnot ',' and i_peek_char (this, 1) isnot ' ') {
+        if (la_peek_char (this, 0) isnot ',' and la_peek_char (this, 1) isnot ' ') {
           this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma and a space after directive\n");
-          i_err_ptr (this, I_NOTOK);
+          la_err_ptr (this, LA_NOTOK);
           goto theend;
         }
 
-        i_get_char (this); i_get_char (this);
+        la_get_char (this); la_get_char (this);
 
       } else
-        i_unget_char (this);
+        la_unget_char (this);
 
       c = prev;
       prev = tmp;
 
       if (c is '(') {
-        const char *saved_ptr = i_StringGetPtr (this->parsePtr);
+        const char *saved_ptr = la_StringGetPtr (this->parsePtr);
 
-        i_next_token (this);
+        la_next_token (this);
 
-        err = i_parse_expr (this, &value);
-        if (err isnot I_OK) {
+        err = la_parse_expr (this, &value);
+        if (err isnot LA_OK) {
           this->print_bytes (this->err_fp, "string fmt error, while evaluating expression\n");
-          i_err_ptr (this, I_NOTOK);
+          la_err_ptr (this, LA_NOTOK);
           goto theend;
         }
 
-        const char *ptr = i_StringGetPtr (this->parsePtr);
+        const char *ptr = la_StringGetPtr (this->parsePtr);
         while (ptr isnot saved_ptr) {
           if (*ptr is '}')
             goto append_value;
@@ -1957,16 +1953,16 @@ static int i_parse_print (i_t *this) {
         }
 
         this->print_bytes (this->err_fp, "string fmt error, awaiting }\n");
-        i_err_ptr (this, I_NOTOK);
+        la_err_ptr (this, LA_NOTOK);
         goto theend;
       }
 
       int len = 0;
       prev = c;
-      while ((c = i_get_char (this))) {
+      while ((c = la_get_char (this))) {
         if (c is -1) {
           this->print_bytes (this->err_fp, "string fmt error, unended string\n");
-          i_err_ptr (this, I_NOTOK);
+          la_err_ptr (this, LA_NOTOK);
           goto theend;
         }
 
@@ -1978,17 +1974,17 @@ static int i_parse_print (i_t *this) {
 
       ifnot (len) {
         this->print_bytes (this->err_fp, "string fmt error, awaiting symbol\n");
-        i_err_ptr (this, I_NOTOK);
+        la_err_ptr (this, LA_NOTOK);
         goto theend;
       }
 
       sym[len] = '\0';
-      istring_t x = i_StringNew (sym);
-      sym_t *symbol = i_lookup_symbol (this, x);
+      la_string x = la_StringNew (sym);
+      sym_t *symbol = la_lookup_symbol (this, x);
 
       if (NULL is symbol) {
         this->print_fmt_bytes (this->err_fp, "string fmt error, unknown symbol %s\n", sym);
-        i_err_ptr (this, I_NOTOK);
+        la_err_ptr (this, LA_NOTOK);
         goto theend;
       }
 
@@ -2030,82 +2026,82 @@ static int i_parse_print (i_t *this) {
     String.append_byte (str, c);
   }
 
-  c = i_get_char (this);
+  c = la_get_char (this);
 
   if (c isnot ')') {
     this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
-    i_err_ptr (this, I_NOTOK);
+    la_err_ptr (this, LA_NOTOK);
     goto theend;
   }
 
-  if (I_NOTOK is this->print_bytes (fp, str->bytes)) {
+  if (LA_NOTOK is this->print_bytes (fp, str->bytes)) {
     this->print_bytes (this->err_fp, "error while printing string\n");
     fprintf (this->err_fp, "%s\n", str->bytes);
     goto theend;
   }
 
-  i_next_token (this);
+  la_next_token (this);
 
-  err = I_OK;
+  err = LA_OK;
 
 theend:
   String.release (str);
   return err;
 }
 
-static int i_parse_exit (i_t *this) {
+static int la_parse_exit (la_t *this) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
-  i_next_token (this);
+  la_next_token (this);
 
-  i_parse_expr (this, &this->funResult);
+  la_parse_expr (this, &this->funResult);
   this->exitValue = AS_INT(this->funResult);
 
-  i_StringSetLen (&this->parsePtr, 0);
+  la_StringSetLen (&this->parsePtr, 0);
   this->didReturn = 1;
 
-  return I_ERR_EXIT;
+  return LA_ERR_EXIT;
 }
 
-static int i_parse_return (i_t *this) {
+static int la_parse_return (la_t *this) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
   int err;
-  i_next_token (this);
+  la_next_token (this);
 
-  err = i_parse_expr (this, &this->funResult);
+  err = la_parse_expr (this, &this->funResult);
 
   // terminate scope
-  i_StringSetLen (&this->parsePtr, 0);
+  la_StringSetLen (&this->parsePtr, 0);
   this->didReturn = 1;
 
   return err;
 }
 
-static int i_define (i_t *this, const char *name, int typ, VALUE val) {
-  i_define_symbol (this, this->function, i_StringNew (name), typ, val, 0);
-  return I_OK;
+static int la_define (la_t *this, const char *name, int typ, VALUE val) {
+  la_define_symbol (this, this->function, la_StringNew (name), typ, val, 0);
+  return LA_OK;
 }
 
-static int i_eval_string (i_t *this, const char *buf) {
+static int la_eval_string (la_t *this, const char *buf) {
 #ifdef DEBUG
   Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, " ", 1);
   $CODE_PATH
 #endif
   this->script_buffer = buf;
-  istring_t x = i_StringNew (buf);
-  int retval = i_parse_string (this, x);
-  i_release_malloced_strings (this, 0);
+  la_string x = la_StringNew (buf);
+  int retval = la_parse_string (this, x);
+  la_release_malloced_strings (this, 0);
 
-  if (retval is I_ERR_EXIT)
+  if (retval is LA_ERR_EXIT)
     return this->exitValue;
 
   return retval;
 }
 
-static VALUE i_equals (VALUE x, VALUE y) {
+static VALUE la_equals (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2132,13 +2128,13 @@ theend:
 }
 
 
-static VALUE i_ne (VALUE x, VALUE y) {
-  VALUE result = i_equals (x, y);
+static VALUE la_ne (VALUE x, VALUE y) {
+  VALUE result = la_equals (x, y);
   result = INT(0 == AS_INT(result));
   return result;
 }
 
-static VALUE i_lt (VALUE x, VALUE y) {
+static VALUE la_lt (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2164,7 +2160,7 @@ theend:
   return result;
 }
 
-static VALUE i_le (VALUE x, VALUE y) {
+static VALUE la_le (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2190,7 +2186,7 @@ theend:
   return result;
 }
 
-static VALUE i_gt (VALUE x, VALUE y) {
+static VALUE la_gt (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2216,7 +2212,7 @@ theend:
   return result;
 }
 
-static VALUE i_ge (VALUE x, VALUE y) {
+static VALUE la_ge (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2242,7 +2238,7 @@ theend:
   return result;
 }
 
-static VALUE i_mod (VALUE x, VALUE y) {
+static VALUE la_mod (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2260,7 +2256,7 @@ theend:
   return result;
 }
 
-static VALUE i_sum  (VALUE x, VALUE y) {
+static VALUE la_sum  (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2286,7 +2282,7 @@ theend:
   return result;
 }
 
-static VALUE i_prod (VALUE x, VALUE y) {
+static VALUE la_prod (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2312,7 +2308,7 @@ theend:
   return result;
 }
 
-static VALUE i_quot (VALUE x, VALUE y) {
+static VALUE la_quot (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2338,7 +2334,7 @@ theend:
   return result;
 }
 
-static VALUE i_diff (VALUE x, VALUE y) {
+static VALUE la_diff (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2364,17 +2360,17 @@ theend:
   return result;
 }
 
-static VALUE i_bset (VALUE x, VALUE y) {
+static VALUE la_bset (VALUE x, VALUE y) {
   int xx = AS_INT(x); xx |= AS_INT(y); x = INT(xx);
   return x;
 }
 
-static VALUE i_bnot (VALUE x, VALUE y) {
+static VALUE la_bnot (VALUE x, VALUE y) {
   int xx = AS_INT(x); xx &= AS_INT(y); x = INT(xx);
   return x;
 }
 
-static VALUE i_shl  (VALUE x, VALUE y) {
+static VALUE la_shl  (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2393,7 +2389,7 @@ theend:
   return result;
 }
 
-static VALUE i_shr  (VALUE x, VALUE y) {
+static VALUE la_shr  (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2412,7 +2408,7 @@ theend:
   return result;
 }
 
-static VALUE i_bitor (VALUE x, VALUE y) {
+static VALUE la_bitor (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2431,7 +2427,7 @@ theend:
   return result;
 }
 
-static VALUE i_bitand (VALUE x, VALUE y) {
+static VALUE la_bitand (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2450,7 +2446,7 @@ theend:
   return result;
 }
 
-static VALUE i_bitxor (VALUE x, VALUE y) {
+static VALUE la_bitxor (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2469,7 +2465,7 @@ theend:
   return result;
 }
 
-static VALUE i_logical_and (VALUE x, VALUE y) {
+static VALUE la_logical_and (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2495,7 +2491,7 @@ theend:
   return result;
 }
 
-static VALUE i_logical_or (VALUE x, VALUE y) {
+static VALUE la_logical_or (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -2521,38 +2517,38 @@ theend:
   return result;
 }
 
-static VALUE i_not (i_t *this, VALUE value) {
+static VALUE la_not (la_t *this, VALUE value) {
   (void) this;
   VALUE result = INT(!AS_INT(value));
   return result;
 }
 
-static VALUE i_bool (i_t *this, VALUE value) {
+static VALUE la_bool (la_t *this, VALUE value) {
   (void) this;
   VALUE result = INT(!!AS_INT(value));
   return result;
 }
 
-static VALUE i_free (i_t *this, VALUE value) {
+static VALUE la_free (la_t *this, VALUE value) {
   (void) this;
-  VALUE result = INT(I_OK);
+  VALUE result = INT(LA_OK);
 
   void *object = (void *) AS_PTR(value);
 
   ifnot (NULL is object)
     free (object);
   else
-    result = INT(I_NOTOK);
+    result = INT(LA_NOTOK);
 
   return result;
 }
 
-static void *i_alloc (i_t *this, VALUE size) {
+static void *la_alloc (la_t *this, VALUE size) {
   (void) this;
   return Alloc (AS_MEMSIZE(size));
 }
 
-static void *i_realloc (i_t *this, VALUE obj, VALUE size) {
+static void *la_realloc (la_t *this, VALUE obj, VALUE size) {
   (void) this;
   return Realloc ((void *)AS_PTR(obj), AS_MEMSIZE(size));
 }
@@ -2563,99 +2559,99 @@ static struct def {
   int toktype;
   VALUE val;
 } idefs[] = {
-  { "var",     I_TOK_VARDEF,   NONE_VALUE },
-  { "const",   I_TOK_CONSTDEF, NONE_VALUE },
-  { "else",    I_TOK_ELSE,     NONE_VALUE },
-  { "break",   I_TOK_BREAK,    NONE_VALUE },
-  { "continue",I_TOK_CONTINUE, NONE_VALUE },
-  { "if",      I_TOK_IF,       PTR((pointer) i_parse_if) },
-  { "ifnot",   I_TOK_IFNOT,    PTR((pointer) i_parse_ifnot) },
-  { "while",   I_TOK_WHILE,    PTR((pointer) i_parse_while) },
-  { "print",   I_TOK_PRINT,    PTR((pointer) i_parse_print) },
-  { "func",    I_TOK_FUNCDEF,  PTR((pointer) i_parse_func_def) },
-  { "return",  I_TOK_RETURN,   PTR((pointer) i_parse_return) },
-  { "exit",    I_TOK_EXIT,     PTR((pointer) i_parse_exit) },
+  { "var",     LA_TOKEN_VARDEF,   NONE_VALUE },
+  { "const",   LA_TOKEN_CONSTDEF, NONE_VALUE },
+  { "else",    LA_TOKEN_ELSE,     NONE_VALUE },
+  { "break",   LA_TOKEN_BREAK,    NONE_VALUE },
+  { "continue",LA_TOKEN_CONTINUE, NONE_VALUE },
+  { "if",      LA_TOKEN_IF,       PTR((pointer) la_parse_if) },
+  { "ifnot",   LA_TOKEN_IFNOT,    PTR((pointer) la_parse_ifnot) },
+  { "while",   LA_TOKEN_WHILE,    PTR((pointer) la_parse_while) },
+  { "print",   LA_TOKEN_PRINT,    PTR((pointer) la_parse_print) },
+  { "func",    LA_TOKEN_FUNCDEF,  PTR((pointer) la_parse_func_def) },
+  { "return",  LA_TOKEN_RETURN,   PTR((pointer) la_parse_return) },
+  { "exit",    LA_TOKEN_EXIT,     PTR((pointer) la_parse_exit) },
   { "true",    INTEGER_TYPE,   INT(1) },
   { "false",   INTEGER_TYPE,   INT(0) },
   { "OK",      INTEGER_TYPE,   INT(0) },
   { "NOTOK",   INTEGER_TYPE,   INT(-1) },
-  { "array",   I_TOK_ARYDEF,   PTR((integer) i_parse_array_def) },
-  { "*",       BINOP(1),       PTR((integer) i_prod) },
-  { "/",       BINOP(1),       PTR((integer) i_quot) },
-  { "%",       BINOP(1),       PTR((integer) i_mod) },
-  { "+",       BINOP(2),       PTR((integer) i_sum) },
-  { "-",       BINOP(2),       PTR((integer) i_diff) },
-  { "&",       BINOP(3),       PTR((integer) i_bitand) },
-  { "|",       BINOP(3),       PTR((integer) i_bitor) },
-  { "^",       BINOP(3),       PTR((integer) i_bitxor) },
-  { ">>",      BINOP(3),       PTR((integer) i_shr) },
-  { "<<",      BINOP(3),       PTR((integer) i_shl) },
-  { "==",      BINOP(4),       PTR((integer) i_equals) },
-  { "is",      BINOP(4),       PTR((integer) i_equals) },
-  { "!=",      BINOP(4),       PTR((integer) i_ne) },
-  { "isnot",   BINOP(4),       PTR((integer) i_ne) },
-  { "<",       BINOP(4),       PTR((integer) i_lt) },
-  { "lt",      BINOP(4),       PTR((integer) i_lt) },
-  { "<=",      BINOP(4),       PTR((integer) i_le) },
-  { "le",      BINOP(4),       PTR((integer) i_le) },
-  { ">",       BINOP(4),       PTR((integer) i_gt) },
-  { "gt",      BINOP(4),       PTR((integer) i_gt) },
-  { ">=",      BINOP(4),       PTR((integer) i_ge) },
-  { "ge",      BINOP(4),       PTR((integer) i_ge) },
-  { "&&",      BINOP(5),       PTR((integer) i_logical_and) },
-  { "and",     BINOP(5),       PTR((integer) i_logical_and) },
-  { "||",      BINOP(5),       PTR((integer) i_logical_or) },
-  { "or",      BINOP(5),       PTR((integer) i_logical_or) },
+  { "array",   LA_TOKEN_ARYDEF,   PTR((integer) la_parse_array_def) },
+  { "*",       BINOP(1),       PTR((integer) la_prod) },
+  { "/",       BINOP(1),       PTR((integer) la_quot) },
+  { "%",       BINOP(1),       PTR((integer) la_mod) },
+  { "+",       BINOP(2),       PTR((integer) la_sum) },
+  { "-",       BINOP(2),       PTR((integer) la_diff) },
+  { "&",       BINOP(3),       PTR((integer) la_bitand) },
+  { "|",       BINOP(3),       PTR((integer) la_bitor) },
+  { "^",       BINOP(3),       PTR((integer) la_bitxor) },
+  { ">>",      BINOP(3),       PTR((integer) la_shr) },
+  { "<<",      BINOP(3),       PTR((integer) la_shl) },
+  { "==",      BINOP(4),       PTR((integer) la_equals) },
+  { "is",      BINOP(4),       PTR((integer) la_equals) },
+  { "!=",      BINOP(4),       PTR((integer) la_ne) },
+  { "isnot",   BINOP(4),       PTR((integer) la_ne) },
+  { "<",       BINOP(4),       PTR((integer) la_lt) },
+  { "lt",      BINOP(4),       PTR((integer) la_lt) },
+  { "<=",      BINOP(4),       PTR((integer) la_le) },
+  { "le",      BINOP(4),       PTR((integer) la_le) },
+  { ">",       BINOP(4),       PTR((integer) la_gt) },
+  { "gt",      BINOP(4),       PTR((integer) la_gt) },
+  { ">=",      BINOP(4),       PTR((integer) la_ge) },
+  { "ge",      BINOP(4),       PTR((integer) la_ge) },
+  { "&&",      BINOP(5),       PTR((integer) la_logical_and) },
+  { "and",     BINOP(5),       PTR((integer) la_logical_and) },
+  { "||",      BINOP(5),       PTR((integer) la_logical_or) },
+  { "or",      BINOP(5),       PTR((integer) la_logical_or) },
   { NULL, 0, 0 }
 };
 
-struct i_def_fun_t {
+struct la_def_fun_t {
   const char *name;
   VALUE val;
   int nargs;
-} i_def_funs[] = {
-  { "not",     PTR((integer) i_not), 1},
-  { "bool",    PTR((integer) i_bool), 1},
-  { "free",    PTR((integer) i_free), 1},
-  { "alloc",   PTR((integer) i_alloc), 1},
-  { "realloc", PTR((integer) i_realloc), 2},
+} la_def_funs[] = {
+  { "not",     PTR((integer) la_not), 1},
+  { "bool",    PTR((integer) la_bool), 1},
+  { "free",    PTR((integer) la_free), 1},
+  { "alloc",   PTR((integer) la_alloc), 1},
+  { "realloc", PTR((integer) la_realloc), 2},
   { NULL, 0, 0}
 };
 
 /* ABSTRACTION CODE */
 
-static int i_print_bytes (FILE *fp, const char *bytes) {
+static int la_print_bytes (FILE *fp, const char *bytes) {
   if (NULL is bytes) return 0;
   string_t *parsed = IO.parse_escapes ((char *)bytes);
-  if (NULL is parsed) return I_NOTOK;
+  if (NULL is parsed) return LA_NOTOK;
   int nbytes = fprintf (fp, "%s", parsed->bytes);
   String.release (parsed);
   fflush (fp);
   return nbytes;
 }
 
-static int i_print_fmt_bytes (FILE *fp, const char *fmt, ...) {
+static int la_print_fmt_bytes (FILE *fp, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE (fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
-  return i_print_bytes (fp, bytes);
+  return la_print_bytes (fp, bytes);
 }
 
-static int i_print_byte (FILE *fp, int c) {
-  return i_print_fmt_bytes (fp, "%c", c);
+static int la_print_byte (FILE *fp, int c) {
+  return la_print_fmt_bytes (fp, "%c", c);
 }
 
-static VALUE I_print_bytes (i_t *this, char *bytes) {
+static VALUE I_print_bytes (la_t *this, char *bytes) {
   VALUE result = INT(this->print_bytes (this->out_fp, bytes));
   return result;
 }
 
-static VALUE I_print_byte (i_t *this, char byte) {
+static VALUE I_print_byte (la_t *this, char byte) {
   VALUE result = INT(this->print_byte (this->out_fp, byte));
   return result;
 }
 
-static int i_eval_file (i_t *this, const char *filename) {
+static int la_eval_file (la_t *this, const char *filename) {
   ifnot (File.exists (filename)) {
     this->print_fmt_bytes (this->err_fp, "%s: doesn't exists\n", filename);
     return NOTOK;
@@ -2703,9 +2699,9 @@ static int i_eval_file (i_t *this, const char *filename) {
 
   script[r] = '\0';
 
-  r = i_eval_string (this, script);
+  r = la_eval_string (this, script);
 
-  if (r isnot I_OK) {
+  if (r isnot LA_OK) {
     char *err_msg[] = {"NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
         "BAD ARGUMENTS", "TOO MANY ARGUMENTS"};
     this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-r - 2]);
@@ -2714,59 +2710,59 @@ static int i_eval_file (i_t *this, const char *filename) {
   return r;
 }
 
-static int i_define_funs_default_cb (i_t *this) {
+static int la_define_funs_default_cb (la_t *this) {
   (void) this;
-  return I_OK;
+  return LA_OK;
 }
 
-static i_opts i_default_options (i_t *this, i_opts opts) {
+static la_opts la_default_options (la_t *this, la_opts opts) {
   (void) this;
   if (NULL is opts.print_bytes)
-    opts.print_bytes = i_print_bytes;
+    opts.print_bytes = la_print_bytes;
 
   if (NULL is opts.print_byte)
-    opts.print_byte = i_print_byte;
+    opts.print_byte = la_print_byte;
 
   if (NULL is opts.print_fmt_bytes)
-    opts.print_fmt_bytes = i_print_fmt_bytes;
+    opts.print_fmt_bytes = la_print_fmt_bytes;
 
   if (NULL is opts.syntax_error)
-    opts.syntax_error = i_syntax_error;
+    opts.syntax_error = la_syntax_error;
 
   if (NULL is opts.err_fp)
     opts.err_fp = stderr;
 
   if (NULL is opts.define_funs_cb)
-    opts.define_funs_cb = i_define_funs_default_cb;
+    opts.define_funs_cb = la_define_funs_default_cb;
 
   return opts;
 }
 
-static void i_release (i_t **thisp) {
+static void la_release (la_t **thisp) {
   if (NULL is *thisp) return;
-  i_t *this = *thisp;
+  la_t *this = *thisp;
 
-  String.release (this->idir);
+  String.release (this->la_dir);
   String.release (this->message);
   Imap.release   (this->refcount);
-  i_release_malloced_strings (this, 1);
+  la_release_malloced_strings (this, 1);
   fun_release (&this->function);
 
   free (this);
   *thisp = NULL;
 }
 
-static void i_release_instance (i_t **thisp) {
-  i_release (thisp);
+static void la_release_instance (la_t **thisp) {
+  la_release (thisp);
 }
 
-static i_t *i_new (i_T *__i__) {
-  i_t *this = Alloc (sizeof (i_t));
+static la_t *la_new (la_T *__i__) {
+  la_t *this = Alloc (sizeof (la_t));
   this->prop = __i__->prop;
   return this;
 }
 
-static char *i_name_gen (char *name, int *name_gen, char *prefix, size_t prelen) {
+static char *la_name_gen (char *name, int *name_gen, char *prefix, size_t prelen) {
   size_t num = (*name_gen / 26) + prelen;
   size_t i = 0;
   for (; i < prelen; i++) name[i] = prefix[i];
@@ -2775,9 +2771,9 @@ static char *i_name_gen (char *name, int *name_gen, char *prefix, size_t prelen)
   return name;
 }
 
-static void i_remove_instance (i_T *this, i_t *instance) {
-  i_t *it = $my(head);
-  i_t *prev = NULL;
+static void la_remove_instance (la_T *this, la_t *instance) {
+  la_t *it = $my(head);
+  la_t *prev = NULL;
 
   int idx = 0;
   while (it isnot instance) {
@@ -2807,10 +2803,10 @@ static void i_remove_instance (i_T *this, i_t *instance) {
   prev->next = it->next;
 
 theend:
-  i_release_instance (&it);
+  la_release_instance (&it);
 }
 
-static i_t *i_append_instance (i_T *this, i_t *instance) {
+static la_t *la_append_instance (la_T *this, la_t *instance) {
   instance->next = NULL;
   $my(current_idx) = $my(num_instances);
   $my(num_instances)++;
@@ -2818,7 +2814,7 @@ static i_t *i_append_instance (i_T *this, i_t *instance) {
   if (NULL is $my(head))
     $my(head) = instance;
   else {
-    i_t *it = $my(head);
+    la_t *it = $my(head);
     while (it) {
       if (it->next is NULL) break;
       it = it->next;
@@ -2830,63 +2826,63 @@ static i_t *i_append_instance (i_T *this, i_t *instance) {
   return instance;
 }
 
-static i_t *i_set_current (i_T *this, int idx) {
+static la_t *la_set_current (la_T *this, int idx) {
   if (idx >= $my(num_instances)) return NULL;
-  i_t *it = $my(head);
+  la_t *it = $my(head);
   int i = 0;
   while (i++ < idx) it = it->next;
 
   return it;
 }
 
-static void i_set_idir (i_t *this, char *fn) {
+static void la_set_la_dir (la_t *this, char *fn) {
   if (NULL is fn) return;
   size_t len = bytelen (fn);
-  String.replace_with_len (this->idir, fn, len);
+  String.replace_with_len (this->la_dir, fn, len);
 }
 
-static void i_set_define_funs_cb (i_t *this, IDefineFuns_cb cb) {
+static void la_set_define_funs_cb (la_t *this, LaDefineFuns_cb cb) {
   this->define_funs_cb = cb;
 }
 
-static void i_set_user_data (i_t *this, void *user_data) {
+static void la_set_user_data (la_t *this, void *user_data) {
   this->user_data = user_data;
 }
 
-static void *i_get_user_data (i_t *this) {
+static void *la_get_user_data (la_t *this) {
   return this->user_data;
 }
 
-static char *i_get_message (i_t *this) {
+static char *la_get_message (la_t *this) {
   return this->message->bytes;
 }
 
-static char *i_get_eval_str (i_t *this) {
-  return (char *) i_StringGetPtr (this->parsePtr);
+static char *la_get_eval_str (la_t *this) {
+  return (char *) la_StringGetPtr (this->parsePtr);
 }
 
-static i_t *i_get_current (i_T *this) {
-  i_t *it = $my(head);
+static la_t *la_get_current (la_T *this) {
+  la_t *it = $my(head);
   int i = 0;
   while (i++ < $my(current_idx)) it = it->next;
 
   return it;
 }
 
-static int i_get_current_idx (i_T *this) {
+static int la_get_current_idx (la_T *this) {
   return $my(current_idx);
 }
 
-static int i_init (i_T *interp, i_t *this, i_opts opts) {
+static int la_init (la_T *interp, la_t *this, la_opts opts) {
   int i;
   int err = 0;
 
   if (NULL is opts.name)
-    i_name_gen (this->name, &$my(name_gen), "i:", 2);
+    la_name_gen (this->name, &$my(name_gen), "i:", 2);
   else
     Cstring.cp (this->name, 32, opts.name, 31);
 
-  opts = i_default_options (this, opts);
+  opts = la_default_options (this, opts);
 
   this->print_byte = opts.print_byte;
   this->print_fmt_bytes = opts.print_fmt_bytes;
@@ -2898,13 +2894,13 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
   this->define_funs_cb = opts.define_funs_cb;
 
   this->didReturn = 0;
-  this->exitValue = I_OK;
+  this->exitValue = LA_OK;
   this->curState = 0;
 
-  if (NULL is opts.idir)
-    this->idir = String.new (32);
+  if (NULL is opts.la_dir)
+    this->la_dir = String.new (32);
   else
-    this->idir = String.new_with (opts.idir);
+    this->la_dir = String.new_with (opts.la_dir);
 
   this->message = String.new (32);
 
@@ -2912,50 +2908,50 @@ static int i_init (i_T *interp, i_t *this, i_opts opts) {
       funNew (.name = NS_GLOBAL, .namelen = NS_GLOBAL_LEN, .num_symbols = 256));
 
   for (i = 0; idefs[i].name; i++) {
-    err = i_define (this, idefs[i].name, idefs[i].toktype, idefs[i].val);
+    err = la_define (this, idefs[i].name, idefs[i].toktype, idefs[i].val);
 
-    if (err isnot I_OK) {
-      i_release (&this);
+    if (err isnot LA_OK) {
+      la_release (&this);
       return err;
     }
   }
 
-  for (i = 0; i_def_funs[i].name; i++) {
-    err = i_define (this, i_def_funs[i].name, CFUNC (i_def_funs[i].nargs), i_def_funs[i].val);
+  for (i = 0; la_def_funs[i].name; i++) {
+    err = la_define (this, la_def_funs[i].name, CFUNC (la_def_funs[i].nargs), la_def_funs[i].val);
 
-    if (err isnot I_OK) {
-      i_release (&this);
+    if (err isnot LA_OK) {
+      la_release (&this);
       return err;
     }
   }
 
-  if (I_OK isnot opts.define_funs_cb (this)) {
-    i_release (&this);
+  if (LA_OK isnot opts.define_funs_cb (this)) {
+    la_release (&this);
     return err;
   }
 
   this->refcount = Imap.new (256);
 
-  i_append_instance (interp, this);
+  la_append_instance (interp, this);
 
-  return I_OK;
+  return LA_OK;
 }
 
-static i_t *i_init_instance (i_T *__i__, i_opts opts) {
-  i_t *this = i_new (__i__);
+static la_t *la_init_instance (la_T *__i__, la_opts opts) {
+  la_t *this = la_new (__i__);
 
-  i_init (__i__, this, opts);
+  la_init (__i__, this, opts);
 
   return this;
 }
 
-static int i_load_file (i_T *__i__, i_t *this, char *fn) {
+static int la_load_file (la_T *__i__, la_t *this, char *fn) {
   if (this is NULL)
-    this = i_init_instance (__i__, IOpts());
+    this = la_init_instance (__i__, LaOpts());
 
   ifnot (Path.is_absolute (fn)) {
     if (File.exists (fn) and File.is_reg (fn))
-      return i_eval_file (this, fn);
+      return la_eval_file (this, fn);
 
     size_t fnlen = bytelen (fn);
     char fname[fnlen+3];
@@ -2967,17 +2963,17 @@ static int i_load_file (i_T *__i__, i_t *this, char *fn) {
     if (0 is extlen or 0 is Cstring.eq (".i", extname)) {
       fname[fnlen] = '.'; fname[fnlen+1] = 'i'; fname[fnlen+2] = '\0';
       if (File.exists (fname))
-        return i_eval_file (this, fname);
+        return la_eval_file (this, fname);
 
       fname[fnlen] = '\0';
     }
 
-    ifnot (this->idir->num_bytes) {
-      i_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
+    ifnot (this->la_dir->num_bytes) {
+      la_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
       return NOTOK;
     }
 
-    string_t *ddir = this->idir;
+    string_t *ddir = this->la_dir;
     size_t len = ddir->num_bytes + bytelen (fname) + 2 + 7;
     char tmp[len + 3];
     Cstring.cp_fmt (tmp, len + 1, "%s/scripts/%s", ddir->bytes, fname);
@@ -2987,22 +2983,22 @@ static int i_load_file (i_T *__i__, i_t *this, char *fn) {
     }
 
     ifnot (File.exists (tmp)) {
-      i_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
+      la_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
       return NOTOK;
     }
 
-    return i_eval_file (this, tmp);
+    return la_eval_file (this, tmp);
   }
 
   ifnot (File.exists (fn)) {
-    i_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
+    la_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
     return NOTOK;
   }
 
-  return i_eval_file (this, fn);
+  return la_eval_file (this, fn);
 }
 
-public i_T *__init_i__ (void) {
+public la_T *__init_la__ (void) {
   __INIT__ (io);
   __INIT__ (path);
   __INIT__ (file);
@@ -3014,35 +3010,35 @@ public i_T *__init_i__ (void) {
   __INIT__ (vstring);
   __INIT__ (ustring);
 
-  i_T *this =  Alloc (sizeof (i_T));
-  $myprop = Alloc (sizeof (i_prop));
+  la_T *this =  Alloc (sizeof (la_T));
+  $myprop = Alloc (sizeof (la_prop));
 
-  *this = (i_T) {
-    .self = (i_self) {
-      .new = i_new,
-      .init = i_init,
-      .def =  i_define,
-      .release = i_release,
-      .eval_file = i_eval_file,
-      .load_file = i_load_file,
+  *this = (la_T) {
+    .self = (la_self) {
+      .new = la_new,
+      .init = la_init,
+      .def =  la_define,
+      .release = la_release,
+      .eval_file = la_eval_file,
+      .load_file = la_load_file,
       .print_byte = I_print_byte,
       .print_bytes = I_print_bytes,
-      .eval_string =  i_eval_string,
-      .init_instance = i_init_instance,
-      .remove_instance = i_remove_instance,
-      .append_instance = i_append_instance,
-      .get = (i_get_self) {
-        .message = i_get_message,
-        .current = i_get_current,
-        .eval_str = i_get_eval_str,
-        .user_data = i_get_user_data,
-        .current_idx = i_get_current_idx
+      .eval_string =  la_eval_string,
+      .init_instance = la_init_instance,
+      .remove_instance = la_remove_instance,
+      .append_instance = la_append_instance,
+      .get = (la_get_self) {
+        .message = la_get_message,
+        .current = la_get_current,
+        .eval_str = la_get_eval_str,
+        .user_data = la_get_user_data,
+        .current_idx = la_get_current_idx
       },
-      .set = (i_set_self) {
-        .idir = i_set_idir,
-        .current = i_set_current,
-        .user_data = i_set_user_data,
-        .define_funs_cb = i_set_define_funs_cb
+      .set = (la_set_self) {
+        .la_dir = la_set_la_dir,
+        .current = la_set_current,
+        .user_data = la_set_user_data,
+        .define_funs_cb = la_set_define_funs_cb
       }
     },
     .prop = $myprop,
@@ -3057,14 +3053,14 @@ public i_T *__init_i__ (void) {
   return this;
 }
 
-public void __deinit_i__ (i_T **thisp) {
+public void __deinit_la__ (la_T **thisp) {
   if (NULL is *thisp) return;
-  i_T *this = *thisp;
+  la_T *this = *thisp;
 
-  i_t *it = $my(head);
+  la_t *it = $my(head);
   while (it) {
-    i_t *tmp = it->next;
-    i_release_instance (&it);
+    la_t *tmp = it->next;
+    la_release_instance (&it);
     it = tmp;
   }
 

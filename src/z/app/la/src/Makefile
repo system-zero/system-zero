@@ -69,7 +69,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
-FLAGS += -ll-$(VERSION) -lio-$(VERSION) -largparse-$(VERSION)
+FLAGS += -lla-$(VERSION) -lio-$(VERSION) -largparse-$(VERSION)
 FLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lvstring-$(VERSION)
 
 la: shared static
