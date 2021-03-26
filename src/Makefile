@@ -639,20 +639,20 @@ clean-libi-shared:
 clean-libi-static:
 	@cd $(Z_I_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libl-shared: Env cenv list libstring-shared libcstring-shared\
-             libvstring-shared libustring-shared libpath-shared libfile-shared\
-             liberror-shared libvmap-shared libio-shared
+libla-shared: Env cenv list libstring-shared libcstring-shared\
+              libvstring-shared libustring-shared libpath-shared libfile-shared\
+              liberror-shared libvmap-shared libio-shared
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libl-static: Env cenv list libstring-static libcstring-static\
-             libvstring-static libustring-static libpath-static libfile-static\
-             liberror-static libvmap-static libio-static
+libla-static: Env cenv list libstring-static libcstring-static\
+              libvstring-static libustring-static libpath-static libfile-static\
+              liberror-static libvmap-static libio-static
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean-libl-shared:
+clean-libla-shared:
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean-libl-static:
+clean-libla-static:
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libreadline-shared: Env cenv libstring-shared libcstring-shared \
@@ -829,20 +829,20 @@ clean-i-static:
 	@cd $(ZA_I_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
   # L
-  ZA_L          = l
-  ZA_L_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_L)/src
+  ZA_LA          = la
+  ZA_LA_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_LA)/src
 
-l-shared: libargparse-shared libl-shared
-	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+la-shared: libargparse-shared libla-shared
+	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-l-static: libargparse-static libl-static
-	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+la-static: libargparse-static libla-static
+	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
-clean-l-shared:
-	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+clean-la-shared:
+	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
 
-clean-l-static:
-	@cd $(ZA_L_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+clean-la-static:
+	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
   # e
   ZA_E          = e
