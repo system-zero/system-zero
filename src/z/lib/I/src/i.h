@@ -6,7 +6,7 @@ typedef struct i_prop i_prop;
 typedef struct i_T i_T;
 typedef struct funType funT;
 
-typedef int_least64_t ival_t;
+typedef intptr_t ival_t;
 
 #define I_CFUNC(x) (((x) << 8) + 'B')
 

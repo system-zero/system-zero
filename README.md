@@ -1,8 +1,8 @@
 ------------------------- [ zero point draft ] -------------------------------
 
-[0.0 State](#ZERO_POINT_ZERO_STATE).
+[0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
+Dir/
 
-[Skip the description and goto the install instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
 
 ## Description
 
@@ -770,8 +770,135 @@ So far, we've implemented:
 ## ZERO_POINT_ZERO_CONCLUSION
   ... todo
 
-## ZERO_POINT_DEVELOPMENT
-  ... todo
+## ZERO POINT DEVELOPMENT
+
+## Interpreter development.
+
+We took a bit of break here, to dedicate some time and focus a bit  with the
+interpreter.
+
+Our development tools are capable to do basic administration, but we can not
+extend our system, from within the isolated system. What we have only is our
+humble tiny interpreter.
+
+This one is derived from [tinyscript](https://github.com/totalspectrum/tinyscript).
+
+Tinyscript was written for a memory constrained system, where its developer
+wanted to apply some simple logic at runtime, with as few resources possible.
+That's why it doesn't handle strings, signed integers and why it doesn't use
+dynamic allocation. It just  reserves at the initialization some memory from
+the stack in a memory arena, with a size that is defined  at the compilation
+time.
+
+In this memory arena it stores the symbols (starting from the begining of the
+arena and going forward), and values (begining from the end of the  arena and
+going backwards), both typedefed as `intptr_t`. So a lookup for a value it is
+going back from the end, by decrementing the value pointer.  If this  pointer
+meets the symbol pointer, then the system it gets out of memory.
+
+All that all in a little more than a thousand of lines of compact code, to do
+all the required and well defined tasks for an interpreter, such as scanning,  parsing
+and evaluation.
+
+We have used this little machine at the begining, to save and restore  editor
+sessions, and later we applied the same technique and to the virtual terminal
+interface. And we could also use it as a scripting environment, in our shell!
+
+It's not a surprise, that this tiny code it's enough, for a direct connection
+with C. Since `intptr_t` is capable to store pointers, then the C abstraction
+function signature interface, it uses direct the objects without even casting.
+It seems that you can bind the whole C universe with it!
+
+We took the freedom to modify tinyscript and to adjust it to our environment.
+The first thing to do was to use dynamic allocation, so to avoid any out  of
+memory operations, as long the system itself it doesn't run out of resources.
+
+The next thing to do, was to remove any static declared symbols and put  them
+in a struct (and with our own interface code), and which we are passing as the
+first argument to the internal functions and also to the C function interface.
+
+We also added basic string (and with multibyte) support, and some  established
+operators like `+=, -=, /=, */, ...`, we modified the print function to handle
+multibyte strings, and also we extended it with interpolation expressions, and
+added some keywords, that are being used also in this codebase, like `is, isnot,
+ifnot, ...). We also added code to handle operations on signed integers.
+We've also used internally our own datatapes, and with the open possibility to
+expose them to the interpreter, and extend it with more rich types, like: maps,
+arrays, lists and our string type functions, and so on.
+
+But the real value, is that we've used this, to realize a bit the machinery of
+an interpreter, so we took the happy path to add support for nested functions,
+and even lambda functions! Of course, this added code and a lot of complexity!
+And because tinyscript is what is tinycc for the C language!  (the underlying
+machine, it doesn't really separate the conserns and tries to do many  things,
+with as few code is possible), and because it wasn't really destined to handle
+the level of a programming language complexity, the result of those convenient
+extensions, is at places of course some spaghetti code.
+
+There isn't a type system, there isn't a Value Type, it is just an `intptr_t`,
+which says nothing. This has some nice properties though, such integers as big
+to fit the calculation of the 92 fibonacci number. This type is guarranteed by
+the standard to hold pointers and so should be as big as `ptrdiff_t`, which is
+perfect.
+
+But it's not doable to hold a double!
+
+There are some nice methods, that are called NaN tagging, or tagged  pointers.
+I was close enough to finish the implementation, but when i tried the code  to
+a 32bit machine, the compiler complained for the underlying type.
+
+This method is using `uint64_t`, which is big enough to hold a double, but  it
+also leaves a couple of bits free to store an information about the underlying
+type, which is a member of a `union` with at most eight types free to use.
+
+This magic is being used in quite of many languages, like lua[jit], javascript,
+and became quite known with the [Crafting Interpreters](https://github.com/munificent/craftinginterpreters) book,
+from Bob Nystrom. I first saw it, when i've been involved in [Dictu](https://github.com/dictu-lang/Dictu),
+which is an excellent implementation of the Book, from my friend Jason.
+
+But though it is economical and fast, it is too much "hardwarish" for my taste,
+as I do not really understand all those bits, how they really work. Or I do, but
+I do not have such enthusiam  to hold them in my mind, so i never really learned
+them really. I just use them in safe cases, but without really knowing them.
+
+What I like most is to design and implement primitive interfaces, and that is
+why I like C, because it is just a thin abstraction! If it wasn't for all those
+types and their slight details and the slightly silent UB.
+
+So, and if we continue with the interpreter in a new territory, then we need a
+more flexible type, and a little bit more costly though than an  `uint64_t`  i'm
+afraid, and for sure not that fast. To be honest here and as a confess, I never
+really cared __that__ much about performance. it is just that happens that C
+offers that performance, but it feels more like a gift! The real priority  and
+desire, was always the most straight access to the kernel, and  with the  most
+simple best expressed method that is provided by the underlying environment.
+For POSIX like systens, this is the `shell`. The joke here, is that despite how
+it might looks, it is also and the most intuitive one for a human. It has been
+proved also, that is and a clever investment, because if you learn it once, you
+learn it for ever, and you use it everywhere the same way, as it is the  same
+standardized interface everywhere, and so it isn't vulnerable to any specific
+system choices of the aesthetics, or useless (usually) overcomplexities  with
+a really waste of valuable resources for just an interface. So C offers  this
+direct connection with the underlying system hardware and kernel, without any
+interpreter in between. For a small price at the expressivity and without any
+way to interfere with the system at runtime. So we need at least __One__.
+
+We are actually walking at the One! That is where we're going, and we want to
+be stable and end up on things with our API, when we reach a this point. If we
+don't do that, we have to be prepared to introduce incompatibilities,  during
+the logical evoluation. This is almost always a frustration for a developer to
+adapt, especially when even point releases introduce such incompatibilities.
+C success proves that simple fact, since C nener changes, or it changes in a
+gradual way, leaving a decade between new revisions and standards. However it
+is guarranteed that ANSI C code, will be compiled in every known platform.
+And that is also the reason, why we have to appreciate POSIX, and why it is so
+critical to base our lifes in Open Standards that they standardise established
+and accepted practicing, which is proved useful, logical and stable in time.
+
+So if we are inclined to continue to work in the interpreter, then we have to
+introduce those API incompatibilities now, rather at a later state. So  it is
+time to move on from our zero point, and start walking at the zero point zero
+point one.
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and
@@ -799,3 +926,5 @@ gained consience. Hopefully one day.
 * [Build Your Own Lisp.](https://github.com/orangeduck/BuildYourOwnLisp)
 * [A Programming Language in Javascript.](http://lisperator.net/pltut/)
 * [Linux From Scratch.](https://linuxfromscratch.org)
+* [Nan Boxing.](https://piotrduperas.com/posts/nan-boxing)
+* [Nan Boxing.](https://leonardschuetz.ch/blog/nan-boxing/)
