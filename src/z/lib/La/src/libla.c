@@ -614,8 +614,11 @@ static void la_release_sym (void *sym) {
   sym_t *this = (sym_t *) sym;
 
   if ((this->type & 0xff) is UFUNC_TYPE) {
-    funT *f = (funT *) AS_PTR(this->value);
-    fun_release (&f);
+    VALUE v = this->value;
+    ifnot (v.type & FUNPTR_TYPE) {
+      funT *f = (funT *) AS_PTR(v);
+      fun_release (&f);
+    }
   }
 
   if ((this->type & 0xff) is ARRAY_TYPE)
@@ -777,6 +780,7 @@ static int la_do_next_token (la_t *this, int israw) {
           r = symbol->type & 0xff;
 
           this->tokenArgs = (symbol->type >> 8) & 0xff;
+
           if (r is ARRAY_TYPE)
             r = LA_TOKEN_ARY;
           else
@@ -1103,7 +1107,7 @@ static int la_parse_expr_list (la_t *this) {
 #endif
   int err, c;
   int count = 0;
-  VALUE v = INT(0);
+  VALUE v;
 
   do {
     err = la_parse_expr (this, &v);
@@ -1219,10 +1223,11 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
   if (c isnot '(') {
     la_unget_char (this);
-    *vp = PTR((pointer)uf);
+    VALUE v = PTR((pointer) uf);
+    v.type |= FUNPTR_TYPE;
+    *vp = v;
     return LA_OK;
   }
-    //return this->syntax_error (this, "expected open parentheses");
 
   this->curState |= FUNCTION_ARGUMENT_SCOPE;
 
@@ -1269,8 +1274,17 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       }
     }
 
-    for (i = 0; i < expectargs; i++)
-      la_define_symbol (this, uf, la_StringNew (uf->argName[i]), INTEGER_TYPE, this->funArgs[i], 0);
+    for (i = 0; i < expectargs; i++) {
+      VALUE v = this->funArgs[i];
+      if (v.type & FUNPTR_TYPE) {
+        funT *f = (funT *) AS_PTR(v);
+        int nargs = f->nargs;
+        la_define_symbol (this, uf, la_StringNew (uf->argName[i]),
+            (UFUNC_TYPE | (nargs << 8)), v, 0);
+      } else
+        la_define_symbol (this, uf, la_StringNew (uf->argName[i]), INTEGER_TYPE,
+            v, 0);
+    }
 
     this->didReturn = 0;
 
@@ -1288,11 +1302,11 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
 
       ifnot (refcount)
-          Vmap.clear (uf->symbols);
-        else {
-          Vmap.release (uf->symbols);
-          this->curScope->symbols = la_symbol_stack_pop (this);
-        }
+        Vmap.clear (uf->symbols);
+      else {
+        Vmap.release (uf->symbols);
+        this->curScope->symbols = la_symbol_stack_pop (this);
+      }
     }
 
     *vp = this->funResult;
@@ -1523,6 +1537,12 @@ static int la_parse_stmt (la_t *this) {
 
     if (is_un)
       AS_INT(val) = ~AS_INT(val);
+
+    if (val.type & FUNPTR_TYPE) {
+      funT *f = (funT *) AS_PTR(val);
+      int nargs = f->nargs;
+      symbol->type = (UFUNC_TYPE | (nargs << 8));
+    }
 
     switch (operator) {
       case '=': symbol->value = val; break;
@@ -1824,8 +1844,12 @@ static int la_parse_func_def (la_t *this) {
 
   uf->body = this->curStrToken;
 
+
   VALUE v = PTR((pointer) uf);
-  this->curSym = la_define_symbol (this, this->curScope, name, (UFUNC_TYPE | (nargs << 8)), v, 0);
+
+  this->curSym = la_define_symbol (this, this->curScope, name,
+    (UFUNC_TYPE | (nargs << 8)), v, 0);
+
   this->curFunDef = uf;
 
   la_next_token (this);
@@ -2543,7 +2567,7 @@ static VALUE la_free (la_t *this, VALUE value) {
   return result;
 }
 
-static void *la_alloc (la_t *this, VALUE size) {
+static void *la_malloc (la_t *this, VALUE size) {
   (void) this;
   return Alloc (AS_MEMSIZE(size));
 }
@@ -2571,37 +2595,31 @@ static struct def {
   { "func",    LA_TOKEN_FUNCDEF,  PTR((pointer) la_parse_func_def) },
   { "return",  LA_TOKEN_RETURN,   PTR((pointer) la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR((pointer) la_parse_exit) },
-  { "true",    INTEGER_TYPE,   INT(1) },
-  { "false",   INTEGER_TYPE,   INT(0) },
-  { "OK",      INTEGER_TYPE,   INT(0) },
-  { "NOTOK",   INTEGER_TYPE,   INT(-1) },
-  { "array",   LA_TOKEN_ARYDEF,   PTR((integer) la_parse_array_def) },
-  { "*",       BINOP(1),       PTR((integer) la_prod) },
-  { "/",       BINOP(1),       PTR((integer) la_quot) },
-  { "%",       BINOP(1),       PTR((integer) la_mod) },
-  { "+",       BINOP(2),       PTR((integer) la_sum) },
-  { "-",       BINOP(2),       PTR((integer) la_diff) },
-  { "&",       BINOP(3),       PTR((integer) la_bitand) },
-  { "|",       BINOP(3),       PTR((integer) la_bitor) },
-  { "^",       BINOP(3),       PTR((integer) la_bitxor) },
-  { ">>",      BINOP(3),       PTR((integer) la_shr) },
-  { "<<",      BINOP(3),       PTR((integer) la_shl) },
-  { "==",      BINOP(4),       PTR((integer) la_equals) },
-  { "is",      BINOP(4),       PTR((integer) la_equals) },
-  { "!=",      BINOP(4),       PTR((integer) la_ne) },
-  { "isnot",   BINOP(4),       PTR((integer) la_ne) },
-  { "<",       BINOP(4),       PTR((integer) la_lt) },
-  { "lt",      BINOP(4),       PTR((integer) la_lt) },
-  { "<=",      BINOP(4),       PTR((integer) la_le) },
-  { "le",      BINOP(4),       PTR((integer) la_le) },
-  { ">",       BINOP(4),       PTR((integer) la_gt) },
-  { "gt",      BINOP(4),       PTR((integer) la_gt) },
-  { ">=",      BINOP(4),       PTR((integer) la_ge) },
-  { "ge",      BINOP(4),       PTR((integer) la_ge) },
-  { "&&",      BINOP(5),       PTR((integer) la_logical_and) },
-  { "and",     BINOP(5),       PTR((integer) la_logical_and) },
-  { "||",      BINOP(5),       PTR((integer) la_logical_or) },
-  { "or",      BINOP(5),       PTR((integer) la_logical_or) },
+  { "array",   LA_TOKEN_ARYDEF,   PTR((pointer) la_parse_array_def) },
+  { "*",       BINOP(1),          PTR((pointer) la_prod) },
+  { "/",       BINOP(1),          PTR((pointer) la_quot) },
+  { "%",       BINOP(1),          PTR((pointer) la_mod) },
+  { "+",       BINOP(2),          PTR((pointer) la_sum) },
+  { "-",       BINOP(2),          PTR((pointer) la_diff) },
+  { "&",       BINOP(3),          PTR((pointer) la_bitand) },
+  { "|",       BINOP(3),          PTR((pointer) la_bitor) },
+  { "^",       BINOP(3),          PTR((pointer) la_bitxor) },
+  { ">>",      BINOP(3),          PTR((pointer) la_shr) },
+  { "<<",      BINOP(3),          PTR((pointer) la_shl) },
+  { "==",      BINOP(4),          PTR((pointer) la_equals) },
+  { "is",      BINOP(4),          PTR((pointer) la_equals) },
+  { "!=",      BINOP(4),          PTR((pointer) la_ne) },
+  { "isnot",   BINOP(4),          PTR((pointer) la_ne) },
+  { "<",       BINOP(4),          PTR((pointer) la_lt) },
+  { "<=",      BINOP(4),          PTR((pointer) la_le) },
+  { ">",       BINOP(4),          PTR((pointer) la_gt) },
+  { ">=",      BINOP(4),          PTR((pointer) la_ge) },
+  { "&&",      BINOP(5),          PTR((pointer) la_logical_and) },
+  { "and",     BINOP(5),          PTR((pointer) la_logical_and) },
+  { "||",      BINOP(5),          PTR((pointer) la_logical_or) },
+  { "or",      BINOP(5),          PTR((pointer) la_logical_or) },
+  { "OK",      INTEGER_TYPE,      INT(0) },
+  { "NOTOK",   INTEGER_TYPE,      INT(-1) },
   { NULL, 0, 0 }
 };
 
@@ -2613,7 +2631,7 @@ struct la_def_fun_t {
   { "not",     PTR((integer) la_not), 1},
   { "bool",    PTR((integer) la_bool), 1},
   { "free",    PTR((integer) la_free), 1},
-  { "alloc",   PTR((integer) la_alloc), 1},
+  { "malloc",  PTR((integer) la_malloc), 1},
   { "realloc", PTR((integer) la_realloc), 2},
   { NULL, 0, 0}
 };
@@ -2756,9 +2774,9 @@ static void la_release_instance (la_t **thisp) {
   la_release (thisp);
 }
 
-static la_t *la_new (la_T *__i__) {
+static la_t *la_new (la_T *__la__) {
   la_t *this = Alloc (sizeof (la_t));
-  this->prop = __i__->prop;
+  this->prop = __la__->prop;
   return this;
 }
 
@@ -2937,17 +2955,17 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   return LA_OK;
 }
 
-static la_t *la_init_instance (la_T *__i__, la_opts opts) {
-  la_t *this = la_new (__i__);
+static la_t *la_init_instance (la_T *__la__, la_opts opts) {
+  la_t *this = la_new (__la__);
 
-  la_init (__i__, this, opts);
+  la_init (__la__, this, opts);
 
   return this;
 }
 
-static int la_load_file (la_T *__i__, la_t *this, char *fn) {
+static int la_load_file (la_T *__la__, la_t *this, char *fn) {
   if (this is NULL)
-    this = la_init_instance (__i__, LaOpts());
+    this = la_init_instance (__la__, LaOpts());
 
   ifnot (Path.is_absolute (fn)) {
     if (File.exists (fn) and File.is_reg (fn))

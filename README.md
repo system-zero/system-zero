@@ -1,8 +1,6 @@
 ------------------------- [ zero point draft ] -------------------------------
 
 [0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
-Dir/
-
 
 ## Description
 
@@ -899,6 +897,41 @@ So if we are inclined to continue to work in the interpreter, then we have to
 introduce those API incompatibilities now, rather at a later state. So  it is
 time to move on from our zero point, and start walking at the zero point zero
 point one.
+
+## ZERO POINT ZERO POINT POINT ONE (0.0.1)
+
+We continue in this state, from the point we ended up at the bing bang state.
+
+We did, what we told. We changed the type of the symbol's value, which made it
+now incompatible with the C function interface signature.
+
+This allow us for flexibility, but as we predicted we added a lot of overhead
+too. A quick test, showed us a serious decrease in performance. Now it is the
+time to test ourselves for conformance with our words. We said that we  favor
+expressionism over performance! Well, we have to arm with courage and logic,
+and face the reality.
+
+As we said, the underlying machine can not pretend that has the mechanisms to
+handle that level of complexity of a well defined programming language. But we
+went ahead and added the posibility, to pass a function pointer as an argument
+to another function, or to store it in a variable. This is really something!
+
+Plus it is also capable to handle double types. Not that I know to handle them
+properly. I don't. This is a science by itself, and you need a proper education
+and serious study on the subject to gain the expertise. So quite quite probably
+functions on doubles they need some adjustment. Right now, the code avoids any
+bitwise operation on them. The thing for instance is, what it has to return in
+that case? There are many subtleties like this, but the mechanism is there.
+
+For some of those reasons, we introduced this development as different concept,
+as its better not to mix for now these namespaces and wait a bit. For instance
+even the previous code, could handle both the cases probably, with some bits of
+hacks though, and quite possible in a such way that it might make this fragile
+code even more complex to maintain and evolve. Not quite possible. For certain.
+
+For this new code, place it in a Namespase called `La` (for Language), there is
+a special test unit for this, which is a copy of the old tests, plus  specific
+tests, like tests on function pointers and doubles.
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

@@ -13,10 +13,12 @@ typedef char *      cstring;
 typedef integer     memsize;
 typedef integer     pointer;
 
+#define NONE_TYPE      0
 #define NUMBER_TYPE    (1 << 0)
 #define INTEGER_TYPE   (1 << 1)
 #define CSTRING_TYPE   (1 << 2)
 #define ARRAY_TYPE     (1 << 3)
+#define FUNPTR_TYPE    (1 << 4)
 #define POINTER_TYPE   INTEGER_TYPE
 #define MEMSIZE_TYPE   INTEGER_TYPE
 
@@ -27,6 +29,7 @@ struct ValueType {
     number   asNumber;
     integer  asInteger;
     cstring  asCString;
+    void *   asNone;
   };
 };
 
@@ -46,6 +49,9 @@ typedef ValueType VALUE;
 
 #define AS_MEMSIZE AS_INT
 #define    MEMSIZE    INT
+
+#define AS_NONE(__v__) __v__.asNone
+#define    NONE(__s__) (VALUE) {.type = NONE_TYPE, .asNone = (void *) 0}
 
 typedef VALUE (*Cfunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*Opfunc) (VALUE, VALUE);
