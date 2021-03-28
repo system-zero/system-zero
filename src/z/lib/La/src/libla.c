@@ -52,7 +52,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
   $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                   \
   Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN); \
   fprintf (this->err_fp, "CurStringToken : ['");                                \
-  la_print_istring (this, this->err_fp, this->curStrToken);                      \
+  la_print_lastring (this, this->err_fp, this->curStrToken);                      \
   fprintf (this->err_fp, "']\n\n");
 #endif
 
@@ -314,7 +314,7 @@ static inline la_string la_StringNew (const char *str) {
   return x;
 }
 
-static void la_print_istring (la_t *this, FILE *fp, la_string s) {
+static void la_print_lastring (la_t *this, FILE *fp, la_string s) {
   uint len = la_StringGetLen (s);
   const char *ptr = (const char *) la_StringGetPtr (s);
   while (len > 0) {
@@ -346,7 +346,7 @@ static int la_err_ptr (la_t *this, int err) {
   n_len += (sp - keep);
   la_StringSetLen (&this->parsePtr, n_len);
 
-  la_print_istring (this, this->err_fp, this->parsePtr);
+  la_print_lastring (this, this->err_fp, this->parsePtr);
 
   la_StringSetPtr (&this->parsePtr, keep);
   la_StringSetLen (&this->parsePtr, len);
@@ -1515,7 +1515,7 @@ static int la_parse_stmt (la_t *this) {
     }
 
     ifnot (symbol) {
-      la_print_istring (this, this->err_fp, name);
+      la_print_lastring (this, this->err_fp, name);
       return la_unknown_symbol (this);
     }
 
@@ -1525,6 +1525,20 @@ static int la_parse_stmt (la_t *this) {
     ptr += len;
     while (*ptr is ' ') ptr++;
     int is_un = *ptr is '~';
+
+    if (Cstring.eq_n (ptr, "func", 4)) {
+      size_t klen = la_StringGetLen (name);
+      char key[klen + 1];
+      Cstring.cp (key, klen + 1, la_StringGetPtr (name), klen);
+      la_release_sym (Vmap.pop (this->curScope->symbols, key));
+
+      la_next_token (this);
+
+      Cstring.cp (this->curFunName, MAXLEN_SYMBOL_LEN + 1, la_StringGetPtr(name), la_StringGetLen(name));
+      int err = la_parse_func_def (this);
+      this->curFunName[0] = '\0';
+      return err;
+    }
 
     la_next_token (this);
 
@@ -1566,7 +1580,6 @@ static int la_parse_stmt (la_t *this) {
   } else if (this->tokenSymbol and AS_INT(this->tokenValue)) {
     int (*func) (la_t *) = (void *) AS_PTR(this->tokenValue);
     err = (*func) (this);
-
 
   } else return this->syntax_error (this, "unknown token");
 
@@ -1844,7 +1857,6 @@ static int la_parse_func_def (la_t *this) {
 
   uf->body = this->curStrToken;
 
-
   VALUE v = PTR((pointer) uf);
 
   this->curSym = la_define_symbol (this, this->curScope, name,
@@ -1949,7 +1961,10 @@ static int la_parse_print (la_t *this) {
           goto theend;
         }
 
-        la_get_char (this); la_get_char (this);
+        tmp = la_get_char (this);
+        prev = la_get_char (this);
+        if (la_peek_char (this, 0) is '(')
+          prev = la_get_char (this);
 
       } else
         la_unget_char (this);
@@ -1970,6 +1985,7 @@ static int la_parse_print (la_t *this) {
         }
 
         const char *ptr = la_StringGetPtr (this->parsePtr);
+        if (*ptr is '}') la_get_char (this);
         while (ptr isnot saved_ptr) {
           if (*ptr is '}')
             goto append_value;

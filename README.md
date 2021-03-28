@@ -929,9 +929,10 @@ even the previous code, could handle both the cases probably, with some bits of
 hacks though, and quite possible in a such way that it might make this fragile
 code even more complex to maintain and evolve. Not quite possible. For certain.
 
-For this new code, place it in a Namespase called `La` (for Language), there is
-a special test unit for this, which is a copy of the old tests, plus  specific
-tests, like tests on function pointers and doubles.
+For this new code, that was placed in a Namespase called `La` (for Language),
+there is a special [test unit](data/tests/la-semantics.i), which is a copy of the old tests,
+plus specific tests, like tests on function pointers and doubles, and as well
+its own [documentation](data/docs/la.md).
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

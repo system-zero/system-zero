@@ -395,6 +395,26 @@ func semantics () {
     } else {
       print ("[OK]\n")
     }
+
+    test_num += 1
+    print ("[${test_num}] testing function assignment to a variable - ")
+    var fassign = func (s) {return s * 2}
+    r = fassign (40)
+    if (r isnot 80) {
+      print (stderr, "[NOTOK] awaiting 80 got ${r}\n")
+    } else {
+      print ("[OK]\n")
+    }
+
+    func tassign (f, i) {return f (i)}
+    test_num += 1
+    print ("[${test_num}] testing function variable as an argument - ")
+    r = tassign (fassign, 400)
+    if (r isnot 800) {
+      print (stderr, "[NOTOK] awaiting 800 got ${r}\n")
+    } else {
+      print ("[OK]\n")
+    }
   }
 
   funptr ()
@@ -451,7 +471,7 @@ func doubles () {
   dd = d1 (da)
   dd2r = (df (da) + dd) - da;
   if (da isnot dd2r) {
-    print (stderr, "[NOTOK] !it should fail, awaiting ${%f, da} got ${%f, dd2r}\n")
+    print (stderr, "[NOTOK] *this should fail*, awaiting ${%f, da} got ${%f, dd2r}\n")
   } else {
     print ("[OK]\n")
   }
