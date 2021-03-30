@@ -1282,7 +1282,7 @@ typedef struct ed_T {
   ed_self  self;
   buf_T __Buf__;
   win_T __Win__;
-  i_T __I__;
+  la_T __LA__;
 
   msg_T __Msg__;
   eerror_T __EError__;
@@ -1333,9 +1333,9 @@ typedef struct E_get_self {
 
   term_t *(*term) (E_T *);
 
-  IDefineFuns_cb (*i_define_funs_cb) (E_T *);
+  LaDefineFuns_cb (*la_define_funs_cb) (E_T *);
 
-  i_T *(*iclass) (E_T *);
+  la_T *(*la_class) (E_T *);
 } E_get_self;
 
 typedef struct E_self {

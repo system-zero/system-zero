@@ -2,15 +2,28 @@
 
 [0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
 
-## Description
+## Intention
 
 This is  to describe and implement  a functional computer system,  with as few
 resources  is possible,  and provide  our own  solution for  as many  specific
 computer tasks is possible.
 
+It is meant to do that by exposing the development process that is sparked with
+a declared intention. Somehow it is the intention that spawns a mechanism, that
+through analyzing and study, leads and to the actual implementation. Perhaps it
+is that journey that really matters at the end. The hope and the only  ambition
+is that this material will offer some value, though there isn't an expectation.
+
+It is written without a well defined sense of time, but it might be fitted best
+probably at the middle of eighties, so we are probably a bit late. But a system
+is about mechanics, and the procedure to demystification it's not about current
+only terms.
+
 Since this is a quite huge task, we'll  have to extend our system in a gradual
 way, so  we have to divide  it into stages. At  the end of any  stage, the end
 result should be in a usable state.
+
+## Zero Point Description.
 
 The  first  stage  is of  course  to  be  able  to get  control  after  kernel
 initialization, so at some  point we'll have to be ready to  be pid 1. Usually
@@ -933,6 +946,47 @@ For this new code, that was placed in a Namespase called `La` (for Language),
 there is a special [test unit](data/tests/la-semantics.i), which is a copy of the old tests,
 plus specific tests, like tests on function pointers and doubles, and as well
 its own [documentation](data/docs/la.md).
+
+## 0.0.1 DEVELOPMENT
+
+  - we've used the new machine in our editor as an extension language. Of course
+    as we said there is a performance penalty, but this is noticeable only with
+    an abnormal huge amount of iterations. And its not _that_ bad. Okey.  It's
+    bad. But `double` support it is a prerequisitie, so we had to deal with this
+    at some point.
+    Now we have two types of Numbers. An Integer Type, that is as big as to fit
+    the 92th calculation of the fibonacci sequences, and one that should be the
+    largest quantity of one can gets, and can be used as argument to functions,
+    that operate on floating point numbers. These are typedef'ed as:
+```C
+      typedef ptrdiff_t   integer;
+      typedef double      number;
+```
+    `ptrdiff_t` is in standard C and it is the adequate type to handle pointer
+    arithmetic. We also assume that an allocator can request at most PTRDIFF_MAX.
+    So our Pointer Type and the Memsize Type are both aliases for `integer`.
+
+    There is also a C string Type, though the support is really basic right now,
+    and probably it is a good idea to handle some operations on them, with the
+    same way that C does.
+
+    Ideally, we have to have a more flexible String Type to work with strings
+    in a more flexible and safe way. As we have the machine, the question is the
+    interface. We can go a bit far and handle them with an object oriented way!
+    If we take that path, the support should be generic though for consistency.
+
+    So and as conclusion, we complicated a bit the C interface, as now all the
+    arguments are `VALUE` types and the function should cast them properly. The
+    first draft of the transition works flawlessly though, so it is just a matter
+    of discipline to get them right. We've tried to leave them unchangeable, by
+    assuming that the pointer to the struct `VALUE` is a pointer to its first
+    member, that is the union actual value. But this didn't always worked, so
+    perhaps this is not guarranteed. I do not know. Anyway, and as a small test
+    to the new interface, we've introduced an evaluation register, which was first
+    implemented to the characterise visual mode. This needs to be extended to
+    handle more cases, and it should be connected with the expression register
+    which currently does nothing. So hopefully we'll get some value to justify
+    the transition.
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

@@ -1,7 +1,7 @@
 /* Derived from the Tinyscript project at:
  * https://github.com/totalspectrum/ (see LICENSE included in this directory)
  *
- * See data/docs/i.md for details about syntax and semantics.
+ * See data/docs/la.md for details about syntax and semantics.
  */
 
 #define LIBRARY "la"
@@ -35,10 +35,10 @@
 
 #ifdef DEBUG
 
-static  int  CURLaDX = 0;
+static  int  CURIDX = 0;
 static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 
-#define $CUR_LaDX      CURLaDX
+#define $CUR_IDX      CURIDX
 #define $PREV_FUNC    PREVFUNC
 #define $CUR_FUNC     __func__
 #define $CUR_SCOPE    this->curScope->funname
@@ -228,6 +228,7 @@ struct la_t {
   VALUE
      funResult,  // function returned value
      tokenValue, // for symbolic tokens, the symbol's value
+     lastExpr,
      funArgs[MAX_BUILTIN_PARAMS];
 
   stack stack[1];
@@ -272,6 +273,7 @@ static char *la_typeof_as_string (VALUE val) {
     case INTEGER_TYPE: return "IntegerType";
     case NUMBER_TYPE:  return "NumberType";
     case ARRAY_TYPE:   return "ArrayType";
+    case CSTRING_TYPE: return "CStringType";
     default:           return "UnknownType";
   }
 }
@@ -1349,6 +1351,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         la_next_token (this);
 
         this->curState &= ~(FUNCTION_ARGUMENT_SCOPE);
+        this->lastExpr = this->tokenValue;
         return LA_OK;
       }
     }
@@ -2141,6 +2144,23 @@ static int la_eval_string (la_t *this, const char *buf) {
   return retval;
 }
 
+static int la_eval_expr (la_t *this, const char *buf, VALUE *v) {
+  if (*buf isnot '(')
+    return this->syntax_error (this, "awaiting (");
+
+  this->script_buffer = buf;
+  la_string x = la_StringNew (buf);
+
+  this->parsePtr = x;
+  this->curToken = '(';
+
+  int retval = la_parse_expr (this, v);
+
+  la_release_malloced_strings (this, 0);
+
+  return retval;
+}
+
 static VALUE la_equals (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
@@ -2883,6 +2903,10 @@ static void la_set_user_data (la_t *this, void *user_data) {
   this->user_data = user_data;
 }
 
+static VALUE la_get_last_expr_value (la_t *this) {
+  return this->lastExpr;
+}
+
 static void *la_get_user_data (la_t *this) {
   return this->user_data;
 }
@@ -3054,6 +3078,7 @@ public la_T *__init_la__ (void) {
       .def =  la_define,
       .release = la_release,
       .eval_file = la_eval_file,
+      .eval_expr = la_eval_expr,
       .load_file = la_load_file,
       .print_byte = I_print_byte,
       .print_bytes = I_print_bytes,
@@ -3066,7 +3091,8 @@ public la_T *__init_la__ (void) {
         .current = la_get_current,
         .eval_str = la_get_eval_str,
         .user_data = la_get_user_data,
-        .current_idx = la_get_current_idx
+        .current_idx = la_get_current_idx,
+        .last_expr_value = la_get_last_expr_value
       },
       .set = (la_set_self) {
         .la_dir = la_set_la_dir,

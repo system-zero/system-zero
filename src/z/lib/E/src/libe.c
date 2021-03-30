@@ -31,7 +31,7 @@
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
-#define REQUIRE_I_TYPE        DECLARE
+#define REQUIRE_LA_TYPE       DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_RE_TYPE       DECLARE
 #define REQUIRE_SYS_TYPE      DECLARE
@@ -53,7 +53,7 @@
 #include "e.h"
 #include "__e.h"
 
-static i_T *__I__ = NULL;
+static la_T *__LAPTR__ = NULL;
 
 /* this replaced Cstring.tok() below */
 static Vstring_t *cstring_chop (char *buf, char tok, Vstring_t *tokstr,
@@ -1140,29 +1140,29 @@ static int buf_balanced_lw_mode_cb (buf_t **thisp, int fidx, int lidx, Vstring_t
   return NO_CALLBACK_FUNCTION;
 }
 
-static int i_syntax_error_to_ed (i_t *__i__, const char *msg) {
-  E_T *e = I.get.user_data (__i__);
+static int i_syntax_error_to_ed (la_t *__la__, const char *msg) {
+  E_T *e = La.get.user_data (__la__);
   ed_t *this = e->prop->current;
-  char *ptr = I.get.eval_str (__i__);
+  char *ptr = La.get.eval_str (__la__);
   Msg.write_fmt (this, "\nSYNTAX ERROR: %s\nbefore:\n%s\n", msg, ptr);
-  return I_ERR_SYNTAX;
+  return LA_ERR_SYNTAX;
 }
 
 static int buf_interpret (buf_t **thisp, char *malloced) {
   buf_t *this = *thisp;
   char *str = malloced;
 
-  i_t *in = I.get.current ($my(__I__));
+  la_t *in = La.get.current ($my(__LA__));
   ifnot (in)
-    in = I.init_instance ($my(__I__), IOpts (
-      .define_funs_cb = $OurRoots (i_define_funs_cb),
+    in = La.init_instance ($my(__LA__), LaOpts (
+      .define_funs_cb = $OurRoots (la_define_funs_cb),
       .syntax_error = i_syntax_error_to_ed));
 
-  I.set.user_data (in, $OurRoot);
+  La.set.user_data (in, $OurRoot);
 
   Term.reset ($my(term_ptr));
 
-  int retval = I.eval_string (in, str);
+  int retval = La.eval_string (in, str);
 
   free (malloced);
 
@@ -1170,7 +1170,7 @@ static int buf_interpret (buf_t **thisp, char *malloced) {
   Input.getkey (STDIN_FILENO);
   Term.set ($my(term_ptr));
 
-  if (retval is I_ERR_SYNTAX)
+  if (retval is LA_ERR_SYNTAX)
     Ed.messages ($my(root), thisp, AT_EOF);
 
   this = *thisp;
@@ -1180,6 +1180,58 @@ static int buf_interpret (buf_t **thisp, char *malloced) {
   if (retval isnot OK or retval isnot NOTOK)
     retval = NOTOK;
   return retval;
+}
+
+static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str, utf8 c, char *action) {
+  if (c isnot '$') return NO_CALLBACK_FUNCTION;
+
+  ifnot (str->num_bytes) return NOTOK;
+
+  buf_t *this = *thisp;
+  ed_t *ed = $my(root);
+
+  la_t *la = La.get.current ($my(__LA__));
+  ifnot (la)
+    la = La.init_instance ($my(__LA__), LaOpts (
+      .define_funs_cb = $OurRoots (la_define_funs_cb),
+      .syntax_error = i_syntax_error_to_ed));
+
+  La.set.user_data (la, $OurRoot);
+
+  if (str->bytes[0] isnot '(')
+    String.prepend_byte (str, '(');
+
+  if (str->bytes[str->num_bytes - 1] isnot ')')
+    String.append_byte (str, ')');
+
+  VALUE v;
+  int retval = La.eval_expr (la, str->bytes, &v);
+
+  if (retval isnot LA_OK) {
+    Ed.messages (ed, thisp, NOT_AT_EOF);
+    return NOTOK;
+  }
+
+  char buf[256]; buf[0] = '\0';
+
+  switch (v.type) {
+    case NUMBER_TYPE:
+      snprintf (buf, 256, "%f", AS_NUMBER(v));
+      break;
+
+    case CSTRING_TYPE:
+      Ed.reg.set (ed, '$', CHARWISE, v.asCString, NORMAL_ORDER);
+      Msg.send_fmt (ed, COLOR_NORMAL, "Result =  %s (stored to '$' register)", v.asCString);
+      return OK;
+
+    default:
+      snprintf (buf, 256, "%d", AS_INT(v));
+  }
+
+  Ed.reg.set (ed, '$', CHARWISE, buf, NORMAL_ORDER);
+  Msg.send_fmt (ed, COLOR_NORMAL, "Result =  %s (stored to '$' register)", buf);
+
+  return OK;
 }
 
 static int buf_evaluate_lw_mode_cb (buf_t **thisp, int fidx, int lidx, Vstring_t *vstr, utf8 c, char *action) {
@@ -1931,9 +1983,9 @@ static void venv_new (ed_T *this) {
   if ($OurRoots(uid))
     __env_check_directory__ (data_dir, "editor data directory", 1, 1, 0);
 
-  Sys.set.env_as (STR_FMT ("%s/e", data_dir), "I_DIR", 1);
+  Sys.set.env_as (STR_FMT ("%s/e", data_dir), "LA_DIR", 1);
   if ($OurRoots(uid)) {
-    char *i_dir = Sys.get.env_value ("I_DIR");
+    char *i_dir = Sys.get.env_value ("LA_DIR");
     __env_check_directory__ (i_dir, "integrated interpreter directory", 1, 1, 0);
 
     size_t len = bytelen (i_dir + 8);
@@ -2806,7 +2858,7 @@ static buf_t *win_buf_init (win_t *w, int at_frame, int flags) {
   $my(root)        = $myparents(parent);
   $my(__Ed__)      = $myparents(__Ed__);
   $my(__Win__)     = $myparents(Me);
-  $my(__I__)       = $myparents(__I__);
+  $my(__LA__)      = $myparents(__LA__);
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
   $my(__EError__)  = $myparents(__EError__);
@@ -3113,7 +3165,7 @@ static win_t *ed_win_init (ed_t *ed, char *name, WinDimCalc_cb dim_calc_cb) {
   $my(Me)          = &$myparents(Me)->__Win__;
   $my(__Ed__)      = $myparents(Me);
   $my(__Buf__)     = &$myparents(Me)->__Buf__;
-  $my(__I__)       = $myparents(__I__);
+  $my(__LA__)      = $myparents(__LA__);
   $my(__E__)       = $myparents(__E__);
   $my(__Msg__)     = $myparents(__Msg__);
   $my(__EError__)  = $myparents(__EError__);
@@ -10096,7 +10148,7 @@ static int buf_insert_reg (buf_t **thisp, string_t *cur_insert) {
     char *sp = reg->data->bytes;
     while (*sp) {
       int clen = Ustring.charlen ((uchar) *sp);
-      Ustring.get.code (sp);
+      c = Ustring.get.code (sp);
       sp += clen;
       this = buf_insert_char_rout (this, c, cur_insert);
     }
@@ -10839,6 +10891,9 @@ static void ed_set_cw_mode_actions_default (ed_t *this) {
     utf8 sp[] = {'S'}; char spact[] = "Spell selected";
     self(set.cw_mode_actions, sp, 1, spact, buf_spell_cw_mode_cb);
   }
+
+  utf8 ex[] = {'$'}; char exact[] = "$evaluate selected area as an expression";
+  self(set.cw_mode_actions, ex, 1, exact, buf_eval_expression);
 }
 
 static void ed_set_lw_mode_actions (ed_t *this, utf8 *chars, int len,
@@ -11296,19 +11351,19 @@ static int ed_i_record_default (ed_t *this, Vstring_t *rec) {
   char *str = Vstring.to.cstring (rec, ADD_NL);
   if (bytelen (str) is (size_t) $my(record_header_len)) return NOTOK;
 
-  i_t *in = I.get.current ($my(__I__));
+  la_t *in = La.get.current ($my(__LA__));
   ifnot (in)
-    in = I.init_instance ($my(__I__), IOpts(
-      .define_funs_cb = $OurRoots (i_define_funs_cb),
+    in = La.init_instance ($my(__LA__), LaOpts(
+      .define_funs_cb = $OurRoots (la_define_funs_cb),
       .syntax_error = i_syntax_error_to_ed));
 
-  I.set.user_data (in, $OurRoot);
+  La.set.user_data (in, $OurRoot);
 
-  int retval = I.eval_string (in, str);
+  int retval = La.eval_string (in, str);
 
   free (str);
 
-  if (retval is I_ERR_SYNTAX) {
+  if (retval is LA_ERR_SYNTAX) {
     buf_t *buf = this->current->current;
     ed_messages (this, &buf, AT_EOF);
   } else
@@ -12526,7 +12581,7 @@ static ed_t *ed_init (E_T *E, ed_opts opts) {
 
   $my(__Win__)     = &E->__Ed__->__Win__;
   $my(__Buf__)     = &E->__Ed__->__Buf__;
-  $my(__I__)       = &E->__Ed__->__I__;
+  $my(__LA__)      = &E->__Ed__->__LA__;
   $my(__E__)       = E;
   $my(__Msg__)     = &E->__Ed__->__Msg__;
   $my(__EError__)  = &E->__Ed__->__EError__;
@@ -12707,7 +12762,7 @@ static int E_set_i_dir (E_T *__e__, char *dir) {
   if (NOTOK is __env_check_directory__ (dir, "interpreter directory", 0, 0, 0))
     return NOTOK;
 
-  Sys.set.env_as (dir, "I_DIR", 1);
+  Sys.set.env_as (dir, "LA_DIR", 1);
   return OK;
 }
 
@@ -12901,7 +12956,7 @@ static int E_save_image (E_T *this, char *name) {
 
   ifnot (Path.is_absolute (fname->bytes)) {
     String.prepend_with (fname, "/scripts/");
-    String.prepend_with (fname, Sys.get.env_value ("I_DIR"));
+    String.prepend_with (fname, Sys.get.env_value ("LA_DIR"));
   }
 
   String.append_with (fname, "i");
@@ -12992,9 +13047,9 @@ static int E_test_state_bit (E_T *this, int bit) {
   return $my(state) & (bit);
 }
 
-static i_T *E_get_i_class (E_T *this) {
+static la_T *E_get_la_class (E_T *this) {
   (void) this;
-  return &iType;
+  return &__LA__;
 }
 
 static int E_get_state (E_T *this) {
@@ -13246,7 +13301,7 @@ exit_all:
 static ed_T *ed_init_prop (E_T *__E__, ed_T *this) {
   $my(__Win__)     = &this->__Win__;
   $my(__Buf__)     = &this->__Buf__;
-  $my(__I__)       = &this->__I__;
+  $my(__LA__)      = &this->__LA__;
   $my(__E__)       = __E__;
   $my(__Msg__)     = &this->__Msg__;
   $my(__EError__)  = &this->__EError__;
@@ -13283,258 +13338,341 @@ static int Ed_init (E_T *__E__, ed_T *this) {
 
 /* interpreter */
 
-#define IRoot iroot->self
+#define LaRoot laroot->self
 
-ival_t i_e_get_ed_num (i_t *this) {
-  E_T *iroot = I.get.user_data (this);
-  return IRoot.get.num (iroot);
+VALUE la_e_get_ed_num (la_t *this) {
+  E_T *laroot = La.get.user_data (this);
+  VALUE r = INT(LaRoot.get.num (laroot));
+  return r;
 }
 
-ival_t i_e_set_ed_next (i_t *this) {
-  E_T *iroot = I.get.user_data (this);
-  return (ival_t) IRoot.set.next (iroot);
+VALUE la_e_set_ed_next (la_t *this) {
+  E_T *laroot = La.get.user_data (this);
+  VALUE r = PTR((pointer) LaRoot.set.next (laroot));
+  return r;
 }
 
-ival_t i_e_set_ed_by_idx (i_t *this, int idx) {
-  E_T *iroot = I.get.user_data (this);
-  return (ival_t) IRoot.set.current (iroot, idx);
+VALUE la_e_set_ed_by_idx (la_t *this, VALUE idxv) {
+  int idx = AS_INT(idxv);
+  E_T *laroot = La.get.user_data (this);
+  VALUE r = PTR((pointer) LaRoot.set.current (laroot, idx));
+  return r;
 }
 
-ival_t i_e_set_save_image (i_t *this, int val) {
-  E_T *iroot = I.get.user_data (this);
-  IRoot.set.save_image (iroot, val);
-  return I_OK;
+VALUE la_e_set_save_image (la_t *this, VALUE val) {
+  E_T *laroot = La.get.user_data (this);
+  LaRoot.set.save_image (laroot, AS_INT(val));
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_e_set_persistent_layout (i_t *this, int val) {
-  E_T *iroot = I.get.user_data (this);
-  IRoot.set.persistent_layout (iroot, val);
-  return I_OK;
+VALUE la_e_set_persistent_layout (la_t *this, VALUE valv) {
+  int val = AS_INT(valv);
+  E_T *laroot = La.get.user_data (this);
+  LaRoot.set.persistent_layout (laroot, val);
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_e_set_image_name (i_t *this, char *name) {
-  E_T *iroot = I.get.user_data (this);
-  IRoot.set.image_name (iroot, name);
-  return I_OK;
+VALUE la_e_set_image_name (la_t *this, VALUE namev) {
+  char *name = AS_CSTRING(namev);
+  E_T *laroot = La.get.user_data (this);
+  LaRoot.set.image_name (laroot, name);
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_e_set_image_file (i_t *this, char *file) {
-  E_T *iroot = I.get.user_data (this);
-  IRoot.set.image_file (iroot, file);
-  return I_OK;
+VALUE la_e_set_image_file (la_t *this, VALUE filev) {
+  char *file = AS_CSTRING(filev);
+  E_T *laroot = La.get.user_data (this);
+  LaRoot.set.image_file (laroot, file);
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_e_get_ed_current_idx (i_t *this) {
-  E_T *iroot = I.get.user_data (this);
-  return IRoot.get.current_idx (iroot);
+VALUE la_e_get_ed_current_idx (la_t *this) {
+  E_T *laroot = La.get.user_data (this);
+  VALUE r = INT(LaRoot.get.current_idx (laroot));
+  return r;
 }
 
-ival_t i_e_get_ed_current (i_t *this) {
-  E_T *iroot = I.get.user_data (this);
-  return (ival_t) IRoot.get.current (iroot);
+VALUE la_e_get_ed_current (la_t *this) {
+  E_T *laroot = La.get.user_data (this);
+  VALUE r = PTR((pointer) LaRoot.get.current (laroot));
+  return r;
 }
 
-ival_t i_ed_new (i_t *this, int num_win) {
-  E_T *iroot = I.get.user_data (this);
-  return (ival_t) IRoot.new (iroot, EdOpts(.num_win = num_win));
+VALUE la_ed_new (la_t *this, VALUE num_winv) {
+  int num_win = AS_INT(num_winv);
+  E_T *laroot = La.get.user_data (this);
+  VALUE r = PTR((pointer) LaRoot.new (laroot, EdOpts(.num_win = num_win)));
+  return r;
 }
 
-ival_t i_ed_get_num_win (i_t *this, ed_t *ed) {
+VALUE la_ed_get_num_win (la_t *this, VALUE edv) {
   (void) this;
-  return ed_get_num_win (ed, 0);
+  ed_t *ed = (ed_t *) AS_PTR(edv);
+  VALUE r = INT(ed_get_num_win (ed, 0));
+  return r;
 }
 
-ival_t i_ed_get_win_next (i_t *this, ed_t *ed, win_t *win) {
+VALUE la_ed_get_win_next (la_t *this, VALUE edv, VALUE winv) {
   (void) this;
-  return (ival_t) ed_get_win_next (ed, win);
+  ed_t *ed = (ed_t *) AS_PTR(edv);
+  win_t *win = (win_t *) AS_PTR(winv);
+  VALUE r = PTR((pointer) ed_get_win_next (ed, win));
+  return r;
 }
 
-ival_t i_ed_get_current_win (i_t *this, ed_t *ed) {
+VALUE la_ed_get_current_win (la_t *this, VALUE edv) {
   (void) this;
-  return (ival_t) ed_get_current_win (ed);
+  ed_t *ed = (ed_t *) AS_PTR(edv);
+  VALUE r = PTR((pointer) ed_get_current_win (ed));
+  return r;
 }
 
-ival_t i_ed_set_current_win (i_t *this, ed_t *ed, int idx) {
+VALUE la_ed_set_current_win (la_t *this, VALUE edv, VALUE idxv) {
   (void) this;
-  return (ival_t) ed_set_current_win (ed, idx);
+  ed_t *ed = (ed_t *) AS_PTR(edv);
+  int idx = AS_INT(idxv);
+  VALUE r = PTR((pointer) ed_set_current_win (ed, idx));
+  return r;
 }
 
-ival_t i_buf_init_fname (i_t *this, buf_t *buf, char *fn) {
+VALUE la_buf_init_fname (la_t *this, VALUE bufv, VALUE fnamev) {
   (void) this;
-  buf_init_fname (buf, fn);
-  return OK;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  char *fn = AS_CSTRING(fnamev);
+  VALUE r = INT(buf_init_fname (buf, fn));
+  return r;
 }
 
-ival_t i_buf_set_ftype (i_t *this, buf_t *buf, char *ftype) {
-  E_T *iroot = I.get.user_data (this);
-  buf_set_ftype (buf, ed_syn_get_ftype_idx ($from(iroot, current), ftype));
-  return OK;
+VALUE la_buf_set_ftype (la_t *this, VALUE bufv, VALUE ftypev) {
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  char *ftype = AS_CSTRING (ftypev);
+  E_T *laroot = La.get.user_data (this);
+  buf_set_ftype (buf, ed_syn_get_ftype_idx ($from(laroot, current), ftype));
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_buf_set_autosave (i_t *this, buf_t *buf, long minutes) {
+VALUE la_buf_set_autosave (la_t *this, VALUE bufv, VALUE minutesv) {
   (void) this;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  long minutes = (long) AS_INT(minutesv);
   buf_set_autosave (buf, minutes);
-  return OK;
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_buf_set_row_idx (i_t *this, buf_t *buf, int row) {
+VALUE la_buf_set_row_idx (la_t *this, VALUE bufv, VALUE rowv) {
   (void) this;
-  buf_set_row_idx (buf, row, NO_OFFSET, 1);
-  return OK;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  int row = AS_INT(rowv);
+  VALUE r = INT(buf_set_row_idx (buf, row, NO_OFFSET, 1));
+  return r;
 }
 
-ival_t i_buf_draw (i_t *this, buf_t *buf) {
+VALUE la_buf_draw (la_t *this, VALUE bufv) {
   (void) this;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
   buf_draw (buf);
-  return OK;
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_buf_substitute (i_t *this, buf_t *buf, char *pat, char *sub, int global,
-                                            int interactive, int fidx, int lidx) {
+VALUE la_buf_substitute (la_t *this, VALUE bufv, VALUE patv, VALUE subv, VALUE globalv,
+                                            VALUE interactivev, VALUE fidxv, VALUE lidxv) {
   (void) this;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  char *pat = AS_CSTRING(patv);
+  char *sub = AS_CSTRING(subv);
+  int global = AS_INT(globalv);
+  int interactive = AS_INT(interactivev);
+  int fidx = AS_INT(fidxv);
+  int lidx = AS_INT(lidxv);
+
   if (fidx is lidx) fidx = lidx = buf->cur_idx;
 
-  ival_t val = buf_substitute (buf, pat, sub, global, interactive, fidx, lidx);
-  return val;
+  VALUE r = INT(buf_substitute (buf, pat, sub, global, interactive, fidx, lidx));
+  return r;
 }
 
-ival_t i_win_buf_init (i_t *this, win_t *win, int frame, int flags) {
+VALUE la_win_buf_init (la_t *this, VALUE winv, VALUE framev, VALUE flagsv) {
   (void) this;
-  return (ival_t) win_buf_init (win, frame, flags);
+  int flags = AS_INT(flagsv);
+  int frame = AS_INT(framev);
+  win_t *win = (win_t *) AS_PTR(winv);
+  VALUE r = PTR((pointer) win_buf_init (win, frame, flags));
+  return r;
 }
 
-ival_t i_win_set_current_buf (i_t *this, win_t *win, int idx, int draw) {
+VALUE la_win_set_current_buf (la_t *this, VALUE winv, VALUE idxv, VALUE drawv) {
   (void) this;
-  return (ival_t) win_set_current_buf (win, idx, draw);
+  win_t *win = (win_t *) AS_PTR(winv);
+  int idx = AS_INT(idxv);
+  int draw = AS_INT(drawv);
+  VALUE r = PTR((pointer) win_set_current_buf (win, idx, draw));
+  return r;
 }
 
-ival_t i_win_get_current_buf (i_t *this, win_t *win) {
+VALUE la_win_get_current_buf (la_t *this, VALUE winv) {
   (void) this;
-  return (ival_t) win_get_current_buf (win);
+  win_t *win = (win_t *) AS_PTR(winv);
+  VALUE r = PTR((pointer) win_get_current_buf (win));
+  return r;
 }
 
-ival_t i_win_draw (i_t *this, win_t *win) {
+VALUE la_win_draw (la_t *this, VALUE winv) {
   (void) this;
+  win_t *win = (win_t *) AS_PTR(winv);
   win_draw (win);
-  return OK;
+  VALUE r = INT(LA_OK);
+  return r;
 }
 
-ival_t i_win_append_buf (i_t *this, win_t *win, buf_t *buf) {
+VALUE la_win_append_buf (la_t *this, VALUE winv, VALUE bufv) {
   (void) this;
-  win_append_buf (win, buf);
-  return OK;
+  win_t *win = (win_t *) AS_PTR(winv);
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  VALUE r = INT(win_append_buf (win, buf));
+  return r;
 }
 
-ival_t i_buf_normal_page_down (i_t *this, buf_t *buf, int count, int draw) {
+VALUE la_buf_normal_page_down (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
   (void) this;
-  return buf_normal_page_down (buf, count, draw);
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  int count = AS_INT(countv);
+  int draw = AS_INT(drawv);
+  VALUE r = INT(buf_normal_page_down (buf, count, draw));
+  return r;
 }
 
-ival_t i_buf_normal_page_up (i_t *this, buf_t *buf, int count, int draw) {
+VALUE la_buf_normal_page_up (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
   (void) this;
-  return buf_normal_page_up (buf, count, draw);
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  int count = AS_INT(countv);
+  int draw = AS_INT(drawv);
+  VALUE r = INT(buf_normal_page_up (buf, count, draw));
+  return r;
 }
 
-ival_t i_buf_normal_goto_linenr (i_t *this, buf_t *buf, int linenum, int draw) {
+VALUE la_buf_normal_goto_linenr (la_t *this, VALUE bufv, VALUE linenumv, VALUE drawv) {
   (void) this;
-  return buf_normal_goto_linenr (buf, linenum, draw);
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  int linenum = AS_INT(linenumv);
+  int draw = AS_INT(drawv);
+  VALUE r = INT(buf_normal_goto_linenr (buf, linenum, draw));
+  return r;
 }
 
-ival_t i_buf_normal_replace_character_with (i_t *this, buf_t *buf, utf8 c) {
+VALUE la_buf_normal_replace_character_with (la_t *this, VALUE bufv, VALUE cv) {
   (void) this;
-  return buf_normal_replace_character_with (buf, c);
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  utf8 c = AS_INT(cv);
+  VALUE r = INT(buf_normal_replace_character_with (buf, c));
+  return r;
 }
 
-ival_t i_buf_normal_change_case (i_t *this, buf_t *buf) {
+VALUE la_buf_normal_change_case (la_t *this, VALUE bufv) {
   (void) this;
-  return buf_normal_change_case (buf);
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  VALUE r = INT(buf_normal_change_case (buf));
+  return r;
 }
 
-ival_t i_buf_insert_string (i_t *this, buf_t *buf, char *str, int draw) {
+VALUE la_buf_insert_string (la_t *this, VALUE bufv, VALUE strv, VALUE drawv) {
   (void) this;
-  int retval = buf_insert_string (buf, str, bytelen (str), draw);
-  return retval;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  char *str = AS_CSTRING(strv);
+  int draw = AS_INT(drawv);
+  VALUE r = INT(buf_insert_string (buf, str, bytelen (str), draw));
+  return r;
 }
 
-ival_t i_buf_search (i_t *this, buf_t *buf, char com, char *str, int c) {
+VALUE la_buf_search (la_t *this, VALUE bufv, VALUE comv, VALUE strv, VALUE cv) {
   (void) this;
-  int retval = buf_search (buf, com, str, c);
-  return retval;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  char com = AS_INT(comv);
+  char *str = AS_CSTRING(strv);
+  int c = AS_INT(cv);
+  VALUE r = INT(buf_search (buf, com, str, c));
+  return r;
 }
 
-struct ifun_t {
+struct lafun_t {
   const char *name;
-  ival_t val;
+  VALUE val;
   int nargs;
-} ifuns[] = {
-  { "e_set_ed_next",         (ival_t) i_e_set_ed_next, 0},
-  { "e_set_ed_by_idx",       (ival_t) i_e_set_ed_by_idx, 1},
-  { "e_set_save_image",      (ival_t) i_e_set_save_image, 1},
-  { "e_set_persistent_layout", (ival_t) i_e_set_persistent_layout, 1},
-  { "e_set_image_name",      (ival_t) i_e_set_image_name, 1},
-  { "e_set_image_file",      (ival_t) i_e_set_image_file, 1},
-  { "e_get_ed_num",          (ival_t) i_e_get_ed_num, 0},
-  { "e_get_ed_current",      (ival_t) i_e_get_ed_current, 0},
-  { "e_get_ed_current_idx",  (ival_t) i_e_get_ed_current_idx, 0},
-  { "ed_new",                (ival_t) i_ed_new, 1},
-  { "ed_get_num_win",        (ival_t) i_ed_get_num_win, 1},
-  { "ed_get_win_next",       (ival_t) i_ed_get_win_next, 2},
-  { "ed_get_current_win",    (ival_t) i_ed_get_current_win, 1},
-  { "ed_set_current_win",    (ival_t) i_ed_set_current_win, 2},
-  { "buf_set_ftype",         (ival_t) i_buf_set_ftype, 2},
-  { "buf_set_autosave",      (ival_t) i_buf_set_autosave, 2},
-  { "buf_set_row_idx",       (ival_t) i_buf_set_row_idx, 2},
-  { "buf_normal_page_up",    (ival_t) i_buf_normal_page_up, 3},
-  { "buf_normal_page_down",  (ival_t) i_buf_normal_page_down, 3},
-  { "buf_normal_change_case",(ival_t) i_buf_normal_change_case, 1},
-  { "buf_normal_goto_linenr",(ival_t) i_buf_normal_goto_linenr, 3},
-  { "buf_normal_replace_character_with", (ival_t) i_buf_normal_replace_character_with, 2},
-  { "buf_insert_string",     (ival_t) i_buf_insert_string, 3},
-  { "buf_search",            (ival_t) i_buf_search, 4},
-  { "buf_draw",              (ival_t) i_buf_draw, 1},
-  { "buf_init_fname",        (ival_t) i_buf_init_fname, 2},
-  { "buf_substitute",        (ival_t) i_buf_substitute, 7},
-  { "win_buf_init",          (ival_t) i_win_buf_init, 3},
-  { "win_draw",              (ival_t) i_win_draw, 1},
-  { "win_append_buf",        (ival_t) i_win_append_buf, 2},
-  { "win_set_current_buf",   (ival_t) i_win_set_current_buf, 3},
-  { "win_get_current_buf",   (ival_t) i_win_get_current_buf, 1},
+} lafuns[] = {
+  { "e_set_ed_next",         PTR((pointer) la_e_set_ed_next), 0},
+  { "e_set_ed_by_idx",       PTR((pointer) la_e_set_ed_by_idx), 1},
+  { "e_set_save_image",      PTR((pointer) la_e_set_save_image), 1},
+  { "e_set_persistent_layout", PTR((pointer) la_e_set_persistent_layout), 1},
+  { "e_set_image_name",      PTR((pointer) la_e_set_image_name), 1},
+  { "e_set_image_file",      PTR((pointer) la_e_set_image_file), 1},
+  { "e_get_ed_num",          PTR((pointer) la_e_get_ed_num), 0},
+  { "e_get_ed_current",      PTR((pointer) la_e_get_ed_current), 0},
+  { "e_get_ed_current_idx",  PTR((pointer) la_e_get_ed_current_idx), 0},
+  { "ed_new",                PTR((pointer) la_ed_new), 1},
+  { "ed_get_num_win",        PTR((pointer) la_ed_get_num_win), 1},
+  { "ed_get_win_next",       PTR((pointer) la_ed_get_win_next), 2},
+  { "ed_get_current_win",    PTR((pointer) la_ed_get_current_win), 1},
+  { "ed_set_current_win",    PTR((pointer) la_ed_set_current_win), 2},
+  { "buf_set_ftype",         PTR((pointer) la_buf_set_ftype), 2},
+  { "buf_set_autosave",      PTR((pointer) la_buf_set_autosave), 2},
+  { "buf_set_row_idx",       PTR((pointer) la_buf_set_row_idx), 2},
+  { "buf_normal_page_up",    PTR((pointer) la_buf_normal_page_up), 3},
+  { "buf_normal_page_down",  PTR((pointer) la_buf_normal_page_down), 3},
+  { "buf_normal_change_case",PTR((pointer) la_buf_normal_change_case), 1},
+  { "buf_normal_goto_linenr",PTR((pointer) la_buf_normal_goto_linenr), 3},
+  { "buf_normal_replace_character_with", PTR((pointer) la_buf_normal_replace_character_with), 2},
+  { "buf_insert_string",     PTR((pointer) la_buf_insert_string), 3},
+  { "buf_search",            PTR((pointer) la_buf_search), 4},
+  { "buf_draw",              PTR((pointer) la_buf_draw), 1},
+  { "buf_init_fname",        PTR((pointer) la_buf_init_fname), 2},
+  { "buf_substitute",        PTR((pointer) la_buf_substitute), 7},
+  { "win_buf_init",          PTR((pointer) la_win_buf_init), 3},
+  { "win_draw",              PTR((pointer) la_win_draw), 1},
+  { "win_append_buf",        PTR((pointer) la_win_append_buf), 2},
+  { "win_set_current_buf",   PTR((pointer) la_win_set_current_buf), 3},
+  { "win_get_current_buf",   PTR((pointer) la_win_get_current_buf), 1},
   { NULL, 0, 0}
 };
 
-static int i_define_funs_default_cb (i_t *this) {
+static int la_define_funs_default_cb (la_t *this) {
   int err;
-  for (int i = 0; ifuns[i].name; i++) {
-    if (I_OK isnot (err = I.def (this, ifuns[i].name, I_CFUNC (ifuns[i].nargs), ifuns[i].val)))
+  for (int i = 0; lafuns[i].name; i++) {
+    if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
-  return I_OK;
+  return LA_OK;
 }
 
-static IDefineFuns_cb E_get_i_define_funs_cb (E_T *this) {
-  return $my(i_define_funs_cb);
+static LaDefineFuns_cb E_get_la_define_funs_cb (E_T *this) {
+  return $my(la_define_funs_cb);
 }
 
-static i_T *__init_this_i__ (E_T *this) {
-  __I__ = __init_i__ ();
-  iType = *__I__;
-  $my(i_define_funs_cb) = i_define_funs_default_cb;
-  this->__Ed__->__I__ = *__I__;
-  return __I__;
+static la_T *__init_this_la__ (E_T *this) {
+ __LAPTR__ = __init_la__ ();
+  __LA__ = *__LAPTR__;
+  $my(la_define_funs_cb) = la_define_funs_default_cb;
+  this->__Ed__->__LA__ = __LA__;
+  return __LAPTR__;
 }
 
 static int E_load_file (E_T *this, char *fn) {
-  i_t *i = I.init_instance (__I__, IOpts (
-    .define_funs_cb = i_define_funs_default_cb,
-    .idir = Sys.get.env_value ("I_DIR")));
+  la_t *la = La.init_instance (&__LA__, LaOpts (
+    .define_funs_cb = la_define_funs_default_cb,
+    .la_dir = Sys.get.env_value ("LA_DIR")));
 
-  I.set.user_data (i, this);
+  La.set.user_data (la, this);
 
-  int retval = I.load_file (__I__, i, fn);
+  int retval = La.load_file (&__LA__, la, fn);
 
   if (retval is NOTOK)
-    tostderr (I.get.message (i));
+    tostderr (La.get.message (la));
 
   return retval;
 }
@@ -13560,12 +13698,12 @@ public E_T *__init_ed__ (char *name) {
         .next = E_get_next,
         .term =  E_get_term,
         .state = E_get_state,
-        .iclass = E_get_i_class,
+        .la_class = E_get_la_class,
         .current = E_get_current,
         .prev_idx = E_get_prev_idx,
         .current_idx = E_get_current_idx,
         .error_state = E_get_error_state,
-        .i_define_funs_cb = E_get_i_define_funs_cb
+        .la_define_funs_cb = E_get_la_define_funs_cb
       },
       .set = (E_set_self) {
         .i_dir = E_set_i_dir,
@@ -13596,7 +13734,7 @@ public E_T *__init_ed__ (char *name) {
 
   $my(state) = 0;
 
-  __init_this_i__ (this);
+  __init_this_la__ (this);
 
   if (NOTOK is Ed_init (this, this->__Ed__)) {
     __deinit_ed__ (&this);
@@ -13652,7 +13790,7 @@ public void __deinit_ed__ (E_T **thisp) {
 
   free (this->__Ed__);
 
-  __deinit_i__ (&__I__);
+  __deinit_la__ (&__LAPTR__);
 
   __deinit_sys__ ();
   __deinit_spell__ (&spellType);

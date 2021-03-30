@@ -70,7 +70,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
-FLAGS += -le-$(VERSION) -li-$(VERSION)
+FLAGS += -le-$(VERSION) -lla-$(VERSION)
 FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
 FLAGS += -lstring-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION)
 FLAGS += -lfile-$(VERSION) -lpath-$(VERSION)

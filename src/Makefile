@@ -605,14 +605,14 @@ clean-libjson-static:
 #----------------------------------------------------------#
 libe-shared: Env cenv list libstring-shared libcstring-shared libvstring-shared libustring-shared\
              libpath-shared libfile-shared libdir-shared libterm-shared libio-shared\
-             libre-shared libimap-shared libsmap-shared libi-shared\
+             libre-shared libimap-shared libsmap-shared libla-shared\
              libproc-shared libvui-shared\
              libsys-shared libspell-shared libvideo-shared libreadline-shared
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libe-static: Env cenv list libstring-static libcstring-static libvstring-static libustring-static\
              libpath-static libfile-static libdir-static libterm-static libio-static\
-             libre-static libimap-static libsmap-static libi-static\
+             libre-static libimap-static libsmap-static libla-static\
              libproc-static libvui-static\
              libsys-static libspell-static libvideo-static libreadline-static
 	@cd $(Z_E_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
@@ -718,10 +718,10 @@ clean-zs-static:
 zsu-shared: Env cenv libcstring-shared libstring-shared libproc-shared\
             liberror-shared libauth-shared
 	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-shared
-	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) install-shared
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) install-shared
 	@cd $(Z_SU_SRCDIR) && $(RM) zsu-shared
 
-# can not confirm (a libpam statically linked is required)
+# cannot compile (a statically linked libpam is required)
 # other warnings might make this target unsuitable, e.g.,
 #   warning: Using 'initgroups' in statically linked applications
 #   requires at runtime the shared libraries from the glibc version
@@ -729,14 +729,14 @@ zsu-shared: Env cenv libcstring-shared libstring-shared libproc-shared\
 zsu-static: Env cenv libcstring-static libstring-static libproc-static\
             liberror-static libauth-static
 	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-static
-	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) install-static
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) install-static
 	@cd $(Z_SU_SRCDIR) && $(RM) zsu-static
 
 clean-zsu-shared:
-	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) clean-shared
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
 clean-zsu-static:
-	@cd $(Z_SU_SRCDIR) && sudo $(MAKE) $(ZARGS) $(MARGS) clean-static
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 # App+
 
@@ -939,6 +939,7 @@ zero-clean-shared:\
               clean-libreadline-shared clean-libsys-shared\
               clean-libvui-shared clean-libvmap-shared\
               clean-liberror-shared clean-libvwm-shared\
+              clean-libla-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -961,6 +962,7 @@ zero-clean-static:\
               clean-libreadline-static clean-libsys-static\
               clean-libvui-static clean-libvmap-static\
               clean-liberror-static clean-libvwm-static\
+              clean-libla-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
@@ -1007,3 +1009,4 @@ LN = ln
 LN_S = $(LN) -s
 MKDIR = mkdir
 MKDIR_P = $(MKDIR) -p
+SUDO := sudo

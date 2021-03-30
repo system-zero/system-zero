@@ -114,8 +114,8 @@ enum {
  */
 
 #define REGISTERS \
-"\"/:%*+=abcdghjklqwertyuiopzxsvbnm1234567890ABCDGHJKLQWERTYUIOPZXSVBNM^`_-\n"
-#define NUM_REGISTERS  74
+"\"/:%*+=$abcdghjklqwertyuiopzxsvbnm1234567890ABCDGHJKLQWERTYUIOPZXSVBNM^`_-\n"
+#define NUM_REGISTERS  75
 
 #define REG_CURWORD_CHR '^'
 #define REG_SHARED_CHR  '`'
@@ -128,6 +128,7 @@ enum {
   REG_STAR,
   REG_PLUS,
   REG_EXPR,
+  REG_EVAL,
   REG_CURWORD = NUM_REGISTERS - 5,
   REG_SHARED,
   REG_BLACKHOLE,
@@ -404,7 +405,7 @@ typedef struct buf_prop {
 
   ed_T  *__Ed__;
   win_T *__Win__;
-  i_T   *__I__;
+  la_T   *__LA__;
 
   ed_t  *root;
   win_t *parent;
@@ -480,7 +481,7 @@ typedef struct win_prop {
 
   buf_T *__Buf__;
   ed_T  *__Ed__;
-  i_T   *__I__;
+  la_T   *__LA__;
 
   int
     has_promptline,
@@ -510,7 +511,7 @@ typedef struct ed_prop {
 
   buf_T *__Buf__;
   win_T *__Win__;
-  i_T   *__I__;
+  la_T   *__LA__;
 
   int
     state,
@@ -644,7 +645,7 @@ typedef struct E_prop {
   ed_self __Ed__;
   Reg_t shared_reg[1];
 
-  IDefineFuns_cb i_define_funs_cb;
+  LaDefineFuns_cb la_define_funs_cb;
 
   int num_at_exit_cbs;
   EAtExit_cb *at_exit_cbs;

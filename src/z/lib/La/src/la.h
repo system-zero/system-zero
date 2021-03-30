@@ -23,14 +23,13 @@ typedef integer     pointer;
 #define MEMSIZE_TYPE   INTEGER_TYPE
 
 struct ValueType {
-  int type;
-
   union {
     number   asNumber;
     integer  asInteger;
     cstring  asCString;
     void *   asNone;
   };
+  int type;
 };
 
 typedef ValueType VALUE;
@@ -78,6 +77,8 @@ typedef int (*LaPrintFmtBytes_cb) (FILE *, const char *, ...);
 typedef int (*LaSyntaxError_cb) (la_t *, const char *);
 typedef int (*LaDefineFuns_cb) (la_t *);
 
+#define LA_CFUNC(x) (((x) << 8) + 'B')
+
 typedef struct la_opts {
   char  *name;
   char  *la_dir;
@@ -115,6 +116,7 @@ typedef struct la_get_self {
     *(*eval_str) (la_t *),
     *(*message) (la_t *);
   int (*current_idx) (la_T *);
+  VALUE (*last_expr_value) (la_t *);
 } la_get_self;
 
 typedef struct la_set_self {
@@ -144,6 +146,7 @@ typedef struct la_self {
     (*def) (la_t *, const char *, int, VALUE),
     (*init) (la_T *, la_t *, la_opts),
     (*eval_file) (la_t *, const char *),
+    (*eval_expr) (la_t *, const char *, VALUE *),
     (*load_file) (la_T *, la_t *, char *),
     (*eval_string) (la_t *, const char *);
 

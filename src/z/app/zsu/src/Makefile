@@ -82,26 +82,29 @@ zsu-shared:
 	@$(LN_S) -f $(SYSBINDIR)/$(NAME)-shared $(SYSBINDIR)/$(NAME)
 
 install-shared: zsu-shared
-	@$(INSTALL) -v -g root -o root -m 4755 $(NAME)-shared $(SYSBINDIR)/$(NAME)-shared
+	@echo "WARNING NOTICE: zsu is installed as setuid root"
+	@$(SUDO) $(INSTALL) -v -g root -o root -m 4755 $(NAME)-shared $(SYSBINDIR)/$(NAME)-shared
 
 # cannot compile (a statically linked libpam is required)
 zsu-static:
 	$(CC) -DVSU_DIR='"$(VSU_DIR)"' $(NAME).c $(STATIC_FLAGS) -o $(NAME)-static
 
 install-static: zsu-static
-	@$(INSTALL) -v -g root -o root -m 4755 $(NAME)-static $(SYSBINDIR)/$(NAME)-static
+	@echo "WARNING NOTICE: zsu is installed as setuid root"
+	@$(SUDO) $(INSTALL) -v -g root -o root -m 4755 $(NAME)-static $(SYSBINDIR)/$(NAME)-static
 
 #----------------------------------------------------------#
 clean: clean-shared clean-static
 
 clean-shared:
-	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-shared || $(RM) $(SYSBINDIR)/$(NAME)-shared
-	@$(TEST) ! -L $(SYSBINDIR)/$(NAME)        || $(RM) $(SYSBINDIR)/$(NAME)
+	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-shared || $(SUDO) $(RM) $(SYSBINDIR)/$(NAME)-shared
+	@$(TEST) ! -L $(SYSBINDIR)/$(NAME)        || $(SUDO) $(RM) $(SYSBINDIR)/$(NAME)
 
 clean-static:
-	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-static || $(RM) $(SYSBINDIR)/$(NAME)-static
+	@$(TEST) ! -f $(SYSBINDIR)/$(NAME)-static || $(SUDO) $(RM) $(SYSBINDIR)/$(NAME)-static
 
 #----------------------------------------------------------#
+SUDO := sudo
 TEST = test
 RM = rm
 LN = ln
