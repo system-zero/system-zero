@@ -30,18 +30,22 @@ struct ValueType {
     void *   asNone;
   };
   int type;
+  int ref;
 };
 
 typedef ValueType VALUE;
 
 #define AS_NUMBER(__v__) __v__.asNumber
-#define    NUMBER(__d__) (VALUE) {.type = NUMBER_TYPE, .asNumber = __d__}
+#define    NUMBER(__d__) (VALUE) {.type = NUMBER_TYPE, .ref = 0, .asNumber = __d__}
 
 #define AS_INT(__v__) __v__.asInteger
-#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .asInteger = __i__}
+#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .ref = 0, .asInteger = __i__}
 
 #define AS_CSTRING(__v__) __v__.asCString
-#define    CSTRING(__s__) (VALUE) {.type = CSTRING_TYPE, .asCString = __s__}
+#define    CSTRING(__s__) (VALUE) {.type = CSTRING_TYPE, .ref = 0, .asCString = __s__}
+
+#define AS_ARRAY AS_PTR
+#define    ARRAY(__a__) (VALUE) {.type = POINTER_TYPE, .ref = 0, .asInteger = (pointer) __a__}
 
 #define AS_PTR AS_INT
 #define    PTR    INT

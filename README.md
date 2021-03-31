@@ -962,9 +962,9 @@ its own [documentation](data/docs/la.md).
       typedef ptrdiff_t   integer;
       typedef double      number;
 ```
-    `ptrdiff_t` is in standard C and it is the adequate type to handle pointer
-    arithmetic. We also assume that an allocator can request at most PTRDIFF_MAX.
-    So our Pointer Type and the Memsize Type are both aliases for `integer`.
+    The `ptrdiff_t` type is in standard C, and it is the adequate type to handle
+    pointer arithmetic. We also assume that an allocator can claim at most PTRDIFF_MAX.
+    So our Pointer and the Memsize Type are both aliases to `integer`.
 
     There is also a C string Type, though the support is really basic right now,
     and probably it is a good idea to handle some operations on them, with the
@@ -981,12 +981,18 @@ its own [documentation](data/docs/la.md).
     of discipline to get them right. We've tried to leave them unchangeable, by
     assuming that the pointer to the struct `VALUE` is a pointer to its first
     member, that is the union actual value. But this didn't always worked, so
-    perhaps this is not guarranteed. I do not know. Anyway, and as a small test
-    to the new interface, we've introduced an evaluation register, which was first
-    implemented to the characterise visual mode. This needs to be extended to
-    handle more cases, and it should be connected with the expression register
-    which currently does nothing. So hopefully we'll get some value to justify
-    the transition.
+    perhaps this is not guarranteed. I do not know.
+
+    As a small test to the new interface, we've introduced an implementation of
+    an evaluation register for characterise visual mode, which can be extented
+    and cooperate with the expression register which currently does nothing.
+
+    And many small cases that previously wasn't possible or difficult to handle,
+    now its just a matter of an extra logic. Like the case of arrays, which the
+    current implementation didn't allowed to pass them as arguments to functions.
+
+    This also reveals and the route. We'll simply make it more slow, by adding a
+    couple of convienences!
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

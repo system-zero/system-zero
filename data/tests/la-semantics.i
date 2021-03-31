@@ -484,27 +484,27 @@ func test_array (len) {
 
   array x(len) = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 
-  func ar_length () {
-    return x(-1)
+  func ar_length (xx) {
+    return xx(-1)
   }
 
   test_num += 1
   print ("[${test_num}] testing array length - ")
-  retval = ar_length ()
+  retval = ar_length (x)
   if (retval isnot len) {
     print (stderr, "[NOTOK] awaiting ${len} got: ${retval}\n")
   } else {
     print ("[OK]\n")
   }
 
-  func ar_set_at (idx, y) {
-    x(idx) = y
-    return x(idx)
+  func ar_set_at (xx, idx, y) {
+    xx(idx) = y
+    return xx(idx)
   }
 
   test_num += 1
   print ("[${test_num}] testing array set index - ")
-  retval = ar_set_at (len - 1, 20)
+  retval = ar_set_at (x, len - 1, 20)
   if (retval isnot 20) {
     print (stderr, "[NOTOK] awaiting 20 got: ${retval}\n")
   } else {
@@ -520,12 +520,12 @@ func test_array (len) {
     print ("[OK]\n")
   }
 
-  func ar_sum () {
+  func ar_sum (xx) {
     var sum = 0
     var idx = 0
-    var len = ar_length ()
+    var len = ar_length (xx)
     while (idx < len) {
-	    sum += x(idx)
+	    sum += xx(idx)
     	idx += 1
     }
     return sum
@@ -535,7 +535,7 @@ func test_array (len) {
 
   test_num += 1
   print ("[${test_num}] testing array sum - ")
-  retval = ar_sum ()
+  retval = ar_sum (x)
   if (retval isnot 4520) {
     print (stderr, "[NOTOK] awaiting 4520 got: ${retval}\n")
   } else {
