@@ -764,6 +764,9 @@ To be continued ...
 
   # static targets
   make static && make e-static && make i-static && make v-static
+
+  # Note, that the installation of the zsu utility requires the
+  # sudo utility, as it has to be installed as setuid root.
 ```
 The development environment is gcc, but it should be compiled with  clang and
 tinycc compilers, without a warning, else it is considered an error. Note that
@@ -958,11 +961,13 @@ its own [documentation](data/docs/la.md).
     the 92th calculation of the fibonacci sequences, and one that should be the
     largest quantity of one can gets, and can be used as argument to functions,
     that operate on floating point numbers. These are typedef'ed as:
+
 ```C
       typedef ptrdiff_t   integer;
       typedef double      number;
 ```
-    The `ptrdiff_t` type is in standard C, and it is the adequate type to handle
+
+    The ptrdiff_t type is in standard C, and it is the adequate type to handle
     pointer arithmetic. We also assume that an allocator can claim at most PTRDIFF_MAX.
     So our Pointer and the Memsize Type are both aliases to `integer`.
 

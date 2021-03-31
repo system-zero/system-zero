@@ -254,6 +254,12 @@ struct la_t {
   la_t *next;
 };
 
+typedef struct ArrayType {
+  VALUE value;
+  int type;
+  int len;
+} ArrayType;
+
 #define MAX_EXPR_LEVEL 5
 
 static int la_parse_stmt (la_t *);
@@ -609,6 +615,43 @@ static malloced_string *new_malloced_string (integer len, int is_const) {
   return mbuf;
 }
 
+static VALUE la_free (la_t *this, VALUE value) {
+  (void) this;
+  VALUE result = INT(LA_NOTOK);
+
+  if (value.type is NONE_TYPE) goto theend;
+
+  void *object = NULL;
+  switch (value.type) {
+    case POINTER_TYPE: object = (void *) AS_PTR(value); break;
+    case CSTRING_TYPE: object = (void *) AS_CSTRING(value); break;
+    case ARRAY_TYPE: {
+      ArrayType *array = (ArrayType *) AS_ARRAY(value);
+      VALUE ary = array->value;
+
+      if (array->type is CSTRING_TYPE) {
+        cstring *s_ar = (cstring *) AS_ARRAY(ary);
+        for (integer i = 0; i < array->len; i++)
+          free (s_ar[i]);
+        free (s_ar);
+      } else
+        free ((char *) AS_ARRAY(ary));
+
+      object = (void *) (array);
+    }
+    break;
+  }
+
+  ifnot (NULL is object) {
+    free (object);
+    value = NONE(value);
+    result = INT(LA_OK);
+  }
+
+theend:
+  return result;
+}
+
 static void la_release_sym (void *sym) {
   if (sym is NULL) return;
 
@@ -622,9 +665,10 @@ static void la_release_sym (void *sym) {
     }
   }
 
-  if ((this->type & 0xff) is ARRAY_TYPE)
-    ifnot (this->value.ref--)
-      free ((char *) AS_PTR(this->value));
+  if ((this->type & 0xff) is ARRAY_TYPE) {
+    ifnot (this->value.refcount--)
+      la_free (NULL, this->value);
+  }
 
   free (this);
   this = NULL;
@@ -976,29 +1020,94 @@ static VALUE la_HexStringToNum (la_string s) {
   return result;
 }
 
-/* Initial Array Interface by MickeyDelp <mickey at delptronics dot com> */
-
-// assign a value or list of values to an array
-static int la_array_assign (la_t *this, VALUE *ary, VALUE ix) {
+static int la_array_set_as_cstring (la_t *this, VALUE ar, integer len, integer idx) {
   int err;
   VALUE val;
+  cstring *s_ar = (cstring *) AS_ARRAY(ar);
 
-  integer idx = AS_INT(ix);
-
-  integer *ar = (integer *) AS_ARRAY((*ary));
+  this->curState |= FUNCTION_ARGUMENT_SCOPE;
   do {
-    if (idx < 0 or idx >= ar[0]) {
+    if (idx < 0 or idx >= len)
       return la_out_of_bounds (this);
-    }
 
     la_next_token (this);
 
     err = la_parse_expr (this, &val);
     if (err isnot LA_OK) return err;
 
-    ar[idx + 1] = AS_INT(val);
+    free (s_ar[idx]);
+
+    cstring str = AS_CSTRING(val);
+    s_ar[idx] = Cstring.dup (str, bytelen (str));
     idx++;
   } while (this->curToken is ',');
+
+  this->curState &= ~FUNCTION_ARGUMENT_SCOPE;
+
+  return LA_OK;
+}
+
+static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer idx) {
+  int err;
+  VALUE val;
+  number *n_ar = (number *) AS_ARRAY(ar);
+  do {
+    if (idx < 0 or idx >= len)
+      return la_out_of_bounds (this);
+
+    la_next_token (this);
+
+    err = la_parse_expr (this, &val);
+    if (err isnot LA_OK) return err;
+    n_ar[idx] = AS_NUMBER(val);
+
+    idx++;
+  } while (this->curToken is ',');
+
+  return LA_OK;
+}
+
+static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx) {
+  int err;
+  VALUE val;
+  integer *s_ar = (integer *) AS_ARRAY(ar);
+  do {
+    if (idx < 0 or idx >= len)
+      return la_out_of_bounds (this);
+
+    la_next_token (this);
+
+    err = la_parse_expr (this, &val);
+    if (err isnot LA_OK) return err;
+    s_ar[idx] = AS_INT(val);
+
+    idx++;
+  } while (this->curToken is ',');
+
+  return LA_OK;
+}
+
+/* Initial Array Interface by MickeyDelp <mickey at delptronics dot com> */
+static int la_array_assign (la_t *this, VALUE *ar, VALUE ix) {
+  int err;
+  VALUE val;
+
+  integer idx = AS_INT(ix);
+
+  ArrayType *array = (ArrayType *) AS_ARRAY((*ar));
+  integer len = array->len;
+
+  VALUE ary = array->value;
+
+  if (array->type is INTEGER_TYPE) {
+    err = la_array_set_as_int (this, ary, len, idx);
+  } else if (array->type is CSTRING_TYPE) {
+    err = la_array_set_as_cstring (this, ary, len, idx);
+  } else
+    err = la_array_set_as_number (this, ary, len, idx);
+
+  if (err isnot LA_OK)
+    return err;
 
    return LA_OK;
 }
@@ -1007,7 +1116,11 @@ static int la_parse_array_def (la_t *this) {
   la_string name;
   int c;
   int err;
+  int type = INTEGER_TYPE;
   VALUE len;
+  VALUE ar;
+  VALUE ary;
+  ArrayType *array;
 
   c = la_next_raw_token (this);
 
@@ -1015,7 +1128,31 @@ static int la_parse_array_def (la_t *this) {
     return this->syntax_error (this, "syntax error, awaiting a name");
   }
 
-  name = this->curStrToken;
+  const char *sp = la_StringGetPtr (this->curStrToken);
+  uint splen = la_StringGetLen (this->curStrToken);
+  int isname = 0;
+
+  if (Cstring.eq_n ("integer", sp, splen))
+    type = INTEGER_TYPE;
+  else if (Cstring.eq_n ("cstring", sp, splen))
+    type = CSTRING_TYPE;
+  else if (Cstring.eq_n ("number", sp, splen))
+    type = NUMBER_TYPE;
+  else if (Cstring.eq_n ("pointer", sp, splen))
+    type = POINTER_TYPE;
+  else
+    isname = 1;
+
+  if (isname)
+    name = this->curStrToken;
+  else {
+    c = la_next_raw_token (this);
+
+    if (c isnot LA_TOKEN_SYMBOL)
+      return this->syntax_error (this, "syntax error, awaiting a name");
+
+    name = this->curStrToken;
+  }
 
   c = la_next_token (this);
 
@@ -1027,15 +1164,34 @@ static int la_parse_array_def (la_t *this) {
     return err;
 
   integer nlen = AS_INT(len);
-  nlen++;
 
-  integer *ary = Alloc (nlen * sizeof (integer));
-  for (integer i = 1; i < nlen; i++)
-    ary[i] = 0;
+  array = Alloc (sizeof (ArrayType));
+  array->type = type;
+  array->len = nlen;
 
-  ary[0] = nlen - 1;
+  if (array->type is INTEGER_TYPE) {
+    integer *i_ar = Alloc (nlen * sizeof (integer));
+    for (integer i = 0; i < nlen; i++)
+      i_ar[i] = 0;
+    ary = ARRAY(i_ar);
 
-  VALUE ar = ARRAY(ary);
+  }  else if (array->type is NUMBER_TYPE) {
+    number *n_ar = Alloc (nlen * sizeof (number));
+    for (integer i = 0; i < nlen; i++)
+      n_ar[i] = 0.0;
+    ary = ARRAY(n_ar);
+
+  } else if (array->type is CSTRING_TYPE) {
+    cstring *s_ar = Alloc (nlen * sizeof (cstring));
+    for (integer i = 0; i < nlen; i++) {
+      s_ar[i] = Alloc (8);
+      s_ar[i][0] = '\0';
+    }
+    ary = ARRAY(s_ar);
+  }
+
+  array->value = ary;
+  ar = ARRAY(array);
 
   this->tokenSymbol = la_define_symbol (this, this->curScope, name, ARRAY_TYPE,
     ar, 0);
@@ -1069,22 +1225,37 @@ static int la_parse_array_set (la_t *this) {
 
 static int la_parse_array_get (la_t *this, VALUE *vp) {
   VALUE ar = this->tokenValue;
-  integer *ary = (integer *) AS_ARRAY(ar);
-  integer len = ary[0];
+  ArrayType *array = (ArrayType *) AS_ARRAY(ar);
+  integer len = array->len;
 
   int c = la_next_token (this);
 
   if (c is LA_INDEX_TOKEN) {
+
     VALUE ix;
     int err = la_parse_primary (this, &ix);
     if (err isnot LA_OK)
       return err;
 
     integer idx = AS_INT(ix);
+    if (idx is -1) {
+      *vp = INT(len);
+      return LA_OK;
+    }
+
     if (idx < -1 or idx >= len)
       return la_out_of_bounds (this);
 
-    *vp = INT(ary[idx + 1]);
+    if (array->type is INTEGER_TYPE) {
+      integer *ary = (integer *) AS_ARRAY(array->value);
+      *vp = INT(ary[idx]);
+    } else if (array->type is NUMBER_TYPE) {
+      number *ary = (number *) AS_ARRAY(array->value);
+      *vp = NUMBER(ary[idx]);
+    } else {
+      cstring *ary = (cstring *) AS_ARRAY(array->value);
+      *vp = CSTRING(ary[idx]);
+    }
   } else {
     // if no parens, then return the pointer to the array
     // needed for passing to C functions
@@ -1275,7 +1446,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
         la_define_symbol (this, uf, la_StringNew (uf->argName[i]),
             (UFUNC_TYPE | (nargs << 8)), v, 0);
       } else {
-        v.ref += (refcount < 2);
+        v.refcount += (refcount < 2);
         la_define_symbol (this, uf, la_StringNew (uf->argName[i]), v.type, v, 0);
       }
     }
@@ -2576,20 +2747,6 @@ static VALUE la_not (la_t *this, VALUE value) {
 static VALUE la_bool (la_t *this, VALUE value) {
   (void) this;
   VALUE result = INT(!!AS_INT(value));
-  return result;
-}
-
-static VALUE la_free (la_t *this, VALUE value) {
-  (void) this;
-  VALUE result = INT(LA_OK);
-
-  void *object = (void *) AS_PTR(value);
-
-  ifnot (NULL is object)
-    free (object);
-  else
-    result = INT(LA_NOTOK);
-
   return result;
 }
 

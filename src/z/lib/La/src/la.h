@@ -29,23 +29,24 @@ struct ValueType {
     cstring  asCString;
     void *   asNone;
   };
+
   int type;
-  int ref;
+  int refcount;
 };
 
 typedef ValueType VALUE;
 
 #define AS_NUMBER(__v__) __v__.asNumber
-#define    NUMBER(__d__) (VALUE) {.type = NUMBER_TYPE, .ref = 0, .asNumber = __d__}
+#define    NUMBER(__d__) (VALUE) {.type = NUMBER_TYPE, .refcount = 0, .asNumber = __d__}
 
 #define AS_INT(__v__) __v__.asInteger
-#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .ref = 0, .asInteger = __i__}
+#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .refcount = 0, .asInteger = __i__}
 
 #define AS_CSTRING(__v__) __v__.asCString
-#define    CSTRING(__s__) (VALUE) {.type = CSTRING_TYPE, .ref = 0, .asCString = __s__}
+#define    CSTRING(__s__) (VALUE) {.type = CSTRING_TYPE, .refcount = 0, .asCString = __s__}
 
 #define AS_ARRAY AS_PTR
-#define    ARRAY(__a__) (VALUE) {.type = POINTER_TYPE, .ref = 0, .asInteger = (pointer) __a__}
+#define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .refcount = 0, .asInteger = (pointer) __a__}
 
 #define AS_PTR AS_INT
 #define    PTR(__p__) INT((pointer) __p__)
@@ -54,7 +55,7 @@ typedef ValueType VALUE;
 #define    MEMSIZE    INT
 
 #define AS_NONE(__v__) __v__.asNone
-#define    NONE(__s__) (VALUE) {.type = NONE_TYPE, .asNone = (void *) 0}
+#define    NONE(__s__) (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0}
 
 typedef VALUE (*Cfunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*Opfunc) (VALUE, VALUE);
