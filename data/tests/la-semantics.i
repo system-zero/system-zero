@@ -482,10 +482,10 @@ doubles ()
 func test_array (len) {
   var retval = 0
 
-  array x(len) = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  array x[len] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 
   func ar_length (xx) {
-    return xx(-1)
+    return xx[-1]
   }
 
   test_num += 1
@@ -498,8 +498,8 @@ func test_array (len) {
   }
 
   func ar_set_at (xx, idx, y) {
-    xx(idx) = y
-    return xx(idx)
+    xx[idx] = y
+    return xx[idx]
   }
 
   test_num += 1
@@ -513,7 +513,7 @@ func test_array (len) {
 
   test_num += 1
   print ("[${test_num}] testing array get index - ")
-  retval = x(len - 1)
+  retval = x[len - 1]
   if (retval isnot 20) {
     print (stderr, "[NOTOK] awaiting 20 got: ${retval}\n")
   } else {
@@ -525,13 +525,13 @@ func test_array (len) {
     var idx = 0
     var len = ar_length (xx)
     while (idx < len) {
-	    sum += xx(idx)
-    	idx += 1
+      sum += xx[idx]
+      idx += 1
     }
     return sum
   }
 
-  x(0) = 100, 200, 300, 400, 500, 600, 700, 800, 900
+  x[0] = 100, 200, 300, 400, 500, 600, 700, 800, 900
 
   test_num += 1
   print ("[${test_num}] testing array sum - ")
@@ -543,16 +543,16 @@ func test_array (len) {
   }
 
   func fibo_array (n) {
-    array f (n + 2)
-    f(0) = 0, 1
+    array f[n + 2]
+    f[0] = 0, 1
 
     var i = 2
     while (i <= n) {
-      f (i) = f (i - 1) + f (i - 2)
+      f[i] = f[i - 1] + f[i - 2]
       i += 1
     }
 
-    return f (n)
+    return f[n]
   }
 
   test_num += 1

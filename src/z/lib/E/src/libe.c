@@ -742,7 +742,7 @@ char c_balanced_pairs[] = "[](){}";
 
 char *i_extensions[] = {".i", NULL};
 char *i_shebangs[] = {"#!/bin/env i", NULL};
-char i_operators[] = "+-%*^><=/|& .(){}!";
+char i_operators[] = "+-%*^><=/|& .(){}![]";
 
 char *i_keywords[] = {
   "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
@@ -13348,14 +13348,14 @@ VALUE la_e_get_ed_num (la_t *this) {
 
 VALUE la_e_set_ed_next (la_t *this) {
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR((pointer) LaRoot.set.next (laroot));
+  VALUE r = PTR(LaRoot.set.next (laroot));
   return r;
 }
 
 VALUE la_e_set_ed_by_idx (la_t *this, VALUE idxv) {
   int idx = AS_INT(idxv);
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR((pointer) LaRoot.set.current (laroot, idx));
+  VALUE r = PTR(LaRoot.set.current (laroot, idx));
   return r;
 }
 
@@ -13398,14 +13398,14 @@ VALUE la_e_get_ed_current_idx (la_t *this) {
 
 VALUE la_e_get_ed_current (la_t *this) {
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR((pointer) LaRoot.get.current (laroot));
+  VALUE r = PTR(LaRoot.get.current (laroot));
   return r;
 }
 
 VALUE la_ed_new (la_t *this, VALUE num_winv) {
   int num_win = AS_INT(num_winv);
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR((pointer) LaRoot.new (laroot, EdOpts(.num_win = num_win)));
+  VALUE r = PTR(LaRoot.new (laroot, EdOpts(.num_win = num_win)));
   return r;
 }
 
@@ -13420,14 +13420,14 @@ VALUE la_ed_get_win_next (la_t *this, VALUE edv, VALUE winv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   win_t *win = (win_t *) AS_PTR(winv);
-  VALUE r = PTR((pointer) ed_get_win_next (ed, win));
+  VALUE r = PTR(ed_get_win_next (ed, win));
   return r;
 }
 
 VALUE la_ed_get_current_win (la_t *this, VALUE edv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
-  VALUE r = PTR((pointer) ed_get_current_win (ed));
+  VALUE r = PTR(ed_get_current_win (ed));
   return r;
 }
 
@@ -13435,7 +13435,7 @@ VALUE la_ed_set_current_win (la_t *this, VALUE edv, VALUE idxv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   int idx = AS_INT(idxv);
-  VALUE r = PTR((pointer) ed_set_current_win (ed, idx));
+  VALUE r = PTR(ed_set_current_win (ed, idx));
   return r;
 }
 
@@ -13503,7 +13503,7 @@ VALUE la_win_buf_init (la_t *this, VALUE winv, VALUE framev, VALUE flagsv) {
   int flags = AS_INT(flagsv);
   int frame = AS_INT(framev);
   win_t *win = (win_t *) AS_PTR(winv);
-  VALUE r = PTR((pointer) win_buf_init (win, frame, flags));
+  VALUE r = PTR(win_buf_init (win, frame, flags));
   return r;
 }
 
@@ -13512,14 +13512,14 @@ VALUE la_win_set_current_buf (la_t *this, VALUE winv, VALUE idxv, VALUE drawv) {
   win_t *win = (win_t *) AS_PTR(winv);
   int idx = AS_INT(idxv);
   int draw = AS_INT(drawv);
-  VALUE r = PTR((pointer) win_set_current_buf (win, idx, draw));
+  VALUE r = PTR(win_set_current_buf (win, idx, draw));
   return r;
 }
 
 VALUE la_win_get_current_buf (la_t *this, VALUE winv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
-  VALUE r = PTR((pointer) win_get_current_buf (win));
+  VALUE r = PTR(win_get_current_buf (win));
   return r;
 }
 
@@ -13605,38 +13605,38 @@ struct lafun_t {
   VALUE val;
   int nargs;
 } lafuns[] = {
-  { "e_set_ed_next",         PTR((pointer) la_e_set_ed_next), 0},
-  { "e_set_ed_by_idx",       PTR((pointer) la_e_set_ed_by_idx), 1},
-  { "e_set_save_image",      PTR((pointer) la_e_set_save_image), 1},
-  { "e_set_persistent_layout", PTR((pointer) la_e_set_persistent_layout), 1},
-  { "e_set_image_name",      PTR((pointer) la_e_set_image_name), 1},
-  { "e_set_image_file",      PTR((pointer) la_e_set_image_file), 1},
-  { "e_get_ed_num",          PTR((pointer) la_e_get_ed_num), 0},
-  { "e_get_ed_current",      PTR((pointer) la_e_get_ed_current), 0},
-  { "e_get_ed_current_idx",  PTR((pointer) la_e_get_ed_current_idx), 0},
-  { "ed_new",                PTR((pointer) la_ed_new), 1},
-  { "ed_get_num_win",        PTR((pointer) la_ed_get_num_win), 1},
-  { "ed_get_win_next",       PTR((pointer) la_ed_get_win_next), 2},
-  { "ed_get_current_win",    PTR((pointer) la_ed_get_current_win), 1},
-  { "ed_set_current_win",    PTR((pointer) la_ed_set_current_win), 2},
-  { "buf_set_ftype",         PTR((pointer) la_buf_set_ftype), 2},
-  { "buf_set_autosave",      PTR((pointer) la_buf_set_autosave), 2},
-  { "buf_set_row_idx",       PTR((pointer) la_buf_set_row_idx), 2},
-  { "buf_normal_page_up",    PTR((pointer) la_buf_normal_page_up), 3},
-  { "buf_normal_page_down",  PTR((pointer) la_buf_normal_page_down), 3},
-  { "buf_normal_change_case",PTR((pointer) la_buf_normal_change_case), 1},
-  { "buf_normal_goto_linenr",PTR((pointer) la_buf_normal_goto_linenr), 3},
-  { "buf_normal_replace_character_with", PTR((pointer) la_buf_normal_replace_character_with), 2},
-  { "buf_insert_string",     PTR((pointer) la_buf_insert_string), 3},
-  { "buf_search",            PTR((pointer) la_buf_search), 4},
-  { "buf_draw",              PTR((pointer) la_buf_draw), 1},
-  { "buf_init_fname",        PTR((pointer) la_buf_init_fname), 2},
-  { "buf_substitute",        PTR((pointer) la_buf_substitute), 7},
-  { "win_buf_init",          PTR((pointer) la_win_buf_init), 3},
-  { "win_draw",              PTR((pointer) la_win_draw), 1},
-  { "win_append_buf",        PTR((pointer) la_win_append_buf), 2},
-  { "win_set_current_buf",   PTR((pointer) la_win_set_current_buf), 3},
-  { "win_get_current_buf",   PTR((pointer) la_win_get_current_buf), 1},
+  { "e_set_ed_next",         PTR(la_e_set_ed_next), 0},
+  { "e_set_ed_by_idx",       PTR(la_e_set_ed_by_idx), 1},
+  { "e_set_save_image",      PTR(la_e_set_save_image), 1},
+  { "e_set_persistent_layout", PTR(la_e_set_persistent_layout), 1},
+  { "e_set_image_name",      PTR(la_e_set_image_name), 1},
+  { "e_set_image_file",      PTR(la_e_set_image_file), 1},
+  { "e_get_ed_num",          PTR(la_e_get_ed_num), 0},
+  { "e_get_ed_current",      PTR(la_e_get_ed_current), 0},
+  { "e_get_ed_current_idx",  PTR(la_e_get_ed_current_idx), 0},
+  { "ed_new",                PTR(la_ed_new), 1},
+  { "ed_get_num_win",        PTR(la_ed_get_num_win), 1},
+  { "ed_get_win_next",       PTR(la_ed_get_win_next), 2},
+  { "ed_get_current_win",    PTR(la_ed_get_current_win), 1},
+  { "ed_set_current_win",    PTR(la_ed_set_current_win), 2},
+  { "buf_set_ftype",         PTR(la_buf_set_ftype), 2},
+  { "buf_set_autosave",      PTR(la_buf_set_autosave), 2},
+  { "buf_set_row_idx",       PTR(la_buf_set_row_idx), 2},
+  { "buf_normal_page_up",    PTR(la_buf_normal_page_up), 3},
+  { "buf_normal_page_down",  PTR(la_buf_normal_page_down), 3},
+  { "buf_normal_change_case",PTR(la_buf_normal_change_case), 1},
+  { "buf_normal_goto_linenr",PTR(la_buf_normal_goto_linenr), 3},
+  { "buf_normal_replace_character_with", PTR(la_buf_normal_replace_character_with), 2},
+  { "buf_insert_string",     PTR(la_buf_insert_string), 3},
+  { "buf_search",            PTR(la_buf_search), 4},
+  { "buf_draw",              PTR(la_buf_draw), 1},
+  { "buf_init_fname",        PTR(la_buf_init_fname), 2},
+  { "buf_substitute",        PTR(la_buf_substitute), 7},
+  { "win_buf_init",          PTR(la_win_buf_init), 3},
+  { "win_draw",              PTR(la_win_draw), 1},
+  { "win_append_buf",        PTR(la_win_append_buf), 2},
+  { "win_set_current_buf",   PTR(la_win_set_current_buf), 3},
+  { "win_get_current_buf",   PTR(la_win_get_current_buf), 1},
   { NULL, 0, 0}
 };
 

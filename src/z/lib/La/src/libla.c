@@ -94,6 +94,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
 #define LA_TOKEN_ARY        'y'
+#define LA_INDEX_TOKEN      '['
 
 typedef struct la_string {
   uint len_;
@@ -913,7 +914,7 @@ static void *la_clone_sym_item (void *item) {
     integer *ary =  Alloc (sizeof (integer) * len);
     for (size_t i = 0; i < len + 1; i++)
       ary[i] = a[i];
-    VALUE ar = PTR(*ary);
+    VALUE ar = PTR(ary);
     new->value = ar;
     return new;
   }
@@ -1002,7 +1003,6 @@ static int la_array_assign (la_t *this, VALUE *ary, VALUE ix) {
    return LA_OK;
 }
 
-// handle defining an array
 static int la_parse_array_def (la_t *this) {
   la_string name;
   int c;
@@ -1012,15 +1012,15 @@ static int la_parse_array_def (la_t *this) {
   c = la_next_raw_token (this);
 
   if (c isnot LA_TOKEN_SYMBOL) {
-    return this->syntax_error (this, "syntax error");
+    return this->syntax_error (this, "syntax error, awaiting a name");
   }
 
   name = this->curStrToken;
 
   c = la_next_token (this);
 
-  if (c isnot '(')
-    return this->syntax_error (this, "syntax error");
+  if (c isnot LA_INDEX_TOKEN)
+    return this->syntax_error (this, "syntax error, awaiting [");
 
   err = la_parse_primary (this, &len);
   if (err isnot LA_OK)
@@ -1047,7 +1047,6 @@ static int la_parse_array_def (la_t *this) {
   return LA_OK;
 }
 
-// handle setting an array value
 static int la_parse_array_set (la_t *this) {
   int err;
   VALUE ix = INT(0);
@@ -1056,7 +1055,7 @@ static int la_parse_array_set (la_t *this) {
 
   int c = la_next_token (this);
 
-  if (c is '(') {
+  if (c is LA_INDEX_TOKEN) {
     err = la_parse_primary (this, &ix);
     if (err isnot LA_OK)
       return err;
@@ -1068,7 +1067,6 @@ static int la_parse_array_set (la_t *this) {
   return la_array_assign (this, &ary, ix);
 }
 
-// handle getting an array value
 static int la_parse_array_get (la_t *this, VALUE *vp) {
   VALUE ar = this->tokenValue;
   integer *ary = (integer *) AS_ARRAY(ar);
@@ -1076,7 +1074,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
   int c = la_next_token (this);
 
-  if (c is '(') {
+  if (c is LA_INDEX_TOKEN) {
     VALUE ix;
     int err = la_parse_primary (this, &ix);
     if (err isnot LA_OK)
@@ -1218,7 +1216,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
   if (c isnot '(') {
     la_unget_char (this);
-    VALUE v = PTR((pointer) uf);
+    VALUE v = PTR(uf);
     v.type |= FUNPTR_TYPE;
     *vp = v;
     return LA_OK;
@@ -1277,10 +1275,10 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
         la_define_symbol (this, uf, la_StringNew (uf->argName[i]),
             (UFUNC_TYPE | (nargs << 8)), v, 0);
       } else {
-        v.ref++;
+        v.ref += (refcount < 2);
         la_define_symbol (this, uf, la_StringNew (uf->argName[i]), v.type, v, 0);
       }
-    } 
+    }
 
     this->didReturn = 0;
 
@@ -1331,7 +1329,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
   c = this->curToken;
 
-  if (c is '(') {
+  if (c is '(' or c is LA_INDEX_TOKEN) {
+    int close_token = c is '(' ? ')' : ']';
     la_next_token (this);
 
     err = la_parse_expr (this, vp);
@@ -1339,7 +1338,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     if (err is LA_OK) {
       c = this->curToken;
 
-      if (c is ')') {
+      if (c is close_token) {
         la_next_token (this);
 
         this->lastExpr = this->tokenValue;
@@ -1851,7 +1850,7 @@ static int la_parse_func_def (la_t *this) {
 
   uf->body = this->curStrToken;
 
-  VALUE v = PTR((pointer) uf);
+  VALUE v = PTR(uf);
 
   this->curSym = la_define_symbol (this, this->curScope, name,
     (UFUNC_TYPE | (nargs << 8)), v, 0);
@@ -2634,36 +2633,36 @@ static struct def {
   { "else",    LA_TOKEN_ELSE,     NONE_VALUE },
   { "break",   LA_TOKEN_BREAK,    NONE_VALUE },
   { "continue",LA_TOKEN_CONTINUE, NONE_VALUE },
-  { "if",      LA_TOKEN_IF,       PTR((pointer) la_parse_if) },
-  { "ifnot",   LA_TOKEN_IFNOT,    PTR((pointer) la_parse_ifnot) },
-  { "while",   LA_TOKEN_WHILE,    PTR((pointer) la_parse_while) },
-  { "print",   LA_TOKEN_PRINT,    PTR((pointer) la_parse_print) },
-  { "func",    LA_TOKEN_FUNCDEF,  PTR((pointer) la_parse_func_def) },
-  { "return",  LA_TOKEN_RETURN,   PTR((pointer) la_parse_return) },
-  { "exit",    LA_TOKEN_EXIT,     PTR((pointer) la_parse_exit) },
-  { "array",   LA_TOKEN_ARYDEF,   PTR((pointer) la_parse_array_def) },
-  { "*",       BINOP(1),          PTR((pointer) la_prod) },
-  { "/",       BINOP(1),          PTR((pointer) la_quot) },
-  { "%",       BINOP(1),          PTR((pointer) la_mod) },
-  { "+",       BINOP(2),          PTR((pointer) la_sum) },
-  { "-",       BINOP(2),          PTR((pointer) la_diff) },
-  { "&",       BINOP(3),          PTR((pointer) la_bitand) },
-  { "|",       BINOP(3),          PTR((pointer) la_bitor) },
-  { "^",       BINOP(3),          PTR((pointer) la_bitxor) },
-  { ">>",      BINOP(3),          PTR((pointer) la_shr) },
-  { "<<",      BINOP(3),          PTR((pointer) la_shl) },
-  { "==",      BINOP(4),          PTR((pointer) la_equals) },
-  { "is",      BINOP(4),          PTR((pointer) la_equals) },
-  { "!=",      BINOP(4),          PTR((pointer) la_ne) },
-  { "isnot",   BINOP(4),          PTR((pointer) la_ne) },
-  { "<",       BINOP(4),          PTR((pointer) la_lt) },
-  { "<=",      BINOP(4),          PTR((pointer) la_le) },
-  { ">",       BINOP(4),          PTR((pointer) la_gt) },
-  { ">=",      BINOP(4),          PTR((pointer) la_ge) },
-  { "&&",      BINOP(5),          PTR((pointer) la_logical_and) },
-  { "and",     BINOP(5),          PTR((pointer) la_logical_and) },
-  { "||",      BINOP(5),          PTR((pointer) la_logical_or) },
-  { "or",      BINOP(5),          PTR((pointer) la_logical_or) },
+  { "if",      LA_TOKEN_IF,       PTR(la_parse_if) },
+  { "ifnot",   LA_TOKEN_IFNOT,    PTR(la_parse_ifnot) },
+  { "while",   LA_TOKEN_WHILE,    PTR(la_parse_while) },
+  { "print",   LA_TOKEN_PRINT,    PTR(la_parse_print) },
+  { "func",    LA_TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
+  { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
+  { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
+  { "array",   LA_TOKEN_ARYDEF,   PTR(la_parse_array_def) },
+  { "*",       BINOP(1),          PTR(la_prod) },
+  { "/",       BINOP(1),          PTR(la_quot) },
+  { "%",       BINOP(1),          PTR(la_mod) },
+  { "+",       BINOP(2),          PTR(la_sum) },
+  { "-",       BINOP(2),          PTR(la_diff) },
+  { "&",       BINOP(3),          PTR(la_bitand) },
+  { "|",       BINOP(3),          PTR(la_bitor) },
+  { "^",       BINOP(3),          PTR(la_bitxor) },
+  { ">>",      BINOP(3),          PTR(la_shr) },
+  { "<<",      BINOP(3),          PTR(la_shl) },
+  { "==",      BINOP(4),          PTR(la_equals) },
+  { "is",      BINOP(4),          PTR(la_equals) },
+  { "!=",      BINOP(4),          PTR(la_ne) },
+  { "isnot",   BINOP(4),          PTR(la_ne) },
+  { "<",       BINOP(4),          PTR(la_lt) },
+  { "<=",      BINOP(4),          PTR(la_le) },
+  { ">",       BINOP(4),          PTR(la_gt) },
+  { ">=",      BINOP(4),          PTR(la_ge) },
+  { "&&",      BINOP(5),          PTR(la_logical_and) },
+  { "and",     BINOP(5),          PTR(la_logical_and) },
+  { "||",      BINOP(5),          PTR(la_logical_or) },
+  { "or",      BINOP(5),          PTR(la_logical_or) },
   { "OK",      INTEGER_TYPE,      INT(0) },
   { "NOTOK",   INTEGER_TYPE,      INT(-1) },
   { NULL, 0, 0 }
@@ -2674,12 +2673,12 @@ struct la_def_fun_t {
   VALUE val;
   int nargs;
 } la_funs[] = {
-  { "not",     PTR((integer) la_not), 1},
-  { "bool",    PTR((integer) la_bool), 1},
-  { "free",    PTR((integer) la_free), 1},
-  { "malloc",  PTR((integer) la_malloc), 1},
-  { "realloc", PTR((integer) la_realloc), 2},
-  { "typeof",  PTR((integer) la_typeof), 1},
+  { "not",     PTR(la_not), 1},
+  { "bool",    PTR(la_bool), 1},
+  { "free",    PTR(la_free), 1},
+  { "malloc",  PTR(la_malloc), 1},
+  { "realloc", PTR(la_realloc), 2},
+  { "typeof",  PTR(la_typeof), 1},
   { NULL, 0, 0}
 };
 

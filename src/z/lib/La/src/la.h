@@ -48,7 +48,7 @@ typedef ValueType VALUE;
 #define    ARRAY(__a__) (VALUE) {.type = POINTER_TYPE, .ref = 0, .asInteger = (pointer) __a__}
 
 #define AS_PTR AS_INT
-#define    PTR    INT
+#define    PTR(__p__) INT((pointer) __p__)
 
 #define AS_MEMSIZE AS_INT
 #define    MEMSIZE    INT
