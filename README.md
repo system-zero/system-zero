@@ -10,20 +10,26 @@ computer tasks is possible.
 
 It is meant to do that by exposing the development process that is sparked with
 a declared intention. Somehow it is the intention that spawns a mechanism, that
-through analyzing and study, leads and to the actual implementation. Perhaps it
+through analyzing and will, leads and to the actual implementation. Perhaps it
 is that journey that really matters at the end. The hope and the only  ambition
 is that this material will offer some value, though there isn't an expectation.
 
 It is written without a well defined sense of time, but it might be fitted best
 probably at the middle of eighties, so we are probably a bit late. But a system
 is about mechanics, and the procedure to demystification it's not about current
-only terms.
+only relative terms.
 
 Since this is a quite huge task, we'll  have to extend our system in a gradual
 way, so  we have to divide  it into stages. At  the end of any  stage, the end
 result should be in a usable state.
 
 ## Zero Point Description.
+
+*Note* that this needs a serious revision. This is a quite first prototype, that
+is expressed here sometimes in a list of ideas form. Some paragraphs are quite
+verbose and loose their meaning. Some statements might overlap. Expressions can be
+confusing, as the natural flow is like a rolling stone, that is hard at times
+to be reproduced with words and represented poorly.
 
 The  first  stage  is of  course  to  be  able  to get  control  after  kernel
 initialization, so at some  point we'll have to be ready to  be pid 1. Usually
@@ -106,7 +112,7 @@ project, as we  have to implement ourselves at least  the basic functionality.
 It is s system zero point anyway.
 
 Our only requirement at this stage is a standard C library (`libc`), plus `libpam`
-as  our authentication  mechanism, and  our building  tool, will  be the  make
+as  our authentication  mechanism, and  our building  tool, will  be the  `make`
 utility, which is  also and the most primitive building  tool, since the birth
 of `systemV`.
 
@@ -187,7 +193,9 @@ That probably means, that if we want to use that static tool in another system,
 the linked libraries should match. There are reasons  for  this  probably,  but
 that means that there is no much benefit for  linking  this  utility statically,
 even if the compilation succeeded. And which it did, after  I  manually compiled
-pam and cretated a static library. But we'll leave this paragraph, for a reference.
+pam and cretated a static library. But there are many other functions that can
+to be used safely, like many of the important nss functions or dlopen(), and
+popular libraries like libcurl.
 
 The  installed system hierarchy for now is:
 ```sh
@@ -202,6 +210,7 @@ focus. This satisfy  our main fundamental principle, that  believes that every
 product made by humans, should offer first (almost as prerequisitie), the most
 primitive access level of the provided functionality possible. And is probably
 wise to apply this principle rigorously when they are being extended.
+
 For instance  C++,  is a superset of C, and any C++ compiler should compile C,
 since any C code is valid code for C++. However C++, which at the begining was
 just C with classes, during the natural evolution, it has been extended   with
@@ -967,7 +976,7 @@ its own [documentation](data/docs/la.md).
       typedef double      number;
 ```
 
-    The ptrdiff_t type is in standard C, and it is the adequate type to handle
+  - The `ptrdiff_t` type is in standard C, and it is the adequate type to handle
     pointer arithmetic. We also assume that an allocator can claim at most PTRDIFF_MAX.
     So our Pointer and the Memsize Type are both aliases to `integer`.
 
@@ -996,8 +1005,8 @@ its own [documentation](data/docs/la.md).
     now its just a matter of an extra logic. Like the case of arrays, which the
     current implementation didn't allowed to pass them as arguments to functions.
 
-    This also reveals and the route. We'll simply make it more slow, by adding a
-    couple of convienences!
+    This also reveals and the future route. We'll simply make it more slow, by
+    adding a couple more of features and convienences!
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

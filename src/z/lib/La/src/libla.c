@@ -65,9 +65,9 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
-#define CFUNC_TYPE       'B'  // builtin: number of operands in high 8 bits
-#define UFUNC_TYPE       'f'
-#define BINOP_TYPE       'o'
+#define CFUNC_TYPE          'B'  // builtin: number of operands in high 8 bits
+#define UFUNC_TYPE          'f'
+#define BINOP_TYPE          'o'
 
 #define LA_TOKEN_SYMBOL     'A'
 #define LA_TOKEN_BUILTIN    'B'
@@ -94,7 +94,12 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
 #define LA_TOKEN_ARY        'y'
-#define LA_INDEX_TOKEN      '['
+#define LA_TOKEN_INDEX_OPEN '['
+#define LA_TOKEN_INDEX_CLOS ']'
+#define LA_TOKEN_PAREN_OPEN '('
+#define LA_TOKEN_PAREN_CLOS ')'
+#define LA_TOKEN_BLOCK_OPEN '{'
+#define LA_TOKEN_BLOCK_CLOS '}'
 
 typedef struct la_string {
   uint len_;
@@ -845,17 +850,17 @@ static int la_do_next_token (la_t *this, int israw) {
     } else
       r = LA_TOKEN_SYNTAX_ERR;
 
-  } else if (c is '{') {
+  } else if (c is LA_TOKEN_BLOCK_OPEN) {
     int bracket = 1;
     la_reset_token (this);
     while (bracket > 0) {
-      c = la_get_char (this);
+      c = la_get_char (this); //SKIP UNTILL, TODO
 
       if (c is LA_NOTOK) return LA_TOKEN_SYNTAX_ERR;
 
-      if (c is '}')
+      if (c is LA_TOKEN_BLOCK_CLOS)
         --bracket;
-      else if (c is '{')
+      else if (c is LA_TOKEN_BLOCK_OPEN)
         ++bracket;
     }
 
@@ -1025,8 +1030,8 @@ static int la_array_set_as_cstring (la_t *this, VALUE ar, integer len, integer i
   VALUE val;
   cstring *s_ar = (cstring *) AS_ARRAY(ar);
 
-  this->curState |= FUNCTION_ARGUMENT_SCOPE;
   do {
+    this->curState |= FUNCTION_ARGUMENT_SCOPE;
     if (idx < 0 or idx >= len)
       return la_out_of_bounds (this);
 
@@ -1156,7 +1161,7 @@ static int la_parse_array_def (la_t *this) {
 
   c = la_next_token (this);
 
-  if (c isnot LA_INDEX_TOKEN)
+  if (c isnot LA_TOKEN_INDEX_OPEN)
     return this->syntax_error (this, "syntax error, awaiting [");
 
   err = la_parse_primary (this, &len);
@@ -1211,7 +1216,7 @@ static int la_parse_array_set (la_t *this) {
 
   int c = la_next_token (this);
 
-  if (c is LA_INDEX_TOKEN) {
+  if (c is LA_TOKEN_INDEX_OPEN) {
     err = la_parse_primary (this, &ix);
     if (err isnot LA_OK)
       return err;
@@ -1230,7 +1235,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
   int c = la_next_token (this);
 
-  if (c is LA_INDEX_TOKEN) {
+  if (c is LA_TOKEN_INDEX_OPEN) {
 
     VALUE ix;
     int err = la_parse_primary (this, &ix);
@@ -1385,7 +1390,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
   c = la_next_token (this);
 
-  if (c isnot '(') {
+  if (c isnot LA_TOKEN_PAREN_OPEN) {
     la_unget_char (this);
     VALUE v = PTR(uf);
     v.type |= FUNPTR_TYPE;
@@ -1397,7 +1402,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
   c = la_next_token (this);
 
-  if (c isnot ')') {
+  if (c isnot LA_TOKEN_PAREN_CLOS) {
     paramCount = la_parse_expr_list (this);
     c = this->curToken;
     if (paramCount < 0) {
@@ -1408,7 +1413,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
   this->curState &= ~(FUNCTION_ARGUMENT_SCOPE);
 
-  if (c isnot ')')
+  if (c isnot LA_TOKEN_PAREN_CLOS)
     return this->syntax_error (this, "expected closed parentheses");
 
   if (expectargs isnot paramCount)
@@ -1500,8 +1505,10 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
   c = this->curToken;
 
-  if (c is '(' or c is LA_INDEX_TOKEN) {
-    int close_token = c is '(' ? ')' : ']';
+  if (c is LA_TOKEN_PAREN_OPEN or c is LA_TOKEN_INDEX_OPEN) {
+    int close_token = (c is LA_TOKEN_PAREN_OPEN
+       ? LA_TOKEN_PAREN_CLOS : LA_TOKEN_INDEX_CLOS);
+
     la_next_token (this);
 
     err = la_parse_expr (this, vp);
@@ -1602,7 +1609,7 @@ static int la_parse_stmt (la_t *this) {
   if (this->didReturn) {
     do {
       c = la_get_char (this);
-    } while (c >= 0 and c isnot '\n' and c isnot ';' and c isnot '}');
+    } while (c >= 0 and c isnot '\n' and c isnot ';' and c isnot LA_TOKEN_BLOCK_CLOS);
 
     la_unget_char (this);
     la_next_token (this);
@@ -1904,14 +1911,14 @@ again:
 
     do {
       c = la_get_char (this);
-      if (c is '}')
+      if (c is LA_TOKEN_BLOCK_CLOS)
         --brackets;
-      else if (c is '{')
+      else if (c is LA_TOKEN_BLOCK_OPEN)
         ++brackets;
       ifnot (brackets) break;
     } while (c >= 0);
     if (brackets)
-      return this->syntax_error (this, "a closed bracket is missing");
+      return this->syntax_error (this, "a closed bracket '}' is missing");
 
     la_next_token (this);
     err = LA_ERR_OK_ELSE;
@@ -1959,13 +1966,13 @@ static int la_parse_var_list (la_t *this, funT *uf) {
       //c = la_next_raw_token (this);
       c = la_next_token (this);
 
-      if (c is ')') break;
+      if (c is LA_TOKEN_PAREN_CLOS) break;
 
       if (c is ',')
         //c = la_next_token (this);
         c = la_next_raw_token (this);
 
-    } else if (c is ')')
+    } else if (c is LA_TOKEN_PAREN_CLOS)
       break;
     else
       return this->syntax_error (this, "var definition, unexpected token");
@@ -2003,7 +2010,7 @@ static int la_parse_func_def (la_t *this) {
 
   c = la_next_token (this);
 
-  if (c is '(') {
+  if (c is LA_TOKEN_PAREN_OPEN) {
     la_fun_stack_push (this, this->curScope);
 
     this->curScope = uf;
@@ -2041,7 +2048,7 @@ static int la_parse_print (la_t *this) {
 
   int c = la_ignore_ws (this);
 
-  if (c isnot '(') {
+  if (c isnot LA_TOKEN_PAREN_OPEN) {
     this->print_bytes (this->err_fp, "string fmt error, awaiting (\n");
     la_err_ptr (this, LA_NOTOK);
     goto theend;
@@ -2127,7 +2134,7 @@ static int la_parse_print (la_t *this) {
 
         tmp = la_get_char (this);
         prev = la_get_char (this);
-        if (la_peek_char (this, 0) is '(')
+        if (la_peek_char (this, 0) is LA_TOKEN_PAREN_OPEN)
           prev = la_get_char (this);
 
       } else
@@ -2136,7 +2143,7 @@ static int la_parse_print (la_t *this) {
       c = prev;
       prev = tmp;
 
-      if (c is '(') {
+      if (c is LA_TOKEN_PAREN_OPEN) {
         const char *saved_ptr = la_StringGetPtr (this->parsePtr);
 
         la_next_token (this);
@@ -2306,14 +2313,14 @@ static int la_eval_string (la_t *this, const char *buf) {
 }
 
 static int la_eval_expr (la_t *this, const char *buf, VALUE *v) {
-  if (*buf isnot '(')
+  if (*buf isnot LA_TOKEN_PAREN_OPEN)
     return this->syntax_error (this, "awaiting (");
 
   this->script_buffer = buf;
   la_string x = la_StringNew (buf);
 
   this->parsePtr = x;
-  this->curToken = '(';
+  this->curToken = LA_TOKEN_PAREN_OPEN;
 
   int retval = la_parse_expr (this, v);
 
@@ -2341,6 +2348,13 @@ static VALUE la_equals (VALUE x, VALUE y) {
           result = INT(AS_INT(x) == AS_NUMBER(y)); goto theend;
         case INTEGER_TYPE:
           result = INT(AS_INT(x) == AS_INT(y)); goto theend;
+      }
+
+    case CSTRING_TYPE:
+      switch (y.type) {
+        case CSTRING_TYPE:
+          result = INT(Cstring.eq (AS_CSTRING(x), AS_CSTRING(y)));
+            goto theend;
       }
   }
 
