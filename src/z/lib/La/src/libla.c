@@ -28,8 +28,6 @@
 #define $myprop      this->prop
 #define $my(__v__)   $myprop->__v__
 
-#define MAX_BUILTIN_PARAMS 9
-#define MAXLEN_SYMBOL_LEN  64
 #define NS_GLOBAL          "global"
 #define NS_GLOBAL_LEN      6
 
@@ -208,6 +206,7 @@ struct la_t {
 
   const char *script_buffer;
 
+  char symKey[MAXLEN_SYMBOL_LEN + 1];
   char curFunName[MAXLEN_SYMBOL_LEN + 1];
   funT *curFunDef;
 
@@ -679,6 +678,12 @@ static void la_release_sym (void *sym) {
   this = NULL;
 }
 
+static inline char *sym_key (la_t *this, la_string x) {
+  Cstring.cp (this->symKey, MAXLEN_SYMBOL_LEN + 1,
+      la_StringGetPtr (x), la_StringGetLen (x));
+  return this->symKey;
+}
+
 static sym_t *la_define_symbol (la_t *this, funT *f, la_string name, int typ, VALUE value, int is_const) {
 #ifdef DEBUG
   if ($CUR_LaDX < 65) {
@@ -692,8 +697,7 @@ body:
   if (la_StringGetPtr (name) is NULL) return NULL;
 
   size_t len = la_StringGetLen (name);
-  char key[len + 1];
-  Cstring.cp (key, len + 1, la_StringGetPtr (name), len);
+  char *key = sym_key (this, name);
 
   sym_t *sym = Alloc (sizeof (sym_t));
   sym->type = typ;
@@ -708,10 +712,12 @@ body:
   return sym;
 }
 
+static inline sym_t *la_ns_lookup_symbol (la_t *this, funT *scope, char *key) {
+  return Vmap.get (scope->symbols, key);
+}
+
 static sym_t *la_lookup_symbol (la_t *this, la_string name) {
-  size_t len = la_StringGetLen (name);
-  char key[len + 1];
-  Cstring.cp (key, len + 1, la_StringGetPtr (name), len);
+  char *key = sym_key (this, name);
 
 #ifdef DEBUG
   fprintf (this->err_fp, "Queried Symbol: %s\n", key);
@@ -722,7 +728,7 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
 
   funT *f = this->curScope;
   while (NULL isnot f) {
-    sym = Vmap.get (f->symbols, key);
+    sym = la_ns_lookup_symbol (this, f, key);
 
     ifnot (NULL is sym) {
       return sym;
@@ -1236,7 +1242,6 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   int c = la_next_token (this);
 
   if (c is LA_TOKEN_INDEX_OPEN) {
-
     VALUE ix;
     int err = la_parse_primary (this, &ix);
     if (err isnot LA_OK)
@@ -1268,6 +1273,59 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   }
 
   return LA_OK;
+}
+
+static int la_array_eq (VALUE x, VALUE y) {
+  ArrayType *xa = (ArrayType *) AS_ARRAY(x);
+  ArrayType *ya = (ArrayType *) AS_ARRAY(y);
+
+  if (xa is ya) return 1;
+
+  if (xa->len isnot ya->len) return 0;
+
+  switch (xa->type) {
+    case INTEGER_TYPE:
+      switch (ya->type) {
+        case INTEGER_TYPE: {
+          integer *x_ar = (integer *) AS_ARRAY(xa->value);
+          integer *y_ar = (integer *) AS_ARRAY(ya->value);
+          for (int i = 0; i < xa->len; i++)
+            if (x_ar[i] isnot y_ar[i]) return 0;
+
+          return 1;
+        }
+      }
+      return 0;
+
+    case NUMBER_TYPE:
+      switch (ya->type) {
+        case NUMBER_TYPE: {
+          number *x_ar = (number *) AS_ARRAY(xa->value);
+          number *y_ar = (number *) AS_ARRAY(ya->value);
+          for (int i = 0; i < xa->len; i++)
+            if (x_ar[i] isnot y_ar[i]) return 0;
+
+          return 1;
+        }
+      }
+      return 0;
+
+    case CSTRING_TYPE:
+      switch (ya->type) {
+        case CSTRING_TYPE: {
+          cstring *x_ar = (cstring *) AS_ARRAY(xa->value);
+          cstring *y_ar = (cstring *) AS_ARRAY(ya->value);
+          for (int i = 0; i < xa->len; i++)
+            ifnot (Cstring.eq (x_ar[i], y_ar[i])) return 0;
+
+          return 1;
+        }
+      }
+      return 0;
+
+    return 0;
+  }
+  return 0;
 }
 
 static int la_parse_expr_list (la_t *this) {
@@ -1698,10 +1756,7 @@ static int la_parse_stmt (la_t *this) {
     int is_un = *ptr is '~';
 
     if (Cstring.eq_n (ptr, "func", 4)) {
-      size_t klen = la_StringGetLen (name);
-      char key[klen + 1];
-      Cstring.cp (key, klen + 1, la_StringGetPtr (name), klen);
-      la_release_sym (Vmap.pop (this->curScope->symbols, key));
+      la_release_sym (Vmap.pop (this->curScope->symbols, sym_key (this, name)));
 
       la_next_token (this);
 
@@ -2354,7 +2409,14 @@ static VALUE la_equals (VALUE x, VALUE y) {
       switch (y.type) {
         case CSTRING_TYPE:
           result = INT(Cstring.eq (AS_CSTRING(x), AS_CSTRING(y)));
-            goto theend;
+          goto theend;
+      }
+
+    case ARRAY_TYPE:
+      switch (y.type) {
+        case ARRAY_TYPE:
+          result = INT(la_array_eq (x, y));
+          goto theend;
       }
   }
 

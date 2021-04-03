@@ -512,25 +512,31 @@ func test_array (len) {
     print ("[OK]\n")
   }
 
+  array y[len] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+
+  test_num += 1
+  print ("[${test_num}] testing for array equality - ")
+  if (x != y) {
+    print (stderr, "[NOTOK] awaiting equality\n")
+  }
+
+  y[0] = 11
+  if (x == y) {
+    print (stderr, "[NOTOK] awaiting inequality\n")
+  } else {
+    print ("[OK]\n")
+  }
+
   func ar_set_at (xx, idx, y) {
     xx[idx] = y
     return xx[idx]
   }
 
   test_num += 1
-  print ("[${test_num}] testing array set index - ")
+  print ("[${test_num}] testing array set|get methods - ")
   retval = ar_set_at (x, len - 1, 20)
-  if (retval isnot 20) {
-    print (stderr, "[NOTOK] awaiting 20 got: ${retval}\n")
-  } else {
-    print ("[OK]\n")
-  }
-
-  test_num += 1
-  print ("[${test_num}] testing array get index - ")
-  retval = x[len - 1]
-  if (retval isnot 20) {
-    print (stderr, "[NOTOK] awaiting 20 got: ${retval}\n")
+  if (retval isnot 20 or (x[len - 1] isnot 20)) {
+    print (stderr, "[NOTOK] awaiting 20 got: ${(x[len - 1])}\n")
   } else {
     print ("[OK]\n")
   }
@@ -596,6 +602,8 @@ func test_array (len) {
   } else {
     print ("[OK]\n")
   }
+
+
 }
 
 test_array (10)

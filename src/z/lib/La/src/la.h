@@ -60,6 +60,9 @@ typedef ValueType VALUE;
 typedef VALUE (*Cfunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*Opfunc) (VALUE, VALUE);
 
+#define MAX_BUILTIN_PARAMS 9
+#define MAXLEN_SYMBOL_LEN  63
+
 enum {
   LA_ERR_OUTOFBOUNDS = -7,
   LA_ERR_TOOMANYARGS = -6,
