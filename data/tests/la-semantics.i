@@ -566,7 +566,7 @@ func test_array (len) {
   array cstring xs[4] = "through", "the", "ocean", "drive"
   test_num += 1
   print ("[${test_num}] testing for cstring equality for array members - ")
-  if ( "ocean" isnot xs[2]) {
+  if ("ocean" isnot xs[2]) {
     print (stderr, "[NOTOK] awaiting equality\n")
   }
 
@@ -602,7 +602,6 @@ func test_array (len) {
   } else {
     print ("[OK]\n")
   }
-
 
 }
 

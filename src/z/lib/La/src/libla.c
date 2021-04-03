@@ -41,12 +41,13 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define $CUR_FUNC     __func__
 #define $CUR_SCOPE    this->curScope->funname
 #define $CUR_TOKEN    this->curToken
-#define $CUR_VALUE    (VALUE) this->tokenValue
+#define $CUR_VALUE    this->tokenValue.type
+//#define $CUR_VALUE    (VALUE) this->tokenValue
 #define $CODE_PATH   fprintf (this->err_fp,                                     \
   "CurIdx   : %d,  PrevFunc : %s,\n"                                            \
   "CurFunc  : %s,  CurScope : %s,\n"                                            \
-  "CurToken : ['%c', %d], CurValue : %ld\n",                                    \
-  $CUR_LaDX++, $PREV_FUNC,                                                       \
+  "CurToken : ['%c', %d], CurValueType : %d\n",                                    \
+  $CUR_IDX++, $PREV_FUNC,                                                       \
   $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                   \
   Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN); \
   fprintf (this->err_fp, "CurStringToken : ['");                                \
@@ -117,17 +118,6 @@ typedef struct sym_t {
   int is_const;
   VALUE value;
 } sym_t;
-
-typedef struct stackval_t stackval_t;
-
-struct stackval_t {
-  VALUE data;
-  stackval_t *next;
-};
-
-typedef struct stack {
-  stackval_t *head;
-} stack;
 
 typedef struct funstack_t funstack_t;
 
@@ -236,7 +226,8 @@ struct la_t {
      lastExpr,
      funArgs[MAX_BUILTIN_PARAMS];
 
-  stack stack[1];
+  integer stackValIdx;
+  VALUE stackVal[MAX_BUILTIN_PARAMS];
 
   sym_t
     *tokenSymbol;
@@ -261,7 +252,7 @@ struct la_t {
 typedef struct ArrayType {
   VALUE value;
   int type;
-  int len;
+  size_t len;
 } ArrayType;
 
 #define MAX_EXPR_LEVEL 5
@@ -271,13 +262,14 @@ static int la_parse_expr (la_t *, VALUE *);
 static int la_parse_primary (la_t *, VALUE *);
 static int la_parse_func_def (la_t *);
 static int la_next_token (la_t *);
-static VALUE la_prod (VALUE x, VALUE y);
-static VALUE la_sum  (VALUE x, VALUE y);
-static VALUE la_diff (VALUE x, VALUE y);
-static VALUE la_quot (VALUE x, VALUE y);
-static VALUE la_mod  (VALUE x, VALUE y);
-static VALUE la_bset (VALUE x, VALUE y);
-static VALUE la_bnot (VALUE x, VALUE y);
+static VALUE la_prod (VALUE, VALUE);
+static VALUE la_sum  (VALUE, VALUE);
+static VALUE la_diff (VALUE, VALUE);
+static VALUE la_quot (VALUE, VALUE);
+static VALUE la_mod  (VALUE, VALUE);
+static VALUE la_bset (VALUE, VALUE);
+static VALUE la_bnot (VALUE, VALUE);
+static ArrayType *array_copy (ArrayType *);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -406,12 +398,6 @@ static void la_ignore_next_char (la_t *this) {
 static int la_peek_char (la_t *this, uint n) {
   if (la_StringGetLen (this->parsePtr) <= n) return -1;
   return *(la_StringGetPtr (this->parsePtr) + n);
-}
-
-static int la_prev_char (la_t *this, uint n) {
-  if ((la_StringGetPtr (this->parsePtr) - n) <= this->script_buffer)
-    return -1;
-  return *(la_StringGetPtr (this->parsePtr) - n);
 }
 
 static int la_get_char (la_t *this) {
@@ -611,12 +597,22 @@ static void la_release_malloced_strings (la_t *this, int release_const) {
   this->head = NULL;
 }
 
-static malloced_string *new_malloced_string (integer len, int is_const) {
+static malloced_string *new_malloced_string (size_t len, int is_const) {
   malloced_string *mbuf = Alloc (sizeof (malloced_string));
   mbuf->bytes = Alloc (len + 1);
   mbuf->is_const = is_const;
   mbuf->bytes[0] = '\0';
   return mbuf;
+}
+
+static void *la_malloc (la_t *this, VALUE size) {
+  (void) this;
+  return Alloc ((size_t) AS_MEMSIZE(size));
+}
+
+static void *la_realloc (la_t *this, VALUE obj, VALUE size) {
+  (void) this;
+  return Realloc ((void *)AS_PTR(obj), (size_t) AS_MEMSIZE(size));
 }
 
 static VALUE la_free (la_t *this, VALUE value) {
@@ -631,15 +627,23 @@ static VALUE la_free (la_t *this, VALUE value) {
     case CSTRING_TYPE: object = (void *) AS_CSTRING(value); break;
     case ARRAY_TYPE: {
       ArrayType *array = (ArrayType *) AS_ARRAY(value);
+      if (NULL is array) goto theend;
+
       VALUE ary = array->value;
 
       if (array->type is CSTRING_TYPE) {
         cstring *s_ar = (cstring *) AS_ARRAY(ary);
-        for (integer i = 0; i < array->len; i++)
+        if (s_ar is NULL) goto theend;
+        for (size_t i = 0; i < array->len; i++)
           free (s_ar[i]);
         free (s_ar);
-      } else
-        free ((char *) AS_ARRAY(ary));
+        s_ar = NULL;
+
+      } else {
+        char *ar = (char *) AS_ARRAY(ary);
+        if (ar is NULL) goto theend;
+        free (ar);
+      }
 
       object = (void *) (array);
     }
@@ -651,6 +655,8 @@ static VALUE la_free (la_t *this, VALUE value) {
     value = NONE(value);
     result = INT(LA_OK);
   }
+
+  object = NULL;
 
 theend:
   return result;
@@ -684,20 +690,17 @@ static inline char *sym_key (la_t *this, la_string x) {
   return this->symKey;
 }
 
-static sym_t *la_define_symbol (la_t *this, funT *f, la_string name, int typ, VALUE value, int is_const) {
+static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
 #ifdef DEBUG
-  if ($CUR_LaDX < 65) {
-    $CUR_LaDX++;
+  if ($CUR_IDX < 65) {
+    $CUR_IDX++;
     goto body;
   }
   $CODE_PATH
 body:
 #endif
   (void) this;
-  if (la_StringGetPtr (name) is NULL) return NULL;
-
-  size_t len = la_StringGetLen (name);
-  char *key = sym_key (this, name);
+  ifnot (key) return NULL;
 
   sym_t *sym = Alloc (sizeof (sym_t));
   sym->type = typ;
@@ -712,7 +715,7 @@ body:
   return sym;
 }
 
-static inline sym_t *la_ns_lookup_symbol (la_t *this, funT *scope, char *key) {
+static inline sym_t *ns_lookup_symbol (funT *scope, char *key) {
   return Vmap.get (scope->symbols, key);
 }
 
@@ -728,7 +731,7 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
 
   funT *f = this->curScope;
   while (NULL isnot f) {
-    sym = la_ns_lookup_symbol (this, f, key);
+    sym = ns_lookup_symbol (f, key);
 
     ifnot (NULL is sym) {
       return sym;
@@ -893,6 +896,7 @@ static int la_do_next_token (la_t *this, int israw) {
         str[i] = c;
       }
       str[len] = '\0';
+
       this->tokenValue = CSTRING(str);
 
     } else {
@@ -930,16 +934,11 @@ static int la_next_raw_token (la_t *this) {
 }
 
 static void stack_push (la_t *this, VALUE x) {
-  stackval_t *item = Alloc (sizeof (stackval_t));
-  item->data = x;
-  ListStackPush (this->stack, item);
+  this->stackVal[++this->stackValIdx] = x;
 }
 
 static VALUE stack_pop (la_t *this) {
-  stackval_t *item = ListStackPop (this->stack, stackval_t);
-  VALUE data = item->data;
-  free (item);
-  return data;
+  return this->stackVal[this->stackValIdx--];
 }
 
 static void la_fun_stack_push (la_t *this, funT *f) {
@@ -964,13 +963,15 @@ static void *la_clone_sym_item (void *item) {
   new->is_const = sym->is_const;
 
   if ((new->type & 0xff) is ARRAY_TYPE) {
-    integer *a = (integer *) AS_PTR(sym->value);
-    size_t len = a[0];
-    integer *ary =  Alloc (sizeof (integer) * len);
-    for (size_t i = 0; i < len + 1; i++)
-      ary[i] = a[i];
-    VALUE ar = PTR(ary);
-    new->value = ar;
+    VALUE ar = sym->value;
+    ArrayType *array = (ArrayType *) AS_ARRAY(ar);
+    ArrayType *new_array = array_copy (array);
+    new->value = ARRAY(new_array);
+    return new;
+  } else if ((new->type & 0xff) is CSTRING_TYPE) {
+    char *old_str = AS_CSTRING(sym->value);
+    VALUE str_val = CSTRING(Cstring.dup (old_str, bytelen (old_str)));
+    new->value = str_val;
     return new;
   }
 
@@ -1029,6 +1030,53 @@ static VALUE la_HexStringToNum (la_string s) {
 
   VALUE result = INT(r);
   return result;
+}
+
+static ArrayType *array_copy (ArrayType *array) {
+  ArrayType *new_array = Alloc (sizeof (ArrayType));
+
+  size_t len = array->len;
+  integer type = array->type;
+
+  new_array->len = len;
+  new_array->type = type;
+
+  switch (type) {
+    case NUMBER_TYPE: {
+      number *ary = (number *) AS_ARRAY(array->value);
+
+      number *n_ar = Alloc (len * sizeof (number));
+      for (size_t i = 0; i < len; i++)
+        n_ar[i] = ary[i];
+
+      new_array->value = ARRAY(n_ar);
+      break;
+    }
+
+    case CSTRING_TYPE: {
+      cstring *ary = (cstring *) AS_ARRAY(array->value);
+
+      cstring *s_ar = Alloc (len * sizeof (cstring));
+      for (size_t i = 0; i < len; i++)
+        s_ar[i] = Cstring.dup (ary[i], bytelen (ary[i]));
+
+      new_array->value = ARRAY(s_ar);
+      break;
+    }
+
+    default: {
+      integer *ary = (integer *) AS_ARRAY(array->value);
+
+      integer *i_ar = Alloc (len * sizeof (integer));
+      for (size_t i = 0; i < len; i++)
+        i_ar[i] = ary[i];
+
+      new_array->value = ARRAY(i_ar);
+      break;
+    }
+  }
+
+  return new_array;
 }
 
 static int la_array_set_as_cstring (la_t *this, VALUE ar, integer len, integer idx) {
@@ -1101,7 +1149,6 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx) 
 /* Initial Array Interface by MickeyDelp <mickey at delptronics dot com> */
 static int la_array_assign (la_t *this, VALUE *ar, VALUE ix) {
   int err;
-  VALUE val;
 
   integer idx = AS_INT(ix);
 
@@ -1204,7 +1251,7 @@ static int la_parse_array_def (la_t *this) {
   array->value = ary;
   ar = ARRAY(array);
 
-  this->tokenSymbol = la_define_symbol (this, this->curScope, name, ARRAY_TYPE,
+  this->tokenSymbol = la_define_symbol (this, this->curScope, sym_key (this, name), ARRAY_TYPE,
     ar, 0);
 
   VALUE at_idx = INT(0);
@@ -1289,7 +1336,7 @@ static int la_array_eq (VALUE x, VALUE y) {
         case INTEGER_TYPE: {
           integer *x_ar = (integer *) AS_ARRAY(xa->value);
           integer *y_ar = (integer *) AS_ARRAY(ya->value);
-          for (int i = 0; i < xa->len; i++)
+          for (size_t i = 0; i < xa->len; i++)
             if (x_ar[i] isnot y_ar[i]) return 0;
 
           return 1;
@@ -1302,7 +1349,7 @@ static int la_array_eq (VALUE x, VALUE y) {
         case NUMBER_TYPE: {
           number *x_ar = (number *) AS_ARRAY(xa->value);
           number *y_ar = (number *) AS_ARRAY(ya->value);
-          for (int i = 0; i < xa->len; i++)
+          for (size_t i = 0; i < xa->len; i++)
             if (x_ar[i] isnot y_ar[i]) return 0;
 
           return 1;
@@ -1315,7 +1362,7 @@ static int la_array_eq (VALUE x, VALUE y) {
         case CSTRING_TYPE: {
           cstring *x_ar = (cstring *) AS_ARRAY(xa->value);
           cstring *y_ar = (cstring *) AS_ARRAY(ya->value);
-          for (int i = 0; i < xa->len; i++)
+          for (size_t i = 0; i < xa->len; i++)
             ifnot (Cstring.eq (x_ar[i], y_ar[i])) return 0;
 
           return 1;
@@ -1323,7 +1370,8 @@ static int la_array_eq (VALUE x, VALUE y) {
       }
       return 0;
 
-    return 0;
+    default:
+      return 0;
   }
   return 0;
 }
@@ -1506,11 +1554,10 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       if (v.type & FUNPTR_TYPE) {
         funT *f = (funT *) AS_PTR(v);
         int nargs = f->nargs;
-        la_define_symbol (this, uf, la_StringNew (uf->argName[i]),
-            (UFUNC_TYPE | (nargs << 8)), v, 0);
+        la_define_symbol (this, uf, uf->argName[i], (UFUNC_TYPE | (nargs << 8)), v, 0);
       } else {
         v.refcount += (refcount < 2);
-        la_define_symbol (this, uf, la_StringNew (uf->argName[i]), v.type, v, 0);
+        la_define_symbol (this, uf, uf->argName[i], v.type, v, 0);
       }
     }
 
@@ -1709,14 +1756,17 @@ static int la_parse_stmt (la_t *this) {
     ifnot (la_StringGetLen (name))
       return this->syntax_error (this, "unknown symbol");
 
-    VALUE ival = INT(0);
-    this->tokenSymbol = la_define_symbol (this, this->curScope,  name, INTEGER_TYPE, ival, is_const);
+    char *key = sym_key (this, name);
+    sym_t *sym = ns_lookup_symbol (this->curScope, key);
 
-    if (NULL is this->tokenSymbol) {
-      if (is_const)
-        return this->syntax_error (this, "can not reassign to a constant");
-      return this->syntax_error (this, "unknown error");
-    }
+    ifnot (NULL is sym)
+      return this->syntax_error (this, "can not redeclare a symbol in this scope");
+
+    VALUE ival = INT(0);
+    this->tokenSymbol = la_define_symbol (this, this->curScope, key, INTEGER_TYPE, ival, is_const);
+
+    if (NULL is this->tokenSymbol)
+      return this->syntax_error (this, "unknown error while declaring");
 
     c = LA_TOKEN_VAR;
     /* fall through */
@@ -1761,7 +1811,7 @@ static int la_parse_stmt (la_t *this) {
       la_next_token (this);
 
       Cstring.cp (this->curFunName, MAXLEN_SYMBOL_LEN + 1, la_StringGetPtr(name), la_StringGetLen(name));
-      int err = la_parse_func_def (this);
+      err = la_parse_func_def (this);
       this->curFunName[0] = '\0';
       return err;
     }
@@ -1782,7 +1832,8 @@ static int la_parse_stmt (la_t *this) {
       funT *f = (funT *) AS_PTR(val);
       int nargs = f->nargs;
       symbol->type = (UFUNC_TYPE | (nargs << 8));
-    }
+    } else
+      symbol->type = val.type;
 
     switch (operator) {
       case '=': symbol->value = val; break;
@@ -2085,8 +2136,8 @@ static int la_parse_func_def (la_t *this) {
 
   VALUE v = PTR(uf);
 
-  this->curSym = la_define_symbol (this, this->curScope, name,
-    (UFUNC_TYPE | (nargs << 8)), v, 0);
+  this->curSym = la_define_symbol (this, this->curScope, sym_key (this, name),
+      (UFUNC_TYPE | (nargs << 8)), v, 0);
 
   this->curFunDef = uf;
 
@@ -2346,8 +2397,8 @@ static int la_parse_return (la_t *this) {
   return err;
 }
 
-static int la_define (la_t *this, const char *name, int typ, VALUE val) {
-  la_define_symbol (this, this->function, la_StringNew (name), typ, val, 0);
+static int la_define (la_t *this, const char *key, int typ, VALUE val) {
+  la_define_symbol (this, this->function, (char *) key, typ, val, 0);
   return LA_OK;
 }
 
@@ -2826,16 +2877,6 @@ static VALUE la_bool (la_t *this, VALUE value) {
   return result;
 }
 
-static void *la_malloc (la_t *this, VALUE size) {
-  (void) this;
-  return Alloc (AS_MEMSIZE(size));
-}
-
-static void *la_realloc (la_t *this, VALUE obj, VALUE size) {
-  (void) this;
-  return Realloc ((void *)AS_PTR(obj), AS_MEMSIZE(size));
-}
-
 static VALUE la_typeof (la_t *this, VALUE val) {
   VALUE v;
   malloced_string *mbuf = new_malloced_string (16, 0);
@@ -2898,7 +2939,7 @@ static struct def {
   { "or",      BINOP(5),          PTR(la_logical_or) },
   { "OK",      INTEGER_TYPE,      INT(0) },
   { "NOTOK",   INTEGER_TYPE,      INT(-1) },
-  { NULL, 0, 0 }
+  { NULL, 0, NONE_VALUE }
 };
 
 struct la_def_fun_t {
@@ -2912,7 +2953,7 @@ struct la_def_fun_t {
   { "malloc",  PTR(la_malloc), 1},
   { "realloc", PTR(la_realloc), 2},
   { "typeof",  PTR(la_typeof), 1},
-  { NULL, 0, 0}
+  { NULL, NONE_VALUE, 0},
 };
 
 /* ABSTRACTION CODE */
@@ -3197,6 +3238,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->didReturn = 0;
   this->exitValue = LA_OK;
   this->curState = 0;
+  this->stackValIdx = -1;
 
   if (NULL is opts.la_dir)
     this->la_dir = String.new (32);
