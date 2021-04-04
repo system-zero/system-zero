@@ -9,24 +9,23 @@ typedef struct ValueType ValueType;
 
 typedef double      number;
 typedef ptrdiff_t   integer;
-typedef char *      cstring;
 typedef integer     memsize;
 typedef integer     pointer;
+typedef string_t    string;
 
 #define NONE_TYPE      0
 #define NUMBER_TYPE    (1 << 0)
 #define INTEGER_TYPE   (1 << 1)
-#define CSTRING_TYPE   (1 << 2)
+#define STRING_TYPE    (1 << 2)
 #define ARRAY_TYPE     (1 << 3)
-#define FUNPTR_TYPE    (1 << 4)
+#define FUNCPTR_TYPE   (1 << 4)
 #define POINTER_TYPE   INTEGER_TYPE
-#define MEMSIZE_TYPE   INTEGER_TYPE
 
 struct ValueType {
   union {
     number   asNumber;
     integer  asInteger;
-    cstring  asCString;
+    string*  asString;
     void *   asNone;
   };
 
@@ -42,8 +41,11 @@ typedef ValueType VALUE;
 #define AS_INT(__v__) __v__.asInteger
 #define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .refcount = 0, .asInteger = __i__}
 
-#define AS_CSTRING(__v__) __v__.asCString
-#define    CSTRING(__s__) (VALUE) {.type = CSTRING_TYPE, .refcount = 0, .asCString = __s__}
+#define  AS_STRING_BYTES(__v__) AS_STRING(__v__)->bytes
+#define  AS_STRING(__v__)  __v__.asString
+#define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .refcount = 0, .asString = __s__}
+#define STRING_NEW(__s__) STRING(String.new_with (__s__))
+#define STRING_NEW_WITH_LEN(__s__, __l__) STRING(String.new_with_len (__s__, __l__))
 
 #define AS_ARRAY AS_PTR
 #define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .refcount = 0, .asInteger = (pointer) __a__}
@@ -51,8 +53,9 @@ typedef ValueType VALUE;
 #define AS_PTR AS_INT
 #define    PTR(__p__) INT((pointer) __p__)
 
-#define AS_MEMSIZE AS_INT
-#define    MEMSIZE    INT
+#define  AS_MEMSIZE(__v__) (size_t) AS_INT(__v__)
+#define AS_VOID_PTR(__v__) (void *) AS_PTR(__v__)
+#define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
 
 #define AS_NONE(__v__) __v__.asNone
 #define    NONE (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0}
@@ -64,18 +67,19 @@ typedef VALUE (*Opfunc) (VALUE, VALUE);
 #define MAXLEN_SYMBOL_LEN  63
 
 enum {
-  LA_ERR_OUTOFBOUNDS = -7,
-  LA_ERR_TOOMANYARGS = -6,
-  LA_ERR_BADARGS = -5,
-  LA_ERR_UNKNOWN_SYM = -4,
-  LA_ERR_SYNTAX = -3,
-  LA_ERR_NOMEM = -2,
-  LA_NOTOK = -1,
-  LA_OK = 0,
-  LA_ERR_OK_ELSE = 1,
-  LA_ERR_BREAK = 2,
-  LA_ERR_CONTINUE = 3,
-  LA_ERR_EXIT = 4
+  LA_ERR_OUTOFBOUNDS  = -8,
+  LA_ERR_TOOMANYARGS  = -7,
+  LA_ERR_BADARGS      = -6,
+  LA_ERR_UNKNOWN_SYM  = -5,
+  LA_ERR_UNKNOWN_TYPE = -4,
+  LA_ERR_SYNTAX       = -3,
+  LA_ERR_NOMEM        = -2,
+  LA_NOTOK            = -1,
+  LA_OK               = 0,
+  LA_ERR_OK_ELSE      = 1,
+  LA_ERR_BREAK        = 2,
+  LA_ERR_CONTINUE     = 3,
+  LA_ERR_EXIT         = 4
 };
 
 /* Interface */

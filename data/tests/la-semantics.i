@@ -420,7 +420,7 @@ func semantics () {
   funptr ()
 
   test_num += 1
-  print ("[${test_num}] testing cstring equality - ")
+  print ("[${test_num}] testing string equality - ")
   var astr = "ταυtoughstuff"
   var bstr = "ταυtoughstuffenough"
   var cstr = "ταυtoughstuffenough"
@@ -563,9 +563,9 @@ func test_array (len) {
     print ("[OK]\n")
   }
 
-  array cstring xs[4] = "through", "the", "ocean", "drive"
+  array string xs[4] = "through", "the", "ocean", "drive"
   test_num += 1
-  print ("[${test_num}] testing for cstring equality for array members - ")
+  print ("[${test_num}] testing for string equality for string array members - ")
   if ("ocean" isnot xs[2]) {
     print (stderr, "[NOTOK] awaiting equality\n")
   }
@@ -579,7 +579,6 @@ func test_array (len) {
   } else {
     print ("[OK]\n")
   }
-
 
   func fibo_array (n) {
     array f[n + 2]

@@ -1219,8 +1219,8 @@ static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str
       snprintf (buf, 256, "%f", AS_NUMBER(v));
       break;
 
-    case CSTRING_TYPE:
-      Ed.reg.set (ed, '$', CHARWISE, v.asCString, NORMAL_ORDER);
+    case STRING_TYPE:
+      Ed.reg.set (ed, '$', CHARWISE, AS_STRING_BYTES(v), NORMAL_ORDER);
       Msg.send_fmt (ed, COLOR_NORMAL, "Result =  %s (stored to '$' register)", v.asCString);
       return OK;
 
@@ -13375,7 +13375,7 @@ VALUE la_e_set_persistent_layout (la_t *this, VALUE valv) {
 }
 
 VALUE la_e_set_image_name (la_t *this, VALUE namev) {
-  char *name = AS_CSTRING(namev);
+  char *name = AS_STRING_BYTES(namev);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.image_name (laroot, name);
   VALUE r = INT(LA_OK);
@@ -13383,7 +13383,7 @@ VALUE la_e_set_image_name (la_t *this, VALUE namev) {
 }
 
 VALUE la_e_set_image_file (la_t *this, VALUE filev) {
-  char *file = AS_CSTRING(filev);
+  char *file = AS_STRING_BYTES(filev);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.image_file (laroot, file);
   VALUE r = INT(LA_OK);
@@ -13442,14 +13442,14 @@ VALUE la_ed_set_current_win (la_t *this, VALUE edv, VALUE idxv) {
 VALUE la_buf_init_fname (la_t *this, VALUE bufv, VALUE fnamev) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
-  char *fn = AS_CSTRING(fnamev);
+  char *fn = AS_STRING_BYTES(fnamev);
   VALUE r = INT(buf_init_fname (buf, fn));
   return r;
 }
 
 VALUE la_buf_set_ftype (la_t *this, VALUE bufv, VALUE ftypev) {
   buf_t *buf = (buf_t *) AS_PTR(bufv);
-  char *ftype = AS_CSTRING (ftypev);
+  char *ftype = AS_STRING_BYTES(ftypev);
   E_T *laroot = La.get.user_data (this);
   buf_set_ftype (buf, ed_syn_get_ftype_idx ($from(laroot, current), ftype));
   VALUE r = INT(LA_OK);
@@ -13485,8 +13485,8 @@ VALUE la_buf_substitute (la_t *this, VALUE bufv, VALUE patv, VALUE subv, VALUE g
                                             VALUE interactivev, VALUE fidxv, VALUE lidxv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
-  char *pat = AS_CSTRING(patv);
-  char *sub = AS_CSTRING(subv);
+  char *pat = AS_STRING_BYTES(patv);
+  char *sub = AS_STRING_BYTES(subv);
   int global = AS_INT(globalv);
   int interactive = AS_INT(interactivev);
   int fidx = AS_INT(fidxv);
@@ -13584,7 +13584,7 @@ VALUE la_buf_normal_change_case (la_t *this, VALUE bufv) {
 VALUE la_buf_insert_string (la_t *this, VALUE bufv, VALUE strv, VALUE drawv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
-  char *str = AS_CSTRING(strv);
+  char *str = AS_STRING_BYTES(strv);
   int draw = AS_INT(drawv);
   VALUE r = INT(buf_insert_string (buf, str, bytelen (str), draw));
   return r;
@@ -13594,7 +13594,7 @@ VALUE la_buf_search (la_t *this, VALUE bufv, VALUE comv, VALUE strv, VALUE cv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   char com = AS_INT(comv);
-  char *str = AS_CSTRING(strv);
+  char *str = AS_STRING_BYTES(strv);
   int c = AS_INT(cv);
   VALUE r = INT(buf_search (buf, com, str, c));
   return r;
