@@ -600,6 +600,27 @@ static void *la_realloc (la_t *this, VALUE obj, VALUE size) {
   return Realloc (AS_VOID_PTR(obj), AS_MEMSIZE(size));
 }
 
+static VALUE la_len (la_t *this, VALUE value) {
+  (void) this;
+  VALUE result = INT(0);
+
+  switch (value.type) {
+    case STRING_TYPE: {
+      string *str = AS_STRING(value);
+      result = INT(str->num_bytes);
+      break;
+    }
+
+    case ARRAY_TYPE: {
+      ArrayType *array = (ArrayType *) AS_ARRAY(value);
+      result = INT(array->len);
+      break;
+    }
+  }
+
+  return result;
+}
+
 static VALUE la_free (la_t *this, VALUE value) {
   (void) this;
   VALUE result = INT(LA_NOTOK);
@@ -2991,6 +3012,7 @@ struct la_def_fun_t {
 } la_funs[] = {
   { "not",     PTR(la_not), 1},
   { "bool",    PTR(la_bool), 1},
+  { "len",     PTR(la_len), 1},
   { "free",    PTR(la_free), 1},
   { "malloc",  PTR(la_malloc), 1},
   { "realloc", PTR(la_realloc), 2},

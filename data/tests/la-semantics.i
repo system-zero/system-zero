@@ -434,6 +434,17 @@ func semantics () {
   } else {
     print ("[OK]\n")
   }
+
+  test_num += 1
+  print ("[${test_num}] testing string length - ")
+  retval = len (astr);
+  if (retval isnot 16) {
+    print (stderr, "[NOTOK] awaiting 16, got ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+
 }
 
 semantics ()
@@ -494,25 +505,21 @@ func doubles () {
 
 doubles ()
 
-func test_array (len) {
+func test_array (length) {
   var retval = 0
 
-  array x[len] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-
-  func ar_length (xx) {
-    return xx[-1]
-  }
+  array x[length] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 
   test_num += 1
   print ("[${test_num}] testing array length - ")
-  retval = ar_length (x)
-  if (retval isnot len) {
+  retval = len (x)
+  if (retval isnot length) {
     print (stderr, "[NOTOK] awaiting ${len} got: ${retval}\n")
   } else {
     print ("[OK]\n")
   }
 
-  array y[len] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  array y[length] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 
   test_num += 1
   print ("[${test_num}] testing for array equality - ")
@@ -534,8 +541,8 @@ func test_array (len) {
 
   test_num += 1
   print ("[${test_num}] testing array set|get methods - ")
-  retval = ar_set_at (x, len - 1, 20)
-  if (retval isnot 20 or (x[len - 1] isnot 20)) {
+  retval = ar_set_at (x, length - 1, 20)
+  if (retval isnot 20 or (x[length - 1] isnot 20)) {
     print (stderr, "[NOTOK] awaiting 20 got: ${(x[len - 1])}\n")
   } else {
     print ("[OK]\n")
@@ -544,8 +551,8 @@ func test_array (len) {
   func ar_sum (xx) {
     var sum = 0
     var idx = 0
-    var len = ar_length (xx)
-    while (idx < len) {
+    var length = len (xx)
+    while (idx < length) {
       sum += xx[idx]
       idx += 1
     }

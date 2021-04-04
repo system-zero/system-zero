@@ -747,9 +747,10 @@ char i_operators[] = "+-%*^><=/|& .(){}![]";
 char *i_keywords[] = {
   "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
   "isnot I", "break I", "continue I",  "while I", "and I", "or I",
-  "bool V", "not V", "const V", "free F", "alloc F", "lambda F",
-  "ge I", "gt I", "le I", "lt I", "array V",
-  "true V", "false V", "OK V", "NOTOK V", NULL
+  "lambda F", "array V", "string T", "integer T", "number T",
+  "len F", "print F", "typeof F",
+  "bool V", "not V", "const V", "free F", "malloc F",
+   NULL
 };
 
 char i_singleline_comment[] = "#";
@@ -1221,7 +1222,8 @@ static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str
 
     case STRING_TYPE:
       Ed.reg.set (ed, '$', CHARWISE, AS_STRING_BYTES(v), NORMAL_ORDER);
-      Msg.send_fmt (ed, COLOR_NORMAL, "Result =  %s (stored to '$' register)", v.asCString);
+      Msg.send_fmt (ed, COLOR_NORMAL, "Result =  %s (stored to '$' register)",
+          AS_STRING_BYTES(v));
       return OK;
 
     default:

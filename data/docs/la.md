@@ -5,18 +5,24 @@ A very small programming language that compiles in C.
 # comment
 
 # Variable assignment (they should be initialized at declaration time)
-var i = 1
+
+var i = 0
+var double = 1.1
 
 # Function declaration
+
 func name (arg) {
   return arg * 2
 }
 
 # A function can be assigned in a variable
+
 var f = name
+
 # and can be used as an argument to a function.
 
 # `if` conditional: the block is executed if the condition is true
+
 if (condition) { statement[s]... }
 
 # Code blocks delimited with braces '{}' and are mandatory.
@@ -26,25 +32,31 @@ if (condition) { statement[s]... }
 # denotes that the statement continues in the next line.
 
 # `ifnot` conditional: the block is executed if the condition is zero
+
 ifnot (condition) { ... }
 
 # Both can get an `else` clause, that is executed when the first block is not
 # executed.
 
 # `while` loop
+
 while (condition) { ... }
+
 # You can use `break` to break out of the loop, and `continue` to continue with
 # the next iteration.
 
 # Constant types (those types can not be reassigned)
+
 const c = "constant"
 
 # Variables can not be redeclared at the current scope.
 
-# Assign to a string literal
+# Assign to a string literal (multibyte (UTF-8) strings are handled).
+
 var str = "oh la la lala, it's the natural la"
 
 # This can be reassigned.
+
 str = "that everyone brings"
 
 # You can pass a string literal as an argument to a user defined function, or to a
@@ -53,13 +65,20 @@ str = "that everyone brings"
 # Functions can get at most nine arguments.
 
 # Comparison operators:
-# == or is, != or isnot, >, < , >=, <=
 
-# Arithmetic operators: +, -, *, /, % and [*+-/%]=
+  == or is, != or isnot, >, < , >=, <=
 
-# Logical operators: && or and, || or or
+# Arithmetic operators:
 
-# Bitwise operators: |, ^, >>, <<, and [|&]=
+  +, -, *, /, % and [*+-/%]=
+
+# Logical operators:
+
+   && or and, || or or
+
+# Bitwise operators:
+
+   |, ^, >>, <<, and [|&]=
 
 # All the operators should have the same semantics with C.
 
@@ -117,6 +136,8 @@ array string ar[3] = "holidays", "in", "cambodia"
 # The assignment syntax is: ar_symbol[index] = ..., ..., ...
 # Assignment starts at index and continues as long there are expressions,
 # separated with comma, and as long it doesn't get out of bounds.
+
+# Array indices are starting from zero.
 ```
 
 ## keywords and Operators.
@@ -167,6 +188,7 @@ array string ar[3] = "holidays", "in", "cambodia"
 # Functions
 # print
 # typeof  -  type of a value
+# len     -  length of the object (for ARRAY and STRING types)
 # not     -  !value
 # bool    -  !!value
 
