@@ -55,11 +55,10 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
   fprintf (this->err_fp, "']\n\n");
 #endif
 
-#define FUNCTION_ARGUMENT_SCOPE        (1 << 0)
-#define FUNC_CALL_BUILTIN              (1 << 1)
-#define AT_LOOP                        (1 << 2)
-#define BREAK                          (1 << 3)
-#define CONTINUE                       (1 << 4)
+#define STRING_LITERAL_ARG_STATE      (1 << 0)
+#define LOOP_STATE                    (1 << 1)
+#define BREAK_STATE                   (1 << 2)
+#define CONTINUE_STATE                (1 << 3)
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -93,6 +92,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
 #define LA_TOKEN_ARY        'y'
+#define LA_TOKEN_BLOCK      'z'
 #define LA_TOKEN_INDEX_OPEN '['
 #define LA_TOKEN_INDEX_CLOS ']'
 #define LA_TOKEN_PAREN_OPEN '('
@@ -269,6 +269,7 @@ static VALUE la_quot (VALUE, VALUE);
 static VALUE la_mod  (VALUE, VALUE);
 static VALUE la_bset (VALUE, VALUE);
 static VALUE la_bnot (VALUE, VALUE);
+static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
 
 static void la_set_message (la_t *this, int append, char *msg) {
@@ -625,34 +626,12 @@ static VALUE la_free (la_t *this, VALUE value) {
   switch (value.type) {
     case POINTER_TYPE: object = (void *) AS_PTR(value); break;
     case CSTRING_TYPE: object = (void *) AS_CSTRING(value); break;
-    case ARRAY_TYPE: {
-      ArrayType *array = (ArrayType *) AS_ARRAY(value);
-      if (NULL is array) goto theend;
-
-      VALUE ary = array->value;
-
-      if (array->type is CSTRING_TYPE) {
-        cstring *s_ar = (cstring *) AS_ARRAY(ary);
-        if (s_ar is NULL) goto theend;
-        for (size_t i = 0; i < array->len; i++)
-          free (s_ar[i]);
-        free (s_ar);
-        s_ar = NULL;
-
-      } else {
-        char *ar = (char *) AS_ARRAY(ary);
-        if (ar is NULL) goto theend;
-        free (ar);
-      }
-
-      object = (void *) (array);
-    }
-    break;
+    case ARRAY_TYPE: result = array_release (value); break;
   }
 
   ifnot (NULL is object) {
     free (object);
-    value = NONE(value);
+    value = NONE;
     result = INT(LA_OK);
   }
 
@@ -673,11 +652,10 @@ static void la_release_sym (void *sym) {
       funT *f = (funT *) AS_PTR(v);
       fun_release (&f);
     }
-  }
-
-  if ((this->type & 0xff) is ARRAY_TYPE) {
-    ifnot (this->value.refcount--)
-      la_free (NULL, this->value);
+  } else if ((this->type & 0xff) is ARRAY_TYPE) {
+    la_free (NULL, this->value);
+  } else if ((this->type & 0xff) is CSTRING_TYPE) {
+    la_free (NULL, this->value);
   }
 
   free (this);
@@ -863,7 +841,7 @@ static int la_do_next_token (la_t *this, int israw) {
     int bracket = 1;
     la_reset_token (this);
     while (bracket > 0) {
-      c = la_get_char (this); //SKIP UNTILL, TODO
+      c = la_get_char (this);
 
       if (c is LA_NOTOK) return LA_TOKEN_SYNTAX_ERR;
 
@@ -874,7 +852,7 @@ static int la_do_next_token (la_t *this, int israw) {
     }
 
     la_ignore_last_token (this);
-    r = LA_TOKEN_STRING;
+    r = LA_TOKEN_BLOCK;
 
   } else if (c is '"') {
     size_t len = 0;
@@ -889,18 +867,16 @@ static int la_do_next_token (la_t *this, int israw) {
     if (cc is -1)
       return this->syntax_error (this, "unended string, a '\"' is missing");
 
-    ifnot (this->curState & FUNCTION_ARGUMENT_SCOPE) {
+    ifnot (this->curState & STRING_LITERAL_ARG_STATE) {
       char *str = Alloc (len + 1);
       for (size_t i = 0; i < len; i++) {
         c = la_get_char (this);
         str[i] = c;
       }
       str[len] = '\0';
-
       this->tokenValue = CSTRING(str);
 
     } else {
-      this->curState &= ~(FUNC_CALL_BUILTIN);
       malloced_string *mbuf = new_malloced_string (len + 1, 0);
       for (size_t i = 0; i < len; i++) {
         c = la_get_char (this);
@@ -1032,6 +1008,47 @@ static VALUE la_HexStringToNum (la_string s) {
   return result;
 }
 
+static VALUE array_release (VALUE value) {
+  VALUE result = INT(LA_NOTOK);
+
+  if (value.type is NONE_TYPE or value.refcount < 0)
+    return result;
+
+  if (value.refcount) {
+    result = INT(LA_OK);
+    goto theend;
+  }
+
+  ArrayType *array = (ArrayType *) AS_ARRAY(value);
+  if (NULL is array) return result;
+
+  VALUE ary = array->value;
+
+  if (array->type is CSTRING_TYPE) {
+    cstring *s_ar = (cstring *) AS_ARRAY(ary);
+    if (s_ar is NULL) return result;
+    for (size_t i = 0; i < array->len; i++)
+      free (s_ar[i]);
+    free (s_ar);
+    s_ar = NULL;
+
+  } else {
+    char *ar = (char *) AS_ARRAY(ary);
+    if (ar is NULL) return result;
+    free (ar);
+  }
+
+  free ((void *) array);
+  array = NULL;
+
+  value = NONE;
+  result = INT(LA_OK);
+
+theend:
+  value.refcount = -1;
+  return result;
+}
+
 static ArrayType *array_copy (ArrayType *array) {
   ArrayType *new_array = Alloc (sizeof (ArrayType));
 
@@ -1085,7 +1102,7 @@ static int la_array_set_as_cstring (la_t *this, VALUE ar, integer len, integer i
   cstring *s_ar = (cstring *) AS_ARRAY(ar);
 
   do {
-    this->curState |= FUNCTION_ARGUMENT_SCOPE;
+    this->curState |= STRING_LITERAL_ARG_STATE;
     if (idx < 0 or idx >= len)
       return la_out_of_bounds (this);
 
@@ -1101,7 +1118,7 @@ static int la_array_set_as_cstring (la_t *this, VALUE ar, integer len, integer i
     idx++;
   } while (this->curToken is ',');
 
-  this->curState &= ~FUNCTION_ARGUMENT_SCOPE;
+  this->curState &= ~STRING_LITERAL_ARG_STATE;
 
   return LA_OK;
 }
@@ -1504,7 +1521,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
     return LA_OK;
   }
 
-  this->curState |= FUNCTION_ARGUMENT_SCOPE;
+  this->curState |= STRING_LITERAL_ARG_STATE;
 
   c = la_next_token (this);
 
@@ -1512,12 +1529,12 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
     paramCount = la_parse_expr_list (this);
     c = this->curToken;
     if (paramCount < 0) {
-      this->curState &= ~(FUNCTION_ARGUMENT_SCOPE);
+      this->curState &= ~(STRING_LITERAL_ARG_STATE);
       return paramCount;
     }
   }
 
-  this->curState &= ~(FUNCTION_ARGUMENT_SCOPE);
+  this->curState &= ~(STRING_LITERAL_ARG_STATE);
 
   if (c isnot LA_TOKEN_PAREN_CLOS)
     return this->syntax_error (this, "expected closed parentheses");
@@ -1590,8 +1607,6 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
     *vp = op (this, this->funArgs[0], this->funArgs[1], this->funArgs[2],
                     this->funArgs[3], this->funArgs[4], this->funArgs[5],
                     this->funArgs[6], this->funArgs[7], this->funArgs[8]);
-
-    this->curState &= ~(FUNC_CALL_BUILTIN);
   }
 
   la_next_token (this);
@@ -1599,9 +1614,6 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
   return LA_OK;
 }
 
-// parse a primary value; for now, just a number or variable
-// returns 0 if valid, non-zero if syntax error
-// puts result into *vp
 static int la_parse_primary (la_t *this, VALUE *vp) {
 #ifdef DEBUG
   $CODE_PATH
@@ -1666,7 +1678,6 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
   } else if (c is LA_TOKEN_BUILTIN) {
     Cfunc op = (Cfunc) AS_PTR(this->tokenValue);
-    this->curState |= FUNC_CALL_BUILTIN;
     return la_parse_func_call (this, op, vp, NULL);
 
   } else if (c is LA_TOKEN_USRFUNC) {
@@ -1725,8 +1736,8 @@ static int la_parse_stmt (la_t *this) {
   c = this->curToken;
 
   if (c is LA_TOKEN_BREAK) {
-    if (this->curState & AT_LOOP) {
-      this->curState |= BREAK;
+    if (this->curState & LOOP_STATE) {
+      this->curState |= BREAK_STATE;
       return LA_ERR_BREAK;
     }
 
@@ -1734,8 +1745,8 @@ static int la_parse_stmt (la_t *this) {
   }
 
   if (c is LA_TOKEN_CONTINUE) {
-    if (this->curState & AT_LOOP) {
-      this->curState |= CONTINUE;
+    if (this->curState & LOOP_STATE) {
+      this->curState |= CONTINUE_STATE;
       return LA_ERR_CONTINUE;
     }
 
@@ -1835,6 +1846,9 @@ static int la_parse_stmt (la_t *this) {
     } else
       symbol->type = val.type;
 
+    if ((symbol->type & 0x77) is CSTRING_TYPE)
+      la_free (this, symbol->value);
+
     switch (operator) {
       case '=': symbol->value = val; break;
       case '+': symbol->value = la_sum (symbol->value, val); break;
@@ -1933,14 +1947,17 @@ static int la_parse_if_rout (la_t *this, VALUE *cond, int *haveelse, la_string *
 
   *haveelse = 0;
 
+  this->curState |= STRING_LITERAL_ARG_STATE;
   c = la_next_token (this);
 
   err = la_parse_expr (this, cond);
   if (err isnot LA_OK) return err;
 
+  this->curState &= ~STRING_LITERAL_ARG_STATE;
+
   c = this->curToken;
 
-  if (c isnot LA_TOKEN_STRING) return this->syntax_error (this, "parsing if, not a string");
+  if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "parsing if, not a string");
 
   *ifpart = this->curStrToken;
 
@@ -1949,7 +1966,7 @@ static int la_parse_if_rout (la_t *this, VALUE *cond, int *haveelse, la_string *
   if (c is LA_TOKEN_ELSE) {
     c = la_next_token (this);
 
-    if (c isnot LA_TOKEN_STRING) return this->syntax_error (this, "parsing else, not a string");
+    if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "parsing else, not a string");
 
     *elsepart = this->curStrToken;
     *haveelse = 1;
@@ -1998,15 +2015,15 @@ static int la_parse_while (la_t *this) {
   int err;
   la_string savepc = this->parsePtr;
   int len = la_StringGetLen (this->parsePtr);
-  this->curState |= AT_LOOP;
+  this->curState |= LOOP_STATE;
 
 again:
-  this->curState &= ~BREAK;
-  this->curState &= ~CONTINUE;
+  this->curState &= ~BREAK_STATE;
+  this->curState &= ~CONTINUE_STATE;
 
   err = la_parse_if (this);
 
-  if (this->curState & BREAK) {
+  if (this->curState & BREAK_STATE) {
     const char *savepcptr = la_StringGetPtr (savepc);
     const char *parsePtr = la_StringGetPtr (this->parsePtr);
     while (savepcptr isnot parsePtr) {savepcptr++; len--;}
@@ -2031,15 +2048,16 @@ again:
   }
 
   if (err is LA_ERR_OK_ELSE or this->didReturn) {
-    this->curState &= ~AT_LOOP;
+    this->curState &= ~LOOP_STATE;
     return LA_OK;
-  } else if (err is LA_OK or this->curState & CONTINUE) {
+
+  } else if (err is LA_OK or this->curState & CONTINUE_STATE) {
     la_StringSetPtr (&this->parsePtr, la_StringGetPtr (savepc));
     la_StringSetLen (&this->parsePtr, len);
     goto again;
   }
 
-  this->curState &= ~AT_LOOP;
+  this->curState &= ~LOOP_STATE;
   return err;
 }
 
@@ -2130,7 +2148,7 @@ static int la_parse_func_def (la_t *this) {
     c = la_next_token (this);
   }
 
-  if (c isnot LA_TOKEN_STRING) return this->syntax_error (this, "function definition, not a string");
+  if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "function definition, not a string");
 
   uf->body = this->curStrToken;
 

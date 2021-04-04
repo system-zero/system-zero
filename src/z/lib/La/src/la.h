@@ -55,7 +55,7 @@ typedef ValueType VALUE;
 #define    MEMSIZE    INT
 
 #define AS_NONE(__v__) __v__.asNone
-#define    NONE(__s__) (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0}
+#define    NONE (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0}
 
 typedef VALUE (*Cfunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*Opfunc) (VALUE, VALUE);
