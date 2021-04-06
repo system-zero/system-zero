@@ -328,7 +328,7 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] testing for loop - ")
+  print ("[${test_num}] testing `for` loop - ")
   var sum = lambda ({
     for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {}
     return s
@@ -341,7 +341,7 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] testing for loop continue statement - ")
+  print ("[${test_num}] testing `for` loop continue statement - ")
   sum = lambda ({
     for (var i = 1, var s = 0; i < 1000 ; i += 1) {
       if (i is 100) { continue }
@@ -357,7 +357,7 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] testing for loop break statement - ")
+  print ("[${test_num}] testing `for` loop break statement - ")
   sum = lambda ({
     for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {
       if (i is 100) { break }
@@ -372,11 +372,75 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] testing for loop return statement - ")
+  print ("[${test_num}] testing `for` loop return statement - ")
   sum = lambda ({
     for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {
       if (i is 100) { return s }
     }
+    return s
+   }) ()
+
+  if (sum isnot 4950) {
+    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `loop` loop - ")
+  sum = lambda ({
+    var s = 0; var i = 0;
+    loop (1000) {s += i; i += 1}
+    return s
+   }) ()
+
+  if (sum isnot 499500) {
+    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `loop` loop continue statement - ")
+  sum = lambda ({
+    var s = 0; var i = 0;
+    loop (1000) {
+      if (i is 100) {
+        i += 1
+        continue
+      }
+      s += i
+      i += 1
+    }
+
+    return s
+   }) ()
+
+  if (sum isnot 499400) {
+    print (stderr, "[NOTOK] awaiting 499400 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `loop` loop break statement - ")
+  sum = lambda ({
+    var s = 0; var i = 0;
+    loop (1000) {if (i is 100) { break }; s += i; i += 1}
+    return s
+   }) ()
+
+  if (sum isnot 4950) {
+    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `loop` loop return statement - ")
+  sum = lambda ({
+    var s = 0; var i = 0;
+    loop (1000) { if (i is 100) { return }; s += i; i += 1}
     return s
    }) ()
 

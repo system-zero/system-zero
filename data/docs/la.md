@@ -43,9 +43,14 @@ ifnot (condition) { ... }
 while (condition) { block }
 
 # `for` loop
+
 for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
-# The `break` keyword breaks out of the loop, while the `continue` keyword
+# `loop` loop
+
+loop (num) {block}
+
+# The `break` keyword breaks out of a loop, while the `continue` keyword
 # continues with the next iteration.
 
 # Constant types (those types can not be reassigned)

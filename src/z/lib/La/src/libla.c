@@ -72,6 +72,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_CHAR       'C'
 #define LA_TOKEN_FUNCDEF    'F'
 #define LA_TOKEN_IFNOT      'I'
+#define LA_TOKEN_LOOP       'L'
 #define LA_TOKEN_CONTINUE   'O'
 #define LA_TOKEN_PRINT      'P'
 #define LA_TOKEN_RETURN     'R'
@@ -1749,8 +1750,12 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     la_next_token (this);
     return LA_OK;
 
-  } else
-    return this->syntax_error (this, "syntax error");
+  } else {
+    if (c isnot -1) {
+      fprintf (this->err_fp, "unknown token |%c| |%d|", c, c);
+      return this->syntax_error (this, "syntax error");
+    }
+  }
 }
 
 static int la_parse_stmt (la_t *this) {
@@ -2223,6 +2228,72 @@ static int la_parse_for (la_t *this) {
         err = la_parse_stmt (this);
         if (err isnot LA_OK) return err;
       } while (this->curToken is ',');
+  }
+
+theend:
+  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+  this->parsePtr = savepc;
+  return LA_OK;
+}
+
+static int la_parse_loop (la_t *this) {
+  int err;
+
+  int c = la_next_token (this);
+  if (c isnot LA_TOKEN_PAREN_OPEN)
+    return this->syntax_error (this, "error while parsing loop, awaiting (");
+
+  VALUE v;
+  err = la_parse_expr (this, &v);
+  if (err isnot LA_OK) return err;
+
+  if (v.type isnot INTEGER_TYPE)
+    return this->syntax_error (this, "error while parsing loop, awaiting an integer expression");
+
+  integer num = AS_INT(v);
+
+  c = this->curToken;
+
+  if (c isnot LA_TOKEN_BLOCK)
+    return this->syntax_error (this, "parsing loop, not a block string");
+
+  la_get_char (this);
+
+  const char *tmp_ptr = la_StringGetPtr (this->curStrToken);
+
+  integer bodylen = la_StringGetLen (this->curStrToken) - 1;
+  char body[bodylen + 1];
+  for (integer i = 0; i < bodylen; i++)
+    body[i] = tmp_ptr[i];
+  body[bodylen] = '\0';
+
+  la_string body_str = la_StringNewLen (body, bodylen);
+
+  la_string savepc = this->parsePtr;
+
+  for (integer i; i < num; i++) {
+    this->curState |= LOOP_STATE;
+    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
+    err= la_parse_string (this, body_str);
+    this->curState &= ~LOOP_STATE;
+
+    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+      la_next_token (this);
+   //   this->curToken = ';';
+      goto theend;
+    }
+
+    if (this->didReturn) {
+      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+   //   this->curToken = ';';
+      la_StringSetLen (&this->parsePtr, 0);
+      return LA_OK;
+    }
+
+    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+      continue;
+
+    if (err isnot LA_OK) return err;
   }
 
 theend:
@@ -3115,6 +3186,7 @@ static struct def {
   { "ifnot",   LA_TOKEN_IFNOT,    PTR(la_parse_ifnot) },
   { "while",   LA_TOKEN_WHILE,    PTR(la_parse_while) },
   { "for",     LA_TOKEN_FOR,      PTR(la_parse_for) },
+  { "loop",    LA_TOKEN_LOOP,     PTR(la_parse_loop) },
   { "print",   LA_TOKEN_PRINT,    PTR(la_parse_print) },
   { "func",    LA_TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
