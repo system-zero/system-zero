@@ -286,6 +286,106 @@ func semantics () {
     print ("[OK]\n")
   }
 
+  func loop_test_break (limit) {
+    var i = 1;
+    while (i) {
+      if (i is limit) { break };
+      i += 1;
+    }
+
+    return i
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing break statement - ")
+  retval = loop_test_break (50)
+  if (retval isnot 50) {
+    print (stderr, "[NOTOK] awaiting 50 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  func loop_test_continue (ar) {
+    var i = 0;
+    var sum = 0;
+    while (i < len (ar)) {
+      if (i is 2) { i += 1; continue }
+      sum += ar[i]
+      i += 1;
+    }
+
+    return sum
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing continue statement - ")
+  array integer xi[5] = 1, 10, 20, 30, 40
+  retval = loop_test_continue (xi)
+  if (retval isnot 81) {
+    print (stderr, "[NOTOK] awaiting 81 got: ${retval}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing for loop - ")
+  var sum = lambda ({
+    for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {}
+    return s
+   }) ()
+
+  if (sum isnot 499500) {
+    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing for loop continue statement - ")
+  sum = lambda ({
+    for (var i = 1, var s = 0; i < 1000 ; i += 1) {
+      if (i is 100) { continue }
+      s += i
+    }
+    return s
+   }) ()
+
+  if (sum isnot 499400) {
+    print (stderr, "[NOTOK] awaiting 499400 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing for loop break statement - ")
+  sum = lambda ({
+    for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {
+      if (i is 100) { break }
+    }
+    return s
+   }) ()
+
+  if (sum isnot 4950) {
+    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing for loop return statement - ")
+  sum = lambda ({
+    for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {
+      if (i is 100) { return s }
+    }
+    return s
+   }) ()
+
+  if (sum isnot 4950) {
+    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
   var n = 10
 
   test_num += 1
@@ -598,6 +698,17 @@ func test_array (length) {
     }
 
     return f[n]
+  }
+
+  array number dx[3] = 1.31, 2.32, 3.43
+  array number dy[3] = 1.31, 2.32, 3.43
+
+  test_num += 1
+  print ("[${test_num}] testing double arrays - ")
+  if (dx[0] isnot dy[0]) {
+    print (stderr, "[NOTOK] awaiting equality\n")
+  } else {
+    print ("[OK]\n")
   }
 
   test_num += 1

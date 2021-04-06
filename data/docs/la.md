@@ -40,10 +40,13 @@ ifnot (condition) { ... }
 
 # `while` loop
 
-while (condition) { ... }
+while (condition) { block }
 
-# You can use `break` to break out of the loop, and `continue` to continue with
-# the next iteration.
+# `for` loop
+for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
+
+# The `break` keyword breaks out of the loop, while the `continue` keyword
+# continues with the next iteration.
 
 # Constant types (those types can not be reassigned)
 
@@ -101,10 +104,12 @@ func fu () {
 var i = lambda ((x, y) {return x * y}) (10, 100)
 
 # It is like a function declaration without a name, enclosed in parentheses.
-# They can be nested, and though can be assigned in a variable, their lifetime
-# can not be guarranteed.
+# The parameter list can be omited if it is empty. If there is no argument
+# list, this lambda can be assigned in a variable, but its lifetime can not
+# be guarranteed. The `func` keyword can be used for that.
+# Lambdas like functions can be nested in arbitrary level.
 
-# print function
+#  print function
 #  prints a "string ${sym} with interpolation expressions". It can optionally
 #  take `stderr`, as its first argument, to redirect output to standard error
 #  stream, instead of standard output. Note that `sym` must be in visible scope.
@@ -128,7 +133,7 @@ var i = 10; print ("i is ${%d, (i * 2)}\n")
 array string ar[3] = "holidays", "in", "cambodia"
 
 # The declaration syntax is: array [type] name[length].
-# If type is ommited then it defaults to INTEGER_TYPE.
+# If type is omited then it defaults to INTEGER_TYPE.
 # Valid types are: integer, number, string. In the language there is also a
 # pointer type, that is an alias for the INTEGER_TYPE, and capable to hold an
 # object, that its address can be passed to C functions.
@@ -151,6 +156,7 @@ array string ar[3] = "holidays", "in", "cambodia"
 # ifnot   -  ifnot conditional
 # else    -  else clause
 # while   -  while loop
+# for     -  for loop
 # return  -  return statement
 # break   -  break statement
 # continue-  continue statement

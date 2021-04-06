@@ -746,7 +746,7 @@ char i_operators[] = "+-%*^><=/|& .(){}![]";
 
 char *i_keywords[] = {
   "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
-  "isnot I", "break I", "continue I",  "while I", "and I", "or I",
+  "isnot I", "and I", "or I", "for I", "while I", "break I", "continue I",
   "lambda F", "array V", "string T", "integer T", "number T",
   "len F", "print F", "typeof F",
   "bool V", "not V", "const V", "free F", "malloc F",
