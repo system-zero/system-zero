@@ -50,7 +50,7 @@ for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
 loop (num iterations) { block }
 
-# alternativelly
+# alternatively
 
 loop (init_statement[[s], ...]; num iterations) {block}
 
@@ -58,7 +58,7 @@ loop (init_statement[[s], ...]; num iterations) {block}
 
 forever { block }
 
-# alternativelly
+# alternatively
 
 forever (init_statement[[s], ...]) { block }
 
@@ -138,8 +138,7 @@ var i = lambda ((x, y) {return x * y}) (10, 100)
 #    - %x to print the symbol as a hexadecimal (a 0x is prefixed in the output)
 #    - %d to print the symbol as a decimal (this is the default, so it can be omited)
 #    - %f to print the symbol as a double
-#  Note that there should be a space after the comma, otherwise it is considered
-#  as an error.
+#
 #  If `sym` is enclosed in parentheses then it is considered and evaluated as an
 #  expression,
 

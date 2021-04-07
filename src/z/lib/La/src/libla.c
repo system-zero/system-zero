@@ -111,6 +111,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_LINE_CONT  LA_TOKEN_SLASH
 #define LA_TOKEN_ESCAPE_CHR LA_TOKEN_SLASH
 #define LA_TOKEN_NONE       '0'
+#define LA_TOKEN_EOF        -1
 
 typedef struct la_string {
   uint len_;
@@ -273,10 +274,10 @@ static int la_parse_expr (la_t *, VALUE *);
 static int la_parse_primary (la_t *, VALUE *);
 static int la_parse_func_def (la_t *);
 static int la_next_token (la_t *);
-static VALUE la_prod (VALUE, VALUE);
-static VALUE la_sum  (VALUE, VALUE);
-static VALUE la_diff (VALUE, VALUE);
-static VALUE la_quot (VALUE, VALUE);
+static VALUE la_mul  (VALUE, VALUE);
+static VALUE la_add  (VALUE, VALUE);
+static VALUE la_sub  (VALUE, VALUE);
+static VALUE la_div  (VALUE, VALUE);
 static VALUE la_mod  (VALUE, VALUE);
 static VALUE la_bset (VALUE, VALUE);
 static VALUE la_bnot (VALUE, VALUE);
@@ -420,14 +421,14 @@ static void la_ignore_next_char (la_t *this) {
 }
 
 static int la_peek_char (la_t *this, uint n) {
-  if (la_StringGetLen (this->parsePtr) <= n) return -1;
+  if (la_StringGetLen (this->parsePtr) <= n) return LA_TOKEN_EOF;
   return *(la_StringGetPtr (this->parsePtr) + n);
 }
 
 static int la_get_char (la_t *this) {
   uint len = la_StringGetLen (this->parsePtr);
 
-  ifnot (len) return -1;
+  ifnot (len) return LA_TOKEN_EOF;
 
   const char *ptr = la_StringGetPtr (this->parsePtr);
   int c = *ptr++;
@@ -541,7 +542,7 @@ static inline int is_number (la_t *this, int c, int *token_type) {
     ifnot (is_digit (c)) break;
   }
 
-  if (c isnot -1) la_unget_char (this);
+  if (c isnot LA_TOKEN_EOF) la_unget_char (this);
 
   return LA_OK;
 }
@@ -567,7 +568,7 @@ static void la_get_span (la_t *this, int (*testfn) (int)) {
     c = la_get_char (this);
   while (testfn (c));
 
-  if (c isnot -1) la_unget_char (this);
+  if (c isnot LA_TOKEN_EOF) la_unget_char (this);
 }
 
 static void ns_release_malloced_strings (funT *this) {
@@ -912,12 +913,12 @@ static int la_do_next_token (la_t *this, int israw) {
     int pc = 0;
     int cc = 0;
 
-    while (pc = cc, (cc = la_peek_char (this, len)) isnot -1) {
+    while (pc = cc, (cc = la_peek_char (this, len)) isnot LA_TOKEN_EOF) {
       if (LA_TOKEN_DQUOTE is cc and pc isnot LA_TOKEN_ESCAPE_CHR) break;
       len++;
     }
 
-    if (cc is -1)
+    if (cc is LA_TOKEN_EOF)
       return this->syntax_error (this, "unended string, a '\"' is missing");
 
     ifnot (this->curState & STRING_LITERAL_ARG_STATE) {
@@ -1219,10 +1220,12 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx) 
 static int la_array_assign (la_t *this, VALUE *ar, VALUE ix) {
   int err;
 
-  integer idx = AS_INT(ix);
-
   ArrayType *array = (ArrayType *) AS_ARRAY((*ar));
   integer len = array->len;
+
+  integer idx = AS_INT(ix);
+  if (0 > idx)
+    idx += len;
 
   VALUE ary = array->value;
 
@@ -1363,13 +1366,10 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
       return err;
 
     integer idx = AS_INT(ix);
+    if (0 > idx)
+      idx += len;
 
-    if (idx is -1) {
-      *vp = INT(len);
-      return LA_OK;
-    }
-
-    if (idx < -1 or idx >= len)
+    if (idx <= -1 or idx >= len)
       return la_out_of_bounds (this);
 
     if (array->type is INTEGER_TYPE) {
@@ -1761,11 +1761,13 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     return LA_OK;
 
   } else {
-    if (c isnot -1) {
+    if (c isnot LA_TOKEN_EOF) {
       fprintf (this->err_fp, "unknown token |%c| |%d|", c, c);
       return this->syntax_error (this, "syntax error");
     }
   }
+
+  return LA_OK;
 }
 
 static int la_parse_stmt (la_t *this) {
@@ -1902,10 +1904,10 @@ static int la_parse_stmt (la_t *this) {
 
     switch (operator) {
       case '=': symbol->value = val; break;
-      case '+': symbol->value = la_sum (symbol->value, val); break;
-      case '-': symbol->value = la_diff (symbol->value, val); break;
-      case '/': symbol->value = la_quot (symbol->value, val); break;
-      case '*': symbol->value = la_prod (symbol->value, val); break;
+      case '+': symbol->value = la_add  (symbol->value, val); break;
+      case '-': symbol->value = la_sub  (symbol->value, val); break;
+      case '/': symbol->value = la_div  (symbol->value, val); break;
+      case '*': symbol->value = la_mul  (symbol->value, val); break;
       case '%': symbol->value = la_mod  (symbol->value, val); break;
       case '|': symbol->value = la_bset (symbol->value, val); break;
       case '&': symbol->value = la_bnot (symbol->value, val); break;
@@ -2327,7 +2329,7 @@ static int la_parse_loop (la_t *this) {
 
   la_string savepc = this->parsePtr;
 
-  for (integer i; i < num; i++) {
+  for (integer i = 0; i < num; i++) {
     this->curState |= LOOP_STATE;
     this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
     err= la_parse_string (this, body_str);
@@ -2558,7 +2560,7 @@ static int la_parse_print (la_t *this) {
   for (;;) {
     c = la_get_char (this);
     if (c is LA_TOKEN_DQUOTE) {
-      if (prev isnot '\\')
+      if (prev isnot LA_TOKEN_ESCAPE_CHR)
         break;
 
       String.append_byte (str, LA_TOKEN_DQUOTE);
@@ -2566,35 +2568,33 @@ static int la_parse_print (la_t *this) {
       c = la_get_char (this);
     }
 
-    if (c is '\\') {
-      if (prev is '\\' or la_peek_char (this, 1) isnot '$') {
+    if (c is LA_TOKEN_ESCAPE_CHR) {
+      if (prev is LA_TOKEN_ESCAPE_CHR or la_peek_char (this, 1) isnot '$') {
         prev = str->bytes[str->num_bytes - 1];
-        String.append_byte (str, '\\');
-      } else  prev = '\\';
+        String.append_byte (str, LA_TOKEN_ESCAPE_CHR);
+      } else  prev = LA_TOKEN_ESCAPE_CHR;
 
       c = la_get_char (this);
     }
 
     if (c is '$') {
-      if (prev is '\\') {
+      if (prev is LA_TOKEN_ESCAPE_CHR) {
         String.append_byte (str, '$');
         prev = '$';
         continue;
       }
 
-      prev = c;
       c = la_get_char (this);
-      if (c isnot '{') {
+      if (c isnot LA_TOKEN_BLOCK_OPEN) {
         this->print_bytes (this->err_fp, "string fmt error, awaiting {\n");
         la_err_ptr (this, LA_NOTOK);
         goto theend;
       }
 
       char sym[MAXLEN_SYMBOL_LEN];
-      int tmp = prev;
 
-      c = la_get_char (this);
       prev = c;
+      c = la_ignore_ws (this);
 
       if (c is '%') {
         c = la_get_char (this);
@@ -2606,22 +2606,16 @@ static int la_parse_print (la_t *this) {
         } else
           directive = c;
 
-        if (la_peek_char (this, 0) isnot LA_TOKEN_COMMA and la_peek_char (this, 1) isnot ' ') {
-          this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma and a space after directive\n");
+        if (la_peek_char (this, 0) isnot LA_TOKEN_COMMA) {
+          this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma\n");
           la_err_ptr (this, LA_NOTOK);
           goto theend;
         }
 
-        tmp = la_get_char (this);
-        prev = la_get_char (this);
-        if (la_peek_char (this, 0) is LA_TOKEN_PAREN_OPEN)
-          prev = la_get_char (this);
-
-      } else
-        la_unget_char (this);
-
-      c = prev;
-      prev = tmp;
+        prev = LA_TOKEN_COMMA;
+        la_get_char (this);
+        c = la_ignore_ws (this);
+      }
 
       if (c is LA_TOKEN_PAREN_OPEN) {
         const char *saved_ptr = la_StringGetPtr (this->parsePtr);
@@ -2636,9 +2630,9 @@ static int la_parse_print (la_t *this) {
         }
 
         const char *ptr = la_StringGetPtr (this->parsePtr);
-        if (*ptr is '}') la_get_char (this);
+        if (*ptr is LA_TOKEN_BLOCK_CLOS) la_get_char (this);
         while (ptr isnot saved_ptr) {
-          if (*ptr is '}')
+          if (*ptr is LA_TOKEN_BLOCK_CLOS)
             goto append_value;
           ptr--;
         }
@@ -2648,16 +2642,24 @@ static int la_parse_print (la_t *this) {
         goto theend;
       }
 
+      if (c is LA_TOKEN_BLOCK_CLOS) {
+        this->print_bytes (this->err_fp, "string fmt error, empty expression\n");
+        la_err_ptr (this, LA_NOTOK);
+      }
+
       int len = 0;
+      sym[len++] = c;
+
       prev = c;
+
       while ((c = la_get_char (this))) {
-        if (c is -1) {
+        if (c is LA_TOKEN_EOF) {
           this->print_bytes (this->err_fp, "string fmt error, unended string\n");
           la_err_ptr (this, LA_NOTOK);
           goto theend;
         }
 
-        if (c is '}') break;
+        if (c is LA_TOKEN_BLOCK_CLOS) break;
         if (c is LA_TOKEN_INDEX_OPEN) {
           la_unget_char (this);
           break;
@@ -2665,12 +2667,6 @@ static int la_parse_print (la_t *this) {
 
         sym[len++] = c;
         prev = c;
-      }
-
-      ifnot (len) {
-        this->print_bytes (this->err_fp, "string fmt error, awaiting symbol\n");
-        la_err_ptr (this, LA_NOTOK);
-        goto theend;
       }
 
       sym[len] = '\0';
@@ -2729,12 +2725,57 @@ static int la_parse_print (la_t *this) {
           break;
 
         case 'f':
-          String.append_with_fmt (str, "%.15f", AS_NUMBER(value));
+          switch (value.type) {
+            case ARRAY_TYPE: {
+              VALUE v;
+              this->tokenValue = value;
+              err = la_parse_array_get (this, &v);
+              if (err isnot LA_OK)
+                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
+
+              switch (v.type) {
+                case NUMBER_TYPE:
+                  String.append_with_fmt (str, "%.15f", AS_NUMBER(v));
+                  break;
+
+                default:
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting number type\n");
+
+              }
+              break;
+            }
+
+          default:
+            String.append_with_fmt (str, "%.15f", AS_NUMBER(value));
+          }
+
           break;
 
         case 'd':
         default:
+          switch (value.type) {
+            case ARRAY_TYPE: {
+              VALUE v;
+              this->tokenValue = value;
+              err = la_parse_array_get (this, &v);
+              if (err isnot LA_OK)
+                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
+
+              switch (v.type) {
+                case INTEGER_TYPE:
+                  String.append_with_fmt (str, "%d", AS_INT(v));
+                  break;
+
+                default:
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
+
+              }
+              break;
+            }
+
+          default:
           String.append_with_fmt (str, "%d", AS_INT(value));
+        }
       }
 
       directive = 'd';
@@ -2747,7 +2788,7 @@ static int la_parse_print (la_t *this) {
 
   c = la_get_char (this);
 
-  if (c isnot ')') {
+  if (c isnot LA_TOKEN_PAREN_CLOS) {
     this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
     la_err_ptr (this, LA_NOTOK);
     goto theend;
@@ -3006,7 +3047,7 @@ theend:
   return result;
 }
 
-static VALUE la_sum  (VALUE x, VALUE y) {
+static VALUE la_add (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -3032,7 +3073,7 @@ theend:
   return result;
 }
 
-static VALUE la_prod (VALUE x, VALUE y) {
+static VALUE la_mul (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -3058,7 +3099,7 @@ theend:
   return result;
 }
 
-static VALUE la_quot (VALUE x, VALUE y) {
+static VALUE la_div (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -3084,7 +3125,7 @@ theend:
   return result;
 }
 
-static VALUE la_diff (VALUE x, VALUE y) {
+static VALUE la_sub (VALUE x, VALUE y) {
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -3308,11 +3349,11 @@ static struct def {
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
   { "array",   LA_TOKEN_ARYDEF,   PTR(la_parse_array_def) },
-  { "*",       BINOP(1),          PTR(la_prod) },
-  { "/",       BINOP(1),          PTR(la_quot) },
+  { "*",       BINOP(1),          PTR(la_mul) },
+  { "/",       BINOP(1),          PTR(la_div) },
   { "%",       BINOP(1),          PTR(la_mod) },
-  { "+",       BINOP(2),          PTR(la_sum) },
-  { "-",       BINOP(2),          PTR(la_diff) },
+  { "+",       BINOP(2),          PTR(la_add) },
+  { "-",       BINOP(2),          PTR(la_sub) },
   { "&",       BINOP(3),          PTR(la_bitand) },
   { "|",       BINOP(3),          PTR(la_bitor) },
   { "^",       BINOP(3),          PTR(la_bitxor) },
