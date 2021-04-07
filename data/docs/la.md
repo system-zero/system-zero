@@ -48,7 +48,19 @@ for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
 # `loop` loop
 
-loop (num) {block}
+loop (num iterations) { block }
+
+# alternativelly
+
+loop (init_statement[[s], ...]; num iterations) {block}
+
+# `forever` loop
+
+forever { block }
+
+# alternativelly
+
+forever (init_statement[[s], ...]) { block }
 
 # The `break` keyword breaks out of a loop, while the `continue` keyword
 # continues with the next iteration.

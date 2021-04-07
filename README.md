@@ -29,7 +29,7 @@ result should be in a usable state.
 is expressed here sometimes in a list of ideas form. Some paragraphs are quite
 verbose and loose their meaning. Some statements might overlap. Expressions can be
 confusing, as the natural flow is like a rolling stone, that is hard at times
-to be reproduced with words and represented poorly.
+to be reproduced with words and it is represented poorly.
 
 The  first  stage  is of  course  to  be  able  to get  control  after  kernel
 initialization, so at some  point we'll have to be ready to  be pid 1. Usually
@@ -978,7 +978,7 @@ its own [documentation](data/docs/la.md).
 
   - The `ptrdiff_t` type is in standard C, and it is the adequate type to handle
     pointer arithmetic. We also assume that an allocator can claim at most PTRDIFF_MAX.
-    So our Pointer and the Memsize Type are both aliases to `integer`.
+    So our Pointer Type is an alias to `integer`.
 
     There is also a C string Type, though the support is really basic right now,
     and probably it is a good idea to handle some operations on them, with the

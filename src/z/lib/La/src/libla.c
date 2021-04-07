@@ -88,6 +88,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_USRFUNC    'f'
 #define LA_TOKEN_IF         'i'
 #define LA_TOKEN_FOR        'l'
+#define LA_TOKEN_FOREVER    'm'
 #define LA_TOKEN_NUMBER     'n'
 #define LA_TOKEN_BINOP      'o'
 #define LA_TOKEN_VAR        'v'
@@ -101,6 +102,14 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_PAREN_CLOS ')'
 #define LA_TOKEN_BLOCK_OPEN '{'
 #define LA_TOKEN_BLOCK_CLOS '}'
+#define LA_TOKEN_SEMICOLON  ';'
+#define LA_TOKEN_COMMA      ','
+#define LA_TOKEN_DQUOTE     '"'
+#define LA_TOKEN_SQUOTE     '\''
+#define LA_TOKEN_NL         '\n'
+#define LA_TOKEN_SLASH      '\\'
+#define LA_TOKEN_LINE_CONT  LA_TOKEN_SLASH
+#define LA_TOKEN_ESCAPE_CHR LA_TOKEN_SLASH
 #define LA_TOKEN_NONE       '0'
 
 typedef struct la_string {
@@ -345,7 +354,7 @@ static int la_err_ptr (la_t *this, int err) {
   sp = (char *) keep;
   int linenum = 0;
   while (*sp++)
-    if (*sp is '\n')
+    if (*sp is LA_TOKEN_NL)
       if (++linenum > 9) break;
 
   n_len += (sp - keep);
@@ -797,7 +806,7 @@ static int la_do_next_token (la_t *this, int israw) {
 
   int c = la_ignore_ws (this);
 
-  if (c is '\\' and la_peek_char (this, 0) is '\n') {
+  if (c is LA_TOKEN_LINE_CONT and la_peek_char (this, 0) is LA_TOKEN_NL) {
     this->lineNum++;
     la_ignore_next_char (this);
     la_reset_token (this);
@@ -807,7 +816,7 @@ static int la_do_next_token (la_t *this, int israw) {
   if (c is '#') {
     do
       c = la_get_char (this);
-    while (c >= 0 and c isnot '\n');
+    while (c >= 0 and c isnot LA_TOKEN_NL);
     this->lineNum++;
 
     r = c;
@@ -824,16 +833,16 @@ static int la_do_next_token (la_t *this, int israw) {
       if (LA_NOTOK is is_number (this, c, &r))
         return this->syntax_error (this, "error while tokenizing a number");
     }
-  } else if (c is '\'') {
+  } else if (c is LA_TOKEN_SQUOTE) {
       c = la_get_char (this); // get first
-      if (c is '\\') la_get_char (this);
+      if (c is LA_TOKEN_ESCAPE_CHR) la_get_char (this);
       int max = 4;
       r = LA_TOKEN_SYNTAX_ERR;
 
       /* multibyte support */
       do {
         c = la_get_char (this);
-        if (c is '\'') {
+        if (c is LA_TOKEN_SQUOTE) {
           la_ignore_first_token (this);
           la_ignore_last_token (this);
           r = LA_TOKEN_CHAR;
@@ -898,13 +907,13 @@ static int la_do_next_token (la_t *this, int israw) {
     la_ignore_last_token (this);
     r = LA_TOKEN_BLOCK;
 
-  } else if (c is '"') {
+  } else if (c is LA_TOKEN_DQUOTE) {
     size_t len = 0;
     int pc = 0;
     int cc = 0;
 
     while (pc = cc, (cc = la_peek_char (this, len)) isnot -1) {
-      if ('"' is cc and pc isnot '\\') break;
+      if (LA_TOKEN_DQUOTE is cc and pc isnot LA_TOKEN_ESCAPE_CHR) break;
       len++;
     }
 
@@ -1161,7 +1170,7 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
     string *s_val = AS_STRING(val);
     String.replace_with_len (item, s_val->bytes, s_val->num_bytes);
     idx++;
-  } while (this->curToken is ',');
+  } while (this->curToken is LA_TOKEN_COMMA);
 
   return LA_OK;
 }
@@ -1181,7 +1190,7 @@ static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer id
     n_ar[idx] = AS_NUMBER(val);
 
     idx++;
-  } while (this->curToken is ',');
+  } while (this->curToken is LA_TOKEN_COMMA);
 
   return LA_OK;
 }
@@ -1201,7 +1210,7 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx) 
     s_ar[idx] = AS_INT(val);
 
     idx++;
-  } while (this->curToken is ',');
+  } while (this->curToken is LA_TOKEN_COMMA);
 
   return LA_OK;
 }
@@ -1454,8 +1463,8 @@ static int la_parse_expr_list (la_t *this) {
     count++;
 
     c = this->curToken;
-    if (c is ',') la_next_token (this);
-  } while (c is ',');
+    if (c is LA_TOKEN_COMMA) la_next_token (this);
+  } while (c is LA_TOKEN_COMMA);
 
   return count;
 }
@@ -1464,18 +1473,19 @@ static int la_parse_char (la_t *this, VALUE *vp, la_string token) {
   VALUE v = INT(0);
   const char *ptr = la_StringGetPtr (token);
 
-  if (ptr[0] is '\'') return this->syntax_error (this, "error while getting a char token ");
-  if (ptr[0] is '\\') {
+  if (ptr[0] is LA_TOKEN_SQUOTE) return this->syntax_error (this, "error while getting a char token ");
+
+  if (ptr[0] is LA_TOKEN_ESCAPE_CHR) {
     if (ptr[1] is 'n')  { v = INT('\n'); goto theend; }
     if (ptr[1] is 't')  { v = INT('\t'); goto theend; }
     if (ptr[1] is 'r')  { v = INT('\r'); goto theend; }
     if (ptr[1] is '\\') { v = INT('\\'); goto theend; }
-    if (ptr[1] is '\'') { v = INT('\''); goto theend; }
+    if (ptr[1] is LA_TOKEN_SQUOTE) { v = INT(LA_TOKEN_SQUOTE); goto theend; }
     return this->syntax_error (this, "unknown escape sequence");
   }
 
   if (ptr[0] >= ' ' and ptr[0] <= '~') {
-    if (ptr[1] is '\'') {
+    if (ptr[1] is LA_TOKEN_SQUOTE) {
       v = INT (ptr[0]);
       goto theend;
     } else {
@@ -1487,7 +1497,7 @@ static int la_parse_char (la_t *this, VALUE *vp, la_string token) {
   int len = 0;
   utf8 c = Ustring.get.code_at ((char *) ptr, 4, 0, &len);
 
-  if ('\'' isnot ptr[len])
+  if (LA_TOKEN_SQUOTE isnot ptr[len])
     return this->syntax_error (this, "error while taking character literal");
 
   v = INT(c);
@@ -1510,8 +1520,8 @@ static int la_parse_string (la_t *this, la_string str) {
   for (;;) {
     c = la_next_token (this);
 
-    while (c is '\n' or c is ';') {
-      if (c is '\n') this->lineNum++;
+    while (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON) {
+      if (c is LA_TOKEN_NL) this->lineNum++;
       c = la_next_token (this);
     }
 
@@ -1523,8 +1533,8 @@ static int la_parse_string (la_t *this, la_string str) {
 
     c = this->curToken;
 
-    if (c is '\n' or c is ';' or c < 0) {
-      if (c is '\n') this->lineNum++;
+    if (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON or c < 0) {
+      if (c is LA_TOKEN_NL) this->lineNum++;
       continue;
     } else
       return this->syntax_error (this, "evaluated string failed, unknown token");
@@ -1771,7 +1781,8 @@ static int la_parse_stmt (la_t *this) {
     do {
       c = la_get_char (this);
 
-    } while (c >= 0 and c isnot '\n' and c isnot ';' and c isnot LA_TOKEN_BLOCK_CLOS);
+    } while (c >= 0 and c isnot LA_TOKEN_NL and c isnot LA_TOKEN_SEMICOLON and
+       c isnot LA_TOKEN_BLOCK_CLOS);
 
     la_unget_char (this);
     c = la_next_token (this);
@@ -1912,7 +1923,7 @@ static int la_parse_stmt (la_t *this) {
     int (*func) (la_t *) = AS_VOID_PTR(this->tokenValue);
     err = (*func) (this);
 
-  } else if (c is ',') {
+  } else if (c is LA_TOKEN_COMMA) {
     la_next_token (this);
     err = la_parse_stmt (this);
 
@@ -2123,10 +2134,10 @@ static int la_parse_for (la_t *this) {
   do {
     err = la_parse_stmt (this);
     if (err isnot LA_OK) return err;
-  } while (this->curToken is ',');
+  } while (this->curToken is LA_TOKEN_COMMA);
 
   const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
-  char *ptr = Cstring.byte.in_str (tmp_ptr, ';');
+  char *ptr = Cstring.byte.in_str (tmp_ptr, LA_TOKEN_SEMICOLON);
   if (NULL is ptr)
     return this->syntax_error (this, "error while parsing for loop, awaiting ;");
 
@@ -2156,7 +2167,7 @@ static int la_parse_for (la_t *this) {
   char stmt[stmt_len + 2];
   for (integer i = 0; i < stmt_len; i++)
     stmt[i] = tmp_ptr[i];
-  stmt[stmt_len] = ';';
+  stmt[stmt_len] = LA_TOKEN_SEMICOLON;
   stmt[stmt_len + 1] = '\0';
 
   la_string stmt_str = la_StringNewLen (stmt, stmt_len + 1);
@@ -2194,7 +2205,7 @@ static int la_parse_for (la_t *this) {
     if (err isnot LA_OK) return err;
 
     ifnot (AS_INT(v)) {
-      this->curToken = ';';
+      this->curToken = LA_TOKEN_SEMICOLON;
       goto theend;
     }
 
@@ -2205,13 +2216,13 @@ static int la_parse_for (la_t *this) {
 
     if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
       la_next_token (this);
-      this->curToken = ';';
+      this->curToken = LA_TOKEN_SEMICOLON;
       goto theend;
     }
 
     if (this->didReturn) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-      this->curToken = ';';
+      this->curToken = LA_TOKEN_SEMICOLON;
       la_StringSetLen (&this->parsePtr, 0);
       return LA_OK;
     }
@@ -2227,7 +2238,7 @@ static int la_parse_for (la_t *this) {
         la_next_token (this);
         err = la_parse_stmt (this);
         if (err isnot LA_OK) return err;
-      } while (this->curToken is ',');
+      } while (this->curToken is LA_TOKEN_COMMA);
   }
 
 theend:
@@ -2238,10 +2249,55 @@ theend:
 
 static int la_parse_loop (la_t *this) {
   int err;
-
   int c = la_next_token (this);
   if (c isnot LA_TOKEN_PAREN_OPEN)
     return this->syntax_error (this, "error while parsing loop, awaiting (");
+
+  const char *ptr = la_StringGetPtr (this->parsePtr);
+  int parenopen = 1;
+  int stmt_found = 0;
+
+  while (*ptr) {
+    if (*ptr is LA_TOKEN_PAREN_OPEN) {
+      parenopen++;
+      ptr++;
+      continue;
+    }
+
+    if (*ptr is LA_TOKEN_PAREN_CLOS) {
+      parenopen--;
+      if (parenopen) {
+        ptr++;
+        continue;
+      } else
+        break;
+    }
+
+    if (*ptr is LA_TOKEN_SEMICOLON) {
+      stmt_found = 1;
+      break;
+    }
+
+    if (*ptr is LA_TOKEN_LINE_CONT and *(ptr + 1) is LA_TOKEN_NL) {
+      this->lineNum++;
+      ptr++;
+    }
+
+    ptr++;
+  }
+
+  if (stmt_found) {
+    la_next_token (this);
+    do {
+      err = la_parse_stmt (this);
+      if (err isnot LA_OK) return err;
+    } while (this->curToken is LA_TOKEN_COMMA);
+
+    if (this->curToken isnot LA_TOKEN_SEMICOLON)
+      return this->syntax_error (this, "awaiting ;");
+
+    this->curToken = LA_TOKEN_PAREN_OPEN;
+  }
 
   VALUE v;
   err = la_parse_expr (this, &v);
@@ -2302,6 +2358,68 @@ theend:
   return LA_OK;
 }
 
+static int la_parse_forever (la_t *this) {
+  int err;
+  int c = la_next_token (this);
+
+  if (c is LA_TOKEN_PAREN_OPEN) {
+    la_next_token (this);
+    do {
+      err = la_parse_stmt (this);
+      if (err isnot LA_OK) return err;
+    } while (this->curToken is LA_TOKEN_COMMA);
+
+    if (this->curToken isnot LA_TOKEN_PAREN_CLOS)
+      return this->syntax_error (this, "awaiting (");
+    c = la_next_token (this);
+  }
+
+  if (c isnot LA_TOKEN_BLOCK)
+    return this->syntax_error (this, "parsing loop, not a block string");
+
+  la_get_char (this);
+
+  const char *tmp_ptr = la_StringGetPtr (this->curStrToken);
+
+  integer bodylen = la_StringGetLen (this->curStrToken) - 1;
+  char body[bodylen + 1];
+  for (integer i = 0; i < bodylen; i++)
+    body[i] = tmp_ptr[i];
+  body[bodylen] = '\0';
+
+  la_string body_str = la_StringNewLen (body, bodylen);
+
+  la_string savepc = this->parsePtr;
+
+  for (;;) {
+    this->curState |= LOOP_STATE;
+    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
+    err= la_parse_string (this, body_str);
+    this->curState &= ~LOOP_STATE;
+
+    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+      la_next_token (this);
+      goto theend;
+    }
+
+    if (this->didReturn) {
+      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+      la_StringSetLen (&this->parsePtr, 0);
+      return LA_OK;
+    }
+
+    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+      continue;
+
+    if (err isnot LA_OK) return err;
+  }
+
+theend:
+  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+  this->parsePtr = savepc;
+  return LA_OK;
+}
+
 static int la_parse_var_list (la_t *this, funT *uf) {
 #ifdef DEBUG
   $CODE_PATH
@@ -2309,7 +2427,6 @@ static int la_parse_var_list (la_t *this, funT *uf) {
   int c;
   int nargs = 0;
 
-  //c = la_next_token (this);
   c = la_next_raw_token (this);
 
   for (;;) {
@@ -2328,13 +2445,11 @@ static int la_parse_var_list (la_t *this, funT *uf) {
 
       nargs++;
 
-      //c = la_next_raw_token (this);
       c = la_next_token (this);
 
       if (c is LA_TOKEN_PAREN_CLOS) break;
 
-      if (c is ',')
-        //c = la_next_token (this);
+      if (c is LA_TOKEN_COMMA)
         c = la_next_raw_token (this);
 
     } else if (c is LA_TOKEN_PAREN_CLOS)
@@ -2431,7 +2546,7 @@ static int la_parse_print (la_t *this) {
     c = la_ignore_ws (this);
   }
 
-  if (c isnot '"') {
+  if (c isnot LA_TOKEN_DQUOTE) {
     this->print_bytes (this->err_fp, "string fmt error, awaiting double quote\n");
     la_err_ptr (this, LA_NOTOK);
     goto theend;
@@ -2442,12 +2557,12 @@ static int la_parse_print (la_t *this) {
 
   for (;;) {
     c = la_get_char (this);
-    if (c is '"') {
+    if (c is LA_TOKEN_DQUOTE) {
       if (prev isnot '\\')
         break;
 
-      String.append_byte (str, '"');
-      prev = '"';
+      String.append_byte (str, LA_TOKEN_DQUOTE);
+      prev = LA_TOKEN_DQUOTE;
       c = la_get_char (this);
     }
 
@@ -2491,7 +2606,7 @@ static int la_parse_print (la_t *this) {
         } else
           directive = c;
 
-        if (la_peek_char (this, 0) isnot ',' and la_peek_char (this, 1) isnot ' ') {
+        if (la_peek_char (this, 0) isnot LA_TOKEN_COMMA and la_peek_char (this, 1) isnot ' ') {
           this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma and a space after directive\n");
           la_err_ptr (this, LA_NOTOK);
           goto theend;
@@ -3186,6 +3301,7 @@ static struct def {
   { "ifnot",   LA_TOKEN_IFNOT,    PTR(la_parse_ifnot) },
   { "while",   LA_TOKEN_WHILE,    PTR(la_parse_while) },
   { "for",     LA_TOKEN_FOR,      PTR(la_parse_for) },
+  { "forever", LA_TOKEN_FOREVER,  PTR(la_parse_forever) },
   { "loop",    LA_TOKEN_LOOP,     PTR(la_parse_loop) },
   { "print",   LA_TOKEN_PRINT,    PTR(la_parse_print) },
   { "func",    LA_TOKEN_FUNCDEF,  PTR(la_parse_func_def) },

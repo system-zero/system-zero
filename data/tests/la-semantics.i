@@ -387,10 +387,24 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] testing `loop` loop - ")
+  print ("[${test_num}] testing `loop` loop first form - ")
   sum = lambda ({
     var s = 0; var i = 0;
     loop (1000) {s += i; i += 1}
+    return s
+   }) ()
+
+  if (sum isnot 499500) {
+    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `loop` loop second form - ")
+  sum = lambda ({
+    var s = 0;
+    loop (var i = 0; 1000) {s += i; i += 1}
     return s
    }) ()
 
@@ -446,6 +460,34 @@ func semantics () {
 
   if (sum isnot 4950) {
     print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `forever` loop first form - ")
+  sum = lambda ({
+    var s = 0; var i = 0;
+    forever {s += i; i += 1; if (i is 1000) { break }}
+    return s
+   }) ()
+
+  if (sum isnot 499500) {
+    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `forever` loop second form - ")
+  sum = lambda ({
+    var s = 0;
+    forever (var i = 0) {s += i; i += 1; if (i is 1000) { break }}
+    return s
+   }) ()
+
+  if (sum isnot 499500) {
+    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
   } else {
     print ("[OK]\n")
   }
@@ -526,6 +568,15 @@ func semantics () {
   print ("[${test_num}] testing char '' (utf8) - ")
   if (c isnot 945) {
     print (stderr, "[NOTOK] awaiting 945 got ${c}\n")
+  } else {
+    print ("[OK]\n")
+  }
+
+  c = '\''
+  test_num += 1
+  print ("[${test_num}] testing single quote as char - ")
+  if (c isnot 39) {
+    print (stderr, "[NOTOK] awaiting 39 got ${c}\n")
   } else {
     print ("[OK]\n")
   }
