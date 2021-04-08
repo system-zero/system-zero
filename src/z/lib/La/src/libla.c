@@ -2043,6 +2043,14 @@ static int la_parse_if (la_t *this) {
   if (err isnot LA_OK)
     return err;
 
+  funT *save_scope = this->curScope;
+
+  funT *fun = Fun_new (this, funNew (
+   .name = "__block__", .namelen = 9, .parent = this->curScope
+    ));
+
+  this->curScope = fun;
+
   if (AS_INT(cond))
     err = la_parse_string (this, ifpart);
   else if (haveelse)
@@ -2052,6 +2060,9 @@ static int la_parse_if (la_t *this) {
     la_StringSetLen (&this->parsePtr, 0);
 
   if (err is LA_OK and 0 is AS_INT(cond)) err = LA_ERR_OK_ELSE;
+
+  this->curScope = save_scope;
+  fun_release (&fun);
   return err;
 }
 
@@ -2063,6 +2074,14 @@ static int la_parse_ifnot (la_t *this) {
   if (err isnot LA_OK)
     return err;
 
+  funT *save_scope = this->curScope;
+
+  funT *fun = Fun_new (this, funNew (
+   .name = "__block__", .namelen = 9, .parent = this->curScope
+    ));
+
+  this->curScope = fun;
+
   if (0 is AS_INT(cond))
     err = la_parse_string (this, ifpart);
   else if (haveelse)
@@ -2072,6 +2091,10 @@ static int la_parse_ifnot (la_t *this) {
     la_StringSetLen (&this->parsePtr, 0);
 
   if (err is LA_OK and 0 isnot AS_INT(cond)) err = LA_ERR_OK_ELSE;
+
+  this->curScope = save_scope;
+  fun_release (&fun);
+
   return err;
 }
 
@@ -2130,6 +2153,14 @@ static int la_parse_for (la_t *this) {
   int c = la_next_token (this);
   if (c isnot LA_TOKEN_PAREN_OPEN)
     return this->syntax_error (this, "error while parsing for loop, awaiting (");
+
+  funT *save_scope = this->curScope;
+
+  funT *fun = Fun_new (this, funNew (
+   .name = "__block__", .namelen = 9, .parent = this->curScope
+    ));
+
+  this->curScope = fun;
 
   la_next_token (this);
 
@@ -2226,6 +2257,7 @@ static int la_parse_for (la_t *this) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       this->curToken = LA_TOKEN_SEMICOLON;
       la_StringSetLen (&this->parsePtr, 0);
+      fun_release (&fun);
       return LA_OK;
     }
 
@@ -2244,6 +2276,8 @@ static int la_parse_for (la_t *this) {
   }
 
 theend:
+  this->curScope = save_scope;
+  fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;
   return LA_OK;
@@ -2254,6 +2288,14 @@ static int la_parse_loop (la_t *this) {
   int c = la_next_token (this);
   if (c isnot LA_TOKEN_PAREN_OPEN)
     return this->syntax_error (this, "error while parsing loop, awaiting (");
+
+  funT *save_scope = this->curScope;
+
+  funT *fun = Fun_new (this, funNew (
+   .name = "__block__", .namelen = 9, .parent = this->curScope
+    ));
+
+  this->curScope = fun;
 
   const char *ptr = la_StringGetPtr (this->parsePtr);
   int parenopen = 1;
@@ -2345,6 +2387,7 @@ static int la_parse_loop (la_t *this) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
    //   this->curToken = ';';
       la_StringSetLen (&this->parsePtr, 0);
+      fun_release (&fun);
       return LA_OK;
     }
 
@@ -2355,6 +2398,8 @@ static int la_parse_loop (la_t *this) {
   }
 
 theend:
+  this->curScope = save_scope;
+  fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;
   return LA_OK;
@@ -2362,6 +2407,15 @@ theend:
 
 static int la_parse_forever (la_t *this) {
   int err;
+
+  funT *save_scope = this->curScope;
+
+  funT *fun = Fun_new (this, funNew (
+   .name = "__block__", .namelen = 9, .parent = this->curScope
+    ));
+
+  this->curScope = fun;
+
   int c = la_next_token (this);
 
   if (c is LA_TOKEN_PAREN_OPEN) {
@@ -2407,6 +2461,7 @@ static int la_parse_forever (la_t *this) {
     if (this->didReturn) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       la_StringSetLen (&this->parsePtr, 0);
+      fun_release (&fun);
       return LA_OK;
     }
 
@@ -2417,6 +2472,8 @@ static int la_parse_forever (la_t *this) {
   }
 
 theend:
+  this->curScope = save_scope;
+  fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;
   return LA_OK;

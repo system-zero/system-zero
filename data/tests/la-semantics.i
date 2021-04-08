@@ -329,8 +329,8 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing `for` loop - ")
-  var sum = lambda ({
-    for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {}
+  var sum = lambda ({ var s = 0;
+    for (var i = 1; i < 1000 ; s += i, i += 1) {}
     return s
    }) ()
 
@@ -342,8 +342,8 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing `for` loop continue statement - ")
-  sum = lambda ({
-    for (var i = 1, var s = 0; i < 1000 ; i += 1) {
+  sum = lambda ({ var s = 0
+    for (var i = 1; i < 1000 ; i += 1) {
       if (i is 100) { continue }
       s += i
     }
@@ -358,8 +358,8 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing `for` loop break statement - ")
-  sum = lambda ({
-    for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {
+  sum = lambda ({ var s = 0
+    for (var i = 1; i < 1000 ; s += i, i += 1) {
       if (i is 100) { break }
     }
     return s
