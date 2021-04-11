@@ -358,7 +358,8 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing `for` loop break statement - ")
-  sum = lambda ({ var s = 0
+  sum = lambda ({
+    var s = 0
     for (var i = 1; i < 1000 ; s += i, i += 1) {
       if (i is 100) { break }
     }
@@ -374,7 +375,8 @@ func semantics () {
   test_num += 1
   print ("[${test_num}] testing `for` loop return statement - ")
   sum = lambda ({
-    for (var i = 1, var s = 0; i < 1000 ; s += i, i += 1) {
+    var s = 0
+    for (var i = 1; i < 1000 ; s += i, i += 1) {
       if (i is 100) { return s }
     }
     return s
@@ -454,7 +456,7 @@ func semantics () {
   print ("[${test_num}] testing `loop` loop return statement - ")
   sum = lambda ({
     var s = 0; var i = 0;
-    loop (1000) { if (i is 100) { return }; s += i; i += 1}
+    loop (1000) { if (i is 100) { return s }; s += i; i += 1}
     return s
    }) ()
 
@@ -851,14 +853,20 @@ ar[1] = 3
 var sa = "A"
 sa = "v"
 
-func xxxx () {
-  var s ="as"
+func xxx () {
+  var s ="xxx"
   return s
 }
 
-sa = xxxx ()
-var sb = xxxx ()
+sa = xxx ()
+var sb = xxx ()
 
+func xxxx () {
+  return "xxxx"
+}
+
+sb = xxxx ()
+var r = sb is sa
 test_num += 1
 print ("[${test_num}] testing for memory leaks with valgrind - [OK]\n")
 

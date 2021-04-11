@@ -481,7 +481,7 @@ static inline int is_identifier (int c) {
 }
 
 static inline int is_operator (int c) {
-  return NULL isnot Cstring.byte.in_str ("+-!/*%=<>&|^", c);
+  return NULL isnot Cstring.byte.in_str ("=+-!/*%<>&|^", c);
 }
 
 static inline int is_operator_span (int c) {
@@ -887,6 +887,7 @@ static int la_do_next_token (la_t *this, int israw) {
 
           this->tokenArgs = (symbol->type >> 8) & 0xff;
           symbol->value.sym = symbol;
+
           if (r is ARRAY_TYPE) {
             r = LA_TOKEN_ARRAY;
             symbol->value.type = ARRAY_TYPE;
@@ -902,7 +903,8 @@ static int la_do_next_token (la_t *this, int israw) {
   } else if (is_operator (c)) {
     la_get_span (this, is_operator_span);
 
-    this->tokenSymbol = symbol = la_lookup_symbol (this, this->curStrToken);
+    char *key = sym_key (this, this->curStrToken);
+    this->tokenSymbol = symbol = ns_lookup_symbol (this->function, key);
 
     if (symbol) {
       r = symbol->type;
@@ -1645,6 +1647,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
     }
 
     this->didReturn = 0;
+    this->funResult = NONE;
 
     la_fun_stack_push (this, this->curScope);
 
@@ -1664,22 +1667,22 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       }
     }
 
-    ifnot (is_anonymous) {
-      refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
-
-      for (i = 0; i < expectargs; i++) {
-        VALUE v = this->funArgs[i];
-        if (v.type >= STRING_TYPE) {
-          sym_t *uf_sym = uf_argsymbols[i];
-          VALUE uf_val = uf_sym->value;
-          sym_t *sym = uf_val.sym;
-          if (sym isnot NULL) {
-            sym->value = uf_val;
-            VALUE none = NONE;
-            uf_val = none;
-          }
+    for (i = 0; i < expectargs; i++) {
+      VALUE v = this->funArgs[i];
+      if (v.type >= STRING_TYPE) {
+        sym_t *uf_sym = uf_argsymbols[i];
+        VALUE uf_val = uf_sym->value;
+        sym_t *sym = uf_val.sym;
+        if (sym isnot NULL) {
+          sym->value = uf_val;
+          VALUE none = NONE;
+          uf_val = none;
         }
       }
+    }
+
+    ifnot (is_anonymous) {
+      refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
 
       ifnot (refcount)
         Vmap.clear (uf->symbols);
