@@ -6,6 +6,7 @@ typedef struct la_t la_t;
 typedef struct la_prop la_prop;
 typedef struct funType funT;
 typedef struct ValueType ValueType;
+typedef struct sym_t sym_t;
 
 typedef double      number;
 typedef ptrdiff_t   integer;
@@ -16,9 +17,9 @@ typedef string_t    string;
 #define NONE_TYPE      0
 #define NUMBER_TYPE    (1 << 0)
 #define INTEGER_TYPE   (1 << 1)
-#define STRING_TYPE    (1 << 2)
-#define ARRAY_TYPE     (1 << 3)
-#define FUNCPTR_TYPE   (1 << 4)
+#define FUNCPTR_TYPE   (1 << 2)
+#define STRING_TYPE    (1 << 3)
+#define ARRAY_TYPE     (1 << 4)
 #define POINTER_TYPE   INTEGER_TYPE
 
 struct ValueType {
@@ -31,24 +32,25 @@ struct ValueType {
 
   int type;
   int refcount;
+  sym_t *sym;
 };
 
 typedef ValueType VALUE;
 
 #define AS_NUMBER(__v__) __v__.asNumber
-#define    NUMBER(__d__) (VALUE) {.type = NUMBER_TYPE, .refcount = 0, .asNumber = __d__}
+#define    NUMBER(__d__) (VALUE) {.type = NUMBER_TYPE, .asNumber = __d__, .refcount = 0, .sym = NULL}
 
 #define AS_INT(__v__) __v__.asInteger
-#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .refcount = 0, .asInteger = __i__}
+#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .refcount = 0, .asInteger = __i__, .sym = NULL}
 
 #define  AS_STRING_BYTES(__v__) AS_STRING(__v__)->bytes
 #define  AS_STRING(__v__)  __v__.asString
-#define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .refcount = 0, .asString = __s__}
+#define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .refcount = 0, .asString = __s__, .sym = NULL}
 #define STRING_NEW(__s__) STRING(String.new_with (__s__))
 #define STRING_NEW_WITH_LEN(__s__, __l__) STRING(String.new_with_len (__s__, __l__))
 
 #define AS_ARRAY AS_PTR
-#define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .refcount = 0, .asInteger = (pointer) __a__}
+#define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .refcount = 0, .asInteger = (pointer) __a__, .sym = NULL}
 
 #define AS_PTR AS_INT
 #define    PTR(__p__) INT((pointer) __p__)
@@ -58,7 +60,7 @@ typedef ValueType VALUE;
 #define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
 
 #define AS_NONE(__v__) __v__.asNone
-#define    NONE (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0}
+#define    NONE (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0, .sym = NULL}
 
 typedef VALUE (*Cfunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*Opfunc) (VALUE, VALUE);

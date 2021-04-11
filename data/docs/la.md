@@ -258,3 +258,7 @@ style. However it should be okey if practicing consistency.
 
 - the number type (typedef'ed as `double`) operations, need an expertise which
   is absent.
+
+- normally releasing memory it happens automatically, but many cases are handled
+  internally explicitly, as there is no a real mechanism underneath, just a very
+  primitive one

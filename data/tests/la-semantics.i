@@ -630,6 +630,18 @@ func semantics () {
     } else {
       print ("[OK]\n")
     }
+
+    var fu = func (x, y) {return x * y}
+    test_num += 1
+    print ("[${test_num}] testing assignment function to a variable - ")
+    r = fu (10, 100)
+    if (r isnot 1000) {
+      print (stderr, "[NOTOK] awaiting 1000 got ${r}\n")
+    } else {
+      print ("[OK]\n")
+    }
+
+
   }
 
   funptr ()
@@ -815,17 +827,6 @@ func test_array (length) {
     return f[n]
   }
 
-  array number dx[3] = 1.31, 2.32, 3.43
-  array number dy[3] = 1.31, 2.32, 3.43
-
-  test_num += 1
-  print ("[${test_num}] testing double arrays - ")
-  if (dx[0] isnot dy[0]) {
-    print (stderr, "[NOTOK] awaiting equality\n")
-  } else {
-    print ("[OK]\n")
-  }
-
   test_num += 1
   print ("[${test_num}] testing fibonacci array implementation - ")
   retval = fibo_array (92)
@@ -838,5 +839,27 @@ func test_array (length) {
 }
 
 test_array (10)
+
+func xx () {
+  array x[2] = 1, 2
+  return x
+}
+
+var ar = xx ()
+ar[1] = 3
+
+var sa = "A"
+sa = "v"
+
+func xxxx () {
+  var s ="as"
+  return s
+}
+
+sa = xxxx ()
+var sb = xxxx ()
+
+test_num += 1
+print ("[${test_num}] testing for memory leaks with valgrind - [OK]\n")
 
 print ("--[ END ] --\n")

@@ -94,7 +94,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_VAR        'v'
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
-#define LA_TOKEN_ARY        'y'
+#define LA_TOKEN_ARRAY      'y'
 #define LA_TOKEN_BLOCK      'z'
 #define LA_TOKEN_INDEX_OPEN '['
 #define LA_TOKEN_INDEX_CLOS ']'
@@ -129,6 +129,7 @@ typedef struct sym_t {
   int type;
   int is_const;
   VALUE value;
+  funT *scope;
 } sym_t;
 
 typedef struct funstack_t funstack_t;
@@ -637,28 +638,41 @@ static VALUE la_len (la_t *this, VALUE value) {
   return result;
 }
 
+static VALUE string_release (VALUE value) {
+  VALUE result = INT(LA_OK);
+
+  if (value.refcount < 0) return result;
+
+  if (value.refcount) goto theend;
+
+  String.release (AS_STRING(value));
+
+  value = NONE;
+
+theend:
+  value.refcount--;
+  return result;
+}
+
 static VALUE la_free (la_t *this, VALUE value) {
   (void) this;
-  VALUE result = INT(LA_NOTOK);
-  if (value.type <= INTEGER_TYPE) goto theend;
+  VALUE result = INT(LA_OK);
+  if (value.type < STRING_TYPE) return result;
 
   void *object = NULL;
   switch (value.type) {
     case POINTER_TYPE: object = AS_VOID_PTR(value); break;
-    case   ARRAY_TYPE: result = array_release (value); break;
-    case  STRING_TYPE: String.release (AS_STRING(value)); break;
-    default: goto theend;
+    case   ARRAY_TYPE: return array_release (value);
+    case  STRING_TYPE: return string_release (value);
+    default: return result;
   }
 
   ifnot (NULL is object) {
     free (object);
     value = NONE;
-    result = INT(LA_OK);
   }
 
   object = NULL;
-
-theend:
   return result;
 }
 
@@ -676,15 +690,18 @@ static void la_release_sym (void *sym) {
 
   sym_t *this = (sym_t *) sym;
 
+  VALUE v = this->value;
+
   if ((this->type & 0xff) is UFUNC_TYPE) {
-    VALUE v = this->value;
     ifnot (v.type & FUNCPTR_TYPE) {
       funT *f = AS_FUNC_PTR(v);
       fun_release (&f);
+      goto theend;
     }
   } else
-    la_free (NULL, this->value);
+   la_free (NULL, v);
 
+theend:
   free (this);
   this = NULL;
 }
@@ -737,7 +754,9 @@ body:
   sym_t *sym = Alloc (sizeof (sym_t));
   sym->type = typ;
   sym->value = value;
+  sym->value.sym = sym;
   sym->is_const = is_const;
+  sym->scope = f;
 
   if (NOTOK is Vmap.set (f->symbols, key, sym, la_release_sym, is_const)) {
     free (sym);
@@ -867,9 +886,9 @@ static int la_do_next_token (la_t *this, int israw) {
           r = symbol->type & 0xff;
 
           this->tokenArgs = (symbol->type >> 8) & 0xff;
-
+          symbol->value.sym = symbol;
           if (r is ARRAY_TYPE) {
-            r = LA_TOKEN_ARY;
+            r = LA_TOKEN_ARRAY;
             symbol->value.type = ARRAY_TYPE;
           } else
             if (r < '@')
@@ -929,7 +948,6 @@ static int la_do_next_token (la_t *this, int israw) {
       }
 
       this->tokenValue = STRING(str);
-
     } else {
       malloced_string *mbuf = new_malloced_string (len + 1);
       for (size_t i = 0; i < len; i++) {
@@ -1061,15 +1079,11 @@ static VALUE la_HexStringToNum (la_string s) {
 }
 
 static VALUE array_release (VALUE value) {
-  VALUE result = INT(LA_NOTOK);
+  VALUE result = INT(LA_OK);
 
-  if (value.type is NONE_TYPE or value.refcount < 0)
-    return result;
+  if (value.refcount < 0) return result;
 
-  if (value.refcount) {
-    result = INT(LA_OK);
-    goto theend;
-  }
+  if (value.refcount) goto theend;
 
   ArrayType *array = (ArrayType *) AS_ARRAY(value);
   if (NULL is array) return result;
@@ -1094,10 +1108,9 @@ static VALUE array_release (VALUE value) {
   array = NULL;
 
   value = NONE;
-  result = INT(LA_OK);
 
 theend:
-  value.refcount = -1;
+  value.refcount--;
   return result;
 }
 
@@ -1618,14 +1631,16 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       }
     }
 
+    sym_t *uf_argsymbols[expectargs];
+
     for (i = 0; i < expectargs; i++) {
       VALUE v = this->funArgs[i];
       if (v.type & FUNCPTR_TYPE) {
         funT *f = AS_FUNC_PTR(v);
-        la_define_symbol (this, uf, uf->argName[i], (UFUNC_TYPE | (f->nargs << 8)), v, 0);
+        uf_argsymbols[i] = la_define_symbol (this, uf, uf->argName[i], (UFUNC_TYPE | (f->nargs << 8)), v, 0);
       } else {
         v.refcount += (refcount < 2);
-        la_define_symbol (this, uf, uf->argName[i], v.type, v, 0);
+        uf_argsymbols[i] = la_define_symbol (this, uf, uf->argName[i], v.type, v, 0);
       }
     }
 
@@ -1641,8 +1656,30 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
     this->didReturn = 0;
 
+    if (this->funResult.type >= STRING_TYPE) {
+      sym_t *sym = this->funResult.sym;
+      ifnot (NULL is sym) {
+        VALUE none = NONE;
+        sym->value = none;
+      }
+    }
+
     ifnot (is_anonymous) {
       refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
+
+      for (i = 0; i < expectargs; i++) {
+        VALUE v = this->funArgs[i];
+        if (v.type >= STRING_TYPE) {
+          sym_t *uf_sym = uf_argsymbols[i];
+          VALUE uf_val = uf_sym->value;
+          sym_t *sym = uf_val.sym;
+          if (sym isnot NULL) {
+            sym->value = uf_val;
+            VALUE none = NONE;
+            uf_val = none;
+          }
+        }
+      }
 
       ifnot (refcount)
         Vmap.clear (uf->symbols);
@@ -1724,7 +1761,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     la_next_token (this);
     return LA_OK;
 
-  } else if (c is LA_TOKEN_ARY) {
+  } else if (c is LA_TOKEN_ARRAY) {
      return la_parse_array_get (this, vp);
 
   } else if (c is LA_TOKEN_BUILTIN) {
@@ -1863,8 +1900,10 @@ static int la_parse_stmt (la_t *this) {
       return la_unknown_symbol (this);
     }
 
-    if (symbol->is_const and AS_INT(symbol->value) isnot 0)
-      return this->syntax_error (this, "can not reassign to a constant");
+    if (symbol->is_const)
+      if (symbol->value.type isnot INTEGER_TYPE or
+          AS_INT(symbol->value) isnot 0)
+        return this->syntax_error (this, "can not reassign to a constant");
 
     ptr += len;
     while (*ptr is ' ') ptr++;
@@ -1873,9 +1912,8 @@ static int la_parse_stmt (la_t *this) {
     if (Cstring.eq_n (ptr, "func", 4)) {
       la_release_sym (Vmap.pop (this->curScope->symbols, sym_key (this, name)));
 
-      la_next_token (this);
-
       Cstring.cp (this->curFunName, MAXLEN_SYMBOL_LEN + 1, la_StringGetPtr(name), la_StringGetLen(name));
+      la_next_token (this);
       err = la_parse_func_def (this);
       this->curFunName[0] = '\0';
       return err;
@@ -1899,11 +1937,16 @@ static int la_parse_stmt (la_t *this) {
     } else
       symbol->type = val.type;
 
-    if ((symbol->type & 0x77) is STRING_TYPE)
-      la_free (this, symbol->value);
+    if (symbol->value.type is STRING_TYPE)
+      if (Cstring.eq (symbol->scope->funname, this->curScope->funname))
+        la_free (this, symbol->value);
 
     switch (operator) {
-      case '=': symbol->value = val; break;
+      case '=':
+        val.sym = symbol;
+        symbol->value = val;
+        break;
+
       case '+': symbol->value = la_add  (symbol->value, val); break;
       case '-': symbol->value = la_sub  (symbol->value, val); break;
       case '/': symbol->value = la_div  (symbol->value, val); break;
@@ -1914,7 +1957,7 @@ static int la_parse_stmt (la_t *this) {
       default: return this->syntax_error (this, "unknown operator");
     }
 
-  } else if (c is LA_TOKEN_ARY) {
+  } else if (c is LA_TOKEN_ARRAY) {
     err = la_parse_array_set (this);
 
   } else if (c is LA_TOKEN_BUILTIN or c is UFUNC_TYPE) {
@@ -2127,7 +2170,7 @@ again:
       ifnot (brackets) break;
     } while (c >= 0);
     if (brackets)
-      return this->syntax_error (this, "a closed bracket '}' is missing");
+      return this->syntax_error (this, "error while parsing while, awaiting }");
 
     la_next_token (this);
     err = LA_ERR_OK_ELSE;
@@ -2237,10 +2280,7 @@ static int la_parse_for (la_t *this) {
     err = la_parse_expr (this, &v);
     if (err isnot LA_OK) return err;
 
-    ifnot (AS_INT(v)) {
-      this->curToken = LA_TOKEN_SEMICOLON;
-      goto theend;
-    }
+    ifnot (AS_INT(v)) goto theend;
 
     this->curState |= LOOP_STATE;
     this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
@@ -2249,7 +2289,6 @@ static int la_parse_for (la_t *this) {
 
     if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
       la_next_token (this);
-      this->curToken = LA_TOKEN_SEMICOLON;
       goto theend;
     }
 
@@ -2379,13 +2418,11 @@ static int la_parse_loop (la_t *this) {
 
     if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
       la_next_token (this);
-   //   this->curToken = ';';
       goto theend;
     }
 
     if (this->didReturn) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-   //   this->curToken = ';';
       la_StringSetLen (&this->parsePtr, 0);
       fun_release (&fun);
       return LA_OK;
@@ -2431,7 +2468,7 @@ static int la_parse_forever (la_t *this) {
   }
 
   if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "parsing loop, not a block string");
+    return this->syntax_error (this, "parsing forever, not a block string");
 
   la_get_char (this);
 
