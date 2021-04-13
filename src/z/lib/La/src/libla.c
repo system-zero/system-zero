@@ -63,6 +63,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LOOP_STATE                    (1 << 1)
 #define BREAK_STATE                   (1 << 2)
 #define CONTINUE_STATE                (1 << 3)
+#define LITERAL_STRING_STATE          (1 << 4)
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -597,11 +598,13 @@ static malloced_string *new_malloced_string (size_t len) {
 }
 
 static VALUE la_typeof (la_t *this, VALUE value) {
+  (void) this;
   VALUE v = INT(value.type);
   return v;
 }
 
 static VALUE la_typeofArray (la_t *this, VALUE value) {
+  (void) this;
   VALUE v = INT(value.type);
   if (value.type isnot ARRAY_TYPE) {
     v = INT(LA_NOTOK);
@@ -991,6 +994,8 @@ static int la_do_next_token (la_t *this, int israw) {
       }
 
       this->tokenValue = STRING(str);
+      this->curState |= LITERAL_STRING_STATE;
+
     } else {
       malloced_string *mbuf = new_malloced_string (len + 1);
       for (size_t i = 0; i < len; i++) {
@@ -1119,6 +1124,78 @@ static VALUE la_HexStringToNum (la_string s) {
 
   VALUE result = INT(r);
   return result;
+}
+
+static int  la_string_get (la_t *this, VALUE *vp) {
+  int c = la_peek_char (this, 0);
+
+  if (c is LA_TOKEN_INDEX_OPEN) {
+    string *str = AS_STRING(this->tokenValue);
+
+    la_next_token (this);
+
+    VALUE v;
+    int err = la_parse_primary (this, &v);
+    if (err isnot LA_OK) return err;
+
+    if (v.type isnot INTEGER_TYPE)
+      return this->syntax_error (this, "awaiting an integer expression, when getting string index");
+
+    integer idx = AS_INT(v);
+
+    if (0 > idx) idx += str->num_bytes;
+
+    if (idx >= str->num_bytes or idx < 0)  return la_out_of_bounds (this);
+
+    *vp = INT(str->bytes[idx]);
+
+    if (this->curState & LITERAL_STRING_STATE) String.release (str);
+
+  } else {
+    *vp = this->tokenValue;
+    la_next_token (this);
+  }
+
+  this->curState &= ~LITERAL_STRING_STATE;
+  return LA_OK;
+}
+
+static int la_string_set_char (la_t *this, VALUE value, int is_const) {
+  if  (is_const)
+    return this->syntax_error (this, "can not modify constant string");
+
+  string *str = AS_STRING(value);
+  int c = la_next_token (this);
+  VALUE v;
+  int err = la_parse_primary (this, &v);
+  if (err isnot LA_OK) return err;
+
+  if (v.type isnot INTEGER_TYPE)
+    return this->syntax_error (this, "awaiting an integer expression, when setting string index");
+
+  integer idx = AS_INT(v);
+
+  if (0 > idx) idx += str->num_bytes;
+  if (idx >= str->num_bytes) return la_out_of_bounds (this);
+
+  if (la_StringGetPtr (this->curStrToken)[0] isnot '=' or la_StringGetLen (this->curStrToken) isnot 1)
+    return this->syntax_error (this, "syntax error while setting array, awaiting =");
+
+  la_next_token (this);
+  err = la_parse_expr (this, &v);
+
+  if (v.type isnot INTEGER_TYPE)
+    return this->syntax_error (this, "awaiting an integer expression, when setting string index");
+
+  integer chr = AS_INT(v);
+
+  int num_bytes = 0;
+  utf8 old = Ustring.get.code_at (str->bytes, str->num_bytes, idx, &num_bytes);
+  char buf[8];
+  int len;
+  Ustring.character (chr, buf, &len);
+  String.replace_numbytes_at_with (str, num_bytes, idx, buf);
+  return LA_OK;
 }
 
 static VALUE array_release (VALUE value) {
@@ -1772,6 +1849,9 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return err;
 
   } else if (c is LA_TOKEN_VAR) {
+    if (this->tokenValue.type is STRING_TYPE)
+      return la_string_get (this, vp);
+
     *vp = this->tokenValue;
     la_next_token (this);
     return LA_OK;
@@ -1807,10 +1887,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     return err;
 
   } else if (c is LA_TOKEN_STRING) {
-    *vp = this->tokenValue;
-
-    la_next_token (this);
-    return LA_OK;
+    return la_string_get (this, vp);
 
   } else {
     if (c isnot LA_TOKEN_EOF) {
@@ -1901,6 +1978,10 @@ static int la_parse_stmt (la_t *this) {
   if (c is LA_TOKEN_VAR) {
     name = this->curStrToken;
     sym_t *symbol = this->tokenSymbol;
+
+    if (symbol->value.type is STRING_TYPE)
+      if (la_peek_char (this, 0) is LA_TOKEN_INDEX_OPEN)
+        return la_string_set_char (this, symbol->value, symbol->is_const);
 
     c = la_next_token (this);
 
@@ -2896,6 +2977,26 @@ static int la_parse_print (la_t *this) {
               }
               break;
             }
+
+            case STRING_TYPE: {
+              VALUE v;
+              this->tokenValue = value;
+              err = la_string_get (this, &v);
+              if (err isnot LA_OK)
+                this->print_bytes (this->err_fp, "string fmt error, awaiting string\n");
+
+              switch (v.type) {
+                case INTEGER_TYPE:
+                  String.append_with_fmt (str, "%d", AS_INT(v));
+                  break;
+
+                default:
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
+
+              }
+              break;
+            }
+
 
           default:
           String.append_with_fmt (str, "%d", AS_INT(value));

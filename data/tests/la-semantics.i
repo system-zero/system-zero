@@ -642,8 +642,6 @@ func semantics () {
     } else {
       println ("[OK]")
     }
-
-
   }
 
   funptr ()
@@ -673,7 +671,32 @@ func semantics () {
     println ("[OK]")
   }
 
+  var str = "asdf"
+  test_num += 1
+  print ("[${test_num}] testing string indices [get]- ")
+  retval = str[-1]
+  if (retval isnot 'f') {
+    println (stderr, "[NOTOK] awaiting ${('f')}, got ${retval}")
+  } else {
+    println ("[OK]")
+  }
 
+  print ("[${test_num}] testing string indices [set]- ")
+  str[-1] = 'g'
+  retval = str[-1]
+  if (retval isnot 'g') {
+    println (stderr, "[NOTOK] awaiting ${('g')}, got ${retval}")
+  } else {
+    println ("[OK]")
+  }
+
+  print ("[${test_num}] testing string indices [statement]- ")
+  retval = 200 - (str[0] + 3)
+  if (retval isnot 100) {
+    println (stderr, "[NOTOK] awaiting 100, got ${retval}")
+  } else {
+    println ("[OK]")
+  }
 }
 
 semantics ()
@@ -837,7 +860,6 @@ func test_array (length) {
   } else {
     println ("[OK]")
   }
-
 }
 
 test_array (10)
@@ -923,6 +945,8 @@ func valgrind_tests () {
 
   sb = xxxx ()
   var r = sb is sa
+
+  var s = "asdf"[0]
 }
 
 test_num += 1

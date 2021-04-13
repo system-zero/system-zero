@@ -1185,6 +1185,8 @@ static int buf_interpret (buf_t **thisp, char *malloced) {
 }
 
 static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str, utf8 c, char *action) {
+  (void) fidx; (void) lidx; (void) action;
+
   if (c isnot '$') return NO_CALLBACK_FUNCTION;
 
   ifnot (str->num_bytes) return NOTOK;
@@ -1228,7 +1230,7 @@ static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str
       return OK;
 
     default:
-      snprintf (buf, 256, "%d", AS_INT(v));
+      snprintf (buf, 256, "%ld", AS_INT(v));
   }
 
   Ed.reg.set (ed, '$', CHARWISE, buf, NORMAL_ORDER);
@@ -13640,7 +13642,7 @@ struct lafun_t {
   { "win_append_buf",        PTR(la_win_append_buf), 2},
   { "win_set_current_buf",   PTR(la_win_set_current_buf), 3},
   { "win_get_current_buf",   PTR(la_win_get_current_buf), 1},
-  { NULL, 0, 0}
+  { NULL, INT(0), 0}
 };
 
 static int la_define_funs_default_cb (la_t *this) {
