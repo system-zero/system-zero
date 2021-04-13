@@ -30,6 +30,8 @@
 
 #define NS_GLOBAL          "global"
 #define NS_GLOBAL_LEN      6
+#define NS_STD             "std"
+#define NS_STD_LEN         3
 
 #ifdef DEBUG
 
@@ -201,6 +203,7 @@ struct la_prop {
 
 struct la_t {
   funT *function;
+  funT *std;
   funT *curScope;
 
   fun_stack funstack[1];
@@ -813,15 +816,15 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   $CODE_PATH
 #endif
 
-  sym_t *sym = NULL;
+  sym_t *sym = ns_lookup_symbol (this->std, key);
+  ifnot (NULL is sym) return sym;
 
   funT *f = this->curScope;
   while (NULL isnot f) {
     sym = ns_lookup_symbol (f, key);
 
-    ifnot (NULL is sym) {
-      return sym;
-   }
+    ifnot (NULL is sym) return sym;
+
     f = f->prev;
   }
 
@@ -939,7 +942,7 @@ static int la_do_next_token (la_t *this, int israw) {
     la_get_span (this, is_operator_span);
 
     char *key = sym_key (this, this->curStrToken);
-    this->tokenSymbol = symbol = ns_lookup_symbol (this->function, key);
+    this->tokenSymbol = symbol = ns_lookup_symbol (this->std, key);
 
     if (symbol) {
       r = symbol->type;
@@ -1874,7 +1877,12 @@ static int la_parse_stmt (la_t *this) {
       return this->syntax_error (this, "unknown symbol");
 
     char *key = sym_key (this, name);
-    sym_t *sym = ns_lookup_symbol (this->curScope, key);
+
+    sym_t *sym = ns_lookup_symbol (this->std, key);
+    ifnot (NULL is sym)
+      return this->syntax_error (this, "can not redefine a standard symbol");
+
+    sym = ns_lookup_symbol (this->curScope, key);
 
     ifnot (NULL is sym)
       return this->syntax_error (this, "can not redeclare a symbol in this scope");
@@ -2100,8 +2108,8 @@ static int la_parse_if (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-   .name = "__block__", .namelen = 9, .parent = this->curScope
-    ));
+    .name = "__block__", .namelen = 9, .parent = this->curScope
+  ));
 
   this->curScope = fun;
 
@@ -2131,8 +2139,8 @@ static int la_parse_ifnot (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-   .name = "__block__", .namelen = 9, .parent = this->curScope
-    ));
+    .name = "__block__", .namelen = 9, .parent = this->curScope
+  ));
 
   this->curScope = fun;
 
@@ -2211,8 +2219,8 @@ static int la_parse_for (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-   .name = "__block__", .namelen = 9, .parent = this->curScope
-    ));
+    .name = "__block__", .namelen = 9, .parent = this->curScope
+  ));
 
   this->curScope = fun;
 
@@ -2342,8 +2350,8 @@ static int la_parse_loop (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-   .name = "__block__", .namelen = 9, .parent = this->curScope
-    ));
+    .name = "__block__", .namelen = 9, .parent = this->curScope
+  ));
 
   this->curScope = fun;
 
@@ -2459,8 +2467,8 @@ static int la_parse_forever (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-   .name = "__block__", .namelen = 9, .parent = this->curScope
-    ));
+    .name = "__block__", .namelen = 9, .parent = this->curScope
+  ));
 
   this->curScope = fun;
 
@@ -2592,8 +2600,8 @@ static int la_parse_func_def (la_t *this) {
   }
 
   funT *uf = Fun_new (this, funNew (
-   .name = la_StringGetPtr (name), .namelen = len, .parent = this->curScope
-    ));
+    .name = la_StringGetPtr (name), .namelen = len, .parent = this->curScope
+  ));
 
   c = la_next_token (this);
 
@@ -2945,7 +2953,7 @@ static int la_parse_return (la_t *this) {
 }
 
 static int la_define (la_t *this, const char *key, int typ, VALUE val) {
-  la_define_symbol (this, this->function, (char *) key, typ, val, 1);
+  la_define_symbol (this, this->std, (char *) key, typ, val, 1);
   return LA_OK;
 }
 
@@ -3634,6 +3642,7 @@ static void la_release (la_t **thisp) {
   String.release (this->message);
   Imap.release   (this->refcount);
   fun_release (&this->function);
+  fun_release (&this->std);
 
   free (this);
   *thisp = NULL;
@@ -3795,6 +3804,9 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
     this->la_dir = String.new_with (opts.la_dir);
 
   this->message = String.new (32);
+
+  this->std = fun_new (
+      funNew (.name = NS_STD, .namelen = NS_STD_LEN, .num_symbols = 256));
 
   Fun_new (this,
       funNew (.name = NS_GLOBAL, .namelen = NS_GLOBAL_LEN, .num_symbols = 256));
