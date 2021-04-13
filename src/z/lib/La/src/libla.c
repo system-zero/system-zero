@@ -32,6 +32,8 @@
 #define NS_GLOBAL_LEN      6
 #define NS_STD             "std"
 #define NS_STD_LEN         3
+#define NS_BLOCK           "__block__"
+#define NS_BLOCK_LEN       9
 
 #ifdef DEBUG
 
@@ -93,6 +95,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_FOREVER    'm'
 #define LA_TOKEN_NUMBER     'n'
 #define LA_TOKEN_BINOP      'o'
+#define LA_TOKEN_PRINTLN    'p'
 #define LA_TOKEN_VAR        'v'
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
@@ -166,6 +169,7 @@ struct funType {
 
   Vmap_t *symbols;
 
+  VALUE result;
   malloced_string *head;
 
   funT
@@ -224,8 +228,8 @@ struct la_t {
     curState,
     exitValue,
     lineNum,
-    curToken,    // kind of current token
-    tokenArgs,   // number of arguments for this token
+    curToken,
+    tokenArgs,
     didReturn;
 
   string_t
@@ -233,13 +237,11 @@ struct la_t {
     *message;
 
   la_string
-    curStrToken, // the actual string representing the token
-    parsePtr;    // acts as instruction pointer
+    curStrToken,
+    parsePtr;
 
   VALUE
-     funResult,  // function returned value
-     tokenValue, // for symbolic tokens, the symbol's value
-     lastExpr,
+     tokenValue,
      funArgs[MAX_BUILTIN_PARAMS];
 
   integer stackValIdx;
@@ -249,6 +251,7 @@ struct la_t {
     *tokenSymbol;
 
   FILE
+    *print_fp,
     *err_fp,
     *out_fp;
 
@@ -1373,7 +1376,7 @@ static int la_parse_array_set (la_t *this) {
   }
 
   if (la_StringGetPtr (this->curStrToken)[0] isnot '=' or la_StringGetLen (this->curStrToken) isnot 1)
-    return this->syntax_error (this, "syntax error");
+    return this->syntax_error (this, "syntax error while setting array, awaiting =");
 
   return la_array_assign (this, &ary, ix);
 }
@@ -1658,7 +1661,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
     }
 
     this->didReturn = 0;
-    this->funResult = NONE;
+    uf->result = NONE;
 
     la_fun_stack_push (this, this->curScope);
 
@@ -1670,8 +1673,8 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
     this->didReturn = 0;
 
-    if (this->funResult.type >= STRING_TYPE) {
-      sym_t *sym = this->funResult.sym;
+    if (uf->result.type >= STRING_TYPE) {
+      sym_t *sym = uf->result.sym;
       ifnot (NULL is sym) {
         VALUE none = NONE;
         sym->value = none;
@@ -1703,7 +1706,7 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       }
     }
 
-    *vp = this->funResult;
+    *vp = uf->result;
     return err;
   } else {
     *vp = op (this, this->funArgs[0], this->funArgs[1], this->funArgs[2],
@@ -1737,8 +1740,6 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       if (c is close_token) {
         la_next_token (this);
-
-        this->lastExpr = this->tokenValue;
         return LA_OK;
       }
     }
@@ -2108,7 +2109,7 @@ static int la_parse_if (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = "__block__", .namelen = 9, .parent = this->curScope
+    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -2139,7 +2140,7 @@ static int la_parse_ifnot (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = "__block__", .namelen = 9, .parent = this->curScope
+    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -2219,7 +2220,7 @@ static int la_parse_for (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = "__block__", .namelen = 9, .parent = this->curScope
+    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -2350,7 +2351,7 @@ static int la_parse_loop (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = "__block__", .namelen = 9, .parent = this->curScope
+    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -2467,7 +2468,7 @@ static int la_parse_forever (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = "__block__", .namelen = 9, .parent = this->curScope
+    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -2668,6 +2669,8 @@ static int la_parse_print (la_t *this) {
       la_ignore_next_char (this);
     c = la_ignore_ws (this);
   }
+
+  this->print_fp = fp;
 
   if (c isnot LA_TOKEN_DQUOTE) {
     this->print_bytes (this->err_fp, "string fmt error, awaiting double quote\n");
@@ -2930,14 +2933,22 @@ theend:
   return err;
 }
 
+static int la_parse_println (la_t *this) {
+  int err = la_parse_print (this);
+  if (err is LA_OK)
+    fprintf (this->print_fp, "\n");
+  return err;
+}
+
 static int la_parse_exit (la_t *this) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
   la_next_token (this);
 
-  la_parse_expr (this, &this->funResult);
-  this->exitValue = AS_INT(this->funResult);
+  VALUE v;
+  la_parse_expr (this, &v);
+  this->exitValue = AS_INT(v);
 
   la_StringSetLen (&this->parsePtr, 0);
   this->didReturn = 1;
@@ -2952,7 +2963,14 @@ static int la_parse_return (la_t *this) {
   int err;
   la_next_token (this);
 
-  err = la_parse_expr (this, &this->funResult);
+  funT *scope = this->curScope;
+  while (scope and Cstring.eq (scope->funname, NS_BLOCK))
+    scope = scope->prev;
+
+  if (NULL is scope)
+    return this->syntax_error (this, "error while parsing return, unknown scope");
+
+  err = la_parse_expr (this, &scope->result);
 
   la_StringSetLen (&this->parsePtr, 0);
   this->didReturn = 1;
@@ -3466,6 +3484,7 @@ static struct def {
   { "forever", LA_TOKEN_FOREVER,  PTR(la_parse_forever) },
   { "loop",    LA_TOKEN_LOOP,     PTR(la_parse_loop) },
   { "print",   LA_TOKEN_PRINT,    PTR(la_parse_print) },
+  { "println", LA_TOKEN_PRINTLN,  PTR(la_parse_println) },
   { "func",    LA_TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
@@ -3753,10 +3772,6 @@ static void la_set_user_data (la_t *this, void *user_data) {
   this->user_data = user_data;
 }
 
-static VALUE la_get_last_expr_value (la_t *this) {
-  return this->lastExpr;
-}
-
 static void *la_get_user_data (la_t *this) {
   return this->user_data;
 }
@@ -3946,7 +3961,6 @@ public la_T *__init_la__ (void) {
         .eval_str = la_get_eval_str,
         .user_data = la_get_user_data,
         .current_idx = la_get_current_idx,
-        .last_expr_value = la_get_last_expr_value
       },
       .set = (la_set_self) {
         .la_dir = la_set_la_dir,

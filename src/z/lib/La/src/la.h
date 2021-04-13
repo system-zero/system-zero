@@ -158,7 +158,6 @@ typedef struct la_get_self {
     *(*eval_str) (la_t *),
     *(*message) (la_t *);
   int (*current_idx) (la_T *);
-  VALUE (*last_expr_value) (la_t *);
 } la_get_self;
 
 typedef struct la_set_self {

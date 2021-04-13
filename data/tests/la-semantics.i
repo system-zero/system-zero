@@ -1,4 +1,4 @@
-print ("--[ BEG ]--\n")
+println ("--[ BEG ]--")
 
 var test_num = 0
 
@@ -15,9 +15,9 @@ func semantics () {
   print ("[${test_num}] testing scope - ")
   retval = fu (11)
   if (retval isnot 11) {
-    print (stderr, "[NOTOK] awaiting 11 got: ${retval}\n");
+    println (stderr, "[NOTOK] awaiting 11 got: ${retval}");
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   var b = 2
@@ -30,9 +30,9 @@ func semantics () {
   print ("[${test_num}] testing scope - ")
   retval = fua (11, 12)
   if (retval isnot 23) {
-    print (stderr, "[NOTOK] awaiting 23 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 23 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func fub (b) {
@@ -43,9 +43,9 @@ func semantics () {
   print ("[${test_num}] testing scope - ")
   retval = fub (10)
   if (retval isnot 11) {
-    print (stderr, "[NOTOK] awaiting 11 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 11 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func fuc (a, b, c) {
@@ -60,9 +60,9 @@ func semantics () {
   print ("[${test_num}] testing function nesting and scope - ")
   retval = fuc (10, 20, 30)
   if (retval isnot 60) {
-    print (stderr, "[NOTOK] awaiting 60 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 60 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func fue (c) {
@@ -77,27 +77,27 @@ func semantics () {
   print ("[${test_num}] testing function nesting and scope - ")
   retval = fue (20)
   if (retval isnot 41) {
-    print (stderr, "[NOTOK] awaiting 41 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 41 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing logical AND - ")
   if ((1 is 1) and (1 is 1) and ((1 is 1) and (2 is 2)) && \
       ((1 isnot 2) && (1 isnot 2))) {
-    print ("[OK]\n")
+    println ("[OK]")
   } else {
-    print (stderr, "[NOTOK]\n")
+    println (stderr, "[NOTOK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing logical OR - ")
   if ((2 < 1) or (2 > 2) or (1 isnot 1) or (2 != 2) || \
       ((2 < 2) || (1 > 2) || (1 > 2) || (2 < 1))) {
-    print (stderr, "[NOTOK]\n")
+    println (stderr, "[NOTOK]")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func fibo_tail (n, a, b) {
@@ -116,9 +116,9 @@ func semantics () {
   print ("[${test_num}] testing recursive function - ")
   retval = fibo_tail (92, 0, 1)
   if (retval isnot 7540113804746346429) {
-    print (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func fibo_recursive (n) {
@@ -133,9 +133,9 @@ func semantics () {
   print ("[${test_num}] testing recursive function - ")
   retval = fibo_recursive (12)
   if (retval isnot 144) {
-    print (stderr, "[NOTOK] awaiting 144 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 144 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -143,9 +143,9 @@ func semantics () {
   retval = lambda ((x, y) {
     if (x <= 100) {return x * 2} else {return y * 2}}) (100, 200)
   if (retval isnot 200) {
-    print (stderr, "[NOTOK] awaiting 200 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 200 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -153,9 +153,9 @@ func semantics () {
   retval = lambda ((x, y) {
     if (x <= 100) {return x * 2} else {return y * 2}}) (101, 200)
   if (retval isnot 400) {
-    print (stderr, "[NOTOK] awaiting 400 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 400 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -164,9 +164,9 @@ func semantics () {
            lambda ((y) {return y / 2}) (20) + \
            lambda ((z) {return z % 2}) (21) + 11
   if (retval isnot 42) {
-    print (stderr, "[NOTOK] awaiting 42 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 42 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -179,45 +179,45 @@ func semantics () {
              return (z * 2) + i }) (xl)
   }) (50, 100)
   if (retval isnot 650) {
-    print (stderr, "[NOTOK] awaiting 650 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 650 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator -= - ")
   retval -= 50
   if (retval isnot 600) {
-    print (stderr, "[NOTOK] awaiting 600 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 600 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator /= - ")
   retval /= 20
   if (retval isnot 30) {
-    print (stderr, "[NOTOK] awaiting 30 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 30 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator *= - ")
   retval *= 20
   if (retval isnot 600) {
-    print (stderr, "[NOTOK] awaiting 600 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 600 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator += - ")
   retval += -600
   if (retval isnot 0) {
-    print (stderr, "[NOTOK] awaiting 0 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 0 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   var v1 = (1 << 0)
@@ -228,62 +228,62 @@ func semantics () {
   print ("[${test_num}] testing binary assignment operator |= - ")
   retval |= v1
   if (retval isnot 1) {
-    print (stderr, "[NOTOK] awaiting 1 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 1 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator |= - ")
   retval |= v2
   if (retval isnot 3) {
-    print (stderr, "[NOTOK] awaiting 3 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 3 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator &= - ")
   retval &= v2
   if (retval isnot 2) {
-    print (stderr, "[NOTOK] awaiting 2 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 2 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator |= - ")
   retval |= v3
   if (retval isnot 6) {
-    print (stderr, "[NOTOK] awaiting 6 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 6 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator &= - ")
   retval &= ~(v3|v1|v2)
   if (retval isnot 0) {
-    print (stderr, "[NOTOK] awaiting 0 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 0 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing binary assignment operator |= - ")
   retval |= (v3|v1|v2)
   if ((retval & v1 is 0) or (retval & v2 is 0) or (retval & v3 is 0)) {
-    print (stderr, "[NOTOK] awaiting 0 < retval, got: 0\n")
+    println (stderr, "[NOTOK] awaiting 0 < retval, got: 0")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing bitwise operators - ")
   if ((retval & v1 != 1) or (retval & v2 != 2) or (retval & v3 != 4)) {
-    print (stderr, "[NOTOK] awaiting 1 - 2 - 4\n")
+    println (stderr, "[NOTOK] awaiting 1 - 2 - 4")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func loop_test_break (limit) {
@@ -300,9 +300,9 @@ func semantics () {
   print ("[${test_num}] testing break statement - ")
   retval = loop_test_break (50)
   if (retval isnot 50) {
-    print (stderr, "[NOTOK] awaiting 50 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 50 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func loop_test_continue (ar) {
@@ -322,9 +322,9 @@ func semantics () {
   array integer xi[5] = 1, 10, 20, 30, 40
   retval = loop_test_continue (xi)
   if (retval isnot 81) {
-    print (stderr, "[NOTOK] awaiting 81 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 81 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -335,9 +335,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 499500) {
-    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 499500 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -351,9 +351,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 499400) {
-    print (stderr, "[NOTOK] awaiting 499400 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 499400 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -367,9 +367,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 4950) {
-    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 4950 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -383,9 +383,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 4950) {
-    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 4950 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -397,9 +397,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 499500) {
-    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 499500 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -411,9 +411,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 499500) {
-    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 499500 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -433,9 +433,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 499400) {
-    print (stderr, "[NOTOK] awaiting 499400 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 499400 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -447,9 +447,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 4950) {
-    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 4950 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -461,9 +461,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 4950) {
-    print (stderr, "[NOTOK] awaiting 4950 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 4950 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -475,9 +475,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 499500) {
-    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 499500 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -489,9 +489,9 @@ func semantics () {
    }) ()
 
   if (sum isnot 499500) {
-    print (stderr, "[NOTOK] awaiting 499500 got: ${sum}\n")
+    println (stderr, "[NOTOK] awaiting 499500 got: ${sum}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   var n = 10
@@ -499,21 +499,21 @@ func semantics () {
   test_num += 1
   print ("[${test_num}] test nested if/else - ")
   if (n isnot 10) {
-    print (stderr, "[NOTOK] awaiting n != 10\n")
+    println (stderr, "[NOTOK] awaiting n != 10")
   } else {
     if (n isnot 10) {
-      print (stderr, "[NOTOK] awaiting n != 10\n")
+      println (stderr, "[NOTOK] awaiting n != 10")
     } else {
       if (n isnot 10) {
-        print (stderr, "[NOTOK] awaiting n != 10\n")
+        println (stderr, "[NOTOK] awaiting n != 10")
       } else {
         if (n isnot 10) {
-          print (stderr, "[NOTOK] awaiting n != 10\n")
+          println (stderr, "[NOTOK] awaiting n != 10")
         } else {
           if (n is 10) {
-            print ("[OK]\n")
+            println ("[OK]")
           } else {
-            print (stderr, "[NOTOK] awaiting n == 10\n")
+            println (stderr, "[NOTOK] awaiting n == 10")
           }
         }
       }
@@ -524,63 +524,63 @@ func semantics () {
   test_num += 1
   print ("[${test_num}] testing signed addition - ")
   if (r isnot -42) {
-    print (stderr, "[NOTOK] awaiting -42 got ${r}\n")
+    println (stderr, "[NOTOK] awaiting -42 got ${r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   r = (-12 - -30)
   test_num += 1
   print ("[${test_num}] testing signed division - ")
   if (r isnot 18) {
-    print (stderr, "[NOTOK] awaiting 18 got ${r}\n")
+    println (stderr, "[NOTOK] awaiting 18 got ${r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   r = (-12 * -30)
   test_num += 1
   print ("[${test_num}] testing singed multiplication - ")
   if (r isnot 360) {
-    print (stderr, "[NOTOK] awaiting 360 got ${r}\n")
+    println (stderr, "[NOTOK] awaiting 360 got ${r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   r = (2 * -30)
   test_num += 1
   print ("[${test_num}] testing mixed unsigned and signed multiplication - ")
   if (r isnot -60) {
-    print (stderr, "[NOTOK] awaiting -60 got ${r}\n")
+    println (stderr, "[NOTOK] awaiting -60 got ${r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   r = (-12 % -30)
   test_num += 1
   print ("[${test_num}] testing signed modulo - ")
   if (r isnot -12) {
-    print (stderr, "[NOTOK] awaiting -12 got ${r}\n")
+    println (stderr, "[NOTOK] awaiting -12 got ${r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   var c = 'α'
   test_num += 1
   print ("[${test_num}] testing char '' (utf8) - ")
   if (c isnot 945) {
-    print (stderr, "[NOTOK] awaiting 945 got ${c}\n")
+    println (stderr, "[NOTOK] awaiting 945 got ${c}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   c = '\''
   test_num += 1
   print ("[${test_num}] testing single quote as char - ")
   if (c isnot 39) {
-    print (stderr, "[NOTOK] awaiting 39 got ${c}\n")
+    println (stderr, "[NOTOK] awaiting 39 got ${c}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func funptr {
@@ -608,9 +608,9 @@ func semantics () {
     print ("[${test_num}] testing function references as function arguments - ")
     var r = f1 (f2, 20, 30, f3, f4)
     if (r isnot 231) {
-      print (stderr, "[NOTOK] awaiting 931 got ${r}\n")
+      println (stderr, "[NOTOK] awaiting 931 got ${r}")
     } else {
-      print ("[OK]\n")
+      println ("[OK]")
     }
 
     test_num += 1
@@ -618,9 +618,9 @@ func semantics () {
     var fassign = func (s) {return s * 2}
     r = fassign (40)
     if (r isnot 80) {
-      print (stderr, "[NOTOK] awaiting 80 got ${r}\n")
+      println (stderr, "[NOTOK] awaiting 80 got ${r}")
     } else {
-      print ("[OK]\n")
+      println ("[OK]")
     }
 
     func tassign (f, i) {return f (i)}
@@ -628,9 +628,9 @@ func semantics () {
     print ("[${test_num}] testing function variable as an argument - ")
     r = tassign (fassign, 400)
     if (r isnot 800) {
-      print (stderr, "[NOTOK] awaiting 800 got ${r}\n")
+      println (stderr, "[NOTOK] awaiting 800 got ${r}")
     } else {
-      print ("[OK]\n")
+      println ("[OK]")
     }
 
     var fu = func (x, y) {return x * y}
@@ -638,9 +638,9 @@ func semantics () {
     print ("[${test_num}] testing assignment function to a variable - ")
     r = fu (10, 100)
     if (r isnot 1000) {
-      print (stderr, "[NOTOK] awaiting 1000 got ${r}\n")
+      println (stderr, "[NOTOK] awaiting 1000 got ${r}")
     } else {
-      print ("[OK]\n")
+      println ("[OK]")
     }
 
 
@@ -655,22 +655,22 @@ func semantics () {
   var cstr = "ταυtoughstuffenough"
 
   if (astr is bstr) {
-    print (stderr, "[NOTOK] awaiting inequality\n")
+    println (stderr, "[NOTOK] awaiting inequality")
   }
 
   if (bstr isnot cstr) {
-    print (stderr, "[NOTOK] awaiting equality\n")
+    println (stderr, "[NOTOK] awaiting equality")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
   print ("[${test_num}] testing string length - ")
   retval = len (astr);
   if (retval isnot 16) {
-    print (stderr, "[NOTOK] awaiting 16, got ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 16, got ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
 
@@ -685,9 +685,9 @@ func doubles () {
   test_num += 1
   print ("[${test_num}] testing Double vars equality - ")
   if (d isnot da) {
-    print (stderr, "[NOTOK] awaiting equality\n")
+    println (stderr, "[NOTOK] awaiting equality")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func d1 (d) {
@@ -705,9 +705,9 @@ func doubles () {
   test_num += 1
   print ("[${test_num}] testing Double function reference - ")
   if (dfr isnot d2r) {
-    print (stderr, "[NOTOK] awaiting ${%f, dfr} to be equal with ${%f, d2r}\n")
+    println (stderr, "[NOTOK] awaiting ${%f, dfr} to be equal with ${%f, d2r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   test_num += 1
@@ -715,9 +715,9 @@ func doubles () {
   var dd = d1 (da)
   var dd2r = (df (da) + dd) - da;
   if (da isnot dd2r) {
-    print (stderr, "[NOTOK] awaiting ${%f, d} got ${%f, dd2r}\n")
+    println (stderr, "[NOTOK] awaiting ${%f, d} got ${%f, dd2r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   da = 1.3131
@@ -726,9 +726,9 @@ func doubles () {
   dd = d1 (da)
   dd2r = (df (da) + dd) - da;
   if (da isnot dd2r) {
-    print (stderr, "[NOTOK] *this should fail*, awaiting ${%f, da} got ${%f, dd2r}\n")
+    println (stderr, "[NOTOK] *this should fail*, awaiting ${%f, da} got ${%f, dd2r}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 }
 
@@ -743,9 +743,9 @@ func test_array (length) {
   print ("[${test_num}] testing array length - ")
   retval = len (x)
   if (retval isnot length) {
-    print (stderr, "[NOTOK] awaiting ${len} got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting ${len} got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   array y[length] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
@@ -753,14 +753,14 @@ func test_array (length) {
   test_num += 1
   print ("[${test_num}] testing for array equality - ")
   if (x != y) {
-    print (stderr, "[NOTOK] awaiting equality\n")
+    println (stderr, "[NOTOK] awaiting equality")
   }
 
   y[0] = 11
   if (x == y) {
-    print (stderr, "[NOTOK] awaiting inequality\n")
+    println (stderr, "[NOTOK] awaiting inequality")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func ar_set_at (xx, idx, y) {
@@ -772,9 +772,9 @@ func test_array (length) {
   print ("[${test_num}] testing array set|get methods - ")
   retval = ar_set_at (x, length - 1, 20)
   if (retval isnot 20 or (x[length - 1] isnot 20)) {
-    print (stderr, "[NOTOK] awaiting 20 got: ${(x[len - 1])}\n")
+    println (stderr, "[NOTOK] awaiting 20 got: ${(x[len - 1])}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func ar_sum (xx) {
@@ -794,26 +794,26 @@ func test_array (length) {
   print ("[${test_num}] testing array sum - ")
   retval = ar_sum (x)
   if (retval isnot 4520) {
-    print (stderr, "[NOTOK] awaiting 4520 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 4520 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   array string xs[4] = "through", "the", "ocean", "drive"
   test_num += 1
   print ("[${test_num}] testing for string equality for string array members - ")
   if ("ocean" isnot xs[2]) {
-    print (stderr, "[NOTOK] awaiting equality\n")
+    println (stderr, "[NOTOK] awaiting equality")
   }
 
   if (xs[1] is xs[2]) {
-    print (stderr, "[NOTOK] awaiting inequality\n")
+    println (stderr, "[NOTOK] awaiting inequality")
   }
 
   if (xs[1] is 1) {
-    print (stderr, "[NOTOK] awaiting inequality\n")
+    println (stderr, "[NOTOK] awaiting inequality")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
   func fibo_array (n) {
@@ -833,9 +833,9 @@ func test_array (length) {
   print ("[${test_num}] testing fibonacci array implementation - ")
   retval = fibo_array (92)
   if (retval isnot 7540113804746346429) {
-    print (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}\n")
+    println (stderr, "[NOTOK] awaiting 7540113804746346429 got: ${retval}")
   } else {
-    print ("[OK]\n")
+    println ("[OK]")
   }
 
 }
@@ -854,75 +854,79 @@ func types () {
   test_num += 1
   print ("[${test_num}] testing types - ")
   if (typeof (type) isnot NoneType) {
-    print (stderr, "[NOTOK] awaiting NoneType got: ${(typeof (type))}\n")
+    println (stderr, "[NOTOK] awaiting NoneType got: ${(typeof (type))}")
   }
   type = typeof (str)
   if (type isnot StringType) {
-    print (stderr, "[NOTOK] awaiting StringType got: ${type}\n")
+    println (stderr, "[NOTOK] awaiting StringType got: ${type}")
   } 
   type = typeof (int)
   if (type isnot IntegerType) {
-    print (stderr, "[NOTOK] awaiting IntegerType got: ${type}\n")
+    println (stderr, "[NOTOK] awaiting IntegerType got: ${type}")
   } 
   type = typeof (num)
   if (type isnot NumberType) {
-    print (stderr, "[NOTOK] awaiting NumberType got: ${type}\n")
+    println (stderr, "[NOTOK] awaiting NumberType got: ${type}")
   } 
   type = typeof (i_ar)
   if (type isnot ArrayType) {
-    print (stderr, "[NOTOK] awaiting ArrayType got: ${type}\n")
+    println (stderr, "[NOTOK] awaiting ArrayType got: ${type}")
   } 
   type = typeof (s_ar)
   if (type isnot ArrayType) {
-    print (stderr, "[NOTOK] awaiting ArrayType got: ${type}\n")
+    println (stderr, "[NOTOK] awaiting ArrayType got: ${type}")
   } 
   type = typeof (n_ar)
   if (type isnot ArrayType) {
-    print (stderr, "[NOTOK] awaiting ArrayType got: ${type}\n")
+    println (stderr, "[NOTOK] awaiting ArrayType got: ${type}")
   } 
   type = typeofArray (i_ar)
   if (type isnot IntegerType) {
-    print (stderr, "[NOTOK] awaiting IntegerType got: ${%s, (typeArrayAsString(i_ar))}\n")
+    println (stderr, "[NOTOK] awaiting IntegerType got: ${%s, (typeArrayAsString(i_ar))}")
   } 
   type = typeofArray (s_ar)
   if (type isnot StringType) {
-    print (stderr, "[NOTOK] awaiting StringType got: ${%s, (typeArrayAsString(s_ar))}\n")
+    println (stderr, "[NOTOK] awaiting StringType got: ${%s, (typeArrayAsString(s_ar))}")
   } 
   type = typeofArray (n_ar)
   if (type isnot NumberType) {
-    print (stderr, "[NOTOK] awaiting NumberType got: ${%s, (typeArrayAsString(n_ar))}\n")
+    println (stderr, "[NOTOK] awaiting NumberType got: ${%s, (typeArrayAsString(n_ar))}")
   } 
-  print ("[OK]\n")
+  println ("[OK]")
 }
 
 types ()
 
-func xx () {
-  array x[2] = 1, 2
-  return x
+func valgrind_tests () {
+  func xx () {
+    array x[2] = 1, 2
+    return x
+  }
+
+  var ar = xx ()
+  ar[1] = 3
+
+  var sa = "A"
+  sa = "v"
+
+  func xxx () {
+    var s ="xxx"
+    return s
+  }
+
+  sa = xxx ()
+  var sb = xxx ()
+
+  func xxxx () {
+    return "xxxx"
+  }
+
+  sb = xxxx ()
+  var r = sb is sa
 }
 
-var ar = xx ()
-ar[1] = 3
-
-var sa = "A"
-sa = "v"
-
-func xxx () {
-  var s ="xxx"
-  return s
-}
-
-sa = xxx ()
-var sb = xxx ()
-
-func xxxx () {
-  return "xxxx"
-}
-
-sb = xxxx ()
-var r = sb is sa
 test_num += 1
-print ("[${test_num}] testing for memory leaks with valgrind - [OK]\n")
+valgrind_tests ()
+println ("[${test_num}] tests for memory leaks, that should run under valgrind")
 
-print ("--[ END ] --\n")
+println ("--[ END ] --")
