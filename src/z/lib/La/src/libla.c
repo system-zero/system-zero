@@ -2586,21 +2586,29 @@ static int la_parse_func_def (la_t *this) {
   int nargs = 0;
   size_t len = 0;
 
+  char *fn = NULL;
+
   ifnot (this->curFunName[0]) {
     c = la_next_raw_token (this); // do not interpret the symbol
     if (c isnot LA_TOKEN_SYMBOL) return this->syntax_error (this, "function definition, not a symbol");
 
     name = this->curStrToken;
     len = la_StringGetLen (name);
+    fn = sym_key (this, name);
+    sym_t *sym = ns_lookup_symbol (this->std, fn);
+    ifnot (NULL is sym)
+      return this->syntax_error (this, "can not redefine a standard function");
+
     if (len >= MAXLEN_SYMBOL_LEN)
       return this->syntax_error (this, "function name exceeded maximum length (64)");
   } else {
     name = la_StringNew (this->curFunName);
     len = bytelen (this->curFunName);
+    fn = this->curFunName;
   }
 
   funT *uf = Fun_new (this, funNew (
-    .name = la_StringGetPtr (name), .namelen = len, .parent = this->curScope
+    .name = fn, .namelen = len, .parent = this->curScope
   ));
 
   c = la_next_token (this);

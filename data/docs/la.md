@@ -209,15 +209,31 @@ array string ar[3] = "holidays", "in", "cambodia"
 
 # Functions
 # print
-# typeof  -  type of a value
-# len     -  length of the object (for ARRAY and STRING types)
-# not     -  !value
-# bool    -  !!value
+# typeof            -  type of a value
+# typeAsString      -  type of a value as string represantation
+# typeofArray       -  type of an array value
+# typeArrayAsString -  type of an array value as string represantation
+# len               -  length of the object (for ARRAY and STRING types)
+# not               -  !value
+# bool              -  !!value
 
 # The following memory handling functions are not needed with current code.
 # free    -  release memory
 # alloc   -  allocate memory
 # realloc -  reallocate memory
+
+# Semantics
+
+  - standard keywords and functions can not be redefined and reassigned
+
+  - function arguments that are memory types (like strings and arrays), are
+    passed by reference
+
+# Lexical Scope
+  - standard scope (lookup for standard operators and functions first)
+  - block scope (if statements, loops)
+  - function scope
+  - previous function scope ... global scope
 
 # Aplication Programming Interface.
 
