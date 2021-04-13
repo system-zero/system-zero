@@ -842,6 +842,61 @@ func test_array (length) {
 
 test_array (10)
 
+func types () {
+  var str = "string"
+  var int = 1
+  var num = 1.0
+  array i_ar[0]
+  array string s_ar[0]
+  array number n_ar[0]
+
+  var type = none
+  test_num += 1
+  print ("[${test_num}] testing types - ")
+  if (typeof (type) isnot NoneType) {
+    print (stderr, "[NOTOK] awaiting NoneType got: ${(typeof (type))}\n")
+  }
+  type = typeof (str)
+  if (type isnot StringType) {
+    print (stderr, "[NOTOK] awaiting StringType got: ${type}\n")
+  } 
+  type = typeof (int)
+  if (type isnot IntegerType) {
+    print (stderr, "[NOTOK] awaiting IntegerType got: ${type}\n")
+  } 
+  type = typeof (num)
+  if (type isnot NumberType) {
+    print (stderr, "[NOTOK] awaiting NumberType got: ${type}\n")
+  } 
+  type = typeof (i_ar)
+  if (type isnot ArrayType) {
+    print (stderr, "[NOTOK] awaiting ArrayType got: ${type}\n")
+  } 
+  type = typeof (s_ar)
+  if (type isnot ArrayType) {
+    print (stderr, "[NOTOK] awaiting ArrayType got: ${type}\n")
+  } 
+  type = typeof (n_ar)
+  if (type isnot ArrayType) {
+    print (stderr, "[NOTOK] awaiting ArrayType got: ${type}\n")
+  } 
+  type = typeofArray (i_ar)
+  if (type isnot IntegerType) {
+    print (stderr, "[NOTOK] awaiting IntegerType got: ${%s, (typeArrayAsString(i_ar))}\n")
+  } 
+  type = typeofArray (s_ar)
+  if (type isnot StringType) {
+    print (stderr, "[NOTOK] awaiting StringType got: ${%s, (typeArrayAsString(s_ar))}\n")
+  } 
+  type = typeofArray (n_ar)
+  if (type isnot NumberType) {
+    print (stderr, "[NOTOK] awaiting NumberType got: ${%s, (typeArrayAsString(n_ar))}\n")
+  } 
+  print ("[OK]\n")
+}
+
+types ()
+
 func xx () {
   array x[2] = 1, 2
   return x

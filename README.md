@@ -845,7 +845,7 @@ operators like `+=, -=, /=, */, ...`, we modified the print function to handle
 multibyte strings, and also we extended it with interpolation expressions, and
 added some keywords, that are being used also in this codebase, like `is, isnot,
 ifnot, ...). We also added code to handle operations on signed integers.
-We've also used internally our own datatapes, and with the open possibility to
+We've also used internally our own datatypes, and with the open possibility to
 expose them to the interpreter, and extend it with more rich types, like: maps,
 arrays, lists and our string type functions, and so on.
 

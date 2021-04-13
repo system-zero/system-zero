@@ -590,12 +590,35 @@ static malloced_string *new_malloced_string (size_t len) {
   return mbuf;
 }
 
-static VALUE la_typeof (la_t *this, VALUE val) {
+static VALUE la_typeof (la_t *this, VALUE value) {
+  VALUE v = INT(value.type);
+  return v;
+}
+
+static VALUE la_typeofArray (la_t *this, VALUE value) {
+  VALUE v = INT(value.type);
+  if (value.type isnot ARRAY_TYPE) {
+    v = INT(LA_NOTOK);
+    return v;
+  }
+
+  ArrayType *array = (ArrayType *) AS_ARRAY(value);
+  v = INT(array->type);
+  return v;
+}
+
+static VALUE la_typeAsString (la_t *this, VALUE value) {
   malloced_string *mbuf = new_malloced_string (16);
   string *buf = mbuf->data;
 
-  switch (val.type) {
-    case INTEGER_TYPE: String.append_with_len (buf, "IntegerType", 11); break;
+  switch (value.type) {
+    case INTEGER_TYPE:
+      if (value.type & FUNCPTR_TYPE)
+        String.append_with_len (buf, "FunctionType",12);
+      else
+        String.append_with_len (buf, "IntegerType", 11);
+      break;
+    case NONE_TYPE:    String.append_with_len (buf, "NoneType",     8); break;
     case NUMBER_TYPE:  String.append_with_len (buf, "NumberType",  10); break;
     case STRING_TYPE:  String.append_with_len (buf, "StringType",  10); break;
     case ARRAY_TYPE:   String.append_with_len (buf, "ArrayType",    9); break;
@@ -605,6 +628,18 @@ static VALUE la_typeof (la_t *this, VALUE val) {
   ListStackPush (this->curScope, mbuf);
   VALUE v = STRING (buf);
   return v;
+}
+
+static VALUE la_typeArrayAsString (la_t *this, VALUE value) {
+  VALUE v;
+  if (value.type isnot ARRAY_TYPE)
+    v.type = LA_NOTOK;
+  else {
+    ArrayType *array = (ArrayType *) AS_ARRAY(value);
+    v.type = array->type;
+  }
+
+  return la_typeAsString (this, v);
 }
 
 static void *la_malloc (la_t *this, VALUE size) {
@@ -1263,8 +1298,6 @@ static int la_parse_array_def (la_t *this) {
   int err;
   VALUE len;
   VALUE ar;
-  VALUE ary;
-  ArrayType *array;
 
   c = la_next_raw_token (this);
 
@@ -1310,32 +1343,7 @@ static int la_parse_array_def (la_t *this) {
 
   integer nlen = AS_INT(len);
 
-  array = Alloc (sizeof (ArrayType));
-  array->type = type;
-  array->len = nlen;
-
-  if (array->type is INTEGER_TYPE) {
-    integer *i_ar = Alloc (nlen * sizeof (integer));
-    for (integer i = 0; i < nlen; i++)
-      i_ar[i] = 0;
-    ary = ARRAY(i_ar);
-
-  }  else if (array->type is NUMBER_TYPE) {
-    number *n_ar = Alloc (nlen * sizeof (number));
-    for (integer i = 0; i < nlen; i++)
-      n_ar[i] = 0.0;
-    ary = ARRAY(n_ar);
-
-  } else if (array->type is STRING_TYPE) {
-    string **s_ar = Alloc (nlen * sizeof (string));
-    for (integer i = 0; i < nlen; i++) {
-      s_ar[i] = String.new_with ("");
-    }
-    ary = ARRAY(s_ar);
-  }
-
-  array->value = ary;
-  ar = ARRAY(array);
+  ar = ARRAY(ARRAY_NEW(type, nlen));
 
   this->tokenSymbol = la_define_symbol (this, this->curScope, sym_key (this, name), ARRAY_TYPE,
     ar, 0);
@@ -2937,7 +2945,7 @@ static int la_parse_return (la_t *this) {
 }
 
 static int la_define (la_t *this, const char *key, int typ, VALUE val) {
-  la_define_symbol (this, this->function, (char *) key, typ, val, 0);
+  la_define_symbol (this, this->function, (char *) key, typ, val, 1);
   return LA_OK;
 }
 
@@ -3468,9 +3476,16 @@ static struct def {
   { "and",     BINOP(5),          PTR(la_logical_and) },
   { "||",      BINOP(5),          PTR(la_logical_or) },
   { "or",      BINOP(5),          PTR(la_logical_or) },
-  { "OK",      INTEGER_TYPE,      INT(0) },
-  { "NOTOK",   INTEGER_TYPE,      INT(-1) },
-  { NULL, 0, NONE_VALUE }
+  { "NoneType",    INTEGER_TYPE,  INT(NONE_TYPE) },
+  { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
+  { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
+  { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
+  { "StringType",  INTEGER_TYPE,  INT(STRING_TYPE) },
+  { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
+  { "none",        NONE_TYPE,     NONE },
+  { "ok",          INTEGER_TYPE,  INT(0) },
+  { "notok",       INTEGER_TYPE,  INT(-1) },
+  { NULL,          NONE_TYPE,     NONE_VALUE }
 };
 
 struct la_def_fun_t {
@@ -3478,14 +3493,17 @@ struct la_def_fun_t {
   VALUE val;
   int nargs;
 } la_funs[] = {
-  { "not",     PTR(la_not), 1},
-  { "bool",    PTR(la_bool), 1},
-  { "len",     PTR(la_len), 1},
-  { "free",    PTR(la_free), 1},
-  { "malloc",  PTR(la_malloc), 1},
-  { "realloc", PTR(la_realloc), 2},
-  { "typeof",  PTR(la_typeof), 1},
-  { NULL, NONE_VALUE, 0},
+  { "not",              PTR(la_not), 1},
+  { "bool",             PTR(la_bool), 1},
+  { "len",              PTR(la_len), 1},
+  { "free",             PTR(la_free), 1},
+  { "malloc",           PTR(la_malloc), 1},
+  { "realloc",          PTR(la_realloc), 2},
+  { "typeof",           PTR(la_typeof), 1},
+  { "typeAsString",     PTR(la_typeAsString), 1},
+  { "typeofArray",      PTR(la_typeofArray), 1},
+  { "typeArrayAsString",PTR(la_typeArrayAsString), 1},
+  { NULL,               NONE_VALUE, NONE_TYPE},
 };
 
 /* ABSTRACTION CODE */

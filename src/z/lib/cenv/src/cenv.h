@@ -1409,12 +1409,12 @@ typedef ptrdiff_t idx_t;
   #define MAP_MACROS_HDR
 
   #define MAP_DEFAULT_LENGTH 32
-
+  // hs_ = ((hs_ << 5) + hs_) + __key__[i_++];              
   #define MAP_HASH_KEY(__map__, __key__) ({                   \
-    ssize_t hs = 5381; int i = 0;                             \
-    while (key[i])                                            \
-       hs = ((hs << 5) + hs) + key[i++];                      \
-    hs % __map__->num_slots;                                  \
+    ssize_t hs_ = 5381; int i_ = 0;                           \
+    while (__key__[i_])                                       \
+      hs_ = (hs_ * 33) ^ __key__[i_++];                       \
+    hs_ % __map__->num_slots;                                 \
   })
 
   #define MAP_RELEASE_SLOT(_it, _tp, _fun)                    \
