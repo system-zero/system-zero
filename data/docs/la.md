@@ -38,6 +38,9 @@ ifnot (condition) { ... }
 # Both can get an `else` clause, that is executed when the first block is not
 # executed.
 
+# Both can be extended with an "else if (condition)" or "else ifnot (condition)"
+# if the original conditional statement evaluates to false.
+
 # `while` loop
 
 while (condition) { block }
@@ -141,6 +144,9 @@ var i = lambda ((x, y) {return x * y}) (10, 100)
 #
 #  If `sym` is enclosed in parentheses then it is considered and evaluated as an
 #  expression,
+#
+#  As a convienence there is `println` which is like `print`, but also emits a new
+#  line character.
 
 var i = 10; print ("i is ${%d, (i * 2)}\n")
 
@@ -163,57 +169,60 @@ array string ar[3] = "holidays", "in", "cambodia"
 
 ## keywords and Operators.
 ```sh
-# var     -  variable definition
-# const   -  constant definition
-# func    -  function definition
-# lambda  -  lambda function
-# array   -  array definition
-# if      -  if conditional
-# ifnot   -  ifnot conditional
-# else    -  else clause
-# while   -  while loop
-# for     -  for loop
-# return  -  return statement
-# break   -  break statement
-# continue-  continue statement
-# exit    -  terminates evaluation
-# *       -  multiplication
-# /       -  division
-# %       -  modulo
-# +       -  addition
-# -       -  subtract
-# &       -  bit and
-# |       -  bit or
-# ^       -  bit xor
-# >>      -  shift right
-# <<      -  shift left
-# and     -  logical and
-# &&      -  likewise
-# or      -  logical or
-# ||      -  likewise
-# is      -  equal
-# ==      -  likewise
-# isnot   -  not equal
-# !=      -  likewise
-# <       -  less than
-# <=      -  less or equal than
-# >       -  greater
-# >=      -  greater or equal than
-# +=      -  increment variable value and assign the result
-# -=      -  decrement variable   -||-
-# *=      -  multiply  variable   -||-
-# /=      -  divide    variable   -||-
-# %=      -  modulo    variable   -||-
-# |=      -  bit or    variable   -||-
-# &=      -  bit and   variable   -||-
+# var         -  variable definition
+# const       -  constant definition
+# func        -  function definition
+# lambda      -  lambda function
+# array       -  array definition
+# if          -  if conditional
+# ifnot       -  ifnot conditional
+# else        -  else clause
+# else if     -  else if clause
+# else ifnot  -  else ifnot clause
+# while       -  while loop
+# for         -  for loop
+# return      -  return statement
+# break       -  break statement
+# continue    -  continue statement
+# exit        -  terminates evaluation
+# *           -  multiplication
+# /           -  division
+# %           -  modulo
+# +           -  addition
+# -           -  subtract
+# &           -  bit and
+# |           -  bit or
+# ^           -  bit xor
+# >>          -  shift right
+# <<          -  shift left
+# and         -  logical and
+# &&          -  likewise
+# or          -  logical or
+# ||          -  likewise
+# is          -  equal
+# ==          -  likewise
+# isnot       -  not equal
+# !=          -  likewise
+# <           -  less than
+# <=          -  less or equal than
+# >           -  greater
+# >=          -  greater or equal than
+# +=          -  increment variable value and assign the result
+# -=          -  decrement variable   -||-
+# *=          -  multiply  variable   -||-
+# /=          -  divide    variable   -||-
+# %=          -  modulo    variable   -||-
+# |=          -  bit or    variable   -||-
+# &=          -  bit and   variable   -||-
 
 # Functions
-# print
+# print and println -  print functions
 # typeof            -  type of a value
 # typeAsString      -  type of a value as string represantation
 # typeofArray       -  type of an array value
 # typeArrayAsString -  type of an array value as string represantation
-# len               -  length of the object (for ARRAY and STRING types)
+# len               -  length of the object (for ARRAY and STRING types),
+#                      note that this has byte semantics for STRING types
 # not               -  !value
 # bool              -  !!value
 
@@ -233,7 +242,7 @@ array string ar[3] = "holidays", "in", "cambodia"
   - standard scope (lookup for standard operators and functions first)
   - block scope (if statements, loops)
   - function scope
-  - previous function scope ... global scope
+  - previous function scope ..., ... global scope
 
 # Aplication Programming Interface.
 
@@ -257,17 +266,6 @@ style. However it should be okey if practicing consistency.
 - every token should be separated with at least a space, though it might work
   without that rule, but the parser can not handle all the cases, like in x-1
   where -1 is considered as a number.
-
-- there is no "else if". In that case it should be coded as a new "if", like:
-    if (expr) {
-      ...
-    } else {
-      if (expr) {
-        ...
-      }
-      ... and so on
-    }
-  The result is the same.
 
 - recursive functions though they should work properly, can be easily overflow
   the stack.

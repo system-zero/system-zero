@@ -50,7 +50,7 @@ typedef ValueType VALUE;
 #define STRING_NEW_WITH_LEN(__s__, __l__) STRING(String.new_with_len (__s__, __l__))
 
 #define AS_ARRAY AS_PTR
-#define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .refcount = 0, .asInteger = (pointer) __a__, .sym = NULL}
+#define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .asInteger = (pointer) __a__, .refcount = 0, .sym = NULL}
 #define    ARRAY_NEW(__type__, __len__) ({              \
   ArrayType *array_ = Alloc (sizeof (ArrayType));       \
   VALUE ary_;                                           \

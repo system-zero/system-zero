@@ -275,7 +275,7 @@ AllocErrorHandlerF AllocErrorHandler;
  * Copyright (c) 2008 Otto Moerbeek <otto@drijf.net>
  */
 
-/*         (Mon, Dec 28, 2000 at 20.58.59)
+/*         (Mon, Dec 28, 2020 at 20.58.59)
  *  A year ago (notice the crazy coincidence)
  * Hi Paul,
  *  On Sat, Dec 28, at 10:28 Paul Eggert wrote:

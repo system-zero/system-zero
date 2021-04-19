@@ -1,7 +1,8 @@
 /* Derived from the Tinyscript project at:
  * https://github.com/totalspectrum/ (see LICENSE included in this directory)
  *
- * See data/docs/la.md for details about syntax and semantics.
+ * See data/docs/la.md and data/tests/la-semantics.i
+ * for details about syntax and semantics.
  */
 
 #define LIBRARY "la"
@@ -34,6 +35,7 @@
 #define NS_STD_LEN         3
 #define NS_BLOCK           "__block__"
 #define NS_BLOCK_LEN       9
+#define NS_ANON            "anonymous"
 
 #ifdef DEBUG
 
@@ -75,6 +77,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define LA_TOKEN_SYMBOL     'A'
 #define LA_TOKEN_BUILTIN    'B'
 #define LA_TOKEN_CHAR       'C'
+#define LA_TOKEN_ELSEIF     'E'
 #define LA_TOKEN_FUNCDEF    'F'
 #define LA_TOKEN_IFNOT      'I'
 #define LA_TOKEN_LOOP       'L'
@@ -621,17 +624,17 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
   string *buf = mbuf->data;
 
   switch (value.type) {
-    case INTEGER_TYPE:
-      if (value.type & FUNCPTR_TYPE)
-        String.append_with_len (buf, "FunctionType",12);
-      else
-        String.append_with_len (buf, "IntegerType", 11);
-      break;
+    case INTEGER_TYPE: String.append_with_len (buf, "IntegerType", 11);
     case NONE_TYPE:    String.append_with_len (buf, "NoneType",     8); break;
     case NUMBER_TYPE:  String.append_with_len (buf, "NumberType",  10); break;
     case STRING_TYPE:  String.append_with_len (buf, "StringType",  10); break;
     case ARRAY_TYPE:   String.append_with_len (buf, "ArrayType",    9); break;
-    default:           String.append_with_len (buf, "UnknownType", 10); break;
+    default:
+      if (value.type & FUNCPTR_TYPE)
+        String.append_with_len (buf, "FunctionType", 12);
+      else
+        String.append_with_len (buf, "UnknownType", 11);
+      break;
   }
 
   ListStackPush (this->curScope, mbuf);
@@ -740,12 +743,10 @@ static void la_release_sym (void *sym) {
     ifnot (v.type & FUNCPTR_TYPE) {
       funT *f = AS_FUNC_PTR(v);
       fun_release (&f);
-      goto theend;
     }
   } else
-   la_free (NULL, v);
+    la_free (NULL, v);
 
-theend:
   free (this);
   this = NULL;
 }
@@ -838,7 +839,9 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
 }
 
 static int la_lambda (la_t *this) {
-  Cstring.cp (this->curFunName, MAXLEN_SYMBOL_LEN + 1, "anonymous", 9);
+  static size_t anon_id = 0;
+  Cstring.cp_fmt
+    (this->curFunName, MAXLEN_SYMBOL_LEN + 1, NS_ANON "_%zd", anon_id++);
 
   la_ignore_ws (this);
 
@@ -1145,7 +1148,8 @@ static int  la_string_get (la_t *this, VALUE *vp) {
 
     if (0 > idx) idx += str->num_bytes;
 
-    if (idx >= str->num_bytes or idx < 0)  return la_out_of_bounds (this);
+    if (idx < 0 or (size_t) idx >= str->num_bytes)
+      return la_out_of_bounds (this);
 
     *vp = INT(str->bytes[idx]);
 
@@ -1165,7 +1169,9 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
     return this->syntax_error (this, "can not modify constant string");
 
   string *str = AS_STRING(value);
-  int c = la_next_token (this);
+
+  la_next_token (this);
+
   VALUE v;
   int err = la_parse_primary (this, &v);
   if (err isnot LA_OK) return err;
@@ -1176,7 +1182,7 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
   integer idx = AS_INT(v);
 
   if (0 > idx) idx += str->num_bytes;
-  if (idx >= str->num_bytes) return la_out_of_bounds (this);
+  if (idx < 0 or (size_t) idx >= str->num_bytes) return la_out_of_bounds (this);
 
   if (la_StringGetPtr (this->curStrToken)[0] isnot '=' or la_StringGetLen (this->curStrToken) isnot 1)
     return this->syntax_error (this, "syntax error while setting array, awaiting =");
@@ -1190,7 +1196,7 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
   integer chr = AS_INT(v);
 
   int num_bytes = 0;
-  utf8 old = Ustring.get.code_at (str->bytes, str->num_bytes, idx, &num_bytes);
+  Ustring.get.code_at (str->bytes, str->num_bytes, idx, &num_bytes);
   char buf[8];
   int len;
   Ustring.character (chr, buf, &len);
@@ -1660,25 +1666,24 @@ static void la_fun_refcount_decr (int *count) {
   (*count)--;
 }
 
-static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
+static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf, VALUE value) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
-  int paramCount = 0;
   int expectargs;
-  int c;
 
   if (uf)
     expectargs = uf->nargs;
   else
     expectargs = this->tokenArgs;
 
-  c = la_next_token (this);
+  int c = la_next_token (this);
 
   if (c isnot LA_TOKEN_PAREN_OPEN) {
     la_unget_char (this);
     VALUE v = PTR(uf);
     v.type |= FUNCPTR_TYPE;
+    v.sym = value.sym;
     *vp = v;
     return LA_OK;
   }
@@ -1686,6 +1691,8 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
   this->curState |= STRING_LITERAL_ARG_STATE;
 
   c = la_next_token (this);
+
+  int paramCount = 0;
 
   if (c isnot LA_TOKEN_PAREN_CLOS) {
     paramCount = la_parse_expr_list (this);
@@ -1710,23 +1717,15 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
   }
 
   if (uf) {
-    int i;
-    int err;
-
-    int refcount = 0;
-
-    int is_anonymous = Cstring.eq (uf->funname, "anonymous");
-    ifnot (is_anonymous) {
-      refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_incr);
-      if (refcount > 1) {
-        la_symbol_stack_push (this, this->curScope->symbols);
-        Vmap.clear (uf->symbols);
-      }
+    int refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_incr);
+    if (refcount > 1) {
+      la_symbol_stack_push (this, this->curScope->symbols);
+      Vmap.clear (uf->symbols);
     }
 
     sym_t *uf_argsymbols[expectargs];
 
-    for (i = 0; i < expectargs; i++) {
+    for (int i = 0; i < expectargs; i++) {
       VALUE v = this->funArgs[i];
       if (v.type & FUNCPTR_TYPE) {
         funT *f = AS_FUNC_PTR(v);
@@ -1744,13 +1743,13 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
 
     this->curScope = uf;
 
-    err = la_parse_string (this, uf->body);
+    int err = la_parse_string (this, uf->body);
 
     this->curScope = la_fun_stack_pop (this);
 
     this->didReturn = 0;
 
-    if (uf->result.type >= STRING_TYPE) {
+    if (uf->result.type >= FUNCPTR_TYPE) {
       sym_t *sym = uf->result.sym;
       ifnot (NULL is sym) {
         VALUE none = NONE;
@@ -1758,9 +1757,9 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       }
     }
 
-    for (i = 0; i < expectargs; i++) {
+    for (int i = 0; i < expectargs; i++) {
       VALUE v = this->funArgs[i];
-      if (v.type >= STRING_TYPE) {
+      if (v.type >= FUNCPTR_TYPE) {
         sym_t *uf_sym = uf_argsymbols[i];
         VALUE uf_val = uf_sym->value;
         sym_t *sym = uf_val.sym;
@@ -1772,15 +1771,13 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf) {
       }
     }
 
-    ifnot (is_anonymous) {
-      refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
+    refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
 
-      ifnot (refcount)
-        Vmap.clear (uf->symbols);
-      else {
-        Vmap.release (uf->symbols);
-        this->curScope->symbols = la_symbol_stack_pop (this);
-      }
+    ifnot (refcount)
+      Vmap.clear (uf->symbols);
+    else {
+      Vmap.release (uf->symbols);
+      this->curScope->symbols = la_symbol_stack_pop (this);
     }
 
     *vp = uf->result;
@@ -1861,7 +1858,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
   } else if (c is LA_TOKEN_BUILTIN) {
     Cfunc op = (Cfunc) AS_PTR(this->tokenValue);
-    return la_parse_func_call (this, op, vp, NULL);
+    return la_parse_func_call (this, op, vp, NULL, this->tokenSymbol->value);
 
   } else if (c is LA_TOKEN_USRFUNC) {
     sym_t *symbol = this->tokenSymbol;
@@ -1870,7 +1867,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     funT *uf = AS_FUNC_PTR(symbol->value);
 
-    err = la_parse_func_call (this, NULL, vp, uf);
+    err = la_parse_func_call (this, NULL, vp, uf, symbol->value);
+
     la_next_token (this);
     return err;
 
@@ -2035,6 +2033,9 @@ static int la_parse_stmt (la_t *this) {
     if (val.type & FUNCPTR_TYPE) {
       funT *f = AS_FUNC_PTR(val);
       symbol->type = (UFUNC_TYPE | (f->nargs << 8));
+      Cstring.cp (f->funname, MAXLEN_SYMBOL_LEN, la_StringGetPtr(name),
+         la_StringGetLen(name));
+      f->prev = this->curScope->prev;
     } else
       symbol->type = val.type;
 
@@ -2139,53 +2140,82 @@ static int la_parse_expr (la_t *this, VALUE *vp) {
   return err;
 }
 
-static int la_parse_if_rout (la_t *this, VALUE *cond, int *haveelse, la_string *ifpart, la_string *elsepart) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
-  int c;
-  int err;
+static int la_consume_ifelse (la_t *this) {
+  while (1) {
+    int c = la_next_token (this);
+    if (c is LA_TOKEN_EOF)
+      return this->syntax_error (this, "unended conditional");
 
-  *haveelse = 0;
+    while ((c = la_get_char (this))) {
+      if (c is LA_TOKEN_EOF)
+        return this->syntax_error (this, "unended conditional");
 
-  this->curState |= STRING_LITERAL_ARG_STATE;
-  c = la_next_token (this);
+      if (c is LA_TOKEN_BLOCK_OPEN) {
+        int bracket = 1;
+        while (bracket > 0) {
+          c = la_get_char (this);
+          if (c is LA_TOKEN_EOF)
+            return this->syntax_error (this, "unended conditional");
 
-  err = la_parse_expr (this, cond);
-  if (err isnot LA_OK) return err;
+          if (c is LA_TOKEN_BLOCK_CLOS)
+            --bracket;
+          else if (c is LA_TOKEN_BLOCK_OPEN)
+            ++bracket;
+        }
 
-  this->curState &= ~STRING_LITERAL_ARG_STATE;
+       c = la_next_token (this);
+       goto check;
+      }
+    }
 
-  c = this->curToken;
-
-  if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "parsing if, not a block string");
-
-  *ifpart = this->curStrToken;
-
-  c = la_next_token (this);
-
-  if (c is LA_TOKEN_ELSE) {
-    c = la_next_token (this);
-
-    if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "parsing else, not a block string");
-
-    *elsepart = this->curStrToken;
-    *haveelse = 1;
-
-    la_next_token (this);
+    check:
+    if (c isnot LA_TOKEN_ELSE) return LA_OK;
   }
 
   return LA_OK;
 }
 
 static int la_parse_if (la_t *this) {
-  la_string ifpart, elsepart;
-  int haveelse = 0;
-  VALUE cond;
+  int token = this->curToken;
+  this->curState |= STRING_LITERAL_ARG_STATE;
 
-  int err = la_parse_if_rout (this, &cond, &haveelse, &ifpart, &elsepart);
-  if (err isnot LA_OK)
-    return err;
+  int c = la_next_token (this);
+
+  VALUE cond;
+  int err = la_parse_expr (this, &cond);
+
+  this->curState &= ~STRING_LITERAL_ARG_STATE;
+
+  if (err isnot LA_OK) return err;
+
+  c = this->curToken;
+
+  if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "parsing if, not a block string");
+
+  la_string elsepart;
+  la_string ifpart = this->curStrToken;
+
+  c = la_next_token (this);
+
+  int haveelse = 0;
+  int haveelif = 0;
+
+  if (c is LA_TOKEN_ELSE) {
+    c = la_next_token (this);
+
+    if (c isnot LA_TOKEN_IF and c isnot LA_TOKEN_IFNOT) {
+      if (c isnot LA_TOKEN_BLOCK)
+        return this->syntax_error (this, "parsing else, not a block string");
+
+      elsepart = this->curStrToken;
+      haveelse = 1;
+
+      la_next_token (this);
+    } else {
+      haveelif = c;
+      la_ignore_last_token (this);
+    }
+  }
 
   funT *save_scope = this->curScope;
 
@@ -2195,10 +2225,22 @@ static int la_parse_if (la_t *this) {
 
   this->curScope = fun;
 
-  if (AS_INT(cond))
+  int condition = AS_INT(cond);
+  int is_true = (condition
+     ? token is LA_TOKEN_IFNOT ? 0 : 1
+     : token is LA_TOKEN_IFNOT ? 1 : 0);
+
+  if (is_true) {
     err = la_parse_string (this, ifpart);
-  else if (haveelse)
+    if (haveelif) err = la_consume_ifelse (this);
+
+  } else if (haveelse) {
     err = la_parse_string (this, elsepart);
+
+  } else if (haveelif) {
+    this->curToken = haveelif;
+    err = la_parse_if (this);
+  }
 
   if (this->didReturn)
     la_StringSetLen (&this->parsePtr, 0);
@@ -2207,38 +2249,6 @@ static int la_parse_if (la_t *this) {
 
   this->curScope = save_scope;
   fun_release (&fun);
-  return err;
-}
-
-static int la_parse_ifnot (la_t *this) {
-  la_string ifpart, elsepart;
-  int haveelse = 0;
-  VALUE cond;
-  int err = la_parse_if_rout (this, &cond, &haveelse, &ifpart, &elsepart);
-  if (err isnot LA_OK)
-    return err;
-
-  funT *save_scope = this->curScope;
-
-  funT *fun = Fun_new (this, funNew (
-    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
-  ));
-
-  this->curScope = fun;
-
-  if (0 is AS_INT(cond))
-    err = la_parse_string (this, ifpart);
-  else if (haveelse)
-    err = la_parse_string (this, elsepart);
-
-  if (this->didReturn)
-    la_StringSetLen (&this->parsePtr, 0);
-
-  if (err is LA_OK and 0 isnot AS_INT(cond)) err = LA_ERR_OK_ELSE;
-
-  this->curScope = save_scope;
-  fun_release (&fun);
-
   return err;
 }
 
@@ -3569,6 +3579,7 @@ static struct def {
   { "var",     LA_TOKEN_VARDEF,   NONE_VALUE },
   { "const",   LA_TOKEN_CONSTDEF, NONE_VALUE },
   { "else",    LA_TOKEN_ELSE,     NONE_VALUE },
+  { "elseif",  LA_TOKEN_ELSEIF,   NONE_VALUE },
   { "break",   LA_TOKEN_BREAK,    NONE_VALUE },
   { "continue",LA_TOKEN_CONTINUE, NONE_VALUE },
   { "=",       LA_TOKEN_NONE,     NONE_VALUE },
@@ -3579,7 +3590,7 @@ static struct def {
   { "&=",      LA_TOKEN_NONE,     NONE_VALUE },
   { "|=",      LA_TOKEN_NONE,     NONE_VALUE },
   { "if",      LA_TOKEN_IF,       PTR(la_parse_if) },
-  { "ifnot",   LA_TOKEN_IFNOT,    PTR(la_parse_ifnot) },
+  { "ifnot",   LA_TOKEN_IFNOT,    PTR(la_parse_if) },
   { "while",   LA_TOKEN_WHILE,    PTR(la_parse_while) },
   { "for",     LA_TOKEN_FOR,      PTR(la_parse_for) },
   { "forever", LA_TOKEN_FOREVER,  PTR(la_parse_forever) },

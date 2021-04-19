@@ -520,6 +520,20 @@ func semantics () {
     }
   }
 
+  test_num += 1
+  print ("[${test_num}] test else if[not] - ")
+  if (n isnot 10) {
+    println (stderr, "[NOTOK] awaiting n != 10")
+  } else ifnot (n is 10) {
+    println (stderr, "[NOTOK] awaiting n != 10")
+  } else {
+    ifnot (n is 10) {
+      println (stderr, "[NOTOK] awaiting n != 10")
+    } else if (n is 10) {
+      println ("[OK]")
+    }
+  }
+
   var r = (-12 + -30)
   test_num += 1
   print ("[${test_num}] testing signed addition - ")

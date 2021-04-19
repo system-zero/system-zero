@@ -70,6 +70,7 @@ static int vmap_set (Vmap_t *vmap, char *key, void *value, VmapRelease_cb cb, in
   uint idx = 0;
 
   void *old_value = NULL;
+
   vmap_t *old = MAP_GET(vmap_t, vmap, key, idx);
 
   ifnot (NULL is old) {
@@ -109,6 +110,10 @@ static Vmap_t *vmap_clone (Vmap_t *vmap, VmapCopy_cb copy) {
   return new;
 }
 
+static int vmap_num_keys (Vmap_t *vmap) {
+  return (int) vmap->num_keys;
+}
+
 public vmap_T __init_vmap__ (void) {
   __INIT__ (string);
   __INIT__ (cstring);
@@ -122,6 +127,7 @@ public vmap_T __init_vmap__ (void) {
       .clear = vmap_clear,
       .clone = vmap_clone,
       .release = vmap_release,
+      .num_keys = vmap_num_keys,
       .key_exists = vmap_key_exists
     }
   };

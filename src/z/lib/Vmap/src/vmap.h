@@ -22,6 +22,7 @@ typedef struct vmap_self {
     *(*clone) (Vmap_t *, VmapCopy_cb);
 
   int
+    (*num_keys) (Vmap_t *),
     (*key_exists) (Vmap_t *, char *);
 
   void

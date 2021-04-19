@@ -832,8 +832,9 @@ int main (int argc, char **argv) {
   if (exec_com isnot NULL) {
     string_t *com = parse_command (exec_com);
     readline_t *rl = Ed.readline.new_with (this, com->bytes);
-    //buf_t *buf = Ed.get.current_buf (this);
-    retval = Readline.exec (rl);
+    rl->state |= READLINE_EXEC;
+    buf_t *buf = Ed.get.current_buf (this);
+    Buf.readline (&buf, rl);
     String.release (com);
   }
 
