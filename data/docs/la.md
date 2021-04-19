@@ -65,6 +65,10 @@ forever { block }
 
 forever (init_statement[[s], ...]) { block }
 
+# `do/while` loop
+
+do { block } while (condition)
+
 # The `break` keyword breaks out of a loop, while the `continue` keyword
 # continues with the next iteration.
 
@@ -181,6 +185,9 @@ array string ar[3] = "holidays", "in", "cambodia"
 # else ifnot  -  else ifnot clause
 # while       -  while loop
 # for         -  for loop
+# loop        -  loop loop
+# forever     -  forever loop
+# do/while    -  do/while loop
 # return      -  return statement
 # break       -  break statement
 # continue    -  continue statement

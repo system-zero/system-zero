@@ -494,6 +494,77 @@ func semantics () {
     println ("[OK]")
   }
 
+  test_num += 1
+  print ("[${test_num}] testing `do/while` loop - ")
+  sum = lambda ({
+   var s = 0; var i = 0
+    do {
+      s += i
+      i += 1
+    } while (i < 1000)
+
+    return s
+   }) ()
+
+  if (sum isnot 499500) {
+    println (stderr, "[NOTOK] awaiting 499500 got: ${sum}")
+  } else {
+    println ("[OK]")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `do/while` loop continue statement - ")
+  sum = lambda ({ var s = 0; var i = 0;
+    do {
+      if (i is 100) { i += 1; continue }
+      s += i
+      i += 1
+    } while (i < 1000)
+    return s
+   }) ()
+
+  if (sum isnot 499400) {
+    println (stderr, "[NOTOK] awaiting 499400 got: ${sum}")
+  } else {
+    println ("[OK]")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `do/while` loop break statement - ")
+  sum = lambda ({
+    var s = 0; var i = 0
+    do {
+      if (i is 100) { break }
+      s += i
+      i += 1
+    } while (i < 1000)
+    return s
+   }) ()
+
+  if (sum isnot 4950) {
+    println (stderr, "[NOTOK] awaiting 4950 got: ${sum}")
+  } else {
+    println ("[OK]")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing `do/while` loop return statement - ")
+  sum = lambda ({
+    var s = 0; var i = 0;
+    do {
+      s += i
+      i += 1
+      if (i is 100) { return s }
+    } while (i < 1000)
+    return s
+   }) ()
+
+  if (sum isnot 4950) {
+    println (stderr, "[NOTOK] awaiting 4950 got: ${sum}")
+  } else {
+    println ("[OK]")
+  }
+
   var n = 10
 
   test_num += 1
