@@ -1,13 +1,15 @@
 A very small programming language that compiles in C.
 
 ## Syntax and Semantics
-```sh
+```js
 # comment
 
-# Variable assignment (they should be initialized at declaration time)
+# Variable assignment
 
 var i = 0
 var double = 1.1
+
+ - a function should be initialized at declaration time
 
 # Function declaration
 
@@ -15,21 +17,26 @@ func name (arg) {
   return arg * 2
 }
 
-# A function can be assigned in a variable
+ - a function can be used as an argument to a function.
 
-var f = name
+ - this is synonymous
+   var name = func (arg) {
+     return arg * 2
+   }
 
-# and can be used as an argument to a function.
+ - a function without and argument list can be declared as
+  func name { block }
+
+- code blocks delimited with braces '{}' and are mandatory.
+
+- statements ending with a semicolon or with a new line character.
+
+- the backslash '\' character followed by a new line character,
+  denotes that the statement continues in the next line.
 
 # `if` conditional: the block is executed if the condition is true
 
 if (condition) { statement[s]... }
-
-# Code blocks delimited with braces '{}' and are mandatory.
-
-# Statements ending with a semicolon or with a new line character.
-# The backslash '\' character followed by a new line character,
-# denotes that the statement continues in the next line.
 
 # `ifnot` conditional: the block is executed if the condition is zero
 
@@ -38,7 +45,10 @@ ifnot (condition) { ... }
 # Both can get an `else` clause, that is executed when the first block is not
 # executed.
 
-# Both can be extended with an "else if (condition)" or "else ifnot (condition)"
+# Both can be extended with an:
+
+   "else if (condition)" or "else ifnot (condition)"
+
 # if the original conditional statement evaluates to false.
 
 # `while` loop
@@ -55,7 +65,7 @@ loop (num iterations) { block }
 
 # alternatively
 
-loop (init_statement[[s], ...]; num iterations) {block}
+loop (init_statement[[s], ...]; num iterations) { block }
 
 # `forever` loop
 
@@ -69,8 +79,8 @@ forever (init_statement[[s], ...]) { block }
 
 do { block } while (condition)
 
-# The `break` keyword breaks out of a loop, while the `continue` keyword
-# continues with the next iteration.
+ - the `break` keyword breaks out of a loop while the `continue` keyword
+   continues with the next iteration.
 
 # Constant types (those types can not be reassigned)
 
@@ -82,12 +92,18 @@ const c = "constant"
 
 var str = "oh la la lala, it's the natural la"
 
-# This can be reassigned.
+ - you can get the underlying byte by using an index and can be negative
+
+    str[-2]
+
+# This can be reassigned
 
 str = "that everyone brings"
 
-# You can pass a string literal as an argument to a user defined function, or to a
-# C function.
+  - in that case the previous value should be freed automatically
+
+# You can pass a string literal as an argument to a user defined function, or
+  to a C function.
 
 # Functions can get at most nine arguments.
 
@@ -107,10 +123,11 @@ str = "that everyone brings"
 
    |, ^, >>, <<, and [|&]=
 
-# All the operators should have the same semantics with C.
+
+  - all the operators should have the same semantics with C.
 
 # Functions can be defined in arbitrary nested level, in fact a whole unit can be a
-# function
+  function
 
 func fu () {
   func fua () {
@@ -122,56 +139,93 @@ func fu () {
   ...
 }
 
-# lambda functions
-# syntax: lambda ([([arg], ...)] {body}) ([arg], ...)
+# lambda functions syntax:
 
-var i = lambda ((x, y) {return x * y}) (10, 100)
+  lambda ([([arg], ...)] {body}) ([arg], ...)
 
-# It is like a function declaration without a name, enclosed in parentheses.
-# The parameter list can be omited if it is empty. If there is no argument
-# list, this lambda can be assigned in a variable, but its lifetime can not
-# be guarranteed. The `func` keyword can be used for that.
-# Lambdas like functions can be nested in arbitrary level.
+  var i = lambda ((x, y) {return x * y}) (10, 100)
 
-#  print function
-#  prints a "string ${sym} with interpolation expressions". It can optionally
-#  take `stderr`, as its first argument, to redirect output to standard error
-#  stream, instead of standard output. Note that `sym` must be in visible scope.
-#  ${sym} expressions, can take an optional parameter to indicate a directive,
-#  like ${%s, sym}. Valid directives are:
-#    - %s to print the symbol as a string
-#    - %p to print the symbol as a pointer address
-#    - %o to print the symbol as an octal (a 0 (zero) is prefixed in the output)
-#    - %x to print the symbol as a hexadecimal (a 0x is prefixed in the output)
-#    - %d to print the symbol as a decimal (this is the default, so it can be omited)
-#    - %f to print the symbol as a double
-#
-#  If `sym` is enclosed in parentheses then it is considered and evaluated as an
-#  expression,
-#
-#  As a convienence there is `println` which is like `print`, but also emits a new
-#  line character.
+  - it is like a function declaration without a name, enclosed in parentheses.
 
-var i = 10; print ("i is ${%d, (i * 2)}\n")
+  - the parameter list can be omited if it is empty.
 
-# Array declaration and direct assignment:
+  - if there is no argument list, this lambda can be assigned in a variable,
+    but its lifetime can not be guarranteed yet, though it might work too.
+    The `func` keyword can be used for that.
 
-array string ar[3] = "holidays", "in", "cambodia"
+   - lambdas like functions can be nested in arbitrary level.
 
-# The declaration syntax is: array [type] name[length].
-# If type is omited then it defaults to INTEGER_TYPE.
-# Valid types are: integer, number, string. In the language there is also a
-# pointer type, that is an alias for the INTEGER_TYPE, and capable to hold an
-# object, that its address can be passed to C functions.
+#  print functions syntax:
 
-# The assignment syntax is: ar_symbol[index] = ..., ..., ...
-# Assignment starts at index and continues as long there are expressions,
-# separated with comma, and as long it doesn't get out of bounds.
+   print[ln] ([file pointer object], "string ${expression} ...")
 
-# Array indices are starting from zero.
+   - file pointer can be either `stdout` or `stderr`, or any file pointer
+     object that was created with the fopen() function:
+
+     fopen (filename, mode)
+
+     which has the same semantics with C.
+
+     - without a file pointer argument, default is to the standard output.
+
+   - interpolation expression syntax:
+
+      ${[%directive], symbol}
+
+      or
+
+      ${[%directive], (expression)}
+
+      - a directive can be optional and can be any of the following:
+       - %d as a decimal (this is the default, so it can be omited)
+       - %s as a string
+       - %p as a pointer address
+       - %o as an octal (a 0 (zero) is prefixed in the output)
+       - %x as a hexadecimal (a 0x is prefixed in the output)
+       - %f as a double
+
+  -  the `println()` is like `print`, but also emits a new line character.
+
+# Array declaration syntax with direct assignment:
+
+  array string ar[3] = "holidays", "in", "cambodia"
+
+*NOTE* that this syntax might change lightly or use another variant in the
+future.
+
+  -the declaration syntax is:
+
+     array [type] name[length]
+
+    - a type can be omited and can be one of the following
+
+      - integer (this is the default)
+      - number
+      - string
+
+    In the language there is also a pointer type, that is an alias for the
+    INTEGER_TYPE, and capable to hold a pointer address that can be passed
+    to C functions.
+
+    - the *current* assignment syntax for this form, is:
+
+      ar_symbol[index] = ..., ..., ...
+
+      where  assignment starts at `index` and continues as long there are
+      expressions, separated with comma, and as long it doesn't get out of
+      bounds.
+
+
+    - you can get an item from an array, using indices and can be negative:
+
+      array[-2]
+
+    - array indices are starting from zero, and -1 denotes the last item in
+      the array
+
 ```
 
-## keywords and Operators.
+## keywords and Operators (reserved):
 ```sh
 # var         -  variable definition
 # const       -  constant definition
@@ -230,6 +284,10 @@ array string ar[3] = "holidays", "in", "cambodia"
 # typeArrayAsString -  type of an array value as string represantation
 # len               -  length of the object (for ARRAY and STRING types),
 #                      note that this has byte semantics for STRING types
+# fopen             -  returns a file pointer
+# fflush            -  flush the specified stream
+
+# those might change
 # not               -  !value
 # bool              -  !!value
 
@@ -237,6 +295,21 @@ array string ar[3] = "holidays", "in", "cambodia"
 # free    -  release memory
 # alloc   -  allocate memory
 # realloc -  reallocate memory
+
+# Constants
+# ok      - 0
+# notok   - -1
+# true    - 1
+# false   - 0
+# none    - (void *) 0
+#
+# types
+# (Integer|Number|String|Array|Object|Function|None)Type
+#
+# FILE pointers of standard streams
+# stdout
+# stderr
+# (no standard input yet)
 
 # Semantics
 
@@ -247,9 +320,12 @@ array string ar[3] = "holidays", "in", "cambodia"
 
 # Lexical Scope
   - standard scope (lookup for standard operators and functions first)
-  - block scope (if statements, loops)
+
+  - block scope (conditional statements and loops)
+
   - function scope
-  - previous function scope ..., ... global scope
+
+  - previous function scope -> ... -> ... global scope
 
 # Aplication Programming Interface.
 
@@ -283,3 +359,40 @@ style. However it should be okey if practicing consistency.
 - normally releasing memory it happens automatically, but many cases are handled
   internally explicitly, as there is no a real mechanism underneath, just a very
   primitive one
+
+
+
+# DEVELOPMENT
+
+  - at this point (mid days of April of 2021), the natural route is to develop
+    an ecosystem, and we're being faced with a dillema.
+
+    As a start, we created a wrapper for the fopen() function. Instead of making
+    a special `File Pointer` type, we choose to create an Object Type, that it
+    might be used by others and for other purposes.
+
+    But how this function or the others that will follow are going to be used?
+
+    There is the old fashioned C's boring imperative way:
+
+      somefunction (...)
+
+    or the more natural humanish way, expressed in (pseudo) code as:
+
+              sleep           at-hot-dogs            cow
+      Me.what.  eat -> where .       cook -> what . rice . with ("yellowroot", ...)
+               work               parents           goat
+
+    means, possibly chained functions, that act on a kind of type, or object,
+    or an environment, that is maintained a state of properties.
+
+    In an internal implementation, this requires to pass as the first argument
+    to the called method the specific object, and at the same time the functions
+    should push something in the stack (usually the same object).
+
+    I'm not sure if this humble machine can handle this complexity, and if we
+    want to dedicate time to develop such a system, that should at least to be
+    consistent. But it is appealling!
+
+    Anyway, for functions like fopen(), this is not issue, as it is desirable
+    to map one to one with the well known and established C interface.

@@ -689,10 +689,10 @@ clean-libvwm-shared:
 clean-libvwm-static:
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libv-shared: Env cenv libvwm-shared
+libv-shared: Env cenv libvwm-shared libi-shared libla-shared
 	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libv-static: Env cenv list libvwm-static
+libv-static: Env cenv list libvwm-static libi-static libla-static
 	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libv-shared:

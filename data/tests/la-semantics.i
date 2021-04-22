@@ -1,5 +1,11 @@
 println ("--[ BEG ]--")
 
+# for now, untill an arg[vc] implementation
+var run_invalid_memory_read_tests = 0
+var run_fileptr_tests = 0
+
+var run_valgrind_tests = 1
+
 var test_num = 0
 
 func semantics () {
@@ -568,7 +574,7 @@ func semantics () {
   var n = 10
 
   test_num += 1
-  print ("[${test_num}] test nested if/else - ")
+  print ("[${test_num}] testing nested if/else - ")
   if (n isnot 10) {
     println (stderr, "[NOTOK] awaiting n != 10")
   } else {
@@ -592,7 +598,7 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] test else if[not] - ")
+  print ("[${test_num}] testing else if[not] - ")
   if (n isnot 10) {
     println (stderr, "[NOTOK] awaiting n != 10")
   } else ifnot (n is 10) {
@@ -616,9 +622,18 @@ func semantics () {
 
   r = (-12 - -30)
   test_num += 1
-  print ("[${test_num}] testing signed division - ")
+  print ("[${test_num}] testing signed substraction - ")
   if (r isnot 18) {
     println (stderr, "[NOTOK] awaiting 18 got ${r}")
+  } else {
+    println ("[OK]")
+  }
+
+  r = (-168 / -4)
+  test_num += 1
+  print ("[${test_num}] testing signed division - ")
+  if (r isnot 42) {
+    println (stderr, "[NOTOK] awaiting 42 got ${r}")
   } else {
     println ("[OK]")
   }
@@ -1034,8 +1049,75 @@ func valgrind_tests () {
   var s = "asdf"[0]
 }
 
-test_num += 1
-valgrind_tests ()
-println ("[${test_num}] tests for memory leaks, that should run under valgrind")
+if (run_valgrind_tests) {
+  test_num += 1
+  valgrind_tests ()
+  println ("[${test_num}] tests for memory leaks, that should run under valgrind")
+}
+
+func invalid_memory_read_tests {
+  func invalid_memory_read_tests1 {
+    func fff () {
+      return fopen ("/tmp/la_test_fopen", "w");
+    }
+
+    func p (fp) {
+      println (fp, "fptype ${%s, (typeAsString (fp))}")
+    }
+
+    var f = fff()
+    p (f)
+  }
+
+  func invalid_memory_read_tests2 {
+    func fff () {
+      return fopen ("/tmp/la_test_fopen", "w");
+    }
+
+    func p (fp) {
+      println (fp, "fptype ${%s, (typeAsString (fp))}")
+    }
+
+    p (fff ())
+  }
+
+  func invalid_memory_read_tests3 {
+    func fff () {
+      var fp = fopen ("/tmp/la_test_fopen", "w");
+      return fp
+    }
+
+    func p (fp) {
+      println (fp, "fptype ${%s, (typeAsString (fp))}")
+    }
+
+    p (fff ())
+  }
+
+  func invalid_memory_read_tests4 {
+    func fff () {
+      var fp = fopen ("/tmp/la_test_fopen", "w");
+      return fp
+    }
+
+    func p (fp) {
+      println (fp, "fptype ${%s, (typeAsString (fp))}")
+    }
+
+    var f = fff ()
+    p (f)
+  }
+
+  invalid_memory_read_tests1 ()
+  invalid_memory_read_tests2 ()
+  invalid_memory_read_tests3 ()
+  invalid_memory_read_tests4 ()
+}
+
+if (run_invalid_memory_read_tests and run_fileptr_tests) {
+  test_num += 1
+  invalid_memory_read_tests ()
+  println ("[${test_num}] tests for invalid memory read tests")
+}
 
 println ("--[ END ] --")

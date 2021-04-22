@@ -1,6 +1,10 @@
 #ifndef LA_HDR
 #define LA_HDR
 
+#define MAX_BUILTIN_PARAMS 9
+#define MAXLEN_SYMBOL      63
+#define MAXLEN_TYPE_NAME   32
+
 typedef struct la_T la_T;
 typedef struct la_t la_t;
 typedef struct la_prop la_prop;
@@ -20,6 +24,7 @@ typedef string_t    string;
 #define FUNCPTR_TYPE   (1 << 2)
 #define STRING_TYPE    (1 << 3)
 #define ARRAY_TYPE     (1 << 4)
+#define OBJECT_TYPE    (1 << 5)
 #define POINTER_TYPE   INTEGER_TYPE
 
 struct ValueType {
@@ -27,7 +32,7 @@ struct ValueType {
     number   asNumber;
     integer  asInteger;
     string*  asString;
-    void *   asNone;
+     void *  asNone;
   };
 
   int type;
@@ -90,11 +95,28 @@ typedef ValueType VALUE;
 #define AS_NONE(__v__) __v__.asNone
 #define    NONE (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0, .sym = NULL}
 
-typedef VALUE (*Cfunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
-typedef VALUE (*Opfunc) (VALUE, VALUE);
+typedef VALUE (*ObjectRelease) (la_t *, VALUE);
+typedef VALUE (*ObjectToString) (VALUE);
 
-#define MAX_BUILTIN_PARAMS 9
-#define MAXLEN_SYMBOL_LEN  63
+typedef struct ObjectType {
+  ObjectRelease  release;
+  ObjectToString toString;
+  VALUE          value;
+} ObjectType;
+
+typedef ObjectType object;
+
+#define AS_OBJECT(__o__) (object *) AS_PTR(__o__)
+#define    OBJECT(__o__) (VALUE) {.type = OBJECT_TYPE, .asInteger = (pointer) __o__, .refcount = 0, .sym = NULL}
+
+#define AS_FILEPTR(__o__) ({                \
+  object *_o_ = AS_OBJECT(__o__);           \
+  FILE *_fp_ = (FILE *) AS_PTR(_o_->value); \
+  _fp_;                                     \
+})
+
+typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
+typedef VALUE (*OpFunc) (VALUE, VALUE);
 
 enum {
   LA_ERR_OUTOFBOUNDS  = -8,

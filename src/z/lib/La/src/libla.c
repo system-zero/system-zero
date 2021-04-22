@@ -40,7 +40,7 @@
 #ifdef DEBUG
 
 static  int  CURIDX = 0;
-static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
+static  char PREVFUNC[MAXLEN_SYMBOL + 1];
 
 #define $CUR_IDX      CURIDX
 #define $PREV_FUNC    PREVFUNC
@@ -55,7 +55,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
   "CurToken : ['%c', %d], CurValueType : %d\n",                                    \
   $CUR_IDX++, $PREV_FUNC,                                                       \
   $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                   \
-  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, $CUR_FUNC, MAXLEN_SYMBOL_LEN); \
+  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL + 1, $CUR_FUNC, MAXLEN_SYMBOL); \
   fprintf (this->err_fp, "CurStringToken : ['");                                \
   la_print_lastring (this, this->err_fp, this->curStrToken);                      \
   fprintf (this->err_fp, "']\n\n");
@@ -66,6 +66,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL_LEN + 1];
 #define BREAK_STATE                   (1 << 2)
 #define CONTINUE_STATE                (1 << 3)
 #define LITERAL_STRING_STATE          (1 << 4)
+#define FUNC_CALL_RESULT_IS_MMT       (1 << 5)
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -165,12 +166,12 @@ typedef struct symbol_stack {
 } symbol_stack;
 
 struct funType {
-  char funname[MAXLEN_SYMBOL_LEN + 1];
+  char funname[MAXLEN_SYMBOL + 1];
 
   la_string body;
 
   int nargs;
-  char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL_LEN + 1];
+  char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL + 1];
 
   Vmap_t *symbols;
 
@@ -223,17 +224,18 @@ struct la_t {
 
   const char *script_buffer;
 
-  char symKey[MAXLEN_SYMBOL_LEN + 1];
-  char curFunName[MAXLEN_SYMBOL_LEN + 1];
+  char symKey[MAXLEN_SYMBOL + 1];
+  char curFunName[MAXLEN_SYMBOL + 1];
   funT *curFunDef;
 
   sym_t *curSym;
 
   int
-    curState,
-    exitValue,
+    Errno,
     lineNum,
     curToken,
+    curState,
+    exitValue,
     tokenArgs,
     didReturn;
 
@@ -625,11 +627,12 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
   string *buf = mbuf->data;
 
   switch (value.type) {
-    case INTEGER_TYPE: String.append_with_len (buf, "IntegerType", 11);
+    case INTEGER_TYPE: String.append_with_len (buf, "IntegerType", 11); break;
     case NONE_TYPE:    String.append_with_len (buf, "NoneType",     8); break;
     case NUMBER_TYPE:  String.append_with_len (buf, "NumberType",  10); break;
     case STRING_TYPE:  String.append_with_len (buf, "StringType",  10); break;
     case ARRAY_TYPE:   String.append_with_len (buf, "ArrayType",    9); break;
+    case OBJECT_TYPE:  String.append_with_len (buf, "ObjectType",  10); break;
     default:
       if (value.type & FUNCPTR_TYPE)
         String.append_with_len (buf, "FunctionType", 12);
@@ -653,6 +656,66 @@ static VALUE la_typeArrayAsString (la_t *this, VALUE value) {
   }
 
   return la_typeAsString (this, v);
+}
+
+static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, VALUE value) {
+  object *o = Alloc (sizeof (object));
+  o->release = o_release;
+  o->toString = o_tostr;
+  o->value = value;
+  return o;
+}
+
+static VALUE la_fclose (la_t *this, VALUE fp_val) {
+  VALUE result = INT(LA_NOTOK);
+
+  if (fp_val.type is NONE_TYPE) return result;
+
+  FILE *fp = AS_FILEPTR(fp_val);
+  if (NULL is fp) {
+    this->Errno = errno;
+    return result;
+  }
+
+  fclose (fp);
+  fp = NULL;
+
+  result = INT(LA_OK);
+  return result;
+}
+
+static VALUE la_fflush (la_t *this, VALUE fp_val) {
+  VALUE result = INT(LA_NOTOK);
+
+  if (fp_val.type is NONE_TYPE) return result;
+
+  FILE *fp = AS_FILEPTR(fp_val);
+  if (NULL is fp) return result;
+
+  int retval = fflush (fp);
+  if (retval) {
+    this->Errno = errno;
+    return result;
+  }
+
+  result = INT(LA_OK);
+  return result;
+}
+
+static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
+  char *fn = AS_STRING_BYTES(fn_value);
+  char *mode = AS_STRING_BYTES(mod_value);
+  FILE *fp = fopen (fn, mode);
+  if (NULL is fp) {
+    this->Errno = errno;
+    VALUE v = NONE;
+    return v;
+  }
+
+  VALUE v = OBJECT(fp);
+  object *o = la_object_new (la_fclose, NULL, v);
+  v = OBJECT(o);
+  return v;
 }
 
 static void *la_malloc (la_t *this, VALUE size) {
@@ -702,6 +765,27 @@ theend:
   return result;
 }
 
+static VALUE object_release (la_t *this, VALUE value) {
+  VALUE result = INT(LA_OK);
+
+  if (value.refcount < 0) return result;
+
+  if (value.refcount) goto theend;
+
+  object *o = AS_OBJECT(value);
+
+  ifnot (NULL is o->release)
+    o->release (this, value);
+
+  free (o);
+
+  value = NONE;
+
+theend:
+  value.refcount--;
+  return result;
+}
+
 static VALUE la_free (la_t *this, VALUE value) {
   (void) this;
   VALUE result = INT(LA_OK);
@@ -712,6 +796,7 @@ static VALUE la_free (la_t *this, VALUE value) {
     case POINTER_TYPE: object = AS_VOID_PTR(value); break;
     case   ARRAY_TYPE: return array_release (value);
     case  STRING_TYPE: return string_release (value);
+    case  OBJECT_TYPE: return object_release (this, value);
     default: return result;
   }
 
@@ -754,7 +839,7 @@ static void la_release_sym (void *sym) {
 
 static funT *fun_new (funNewArgs options) {
   funT *uf = Alloc (sizeof (funT));
-  Cstring.cp (uf->funname, MAXLEN_SYMBOL_LEN, options.name, options.namelen);
+  Cstring.cp (uf->funname, MAXLEN_SYMBOL, options.name, options.namelen);
   uf->body = options.body;
   uf->nargs = options.nargs;
   uf->prev = options.parent;
@@ -780,7 +865,7 @@ static funT *Fun_new (la_t *this, funNewArgs options) {
 }
 
 static inline char *sym_key (la_t *this, la_string x) {
-  Cstring.cp (this->symKey, MAXLEN_SYMBOL_LEN + 1,
+  Cstring.cp (this->symKey, MAXLEN_SYMBOL + 1,
       la_StringGetPtr (x), la_StringGetLen (x));
   return this->symKey;
 }
@@ -842,7 +927,7 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
 static int la_lambda (la_t *this) {
   static size_t anon_id = 0;
   Cstring.cp_fmt
-    (this->curFunName, MAXLEN_SYMBOL_LEN + 1, NS_ANON "_%zd", anon_id++);
+    (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", anon_id++);
 
   la_ignore_ws (this);
 
@@ -1571,6 +1656,10 @@ static int la_parse_expr_list (la_t *this) {
     err = la_parse_expr (this, &v);
     if (err isnot LA_OK) return err;
 
+    if (this->curState & FUNC_CALL_RESULT_IS_MMT)
+      if (v.sym is NULL)
+        v.refcount--;
+
     stack_push (this, v);
 
     count++;
@@ -1650,8 +1739,7 @@ static int la_parse_string (la_t *this, la_string str) {
       if (c is LA_TOKEN_NL) this->lineNum++;
       continue;
     } else
-      return this->syntax_error (this, "evaluated string failed, unknown token");
-
+      return this->syntax_error (this, STR_FMT("unknown token |%c| |%d|", c, c));
   }
 
   this->parsePtr = savepc;
@@ -1667,7 +1755,7 @@ static void la_fun_refcount_decr (int *count) {
   (*count)--;
 }
 
-static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf, VALUE value) {
+static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE value) {
 #ifdef DEBUG
   $CODE_PATH
 #endif
@@ -1690,7 +1778,6 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf, VALUE 
   }
 
   this->curState |= STRING_LITERAL_ARG_STATE;
-
   c = la_next_token (this);
 
   int paramCount = 0;
@@ -1698,10 +1785,8 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf, VALUE 
   if (c isnot LA_TOKEN_PAREN_CLOS) {
     paramCount = la_parse_expr_list (this);
     c = this->curToken;
-    if (paramCount < 0) {
-      this->curState &= ~(STRING_LITERAL_ARG_STATE);
+    if (paramCount < 0)
       return paramCount;
-    }
   }
 
   this->curState &= ~(STRING_LITERAL_ARG_STATE);
@@ -1750,11 +1835,14 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf, VALUE 
 
     this->didReturn = 0;
 
+    this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
     if (uf->result.type >= FUNCPTR_TYPE) {
       sym_t *sym = uf->result.sym;
+      this->curState |= FUNC_CALL_RESULT_IS_MMT;
       ifnot (NULL is sym) {
         VALUE none = NONE;
         sym->value = none;
+        uf->result.sym = NULL;
       }
     }
 
@@ -1764,7 +1852,8 @@ static int la_parse_func_call (la_t *this, Cfunc op, VALUE *vp, funT *uf, VALUE 
         sym_t *uf_sym = uf_argsymbols[i];
         VALUE uf_val = uf_sym->value;
         sym_t *sym = uf_val.sym;
-        if (sym isnot NULL) {
+
+        if (sym isnot NULL and uf_sym->scope isnot sym->scope) {
           sym->value = uf_val;
           VALUE none = NONE;
           uf_val = none;
@@ -1858,8 +1947,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
      return la_parse_array_get (this, vp);
 
   } else if (c is LA_TOKEN_BUILTIN) {
-    Cfunc op = (Cfunc) AS_PTR(this->tokenValue);
-    return la_parse_func_call (this, op, vp, NULL, this->tokenSymbol->value);
+    CFunc op = (CFunc) AS_PTR(this->tokenValue);
+    return la_parse_func_call (this, vp, op, NULL, this->tokenSymbol->value);
 
   } else if (c is LA_TOKEN_USRFUNC) {
     sym_t *symbol = this->tokenSymbol;
@@ -1868,14 +1957,14 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     funT *uf = AS_FUNC_PTR(symbol->value);
 
-    err = la_parse_func_call (this, NULL, vp, uf, symbol->value);
+    err = la_parse_func_call (this, vp, NULL, uf, symbol->value);
 
     la_next_token (this);
     return err;
 
   } else if ((c & 0xff) is LA_TOKEN_BINOP) {
     // binary operator
-    Opfunc op = (Opfunc) AS_PTR(this->tokenValue);
+    OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
     VALUE v;
 
     la_next_token (this);
@@ -1889,10 +1978,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     return la_string_get (this, vp);
 
   } else {
-    if (c isnot LA_TOKEN_EOF) {
-      fprintf (this->err_fp, "unknown token |%c| |%d|", c, c);
-      return this->syntax_error (this, "syntax error");
-    }
+    if (c isnot LA_TOKEN_EOF)
+      return this->syntax_error (this, STR_FMT("syntax error, unknown token |%c| |%d|", c, c));
   }
 
   return LA_OK;
@@ -2012,7 +2099,7 @@ static int la_parse_stmt (la_t *this) {
     if (Cstring.eq_n (ptr, "func", 4)) {
       la_release_sym (Vmap.pop (this->curScope->symbols, sym_key (this, name)));
 
-      Cstring.cp (this->curFunName, MAXLEN_SYMBOL_LEN + 1, la_StringGetPtr(name), la_StringGetLen(name));
+      Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, la_StringGetPtr(name), la_StringGetLen(name));
       la_next_token (this);
       err = la_parse_func_def (this);
       this->curFunName[0] = '\0';
@@ -2034,7 +2121,7 @@ static int la_parse_stmt (la_t *this) {
     if (val.type & FUNCPTR_TYPE) {
       funT *f = AS_FUNC_PTR(val);
       symbol->type = (UFUNC_TYPE | (f->nargs << 8));
-      Cstring.cp (f->funname, MAXLEN_SYMBOL_LEN, la_StringGetPtr(name),
+      Cstring.cp (f->funname, MAXLEN_SYMBOL, la_StringGetPtr(name),
          la_StringGetLen(name));
       f->prev = this->curScope->prev;
     } else
@@ -2078,9 +2165,6 @@ static int la_parse_stmt (la_t *this) {
   } else
     return this->syntax_error (this, STR_FMT("unknown token |%c| |%d|", c, c));
 
-  if (err is LA_ERR_OK_ELSE)
-    err = LA_OK;
-
   return err;
 }
 
@@ -2101,7 +2185,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
 
-    Opfunc op = (Opfunc) AS_PTR(this->tokenValue);
+    OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
 
     la_next_token (this);
 
@@ -2178,13 +2262,13 @@ static int la_consume_ifelse (la_t *this) {
 
 static int la_parse_if (la_t *this) {
   int token = this->curToken;
-  this->curState |= STRING_LITERAL_ARG_STATE;
 
+  this->curState |= STRING_LITERAL_ARG_STATE;
   int c = la_next_token (this);
 
   VALUE cond;
-  int err = la_parse_expr (this, &cond);
 
+  int err = la_parse_expr (this, &cond);
   this->curState &= ~STRING_LITERAL_ARG_STATE;
 
   if (err isnot LA_OK) return err;
@@ -2245,8 +2329,6 @@ static int la_parse_if (la_t *this) {
 
   if (this->didReturn)
     la_StringSetLen (&this->parsePtr, 0);
-
-  if (err is LA_OK and 0 is AS_INT(cond)) err = LA_ERR_OK_ELSE;
 
   this->curScope = save_scope;
   fun_release (&fun);
@@ -2844,11 +2926,11 @@ static int la_parse_var_list (la_t *this, funT *uf) {
         return la_too_many_args (this);
 
       size_t len = la_StringGetLen (name);
-      if (len >= MAXLEN_SYMBOL_LEN)
+      if (len >= MAXLEN_SYMBOL)
         return this->syntax_error (this, "argument name exceeded maximum length (64)");
 
       const char *ptr = la_StringGetPtr (name);
-      Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL_LEN, ptr, len);
+      Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL, ptr, len);
 
       nargs++;
 
@@ -2891,7 +2973,7 @@ static int la_parse_func_def (la_t *this) {
     ifnot (NULL is sym)
       return this->syntax_error (this, "can not redefine a standard function");
 
-    if (len >= MAXLEN_SYMBOL_LEN)
+    if (len >= MAXLEN_SYMBOL)
       return this->syntax_error (this, "function name exceeded maximum length (64)");
   } else {
     name = la_StringNew (this->curFunName);
@@ -2953,12 +3035,50 @@ static int la_parse_print (la_t *this) {
 
   FILE *fp = this->out_fp;
 
-  /* for now */
-  if (c is 's' and Cstring.eq_n (la_StringGetPtr (this->parsePtr), "tderr,", 6)) {
-    fp = stderr;
-    for (int i = 0; i < 6; i++)
-      la_ignore_next_char (this);
+  if (c isnot LA_TOKEN_DQUOTE) {
+    la_unget_char (this);
+    c = la_next_token (this);
+    VALUE v;
+    err = la_parse_expr (this, &v);
+    if (err isnot LA_OK) {
+      this->print_bytes (this->err_fp, "string fmt error, awaiting a file ptr value\n");
+      la_err_ptr (this, LA_NOTOK);
+      goto theend;
+    }
+
+    if (v.type is STRING_TYPE) {
+      string *vs = AS_STRING(v);
+      String.append_with_len (str, vs->bytes, vs->num_bytes);
+      c = this->curToken;
+      goto print_str;
+    }
+
+    if (v.type isnot OBJECT_TYPE) {
+      this->print_bytes (this->err_fp, "string fmt error, awaiting a file ptr value\n");
+      la_err_ptr (this, LA_NOTOK);
+      this->print_fp = fp;
+      goto theend;
+    }
+
+    fp = AS_FILEPTR(v);
+    la_ignore_next_char (this);
     c = la_ignore_ws (this);
+
+    if (c isnot LA_TOKEN_DQUOTE) {
+      la_unget_char (this);
+      c = la_next_token (this);
+      err = la_parse_expr (this, &v);
+      if (err isnot LA_OK or v.type isnot STRING_TYPE) {
+        this->print_bytes (this->err_fp, "string fmt error, awaiting a string value\n");
+        la_err_ptr (this, LA_NOTOK);
+        goto theend;
+      }
+
+      string *vs = AS_STRING(v);
+      String.append_with_len (str, vs->bytes, vs->num_bytes);
+      c = this->curToken;
+      goto print_str;
+    }
   }
 
   this->print_fp = fp;
@@ -3006,7 +3126,7 @@ static int la_parse_print (la_t *this) {
         goto theend;
       }
 
-      char sym[MAXLEN_SYMBOL_LEN];
+      char sym[MAXLEN_SYMBOL];
 
       prev = c;
       c = la_ignore_ws (this);
@@ -3223,6 +3343,7 @@ static int la_parse_print (la_t *this) {
 
   c = la_get_char (this);
 
+print_str:
   if (c isnot LA_TOKEN_PAREN_CLOS) {
     this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
     la_err_ptr (this, LA_NOTOK);
@@ -3296,7 +3417,7 @@ static int la_define (la_t *this, const char *key, int typ, VALUE val) {
 
 static int la_eval_string (la_t *this, const char *buf) {
 #ifdef DEBUG
-  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL_LEN + 1, " ", 1);
+  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL + 1, " ", 1);
   $CODE_PATH
 #endif
   this->script_buffer = buf;
@@ -3830,9 +3951,12 @@ static struct def {
   { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
   { "StringType",  INTEGER_TYPE,  INT(STRING_TYPE) },
   { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
-  { "none",        NONE_TYPE,     NONE },
+  { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
   { "ok",          INTEGER_TYPE,  INT(0) },
   { "notok",       INTEGER_TYPE,  INT(-1) },
+  { "true",        INTEGER_TYPE,  INT(1) },
+  { "false",       INTEGER_TYPE,  INT(0) },
+  { "none",        NONE_TYPE,     NONE },
   { NULL,          NONE_TYPE,     NONE_VALUE }
 };
 
@@ -3844,6 +3968,8 @@ struct la_def_fun_t {
   { "not",              PTR(la_not), 1},
   { "bool",             PTR(la_bool), 1},
   { "len",              PTR(la_len), 1},
+  { "fopen",            PTR(la_fopen), 2},
+  { "fflush",           PTR(la_fflush), 1},
   { "free",             PTR(la_free), 1},
   { "malloc",           PTR(la_malloc), 1},
   { "realloc",          PTR(la_realloc), 2},
@@ -4109,6 +4235,20 @@ static int la_get_current_idx (la_T *this) {
   return $my(current_idx);
 }
 
+static int la_std_def (la_t *this) {
+  VALUE v = OBJECT(stdout);
+  object *o = la_object_new (NULL, NULL, v);
+  int err = la_define (this, "stdout", OBJECT_TYPE, OBJECT(o));
+  if (err) return LA_NOTOK;
+
+  v = OBJECT(stderr);
+  o = la_object_new (NULL, NULL, v);
+  err = la_define (this, "stderr", OBJECT_TYPE, OBJECT(o));
+  if (err) return LA_NOTOK;
+
+  return err;
+}
+
 static int la_init (la_T *interp, la_t *this, la_opts opts) {
   int i;
   int err = 0;
@@ -4163,6 +4303,12 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
       la_release (&this);
       return err;
     }
+  }
+
+  err = la_std_def (this);
+  if (err isnot LA_OK) {
+    la_release (&this);
+    return err;
   }
 
   if (LA_OK isnot opts.define_funs_cb (this)) {

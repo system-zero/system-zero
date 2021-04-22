@@ -23,13 +23,14 @@ Since this is a quite huge task, we'll  have to extend our system in a gradual
 way, so  we have to divide  it into stages. At  the end of any  stage, the end
 result should be in a usable state.
 
-## Zero Point Description.
-
 *Note* that this needs a serious revision. This is a quite first prototype, that
 is expressed here sometimes in a list of ideas form. Some paragraphs are quite
-verbose and loose their meaning. Some statements might overlap. Expressions can be
-confusing, as the natural flow is like a rolling stone, that is hard at times
-to be reproduced with words and it is represented poorly.
+verbose, and might loose their intented meaning. Some statements might overlap
+with others. Expressions can be sometimes confusing, as the natural mind  flow
+is like a rolling stone, that is hard at times to be reproduced with words and
+it might be represented poorly.
+
+## Zero Point Description.
 
 The  first  stage  is of  course  to  be  able  to get  control  after  kernel
 initialization, so at some  point we'll have to be ready to  be pid 1. Usually
@@ -58,7 +59,8 @@ done through a very simple mechanism. Such a procedure it looks in a directory
 for files, which are usually shell scripts and loads them by usually using the
 default shell  in UNIX,  which simply is  called `sh`, and  by default  found as
 `/bin/sh`. This location  is standardized by the POSIX standard,  and this shell
-is referred as POSIX `sh`.
+is referred commonly as POSIX `sh`, though very few or none of the current shell
+implementations are fully conformant with the specification.
 
 The sequence of executing those scripts is  dictated by the first two bytes in
 the filenames, which should  be digits, so the lower one in  this list, is the
@@ -214,15 +216,27 @@ wise to apply this principle rigorously when they are being extended.
 For instance  C++,  is a superset of C, and any C++ compiler should compile C,
 since any C code is valid code for C++. However C++, which at the begining was
 just C with classes, during the natural evolution, it has been extended   with
-more and more paradigms. So at some point has been accused that it is so good,
-that a common mind can not handle it! It seems that is the only language  that
-has all the qualifications to be considered as the the One True Language   and
-the only one will ever need. It is like to have in your possesion a zillion of
-some of the best cars in the world, but you haven't mastered a particularly one.
-As a result, one with an old humble car, can go quicker and safer than you.
-Perhaps, this could be avoided, by using a gradual extensibility. Perhaps. The
-thing is that usually when there are so many good choises, you are just loosing
-the point and your time, searching for the ultimate way to do your job. Pity.
+more and more paradigms and so many features, without a gradual extensibility.
+
+So steadily became so wide and rich at the same time, that a common human mind
+can not learn and use all of its functionality, so usually a C++ programmer is
+trying to focus on a specific set of the language. As it is obvious that since
+that everybody has a different way to express when coding, this might makes the
+language inadequate for a smooth collaboration or/and to attract envolvement in
+development. And so even if admittedly it has all the qualifications to be even
+considered as the the One True Language, sometimes you might feel, that you are
+just loosing the point and your time, searching for the ultimate way to do your
+job. And this is of course a pity, for a language that if it was designed today
+and kept the quite best of its evolution, could rule the programming world. But
+so much code has been written that has incorporated already historical mistakes
+or immature features, that it should still be compiled by the compiler,  or/and
+should be maintained by usually people that haven't written that code. So  and
+as a resume, it's not only about to  be powerfull, but and how you handle this
+power at the end, in such a way that it would be easy to be used by everybody,
+and with a well defined and more importantly stable specification. In contrast
+that though C is much less capable than C++, it took the world, as even  today
+code that has been written some light years ago, still it is compiled and it is
+understandable today.
 
 We also believe  that the description shares the same  importance with the end
 result. This  satisfy first  the inner human  curiosity, but  most importantly
