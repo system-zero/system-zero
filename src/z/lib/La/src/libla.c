@@ -791,21 +791,21 @@ static VALUE la_free (la_t *this, VALUE value) {
   VALUE result = INT(LA_OK);
   if (value.type < STRING_TYPE) return result;
 
-  void *object = NULL;
+  void *obj = NULL;
   switch (value.type) {
-    case POINTER_TYPE: object = AS_VOID_PTR(value); break;
+    case POINTER_TYPE: obj = AS_VOID_PTR(value); break;
     case   ARRAY_TYPE: return array_release (value);
     case  STRING_TYPE: return string_release (value);
     case  OBJECT_TYPE: return object_release (this, value);
     default: return result;
   }
 
-  ifnot (NULL is object) {
-    free (object);
+  ifnot (NULL is obj) {
+    free (obj);
     value = NONE;
   }
 
-  object = NULL;
+  obj = NULL;
   return result;
 }
 

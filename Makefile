@@ -1,5 +1,5 @@
 API      := 0
-REV      := 0
+REV      := 1
 VERSION  := $(API).$(REV)
 
 # macOS doesn't have realpath by default (available through coreutils)

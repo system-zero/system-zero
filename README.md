@@ -30,6 +30,13 @@ with others. Expressions can be sometimes confusing, as the natural mind  flow
 is like a rolling stone, that is hard at times to be reproduced with words and
 it might be represented poorly.
 
+*Warning*. This is rather a multi-dimensional project, with a clear and declared
+emphasis, but this is also a vehicle to expose realizations and even desires!!!
+with an unmercyfully way, as probably every little everything is connected. It
+is attempted to be written as a prose, with a just in time compilation of some
+thoughts to words, that are destined to describe, reveal or|and discover logic
+and dimensions, that they can be used in a practical systematic way.
+
 ## Zero Point Description.
 
 The  first  stage  is of  course  to  be  able  to get  control  after  kernel
@@ -782,11 +789,13 @@ To be continued ...
 
 ## ZERO_POINT_ZERO_INSTRUCTIONS
 ```sh
+  cd src
+
   # shared targets
-  make shared && make e-shared && make i-shared && make v-shared
+  make shared && make e-shared && make la-shared && make v-shared
 
   # static targets
-  make static && make e-static && make i-static && make v-static
+  make static && make e-static && make la-static && make v-static
 
   # Note, that the installation of the zsu utility requires the
   # sudo utility, as it has to be installed as setuid root.
@@ -797,11 +806,11 @@ the interpreter, it crashes when it is compiled with tinycc.
 
 ## ZERO_POINT_ZERO_STATE
 So far, we've implemented:
-  - a rather stable ala [vim](http://www.vim.org) [editor](data/docs/editor.md)
-  - a rather stable [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
+  - an ala [vim](http://www.vim.org) [editor](data/docs/editor.md)
+  - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
   - a very early draft of a [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility](data/docs/zs.md)
   - an early draft of a sudo like utility (audit review required)
-  - a tiny [interpreter](data/docs/i.md)
+  - a tiny [interpreter](data/docs/i.md), that has been later [evolved](data/docs/la.md) significantly
   - a couple of commands that initialize the libraries (for development reasons)
 
 ## ZERO_POINT_ZERO_CONCLUSION
@@ -1050,3 +1059,51 @@ gained consience. Hopefully one day.
 * [Linux From Scratch.](https://linuxfromscratch.org)
 * [Nan Boxing.](https://piotrduperas.com/posts/nan-boxing)
 * [Nan Boxing.](https://leonardschuetz.ch/blog/nan-boxing/)
+
+## About
+This isnot just a proof of concept, though it might feels that way. It took me
+fifty something years, and as looking back in time, to realize that  there  is
+a big possibility that every single breath had to prove something.
+
+Hi, i'm you host, and i might lived (and without even realizing it for a long,
+that this might be not common), to wait for a wave to climb and ride, to drive
+this flow with the will against a wall, like a war without war.
+
+I started programming around 2010, though actually it was around the winter of
+2012, when some special circumstances and the situationism allowed me to study
+programming, by implementing the first application (a personalized environment
+which was a set of applications with a common interface), written in S-Lang. I
+started with C at my 52, so and according with the gained wisdom, at this time
+of writing (April of 2021), I just graduated from the kindergarden. So this is
+actually and a research that will provide proves and some qualifications!!!  I
+hate to live for just proving, and especially when the proves, prove me wrong.
+Now, on what to do with them! Anyway, almost all the followed code, after this
+first scratch code, it was simply mostly iterations of that same system.
+
+My interest is about primitive systems, that can use the most straight and the
+most economical access to the underlying machine, with a standardized (through
+time and experience) and intuitive interface, that can be adjusted to the user
+personality, when interacting with this cold and unemotional machine. But  not
+with an apathetic and ready served way, but through a will to gain at least  a
+primitive knowledge, that through understanding the underlying implementation,
+will be able to modify and evolve a system through that interactivity, if that
+system respects standards and obeys to expectations. That simply means that to
+achieve this intention, you can not really separate the actual  implementation
+(sources) from the interface, though the abstraction draws an obvious  visible
+line between those two consepts, but in reality the're so tied together,  like
+two partners that dancing in the ice. The destiny is the same. Ideally an  ill
+system should can be cured at runtime, possible by re-evaluating a part of its
+algorithm.
+
+And that was the main advantage of this first (made by a novice mind)  system.
+Since then, and in all the iterations, never really achieved again  this level
+of pure simplicity, to modify and mainly evolve a system at runtine, without a
+need of restarting. How it did it? Simply any code was re-evaluating again and
+again, reading from the disk. Obviously not a real economical way, but yet  an
+efficient and exciting way, as you could see the behavior that was changed, by
+modifying a function. Such code that was proved to make the right thing, ended
+up to be part of the core. It was that time that I adopted the `waterfall model`
+as a testing practice, and has being used since then as an excuse to avoid of
+writing testing suites. I miss those days.
+
+Yours trully, agathoklis (laki).

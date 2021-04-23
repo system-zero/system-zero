@@ -1,4 +1,4 @@
-A very small programming language that compiles in C.
+A very small yet another programming language (yala) that compiles in C.
 
 ## Syntax and Semantics
 ```js
@@ -6,26 +6,29 @@ A very small programming language that compiles in C.
 
 # Variable assignment
 
-var i = 0
-var double = 1.1
+  var i = 0
+  var double = 1.1
 
- - a function should be initialized at declaration time
+  - a variable should be initialized at declaration time (in absence of a useful
+    value, it can be initialized as `none`).
 
 # Function declaration
 
-func name (arg) {
-  return arg * 2
-}
+  func name (arg) {
+    return arg * 2
+  }
 
  - a function can be used as an argument to a function.
 
- - this is synonymous
+ - this is synonymous with the above
+
    var name = func (arg) {
      return arg * 2
    }
 
- - a function without and argument list can be declared as
-  func name { block }
+ - a function without an argument list can be declared as:
+
+   func name { block }
 
 - code blocks delimited with braces '{}' and are mandatory.
 
@@ -34,71 +37,79 @@ func name (arg) {
 - the backslash '\' character followed by a new line character,
   denotes that the statement continues in the next line.
 
+# Conditionals:
+
 # `if` conditional: the block is executed if the condition is true
 
-if (condition) { statement[s]... }
+  if (condition) { statement[s]... }
 
 # `ifnot` conditional: the block is executed if the condition is zero
 
-ifnot (condition) { ... }
+  ifnot (condition) { ... }
 
 # Both can get an `else` clause, that is executed when the first block is not
 # executed.
 
 # Both can be extended with an:
 
-   "else if (condition)" or "else ifnot (condition)"
+  } else if (condition) { block }
+
+  or
+
+  } else ifnot (condition) { block }
 
 # if the original conditional statement evaluates to false.
 
+# Loops:
+
 # `while` loop
 
-while (condition) { block }
+  while (condition) { block }
 
 # `for` loop
 
-for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
+  for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
 # `loop` loop
 
-loop (num iterations) { block }
+  loop (num iterations) { block }
 
 # alternatively
 
-loop (init_statement[[s], ...]; num iterations) { block }
+  loop (init_statement[[s], ...]; num iterations) { block }
 
 # `forever` loop
 
-forever { block }
+  forever { block }
 
 # alternatively
 
-forever (init_statement[[s], ...]) { block }
+  forever (init_statement[[s], ...]) { block }
 
 # `do/while` loop
 
-do { block } while (condition)
+  do { block } while (condition)
 
  - the `break` keyword breaks out of a loop while the `continue` keyword
    continues with the next iteration.
 
 # Constant types (those types can not be reassigned)
 
-const c = "constant"
+  const c = "constant"
 
 # Variables can not be redeclared at the current scope.
 
 # Assign to a string literal (multibyte (UTF-8) strings are handled).
 
-var str = "oh la la lala, it's the natural la"
+  var str = "oh la la lala, it's the natural la"
 
- - you can get the underlying byte by using an index and can be negative
+  - you can get the underlying byte by using an index and can be negative
 
     str[-2]
 
 # This can be reassigned
 
-str = "that everyone brings"
+  str = "that everyone brings"
 
   - in that case the previous value should be freed automatically
 
@@ -117,11 +128,11 @@ str = "that everyone brings"
 
 # Logical operators:
 
-   && or and, || or or
+  && or and, || or or
 
 # Bitwise operators:
 
-   |, ^, >>, <<, and [|&]=
+  |, ^, >>, <<, and [|&]=
 
 
   - all the operators should have the same semantics with C.
@@ -129,15 +140,15 @@ str = "that everyone brings"
 # Functions can be defined in arbitrary nested level, in fact a whole unit can be a
   function
 
-func fu () {
-  func fua () {
-    func fub () {
-    ...
+  func fu () {
+    func fua () {
+      func fub () {
+      ...
+      }
+      ...
     }
     ...
   }
-  ...
-}
 
 # lambda functions syntax:
 
@@ -153,22 +164,22 @@ func fu () {
     but its lifetime can not be guarranteed yet, though it might work too.
     The `func` keyword can be used for that.
 
-   - lambdas like functions can be nested in arbitrary level.
+  - lambdas like functions can be nested in arbitrary level.
 
 #  print functions syntax:
 
-   print[ln] ([file pointer object], "string ${expression} ...")
+  print[ln] ([file pointer object], "string ${expression} ...")
 
-   - file pointer can be either `stdout` or `stderr`, or any file pointer
-     object that was created with the fopen() function:
+  - file pointer can be either `stdout` or `stderr`, or any file pointer
+    object that was created with the fopen() function:
 
-     fopen (filename, mode)
+    fopen (filename, mode)
 
-     which has the same semantics with C.
+    which has the same semantics with C.
 
-     - without a file pointer argument, default is to the standard output.
+    - without a file pointer argument, default is to the standard output.
 
-   - interpolation expression syntax:
+    - interpolation expression syntax:
 
       ${[%directive], symbol}
 
@@ -177,12 +188,12 @@ func fu () {
       ${[%directive], (expression)}
 
       - a directive can be optional and can be any of the following:
-       - %d as a decimal (this is the default, so it can be omited)
-       - %s as a string
-       - %p as a pointer address
-       - %o as an octal (a 0 (zero) is prefixed in the output)
-       - %x as a hexadecimal (a 0x is prefixed in the output)
-       - %f as a double
+        - %d as a decimal (this is the default, so it can be omited)
+        - %s as a string
+        - %p as a pointer address
+        - %o as an octal (a 0 (zero) is prefixed in the output)
+        - %x as a hexadecimal (a 0x is prefixed in the output)
+        - %f as a double
 
   -  the `println()` is like `print`, but also emits a new line character.
 
@@ -195,10 +206,9 @@ future.
 
   -the declaration syntax is:
 
-     array [type] name[length]
+    array [type] name[length]
 
     - a type can be omited and can be one of the following
-
       - integer (this is the default)
       - number
       - string
@@ -207,14 +217,13 @@ future.
     INTEGER_TYPE, and capable to hold a pointer address that can be passed
     to C functions.
 
-    - the *current* assignment syntax for this form, is:
+  - the *current* assignment syntax for this form, is:
 
-      ar_symbol[index] = ..., ..., ...
+    ar_symbol[index] = ..., ..., ...
 
-      where  assignment starts at `index` and continues as long there are
+      where assignment starts at `index` and continues as long there are
       expressions, separated with comma, and as long it doesn't get out of
       bounds.
-
 
     - you can get an item from an array, using indices and can be negative:
 

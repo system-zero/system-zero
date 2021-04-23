@@ -102,7 +102,7 @@ typedef struct v_set_self {
     (*exec_child_cb) (v_t *, PtyOnExecChild_cb);
 
   int
-    (*i_dir) (v_t *, char *),
+    (*la_dir) (v_t *, char *),
     (*current_dir) (v_t *, char *, int),
     (*data_dir) (v_t *, char *);
 } v_set_self;

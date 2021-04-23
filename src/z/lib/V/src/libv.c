@@ -32,12 +32,14 @@
 #define  REQUIRE_VWM_TYPE      DECLARE
 #define  REQUIRE_ERROR_TYPE    DECLARE
 #define  REQUIRE_READLINE_TYPE DECLARE
-#define  REQUIRE_I_TYPE        DECLARE
+#define  REQUIRE_LA_TYPE       DECLARE
 #define  REQUIRE_VSTRING_TYPE  DECLARE
 #define  REQUIRE_VIDEO_TYPE    DONOT_DECLARE
 #define  REQUIRE_V_TYPE        DONOT_DECLARE
 
 #include <z/cenv.h>
+
+static la_T *__LAPTR__ = NULL;
 
 #undef Vwm
 #undef Vwin
@@ -51,7 +53,7 @@
 #define $my(__p__) this->prop->__p__
 
 #define V_NUM_OBJECTS (NUM_OBJECTS + 2)
-#define I_OBJECT V_NUM_OBJECTS - 1
+#define LA_OBJECT V_NUM_OBJECTS - 1
 
 #define SOCKET_MAX_DATA_SIZE (sizeof (struct winsize))
 
@@ -131,7 +133,7 @@ struct v_prop {
   readline_com_t **commands;
   int num_commands;
 
-  i_t *i_instance;
+  la_t *la_instance;
 
   void *user_data[V_NUM_OBJECTS];
 };
@@ -413,8 +415,7 @@ static int v_tty_main (v_t *this) {
   unsigned char buf[BUFSIZE];
   fd_set readfds;
 
-  while (1) {
-
+  for (;;) {
     FD_ZERO(&readfds);
     FD_SET(STDIN_FILENO, &readfds);
     FD_SET(s, &readfds);
@@ -984,128 +985,188 @@ static void v_init_commands (v_t *this) {
   Vwm.set.readline_cb (vwm, v_readline_cb);
 }
 
-private ival_t i_v_get (i_t *__i) {
-  return (ival_t) I.get.user_data (__i);
+#define AS_V(__v__) (v_t *) AS_PTR(__v__)
+#define AS_W(__w__) (vwm_win *) AS_PTR(__w__)
+#define AS_F(__f__) (vwm_frame *) AS_PTR(__f__)
+
+static VALUE la_v_get (la_t *la) {
+  VALUE v = PTR(La.get.user_data (la));
+  return v;
 }
 
-private ival_t i_v_get_vwm (i_t *__i, v_t *this) {
-  (void) __i;
-  return (ival_t) $my(user_data)[VWM_OBJECT];
+static VALUE la_v_get_vwm (la_t *la, VALUE v_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  VALUE v = PTR($my(user_data)[VWM_OBJECT]);
+  return v;
 }
 
-private ival_t i_v_get_term (i_t *__i, v_t *this) {
-  (void) __i;
+static VALUE la_v_get_term (la_t *la, VALUE v_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
-  return (ival_t) Vwm.get.term (vwm);
+  VALUE v = PTR(Vwm.get.term (vwm));
+  return v;
 }
 
-private ival_t i_v_get_rows (i_t *__i, v_t *this) {
-  (void) __i;
+static VALUE la_v_get_rows (la_t *la, VALUE v_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
-  return Vwm.get.lines (vwm);
+  VALUE v = INT(Vwm.get.lines (vwm));
+  return v;
 }
 
-private ival_t i_v_get_cols (i_t *__i, v_t *this) {
-  (void) __i;
+static VALUE la_v_get_cols (la_t *la, VALUE v_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
-  return Vwm.get.columns (vwm);
+  VALUE v = INT(Vwm.get.columns (vwm));
+  return v;
 }
 
-private ival_t i_v_set_opt_force (i_t *__i, v_t *this, int val) {
-  (void) __i;
+static VALUE la_v_set_opt_force (la_t *la, VALUE v_value, VALUE i_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  int val = AS_INT(i_value);
   $my(opts)->force = (val isnot 0);
   $my(always_connect) = $my(opts)->force;
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_win_get_frame_at (i_t *__i, v_t *this, vwm_win *win, int idx) {
-  (void) __i;
+static VALUE la_v_win_get_frame_at (la_t *la, VALUE v_value, VALUE w_value, VALUE idx_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  vwm_win *win = AS_W(w_value);
+  int idx = AS_INT(idx_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
-  return (ival_t)  Vwin.get.frame_at (win, idx);
+  VALUE v = PTR(Vwin.get.frame_at (win, idx));
+  return v;
 }
 
-private ival_t i_v_win_set_current_at (i_t *__i, v_t *this, vwm_win *win, int idx) {
-  (void) __i;
+static VALUE la_v_win_set_current_at (la_t *la, VALUE v_value, VALUE w_value, VALUE idx_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  vwm_win *win = AS_W(w_value);
+  int idx = AS_INT(idx_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
-  return (ival_t)  Vwin.set.current_at (win, idx);
+  VALUE v = PTR(Vwin.set.current_at (win, idx));
+  return v;
 }
 
-private ival_t i_v_set_raw_mode (i_t *__i, v_t *this) {
-  (void) __i;
+static VALUE la_v_set_raw_mode (la_t *la, VALUE v_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
   Term.raw_mode (Vwm.get.term (vwm));
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_size (i_t *__i, v_t *this) {
-  (void) __i;
+static VALUE la_v_set_size (la_t *la, VALUE v_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
   int rows, cols;
   Term.init_size (Vwm.get.term (vwm), &rows, &cols);
   Vwm.set.size (vwm, rows, cols, 1);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_sockname (i_t *__i, v_t *this, char *sockname) {
-  (void) __i;
+static VALUE la_v_set_sockname (la_t *la, VALUE v_value, VALUE s_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  char *sockname = AS_STRING_BYTES(s_value);
   $my(as_sockname) = String.new_with (sockname);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_frame_command (i_t *__i, v_t *this, vwm_frame *frame, char *command) {
-  (void) __i;
+static VALUE la_v_set_frame_command (la_t *la, VALUE v_value, VALUE fr_value, VALUE com_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  vwm_frame *frame = AS_F(fr_value);
+  char *command = AS_STRING_BYTES(com_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
   Vframe.set.command (frame, command);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_frame_visibility (i_t *__i, v_t *this, vwm_frame *frame, int visibility) {
-  (void) __i;
+static VALUE la_v_set_frame_visibility (la_t *la, VALUE v_value, VALUE fr_value, VALUE vis_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  vwm_frame *frame = AS_F(fr_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
+  int visibility = AS_INT(vis_value);
   Vframe.set.visibility (frame, visibility);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_sys_set_current_dir (i_t* __i, char *dir) {
-  (void) __i;
-  int retval = chdir (dir);
-  return retval;
+static VALUE la_sys_set_current_dir (la_t* la, VALUE dir_value) {
+  (void) la;
+  char *dir = AS_STRING_BYTES(dir_value);
+  VALUE v = INT(chdir (dir));
+  return v;
 }
 
-private ival_t i_v_set_frame_log (i_t *__i, v_t *this, vwm_frame *frame, char *fname, int val) {
-  (void) __i;
+static VALUE la_v_set_frame_log (la_t *la, VALUE v_value, VALUE fr_value, VALUE fn_value, VALUE val_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  vwm_frame *frame = AS_F(fr_value);
+  char *fname = AS_STRING_BYTES(fn_value);
+  int val = AS_INT(val_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
   Vframe.set.log (frame, fname, val);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_image_file (i_t *__i, v_t *this, char *fn) {
-  (void) __i;
+static VALUE la_v_set_image_file (la_t *la, VALUE v_value, VALUE fn_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  char *fn = AS_STRING_BYTES(fn_value);
   self(set.image_file, fn);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_image_name (i_t *__i, v_t *this, char *name) {
-  (void) __i;
+static VALUE la_v_set_image_name (la_t *la, VALUE v_value, VALUE name_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  char *name  = AS_STRING_BYTES(name_value);
   self(set.image_name, name);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_save_image (i_t *__i, v_t *this, int val) {
-  (void) __i;
+static VALUE la_v_set_save_image (la_t *la, VALUE v_value, VALUE val_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  int val = AS_INT(val_value);
   self(set.save_image, val);
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-private ival_t i_v_set_current_at (i_t *__i, v_t *this, int idx) {
-  (void) __i;
+static VALUE la_v_set_current_at (la_t *la, VALUE v_value, VALUE idx_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  int idx = AS_INT(idx_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
-  Vwm.set.current_at (vwm, idx);
-  return I_OK;
+  vwm_win *win = Vwm.set.current_at (vwm, idx);
+  VALUE v = PTR(win);
+  return v;
 }
 
-private ival_t i_v_new_win (i_t *__i, v_t *this, int num_frames, int max_frames) {
-  (void) __i;
+static VALUE la_v_new_win (la_t *la, VALUE v_value, VALUE numfr_value, VALUE maxfr_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  int num_frames = AS_INT(numfr_value);
+  int max_frames = AS_INT(maxfr_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
   int rows = Vwm.get.lines (vwm);
   int cols = Vwm.get.columns (vwm);
@@ -1116,22 +1177,25 @@ private ival_t i_v_new_win (i_t *__i, v_t *this, int num_frames, int max_frames)
     .num_frames = num_frames,
     .max_frames = max_frames));
 
-  return (ival_t) win;
+  VALUE v = PTR(win);
+  return v;
 }
 
-private int i_v_pty_main (v_t *this, int argc, char **argv) {
+static int v_pty_main_void_cb (v_t *this, int argc, char **argv) {
   (void) this; (void) argc; (void) argv;
   return OK;
 }
 
-private ival_t i_v_main (i_t *__i, v_t *this) {
-  (void) __i;
+static VALUE la_v_main (la_t *la, VALUE v_value) {
+  (void) la;
+  VALUE v_notok = INT(LA_NOTOK);
+  v_t *this = AS_V(v_value);
   if (NULL is $my(as_sockname))
-    return I_NOTOK;
+    return v_notok;
 
   char *sockname = $my(as_sockname)->bytes;
 
-  if (NULL is sockname) return I_NOTOK;
+  if (NULL is sockname) return v_notok;
 
   v_opts *opts = $my(opts);
 
@@ -1139,7 +1203,7 @@ private ival_t i_v_main (i_t *__i, v_t *this) {
   if (File.exists (sockname)) {
     ifnot (File.is_sock (sockname)) {
       fprintf (stderr, "%s: is not a socket\n", sockname);
-      return I_NOTOK;
+      return v_notok;
     }
 
     int fd = self(sock.connect, sockname);
@@ -1149,12 +1213,12 @@ private ival_t i_v_main (i_t *__i, v_t *this) {
           fprintf (stderr,
               "socket %s exists, and cannot be removed %s\n",
                sockname, strerror (errno));
-          return I_NOTOK;
+          return v_notok;
         }
       } else {
         fprintf (stderr,
             "socket %s exists but can not connect/attach\n", sockname);
-        return I_NOTOK;
+        return v_notok;
       }
     } else {
       close (fd);
@@ -1163,7 +1227,7 @@ private ival_t i_v_main (i_t *__i, v_t *this) {
   }
 
   if (NOTOK is self(init.pty, sockname))
-    return I_NOTOK;
+    return v_notok;
 
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
 
@@ -1171,68 +1235,69 @@ private ival_t i_v_main (i_t *__i, v_t *this) {
 
   ifnot (attach) {
     self(set.exec_child_cb, v_exec_child_cb);
-    self(set.pty_main_cb, v_pty_main_cb);
+    self(set.pty_main_cb, v_pty_main_void_cb);
 
     self(pty.main, 0, NULL);
   }
 
   int retval = self(tty.main);
   if (retval isnot OK)
-    return I_NOTOK;
+    return v_notok;
 
-  return I_OK;
+  VALUE v = INT(LA_OK);
+  return v;
 }
 
-struct vfun_t {
+struct v_lafun_t {
   const char *name;
-  ival_t val;
+  VALUE val;
   int nargs;
-} vfuns[] = {
-  { "v_get",                  (ival_t) i_v_get, 0},
-  { "v_get_vwm",              (ival_t) i_v_get_vwm, 1},
-  { "v_get_term",             (ival_t) i_v_get_term, 1},
-  { "v_get_rows",             (ival_t) i_v_get_rows, 1},
-  { "v_get_cols",             (ival_t) i_v_get_cols, 1},
-  { "v_set_size",             (ival_t) i_v_set_size, 1},
-  { "v_set_sockname",         (ival_t) i_v_set_sockname, 2},
-  { "v_set_raw_mode",         (ival_t) i_v_set_raw_mode, 1},
-  { "v_set_frame_log",        (ival_t) i_v_set_frame_log, 4},
-  { "v_set_save_image",       (ival_t) i_v_set_save_image, 2},
-  { "v_set_image_name",       (ival_t) i_v_set_image_name, 2},
-  { "v_set_image_file",       (ival_t) i_v_set_image_file, 2},
-  { "v_set_current_at",       (ival_t) i_v_set_current_at, 2},
-  { "v_set_opt_force",        (ival_t) i_v_set_opt_force, 2},
-  { "v_set_frame_command",    (ival_t) i_v_set_frame_command, 3},
-  { "v_set_frame_visibility", (ival_t) i_v_set_frame_visibility, 3},
-  { "sys_set_current_dir",    (ival_t) i_sys_set_current_dir, 1},
-  { "v_win_get_frame_at",     (ival_t) i_v_win_get_frame_at, 3},
-  { "v_win_set_current_at",   (ival_t) i_v_win_set_current_at, 3},
-  { "v_new_win",              (ival_t) i_v_new_win, 3},
-  { "v_main",                 (ival_t) i_v_main, 1},
+} vlafuns[] = {
+  { "v_get",                  PTR(la_v_get), 0},
+  { "v_get_vwm",              PTR(la_v_get_vwm), 1},
+  { "v_get_term",             PTR(la_v_get_term), 1},
+  { "v_get_rows",             PTR(la_v_get_rows), 1},
+  { "v_get_cols",             PTR(la_v_get_cols), 1},
+  { "v_set_size",             PTR(la_v_set_size), 1},
+  { "v_set_sockname",         PTR(la_v_set_sockname), 2},
+  { "v_set_raw_mode",         PTR(la_v_set_raw_mode), 1},
+  { "v_set_frame_log",        PTR(la_v_set_frame_log), 4},
+  { "v_set_save_image",       PTR(la_v_set_save_image), 2},
+  { "v_set_image_name",       PTR(la_v_set_image_name), 2},
+  { "v_set_image_file",       PTR(la_v_set_image_file), 2},
+  { "v_set_current_at",       PTR(la_v_set_current_at), 2},
+  { "v_set_opt_force",        PTR(la_v_set_opt_force), 2},
+  { "v_set_frame_command",    PTR(la_v_set_frame_command), 3},
+  { "v_set_frame_visibility", PTR(la_v_set_frame_visibility), 3},
+  { "sys_set_current_dir",    PTR(la_sys_set_current_dir), 1},
+  { "v_win_get_frame_at",     PTR(la_v_win_get_frame_at), 3},
+  { "v_win_set_current_at",   PTR(la_v_win_set_current_at), 3},
+  { "v_new_win",              PTR(la_v_new_win), 3},
+  { "v_main",                 PTR(la_v_main), 1},
   { NULL, 0, 0}
 };
 
-private int v_i_define_funs_cb (i_t *this) {
+static int v_la_define_funs_cb (la_t *this) {
   int err;
-  for (int i = 0; vfuns[i].name; i++) {
-    if (I_OK isnot (err = I.def (this, vfuns[i].name, I_CFUNC (vfuns[i].nargs), vfuns[i].val)))
+  for (int i = 0; vlafuns[i].name; i++) {
+    if (LA_OK isnot (err = La.def (this, vlafuns[i].name, LA_CFUNC (vlafuns[i].nargs), vlafuns[i].val)))
       return err;
   }
 
-  return I_OK;
+  return LA_OK;
 }
 
-static int v_loadfile (v_t *this, char *fn) {
-  i_T *__i__ = $my(user_data)[I_OBJECT];
-  if (NULL is $my(i_instance))
-    $my(i_instance) = I.init_instance (__i__,
-        IOpts(
-          .idir = Sys.get.env_value ("IDIR"),
-          .define_funs_cb = v_i_define_funs_cb,
+static int v_la_loadfile (v_t *this, char *fn) {
+  la_T *__la__ = (la_T *) $my(user_data)[LA_OBJECT];
+
+  if (NULL is $my(la_instance))
+    $my(la_instance) = La.init_instance (__la__,
+        LaOpts(
+          .la_dir = Sys.get.env_value ("LA_DIR"),
+          .define_funs_cb = v_la_define_funs_cb,
           .user_data = this));
 
-  int retval = I.load_file (__i__, $my(i_instance), fn);
-  return retval;
+  return La.load_file (__la__, $my(la_instance), fn);
 }
 
 static int v_init_pty (v_t *this, char *sockname) {
@@ -1285,7 +1350,7 @@ static void v_set_at_exit_cb (v_t *this, PtyAtExit_cb cb) {
   $my(at_exit_cbs)[$my(num_at_exit_cbs) -1] = cb;
 }
 
-static int v_set_i_dir (v_t *this, char *dir) {
+static int v_set_la_dir (v_t *this, char *dir) {
   if (NULL is dir)
     if (NULL is $my(data_dir) or $my(data_dir)->num_bytes is 0)
       return NOTOK;
@@ -1316,7 +1381,7 @@ static int v_set_i_dir (v_t *this, char *dir) {
       return NOTOK;
   }
 
-  Sys.set.env_as (dir, "IDIR", 1);
+  Sys.set.env_as (dir, "LA_DIR", 1);
   return OK;
 }
 
@@ -1506,7 +1571,7 @@ static int v_save_image (v_t *this, char *fname) {
   string_t *file = NULL;
   if (NULL is fname) {
     if (NULL isnot $my(image_name)) {
-      file = String.new_with (Sys.get.env_value ("IDIR"));
+      file = String.new_with (Sys.get.env_value ("LA_DIR"));
       String.append_with (file, "/scripts/");
       String.append_with (file, $my(image_name));
       if (file->bytes[file->num_bytes - 1] isnot 'i' and
@@ -1525,18 +1590,18 @@ static int v_save_image (v_t *this, char *fname) {
 
   int cur_win_idx = Vwm.get.current_win_idx (vwm);
   char *cwd = Dir.current ();
+  int num_wins = Vwm.get.num_wins (vwm);
 
   fprintf (fp,
     "# v image script\n\n"
     "# variable initialization\n"
-    "var NULL = 0\n"
     "var v = v_get ()\n"
     "var num_frames = 0\n"
     "var max_frames = 0\n"
     "var log = 0\n"
     "var remove_log = 1\n"
-    "var win = NULL\n"
-    "var frame = NULL\n"
+    "var win = none\n"
+    "var frame = none\n"
     "var cur_win_idx = 0\n"
     "var cur_frame_idx = 0\n"
     "var visibility = 0\n"
@@ -1562,14 +1627,12 @@ static int v_save_image (v_t *this, char *fname) {
     $my(always_connect),
     cwd,
     self(get.sockname),
-    Vwm.get.num_wins (vwm),
+    num_wins,
     cur_win_idx);
 
   free (cwd);
 
-  int num_wins = Vwm.get.num_wins (vwm);
-
-  for (int i = 0; i < num_wins; i++) {
+  for (int i = 0; i < num_wins; i++)  {
     vwm_win *win = Vwm.get.win_at (vwm, i);
     int num_frames = Vwin.get.num_frames (win);
     int max_frames = Vwin.get.max_frames (win);
@@ -1619,7 +1682,7 @@ static int v_save_image (v_t *this, char *fname) {
       fprintf (fp, "\n");
     }
 
-    fprintf (fp, "v_win_set_current_at (v, win, %d)\n", cur_frame_idx);
+    fprintf (fp, "frame = v_win_set_current_at (v, win, %d)\n", cur_frame_idx);
   }
 
   ifnot (NULL is $my(image_name))
@@ -1632,7 +1695,7 @@ static int v_save_image (v_t *this, char *fname) {
 
   fprintf (fp, "\n");
 
-  fprintf (fp, "v_set_current_at (v, %d)\n", cur_win_idx);
+  fprintf (fp, "win = v_set_current_at (v, %d)\n", cur_win_idx);
   fprintf (fp, "v_main (v)\n");
 
   fclose (fp);
@@ -1729,7 +1792,7 @@ static int v_main (v_t *this) {
   if (argc is -1) return 0;
 
   ifnot (NULL is loadfile)
-    return v_loadfile (this, loadfile);
+    return v_la_loadfile (this, loadfile);
 
   if (NULL is sockname) {
     if (NULL is as) {
@@ -1855,7 +1918,7 @@ public v_t *__init_v__ (v_opts *opts) {
       .sock_max_data_size = v_get_sock_max_data_size
     },
     .set = (v_set_self) {
-      .i_dir = v_set_i_dir,
+      .la_dir = v_set_la_dir,
       .object = v_set_object,
       .data_dir = v_set_data_dir,
       .save_image = v_set_save_image,
@@ -1911,19 +1974,18 @@ public v_t *__init_v__ (v_opts *opts) {
 
   vwm_t *vwm = __init_vwm__ ();
 
-  i_T *__i__ = __init_i__ ();
-  iType = *__i__;
+  __LAPTR__ = __init_la__ ();
+  __LA__ = *__LAPTR__;
 
   $my(user_data)[VWM_OBJECT] = vwm;
-  $my(user_data)[I_OBJECT] = __i__;
+  $my(user_data)[LA_OBJECT] = __LAPTR__;
   $my(user_data)[E_OBJECT] = NULL;
-  $my(i_instance) = NULL;
   $my(term) = Vwm.get.term (vwm);
   $my(mode_key) = Vwm.get.mode_key (vwm);
   Vwm.set.object (vwm, this, V_OBJECT);
 
   if (NOTOK is self(set.data_dir, NULL)) goto theerror;
-  if (NOTOK is self(set.i_dir, NULL)) goto theerror;
+  if (NOTOK is self(set.la_dir, NULL)) goto theerror;
   if (NOTOK is self(set.current_dir, Dir.current (), 1)) goto theerror;
 
   return this;
@@ -1948,8 +2010,8 @@ public void __deinit_v__ (v_t **thisp) {
   vwm_t   *vwm   = $my(user_data)[VWM_OBJECT];
   __deinit_vwm__   (&vwm);
 
-  i_T *__i__ = $my(user_data)[I_OBJECT];
-  __deinit_i__ (&__i__);
+  la_T *__la__ = (la_T *) $my(user_data)[LA_OBJECT];
+  __deinit_la__ (&__la__);
 
   tcsetattr ($my(input_fd), TCSAFLUSH, &$my(orig_mode));
 

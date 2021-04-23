@@ -18,7 +18,7 @@
 #-----------------------------------------------#
 # Application Layer.
 API     := 0
-REV     := 0
+REV     := 1
 VERSION  = $(API).$(REV)
 #-----------------------------------------------#
 #           HIERARCHY
@@ -101,7 +101,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Dir_Type             = Dir
     Z_DIR_SRCDIR        := $(Z_SRCLIBDIR)/$(Dir_Type)/src
 
-    # Authentication Type
+    # Authentication Type (this requires libpam)
     Auth_Type            = Auth
     Z_AUTH_SRCDIR       := $(Z_SRCLIBDIR)/$(Auth_Type)/src
 
@@ -141,7 +141,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Imap_Type            = Imap
     Z_IMAP_SRCDIR        = $(Z_SRCLIBDIR)/$(Imap_Type)/src
 
-    # Imap Type
+    # Smap Type
     Smap_Type            = Smap
     Z_SMAP_SRCDIR        = $(Z_SRCLIBDIR)/$(Smap_Type)/src
 
@@ -165,7 +165,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     E_Type               = E
     Z_E_SRCDIR           = $(Z_SRCLIBDIR)/$(E_Type)/src
 
-    # I Type
+    # I Type (not used, but stays as a reference)
     I_Type               = I
     Z_I_SRCDIR           = $(Z_SRCLIBDIR)/$(I_Type)/src
 
@@ -207,8 +207,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     #   int cur_idx; int num_items; 
     # for any item in the list, it is assumed prev/next pointers
     Z_LIST_SRCDIR      := $(Z_SRCLIBDIR)/list/src
-    # it is also includes a list stack implementation
-    # it requires a next pointer
+    # it is extended with a list stack implementation (it requires a next pointer)
 
   # C applicarion namespace
   Z_SRCAPPDIR  = $(Z_SRCDIR)/app
@@ -251,7 +250,7 @@ Z_SU        := $(ZC_SU)
 #-----------------------------------------------#
 #  C Implementation
 
-  # we follow GNU cc, but we also care a bit for clang and tcc, but not much
+  # we follow GNU cc, but we also care a bit for clang and especially tcc
   CC            := gcc
 
   # C11 is our minimum standard
@@ -689,10 +688,10 @@ clean-libvwm-shared:
 clean-libvwm-static:
 	@cd $(Z_VWM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libv-shared: Env cenv libvwm-shared libi-shared libla-shared
+libv-shared: Env cenv libvwm-shared libla-shared
 	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libv-static: Env cenv list libvwm-static libi-static libla-static
+libv-static: Env cenv list libvwm-static libla-static
 	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libv-shared:
@@ -706,7 +705,7 @@ zs-shared: Env cenv libcstring-shared libsh-shared librline-shared\
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
 zs-static: Env cenv libcstring-static libsh-static librline-static\
-           libsys-static liberror-static
+           libsys-static liberror-static libio-static libustring-static
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
 clean-zs-shared:
@@ -883,11 +882,11 @@ clean-sys-static:
   ZA_V_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_V)/src
 
 v-shared: cenv libvwm-shared libstring-shared libfile-shared libio-shared libargparse-shared\
-          libterm-shared zs-static libv-shared
+          libterm-shared zs-static libv-shared libla-shared
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
 v-static: cenv libvwm-static libstring-static libfile-static libio-static libargparse-static\
-          libterm-static zs-static libv-static
+          libterm-static zs-static libv-static libla-static
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-v-shared:
@@ -939,7 +938,7 @@ zero-clean-shared:\
               clean-libreadline-shared clean-libsys-shared\
               clean-libvui-shared clean-libvmap-shared\
               clean-liberror-shared clean-libvwm-shared\
-              clean-libla-shared\
+              clean-libla-shared clean-libv-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -962,7 +961,7 @@ zero-clean-static:\
               clean-libreadline-static clean-libsys-static\
               clean-libvui-static clean-libvmap-static\
               clean-liberror-static clean-libvwm-static\
-              clean-libla-static\
+              clean-libla-static clean-libv-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\

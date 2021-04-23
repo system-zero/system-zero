@@ -93,7 +93,7 @@ clean-static:\
 V = $(NAME)
 V_FLAGS = $(FLAGS)
 V_FLAGS += -lv-$(VERSION) -lutil
-V_FLAGS += -largparse-$(VERSION) -li-$(VERSION) -lpath-$(VERSION)
+V_FLAGS += -largparse-$(VERSION) -lla-$(VERSION) -lpath-$(VERSION)
 V_FLAGS += -ldir-$(VERSION) -lsys-$(VERSION) -lfile-$(VERSION)
 V_FLAGS += -lterm-$(VERSION) -lerror-$(VERSION) -lstring-$(VERSION)
 V_FLAGS += -lvstring-$(VERSION) -lreadline-$(VERSION) -lvwm-$(VERSION)

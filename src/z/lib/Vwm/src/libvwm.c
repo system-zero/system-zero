@@ -3542,8 +3542,6 @@ static vwm_win *vwm_new_win (vwm_t *this, char *name, win_opts opts) {
     Vwin.draw (win);
   }
 
-  win->is_initialized = 1;
-
   return win;
 }
 
