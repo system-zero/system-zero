@@ -781,6 +781,7 @@ func semantics () {
     println ("[OK]")
   }
 
+  test_num += 1
   print ("[${test_num}] testing string indices [set]- ")
   str[-1] = 'g'
   retval = str[-1]
@@ -790,6 +791,7 @@ func semantics () {
     println ("[OK]")
   }
 
+  test_num += 1
   print ("[${test_num}] testing string indices [statement]- ")
   retval = 200 - (str[0] + 3)
   if (retval isnot 100) {
@@ -798,7 +800,8 @@ func semantics () {
     println ("[OK]")
   }
 
-  print ("[${test_num}] testing __argc/__argv- ")
+  test_num += 1
+  print ("[${test_num}] testing __argc and __argv - ")
   retval = __argc is 1
   ifnot (retval) {
     println (stderr, "[NOTOK] awaiting 1, got ${retval}")
@@ -814,6 +817,13 @@ func semantics () {
     println ("[OK]")
   }
 
+  test_num += 1
+  print ("[${test_num}] testing __func__ - ")
+  ifnot (__func__ is "semantics") {
+    println (stderr, "[NOTOK] awaiting \"semantics\", got ${%s, __func__}")
+  } else {
+    println ("[OK]")
+  }
 }
 
 semantics ()

@@ -228,7 +228,10 @@ struct la_t {
   char curFunName[MAXLEN_SYMBOL + 1];
   funT *curFunDef;
 
-  sym_t *curSym;
+  sym_t
+    *curSym,
+    *file,
+    *func;
 
   int
     Errno,
@@ -1829,9 +1832,14 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
     this->curScope = uf;
 
+    string *func = AS_STRING(this->func->value);
+    String.replace_with (func, uf->funname);
+
     int err = la_parse_string (this, uf->body);
 
     this->curScope = la_fun_stack_pop (this);
+
+    String.replace_with (func, this->curScope->funname);
 
     this->didReturn = 0;
 
@@ -3412,39 +3420,8 @@ static int la_parse_return (la_t *this) {
 }
 
 static int la_define (la_t *this, const char *key, int typ, VALUE val) {
-  la_define_symbol (this, this->std, (char *) key, typ, val, 1);
-  return LA_OK;
-}
-
-static int la_eval_string (la_t *this, const char *buf) {
-#ifdef DEBUG
-  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL + 1, " ", 1);
-  $CODE_PATH
-#endif
-  this->script_buffer = buf;
-  la_string x = la_StringNew (buf);
-
-  int retval = la_parse_string (this, x);
-
-  if (retval is LA_ERR_EXIT)
-    return this->exitValue;
-
-  return retval;
-}
-
-static int la_eval_expr (la_t *this, const char *buf, VALUE *v) {
-  if (*buf isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "awaiting (");
-
-  this->script_buffer = buf;
-  la_string x = la_StringNew (buf);
-
-  this->parsePtr = x;
-  this->curToken = LA_TOKEN_PAREN_OPEN;
-
-  int retval = la_parse_expr (this, v);
-
-  return retval;
+  sym_t *sym = la_define_symbol (this, this->std, (char *) key, typ, val, 1);
+  return (NULL is sym ? LA_NOTOK : LA_OK);
 }
 
 static VALUE la_equals (VALUE x, VALUE y) {
@@ -3981,6 +3958,44 @@ struct la_def_fun_t {
   { NULL,               NONE_VALUE, NONE_TYPE},
 };
 
+static int la_std_def (la_t *this, la_opts opts) {
+  VALUE v = OBJECT(opts.out_fp);
+  object *o = la_object_new (NULL, NULL, v);
+  int err = la_define (this, "stdout", OBJECT_TYPE, OBJECT(o));
+  if (err) return LA_NOTOK;
+
+  v = OBJECT(opts.err_fp);
+  o = la_object_new (NULL, NULL, v);
+  err = la_define (this, "stderr", OBJECT_TYPE, OBJECT(o));
+  if (err) return LA_NOTOK;
+
+  v = INT(opts.argc);
+  err = la_define (this, "__argc", INTEGER_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  ArrayType *array = ARRAY_NEW(STRING_TYPE, opts.argc);
+  string **ar = (string **) AS_ARRAY(array->value);
+
+  for (integer i = 0; i < opts.argc; i++)
+    String.replace_with (ar[i], opts.argv[i]);
+
+  v = ARRAY(array);
+  err = la_define (this, "__argv", ARRAY_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  string *file = String.new_with ("__string__");
+  v = STRING(file);
+  this->file = la_define_symbol (this, this->std, "__file__", STRING_TYPE, v, 0);
+  if (NULL is this->file) return LA_NOTOK;
+
+  string *func = String.new_with (this->curScope->funname);
+  v = STRING(func);
+  this->func = la_define_symbol (this, this->std, "__func__", STRING_TYPE, v, 0);
+  if (NULL is this->func) return LA_NOTOK;
+
+  return LA_OK;
+}
+
 /* ABSTRACTION CODE */
 
 static int la_print_bytes (FILE *fp, const char *bytes) {
@@ -4014,22 +4029,71 @@ static VALUE I_print_byte (la_t *this, char byte) {
   return result;
 }
 
+static int la_eval_string (la_t *this, const char *buf) {
+#ifdef DEBUG
+  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL + 1, " ", 1);
+  $CODE_PATH
+#endif
+
+  this->script_buffer = buf;
+  la_string x = la_StringNew (buf);
+
+  string *file = AS_STRING(this->file->value);
+  integer len =  file->num_bytes;
+  char prev_file[len + 1];
+  Cstring.cp (prev_file, len + 1, file->bytes, len);
+  String.replace_with (file, "__string__");
+
+  int prev_linenum = this->lineNum;
+  this->lineNum = 0;
+
+  int retval = la_parse_string (this, x);
+
+  this->lineNum = prev_linenum;
+
+  String.replace_with_len (file, prev_file, len);
+
+  if (retval is LA_ERR_EXIT)
+    return this->exitValue;
+
+  return retval;
+}
+
+static int la_eval_expr (la_t *this, const char *buf, VALUE *v) {
+  if (*buf isnot LA_TOKEN_PAREN_OPEN)
+    return this->syntax_error (this, "awaiting (");
+
+  this->script_buffer = buf;
+  la_string x = la_StringNew (buf);
+
+  this->parsePtr = x;
+  this->curToken = LA_TOKEN_PAREN_OPEN;
+
+  int retval = la_parse_expr (this, v);
+
+  return retval;
+}
+
 static int la_eval_file (la_t *this, const char *filename) {
-  ifnot (File.exists (filename)) {
+  char fn[PATH_MAX + 1];
+  if (NULL is Path.real (filename, fn))
+    return LA_NOTOK;
+
+  ifnot (File.exists (fn)) {
     this->print_fmt_bytes (this->err_fp, "%s: doesn't exists\n", filename);
-    return NOTOK;
+    return LA_NOTOK;
   }
 
-  FILE *fp = fopen (filename, "r");
+  FILE *fp = fopen (fn, "r");
   if (NULL is fp) {
     this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
-    return NOTOK;
+    return LA_NOTOK;
   }
 
   if (-1 is fseek (fp, 0, SEEK_END)) {
     fclose (fp);
     this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
-    return NOTOK;
+    return LA_NOTOK;
   }
 
   long n = ftell (fp);
@@ -4037,13 +4101,13 @@ static int la_eval_file (la_t *this, const char *filename) {
   if (-1 is n) {
     fclose (fp);
     this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
-    return NOTOK;
+    return LA_NOTOK;
   }
 
   if (-1 is fseek (fp, 0, SEEK_SET)) {
     fclose (fp);
     this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
-    return NOTOK;
+    return LA_NOTOK;
   }
 
   char script[n + 1];
@@ -4052,25 +4116,44 @@ static int la_eval_file (la_t *this, const char *filename) {
 
   if (r <= 0) {
     this->print_fmt_bytes (this->err_fp, "Couldn't read script\n");
-    return NOTOK;
+    return LA_NOTOK;
   }
 
   if (r > n) {
     this->print_fmt_bytes (this->err_fp, "race condition, aborts now\n");
-    return NOTOK;
+    return LA_NOTOK;
   }
 
   script[r] = '\0';
 
-  r = la_eval_string (this, script);
+  this->script_buffer = script;
+  la_string x = la_StringNew (script);
 
-  if (r isnot LA_OK) {
+  string *file = AS_STRING(this->file->value);
+  integer len =  file->num_bytes;
+  char prev_file[len + 1];
+  Cstring.cp (prev_file, len + 1, file->bytes, len);
+  String.replace_with (file, fn);
+
+  int prev_linenum = this->lineNum;
+  this->lineNum = 0;
+
+  int retval = la_parse_string (this, x);
+
+  this->lineNum = prev_linenum;
+
+  String.replace_with_len (file, prev_file, len);
+
+  if (retval is LA_ERR_EXIT)
+    return this->exitValue;
+
+  if (retval isnot LA_OK) {
     char *err_msg[] = {"NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
         "BAD ARGUMENTS", "TOO MANY ARGUMENTS"};
     this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-r - 2]);
   }
 
-  return r;
+  return retval;
 }
 
 static int la_define_funs_default_cb (la_t *this) {
@@ -4234,34 +4317,6 @@ static la_t *la_get_current (la_T *this) {
 
 static int la_get_current_idx (la_T *this) {
   return $my(current_idx);
-}
-
-static int la_std_def (la_t *this, la_opts opts) {
-  VALUE v = OBJECT(opts.out_fp);
-  object *o = la_object_new (NULL, NULL, v);
-  int err = la_define (this, "stdout", OBJECT_TYPE, OBJECT(o));
-  if (err) return LA_NOTOK;
-
-  v = OBJECT(opts.err_fp);
-  o = la_object_new (NULL, NULL, v);
-  err = la_define (this, "stderr", OBJECT_TYPE, OBJECT(o));
-  if (err) return LA_NOTOK;
-
-  v = INT(opts.argc);
-  err = la_define (this, "__argc", INTEGER_TYPE, v);
-  if (err) return LA_NOTOK;
-
-  ArrayType *array = ARRAY_NEW(STRING_TYPE, opts.argc);
-  string **ar = (string **) AS_ARRAY(array->value);
-
-  for (integer i = 0; i < opts.argc; i++)
-    String.replace_with (ar[i], opts.argv[i]);
-
-  v = ARRAY(array);
-  err = la_define (this, "__argv", ARRAY_TYPE, v);
-  if (err) return LA_NOTOK;
-
-  return err;
 }
 
 static int la_init (la_T *interp, la_t *this, la_opts opts) {

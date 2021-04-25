@@ -41,6 +41,7 @@ int main (int argc, char **argv) {
   PARSE_ARGS;
 
   string_t *evalbuf = NULL;
+  la_t *la = NULL;
 
   ifnot (FdReferToATerminal (STDIN_FILENO)) {
     evalbuf = String.new (256);
@@ -60,18 +61,17 @@ int main (int argc, char **argv) {
 
   CHECK_ARGC;
 
-  Vstring_t notused;
-  evalbuf = String.new (256);
-  File.readlines (argv[0], &notused, __readfile_cb, evalbuf);
-
 eval:
-  ifnot (evalbuf->num_bytes) goto theend;
+  la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
 
-  la_t *la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
-  retval = La.eval_string (la, evalbuf->bytes);
-  __deinit_la__ (&LaN);
+  if (NULL is evalbuf) {
+    ifnot (argc) goto theend;
+    retval = La.load_file (LaN, la, argv[0]);
+  } else
+    retval = La.eval_string (la, evalbuf->bytes);
 
 theend:
+  __deinit_la__ (&LaN);
   String.release (evalbuf);
   return retval < 0 ? 1 : retval;
 }

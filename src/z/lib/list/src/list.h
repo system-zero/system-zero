@@ -259,6 +259,23 @@ do {                                                    \
 })
 #endif /* DListAppendCurrent */
 
+#ifndef DListItemAppend
+#define DListItemAppend(src_, node_)                   \
+({                                                     \
+  if (node_ != NULL) {                                 \
+    if ((src_ == NULL) {                               \
+      (node_)->next = NULL;                            \
+      (node_)->prev = NULL;                            \
+    } else {                                           \
+      (node_)->prev = (src_);                          \
+      (node_)->next = (src_)->next;                    \
+      (src_)->next = (node_);                          \
+    }                                                  \
+  }                                                    \
+  (node_);                                             \
+})
+#endif /* DListItemAppend */
+
 #ifndef ListStackClear
 #define ListStackClear(list_, type_)                   \
 do {                                                   \
@@ -327,22 +344,5 @@ do {                                                   \
   node_;                                               \
 })
 #endif /* ListStackPopTail */
-
-#ifndef DListItemAppend
-#define DListItemAppend(src_, node_)                   \
-({                                                     \
-  if (node_ != NULL) {                                 \
-    if ((src_ == NULL) {                               \
-      (node_)->next = NULL;                            \
-      (node_)->prev = NULL;                            \
-    } else {                                           \
-      (node_)->prev = (src_);                          \
-      (node_)->next = (src_)->next;                    \
-      (src_)->next = (node_);                          \
-    }                                                  \
-  }                                                    \
-  (node_);                                             \
-})
-#endif /* DListItemAppend */
 
  #endif /* LIST_HDR */

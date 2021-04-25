@@ -323,6 +323,10 @@ future.
 # __argc   - holds the length of the list, zero if it hasn't been set
 # __argv   - string type array, that holds the items of the list if it has been set
 
+# Info
+# __file__ - current evaluated filename, if a string is evaluated defaults to "__string__"
+# __func__ - current function name
+
 # Semantics
 
   - standard keywords and functions can not be redefined and reassigned
