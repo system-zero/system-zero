@@ -1352,7 +1352,7 @@ typedef struct E_self {
     (*main) (E_T *, buf_t *),
     (*delete) (E_T *, int, int),
     (*exit_all) (E_T *),
-    (*load_file) (E_T *, char *),
+    (*load_file) (E_T *, char *, int, char **),
     (*save_image) (E_T *, char *);
 
   string_t *(*create_image) (E_T *);

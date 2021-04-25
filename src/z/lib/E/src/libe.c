@@ -13667,8 +13667,10 @@ static la_T *__init_this_la__ (E_T *this) {
   return __LAPTR__;
 }
 
-static int E_load_file (E_T *this, char *fn) {
+static int E_load_file (E_T *this, char *fn, int argc, char **argv) {
   la_t *la = La.init_instance (&__LA__, LaOpts (
+    .argc = argc,
+    .argv = argv,
     .define_funs_cb = la_define_funs_default_cb,
     .la_dir = Sys.get.env_value ("LA_DIR")));
 

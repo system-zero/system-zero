@@ -738,7 +738,7 @@ int main (int argc, char **argv) {
   win_t *w = NULL;
 
   if (load_file isnot NULL and getuid ()) {
-    retval = E.load_file (__E__, load_file);
+    retval = E.load_file (__E__, load_file, argc, argv);
     ifnot (OK is retval) {
       retval = 1;
       goto theend;

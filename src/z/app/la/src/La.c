@@ -67,7 +67,7 @@ int main (int argc, char **argv) {
 eval:
   ifnot (evalbuf->num_bytes) goto theend;
 
-  la_t *la = La.init_instance (LaN, LaOpts());
+  la_t *la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
   retval = La.eval_string (la, evalbuf->bytes);
   __deinit_la__ (&LaN);
 

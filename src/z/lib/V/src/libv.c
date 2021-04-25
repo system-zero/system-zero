@@ -1307,12 +1307,14 @@ static int v_la_define_funs_cb (la_t *this) {
   return LA_OK;
 }
 
-static int v_la_loadfile (v_t *this, char *fn) {
+static int v_la_loadfile (v_t *this, char *fn, int argc, char **argv) {
   la_T *__la__ = (la_T *) $my(user_data)[LA_OBJECT];
 
   if (NULL is $my(la_instance))
     $my(la_instance) = La.init_instance (__la__,
         LaOpts(
+          .argc = argc,
+          .argv = argv,
           .la_dir = Sys.get.env_value ("LA_DIR"),
           .define_funs_cb = v_la_define_funs_cb,
           .user_data = this));
@@ -1824,7 +1826,7 @@ static int v_main (v_t *this) {
   if (argc is -1) return 0;
 
   ifnot (NULL is loadfile)
-    return v_la_loadfile (this, loadfile);
+    return v_la_loadfile (this, loadfile, argc, argv);
 
   if (NULL is sockname) {
     if (NULL is as) {

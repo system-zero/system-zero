@@ -797,6 +797,23 @@ func semantics () {
   } else {
     println ("[OK]")
   }
+
+  print ("[${test_num}] testing __argc/__argv- ")
+  retval = __argc is 1
+  ifnot (retval) {
+    println (stderr, "[NOTOK] awaiting 1, got ${retval}")
+  }
+
+  ifnot (len (__argv)) {
+    println (stderr, "[NOTOK] awaiting 1, got ${retval}")
+  }
+
+  ifnot (__argv[0] is "data/tests/la-semantics.i") {
+    println (stderr, "[NOTOK] awaiting equality")
+  } else {
+    println ("[OK]")
+  }
+
 }
 
 semantics ()

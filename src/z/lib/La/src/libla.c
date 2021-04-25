@@ -1002,7 +1002,7 @@ static int la_do_next_token (la_t *this, int israw) {
           break;
         }
       } while (--max isnot 0);
-  } else if (is_alpha (c)) {
+  } else if (is_alpha (c) or c is '_') {
     la_get_span (this, is_identifier);
 
     r = LA_TOKEN_SYMBOL;
@@ -1979,7 +1979,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
   } else {
     if (c isnot LA_TOKEN_EOF)
-      return this->syntax_error (this, STR_FMT("syntax error, unknown token |%c| |%d|", c, c));
+      return this->syntax_error (this, STR_FMT(
+          "%s(), syntax error, unknown token |%c| |%d|", __func__, c, c));
   }
 
   return LA_OK;
@@ -4235,15 +4236,29 @@ static int la_get_current_idx (la_T *this) {
   return $my(current_idx);
 }
 
-static int la_std_def (la_t *this) {
-  VALUE v = OBJECT(stdout);
+static int la_std_def (la_t *this, la_opts opts) {
+  VALUE v = OBJECT(opts.out_fp);
   object *o = la_object_new (NULL, NULL, v);
   int err = la_define (this, "stdout", OBJECT_TYPE, OBJECT(o));
   if (err) return LA_NOTOK;
 
-  v = OBJECT(stderr);
+  v = OBJECT(opts.err_fp);
   o = la_object_new (NULL, NULL, v);
   err = la_define (this, "stderr", OBJECT_TYPE, OBJECT(o));
+  if (err) return LA_NOTOK;
+
+  v = INT(opts.argc);
+  err = la_define (this, "__argc", INTEGER_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  ArrayType *array = ARRAY_NEW(STRING_TYPE, opts.argc);
+  string **ar = (string **) AS_ARRAY(array->value);
+
+  for (integer i = 0; i < opts.argc; i++)
+    String.replace_with (ar[i], opts.argv[i]);
+
+  v = ARRAY(array);
+  err = la_define (this, "__argv", ARRAY_TYPE, v);
   if (err) return LA_NOTOK;
 
   return err;
@@ -4305,7 +4320,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
     }
   }
 
-  err = la_std_def (this);
+  err = la_std_def (this, opts);
   if (err isnot LA_OK) {
     la_release (&this);
     return err;

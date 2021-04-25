@@ -147,6 +147,8 @@ typedef struct la_opts {
   char  *name;
   char  *la_dir;
   int    name_gen;
+  int    argc;
+  char **argv;
   FILE  *err_fp;
   FILE  *out_fp;
 
@@ -160,17 +162,19 @@ typedef struct la_opts {
 } la_opts;
 
 #define LaOpts(...) (la_opts) { \
-  .print_byte = NULL,         \
-  .print_bytes = NULL,        \
-  .print_fmt_bytes = NULL,    \
-  .syntax_error = NULL,       \
-  .define_funs_cb = NULL,     \
-  .err_fp = stderr,           \
-  .out_fp = stdout,           \
-  .name = NULL,               \
-  .la_dir = NULL,             \
-  .name_gen = 97,             \
-  .user_data = NULL,          \
+  .name = NULL,                 \
+  .la_dir = NULL,               \
+  .name_gen = 97,               \
+  .argc = 0,                    \
+  .argv = NULL,                 \
+  .err_fp = stderr,             \
+  .out_fp = stdout,             \
+  .print_byte = NULL,           \
+  .print_bytes = NULL,          \
+  .print_fmt_bytes = NULL,      \
+  .syntax_error = NULL,         \
+  .define_funs_cb = NULL,       \
+  .user_data = NULL,            \
   __VA_ARGS__}
 
 typedef struct la_get_self {

@@ -311,14 +311,17 @@ future.
 # true    - 1
 # false   - 0
 # none    - (void *) 0
-#
-# types
+# Types
 # (Integer|Number|String|Array|Object|Function|None)Type
 #
 # FILE pointers of standard streams
 # stdout
 # stderr
 # (no standard input yet)
+#
+# Argument list
+# __argc   - holds the length of the list, zero if it hasn't been set
+# __argv   - string type array, that holds the items of the list if it has been set
 
 # Semantics
 
