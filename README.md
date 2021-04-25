@@ -1106,4 +1106,10 @@ up to be part of the core. It was that time that I adopted the `waterfall model`
 as a testing practice, and has being used since then as an excuse to avoid of
 writing testing suites. I miss those days.
 
+And I miss the life in our poor village, in the wide valley of Thessally, as a
+really young kid working in the cotton fields, under forty+ degrees at the hot
+summer sun eating watermelons, under some grass roofs into the canals,  having
+around some millions of frogs, producing their pretty loud amazing paradoxical
+music at the silent nights of the full of energy valley.
+
 Yours trully, agathoklis (laki).

@@ -24,6 +24,7 @@
   MODKEY-S[!ec]      : likewise, but also fork with a shell or an editor or the default application respectively (without a param is like MODE_KEY-s)
   MODKEY-d           : delete current frame
   MODKEY-CTRL(l)     : redraw current window
+  MODKEY-FN(1-12)    : switch to `nth` window
   MODKEY-MODE_KEY    : return the MODE_KEY to the application
   MODKEY-ESCAPE_KEY  : return with no action
   MODKEY-:           : command line mode (a Tab triggers auto completion, for commands,
@@ -97,4 +98,6 @@
                                there is noone to listen)
 
     :`chdir directory     change current directory
+
+    :@save_image          save current layout if it has been set
 </pre>

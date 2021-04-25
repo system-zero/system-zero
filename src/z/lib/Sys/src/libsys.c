@@ -13,6 +13,7 @@
 #define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
+#define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_SMAP_TYPE     DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
@@ -253,7 +254,11 @@ static int sys_init_environment (sys_env_opts opts) {
       }
 
       #ifdef TMPDIR
-        tmpdir = sys_set_env_as (TMPDIR, "TMPDIR", opts.overwrite);
+        char tmp[PATH_MAX + 1];
+        if (NULL is Path.real (TMPDIR, tmp))
+          tmpdir = sys_set_env_as (TMPDIR, "TMPDIR", opts.overwrite);
+        else
+          tmpdir = sys_set_env_as (tmp, "TMPDIR", opts.overwrite);
       #else
         tmpdir = sys_set_env_as (DIR_SEP_STR "tmp", "TMPDIR", opts.overwrite);
      #endif
@@ -280,9 +285,13 @@ static int sys_init_environment (sys_env_opts opts) {
       }
 
       #ifdef DATADIR
-        datadir = sys_set_env_as (DATADIR, "DATADIR", opts.overwrite);
+        char tmp[PATH_MAX + 1];
+        if (NULL is Path.real (DATADIR, tmp))
+          datadir = sys_set_env_as (DATADIR, "DATADIR", opts.overwrite);
+        else
+          datadir = sys_set_env_as (tmp, "DATADIR", opts.overwrite);
       #else
-        datadir = sys_set_env_as (STR_FMT ("%s/.v",
+        datadir = sys_set_env_as (STR_FMT ("%s/.z",
           Cstring.byte.in_str (home->bytes, '=') + 1), "DATADIR", opts.overwrite);
       #endif
     } while (0);
@@ -460,6 +469,7 @@ public sys_T __init_sys__ (void) {
 
   __INIT__ (io);
   __INIT__ (dir);
+  __INIT__ (path);
   __INIT__ (file);
   __INIT__ (smap);
   __INIT__ (error);

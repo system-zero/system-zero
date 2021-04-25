@@ -537,11 +537,11 @@ clean-liberror-static:
 	@cd $(Z_ERROR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libsys-shared: Env cenv libcstring-shared libstring-shared libfile-shared\
-               libsmap-shared
+               libsmap-shared libpath-shared
 	@cd $(Z_SYS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libsys-static: Env cenv libcstring-static libstring-static libfile-static\
-               libsmap-static
+               libsmap-static libpath-static
 	@cd $(Z_SYS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libsys-shared:

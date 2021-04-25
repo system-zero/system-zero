@@ -87,9 +87,11 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
+LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR)
+LIBFLAGS += -DDATADIR='"$(SYSDATADIR)"' -DTMPDIR='"$(SYSTMPDIR)"'
+LIBFLAGS += $(FLAGS)
 LIBFLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lcstring-$(VERSION)
-LIBFLAGS += -ldir-$(VERSION) -lerror-$(VERSION) -lsmap-$(VERSION)
+LIBFLAGS += -ldir-$(VERSION) -lerror-$(VERSION) -lsmap-$(VERSION) -lpath-$(VERSION)
 
 all: shared static
 

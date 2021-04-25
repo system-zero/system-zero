@@ -1025,16 +1025,6 @@ static VALUE la_v_get_cols (la_t *la, VALUE v_value) {
   return v;
 }
 
-static VALUE la_v_set_opt_force (la_t *la, VALUE v_value, VALUE i_value) {
-  (void) la;
-  v_t *this = AS_V(v_value);
-  int val = AS_INT(i_value);
-  $my(opts)->force = (val isnot 0);
-  $my(always_connect) = $my(opts)->force;
-  VALUE v = INT(LA_OK);
-  return v;
-}
-
 static VALUE la_v_win_get_frame_at (la_t *la, VALUE v_value, VALUE w_value, VALUE idx_value) {
   (void) la;
   v_t *this = AS_V(v_value);
@@ -1052,6 +1042,16 @@ static VALUE la_v_win_set_current_at (la_t *la, VALUE v_value, VALUE w_value, VA
   int idx = AS_INT(idx_value);
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
   VALUE v = PTR(Vwin.set.current_at (win, idx));
+  return v;
+}
+
+static VALUE la_v_set_opt_force (la_t *la, VALUE v_value, VALUE i_value) {
+  (void) la;
+  v_t *this = AS_V(v_value);
+  int val = AS_INT(i_value);
+  $my(opts)->force = (val isnot 0);
+  $my(always_connect) = $my(opts)->force;
+  VALUE v = INT(LA_OK);
   return v;
 }
 
@@ -1077,10 +1077,17 @@ static VALUE la_v_set_size (la_t *la, VALUE v_value) {
 
 static VALUE la_v_set_sockname (la_t *la, VALUE v_value, VALUE s_value) {
   (void) la;
+  VALUE v = INT(LA_OK);
   v_t *this = AS_V(v_value);
   char *sockname = AS_STRING_BYTES(s_value);
-  $my(as_sockname) = String.new_with (sockname);
-  VALUE v = INT(LA_OK);
+
+  char tmp[PATH_MAX + 1];
+  if (NULL is Path.real (sockname, tmp)) {
+    v = INT(LA_NOTOK);
+    return v;
+  }
+
+  $my(as_sockname) = String.new_with (tmp);
   return v;
 }
 
@@ -1115,13 +1122,26 @@ static VALUE la_sys_set_current_dir (la_t* la, VALUE dir_value) {
 
 static VALUE la_v_set_frame_log (la_t *la, VALUE v_value, VALUE fr_value, VALUE fn_value, VALUE val_value) {
   (void) la;
-  v_t *this = AS_V(v_value);
-  vwm_frame *frame = AS_F(fr_value);
-  char *fname = AS_STRING_BYTES(fn_value);
-  int val = AS_INT(val_value);
-  vwm_t *vwm = $my(user_data)[VWM_OBJECT];
-  Vframe.set.log (frame, fname, val);
   VALUE v = INT(LA_OK);
+  v_t *this = AS_V(v_value);
+  vwm_t *vwm = $my(user_data)[VWM_OBJECT];
+  vwm_frame *frame = AS_F(fr_value);
+  int val = AS_INT(val_value);
+
+  if (fn_value.type is NONE_TYPE) {
+    Vframe.set.log (frame, NULL, val);
+    return v;
+  }
+
+  char *fname = AS_STRING_BYTES(fn_value);
+
+  char tmp[PATH_MAX + 1];
+  if (NULL is Path.real (fname, tmp)) {
+    v = INT(LA_NOTOK);
+    return v;
+  }
+
+  Vframe.set.log (frame, tmp, val);
   return v;
 }
 
@@ -1367,6 +1387,9 @@ static int v_set_la_dir (v_t *this, char *dir) {
 
   ifnot (Dir.is_directory (dir)) return NOTOK;
 
+  char tmp[PATH_MAX + 1];
+  if (NULL is Path.real (dir, tmp)) return NOTOK;
+
   char script_dir[len + 1];
   Cstring.cp_fmt (script_dir, len + 1, "%s/scripts", dir);
 
@@ -1502,7 +1525,7 @@ static string_t *v_init_sockname (v_t *this, char *sockdir, char *as) {
     String.append_with (sockname, tmp);
 
     tmp = Sys.get.env_value ("USERNAME");
-    String.append_with_fmt (sockname, "/%s_vsockets", tmp);
+    String.append_with_fmt (sockname, "/v/%s_vsockets", tmp);
 
     if (File.exists (sockname->bytes)) {
       ifnot (Dir.is_directory (sockname->bytes)) {
@@ -1594,41 +1617,50 @@ static int v_save_image (v_t *this, char *fname) {
 
   fprintf (fp,
     "# v image script\n\n"
-    "# variable initialization\n"
-    "var v = v_get ()\n"
-    "var num_frames = 0\n"
-    "var max_frames = 0\n"
-    "var log = 0\n"
-    "var remove_log = 1\n"
-    "var win = none\n"
-    "var frame = none\n"
-    "var cur_win_idx = 0\n"
-    "var cur_frame_idx = 0\n"
-    "var visibility = 0\n"
-    "var num_visible_frames = 0\n"
-    "var save_image = %d\n\n"
+    "func v_image () {\n"
+    "  # variable initialization\n"
+    "  var v = v_get ()\n"
+    "  var pid = %d\n"
+    "  var sockname = \"%s\"\n"
+    "  var image_name = \"%s\"\n"
+    "  var image_file = \"%s\"\n"
+    "  var script_dir = \"%s\"\n"
+    "  var cwd = \"%s\"\n"
+    "  var save_image = %d\n"
+    "  var num_frames = 0\n"
+    "  var max_frames = 0\n"
+    "  var log = 0\n"
+    "  var remove_log = 1\n"
+    "  var win = none\n"
+    "  var frame = none\n"
+    "  var cur_frame_idx = 0\n"
+    "  var visibility = 0\n"
+    "  var num_visible_frames = 0\n"
+    "  var rows = v_get_rows (v)\n"
+    "  var cols = v_get_cols (v)\n"
+    "  var num_win = %d\n"
+    "  var cur_win_idx = %d\n"
     "\n"
-    "var force = %d\n"
-    "if (force) {\n"
-    "  v_set_opt_force (v, 1)\n"
-    "}\n"
+    "  var force = %d\n"
+    "  if (force) {\n"
+    "    v_set_opt_force (v, 1)\n"
+    "  }\n"
     "\n"
-    "sys_set_current_dir (\"%s\")\n"
-    "v_set_sockname (v, \"%s\")\n"
-    "v_set_raw_mode (v)\n"
-    "v_set_size (v)\n"
-    "\n"
-    "var rows = v_get_rows (v)\n"
-    "var cols = v_get_cols (v)\n"
-    "var num_win = %d\n"
-    "\n"
-    "cur_win_idx = %d\n",
-    $my(save_image),
-    $my(always_connect),
-    cwd,
+    "  sys_set_current_dir (cwd)\n"
+    "  v_set_sockname (v, sockname)\n"
+    "  v_set_raw_mode (v)\n"
+    "  v_set_size (v)\n",
+    getpid (),
     self(get.sockname),
+    (NULL is $my(image_name) ? "" : $my(image_name)),
+    (NULL is $my(image_file) ? "" : $my(image_file)),
+    Sys.get.env_value ("LA_DIR"),
+    cwd,
+    $my(save_image),
     num_wins,
-    cur_win_idx);
+    cur_win_idx,
+    $my(always_connect)
+  );
 
   free (cwd);
 
@@ -1642,12 +1674,12 @@ static int v_save_image (v_t *this, char *fname) {
 
     fprintf (fp,
       "\n"
-      "# %s\n"
-      "num_frames = %d\n"
-      "max_frames = %d\n"
-      "num_visible_frames = %d\n"
-      "cur_frame_idx = %d\n"
-      "win = v_new_win (v, num_frames, max_frames)\n",
+      "  # %s\n"
+      "  num_frames = %d\n"
+      "  max_frames = %d\n"
+      "  num_visible_frames = %d\n"
+      "  cur_frame_idx = %d\n"
+      "  win = v_new_win (v, num_frames, max_frames)\n",
       name,
       num_frames,
       max_frames,
@@ -1662,11 +1694,11 @@ static int v_save_image (v_t *this, char *fname) {
       int visibility = Vframe.get.visibility (frame);
 
       fprintf (fp,
-          "frame = v_win_get_frame_at (v, win, %d)\n"
-          "v_set_frame_visibility (v, frame, %d)\n",
+          "  frame = v_win_get_frame_at (v, win, %d)\n"
+          "  v_set_frame_visibility (v, frame, %d)\n",
           f, visibility);
 
-      fprintf (fp, "v_set_frame_command (v, frame, \"");
+      fprintf (fp, "  v_set_frame_command (v, frame, \"");
 
       for (int j = 0; j < argc; j++)
         fprintf (fp, "%s%s", argv[j], (j is argc - 1 ? "" : " "));
@@ -1674,30 +1706,30 @@ static int v_save_image (v_t *this, char *fname) {
       fprintf (fp, "\")\n");
 
       ifnot (NULL is logfile) {
-        int remove_log = Vframe.get.remove_log (frame);
-        fprintf (fp, "v_set_frame_log (v, frame, \"%s\", %d)\n",
-           logfile, remove_log);
+        fprintf (fp, "  remove_log = %d\n", Vframe.get.remove_log (frame));
+        fprintf (fp, "  v_set_frame_log (v, frame, none, remove_log)\n");
       }
 
       fprintf (fp, "\n");
     }
 
-    fprintf (fp, "frame = v_win_set_current_at (v, win, %d)\n", cur_frame_idx);
+    fprintf (fp, "  frame = v_win_set_current_at (v, win, %d)\n", cur_frame_idx);
   }
 
   ifnot (NULL is $my(image_name))
-    fprintf (fp, "v_set_image_name (v, \"%s\")\n", $my(image_name));
+    fprintf (fp, "  v_set_image_name (v, image_name)\n");
 
   ifnot (NULL is $my(image_file))
-    fprintf (fp, "v_set_image_file (v, \"%s\")\n", $my(image_file));
+    fprintf (fp, "  v_set_image_file (v, image_file)\n");
 
-  fprintf (fp, "v_set_save_image (v, %d)\n", $my(save_image));
+  fprintf (fp, "  v_set_save_image (v, save_image)\n");
 
   fprintf (fp, "\n");
 
-  fprintf (fp, "win = v_set_current_at (v, %d)\n", cur_win_idx);
-  fprintf (fp, "v_main (v)\n");
-
+  fprintf (fp, "  win = v_set_current_at (v, %d)\n", cur_win_idx);
+  fprintf (fp, "  v_main (v)\n");
+  fprintf (fp, "}\n\n");
+  fprintf (fp, "v_image ()\n");
   fclose (fp);
 
   String.release (file);
