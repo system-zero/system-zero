@@ -288,13 +288,22 @@ future.
 # Functions
 # print and println -  print functions
 # typeof            -  type of a value
+#                      args: object
 # typeAsString      -  type of a value as string represantation
+#                      args: object
 # typeofArray       -  type of an array value
+#                      args: array
 # typeArrayAsString -  type of an array value as string represantation
-# len               -  length of the object (for ARRAY and STRING types),
-#                      note that this has byte semantics for STRING types
+#                      args: array
+# len               -  length of the object (for array and string types),
+#                      note that this has byte semantics for string types
+#                      args: object
+# getcwd            -  returns the current working directory
+#                      args:
 # fopen             -  returns a file pointer
+#                      args: filename, mode (C semantics)
 # fflush            -  flush the specified stream
+#                      args: file pointer
 
 # those might change
 # not               -  !value
@@ -305,7 +314,7 @@ future.
 # alloc   -  allocate memory
 # realloc -  reallocate memory
 
-# Constants
+# Constant variables
 # ok      - 0
 # notok   - -1
 # true    - 1
@@ -319,11 +328,11 @@ future.
 # stderr
 # (no standard input yet)
 #
-# Argument list
+# Argument list variables
 # __argc   - holds the length of the list, zero if it hasn't been set
 # __argv   - string type array, that holds the items of the list if it has been set
 
-# Info
+# Info variables
 # __file__ - current evaluated filename, if a string is evaluated defaults to "__string__"
 # __func__ - current function name
 

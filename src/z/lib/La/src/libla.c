@@ -10,6 +10,7 @@
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
 
+#define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
@@ -604,6 +605,14 @@ static malloced_string *new_malloced_string (size_t len) {
   malloced_string *mbuf = Alloc (sizeof (malloced_string));
   mbuf->data = String.new (len + 1);
   return mbuf;
+}
+
+static VALUE la_getcwd (la_t *this) {
+  char *dir = Dir.current ();
+  string *cwd = String.new_with (dir);
+  free (dir);
+  VALUE v = STRING(cwd);
+  return v;
 }
 
 static VALUE la_typeof (la_t *this, VALUE value) {
@@ -3944,13 +3953,14 @@ struct la_def_fun_t {
   int nargs;
 } la_funs[] = {
   { "not",              PTR(la_not), 1},
-  { "bool",             PTR(la_bool), 1},
   { "len",              PTR(la_len), 1},
+  { "bool",             PTR(la_bool), 1},
   { "fopen",            PTR(la_fopen), 2},
   { "fflush",           PTR(la_fflush), 1},
   { "free",             PTR(la_free), 1},
   { "malloc",           PTR(la_malloc), 1},
   { "realloc",          PTR(la_realloc), 2},
+  { "getcwd",           PTR(la_getcwd), 0},
   { "typeof",           PTR(la_typeof), 1},
   { "typeAsString",     PTR(la_typeAsString), 1},
   { "typeofArray",      PTR(la_typeofArray), 1},
@@ -4456,6 +4466,7 @@ static int la_load_file (la_T *__la__, la_t *this, char *fn) {
 
 public la_T *__init_la__ (void) {
   __INIT__ (io);
+  __INIT__ (dir);
   __INIT__ (path);
   __INIT__ (file);
   __INIT__ (vmap);
