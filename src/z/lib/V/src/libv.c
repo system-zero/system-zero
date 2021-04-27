@@ -123,6 +123,7 @@ struct v_prop {
   PtyAtExit_cb *at_exit_cbs;
 
   string_t
+    *tmp_dir,
     *data_dir,
     *as_sockname;
 
@@ -1440,6 +1441,37 @@ theerror:
   return NOTOK;
 }
 
+static int v_set_tmp_dir (v_t *this, char *dir) {
+  if (NULL is $my(tmp_dir))
+    $my(tmp_dir) = String.new (32);
+
+  String.clear ($my(tmp_dir));
+
+  if (NULL is dir) {
+    String.append_with ($my(tmp_dir), Sys.get.env_value ("TMPDIR"));
+    String.append_with ($my(tmp_dir), "/v/");
+    String.append_with ($my(tmp_dir), Sys.get.env_value ("USERNAME"));
+  } else
+    String.append_with ($my(tmp_dir), dir);
+
+  ifnot (File.exists ($my(tmp_dir)->bytes)) {
+    if (-1 is Dir.make_parents ($my(tmp_dir)->bytes, S_IRWXU, DirOpts()))
+      goto theerror;
+  } else {
+    ifnot (Dir.is_directory ($my(tmp_dir)->bytes))
+      goto theerror;
+
+    ifnot (File.is_rwx ($my(tmp_dir)->bytes))
+      goto theerror;
+  }
+
+  return OK;
+
+theerror:
+  self(unset.tmp_dir);
+  return NOTOK;
+}
+
 static int v_set_current_dir (v_t *this, char *dir, int is_malloced) {
   char *cwd = dir;
 
@@ -1510,6 +1542,11 @@ static void v_unset_data_dir (v_t *this) {
   $my(data_dir) = NULL;
 }
 
+static void v_unset_tmp_dir (v_t *this) {
+  String.release ($my(tmp_dir));
+  $my(tmp_dir) = NULL;
+}
+
 static string_t *v_init_sockname (v_t *this, char *sockdir, char *as) {
   if (NULL is as) return NULL;
 
@@ -1523,11 +1560,14 @@ static string_t *v_init_sockname (v_t *this, char *sockdir, char *as) {
   string_t *sockname = String.new (aslen + 16);
 
   if (NULL is sockdir) {
-    char *tmp = Sys.get.env_value ("TMPDIR");
-    String.append_with (sockname, tmp);
+    if (NULL is $my(tmp_dir)) {
+      if (NOTOK is self(set.tmp_dir, NULL)) {
+        fprintf (stderr, "unable to set temp directory\n");
+        goto theerror;
+      }
+    }
 
-    tmp = Sys.get.env_value ("USERNAME");
-    String.append_with_fmt (sockname, "/v/%s_vsockets", tmp);
+    String.append_with (sockname, $my(tmp_dir)->bytes);
 
     if (File.exists (sockname->bytes)) {
       ifnot (Dir.is_directory (sockname->bytes)) {
@@ -1571,6 +1611,7 @@ theerror:
   String.release (sockname);
   return NULL;
 }
+
 static term_t *v_get_term (v_t *this) {
   return $my(term);
 }
@@ -1619,9 +1660,9 @@ static int v_save_image (v_t *this, char *fname) {
 
   fprintf (fp,
     "# v image script\n\n"
+    "var v = v_get ()\n\n"
     "func v_image () {\n"
     "  # variable initialization\n"
-    "  var v = v_get ()\n"
     "  var pid = %d\n"
     "  var sockname = \"%s\"\n"
     "  var image_name = \"%s\"\n"
@@ -1729,9 +1770,9 @@ static int v_save_image (v_t *this, char *fname) {
   fprintf (fp, "\n");
 
   fprintf (fp, "  win = v_set_current_at (v, %d)\n", cur_win_idx);
-  fprintf (fp, "  v_main (v)\n");
   fprintf (fp, "}\n\n");
   fprintf (fp, "v_image ()\n");
+  fprintf (fp, "v_main (v)\n");
   fclose (fp);
 
   String.release (file);
@@ -1954,6 +1995,7 @@ public v_t *__init_v__ (v_opts *opts) {
     .set = (v_set_self) {
       .la_dir = v_set_la_dir,
       .object = v_set_object,
+      .tmp_dir = v_set_tmp_dir,
       .data_dir = v_set_data_dir,
       .save_image = v_set_save_image,
       .image_file = v_set_image_file,
@@ -1964,6 +2006,7 @@ public v_t *__init_v__ (v_opts *opts) {
       .exec_child_cb = v_set_exec_child_cb
     },
     .unset = (v_unset_self) {
+      .tmp_dir = v_unset_tmp_dir,
       .data_dir = v_unset_data_dir
     },
     .init = (v_init_self) {
@@ -2019,6 +2062,7 @@ public v_t *__init_v__ (v_opts *opts) {
   Vwm.set.object (vwm, this, V_OBJECT);
 
   if (NOTOK is self(set.data_dir, NULL)) goto theerror;
+  if (NOTOK is self(set.tmp_dir, NULL)) goto theerror;
   if (NOTOK is self(set.la_dir, NULL)) goto theerror;
   if (NOTOK is self(set.current_dir, Dir.current (), 1)) goto theerror;
 
@@ -2036,6 +2080,7 @@ public void __deinit_v__ (v_t **thisp) {
 
   String.release ($my(as_sockname));
   self(unset.data_dir);
+  self(unset.tmp_dir);
 
   ifnot (NULL is $my(image_file)) free ($my(image_file));
   ifnot (NULL is $my(image_name)) free ($my(image_name));

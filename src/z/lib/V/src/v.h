@@ -103,12 +103,15 @@ typedef struct v_set_self {
 
   int
     (*la_dir) (v_t *, char *),
-    (*current_dir) (v_t *, char *, int),
-    (*data_dir) (v_t *, char *);
+    (*tmp_dir) (v_t *, char *),
+    (*data_dir) (v_t *, char *),
+    (*current_dir) (v_t *, char *, int);
 } v_set_self;
 
 typedef struct v_unset_self {
-  void (*data_dir) (v_t *);
+  void
+    (*tmp_dir) (v_t *),
+    (*data_dir) (v_t *);
 } v_unset_self;
 
 typedef struct v_self {
