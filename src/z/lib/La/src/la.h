@@ -116,7 +116,7 @@ typedef ObjectType object;
 })
 
 typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
-typedef VALUE (*OpFunc) (VALUE, VALUE);
+typedef VALUE (*OpFunc) (la_t *, VALUE, VALUE);
 
 enum {
   LA_ERR_OUTOFBOUNDS  = -8,

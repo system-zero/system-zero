@@ -278,6 +278,11 @@ future.
 # >           -  greater
 # >=          -  greater or equal than
 # +=          -  increment variable value and assign the result
+#                if the first operand is a string then
+#                  if the second operand is a string appends this string
+#                  else if the second operand is an integer type, then it
+#                  appends the byte[s] represantation (in ascci range or
+#                  a multibyte sequence)
 # -=          -  decrement variable   -||-
 # *=          -  multiply  variable   -||-
 # /=          -  divide    variable   -||-

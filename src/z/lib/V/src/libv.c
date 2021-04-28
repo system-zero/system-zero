@@ -522,7 +522,6 @@ static int pty_child (v_t *this, int argc, char **argv) {
     close (fd);
 
     int retval = $my(exec_child_cb) (this, argc, argv);
-    __deinit_vwm__ (&vwm);
     __deinit_v__ (&this);
 
     _exit (retval);
@@ -965,7 +964,6 @@ static int v_exec_child_cb (v_t *this, int argc, char **argv) {
   int retval = Vwm.main (vwm);
 
   if ($my(save_image)) self(save_image, NULL);
-
   return retval;
 }
 

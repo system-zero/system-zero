@@ -12808,16 +12808,20 @@ static string_t *E_create_image (E_T *this) {
     return NULL;
 
   string_t *img = String.new_with_fmt (
-       "var ed_instances = %d\n"
-       "var flags = 0\n"
-       "var frame_zero = 0\n"
-       "var draw = 1\n"
-       "var donot_draw = 0\n"
-       "var save_image = %d\n"
-       "var persistent_layout = %d\n"
-       "var ed_cur_idx = %d\n"
-       "var win_cur_idx = %d\n"
-       "var buf_cur_idx = %d\n",
+       "func e_image () {\n"
+       "  var ed_instances = %d\n"
+       "  var flags = 0\n"
+       "  var frame_zero = 0\n"
+       "  var draw = 1\n"
+       "  var donot_draw = 0\n"
+       "  var save_image = %d\n"
+       "  var persistent_layout = %d\n"
+       "  var ed_cur_idx = %d\n"
+       "  var win_cur_idx = %d\n"
+       "  var buf_cur_idx = %d\n"
+       "  var ed = none\n"
+       "  var cwin = none\n"
+       "  var buf = none\n\n",
     $my(num_items),
     $my(save_image),
     $my(persistent_layout),
@@ -12825,29 +12829,15 @@ static string_t *E_create_image (E_T *this) {
     $my(current)->cur_idx,
     $my(current)->current->cur_idx);
 
-  int g_num_buf = 0;
-  int g_num_win = 0;
-  int g_num_ed = 0;
-
   ed_t *ed = self(get.head);
 
   while (ed isnot NULL) {
     int num_win = ed_get_num_win (ed, NO_COUNT_SPECIAL);
 
-    ifnot (g_num_ed) {
-      String.append_with (img, "var ");
-      g_num_ed++;
-    }
-
     String.append_with_fmt (img,
-       "ed = ed_new (%d)\n", num_win);
+       "  ed = ed_new (%d)\n", num_win);
 
-    ifnot (g_num_win) {
-      String.append_with (img, "var ");
-      g_num_win++;
-    }
-
-    String.append_with (img, "cwin = ed_get_current_win (ed)\n");
+    String.append_with (img, "  cwin = ed_get_current_win (ed)\n");
 
     int l_num_win = 0;
     win_t *cwin = ed_get_win_head (ed);
@@ -12856,7 +12846,7 @@ static string_t *E_create_image (E_T *this) {
       if (win_isit_special_type (cwin)) goto next_win;
 
       if (l_num_win++)
-        String.append_with (img, "cwin = ed_get_win_next (ed, cwin)\n\n");
+        String.append_with (img, "  cwin = ed_get_win_next (ed, cwin)\n\n");
 
       buf_t *buf = win_get_buf_head (cwin);
       while (buf) {
@@ -12869,18 +12859,13 @@ static string_t *E_create_image (E_T *this) {
 
         String.append_with (img, "\n");
 
-        ifnot (g_num_buf) {
-          String.append_with (img, "var ");
-          g_num_buf++;
-        }
-
         String.append_with_fmt (img,
-              "buf = win_buf_init (cwin, frame_zero, flags)\n"
-              "buf_init_fname (buf, \"%s\")\n"
-              "buf_set_ftype (buf, \"%s\")\n"
-              "buf_set_autosave (buf, %ld)\n"
-              "buf_set_row_idx (buf, %d)\n"
-              "win_append_buf (cwin, buf)\n",
+              "  buf = win_buf_init (cwin, frame_zero, flags)\n"
+              "  buf_init_fname (buf, \"%s\")\n"
+              "  buf_set_ftype (buf, \"%s\")\n"
+              "  buf_set_autosave (buf, %ld)\n"
+              "  buf_set_row_idx (buf, %d)\n"
+              "  win_append_buf (cwin, buf)\n",
             bufname,
             ftype_name,
             autosave,
@@ -12897,20 +12882,22 @@ next_win:
     ed = ed->next;
     ifnot (NULL is ed)
       String.append_with (img,
-         "ed = e_set_ed_next ()\n");
+          "  ed = e_set_ed_next ()\n");
   }
 
   String.append_with_fmt (img, "\n"
-        "e_set_image_file (\"%s\")\n"
-        "e_set_image_name (\"%s\")\n"
-        "e_set_save_image (save_image)\n"
-        "e_set_persistent_layout (persistent_layout)\n\n"
-        "ed = e_set_ed_by_idx (ed_cur_idx)\n"
-        "cwin = ed_set_current_win (ed, win_cur_idx)\n"
-        "win_set_current_buf (cwin, buf_cur_idx, donot_draw)\n\n"
-        "win_draw (cwin)\n",
-     $my(image_file),
-     $my(image_name));
+      "  e_set_image_file (\"%s\")\n"
+      "  e_set_image_name (\"%s\")\n"
+      "  e_set_save_image (save_image)\n"
+      "  e_set_persistent_layout (persistent_layout)\n\n"
+      "  ed = e_set_ed_by_idx (ed_cur_idx)\n"
+      "  cwin = ed_set_current_win (ed, win_cur_idx)\n"
+      "  win_set_current_buf (cwin, buf_cur_idx, donot_draw)\n\n"
+      "  win_draw (cwin)\n"
+      "}\n\n"
+      "e_image ()\n",
+    $my(image_file),
+    $my(image_name));
 
   return img;
 }

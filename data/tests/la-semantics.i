@@ -773,7 +773,7 @@ func semantics () {
 
   var str = "asdf"
   test_num += 1
-  print ("[${test_num}] testing string indices [get]- ")
+  print ("[${test_num}] testing string indices [get] - ")
   retval = str[-1]
   if (retval isnot 'f') {
     println (stderr, "[NOTOK] awaiting ${('f')}, got ${retval}")
@@ -782,7 +782,7 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] testing string indices [set]- ")
+  print ("[${test_num}] testing string indices [set] - ")
   str[-1] = 'g'
   retval = str[-1]
   if (retval isnot 'g') {
@@ -792,10 +792,28 @@ func semantics () {
   }
 
   test_num += 1
-  print ("[${test_num}] testing string indices [statement]- ")
+  print ("[${test_num}] testing string indices [statement] - ")
   retval = 200 - (str[0] + 3)
   if (retval isnot 100) {
     println (stderr, "[NOTOK] awaiting 100, got ${retval}")
+  } else {
+    println ("[OK]")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing string appending operator [+=] - ")
+  var str_h = "ba"
+  str_h += "μπάκι"
+  str_h += 'α'
+  var s_str = " and μπακάκια"
+  str_h += s_str
+
+  if (str_h isnot "baμπάκια and μπακάκια") {
+    println (stderr, "[NOTOK] awaiting \"baμπάκια and μπακάκια\", got ${%s, str_h}")
+  }
+
+  if (s_str isnot " and μπακάκια") {
+    println (stderr, "[NOTOK] probably a freed variable that shouldn't be freed")
   } else {
     println ("[OK]")
   }
@@ -1000,6 +1018,7 @@ func types () {
   array number n_ar[0]
 
   var type = none
+
   test_num += 1
   print ("[${test_num}] testing types - ")
   if (typeof (type) isnot NoneType) {

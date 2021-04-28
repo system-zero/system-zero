@@ -130,6 +130,7 @@ static string_t *io_parse_escapes (char *buf) {
       case 'v': String.append_byte (out, '\v'); break;
       case 'e': String.append_byte (out,  033); break;
       case '\\':String.append_byte (out, '\\'); break;
+      case '"' :String.append_with (out, "\""); break;
       default:  goto theerror;
     }
 
