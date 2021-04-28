@@ -259,6 +259,8 @@ future.
 # /           -  division
 # %           -  modulo
 # +           -  addition
+#                for strings this is a concatenation operator, an integer in that case
+#                has character semantics
 # -           -  subtract
 # &           -  bit and
 # |           -  bit or
@@ -279,10 +281,10 @@ future.
 # >=          -  greater or equal than
 # +=          -  increment variable value and assign the result
 #                if the first operand is a string then
-#                  if the second operand is a string appends this string
+#                  if the second operand is a string then appends this string
 #                  else if the second operand is an integer type, then it
-#                  appends the byte[s] represantation (in ascci range or
-#                  a multibyte sequence)
+#                  appends a byte if it is within the ascii range or else a
+#                  multibyte sequence to form the character
 # -=          -  decrement variable   -||-
 # *=          -  multiply  variable   -||-
 # /=          -  divide    variable   -||-

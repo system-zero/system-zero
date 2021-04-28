@@ -805,15 +805,25 @@ func semantics () {
   var str_h = "ba"
   str_h += "μπάκι"
   str_h += 'α'
-  var s_str = " and μπακάκια"
+  var s_str = " and μπακακάκια"
   str_h += s_str
 
-  if (str_h isnot "baμπάκια and μπακάκια") {
-    println (stderr, "[NOTOK] awaiting \"baμπάκια and μπακάκια\", got ${%s, str_h}")
+  if (str_h isnot "baμπάκια and μπακακάκια") {
+    println (stderr, "[NOTOK] awaiting \"baμπάκια and μπακακάκια\", got ${%s, str_h}")
   }
 
-  if (s_str isnot " and μπακάκια") {
+  if (s_str isnot " and μπακακάκια") {
     println (stderr, "[NOTOK] probably a freed variable that shouldn't be freed")
+  } else {
+    println ("[OK]")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing string concatenation using the [+] operator - ")
+  var str_hh = "κοάξ"
+  str_h = '"' + "Βρεκεκεκὲ" + 'ξ' + ' ' + "κοὰξ" + ' ' + str_hh + '"'
+  if (str_h isnot "\"Βρεκεκεκὲξ κοὰξ κοάξ\"") {
+    println (stderr, "[NOTOK] awaiting \"\"Βρεκεκεκὲξ κοὰξ κοάξ\"\", got ${%s, str_h}")
   } else {
     println ("[OK]")
   }

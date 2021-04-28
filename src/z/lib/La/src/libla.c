@@ -1092,9 +1092,14 @@ static int la_do_next_token (la_t *this, int israw) {
 
     ifnot (this->curState & STRING_LITERAL_ARG_STATE) {
       string_t *str = String.new (len + 1);
+      pc = 0;
       for (size_t i = 0; i < len; i++) {
         c = la_get_char (this);
+        if (c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR)
+          String.clear_at (str, -1);
+
         String.append_byte (str, c);
+        pc = c;
       }
 
       this->tokenValue = STRING(str);
@@ -1102,9 +1107,13 @@ static int la_do_next_token (la_t *this, int israw) {
 
     } else {
       malloced_string *mbuf = new_malloced_string (len + 1);
+      pc = 0;
       for (size_t i = 0; i < len; i++) {
         c = la_get_char (this);
+        if (c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR)
+          String.clear_at (mbuf->data, -1);
         String.append_byte (mbuf->data, c);
+        pc = c;
       }
 
       ListStackPush (this->curScope, mbuf);
@@ -3659,10 +3668,26 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
           result = NUMBER(AS_INT(x) + AS_NUMBER(y)); goto theend;
         case INTEGER_TYPE:
           result = INT(AS_INT(x) + AS_INT(y)); goto theend;
+        case STRING_TYPE: {
+          integer x_i = AS_INT(x);
+          string *nx = String.new (8);
+          if (x_i <= '~' + 1) {
+            String.append_byte (nx, x_i);
+          } else {
+            char buf[8];
+            int len;
+            Ustring.character (x_i, buf, &len);
+            String.append_with_len (nx, buf, len);
+          }
+          x = STRING(nx);
+          goto string_type;
+        }
       }
+
       goto theend;
 
     case STRING_TYPE:
+      string_type:
       switch (y.type) {
         case STRING_TYPE: {
           string *x_str = AS_STRING(x);
@@ -3675,11 +3700,13 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             string *new = String.new_with_len (x_str->bytes, x_str->num_bytes);
             String.append_with_len (new, y_str->bytes, y_str->num_bytes);
             result = STRING(new);
+            if (x.sym is NULL)
+              String.release (x_str);
           }
-          if (this->curState & LITERAL_STRING_STATE) {
-            this->curState &= ~LITERAL_STRING_STATE;
+
+          if (y.sym is NULL)
             String.release (y_str);
-          }
+
           goto theend;
         }
 
@@ -3692,6 +3719,8 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             new = x_str;
           } else {
             new = String.new_with_len (x_str->bytes, x_str->num_bytes);
+            if (x.sym is NULL)
+              String.release (x_str);
           }
 
           integer y_i = AS_INT(y);
@@ -3703,6 +3732,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             Ustring.character (y_i, buf, &len);
             String.append_with_len (new, buf, len);
           }
+
           result = STRING(new);
           goto theend;
         }
