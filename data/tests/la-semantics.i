@@ -71,8 +71,8 @@ func semantics () {
     println ("[OK]")
   }
 
-  func fue (c) {
-    func fuda (b) {
+  var fue = func (c) {
+    var fuda = func (b) {
       return a + b + c
     }
 
@@ -90,7 +90,7 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing logical AND - ")
-  if ((1 is 1) and (1 is 1) and ((1 is 1) and (2 is 2)) && \
+  if ((1 is 1) and (1 is 1) and ((1 is 1) and (2 is 2)) &&
       ((1 isnot 2) && (1 isnot 2))) {
     println ("[OK]")
   } else {
@@ -99,7 +99,7 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing logical OR - ")
-  if ((2 < 1) or (2 > 2) or (1 isnot 1) or (2 != 2) || \
+  if ((2 < 1) or (2 > 2) or (1 isnot 1) or (2 != 2) ||
       ((2 < 2) || (1 > 2) || (1 > 2) || (2 < 1))) {
     println (stderr, "[NOTOK]")
   } else {
@@ -166,8 +166,8 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing lambdas - ")
-  retval = lambda ((x) {return x * 2}) (10) + \
-           lambda ((y) {return y / 2}) (20) + \
+  retval = lambda ((x) {return x * 2}) (10) +
+           lambda ((y) {return y / 2}) (20) +
            lambda ((z) {return z % 2}) (21) + 11
   if (retval isnot 42) {
     println (stderr, "[NOTOK] awaiting 42 got: ${retval}")
@@ -179,7 +179,7 @@ func semantics () {
   print ("[${test_num}] testing complex nested lambdas - ")
   retval = lambda ((x, y) {
     var xl = x + y
-    return lambda ((k) { return k * 2}) (x) + \
+    return lambda ((k) { return k * 2}) (x) +
            lambda ((z) {
              var i = lambda ((x) {return x + 100}) (z)
              return (z * 2) + i }) (xl)

@@ -32,10 +32,9 @@ A very small yet another programming language (yala) that compiles in C.
 
 - code blocks delimited with braces '{}' and are mandatory.
 
-- statements ending with a semicolon or with a new line character.
-
-- the backslash '\' character followed by a new line character,
-  denotes that the statement continues in the next line.
+- statements are separated with a semicolon or with a new line character,
+  and they can continue to the next line, if it is too long to fit on the
+  screen.
 
 # Conditionals:
 
@@ -47,18 +46,18 @@ A very small yet another programming language (yala) that compiles in C.
 
   ifnot (condition) { ... }
 
-# Both can get an `else` clause, that is executed when the first block is not
-# executed.
+ - both can get an `else` clause, that is evalueated when the prior conditional
+   block hasn't been executed.
 
-# Both can be extended with an:
+ - both can be extended with an `else if[not]` conditional block:
 
-  } else if (condition) { block }
+     } else if (condition) { block }
 
-  or
+   or
 
-  } else ifnot (condition) { block }
+     } else ifnot (condition) { block }
 
-# if the original conditional statement evaluates to false.
+   if the prior conditional block hasn't been executed.
 
 # Loops:
 
@@ -90,8 +89,9 @@ A very small yet another programming language (yala) that compiles in C.
 
   do { block } while (condition)
 
- - the `break` keyword breaks out of a loop while the `continue` keyword
-   continues with the next iteration.
+- the `break` statement breaks out of a loop.
+
+- the `continue` statement continues with the next iteration.
 
 # Constant types (those types can not be reassigned)
 
@@ -99,7 +99,7 @@ A very small yet another programming language (yala) that compiles in C.
 
 # Variables can not be redeclared at the current scope.
 
-# Assign to a string literal (multibyte (UTF-8) strings are handled).
+# Assign with a string literal (multibyte (UTF-8) strings are handled).
 
   var str = "oh la la lala, it's the natural la"
 
@@ -107,16 +107,19 @@ A very small yet another programming language (yala) that compiles in C.
 
     str[-2]
 
+    again: this has byte semantics, though there isn't a certainity if it is
+    the right thing to do, as it might make also sense to return a character.
+
 # This can be reassigned
 
   str = "that everyone brings"
 
   - in that case the previous value should be freed automatically
 
-# You can pass a string literal as an argument to a user defined function, or
+- you can pass a string literal as an argument to a user defined function, or
   to a C function.
 
-# Functions can get at most nine arguments.
+- functions can get at most nine arguments.
 
 # Comparison operators:
 
@@ -191,8 +194,8 @@ A very small yet another programming language (yala) that compiles in C.
         - %d as a decimal (this is the default, so it can be omited)
         - %s as a string
         - %p as a pointer address
-        - %o as an octal (a 0 (zero) is prefixed in the output)
-        - %x as a hexadecimal (a 0x is prefixed in the output)
+        - %o as an octal (0 (zero) is prefixed in the output)
+        - %x as a hexadecimal (0x is prefixed in the output)
         - %f as a double
 
   -  the `println()` is like `print`, but also emits a new line character.
@@ -213,9 +216,9 @@ future.
       - number
       - string
 
-    In the language there is also a pointer type, that is an alias for the
-    INTEGER_TYPE, and capable to hold a pointer address that can be passed
-    to C functions.
+- in the language there is also a pointer type, that is an alias for the
+  INTEGER_TYPE, and capable to hold a pointer address that can be passed
+  to C functions.
 
   - the *current* assignment syntax for this form, is:
 
@@ -238,6 +241,8 @@ future.
 ```sh
 # var         -  variable definition
 # const       -  constant definition
+#                can not change state since initialization; an uninitialized
+#                object is considered the one that has a value of `none`
 # func        -  function definition
 # lambda      -  lambda function
 # array       -  array definition
@@ -391,7 +396,6 @@ style. However it should be okey if practicing consistency.
 - normally releasing memory it happens automatically, but many cases are handled
   internally explicitly, as there is no a real mechanism underneath, just a very
   primitive one
-
 
 
 # DEVELOPMENT
