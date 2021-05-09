@@ -119,11 +119,12 @@ typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE,
 typedef VALUE (*OpFunc) (la_t *, VALUE, VALUE);
 
 enum {
-  LA_ERR_OUTOFBOUNDS  = -8,
+  LA_ERR_OUTOFBOUNDS  = -9,
+  LA_ERR_LOAD         = -8,
   LA_ERR_TOOMANYARGS  = -7,
   LA_ERR_BADARGS      = -6,
-  LA_ERR_UNKNOWN_SYM  = -5,
-  LA_ERR_UNKNOWN_TYPE = -4,
+  LA_ERR_UNKNOWN_TYPE = -5,
+  LA_ERR_UNKNOWN_SYM  = -4,
   LA_ERR_SYNTAX       = -3,
   LA_ERR_NOMEM        = -2,
   LA_NOTOK            = -1,

@@ -1044,7 +1044,7 @@ sense and an inner will, to do what we have to do by our own, and not  because
 we have to do, because they told us to do. Our law should be streaming  by the
 gained consience. Hopefully one day.
 
-## Acknowledgements and References:
+## Acknowledgements, References, Algorithms, Libraries:
 
 * [Mir: A jit compiler library.](https://github.com/vnmakarov/mir)
 * [Tinycc: A tiny C compiler.](https://repo.or.cz/tinycc)
@@ -1059,6 +1059,11 @@ gained consience. Hopefully one day.
 * [Linux From Scratch.](https://linuxfromscratch.org)
 * [Nan Boxing.](https://piotrduperas.com/posts/nan-boxing)
 * [Nan Boxing.](https://leonardschuetz.ch/blog/nan-boxing/)
+* [Simple Shell.](https://notabug.org/rain1/s/)
+* [Argument Parser.](https://github.com/cofyc/argparse)
+* [Super Light Regular Expression Library.](https://github.com/cesanta/slre)
+* [Terminal [de|at]tach.](https://github.com/crigler/dtach.git)
+* [splitvt by Sam Lantiga.](...)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

@@ -37,6 +37,9 @@
 #define NS_BLOCK           "__block__"
 #define NS_BLOCK_LEN       9
 #define NS_ANON            "anonymous"
+#define LA_EXTENSION       "i"
+#define LA_STRING_NS       "__string__"
+#define LA_LOAD_DIR        "la"
 
 #ifdef DEBUG
 
@@ -68,6 +71,8 @@ static  char PREVFUNC[MAXLEN_SYMBOL + 1];
 #define CONTINUE_STATE                (1 << 3)
 #define LITERAL_STRING_STATE          (1 << 4)
 #define FUNC_CALL_RESULT_IS_MMT       (1 << 5)
+#define LOADFILE_SILENT               (1 << 6)
+#define FORCE_LOADFILE                (1 << 7)
 
 #define OBJECT_APPEND                 (1 << 0)
 
@@ -106,6 +111,7 @@ static  char PREVFUNC[MAXLEN_SYMBOL + 1];
 #define LA_TOKEN_NUMBER     'n'
 #define LA_TOKEN_BINOP      'o'
 #define LA_TOKEN_PRINTLN    'p'
+#define LA_TOKEN_LOADFILE   'r'
 #define LA_TOKEN_VAR        'v'
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
@@ -223,7 +229,8 @@ struct la_t {
 
   fun_stack funstack[1];
   symbol_stack symbolstack[1];
-  Imap_t *refcount;
+  Imap_t *funRefcount;
+  Vmap_t *units;
 
   char name[32];
 
@@ -297,6 +304,7 @@ static int la_parse_expr (la_t *, VALUE *);
 static int la_parse_primary (la_t *, VALUE *);
 static int la_parse_func_def (la_t *);
 static int la_next_token (la_t *);
+static int la_eval_file (la_t *, const char *);
 static VALUE la_mul  (la_t *, VALUE, VALUE);
 static VALUE la_add  (la_t *, VALUE, VALUE);
 static VALUE la_sub  (la_t *, VALUE, VALUE);
@@ -852,6 +860,11 @@ static void la_release_sym (void *sym) {
 
   free (this);
   this = NULL;
+}
+
+static void la_release_unit (void *item) {
+  string *str = (string  *) item;
+  String.release (item);
 }
 
 static funT *fun_new (funNewArgs options) {
@@ -1865,7 +1878,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   }
 
   if (uf) {
-    int refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_incr);
+    int refcount = Imap.set_by_callback (this->funRefcount, uf->funname, la_fun_refcount_incr);
     if (refcount > 1) {
       la_symbol_stack_push (this, this->curScope->symbols);
       Vmap.clear (uf->symbols);
@@ -1928,7 +1941,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
       }
     }
 
-    refcount = Imap.set_by_callback (this->refcount, uf->funname, la_fun_refcount_decr);
+    refcount = Imap.set_by_callback (this->funRefcount, uf->funname, la_fun_refcount_decr);
 
     ifnot (refcount)
       Vmap.clear (uf->symbols);
@@ -3102,7 +3115,7 @@ static int la_parse_func_def (la_t *this) {
 
   VALUE v = PTR(uf);
 
-  this->curSym = la_define_symbol (this, this->curScope, sym_key (this, name),
+  this->curSym = la_define_symbol (this, this->curScope, fn,
       (UFUNC_TYPE | (nargs << 8)), v, 0);
 
   this->curFunDef = uf;
@@ -3482,6 +3495,138 @@ static int la_parse_exit (la_t *this) {
   this->didReturn = 1;
 
   return LA_ERR_EXIT;
+}
+
+static int la_parse_loadfile (la_t *this) {
+  int err;
+  int c = la_next_token (this);
+  ifnot (c is LA_TOKEN_PAREN_OPEN)
+    return this->syntax_error (this, "error while parsing loadfile(), awaiting (");
+
+  VALUE v;
+  err = la_parse_expr (this, &v);
+
+  if (err isnot LA_OK)
+    return this->syntax_error (this, "error while parsing loadfile()");
+
+  ifnot (v.type is STRING_TYPE)
+    return this->syntax_error (this, "error while parsing loadfile(), awaiting a string");
+
+  string *fname = AS_STRING(v);
+  string *fn = NULL;
+
+  if (this->curState & LITERAL_STRING_STATE)
+    this->curState &= ~LITERAL_STRING_STATE;
+  else
+    fname = String.dup (fname);
+
+  char *extname = Path.extname (fname->bytes);
+
+  size_t exlen = bytelen (extname);
+  if (exlen) {
+    if (exlen isnot fname->num_bytes) {
+      char *p = fname->bytes + fname->num_bytes - 1;
+      while (*p isnot '.') {
+        p--;
+        String.clear_at (fname, fname->num_bytes - 1);
+      }
+    } else  // .file
+      String.append_byte (fname, '.');
+  } else
+    String.append_byte (fname, '.');
+
+  String.append_with (fname, LA_EXTENSION);
+
+  string *ns = NULL;
+  funT *load_ns = this->curScope;
+  funT *prev_ns = load_ns;
+
+  if (this->curToken is LA_TOKEN_COMMA) {
+    la_next_token (this);
+    err = la_parse_expr (this, &v);
+    ifnot (v.type is STRING_TYPE)
+      return this->syntax_error (this, "error while parsing loadfile() ns, awaiting a string");
+
+    ns = AS_STRING(v);
+
+    if (this->curState & LITERAL_STRING_STATE)
+      this->curState &= ~LITERAL_STRING_STATE;
+    else
+      ns = String.dup (ns);
+
+    ifnot (ns->num_bytes)
+      goto theload;
+
+    la_string x = la_StringNew (ns->bytes);
+    sym_t *symbol = la_lookup_symbol (this, x);
+    if (symbol isnot NULL) {
+      v = symbol->value;
+      if (v.type & FUNCPTR_TYPE) {
+        funT *f = AS_FUNC_PTR(v);
+        load_ns = f;
+        goto theload;
+      }
+
+      this->print_fmt_bytes (this->err_fp, "loadfile(): %s is not a namespace\n", ns->bytes);
+      err = LA_ERR_SYNTAX;
+      goto theend;
+    }
+
+    this->print_bytes (this->err_fp, "loadfile(), functionality hasn't been implemented\n");
+    err = LA_ERR_SYNTAX;
+    goto theend;
+    /*
+    funT *uf = Fun_new (this, funNew (
+      .name = ns->bytes, .namelen = ns->num_bytes, .parent = this->curScope
+    ));
+
+    la_define_symbol (this, this->curScope, sym->bytes, (UFUNC_TYPE | (0 << 8)), v, 0);
+    */
+  }
+
+theload:
+  this->curScope = load_ns;
+
+  ifnot (Path.is_absolute (fname->bytes)) {
+    ifnot (Cstring.eq (LA_STRING_NS, AS_STRING_BYTES(this->file->value))) {
+      fn = String.dup (fname);
+      String.prepend_byte (fn, DIR_SEP);
+      char *dname = Path.dirname (AS_STRING_BYTES(this->file->value));
+      String.prepend_with (fn, dname);
+      free (dname);
+      this->curState |= LOADFILE_SILENT;
+      err = la_eval_file (this, fn->bytes);
+      this->curState &= ~LOADFILE_SILENT;
+      if (err isnot LA_ERR_LOAD)
+        goto theend;
+    }
+
+    this->curState |= LOADFILE_SILENT;
+    err = la_eval_file (this, fname->bytes);
+    this->curState &= ~LOADFILE_SILENT;
+    if (err isnot LA_ERR_LOAD)
+      goto theend;
+
+    if (this->la_dir->num_bytes) {
+      String.release (fn);
+      fn = String.dup (fname);
+      String.prepend_byte (fn, DIR_SEP);
+      char *dname = Path.dirname (this->la_dir->bytes);
+      String.prepend_with (fn, dname);
+      free (dname);
+      err = la_eval_file (this, fn->bytes);
+    }
+    goto theend;
+  }
+
+  err = la_eval_file (this, fname->bytes);
+
+theend:
+  this->curScope = prev_ns;
+  String.release (fname);
+  String.release (fn);
+  String.release (ns);
+  return err;
 }
 
 static int la_parse_return (la_t *this) {
@@ -4072,6 +4217,7 @@ static struct def {
   { "func",    LA_TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
+  { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
   { "array",   LA_TOKEN_ARYDEF,   PTR(la_parse_array_def) },
   { "*",       BINOP(1),          PTR(la_mul) },
   { "/",       BINOP(1),          PTR(la_div) },
@@ -4156,7 +4302,7 @@ static int la_std_def (la_t *this, la_opts opts) {
   err = la_define (this, "__argv", ARRAY_TYPE, v);
   if (err) return LA_NOTOK;
 
-  string *file = String.new_with ("__string__");
+  string *file = String.new_with (LA_STRING_NS);
   v = STRING(file);
   this->file = la_define_symbol (this, this->std, "__file__", STRING_TYPE, v, 0);
   if (NULL is this->file) return LA_NOTOK;
@@ -4166,7 +4312,11 @@ static int la_std_def (la_t *this, la_opts opts) {
   this->func = la_define_symbol (this, this->std, "__func__", STRING_TYPE, v, 0);
   if (NULL is this->func) return LA_NOTOK;
 
-  return LA_OK;
+  string *loadpath = String.dup (this->la_dir);
+  v = STRING(loadpath);
+  err = la_define (this, "__loadpath", STRING_TYPE, v);
+
+  return err;
 }
 
 /* ABSTRACTION CODE */
@@ -4208,14 +4358,16 @@ static int la_eval_string (la_t *this, const char *buf) {
   $CODE_PATH
 #endif
 
+  const char *prev_buffer = this->script_buffer;
   this->script_buffer = buf;
+
   la_string x = la_StringNew (buf);
 
   string *file = AS_STRING(this->file->value);
   integer len =  file->num_bytes;
   char prev_file[len + 1];
   Cstring.cp (prev_file, len + 1, file->bytes, len);
-  String.replace_with (file, "__string__");
+  String.replace_with (file, LA_STRING_NS);
 
   int prev_linenum = this->lineNum;
   this->lineNum = 0;
@@ -4225,6 +4377,8 @@ static int la_eval_string (la_t *this, const char *buf) {
   this->lineNum = prev_linenum;
 
   String.replace_with_len (file, prev_file, len);
+
+  this->script_buffer = prev_buffer;
 
   if (retval is LA_ERR_EXIT)
     return this->exitValue;
@@ -4249,13 +4403,21 @@ static int la_eval_expr (la_t *this, const char *buf, VALUE *v) {
 
 static int la_eval_file (la_t *this, const char *filename) {
   char fn[PATH_MAX + 1];
-  if (NULL is Path.real (filename, fn))
-    return LA_NOTOK;
+  if (NULL is Path.real (filename, fn)) {
+    ifnot (this->curState & LOADFILE_SILENT)
+      this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
+    return LA_ERR_LOAD;
+  }
 
   ifnot (File.exists (fn)) {
-    this->print_fmt_bytes (this->err_fp, "%s: doesn't exists\n", filename);
-    return LA_NOTOK;
+    ifnot (this->curState & LOADFILE_SILENT)
+      this->print_fmt_bytes (this->err_fp, "%s: doesn't exists\n", filename);
+    return LA_ERR_LOAD;
   }
+
+  if (Vmap.key_exists (this->units, fn))
+    ifnot (this->curState & FORCE_LOADFILE)
+      return LA_OK;
 
   FILE *fp = fopen (fn, "r");
   if (NULL is fp) {
@@ -4299,8 +4461,11 @@ static int la_eval_file (la_t *this, const char *filename) {
 
   script[r] = '\0';
 
-  this->script_buffer = script;
-  la_string x = la_StringNew (script);
+  string *script_buf = String.new_with_len (script, r);
+  Vmap.set (this->units, fn, script_buf, la_release_unit, 0);
+
+  const char *prev_buffer = this->script_buffer;
+  this->script_buffer = script_buf->bytes;
 
   string *file = AS_STRING(this->file->value);
   integer len =  file->num_bytes;
@@ -4311,21 +4476,25 @@ static int la_eval_file (la_t *this, const char *filename) {
   int prev_linenum = this->lineNum;
   this->lineNum = 0;
 
+  la_string x = la_StringNew (script_buf->bytes);
+
   int retval = la_parse_string (this, x);
 
   this->lineNum = prev_linenum;
 
   String.replace_with_len (file, prev_file, len);
 
-  if (retval is LA_ERR_EXIT)
-    return this->exitValue;
+  this->script_buffer = prev_buffer;
 
-  if (retval isnot LA_OK) {
-    char *err_msg[] = {"NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
-        "BAD ARGUMENTS", "TOO MANY ARGUMENTS"};
-    this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-r - 2]);
-  }
+  if (retval is LA_ERR_EXIT or retval >= LA_NOTOK)
+    return retval;
 
+  char *err_msg[] = {
+      "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
+      "UNKNOWN TYPE", "BAD ARGUMENTS", "TOO MANY ARGUMENTS",
+      "REQUIRE ERROR"
+  };
+  this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-retval - 2]);
   return retval;
 }
 
@@ -4363,7 +4532,8 @@ static void la_release (la_t **thisp) {
 
   String.release (this->la_dir);
   String.release (this->message);
-  Imap.release   (this->refcount);
+  Imap.release   (this->funRefcount);
+  Vmap.release   (this->units);
   fun_release (&this->function);
   fun_release (&this->std);
 
@@ -4458,6 +4628,9 @@ static void la_set_la_dir (la_t *this, char *fn) {
   if (NULL is fn) return;
   size_t len = bytelen (fn);
   String.replace_with_len (this->la_dir, fn, len);
+  sym_t *sym = ns_lookup_symbol (this->std, "__loadpath");
+  string *loadpath = AS_STRING(sym->value);
+  String.replace_with_len (loadpath, fn, len);
 }
 
 static void la_set_define_funs_cb (la_t *this, LaDefineFuns_cb cb) {
@@ -4518,8 +4691,30 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->objectState = 0;
   this->stackValIdx = -1;
 
-  if (NULL is opts.la_dir)
-    this->la_dir = String.new (32);
+  if (NULL is opts.la_dir) {
+    char *ddir = getenv ("DATADIR");
+    ifnot (NULL is ddir) {
+      this->la_dir = String.new_with (ddir);
+      String.trim_end (this->la_dir, '\\');
+      String.append_with_len (this->la_dir, "/la", 3);
+      if (NOTOK is Dir.make_parents (this->la_dir->bytes, S_IRWXU, DirOpts())) {
+        this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
+        return LA_NOTOK;
+      }
+    } else {
+#ifdef DATADIR
+      this->la_dir = String.new_with (DATADIR);
+      String.trim_end (this->la_dir, '\\');
+      String.append_with_len (this->la_dir, "/la", 3);
+      if (NOTOK is Dir.make_parents (this->la_dir->bytes, S_IRWXU, DirOpts())) {
+        this->print_fmt_bytes (this->err_fp, "%s\n", Error.errno_string (errno));
+        return LA_NOTOK;
+      }
+#else
+      this->la_dir = String.new (32);
+#endif
+    }
+  }
   else
     this->la_dir = String.new_with (opts.la_dir);
 
@@ -4541,7 +4736,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   }
 
   for (i = 0; la_funs[i].name; i++) {
-    err = la_define (this, la_funs[i].name, CFUNC (la_funs[i].nargs), la_funs[i].val);
+    err = la_define (this, la_funs[i].name, CFUNC(la_funs[i].nargs), la_funs[i].val);
 
     if (err isnot LA_OK) {
       la_release (&this);
@@ -4560,7 +4755,8 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
     return err;
   }
 
-  this->refcount = Imap.new (256);
+  this->funRefcount = Imap.new (256);
+  this->units = Vmap.new (32);
 
   la_append_instance (interp, this);
 
@@ -4575,13 +4771,20 @@ static la_t *la_init_instance (la_T *__la__, la_opts opts) {
   return this;
 }
 
+static int la_loadfile (la_t *this, char *fn) {
+  int err = la_eval_file (this, fn);
+  if (err is LA_ERR_EXIT)
+    return this->exitValue;
+  return err;
+}
+
 static int la_load_file (la_T *__la__, la_t *this, char *fn) {
   if (this is NULL)
     this = la_init_instance (__la__, LaOpts());
 
   ifnot (Path.is_absolute (fn)) {
     if (File.exists (fn) and File.is_reg (fn))
-      return la_eval_file (this, fn);
+      return la_loadfile (this, fn);
 
     size_t fnlen = bytelen (fn);
     char fname[fnlen+3];
@@ -4593,14 +4796,14 @@ static int la_load_file (la_T *__la__, la_t *this, char *fn) {
     if (0 is extlen or 0 is Cstring.eq (".i", extname)) {
       fname[fnlen] = '.'; fname[fnlen+1] = 'i'; fname[fnlen+2] = '\0';
       if (File.exists (fname))
-        return la_eval_file (this, fname);
+        return la_loadfile (this, fname);
 
       fname[fnlen] = '\0';
     }
 
     ifnot (this->la_dir->num_bytes) {
       la_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
-      return NOTOK;
+      return LA_NOTOK;
     }
 
     string_t *ddir = this->la_dir;
@@ -4614,18 +4817,18 @@ static int la_load_file (la_T *__la__, la_t *this, char *fn) {
 
     ifnot (File.exists (tmp)) {
       la_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
-      return NOTOK;
+      return LA_NOTOK;
     }
 
-    return la_eval_file (this, tmp);
+    return la_loadfile (this, tmp);
   }
 
   ifnot (File.exists (fn)) {
     la_set_message_fmt (this, 0, "%s: couldn't locate script", fn);
-    return NOTOK;
+    return LA_NOTOK;
   }
 
-  return la_eval_file (this, fn);
+  return la_loadfile (this, fn);
 }
 
 public la_T *__init_la__ (void) {

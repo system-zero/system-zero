@@ -852,6 +852,16 @@ func semantics () {
   } else {
     println ("[OK]")
   }
+
+  test_num += 1
+  print ("[${test_num}] testing loadfile function - ")
+  loadfile ("loaded")
+  retval = loaded_f (10)
+  if (retval isnot 20) {
+    println (stderr, "[NOTOK] awaiting 20, got ${retval}")
+  } else {
+    println ("[OK]")
+  }
 }
 
 semantics ()

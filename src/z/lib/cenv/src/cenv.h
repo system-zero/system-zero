@@ -250,6 +250,7 @@ typedef unsigned long ulong;
 #define __BASE_ERROR__         -10000
 #define EINDEX                 (__BASE_ERROR__ - 1)
 #define EINTEGEROVERFLOW       (__BASE_ERROR__ - 2)
+#define ECANNOTGETCWD          (__BASE_ERROR__ - 3)
 
 #ifndef ALLOC_HDR
 #define ALLOC_HDR

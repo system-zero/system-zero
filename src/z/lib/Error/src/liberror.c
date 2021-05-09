@@ -6,7 +6,7 @@
 #define __BASE_ERROR__   -10000
 #endif
 
-#define __LAST_ERROR__   -10003
+#define __LAST_ERROR__   -10004
 
 static const struct sys_error_list_type {
   const char *name;
@@ -148,8 +148,9 @@ static const struct sys_error_list_type {
   { "ERFKILL", "Operation not possible due to RF-kill", 132},
   { "EHWPOISON", "Memory page has hardware error", 133},
   { "EUNKNOWN", "Unknown error", 135},
-  { "EINDEX", "index is out of range", -10001},
-  { "EINTEGEROVERFLOW", "integer overflow", -10002},
+  { "EINDEX", "Index is out of range", -10001},
+  { "EINTEGEROVERFLOW", "Integer overflow", -10002},
+  { "ECANNOTGETCWD", "Can not get current directory", -10003},
 };
 
 static int sys_last_error = 134;

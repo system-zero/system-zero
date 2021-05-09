@@ -156,6 +156,7 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
     left_len = Cstring.cp (left, PATH_MAX, path + 1, PATH_MAX - 1);
   } else {
     if (getcwd (resolved, PATH_MAX) is NULL) {
+      errno = ECANNOTGETCWD;
       Cstring.cp (resolved, PATH_MAX,  ".", 1);
       return NULL;
     }
@@ -180,7 +181,7 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
       return NULL;
     }
 
-    /* in the case of ../../tmp/../home/../usr/lib/../../home/../tmp/a  and in the
+    /* ag: in the case of ../../tmp/../home/../usr/lib/../../home/../tmp/a  and in the
      * last iteration (s - left) gives 16 bytes to copy, when it is just one [a].
      * memcpy() does what it told to do, so copies more than one byte, but since the
      * second byte in "a" is the null byte, the function works, but the statement:

@@ -153,7 +153,7 @@ A very small yet another programming language (yala) that compiles in C.
     ...
   }
 
-# lambda functions syntax:
+# lambda function syntax:
 
   lambda ([([arg], ...)] {body}) ([arg], ...)
 
@@ -169,34 +169,42 @@ A very small yet another programming language (yala) that compiles in C.
 
   - lambdas like functions can be nested in arbitrary level.
 
-#  print functions syntax:
+# loadfile syntax and semantics:
+
+  loadfile (fname)
+
+  If `fname` is not an absolute path, then it is relative to the current
+  evaluated unit. If that fails, then it is relative to the current directory,
+  else it is relative to the `__loadpath` variable.
+
+# print functions syntax:
 
   print[ln] ([file pointer object], "string ${expression} ...")
 
   - file pointer can be either `stdout` or `stderr`, or any file pointer
     object that was created with the fopen() function:
 
-    fopen (filename, mode)
+      fopen (filename, mode)
 
-    which has the same semantics with C.
+      and which has the same semantics with C.
 
-    - without a file pointer argument, default is to the standard output.
+    Without a file pointer argument, default is to redirect to the standard output.
 
-    - interpolation expression syntax:
+  - interpolation expression syntax:
 
-      ${[%directive], symbol}
+    ${[%directive], symbol}
 
-      or
+    or
 
-      ${[%directive], (expression)}
+    ${[%directive], (expression)}
 
-      - a directive can be optional and can be any of the following:
-        - %d as a decimal (this is the default, so it can be omited)
-        - %s as a string
-        - %p as a pointer address
-        - %o as an octal (0 (zero) is prefixed in the output)
-        - %x as a hexadecimal (0x is prefixed in the output)
-        - %f as a double
+    - a directive can be optional and can be any of the following:
+      - %d as a decimal (this is the default, so it can be omited)
+      - %s as a string
+      - %p as a pointer address
+      - %o as an octal (0 (zero) is prefixed in the output)
+      - %x as a hexadecimal (0x is prefixed in the output)
+      - %f as a double
 
   -  the `println()` is like `print`, but also emits a new line character.
 
@@ -297,10 +305,17 @@ future.
 # |=          -  bit or    variable   -||-
 # &=          -  bit and   variable   -||-
 
-# Functions
+# Standard Functions.
 # print and println -  print functions
+# loadfile          -  load a filename for evaluation
+#                      args: a filename
+# exit              -  terminates evaluation of the current evaluated instance.
+#                      args: integer
 # typeof            -  type of a value
 #                      args: object
+#                      Type can be any of the followings:
+#                        Integer|Number|String|Array|Object|
+#                        Function|None)Type
 # typeAsString      -  type of a value as string represantation
 #                      args: object
 # typeofArray       -  type of an array value
@@ -317,43 +332,45 @@ future.
 # fflush            -  flush the specified stream
 #                      args: file pointer
 
-# those might change
-# not               -  !value
-# bool              -  !!value
-
-# The following memory handling functions are not needed with current code.
-# free    -  release memory
-# alloc   -  allocate memory
-# realloc -  reallocate memory
-
-# Constant variables
-# ok      - 0
-# notok   - -1
-# true    - 1
-# false   - 0
-# none    - (void *) 0
-# Types
-# (Integer|Number|String|Array|Object|Function|None)Type
+# Standard Constant Variables.
+# ok         -  0
+# notok      -  -1
+# true       -  1
+# false      -  0
+# none       -  (void *) 0
 #
-# FILE pointers of standard streams
+# FILE Pointers Of Standard Streams.
 # stdout
 # stderr
 # (no standard input yet)
 #
 # Argument list variables
-# __argc   - holds the length of the list, zero if it hasn't been set
-# __argv   - string type array, that holds the items of the list if it has been set
+# __argc     - holds the length of the list, zero if it hasn't been set
+# __argv     - string type array, that holds the items of the list if it
+#              has been set
 
 # Info variables
-# __file__ - current evaluated filename, if a string is evaluated defaults to "__string__"
-# __func__ - current function name
+# __file__   - current evaluated filename. If a string is evaluated defaults
+#              to "__string__"
+# __func__   - current function name
+# __loadpath - directory to lookup up when loading scripts
+
+# Do not use those as they might change
+# not        -  !value
+# bool       -  !!value
+
+# Likewise, the following memory handling functions are not needed with
+# current code.
+# free      -  release memory
+# alloc     -  allocate memory
+# realloc   -  reallocate memory
 
 # Semantics
 
   - standard keywords and functions can not be redefined and reassigned
 
   - function arguments that are memory types (like strings and arrays), are
-    passed by reference
+    passed by reference and so can been modified by the function
 
 # Lexical Scope
   - standard scope (lookup for standard operators and functions first)

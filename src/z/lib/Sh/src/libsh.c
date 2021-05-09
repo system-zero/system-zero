@@ -1,4 +1,4 @@
-/* a couple of logic bits derived from:
+/* A couple of logic bits derived from:
  * https://notabug.org/rain1/s/
  * Many thanks.
  */
@@ -303,7 +303,7 @@ static sh_t *sh_new (void) {
   return this;
 }
 
-/* more than couple of cases are not handled yet:
+/* more than a couple of cases are not handled yet:
  *  - quoted arguments
  *  - globbing
  *  - valid redirections
@@ -499,9 +499,8 @@ static int sh_exec (sh_t *this, char *buf) {
     if (sh->should_exit or retval is NOTOK)
       break;
 
-    if (sh->skip_next_proc) {
+    if (sh->skip_next_proc)
       p = Proc.get.next (p);
-    }
 
     if (p isnot NULL)
       p = Proc.get.next (p);
