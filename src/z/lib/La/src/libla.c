@@ -3199,6 +3199,7 @@ static int la_parse_print (la_t *this) {
 
   int prev = c;
   char directive = 'd';
+  la_string saved_parseptr;
 
   for (;;) {
     c = la_get_char (this);
@@ -3261,6 +3262,9 @@ static int la_parse_print (la_t *this) {
         c = la_ignore_ws (this);
       }
 
+      saved_parseptr = this->parsePtr;
+
+      expression:
       if (c is LA_TOKEN_PAREN_OPEN) {
         const char *saved_ptr = la_StringGetPtr (this->parsePtr);
 
@@ -3284,11 +3288,6 @@ static int la_parse_print (la_t *this) {
         this->print_bytes (this->err_fp, "string fmt error, awaiting }\n");
         la_err_ptr (this, LA_NOTOK);
         goto theend;
-      }
-
-      if (c is LA_TOKEN_BLOCK_CLOS) {
-        this->print_bytes (this->err_fp, "string fmt error, empty expression\n");
-        la_err_ptr (this, LA_NOTOK);
       }
 
       int len = 0;
@@ -3318,9 +3317,10 @@ static int la_parse_print (la_t *this) {
       sym_t *symbol = la_lookup_symbol (this, x);
 
       if (NULL is symbol) {
-        this->print_fmt_bytes (this->err_fp, "string fmt error, unknown symbol %s\n", sym);
-        la_err_ptr (this, LA_NOTOK);
-        goto theend;
+        this->parsePtr = saved_parseptr;
+        la_unget_char (this);
+        c = LA_TOKEN_PAREN_OPEN;
+        goto expression;
       }
 
       value = symbol->value;

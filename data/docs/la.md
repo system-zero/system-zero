@@ -192,13 +192,9 @@ A very small yet another programming language (yala) that compiles in C.
 
   - interpolation expression syntax:
 
-    ${[%directive], symbol}
+    ${[%directive], symbol or expression}
 
-    or
-
-    ${[%directive], (expression)}
-
-    - a directive can be optional and can be any of the following:
+    - a directive can be optional and can be any of the followings:
       - %d as a decimal (this is the default, so it can be omited)
       - %s as a string
       - %p as a pointer address
@@ -215,7 +211,7 @@ A very small yet another programming language (yala) that compiles in C.
 *NOTE* that this syntax might change lightly or use another variant in the
 future.
 
-  -the declaration syntax is:
+  - the declaration syntax is:
 
     array [type] name[length]
 
@@ -224,9 +220,9 @@ future.
       - number
       - string
 
-- in the language there is also a pointer type, that is an alias for the
-  INTEGER_TYPE, and capable to hold a pointer address that can be passed
-  to C functions.
+      Note, that in the language there is also a pointer type, that is an alias
+      for the INTEGER_TYPE, and capable to hold a pointer address that can be
+      passed to C functions.
 
   - the *current* assignment syntax for this form, is:
 
@@ -236,12 +232,12 @@ future.
       expressions, separated with comma, and as long it doesn't get out of
       bounds.
 
-    - you can get an item from an array, using indices and can be negative:
+    - you can get an item from an array, using indices that can be negative:
 
       array[-2]
 
     - array indices are starting from zero, and -1 denotes the last item in
-      the array
+      the array.
 
 ```
 
@@ -298,12 +294,12 @@ future.
 #                  else if the second operand is an integer type, then it
 #                  appends a byte if it is within the ascii range or else a
 #                  multibyte sequence to form the character
-# -=          -  decrement variable   -||-
-# *=          -  multiply  variable   -||-
-# /=          -  divide    variable   -||-
-# %=          -  modulo    variable   -||-
-# |=          -  bit or    variable   -||-
-# &=          -  bit and   variable   -||-
+# -=          -  decrement variable and assign the result
+# *=          -  multiply        -||-
+# /=          -  divide          -||-
+# %=          -  modulo          -||-
+# |=          -  bit or          -||-
+# &=          -  bit and         -||-
 
 # Standard Functions.
 # print and println -  print functions

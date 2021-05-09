@@ -960,7 +960,7 @@ func test_array (length) {
   print ("[${test_num}] testing array set|get methods - ")
   retval = ar_set_at (x, length - 1, 20)
   if (retval isnot 20 or (x[length - 1] isnot 20)) {
-    println (stderr, "[NOTOK] awaiting 20 got: ${(x[len - 1])}")
+    println (stderr, "[NOTOK] awaiting 20 got: ${x[length - 1]}")
   } else {
     println ("[OK]")
   }
@@ -1042,7 +1042,7 @@ func types () {
   test_num += 1
   print ("[${test_num}] testing types - ")
   if (typeof (type) isnot NoneType) {
-    println (stderr, "[NOTOK] awaiting NoneType got: ${(typeof (type))}")
+    println (stderr, "[NOTOK] awaiting NoneType ${NoneType} got: ${typeof (type)}")
   }
   type = typeof (str)
   if (type isnot StringType) {
@@ -1070,11 +1070,11 @@ func types () {
   } 
   type = typeofArray (i_ar)
   if (type isnot IntegerType) {
-    println (stderr, "[NOTOK] awaiting IntegerType got: ${%s, (typeArrayAsString(i_ar))}")
+    println (stderr, "[NOTOK] awaiting IntegerType got: ${%s, typeArrayAsString(i_ar)}")
   } 
   type = typeofArray (s_ar)
   if (type isnot StringType) {
-    println (stderr, "[NOTOK] awaiting StringType got: ${%s, (typeArrayAsString(s_ar))}")
+    println (stderr, "[NOTOK] awaiting StringType got: ${%s, typeArrayAsString(s_ar)}")
   } 
   type = typeofArray (n_ar)
   if (type isnot NumberType) {
@@ -1128,7 +1128,7 @@ func invalid_memory_read_tests {
     }
 
     func p (fp) {
-      println (fp, "fptype ${%s, (typeAsString (fp))}")
+      println (fp, "fptype ${%s, typeAsString (fp)}")
     }
 
     var f = fff()
@@ -1141,7 +1141,7 @@ func invalid_memory_read_tests {
     }
 
     func p (fp) {
-      println (fp, "fptype ${%s, (typeAsString (fp))}")
+      println (fp, "fptype ${%s, typeAsString (fp)}")
     }
 
     p (fff ())
@@ -1154,7 +1154,7 @@ func invalid_memory_read_tests {
     }
 
     func p (fp) {
-      println (fp, "fptype ${%s, (typeAsString (fp))}")
+      println (fp, "fptype ${%s, typeAsString (fp)}")
     }
 
     p (fff ())
@@ -1167,7 +1167,7 @@ func invalid_memory_read_tests {
     }
 
     func p (fp) {
-      println (fp, "fptype ${%s, (typeAsString (fp))}")
+      println (fp, "fptype ${%s, typeAsString (fp)}")
     }
 
     var f = fff ()
