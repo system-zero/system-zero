@@ -325,7 +325,7 @@ func semantics () {
 
   test_num += 1
   print ("[${test_num}] testing continue statement - ")
-  array integer xi[5] = 1, 10, 20, 30, 40
+  array integer xi[5] = [1, 10, 20, 30, 40]
   retval = loop_test_continue (xi)
   if (retval isnot 81) {
     println (stderr, "[NOTOK] awaiting 81 got: ${retval}")
@@ -925,18 +925,18 @@ doubles ()
 func test_array (length) {
   var retval = 0
 
-  array x[length] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  array x[length] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
   test_num += 1
   print ("[${test_num}] testing array length - ")
   retval = len (x)
   if (retval isnot length) {
-    println (stderr, "[NOTOK] awaiting ${len} got: ${retval}")
+    println (stderr, "[NOTOK] awaiting ${length} got: ${retval}")
   } else {
     println ("[OK]")
   }
 
-  array y[length] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  array y[length] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
   test_num += 1
   print ("[${test_num}] testing for array equality - ")
@@ -969,14 +969,14 @@ func test_array (length) {
     var sum = 0
     var idx = 0
     var length = len (xx)
-    while (idx < length) {
+    for (idx = 0; idx < length; idx += 1) {
       sum += xx[idx]
-      idx += 1
     }
+
     return sum
   }
 
-  x[0] = 100, 200, 300, 400, 500, 600, 700, 800, 900
+  x[0:8] = [100, 200, 300, 400, 500, 600, 700, 800, 900]
 
   test_num += 1
   print ("[${test_num}] testing array sum - ")
@@ -987,7 +987,18 @@ func test_array (length) {
     println ("[OK]")
   }
 
-  array string xs[4] = "through", "the", "ocean", "drive"
+  x[6:7] = [10, 20]
+
+  test_num += 1
+  print ("[${test_num}] testing array sum and setting indices - ")
+  retval = ar_sum (x)
+  if (retval isnot 3050) {
+    println (stderr, "[NOTOK] awaiting 3050 got: ${retval}")
+  } else {
+    println ("[OK]")
+  }
+
+  array string xs[4] = ["through", "the", "ocean", "drive"]
   test_num += 1
   print ("[${test_num}] testing for string equality for string array members - ")
   if ("ocean" isnot xs[2]) {
@@ -1006,7 +1017,7 @@ func test_array (length) {
 
   func fibo_array (n) {
     array f[n + 2]
-    f[0] = 0, 1
+    f[0:1] = [0, 1]
 
     var i = 2
     while (i <= n) {
@@ -1087,7 +1098,7 @@ types ()
 
 func valgrind_tests () {
   func xx () {
-    array x[2] = 1, 2
+    array x[2] = [1, 2]
     return x
   }
 

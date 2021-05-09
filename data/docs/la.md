@@ -206,10 +206,7 @@ A very small yet another programming language (yala) that compiles in C.
 
 # Array declaration syntax with direct assignment:
 
-  array string ar[3] = "holidays", "in", "cambodia"
-
-*NOTE* that this syntax might change lightly or use another variant in the
-future.
+  array string ar[3] = ["holidays", "in", "cambodia"]
 
   - the declaration syntax is:
 
@@ -220,21 +217,20 @@ future.
       - number
       - string
 
-      Note, that in the language there is also a pointer type, that is an alias
-      for the INTEGER_TYPE, and capable to hold a pointer address that can be
-      passed to C functions.
+  - the assignment syntax is:
 
-  - the *current* assignment syntax for this form, is:
+    ar_symbol[first index : [last index]] = [first index, [...,...,] last_index]
 
-    ar_symbol[index] = ..., ..., ...
+      where assignment starts at `first index` and stops at `last index`.
+      If `last index` is omited then `last index` assumed (array length - 1).
 
-      where assignment starts at `index` and continues as long there are
-      expressions, separated with comma, and as long it doesn't get out of
-      bounds.
+      The number of expressions should match, or else it will result to an
+      OUT_OF_BOUNDS error.
 
-    - you can get an item from an array, using indices that can be negative:
+    - you can get or set an item from or to an array, using indices that can
+      be negative:
 
-      array[-2]
+      array[-2] or array[0] = expression
 
     - array indices are starting from zero, and -1 denotes the last item in
       the array.
