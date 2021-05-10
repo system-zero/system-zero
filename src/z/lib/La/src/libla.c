@@ -75,6 +75,8 @@ static  char PREVFUNC[MAXLEN_SYMBOL + 1];
 #define FORCE_LOADFILE                (1 << 7)
 #define INDEX_STATE                   (1 << 8)
 
+#define FMT_LITERAL                   (1 << 0)
+
 #define OBJECT_APPEND                 (1 << 0)
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
@@ -145,7 +147,7 @@ typedef struct la_string {
 typedef struct malloced_string malloced_string;
 
 struct malloced_string {
-  string_t *data;
+  string *data;
   malloced_string *next;
 };
 
@@ -249,10 +251,13 @@ struct la_t {
 
   int
     Errno,
+    CFuncError,
     lineNum,
     curToken,
     curState,
     objectState,
+    fmtState,
+    fmtRefcount,
     exitValue,
     tokenArgs,
     didReturn;
@@ -307,6 +312,7 @@ static int la_parse_primary (la_t *, VALUE *);
 static int la_parse_func_def (la_t *);
 static int la_next_token (la_t *);
 static int la_eval_file (la_t *, const char *);
+static int la_parse_fmt (la_t *, string *, int);
 static VALUE la_mul  (la_t *, VALUE, VALUE);
 static VALUE la_add  (la_t *, VALUE, VALUE);
 static VALUE la_sub  (la_t *, VALUE, VALUE);
@@ -563,6 +569,8 @@ static int la_get_opened_block (la_t *this, char *msg) {
       continue;
     }
 
+    prev_c = c;
+
     if (in_str) continue;
 
     switch (c) {
@@ -757,6 +765,35 @@ static VALUE la_fflush (la_t *this, VALUE fp_val) {
 
   result = INT(LA_OK);
   return result;
+}
+
+static VALUE la_format (la_t *this, VALUE v_fmt) {
+  int err = LA_NOTOK;
+  VALUE v;
+
+  string *fmt = AS_STRING(v_fmt);
+  string *str = String.new (8);
+
+  la_string saved_ptr = this->parsePtr;
+
+  this->parsePtr = la_StringNew (fmt->bytes);
+
+  err = la_parse_fmt (this, str, 1);
+
+ this->parsePtr = saved_ptr;
+
+  if (err isnot LA_OK) {
+    this->CFuncError = err;
+    String.release (str);
+    v = NONE;
+    return v;
+  }
+
+  v = STRING(str);
+  if (this->fmtRefcount)
+    this->fmtState |= FMT_LITERAL;
+
+  return v;
 }
 
 static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
@@ -1157,7 +1194,7 @@ static int la_do_next_token (la_t *this, int israw) {
         return this->syntax_error (this, "unended string, a '\"' is missing");
 
       ifnot (this->curState & STRING_LITERAL_ARG_STATE) {
-        string_t *str = String.new (len + 1);
+        string *str = String.new (len + 1);
         pc = 0;
         for (size_t i = 0; i < len; i++) {
           c = la_get_char (this);
@@ -1248,7 +1285,7 @@ static void *la_clone_sym_item (void *item) {
     return new;
 
   } else if ((new->type & 0xff) is STRING_TYPE) {
-    string_t *old_str = AS_STRING(sym->value);
+    string *old_str = AS_STRING(sym->value);
     new->value = STRING_NEW_WITH_LEN(old_str->bytes, old_str->num_bytes);
     return new;
   }
@@ -1831,6 +1868,7 @@ static int la_parse_expr_list (la_t *this) {
   } while (c is LA_TOKEN_COMMA);
 
   return count;
+
 }
 
 static int la_parse_char (la_t *this, VALUE *vp, la_string token) {
@@ -1964,6 +2002,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     this->funArgs[paramCount] = stack_pop (this);
   }
 
+  int err = LA_OK;
+
   if (uf) {
     int refcount = Imap.set_by_callback (this->funRefcount, uf->funname, la_fun_refcount_incr);
     if (refcount > 1) {
@@ -1994,7 +2034,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     string *func = AS_STRING(this->func->value);
     String.replace_with (func, uf->funname);
 
-    int err = la_parse_string (this, uf->body);
+    err = la_parse_string (this, uf->body);
 
     this->curScope = la_fun_stack_pop (this);
 
@@ -2038,16 +2078,20 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     }
 
     *vp = uf->result;
+
     return err;
-  } else {
-    *vp = op (this, this->funArgs[0], this->funArgs[1], this->funArgs[2],
-                    this->funArgs[3], this->funArgs[4], this->funArgs[5],
-                    this->funArgs[6], this->funArgs[7], this->funArgs[8]);
   }
+
+  this->CFuncError = LA_OK;
+
+  *vp = op (this, this->funArgs[0], this->funArgs[1], this->funArgs[2],
+                  this->funArgs[3], this->funArgs[4], this->funArgs[5],
+                  this->funArgs[6], this->funArgs[7], this->funArgs[8]);
+  err = this->CFuncError;
 
   la_next_token (this);
 
-  return LA_OK;
+  return err;
 }
 
 static int la_parse_primary (la_t *this, VALUE *vp) {
@@ -3207,11 +3251,254 @@ static int la_parse_func_def (la_t *this) {
   return LA_OK;
 }
 
+static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
+  int c;
+  int err = LA_NOTOK;
+  int prev = 0;
+  VALUE value;
+  char directive = 'd';
+
+  this->fmtRefcount++;
+
+  for (;;) {
+    c = la_get_char (this);
+    if (c is LA_TOKEN_EOF and break_at_eof)
+      break;
+
+    if (c is LA_TOKEN_DQUOTE) {
+      if (prev isnot LA_TOKEN_ESCAPE_CHR)
+        break;
+
+      String.append_byte (str, '\\');
+      String.append_byte (str, LA_TOKEN_DQUOTE);
+      prev = LA_TOKEN_DQUOTE;
+      c = la_get_char (this);
+    }
+
+    if (c is LA_TOKEN_ESCAPE_CHR) {
+      if (prev is LA_TOKEN_ESCAPE_CHR or la_peek_char (this, 0) isnot '$') {
+        prev = str->bytes[str->num_bytes - 1];
+        String.append_byte (str, LA_TOKEN_ESCAPE_CHR);
+      } else
+        prev = LA_TOKEN_ESCAPE_CHR;
+
+      c = la_get_char (this);
+    }
+
+    if (c is '$') {
+      if (prev is LA_TOKEN_ESCAPE_CHR) {
+        String.append_byte (str, '$');
+        prev = '$';
+        continue;
+      }
+
+      c = la_get_char (this);
+      if (c isnot LA_TOKEN_BLOCK_OPEN) {
+        this->print_bytes (this->err_fp, "string fmt error, awaiting {\n");
+        la_err_ptr (this, LA_NOTOK);
+        err = LA_ERR_SYNTAX;
+        goto theend;
+      }
+
+      char sym[MAXLEN_SYMBOL];
+
+      prev = c;
+      c = la_next_token (this);
+
+      if (*(la_StringGetPtr (this->curStrToken)) is '%' and
+            la_StringGetLen (this->curStrToken) is 1) {
+        c = la_get_char (this);
+        if (c isnot 's' and c isnot 'p' and c isnot 'd' and
+            c isnot 'o' and c isnot 'x' and c isnot 'f') {
+          this->print_fmt_bytes (this->err_fp, "string fmt error, unsupported directive [%c]\n", c);
+          la_err_ptr (this, LA_NOTOK);
+          err = LA_ERR_SYNTAX;
+          goto theend;
+        } else
+          directive = c;
+
+        c = la_next_token (this);
+
+        if (c isnot LA_TOKEN_COMMA) {
+          this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma\n");
+          la_err_ptr (this, LA_NOTOK);
+          err = LA_ERR_SYNTAX;
+          goto theend;
+        }
+
+        prev = LA_TOKEN_COMMA;
+        c = la_next_token (this);
+      }
+
+      err = la_parse_expr (this, &value);
+      if (err isnot LA_OK) {
+        this->print_bytes (this->err_fp, "string fmt error, while evaluating expression\n");
+        la_err_ptr (this, LA_NOTOK);
+        err = LA_ERR_SYNTAX;
+        goto theend;
+      }
+
+      switch (directive) {
+        case 's':
+          switch (value.type) {
+            case STRING_TYPE:
+              String.append_with_fmt (str, "%s", AS_STRING_BYTES(value));
+              if (this->fmtState & FMT_LITERAL) {
+                la_free (this, value);
+                this->fmtState &= ~FMT_LITERAL;
+              }
+
+              break;
+
+            case ARRAY_TYPE: {
+              VALUE v;
+              this->tokenValue = value;
+              err = la_parse_array_get (this, &v);
+              if (err isnot LA_OK) {
+                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
+                err = LA_ERR_SYNTAX;
+                goto theend;
+              }
+
+              switch (v.type) {
+                case STRING_TYPE:
+                  String.append_with_fmt (str, "%s", AS_STRING_BYTES(v));
+                  break;
+
+                default:
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting string type\n");
+                  err = LA_ERR_SYNTAX;
+                  goto theend;
+
+              }
+              break;
+            }
+
+          }
+          break;
+
+        case 'p':
+          String.append_with_fmt (str, "%p", AS_PTR(value));
+          if (this->fmtState & FMT_LITERAL) {
+            la_free (this, value);
+            this->fmtState &= ~FMT_LITERAL;
+          }
+          break;
+
+        case 'o':
+          String.append_with_fmt (str, "0%o", AS_INT(value));
+          break;
+
+        case 'x':
+          String.append_with_fmt (str, "0x%x", AS_INT(value));
+          break;
+
+        case 'f':
+          switch (value.type) {
+            case ARRAY_TYPE: {
+              VALUE v;
+              this->tokenValue = value;
+              err = la_parse_array_get (this, &v);
+              if (err isnot LA_OK) {
+                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
+                err = LA_ERR_SYNTAX;
+                goto theend;
+              }
+
+              switch (v.type) {
+                case NUMBER_TYPE:
+                  String.append_with_fmt (str, "%.15f", AS_NUMBER(v));
+                  break;
+
+                default:
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting number type\n");
+                  err = LA_ERR_SYNTAX;
+                  goto theend;
+              }
+              break;
+            }
+
+          default:
+            String.append_with_fmt (str, "%.15f", AS_NUMBER(value));
+          }
+
+          break;
+
+        case 'd':
+        default:
+          switch (value.type) {
+            case ARRAY_TYPE: {
+              VALUE v;
+              this->tokenValue = value;
+              err = la_parse_array_get (this, &v);
+              if (err isnot LA_OK) {
+                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
+                err = LA_ERR_SYNTAX;
+                goto theend;
+              }
+
+              switch (v.type) {
+                case INTEGER_TYPE:
+                  String.append_with_fmt (str, "%d", AS_INT(v));
+                  break;
+
+                default:
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
+                  err = LA_ERR_SYNTAX;
+                  goto theend;
+
+              }
+              break;
+            }
+
+            case STRING_TYPE: {
+              VALUE v;
+              this->tokenValue = value;
+              err = la_string_get (this, &v);
+              if (err isnot LA_OK) {
+                this->print_bytes (this->err_fp, "string fmt error, awaiting string\n");
+                err = LA_ERR_SYNTAX;
+                goto theend;
+              }
+
+              switch (v.type) {
+                case INTEGER_TYPE:
+                  String.append_with_fmt (str, "%d", AS_INT(v));
+                  break;
+
+                default:
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
+                  err = LA_ERR_SYNTAX;
+                  goto theend;
+              }
+              break;
+            }
+
+          default:
+          String.append_with_fmt (str, "%d", AS_INT(value));
+        }
+      }
+
+      directive = 'd';
+
+      continue;
+    }
+
+    String.append_byte (str, c);
+  }
+
+  err = LA_OK;
+
+theend:
+  this->fmtRefcount--;
+  return err;
+}
+
 static int la_parse_print (la_t *this) {
   int err = LA_NOTOK;
   VALUE value;
 
-  string_t *str = String.new (32);
+  string *str = String.new (32);
 
   int c = la_ignore_ws (this);
 
@@ -3279,206 +3566,8 @@ static int la_parse_print (la_t *this) {
     goto theend;
   }
 
-  int prev = c;
-  char directive = 'd';
-  la_string saved_parseptr;
-
-  for (;;) {
-    c = la_get_char (this);
-    if (c is LA_TOKEN_DQUOTE) {
-      if (prev isnot LA_TOKEN_ESCAPE_CHR)
-        break;
-
-      String.append_byte (str, '\\');
-      String.append_byte (str, LA_TOKEN_DQUOTE);
-      prev = LA_TOKEN_DQUOTE;
-      c = la_get_char (this);
-    }
-
-    if (c is LA_TOKEN_ESCAPE_CHR) {
-      if (prev is LA_TOKEN_ESCAPE_CHR or la_peek_char (this, 1) isnot '$') {
-        prev = str->bytes[str->num_bytes - 1];
-        String.append_byte (str, LA_TOKEN_ESCAPE_CHR);
-      } else  prev = LA_TOKEN_ESCAPE_CHR;
-
-      c = la_get_char (this);
-    }
-
-    if (c is '$') {
-      if (prev is LA_TOKEN_ESCAPE_CHR) {
-        String.append_byte (str, '$');
-        prev = '$';
-        continue;
-      }
-
-      c = la_get_char (this);
-      if (c isnot LA_TOKEN_BLOCK_OPEN) {
-        this->print_bytes (this->err_fp, "string fmt error, awaiting {\n");
-        la_err_ptr (this, LA_NOTOK);
-        goto theend;
-      }
-
-      char sym[MAXLEN_SYMBOL];
-
-      prev = c;
-      c = la_next_token (this);
-
-      if (*(la_StringGetPtr (this->curStrToken)) is '%' and
-            la_StringGetLen (this->curStrToken) is 1) {
-        c = la_get_char (this);
-        if (c isnot 's' and c isnot 'p' and c isnot 'd' and
-            c isnot 'o' and c isnot 'x' and c isnot 'f') {
-          this->print_fmt_bytes (this->err_fp, "string fmt error, unsupported directive [%c]\n", c);
-          la_err_ptr (this, LA_NOTOK);
-          goto theend;
-        } else
-          directive = c;
-
-        c = la_next_token (this);
-
-        if (c isnot LA_TOKEN_COMMA) {
-          this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma\n");
-          la_err_ptr (this, LA_NOTOK);
-          goto theend;
-        }
-
-        prev = LA_TOKEN_COMMA;
-        c = la_next_token (this);
-      }
-
-      saved_parseptr = this->parsePtr;
-
-      const char *saved_ptr = la_StringGetPtr (this->parsePtr);
-
-      err = la_parse_expr (this, &value);
-      if (err isnot LA_OK) {
-        this->print_bytes (this->err_fp, "string fmt error, while evaluating expression\n");
-        la_err_ptr (this, LA_NOTOK);
-        goto theend;
-      }
-
-      switch (directive) {
-        case 's':
-          switch (value.type) {
-            case STRING_TYPE:
-              String.append_with_fmt (str, "%s", AS_STRING_BYTES(value));
-              break;
-
-            case ARRAY_TYPE: {
-              VALUE v;
-              this->tokenValue = value;
-              err = la_parse_array_get (this, &v);
-              if (err isnot LA_OK)
-                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
-
-              switch (v.type) {
-                case STRING_TYPE:
-                  String.append_with_fmt (str, "%s", AS_STRING_BYTES(v));
-                  break;
-
-                default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting string type\n");
-
-              }
-              break;
-            }
-
-          }
-          break;
-
-        case 'p':
-          String.append_with_fmt (str, "%p", AS_PTR(value));
-          break;
-
-        case 'o':
-          String.append_with_fmt (str, "0%o", AS_INT(value));
-          break;
-
-        case 'x':
-          String.append_with_fmt (str, "0x%x", AS_INT(value));
-          break;
-
-        case 'f':
-          switch (value.type) {
-            case ARRAY_TYPE: {
-              VALUE v;
-              this->tokenValue = value;
-              err = la_parse_array_get (this, &v);
-              if (err isnot LA_OK)
-                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
-
-              switch (v.type) {
-                case NUMBER_TYPE:
-                  String.append_with_fmt (str, "%.15f", AS_NUMBER(v));
-                  break;
-
-                default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting number type\n");
-
-              }
-              break;
-            }
-
-          default:
-            String.append_with_fmt (str, "%.15f", AS_NUMBER(value));
-          }
-
-          break;
-
-        case 'd':
-        default:
-          switch (value.type) {
-            case ARRAY_TYPE: {
-              VALUE v;
-              this->tokenValue = value;
-              err = la_parse_array_get (this, &v);
-              if (err isnot LA_OK)
-                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
-
-              switch (v.type) {
-                case INTEGER_TYPE:
-                  String.append_with_fmt (str, "%d", AS_INT(v));
-                  break;
-
-                default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
-
-              }
-              break;
-            }
-
-            case STRING_TYPE: {
-              VALUE v;
-              this->tokenValue = value;
-              err = la_string_get (this, &v);
-              if (err isnot LA_OK)
-                this->print_bytes (this->err_fp, "string fmt error, awaiting string\n");
-
-              switch (v.type) {
-                case INTEGER_TYPE:
-                  String.append_with_fmt (str, "%d", AS_INT(v));
-                  break;
-
-                default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
-
-              }
-              break;
-            }
-
-
-          default:
-          String.append_with_fmt (str, "%d", AS_INT(value));
-        }
-      }
-
-      directive = 'd';
-
-      continue;
-    }
-
-    String.append_byte (str, c);
-  }
+  err = la_parse_fmt (this, str, 0);
+  if (err isnot LA_OK) goto theend;
 
   c = la_get_char (this);
 
@@ -3486,6 +3575,7 @@ print_str:
   if (c isnot LA_TOKEN_PAREN_CLOS) {
     this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
     la_err_ptr (this, LA_NOTOK);
+    err = LA_ERR_SYNTAX;
     goto theend;
   }
 
@@ -4294,11 +4384,12 @@ struct la_def_fun_t {
   { "not",              PTR(la_not), 1},
   { "len",              PTR(la_len), 1},
   { "bool",             PTR(la_bool), 1},
-  { "fopen",            PTR(la_fopen), 2},
-  { "fflush",           PTR(la_fflush), 1},
   { "free",             PTR(la_free), 1},
   { "malloc",           PTR(la_malloc), 1},
   { "realloc",          PTR(la_realloc), 2},
+  { "format",           PTR(la_format), 1},
+  { "fopen",            PTR(la_fopen), 2},
+  { "fflush",           PTR(la_fflush), 1},
   { "getcwd",           PTR(la_getcwd), 0},
   { "typeof",           PTR(la_typeof), 1},
   { "typeAsString",     PTR(la_typeAsString), 1},
@@ -4353,7 +4444,7 @@ static int la_std_def (la_t *this, la_opts opts) {
 
 static int la_print_bytes (FILE *fp, const char *bytes) {
   if (NULL is bytes) return 0;
-  string_t *parsed = IO.parse_escapes ((char *)bytes);
+  string *parsed = IO.parse_escapes ((char *)bytes);
   if (NULL is parsed) return LA_NOTOK;
   int nbytes = fprintf (fp, "%s", parsed->bytes);
   String.release (parsed);
@@ -4836,7 +4927,7 @@ static int la_load_file (la_T *__la__, la_t *this, char *fn) {
       return LA_NOTOK;
     }
 
-    string_t *ddir = this->la_dir;
+    string *ddir = this->la_dir;
     size_t len = ddir->num_bytes + bytelen (fname) + 2 + 7;
     char tmp[len + 3];
     Cstring.cp_fmt (tmp, len + 1, "%s/scripts/%s", ddir->bytes, fname);

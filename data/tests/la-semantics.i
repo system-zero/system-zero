@@ -862,6 +862,33 @@ func semantics () {
   } else {
     println ("[OK]")
   }
+
+  test_num += 1
+  print ("[${test_num}] testing format function with an embedded call - ")
+  var fmt = format ("${%s, load_va} ${%s, format (load_vc)}")
+  if (fmt isnot "string is 6 bytes length") {
+    println (stderr, "[NOTOK] awaiting \"string is 6 bytes length\", got \"${%s, fmt}\"")
+  } else {
+    println ("[OK]")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing format function - ")
+  fmt = format ("${%s, load_va} ${%s, load_vd}")
+  if (fmt isnot "string is 6 bytes length") {
+    println (stderr, "[NOTOK] awaiting \"string is 6 bytes length\", got \"${%s, fmt}\"")
+  } else {
+    println ("[OK]")
+  }
+
+  test_num += 1
+  print ("[${test_num}] testing format function with escaped characters - ")
+  var dollars = "$$$$$$ $$$$$$ are 12 dollars"
+  if (load_vf isnot dollars) {
+    println (stderr, "[NOTOK] awaiting \"${%s, dollars}\", got \"${%s, load_vf}\"")
+  } else {
+    println ("[OK]")
+  }
 }
 
 semantics ()

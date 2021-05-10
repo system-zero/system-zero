@@ -114,7 +114,7 @@ A very small yet another programming language (yala) that compiles in C.
 
   str = "that everyone brings"
 
-  - in that case the previous value should be freed automatically
+  in that case, the previous value should be freed automatically
 
 - you can pass a string literal as an argument to a user defined function, or
   to a C function.
@@ -227,6 +227,13 @@ A very small yet another programming language (yala) that compiles in C.
       The number of expressions should match, or else it will result to an
       OUT_OF_BOUNDS error.
 
+    or
+
+    ar_symbol = [..., ...]
+
+      in this case the mumber of expressions is considered the length of the
+      array. If not, the interpreter will throw an OUT_OF_BOUNDS error.
+
     - you can get or set an item from or to an array, using indices that can
       be negative:
 
@@ -299,6 +306,9 @@ A very small yet another programming language (yala) that compiles in C.
 
 # Standard Functions.
 # print and println -  print functions
+# format            -  format a string with the same semantics with the print[ln]
+#                      functions
+#                      args: string
 # loadfile          -  load a filename for evaluation
 #                      args: a filename
 # exit              -  terminates evaluation of the current evaluated instance.
