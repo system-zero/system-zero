@@ -234,14 +234,19 @@ A very small yet another programming language (yala) that compiles in C.
       in this case the mumber of expressions is considered the length of the
       array. If not, the interpreter will throw an OUT_OF_BOUNDS error.
 
-    - you can get or set an item from or to an array, using indices that can
-      be negative:
+  - you can set all the array items with a specific value using:
 
-      array[-2] or array[0] = expression
+    ar[*] = value
 
-    - array indices are starting from zero, and -1 denotes the last item in
-      the array.
+    *Note* that this syntax should attributed to S-Lang programming language.
 
+  - you can get or set an item from or to an array, using indices that can
+    be negative:
+
+    array[-2] or array[0] = expression
+
+    Array indices are starting from zero, and -1 denotes the last item in
+    the array.
 ```
 
 ## keywords and Operators (reserved):

@@ -132,6 +132,8 @@ static  char PREVFUNC[MAXLEN_SYMBOL + 1];
 #define LA_TOKEN_COMMENT    '#'
 #define LA_TOKEN_DQUOTE     '"'
 #define LA_TOKEN_SQUOTE     '\''
+#define LA_TOKEN_STAR       '*'
+#define LA_TOKEN_ASSIGN     '='
 #define LA_TOKEN_NL         '\n'
 #define LA_TOKEN_SLASH      '\\'
 //#define LA_TOKEN_LINE_CONT  LA_TOKEN_SLASH
@@ -440,6 +442,11 @@ static int la_out_of_bounds (la_t *this) {
   return la_err_ptr (this, LA_ERR_OUTOFBOUNDS);
 }
 
+static int la_type_mismatch (la_t *this) {
+  this->print_fmt_bytes (this->err_fp, "\ntype mismatch:");
+  return la_err_ptr (this, LA_ERR_UNKNOWN_TYPE);
+}
+
 static inline int is_space (int c) {
   return (c is ' ') or (c is '\t') or (c is '\r');
 }
@@ -541,6 +548,24 @@ static int la_ignore_ws (la_t *this) {
   return c;
 }
 
+static int la_peek_char_nows (la_t *this, uint *n) {
+  int c;
+  while (1) {
+    c = la_peek_char (this, *n);
+
+    if (c is LA_TOKEN_EOF)
+      return LA_TOKEN_EOF;
+
+    ifnot (is_space (c))
+      return c;
+
+    *n += 1;
+  }
+
+  return LA_TOKEN_EOF;
+}
+
+
 static void la_get_span (la_t *this, int (*testfn) (int)) {
   int c;
   do
@@ -555,6 +580,7 @@ static int la_get_opened_block (la_t *this, char *msg) {
   int c;
   int prev_c = 0;
   int in_str = 0;
+
   while (bracket > 0) {
     c = la_get_char (this);
 
@@ -1409,7 +1435,8 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
   if (0 > idx) idx += str->num_bytes;
   if (idx < 0 or (size_t) idx >= str->num_bytes) return la_out_of_bounds (this);
 
-  if (la_StringGetPtr (this->curStrToken)[0] isnot '=' or la_StringGetLen (this->curStrToken) isnot 1)
+  if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
+      la_StringGetLen (this->curStrToken) isnot 1)
     return this->syntax_error (this, "syntax error while setting string, awaiting =");
 
   la_next_token (this);
@@ -1611,7 +1638,7 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
 
   ifnot (is_single)
     if (la_next_token (this) isnot LA_TOKEN_INDEX_OPEN)
-      return this->syntax_error (this, "array assignment: awaiting an [");
+      return this->syntax_error (this, "array assignment: awaiting [");
 
   if (array->type is INTEGER_TYPE) {
     err = la_array_set_as_int (this, ary, len, idx, last_idx);
@@ -1625,7 +1652,7 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
 
   ifnot (is_single) {
     if (this->curToken isnot LA_TOKEN_INDEX_CLOS)
-      return this->syntax_error (this, "array assignment: awaiting an [");
+      return this->syntax_error (this, "array assignment: awaiting ]");
 
     la_next_token (this);
   }
@@ -1642,22 +1669,21 @@ static int la_parse_array_def (la_t *this) {
 
   c = la_next_raw_token (this);
 
-  if (c isnot LA_TOKEN_SYMBOL) {
+  if (c isnot LA_TOKEN_SYMBOL)
     return this->syntax_error (this, "syntax error, awaiting a name");
-  }
 
   const char *sp = la_StringGetPtr (this->curStrToken);
   uint splen = la_StringGetLen (this->curStrToken);
   int isname = 0;
   int type = INTEGER_TYPE;
 
-  if (Cstring.eq_n ("integer", sp, splen))
+  if (Cstring.eq_n ("integer ", sp, 8))
     type = INTEGER_TYPE;
-  else if (Cstring.eq_n ("number", sp, splen))
+  else if (Cstring.eq_n ("number ", sp, 7))
     type = NUMBER_TYPE;
-  else if (Cstring.eq_n ("pointer", sp, splen))
+  else if (Cstring.eq_n ("pointer ", sp, 8))
     type = POINTER_TYPE;
-  else if (Cstring.eq_n ("string", sp, splen))
+  else if (Cstring.eq_n ("string ", sp, 7))
     type = STRING_TYPE;
   else
     isname = 1;
@@ -1695,7 +1721,8 @@ static int la_parse_array_def (la_t *this) {
   this->tokenSymbol = la_define_symbol (this, this->curScope, sym_key (this, name), ARRAY_TYPE,
     ar, 0);
 
-  if (la_StringGetPtr (this->curStrToken)[0] is '=' and la_StringGetLen (this->curStrToken) is 1) {
+  if (la_StringGetPtr (this->curStrToken)[0] is LA_TOKEN_ASSIGN and
+      la_StringGetLen (this->curStrToken) is 1) {
     VALUE at_idx = INT(0);
     VALUE last_idx = INT(-1);
     return la_array_assign (this, &ar, at_idx, last_idx, 0);
@@ -1717,6 +1744,64 @@ static int la_parse_array_set (la_t *this) {
   int is_index = c is LA_TOKEN_INDEX_OPEN;
 
   if (is_index) {
+    uint n = 0;
+    c = la_peek_char_nows (this, &n);
+    if (c is LA_TOKEN_STAR) {
+      for (uint i = 0; i <= n; i++)
+        la_ignore_next_char (this);
+
+      c = la_next_token (this);
+      if (c isnot LA_TOKEN_INDEX_CLOS)
+        return this->syntax_error (this, "array set: awaiting ]");
+
+      c = la_next_token (this);
+
+      if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
+          la_StringGetLen (this->curStrToken) isnot 1)
+        return this->syntax_error (this, "syntax error while setting array, awaiting =");
+
+      VALUE ar_val;
+      la_next_token (this);
+      err = la_parse_expr (this, &ar_val);
+      if (err isnot LA_OK)
+        return err;
+
+      ArrayType *array = (ArrayType *) AS_ARRAY(ary);
+      if (array->type isnot ar_val.type)
+        return la_type_mismatch (this);
+
+      switch (array->type) {
+        case STRING_TYPE: {
+          string **s_ar = (string **) AS_ARRAY(array->value);
+          string *s_val = AS_STRING(ar_val);
+          for (size_t i = 0; i < array->len; i++) {
+            string *item = s_ar[i];
+            String.replace_with_len (item, s_val->bytes, s_val->num_bytes);
+          }
+          return LA_OK;
+        }
+
+        case INTEGER_TYPE: {
+          int i_val = AS_INT(ar_val);
+          integer *i_ar = (integer *) AS_ARRAY(array->value);
+          for (size_t i = 0; i < array->len; i++)
+            i_ar[i] = i_val;
+          return LA_OK;
+        }
+
+        case NUMBER_TYPE: {
+          number n_val = AS_NUMBER(ar_val);
+          number *n_ar = (number *) AS_ARRAY(array->value);
+          for (size_t i = 0; i < array->len; i++)
+            n_ar[i] = n_val;
+          return LA_OK;
+        }
+
+        default:
+          return la_unknown_type (this);
+      }
+    }
+
     this->curState |= INDEX_STATE;
     err = la_parse_primary (this, &ix);
     this->curState &= ~INDEX_STATE;
@@ -1736,7 +1821,8 @@ static int la_parse_array_set (la_t *this) {
     }
   }
 
-  if (la_StringGetPtr (this->curStrToken)[0] isnot '=' or la_StringGetLen (this->curStrToken) isnot 1)
+  if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
+      la_StringGetLen (this->curStrToken) isnot 1)
     return this->syntax_error (this, "syntax error while setting array, awaiting =");
 
   ifnot (is_index)
@@ -2302,8 +2388,8 @@ static int la_parse_stmt (la_t *this) {
         return this->syntax_error (this, "expected [+/*-]=");
 
       int operator = *ptr;
-      if (operator isnot '=') {
-        if (*(ptr + 1) isnot '=')
+      if (operator isnot LA_TOKEN_ASSIGN) {
+        if (*(ptr + 1) isnot LA_TOKEN_ASSIGN)
           return this->syntax_error (this, "expected =");
       }
 
@@ -2353,12 +2439,12 @@ static int la_parse_stmt (la_t *this) {
 
       if (symbol->value.type is STRING_TYPE)
         if (Cstring.eq (symbol->scope->funname, this->curScope->funname))
-          if (operator is '=')
+          if (operator is LA_TOKEN_ASSIGN)
             la_free (this, symbol->value);
 
       VALUE result;
       switch (operator) {
-        case '=':
+        case LA_TOKEN_ASSIGN:
           val.sym = symbol;
           result = val;
           goto assign_and_return;
@@ -2483,12 +2569,10 @@ static int la_consume_ifelse (la_t *this) {
           return err;
 
         c = la_next_token (this);
-        goto check;
+        if (c isnot LA_TOKEN_ELSE)
+          return LA_OK;
       }
     }
-
-    check:
-    if (c isnot LA_TOKEN_ELSE) return LA_OK;
   }
 
   return LA_OK;
@@ -4613,7 +4697,7 @@ static int la_eval_file (la_t *this, const char *filename) {
   char *err_msg[] = {
       "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
       "UNKNOWN TYPE", "BAD ARGUMENTS", "TOO MANY ARGUMENTS",
-      "LOAD ERROR", "OUT OF BOUNDS"
+      "LOAD ERROR", "OUT OF BOUNDS", "TYPE MISMATCH"
   };
   this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-retval - 2]);
   return retval;

@@ -119,20 +119,21 @@ typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE,
 typedef VALUE (*OpFunc) (la_t *, VALUE, VALUE);
 
 enum {
-  LA_ERR_OUTOFBOUNDS  = -9,
-  LA_ERR_LOAD         = -8,
-  LA_ERR_TOOMANYARGS  = -7,
-  LA_ERR_BADARGS      = -6,
-  LA_ERR_UNKNOWN_TYPE = -5,
-  LA_ERR_UNKNOWN_SYM  = -4,
-  LA_ERR_SYNTAX       = -3,
-  LA_ERR_NOMEM        = -2,
-  LA_NOTOK            = -1,
-  LA_OK               = 0,
-  LA_ERR_OK_ELSE      = 1,
-  LA_ERR_BREAK        = 2,
-  LA_ERR_CONTINUE     = 3,
-  LA_ERR_EXIT         = 4
+  LA_ERR_TYPE_MISMATCH = -10,
+  LA_ERR_OUTOFBOUNDS   = -9,
+  LA_ERR_LOAD          = -8,
+  LA_ERR_TOOMANYARGS   = -7,
+  LA_ERR_BADARGS       = -6,
+  LA_ERR_UNKNOWN_TYPE  = -5,
+  LA_ERR_UNKNOWN_SYM   = -4,
+  LA_ERR_SYNTAX        = -3,
+  LA_ERR_NOMEM         = -2,
+  LA_NOTOK             = -1,
+  LA_OK                = 0,
+  LA_ERR_OK_ELSE       = 1,
+  LA_ERR_BREAK         = 2,
+  LA_ERR_CONTINUE      = 3,
+  LA_ERR_EXIT          = 4
 };
 
 /* Interface */

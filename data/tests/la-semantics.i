@@ -1056,6 +1056,23 @@ func test_array (length) {
   }
 
   test_num += 1
+  var err = 0
+  print ("[${test_num}] testing array set '*' operator - ")
+  array i_ar[4]
+  i_ar[*] = 31
+  for (var i = 0; i < len (i_ar); i += 1) {
+    if (i_ar[i] isnot 31) {
+      println (stderr, "[NOTOK] awaiting 33 got: ${i_ar[i]}")
+      err = 1
+      break
+    }
+  }
+
+  ifnot (err) {
+    println ("[OK]")
+  }
+
+  test_num += 1
   print ("[${test_num}] testing fibonacci array implementation - ")
   retval = fibo_array (92)
   if (retval isnot 7540113804746346429) {
@@ -1063,6 +1080,7 @@ func test_array (length) {
   } else {
     println ("[OK]")
   }
+
 }
 
 test_array (10)
