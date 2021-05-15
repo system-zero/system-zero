@@ -231,6 +231,17 @@ static string_t *__ex_ed_serial_info__ (edinfo_t *info) {
   return sinfo;
 }
 
+static string_t *__ex_e_serial_info__ (Einfo_t *info) {
+  string_t *sinfo = String.new_with ("E_INFO_STRUCTURE\n");
+  String.append_with_fmt (sinfo,
+    "image name   : \"%s\"\n"
+    "image file   : \"%s\"\n"
+    "num editors  : %d\n"
+    "cur ed idx   : %d\n",
+    info->image_name, info->image_file, info->num_items, info->cur_idx);
+  return sinfo;
+}
+
 static int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
   (void) thisp; (void) rl;
   ed_t *ced = E.get.current (__E__);
@@ -238,9 +249,10 @@ static int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
   int
     buf = Readline.arg.exists (rl, "buf"),
     win = Readline.arg.exists (rl, "win"),
-    ed  = Readline.arg.exists (rl, "ed");
+    ed  = Readline.arg.exists (rl, "ed"),
+    e   = Readline.arg.exists (rl, "e");
 
-  ifnot (buf + win + ed) buf = 1;
+  ifnot (buf + win + ed + e) buf = 1;
 
   Ed.append.toscratch (ced, CLEAR, "");
 
@@ -262,11 +274,19 @@ static int __ex_com_info__ (buf_t **thisp, readline_t *rl) {
   }
 
   if (ed) {
-    edinfo_t *einfo = Ed.get.info.as_type (ced);
-    string_t *seinfo = __ex_ed_serial_info__ (einfo);
+    edinfo_t *edinfo = Ed.get.info.as_type (ced);
+    string_t *sedinfo = __ex_ed_serial_info__ (edinfo);
+    Ed.append.toscratch (ced, DONOT_CLEAR, sedinfo->bytes);
+    String.release (sedinfo);
+    Ed.release_info (ced, &edinfo);
+  }
+
+  if (e) {
+    Einfo_t *einfo = E.get.info.as_type (__E__);
+    string_t *seinfo = __ex_e_serial_info__ (einfo);
     Ed.append.toscratch (ced, DONOT_CLEAR, seinfo->bytes);
     String.release (seinfo);
-    Ed.release_info (ced, &einfo);
+    E.release_info (__E__, &einfo);
   }
 
   Ed.scratch (ced, thisp, NOT_AT_EOF);
@@ -307,6 +327,7 @@ static void __ex_add_readline_commands__ (ed_t *this) {
   Ed.append.command_arg (this, "@info", "--buf", 5);
   Ed.append.command_arg (this, "@info", "--win", 5);
   Ed.append.command_arg (this, "@info", "--ed",  4);
+  Ed.append.command_arg (this, "@info", "--e",   3);
 
   Ed.set.readline_cb (this, __ex_rline_cb__);
 }

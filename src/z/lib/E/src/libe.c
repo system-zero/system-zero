@@ -2855,6 +2855,32 @@ static edinfo_t *ed_get_info_as_type (ed_t *this) {
   return info;
 }
 
+static void E_release_info (E_T *this, Einfo_t **info) {
+  (void) this;
+  if (NULL is *info) return;
+  free ((*info)->image_name);
+  free ((*info)->image_file);
+  free (*info);
+  *info = NULL;
+}
+
+static Einfo_t *E_get_info_as_type (E_T *this) {
+  Einfo_t *info = Alloc (sizeof (Einfo_t));
+  ifnot (NULL is $my(image_name))
+    info->image_name = Cstring.dup ($my(image_name), bytelen ($my(image_name)));
+  else
+    info->image_name = Cstring.dup ("", 0);
+
+  ifnot (NULL is $my(image_file))
+    info->image_file = Cstring.dup ($my(image_file), bytelen ($my(image_file)));
+  else
+    info->image_file = Cstring.dup ("", 0);
+
+  info->num_items = $my(num_items);
+  info->cur_idx = $my(cur_idx);
+  return info;
+}
+
 static buf_t *win_buf_init (win_t *w, int at_frame, int flags) {
   buf_t *this = Alloc (sizeof (buf_t));
   $myprop = Alloc (sizeof (buf_prop));
@@ -13686,6 +13712,7 @@ public E_T *__init_ed__ (char *name) {
       .load_file = E_load_file,
       .save_image = E_save_image,
       .create_image = E_create_image,
+      .release_info = E_release_info,
       .get = (E_get_self) {
         .num = E_get_num,
         .idx = E_get_idx,
@@ -13698,7 +13725,10 @@ public E_T *__init_ed__ (char *name) {
         .prev_idx = E_get_prev_idx,
         .current_idx = E_get_current_idx,
         .error_state = E_get_error_state,
-        .la_define_funs_cb = E_get_la_define_funs_cb
+        .la_define_funs_cb = E_get_la_define_funs_cb,
+        .info = (E_get_info_self) {
+          .as_type = E_get_info_as_type
+        }
       },
       .set = (E_set_self) {
         .i_dir = E_set_i_dir,

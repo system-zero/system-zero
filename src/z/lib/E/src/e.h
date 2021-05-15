@@ -367,6 +367,7 @@ typedef struct edinfo_t edinfo_t;
 typedef struct ed_prop ed_prop;
 typedef struct ed_T ed_T;
 
+typedef struct Einfo_t Einfo_t;
 typedef struct E_prop E_prop;
 typedef struct E_self E_self;
 typedef struct E_T E_T;
@@ -535,6 +536,15 @@ struct edinfo_t {
     num_items;
 };
 
+struct Einfo_t {
+  char
+    *image_name,
+    *image_file;
+
+  int
+    cur_idx,
+    num_items;
+};
 
 typedef struct buf_opts {
    win_t *win;
@@ -1317,7 +1327,14 @@ typedef struct E_set_self {
     *(*current) (E_T *, int);
 } E_set_self;
 
+
+typedef struct E_get_info_self {
+  Einfo_t *(*as_type) (E_T *);
+} E_get_info_self;
+
 typedef struct E_get_self {
+  E_get_info_self info;
+
   ed_t
     *(*head) (E_T *),
     *(*current) (E_T *),
@@ -1354,6 +1371,9 @@ typedef struct E_self {
     (*exit_all) (E_T *),
     (*load_file) (E_T *, char *, int, char **),
     (*save_image) (E_T *, char *);
+
+  void
+    (*release_info) (E_T *, Einfo_t **);
 
   string_t *(*create_image) (E_T *);
 } E_self;
