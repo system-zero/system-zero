@@ -75,6 +75,8 @@ static  char PREVFUNC[MAXLEN_SYMBOL + 1];
 #define FORCE_LOADFILE                (1 << 7)
 #define INDEX_STATE                   (1 << 8)
 
+#define EXPR_LIST_STATE               (1 << 0)
+
 #define FMT_LITERAL                   (1 << 0)
 
 #define OBJECT_APPEND                 (1 << 0)
@@ -257,6 +259,7 @@ struct la_t {
     lineNum,
     curToken,
     curState,
+    funcState,
     objectState,
     fmtState,
     fmtRefcount,
@@ -668,6 +671,17 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   return LA_OK;
 }
 
+static int ns_is_malloced_string (funT *this, string *str) {
+  malloced_string *item = this->head;
+  while (item isnot NULL) {
+    if (str is item->data)
+      return 1;
+
+    item = item->next;
+  }
+  return 0;
+}
+
 static void ns_release_malloced_strings (funT *this) {
   malloced_string *item = this->head;
   while (item isnot NULL) {
@@ -816,8 +830,12 @@ static VALUE la_format (la_t *this, VALUE v_fmt) {
   }
 
   v = STRING(str);
+
   if (this->fmtRefcount)
     this->fmtState |= FMT_LITERAL;
+  else
+    if (this->funcState & EXPR_LIST_STATE)
+      v.refcount--;
 
   return v;
 }
@@ -1938,7 +1956,10 @@ static int la_parse_expr_list (la_t *this) {
   VALUE v;
 
   do {
+    this->curState |= STRING_LITERAL_ARG_STATE;
+    this->funcState |= EXPR_LIST_STATE;
     err = la_parse_expr (this, &v);
+    this->funcState &= ~EXPR_LIST_STATE;
     if (err isnot LA_OK) return err;
 
     if (this->curState & FUNC_CALL_RESULT_IS_MMT)
@@ -1952,6 +1973,7 @@ static int la_parse_expr_list (la_t *this) {
     c = this->curToken;
     if (c is LA_TOKEN_COMMA) la_next_token (this);
   } while (c is LA_TOKEN_COMMA);
+
 
   return count;
 
@@ -2063,10 +2085,10 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     return LA_OK;
   }
 
+  int paramCount = 0;
+
   this->curState |= STRING_LITERAL_ARG_STATE;
   c = la_next_token (this);
-
-  int paramCount = 0;
 
   if (c isnot LA_TOKEN_PAREN_CLOS) {
     paramCount = la_parse_expr_list (this);
@@ -2148,8 +2170,14 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
         if (sym isnot NULL and uf_sym->scope isnot sym->scope) {
           sym->value = uf_val;
-          VALUE none = NONE;
-          uf_val = none;
+          VALUE non = NONE;
+          uf_sym->value = non;
+        } else {
+          if (v.type is STRING_TYPE and
+            ns_is_malloced_string (this->curScope, AS_STRING(v))) {
+            VALUE non = NONE;
+            uf_sym->value = non;
+          }
         }
       }
     }
@@ -2173,6 +2201,21 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   *vp = op (this, this->funArgs[0], this->funArgs[1], this->funArgs[2],
                   this->funArgs[3], this->funArgs[4], this->funArgs[5],
                   this->funArgs[6], this->funArgs[7], this->funArgs[8]);
+
+  for (int i = 0; i < expectargs; i++) {
+    VALUE v = this->funArgs[0];
+    if (v.type is STRING_TYPE)
+      if (ns_is_malloced_string (this->curScope, AS_STRING(v)))
+        continue;
+
+    if (v.sym is NULL)
+      la_free (this, v);
+  }
+
+  this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
+  if (vp->type >= FUNCPTR_TYPE)
+    this->curState |= FUNC_CALL_RESULT_IS_MMT;
+
   err = this->CFuncError;
 
   la_next_token (this);
@@ -3414,7 +3457,10 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
         c = la_next_token (this);
       }
 
+      this->funcState |= EXPR_LIST_STATE;
       err = la_parse_expr (this, &value);
+      this->funcState &= ~EXPR_LIST_STATE;
+
       if (err isnot LA_OK) {
         this->print_bytes (this->err_fp, "string fmt error, while evaluating expression\n");
         la_err_ptr (this, LA_NOTOK);
@@ -3427,7 +3473,8 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           switch (value.type) {
             case STRING_TYPE:
               String.append_with_fmt (str, "%s", AS_STRING_BYTES(value));
-              if (this->fmtState & FMT_LITERAL) {
+              if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
+                  0 is ns_is_malloced_string (this->curScope, AS_STRING(value)))) {
                 la_free (this, value);
                 this->fmtState &= ~FMT_LITERAL;
               }
@@ -3463,9 +3510,12 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
 
         case 'p':
           String.append_with_fmt (str, "%p", AS_PTR(value));
-          if (this->fmtState & FMT_LITERAL) {
-            la_free (this, value);
-            this->fmtState &= ~FMT_LITERAL;
+          if (value.type is STRING_TYPE) {
+            if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
+               0 is ns_is_malloced_string (this->curScope, AS_STRING(value)))) {
+                la_free (this, value);
+                this->fmtState &= ~FMT_LITERAL;
+            }
           }
           break;
 
@@ -4893,6 +4943,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->didReturn = 0;
   this->exitValue = LA_OK;
   this->curState = 0;
+  this->funcState = 0;
   this->objectState = 0;
   this->stackValIdx = -1;
 
