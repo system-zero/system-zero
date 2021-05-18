@@ -39,31 +39,6 @@
 #define NS_ANON            "anonymous"
 #define LA_EXTENSION       "i"
 #define LA_STRING_NS       "__string__"
-#define LA_LOAD_DIR        "la"
-
-#ifdef DEBUG
-
-static  int  CURIDX = 0;
-static  char PREVFUNC[MAXLEN_SYMBOL + 1];
-
-#define $CUR_IDX      CURIDX
-#define $PREV_FUNC    PREVFUNC
-#define $CUR_FUNC     __func__
-#define $CUR_SCOPE    this->curScope->funname
-#define $CUR_TOKEN    this->curToken
-#define $CUR_VALUE    this->tokenValue.type
-//#define $CUR_VALUE    (VALUE) this->tokenValue
-#define $CODE_PATH   fprintf (this->err_fp,                                     \
-  "CurIdx   : %d,  PrevFunc : %s,\n"                                            \
-  "CurFunc  : %s,  CurScope : %s,\n"                                            \
-  "CurToken : ['%c', %d], CurValueType : %d\n",                                    \
-  $CUR_IDX++, $PREV_FUNC,                                                       \
-  $CUR_FUNC, $CUR_SCOPE, $CUR_TOKEN, $CUR_TOKEN, $CUR_VALUE);                   \
-  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL + 1, $CUR_FUNC, MAXLEN_SYMBOL); \
-  fprintf (this->err_fp, "CurStringToken : ['");                                \
-  la_print_lastring (this, this->err_fp, this->curStrToken);                      \
-  fprintf (this->err_fp, "']\n\n");
-#endif
 
 #define STRING_LITERAL_ARG_STATE      (1 << 0)
 #define LOOP_STATE                    (1 << 1)
@@ -701,6 +676,7 @@ static malloced_string *new_malloced_string (size_t len) {
 }
 
 static VALUE la_getcwd (la_t *this) {
+  (void) this;
   char *dir = Dir.current ();
   string *cwd = String.new_with (dir);
   free (dir);
@@ -976,8 +952,8 @@ static void la_release_sym (void *sym) {
 }
 
 static void la_release_unit (void *item) {
-  string *str = (string  *) item;
-  String.release (item);
+  string *str = (string *) item;
+  String.release (str);
 }
 
 static funT *fun_new (funNewArgs options) {
@@ -1014,14 +990,6 @@ static inline char *sym_key (la_t *this, la_string x) {
 }
 
 static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
-#ifdef DEBUG
-  if ($CUR_IDX < 65) {
-    $CUR_IDX++;
-    goto body;
-  }
-  $CODE_PATH
-body:
-#endif
   (void) this;
   ifnot (key) return NULL;
 
@@ -1046,12 +1014,6 @@ static inline sym_t *ns_lookup_symbol (funT *scope, char *key) {
 
 static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   char *key = sym_key (this, name);
-
-#ifdef DEBUG
-  fprintf (this->err_fp, "Queried Symbol: %s\n", key);
-  $CODE_PATH
-#endif
-
   sym_t *sym = ns_lookup_symbol (this->std, key);
   ifnot (NULL is sym) return sym;
 
@@ -1090,9 +1052,6 @@ static int la_lambda (la_t *this) {
 }
 
 static int la_do_next_token (la_t *this, int israw) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int r = LA_NOTOK;
 
   sym_t *symbol = NULL;
@@ -1164,8 +1123,8 @@ static int la_do_next_token (la_t *this, int israw) {
 
       const char *ptr = la_StringGetPtr (this->curStrToken);
 
-      uint len = la_StringGetLen (this->curStrToken);
-      switch (len) {
+      uint toklen = la_StringGetLen (this->curStrToken);
+      switch (toklen) {
         case 2:
           if (Cstring.eq_n (ptr, "is", 2))
             this->tokenSymbol = ns_lookup_symbol (this->std, "is");
@@ -1193,14 +1152,12 @@ static int la_do_next_token (la_t *this, int israw) {
           goto is_raw;
       }
 
-      is_operator:
-        r = this->tokenSymbol->type;
-        this->tokenValue = this->tokenSymbol->value;
-        goto theend;
+      r = this->tokenSymbol->type;
+      this->tokenValue = this->tokenSymbol->value;
+      goto theend;
 
       is_raw:
       ifnot (israw) {
-        const char *ptr = la_StringGetPtr (this->curStrToken);
         if (Cstring.eq_n ("lambda", ptr, 6) and 0 is is_identifier (*(ptr + 6))) {
           r = la_lambda (this);
           if (r < LA_OK)
@@ -1727,7 +1684,6 @@ static int la_parse_array_def (la_t *this) {
     return this->syntax_error (this, "syntax error, awaiting a name");
 
   const char *sp = la_StringGetPtr (this->curStrToken);
-  uint splen = la_StringGetLen (this->curStrToken);
   int isname = 0;
   int type = INTEGER_TYPE;
 
@@ -1984,9 +1940,6 @@ static int la_array_eq (VALUE x, VALUE y) {
 }
 
 static int la_parse_expr_list (la_t *this) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int err, c;
   int count = 0;
   VALUE v;
@@ -2054,10 +2007,6 @@ theend:
 }
 
 static int la_parse_string (la_t *this, la_string str) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
-
   int c,  r;
   la_string savepc = this->parsePtr;
 
@@ -2100,9 +2049,6 @@ static void la_fun_refcount_decr (int *count) {
 }
 
 static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE value) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int expectargs;
 
   if (uf)
@@ -2260,9 +2206,6 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 }
 
 static int la_parse_primary (la_t *this, VALUE *vp) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int c, err;
 
   c = this->curToken;
@@ -2376,9 +2319,6 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 }
 
 static int la_parse_stmt (la_t *this) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int c;
   la_string name;
   VALUE val;
@@ -2423,7 +2363,7 @@ static int la_parse_stmt (la_t *this) {
       c = la_next_raw_token (this); // we want to get VAR_SYMBOL directly
 
       if (c isnot LA_TOKEN_SYMBOL)
-        return this->syntax_error (this, "expected symbol");
+        return this->syntax_error (this, "expected a symbol");
 
       name = this->curStrToken;
 
@@ -2578,9 +2518,6 @@ static int la_parse_stmt (la_t *this) {
 // parse a level n expression
 // level 0 is the lowest level (highest precedence)
 static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int err = LA_OK;
   int c;
   VALUE lhs;
@@ -2622,9 +2559,6 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 }
 
 static int la_parse_expr (la_t *this, VALUE *vp) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int err = la_parse_primary (this, vp);
 
   if (err is LA_OK)
@@ -3308,9 +3242,6 @@ theend:
 }
 
 static int la_parse_arg_list (la_t *this, funT *uf) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int c;
   int nargs = 0;
 
@@ -3350,9 +3281,6 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
 }
 
 static int la_parse_func_def (la_t *this) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   la_string name;
   int c;
   int nargs = 0;
@@ -3463,8 +3391,6 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
         err = LA_ERR_SYNTAX;
         goto theend;
       }
-
-      char sym[MAXLEN_SYMBOL];
 
       prev = c;
       c = la_next_token (this);
@@ -3667,7 +3593,6 @@ theend:
 
 static int la_parse_print (la_t *this) {
   int err = LA_NOTOK;
-  VALUE value;
 
   string *str = String.new (32);
 
@@ -3773,9 +3698,6 @@ static int la_parse_println (la_t *this) {
 }
 
 static int la_parse_exit (la_t *this) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   la_next_token (this);
 
   VALUE v;
@@ -3921,9 +3843,6 @@ theend:
 }
 
 static int la_parse_return (la_t *this) {
-#ifdef DEBUG
-  $CODE_PATH
-#endif
   int err;
   la_next_token (this);
 
@@ -4414,6 +4333,7 @@ theend:
 }
 
 static VALUE la_logical_and (la_t *this, VALUE x, VALUE y) {
+  (void) this;
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -4441,6 +4361,7 @@ theend:
 }
 
 static VALUE la_logical_or (la_t *this, VALUE x, VALUE y) {
+  (void) this;
   VALUE result = INT(0);
 
   switch (x.type) {
@@ -4646,11 +4567,6 @@ static VALUE I_print_byte (la_t *this, char byte) {
 }
 
 static int la_eval_string (la_t *this, const char *buf) {
-#ifdef DEBUG
-  Cstring.cp ($PREV_FUNC, MAXLEN_SYMBOL + 1, " ", 1);
-  $CODE_PATH
-#endif
-
   const char *prev_buffer = this->script_buffer;
   this->script_buffer = buf;
 
