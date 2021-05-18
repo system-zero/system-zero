@@ -1160,9 +1160,45 @@ static int la_do_next_token (la_t *this, int israw) {
 
     case LA_TOKEN_SYMBOL:
       la_get_span (this, is_identifier);
-
       r = LA_TOKEN_SYMBOL;
 
+      const char *ptr = la_StringGetPtr (this->curStrToken);
+
+      uint len = la_StringGetLen (this->curStrToken);
+      switch (len) {
+        case 2:
+          if (Cstring.eq_n (ptr, "is", 2))
+            this->tokenSymbol = ns_lookup_symbol (this->std, "is");
+          else if (Cstring.eq_n (ptr, "or", 2))
+            this->tokenSymbol = ns_lookup_symbol (this->std, "or");
+          else goto is_raw;
+
+          break;
+
+        case 3:
+          if (Cstring.eq_n (ptr, "and", 3))
+            this->tokenSymbol = ns_lookup_symbol (this->std, "and");
+          else goto is_raw;
+
+          break;
+
+        case 5:
+          if (Cstring.eq_n (ptr, "isnot", 5))
+            this->tokenSymbol = ns_lookup_symbol (this->std, "isnot");
+          else goto is_raw;
+
+          break;
+
+        default:
+          goto is_raw;
+      }
+
+      is_operator:
+        r = this->tokenSymbol->type;
+        this->tokenValue = this->tokenSymbol->value;
+        goto theend;
+
+      is_raw:
       ifnot (israw) {
         const char *ptr = la_StringGetPtr (this->curStrToken);
         if (Cstring.eq_n ("lambda", ptr, 6) and 0 is is_identifier (*(ptr + 6))) {
@@ -1198,11 +1234,11 @@ static int la_do_next_token (la_t *this, int israw) {
       la_get_span (this, is_operator_span);
 
       char *key = sym_key (this, this->curStrToken);
-      this->tokenSymbol = symbol = ns_lookup_symbol (this->std, key);
+      this->tokenSymbol = ns_lookup_symbol (this->std, key);
 
-      if (symbol) {
-        r = symbol->type;
-        this->tokenValue = symbol->value;
+      if (this->tokenSymbol) {
+        r = this->tokenSymbol->type;
+        this->tokenValue = this->tokenSymbol->value;
       } else
         r = LA_TOKEN_SYNTAX_ERR;
 
@@ -2552,6 +2588,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 
   lhs = *vp;
   c = this->curToken;
+
   while ((c & 0xff) is LA_TOKEN_BINOP) {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
@@ -4396,6 +4433,7 @@ static VALUE la_logical_and (la_t *this, VALUE x, VALUE y) {
         case INTEGER_TYPE:
           result = INT(AS_INT(x) && AS_INT(y)); goto theend;
       }
+
   }
 
 theend:

@@ -1,19 +1,20 @@
-println ("--[ BEG ]--")
-
-# for now, untill an arg[vc] implementation
 var run_invalid_memory_read_tests = 0
 var run_fileptr_tests = 0
-
 var run_valgrind_tests = 1
-var run_bug_tests = 0
 
 var test_num = 0
+
+array RESULTS[256];
+RESULTS[*] = ok
+
+var EXPECTED_TO_FAIL = 1
 
 func assert_true (msg, expr) {
   test_num += 1
   print ("[${test_num}] ${%s, msg} - ")
   if (expr is false) {
     println (stderr, "[NOTOK] awaiting true got false")
+    RESULTS[test_num - 1] = notok
     return
   }
 
@@ -24,6 +25,7 @@ func assert_true_msg (msg, msg_on_error, expr) {
   test_num += 1
   print ("[${test_num}] ${%s, msg} - ")
   if (expr is false) {
+    RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] ${%s, msg_on_error}")
     return
   }
@@ -35,6 +37,7 @@ func assert_false (msg, expr) {
   test_num += 1
   print ("[${test_num}] ${%s, msg} - ")
   if (expr is true) {
+    RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] awaiting false got true")
     return
   }
@@ -46,6 +49,7 @@ func assert_equal (msg, a_expr, b_expr) {
   test_num += 1
   print ("[${test_num}] ${%s, msg} - ")
   if (a_expr isnot b_expr) {
+    RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] awaiting equality")
     return
   }
@@ -57,6 +61,7 @@ func assert_not_equal (msg, a_expr, b_expr) {
   test_num += 1
   print ("[${test_num}] ${%s, msg} - ")
   if (a_expr is b_expr) {
+    RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] awaiting equality")
     return
   }
@@ -68,6 +73,7 @@ func assert_equal_msg (msg, msg_on_error, a_expr, b_expr) {
   test_num += 1
   print ("[${test_num}] ${%s, msg} - ")
   if (a_expr isnot b_expr) {
+    RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] ${%s, msg_on_error}")
     return
   }
@@ -79,6 +85,7 @@ func expected_to_fail (msg, msg_on_error, a_expr, b_expr) {
   test_num += 1
   print ("[${test_num}] ${%s, msg} - ")
   if (a_expr isnot b_expr) {
+    RESULTS[test_num - 1] = EXPECTED_TO_FAIL
     println (stderr, "[NOTOK] ${%s, msg_on_error}")
     return
   }
@@ -135,11 +142,11 @@ func semantics () {
   retval = fue (20)
   assert_true ("testing function nesting and scope", retval is 41)
 
-  assert_true ("testing logical AND", ((1 is 1) and (1 is 1) and ((1 is 1) and (2 is 2)) &&
-      ((1 isnot 2) && (1 isnot 2))))
+  assert_true ("testing logical AND", 1 is 1 and 1 is 1 and
+      (1 is 1 and 2 is 2) && (1 isnot 2 && 1 isnot 2))
 
-  assert_false ("testing logical OR", ((2 < 1) or (2 > 2) or (1 isnot 1) or (2 != 2) ||
-      ((2 < 2) || (1 > 2) || (1 > 2) || (2 < 1))))
+  assert_false ("testing logical OR", 2 < 1 or 2 > 2 or 1 isnot 1 or 2 != 2 ||
+      2 < 2 || 1 > 2 || 1 > 2 || 2 < 1)
 
   func fibo_tail (n, a, b) {
     ifnot (n) {
@@ -547,7 +554,7 @@ func semantics () {
   retval = __argc is 1
   assert_true  ("testing __argc and __argv", retval)
   assert_equal ("testing __argc and __argv", len (__argv), 1)
-  assert_equal ("testing __argc and __argv", __argv[0], "data/tests/devel_la-semantics.i")
+  assert_equal ("testing __argc and __argv", __argv[0], "data/tests/la-semantics.i")
 
   assert_equal_msg ("testing __func__",
       format ("awaiting |assert_equal_msg|, got |${%s, __func__}|"),
@@ -822,18 +829,35 @@ if (run_invalid_memory_read_tests and run_fileptr_tests) {
   println ("[${test_num}] tests for invalid memory read tests")
 }
 
-func bugs () {
-  var retval = 1 is 1 and 2 is 2
-  if (retval isnot 1) {
-    println ("retval should be 1 but it is ${retval}")
-  } else {
-    println ("[OK] fixed")
+func summary () {
+  var num_passed = 0
+  var num_failed = 0
+  var num_expected_to_fail = 0
+  var output = format ("====- TEST SUMMARY -====\nNUM TESTS: ${test_num}\n   PASSED:")
+  var failed_output = ""
+  var expected_to_fail_output = ""
+
+  for (var i = 0; i < test_num; i += 1) {
+    if (RESULTS[i] is ok) {
+      num_passed += 1
+      continue
+    }
+
+    if (RESULTS[i] is notok) {
+      num_failed += 1
+      failed_output += format ("[${i + 1}] ")
+      continue
+    }
+
+    num_expected_to_fail += 1
+    num_failed += 1
+    failed_output += format ("[${i + 1}] ")
+    expected_to_fail_output += format ("[${i + 1}] ")
   }
 
+  output += format (" ${num_passed}\n   FAILED: ${num_failed}, ${%s, failed_output}\n")
+  output += format (" EXPECTED: ${num_expected_to_fail}, ${%s, expected_to_fail_output}")
+  println ("${%s, output}")
 }
 
-if (run_bug_tests) {
-  bugs ()
-}
-
-println ("--[ END ] --")
+summary ()
