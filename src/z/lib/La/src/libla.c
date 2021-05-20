@@ -302,6 +302,7 @@ static VALUE la_bset (la_t *, VALUE, VALUE);
 static VALUE la_bnot (la_t *, VALUE, VALUE);
 static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
+static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -534,7 +535,7 @@ static int la_peek_char_nows (la_t *this, uint *n) {
     if (c is LA_TOKEN_EOF)
       return LA_TOKEN_EOF;
 
-    ifnot (is_space (c))
+    if (0 is is_space (c) or c isnot '\n')
       return c;
 
     *n += 1;
@@ -1503,6 +1504,83 @@ theend:
   return result;
 }
 
+static int la_get_anon_array (la_t *this, VALUE *vp) {
+  uint n = 0;
+  if (la_peek_char_nows (this, &n) is LA_TOKEN_INDEX_CLOS)
+    return this->syntax_error (this, "empty array");
+
+  int err;
+  int pc;
+  int c = 0;
+  int instr = 0;
+  int indtokopen = 1;
+  int num_elem = 1;
+
+  n = 0;
+  while (1) {
+    pc = c;
+    c = la_peek_char (this, n++);
+
+    if (c is LA_TOKEN_EOF)
+      return this->syntax_error (this, "unended array");
+
+    if (c is LA_TOKEN_INDEX_CLOS and 0 is instr) {
+      indtokopen--;
+      ifnot (indtokopen)
+        break;
+
+      continue;
+    }
+
+    if (c is LA_TOKEN_INDEX_OPEN and 0 is instr) {
+      indtokopen++;
+      continue;
+    }
+
+    if (c is LA_TOKEN_DQUOTE and pc isnot LA_TOKEN_ESCAPE_CHR) {
+      if (instr) instr = 0; else instr = 1;
+      continue;
+    }
+
+    if (c is LA_TOKEN_COMMA and 0 is instr)
+      num_elem++;
+  }
+
+  la_next_token (this);
+  VALUE v;
+  err = la_parse_primary (this, &v);
+  if (err isnot LA_OK)
+    return err;
+
+  int type = v.type;
+
+  VALUE ary = ARRAY(ARRAY_NEW(type, num_elem));
+  ArrayType *array = (ArrayType *) AS_ARRAY(ary);
+  VALUE ar = array->value;
+
+  if (type is STRING_TYPE) {
+    string **s_ar = (string **) AS_ARRAY(ar);
+    string *item = s_ar[0];
+    string *val = AS_STRING(v);
+    String.replace_with_len (item, val->bytes, val->num_bytes);
+  } else if (type is INTEGER_TYPE) {
+    integer *i_ar = (integer *) AS_ARRAY(ar);
+    i_ar[0] = AS_INT(v);
+  } else if (type is NUMBER_TYPE) {
+    number *n_ar = (number *) AS_ARRAY(ar);
+    n_ar[0] = AS_NUMBER(v);
+  } else
+    return this->syntax_error (this, "unsupported array type");
+
+  *vp = ary;
+
+  VALUE fidx = INT(1);
+  VALUE lidx = INT(num_elem - 1);
+
+  err = la_array_assign (this, &ary, fidx, lidx, 1);
+  return err;
+}
+
 static ArrayType *array_copy (ArrayType *array) {
   ArrayType *new_array = Alloc (sizeof (ArrayType));
 
@@ -1642,6 +1720,7 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
   integer last_idx = AS_INT(last_ix);
   if (0 > last_idx)
     last_idx += len;
+
   if (last_idx < 0 or last_idx >= len)
     return la_out_of_bounds (this);
 
@@ -1873,6 +1952,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     } else if (array->type is STRING_TYPE) {
       string **ary = (string **) AS_ARRAY(array->value);
       *vp = STRING(ary[idx]);
+      vp->sym = ar.sym;
     } else
       return la_unknown_type (this);
 
@@ -2212,8 +2292,29 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
   switch (c) {
     case LA_TOKEN_INDEX_OPEN:
-      ifnot (this->curState & INDEX_STATE)
-        return this->syntax_error (this, "INDEXlambda error");
+      ifnot (this->curState & INDEX_STATE) {
+        err = la_get_anon_array (this, vp);
+        if (err is LA_OK) {
+          c = this->curToken;
+          if (c isnot LA_TOKEN_INDEX_CLOS)
+            return this->syntax_error (this, "array expression, awaiting ]");
+
+          uint n = 0;
+          c = la_peek_char_nows (this, &n);
+
+          if (c is LA_TOKEN_INDEX_OPEN) {
+            this->curToken = LA_TOKEN_ARRAY;
+            this->tokenValue = *vp;
+            return la_parse_primary (this, vp);
+          }
+
+          c = la_next_token (this);
+
+          return LA_OK;
+        }
+
+        return err;
+      }
 
     case LA_TOKEN_PAREN_OPEN: {
       int close_token = (c is LA_TOKEN_PAREN_OPEN
@@ -2269,7 +2370,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       la_next_token (this);
       return LA_OK;
 
-    case  LA_TOKEN_ARRAY:
+    case LA_TOKEN_ARRAY:
       return la_parse_array_get (this, vp);
 
     case LA_TOKEN_BUILTIN: {
@@ -2470,7 +2571,7 @@ static int la_parse_stmt (la_t *this) {
 
         case '+':
           this->objectState |= OBJECT_APPEND;
-          result = la_add  (this, symbol->value, val);
+          result = la_add (this, symbol->value, val);
           this->objectState &= ~OBJECT_APPEND;
           break;
 

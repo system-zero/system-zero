@@ -228,8 +228,10 @@ func semantics () {
       (retval & v1 != 1) or (retval & v2 != 2) or (retval & v3 != 4))
 
   func loop_test_break (limit) {
-    var i = 1;
+    var i = 1
+    println ("lim ${limit}")
     while (i) {
+    println ("i ${i}")
       if (i is limit) { break };
       i += 1;
     }
@@ -252,7 +254,7 @@ func semantics () {
     return sum
   }
 
-  array xi[5] = [1, 10, 20, 30, 40]
+  var xi = [1, 10, 20, 30, 40]
   retval = loop_test_continue (xi)
   assert_true ("testing continue statement", retval is 81)
 
@@ -576,6 +578,8 @@ func semantics () {
   var dollars = "$$$$$$ $$$$$$ are 12 dollars"
   assert_true ("testing format function with escaped characters", load_vf is dollars)
 
+  var fmtexp = format ("${10 * 100 / 2 - 500 + 100 - [1, 2, 50][2] - 8}")
+  assert_true ("testing expressions to the format function", "42" is fmtexp)
 }
 
 semantics ()
@@ -616,6 +620,13 @@ doubles ()
 
 func test_array (length) {
   var retval = 0
+
+  var ar = ["a", "b"]
+  assert_true ("testing array", typeof (ar) is ArrayType)
+  assert_true ("testing array", typeofArray (ar) is StringType)
+  assert_true ("testing array get", "a" is ar[0])
+  assert_true ("testing anonymous array", typeofArray ([1.1, 2.2, 3.3]) is NumberType)
+  assert_true ("testing anonymous array", 23 is [1, 10, 23, 43][2])
 
   array x[length] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
