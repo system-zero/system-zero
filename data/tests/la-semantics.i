@@ -229,9 +229,7 @@ func semantics () {
 
   func loop_test_break (limit) {
     var i = 1
-    println ("lim ${limit}")
     while (i) {
-    println ("i ${i}")
       if (i is limit) { break };
       i += 1;
     }

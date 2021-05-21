@@ -1546,9 +1546,12 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       num_elem++;
   }
 
-  la_next_token (this);
   VALUE v;
+  this->curState |= STRING_LITERAL_ARG_STATE;
+  la_next_token (this);
   err = la_parse_primary (this, &v);
+  this->curState &= ~STRING_LITERAL_ARG_STATE;
+
   if (err isnot LA_OK)
     return err;
 
@@ -2303,9 +2306,19 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
           c = la_peek_char_nows (this, &n);
 
           if (c is LA_TOKEN_INDEX_OPEN) {
+            VALUE saved_val = *vp;
             this->curToken = LA_TOKEN_ARRAY;
             this->tokenValue = *vp;
-            return la_parse_primary (this, vp);
+
+            err = la_parse_primary (this, vp);
+
+            if (vp->type is STRING_TYPE) {
+              string *str = AS_STRING((*vp));
+              *vp = STRING_NEW_WITH_LEN(str->bytes, str->num_bytes);
+            }
+
+            la_free (this, saved_val);
+            return err;
           }
 
           c = la_next_token (this);
