@@ -339,6 +339,8 @@ A very small yet another programming language (yala) that compiles in C.
 #                      args: filename, mode (C semantics)
 # fflush            -  flush the specified stream
 #                      args: file pointer
+# fileno             - returns a file descriptor of a stream
+#                      args: file pointer
 
 # Standard Constant Variables.
 # ok         -  0
@@ -350,7 +352,7 @@ A very small yet another programming language (yala) that compiles in C.
 # FILE Pointers Of Standard Streams.
 # stdout
 # stderr
-# (no standard input yet)
+# stdin
 #
 # Argument list variables
 # __argc     - holds the length of the list, zero if it hasn't been set

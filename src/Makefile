@@ -640,12 +640,12 @@ clean-libi-static:
 #----------------------------------------------------------#
 libla-shared: Env cenv list libstring-shared libcstring-shared libimap-shared\
               libvstring-shared libustring-shared libpath-shared libfile-shared\
-              liberror-shared libvmap-shared libio-shared libdir-shared
+              liberror-shared libvmap-shared libio-shared libdir-shared libterm-shared
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libla-static: Env cenv list libstring-static libcstring-static libimap-static\
               libvstring-static libustring-static libpath-static libfile-static\
-              liberror-static libvmap-static libio-static libdir-static
+              liberror-static libvmap-static libio-static libdir-static libterm-static
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libla-shared:

@@ -1,6 +1,7 @@
 var run_invalid_memory_read_tests = 0
 var run_fileptr_tests = 0
 var run_valgrind_tests = 1
+var run_development_tests = 1
 
 var test_num = 0
 
@@ -578,6 +579,8 @@ func semantics () {
 
   var fmtexp = format ("${10 * 100 / 2 - 500 + 100 - [1, 2, 50][2] - 8}")
   assert_true ("testing expressions to the format function", "42" is fmtexp)
+
+  assert_true ("testing stdin and fileno", 0 is fileno (stdin))
 }
 
 semantics ()
@@ -870,3 +873,29 @@ func summary () {
 }
 
 summary ()
+
+func development () {
+  var term = term_new ()
+  println ("press q to exit")
+  if (notok is term_raw_mode (term)) {
+    return notok
+  }
+
+  var fd = fileno (stdin)
+  var key = 0
+  while (key isnot 'q') {
+    if (key is notok) {
+      return notok
+    }
+
+    key = getkey (fd)
+  }
+
+  return term_sane_mode (term)
+}
+
+if (run_development_tests) {
+  if (notok is development ()) {
+    println ("terminal error")
+  }
+}

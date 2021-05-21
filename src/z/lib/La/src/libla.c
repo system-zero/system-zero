@@ -25,6 +25,12 @@
 #define REQUIRE_MAP_MACROS
 #define REQUIRE_LA_TYPE      DONOT_DECLARE
 
+/* IGNORE FOR NOW */
+#define REQUIRE_TERMIOS
+#define REQUIRE_TERM_TYPE    DECLARE
+#define REQUIRE_TERM_MACROS
+#define REQUIRE_KEYS_MACROS
+
 #include <z/cenv.h>
 
 #define $myprop      this->prop
@@ -830,6 +836,60 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
   VALUE v = OBJECT(fp);
   object *o = la_object_new (la_fclose, NULL, v);
   v = OBJECT(o);
+  return v;
+}
+
+static VALUE la_getkey (la_t *this, VALUE fd) {
+  (void) this;
+  utf8 k = IO.input.getkey (AS_INT(fd));
+  VALUE v = INT(k);
+  return v;
+}
+
+static VALUE la_term_release (la_t *this, VALUE term_val) {
+  (void) this;
+  object *o = AS_OBJECT(term_val);
+  term_t *term = (term_t *) AS_PTR(o->value);
+  Term.release (&term);
+  VALUE v = INT(LA_OK);
+  return v;
+}
+
+static VALUE la_term_new (la_t *this) {
+  (void) this;
+  term_t *term = Term.new ();
+  VALUE v = OBJECT(term);
+  object *o = la_object_new (la_term_release, NULL, v);
+  v = OBJECT(o);
+  return v;
+}
+
+static VALUE la_term_raw_mode (la_t *this, VALUE term_val) {
+  (void) this;
+  object *o = AS_OBJECT(term_val);
+  term_t *term = (term_t *) AS_PTR(o->value);
+  int retval = Term.raw_mode (term);
+  VALUE v = INT(retval);
+  return v;
+}
+
+static VALUE la_term_sane_mode (la_t *this, VALUE term_val) {
+  (void) this;
+  object *o = AS_OBJECT(term_val);
+  term_t *term = (term_t *) AS_PTR(o->value);
+  int retval = Term.sane_mode (term);
+  VALUE v = INT(retval);
+  return v;
+}
+
+static VALUE la_fileno (la_t *this, VALUE fp_val) {
+  (void) this;
+  FILE *fp = AS_FILEPTR(fp_val);
+  int fd = fileno (fp);
+  VALUE v = INT(fd);
+  if (fd is -1)
+    this->Errno = errno;
+
   return v;
 }
 
@@ -2075,7 +2135,6 @@ static int la_parse_char (la_t *this, VALUE *vp, la_string token) {
     }
   }
 
-  /* multibyte support */
   int len = 0;
   utf8 c = Ustring.get.code_at ((char *) ptr, 4, 0, &len);
 
@@ -4597,11 +4656,17 @@ struct la_def_fun_t {
   { "format",           PTR(la_format), 1},
   { "fopen",            PTR(la_fopen), 2},
   { "fflush",           PTR(la_fflush), 1},
+  { "getkey",           PTR(la_getkey), 1},
+  { "fileno",           PTR(la_fileno), 1},
   { "getcwd",           PTR(la_getcwd), 0},
   { "typeof",           PTR(la_typeof), 1},
   { "typeAsString",     PTR(la_typeAsString), 1},
   { "typeofArray",      PTR(la_typeofArray), 1},
   { "typeArrayAsString",PTR(la_typeArrayAsString), 1},
+  /* testing or undecided */
+  { "term_new",         PTR(la_term_new), 0},
+  { "term_raw_mode",    PTR(la_term_raw_mode), 1},
+  { "term_sane_mode",   PTR(la_term_sane_mode), 1},
   { NULL,               NONE_VALUE, NONE_TYPE},
 };
 
@@ -4614,6 +4679,11 @@ static int la_std_def (la_t *this, la_opts opts) {
   v = OBJECT(opts.err_fp);
   o = la_object_new (NULL, NULL, v);
   err = la_define (this, "stderr", OBJECT_TYPE, OBJECT(o));
+  if (err) return LA_NOTOK;
+
+  v= OBJECT(stdin);
+  o = la_object_new (NULL, NULL, v);
+  err = la_define (this, "stdin", OBJECT_TYPE, OBJECT(o));
   if (err) return LA_NOTOK;
 
   v = INT(opts.argc);
@@ -5162,6 +5232,7 @@ public la_T *__init_la__ (void) {
   __INIT__ (file);
   __INIT__ (vmap);
   __INIT__ (imap);
+  __INIT__ (term);
   __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
