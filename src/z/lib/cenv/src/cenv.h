@@ -1249,6 +1249,24 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_V_TYPE
 #endif /* REQUIRE_V_TYPE */
 
+/* Development (ignore this section) */
+
+#ifdef REQUIRE_NETM_TYPE
+  #ifndef NETM_TYPE_HDR
+  #define NETM_TYPE_HDR
+  #include <z/netm.h>
+  #endif /* NETM_TYPE_HDR */
+
+  #if (REQUIRE_NETM_TYPE == DECLARE)
+  static  netm_T netmType;
+  #define Netm   netmType.self
+  #endif
+
+#undef REQUIRE_NETM_TYPE
+#endif /* REQUIRE_NETM_TYPE */
+
+/* --------------------------------- */
+
 #ifdef REQUIRE_KEYS_MACROS
   #ifndef KEYS_MACROS_HDR
   #define KEYS_MACROS_HDR

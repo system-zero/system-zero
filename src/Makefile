@@ -233,6 +233,12 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
   #    should respect this hierarchy, that means:
   #      - the name of the compilation units should match
   #      - provide a Makefile that could handle the compilation
+
+    # Development (ignore this section)
+    # Netm Type
+    Netm_Type             = Netm
+    Z_NETM_SRCDIR         = $(Z_SRCLIBDIR)/$(Netm_Type)/src
+
 #-----------------------------------------------#
 
 Z_SYSLIBDIR  = $(SYSLIBDIR)/$(ZNAME)
@@ -700,6 +706,26 @@ clean-libv-shared:
 clean-libv-static:
 	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+
+# Development (ignore this section)
+libnetm-shared: Env cenv libstring-shared libcstring-shared \
+                libvstring-shared libdir-shared
+	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libnetm-static: Env cenv libstring-static libcstring-static \
+                libvstring-static libdir-static
+	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libnetm-shared:
+	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libnetm-static:
+	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+
+
+# STD APPLICATIONS
+#----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared\
            libsys-shared liberror-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
@@ -968,6 +994,26 @@ zero-clean-static:\
               clean-sys-static clean-v-static clean-e-static
 
 all: shared static
+
+# Development (ignore this section)
+  # netm
+  ZA_NETM          = netm
+  ZA_NETM_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_NETM)/src
+
+netm-shared: cenv libstring-shared libdir-shared libargparse-shared\
+             libvstring-shared libcstring-shared libnetm-shared
+	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+#netm-static: cenv libstring-static libdur-static libargparse-static\
+#             libvstring-static libcstring-static  libnetm-static
+# 	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-netm-shared:
+	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-netm-static:
+	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#----------------------------------------------------------#
 
 #----------------------------------------------------------#
 Env: checkuid makeenv checkenv

@@ -382,14 +382,18 @@ A very small yet another programming language (yala) that compiles in C.
   - function arguments that are memory types (like strings and arrays), are
     passed by reference and so can been modified by the function
 
-# Lexical Scope
-  - standard scope (lookup for standard operators and functions first)
+# Lexical Scope and visibility order
+  - standard scope (lookup for standard operators and internal functions first)
 
   - block scope (conditional statements and loops)
 
   - function scope
 
   - previous function scope -> ... -> ... global scope
+
+  By default symbols are private to their local scope, unless the symbol has been
+  declared as `public`. In that case the symbol belongs to `global` scope and
+  should be visible from any scope.
 
 # Aplication Programming Interface.
 

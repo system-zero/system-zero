@@ -748,8 +748,8 @@ char *i_keywords[] = {
   "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
   "isnot I", "and I", "or I", "for I", "while I", "break I", "continue I",
   "len F", "print F", "println F", "format F", "loadfile F",
-  "loop I", "forever I", "do I",
-  "lambda F", "array V", "string T", "integer T", "number T",
+  "loop I", "forever I", "do I", "ok K", "notok K", "true K", "false K",
+  "lambda F", "array V", "public V", "string T", "integer T", "number T",
   "typeof F", "typeofArray F", "none V",
   "bool V", "not V", "const V",
    NULL

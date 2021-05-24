@@ -62,6 +62,9 @@
 
 #define OBJECT_APPEND                 (1 << 0)
 
+//#define PRIVATE_SCOPE                 (1 << 0)
+#define PUBLIC_SCOPE                  (1 << 1)
+
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
@@ -91,6 +94,7 @@
 #define LA_TOKEN_DOUBLE     'd'
 #define LA_TOKEN_ELSE       'e'
 #define LA_TOKEN_USRFUNC    'f'
+#define LA_TOKEN_PUBLIC     'g'
 #define LA_TOKEN_IF         'i'
 #define LA_TOKEN_FOR        'l'
 #define LA_TOKEN_FOREVER    'm'
@@ -242,6 +246,7 @@ struct la_t {
     curState,
     funcState,
     objectState,
+    scopeState,
     fmtState,
     fmtRefcount,
     exitValue,
@@ -1870,8 +1875,10 @@ static int la_parse_array_def (la_t *this) {
 
   ar = ARRAY(ARRAY_NEW(type, nlen));
 
-  this->tokenSymbol = la_define_symbol (this, this->curScope, sym_key (this, name), ARRAY_TYPE,
-    ar, 0);
+  funT *scope = (this->scopeState & PUBLIC_SCOPE ? this->function : this->curScope);
+  this->tokenSymbol = la_define_symbol (this, scope, sym_key (this, name), ARRAY_TYPE,
+      ar, 0);
+  this->scopeState &= ~PUBLIC_SCOPE;
 
   if (la_StringGetPtr (this->curStrToken)[0] is LA_TOKEN_ASSIGN and
       la_StringGetLen (this->curStrToken) is 1) {
@@ -2174,7 +2181,7 @@ static int la_parse_string (la_t *this, la_string str) {
       if (c is LA_TOKEN_NL) this->lineNum++;
       continue;
     } else
-      return this->syntax_error (this, STR_FMT("unknown token |%c| |%d|", c, c));
+      return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
   }
 
   this->parsePtr = savepc;
@@ -2494,6 +2501,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 static int la_parse_stmt (la_t *this) {
   int c;
   la_string name;
+  funT *scope = this->curScope;
   VALUE val;
   int err = LA_OK;
 
@@ -2510,6 +2518,7 @@ static int la_parse_stmt (la_t *this) {
     return LA_OK;
   }
 
+do_token:
   c = this->curToken;
 
   switch (c) {
@@ -2549,13 +2558,22 @@ static int la_parse_stmt (la_t *this) {
       ifnot (NULL is sym)
         return this->syntax_error (this, "can not redefine a standard symbol");
 
-      sym = ns_lookup_symbol (this->curScope, key);
+      scope = (this->scopeState & PUBLIC_SCOPE ? this->function : this->curScope);
+
+      sym = ns_lookup_symbol (scope, key);
+
+      VALUE v = INT(0);
+      int type = INTEGER_TYPE;
 
       ifnot (NULL is sym)
         return this->syntax_error (this, "can not redeclare a symbol in this scope");
+      else if (is_const) {
+        type = NONE_TYPE;
+        v = NONE;
+      }
 
-      VALUE ival = INT(0);
-      this->tokenSymbol = la_define_symbol (this, this->curScope, key, INTEGER_TYPE, ival, is_const);
+      this->tokenSymbol = la_define_symbol (this, scope, key, type, v, is_const);
+      this->scopeState &= ~PUBLIC_SCOPE;
 
       if (NULL is this->tokenSymbol)
         return this->syntax_error (this, "unknown error on declaration");
@@ -2599,7 +2617,7 @@ static int la_parse_stmt (la_t *this) {
       int is_un = *ptr is '~';
 
       if (Cstring.eq_n (ptr, "func", 4) and 0 is is_identifier (*(ptr + 4))) {
-        la_release_sym (Vmap.pop (this->curScope->symbols, sym_key (this, name)));
+        la_release_sym (Vmap.pop (scope->symbols, sym_key (this, name)));
 
         Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, la_StringGetPtr(name), la_StringGetLen(name));
         la_next_token (this);
@@ -2625,12 +2643,12 @@ static int la_parse_stmt (la_t *this) {
         symbol->type = (UFUNC_TYPE | (f->nargs << 8));
         Cstring.cp (f->funname, MAXLEN_SYMBOL, la_StringGetPtr(name),
             la_StringGetLen(name));
-        f->prev = this->curScope->prev;
+        f->prev = scope->prev;
       } else
         symbol->type = val.type;
 
       if (symbol->value.type is STRING_TYPE)
-        if (Cstring.eq (symbol->scope->funname, this->curScope->funname))
+        if (Cstring.eq (symbol->scope->funname, scope->funname))
           if (operator is LA_TOKEN_ASSIGN)
             la_free (this, symbol->value);
 
@@ -2679,7 +2697,10 @@ static int la_parse_stmt (la_t *this) {
     default:
       if (this->tokenSymbol and AS_INT(this->tokenValue)) {
         int (*func) (la_t *) = AS_VOID_PTR(this->tokenValue);
-        return (*func) (this);
+        err = (*func) (this);
+        if (err is LA_TOKEN_PUBLIC)
+          goto do_token;
+        return err;
       }
 
       return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
@@ -3414,6 +3435,25 @@ theend:
   return LA_OK;
 }
 
+static int la_parse_public (la_t *this) {
+  int c = la_next_token (this);
+  switch (c) {
+    case LA_TOKEN_ARYDEF:
+    case LA_TOKEN_VARDEF:
+    case LA_TOKEN_CONSTDEF:
+    case LA_TOKEN_FUNCDEF:
+      this->scopeState |= PUBLIC_SCOPE;
+      break;
+
+    default:
+      if (c is LA_TOKEN_EOF)
+        return this->syntax_error (this, "unended statement");
+      return this->syntax_error (this, "unsupported public attribute");
+  }
+
+  return LA_TOKEN_PUBLIC;
+}
+
 static int la_parse_arg_list (la_t *this, funT *uf) {
   int c;
   int nargs = 0;
@@ -3506,8 +3546,9 @@ static int la_parse_func_def (la_t *this) {
 
   VALUE v = PTR(uf);
 
-  this->curSym = la_define_symbol (this, this->curScope, fn,
-      (UFUNC_TYPE | (nargs << 8)), v, 0);
+  funT *scope = (this->scopeState & PUBLIC_SCOPE ? this->function : this->curScope);
+  this->curSym = la_define_symbol (this, scope, fn,  (UFUNC_TYPE | (nargs << 8)), v, 0);
+  this->scopeState &= ~PUBLIC_SCOPE;
 
   this->curFunDef = uf;
 
@@ -4605,6 +4646,7 @@ static struct def {
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
   { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
   { "array",   LA_TOKEN_ARYDEF,   PTR(la_parse_array_def) },
+  { "public",  LA_TOKEN_PUBLIC,   PTR(la_parse_public) },
   { "*",       BINOP(1),          PTR(la_mul) },
   { "/",       BINOP(1),          PTR(la_div) },
   { "%",       BINOP(1),          PTR(la_mod) },
@@ -5083,6 +5125,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->curState = 0;
   this->funcState = 0;
   this->objectState = 0;
+  this->scopeState = 0;
   this->stackValIdx = -1;
 
   if (NULL is opts.la_dir) {

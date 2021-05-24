@@ -581,9 +581,23 @@ func semantics () {
   assert_true ("testing expressions to the format function", "42" is fmtexp)
 
   assert_true ("testing stdin and fileno", 0 is fileno (stdin))
+
+  public var v_visible = "visible variable"
+
+  public func f_visible (x) {
+    return x * 2
+  }
+
+  public array a_visible[2] = [1, 2]
+  public const c_visible = "visible constant"
 }
 
 semantics ()
+
+assert_equal ("testing public variable attribute", v_visible, "visible variable")
+assert_equal ("testing public function attribute", f_visible (22), 44)
+assert_equal ("testing public array attribute", a_visible[0], 1)
+assert_equal ("testing public constant attribute", c_visible, "visible constant")
 
 func doubles () {
   var d = 113.3131
