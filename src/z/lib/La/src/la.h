@@ -25,6 +25,7 @@ typedef string_t    string;
 #define STRING_TYPE    (1 << 3)
 #define ARRAY_TYPE     (1 << 4)
 #define OBJECT_TYPE    (1 << 5)
+#define MAP_TYPE       (1 << 6)
 #define POINTER_TYPE   INTEGER_TYPE
 
 struct ValueType {

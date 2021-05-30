@@ -745,12 +745,13 @@ char *i_shebangs[] = {"#!/bin/env i", NULL};
 char i_operators[] = "+-%*^><=/|& .(){}![]";
 
 char *i_keywords[] = {
-  "if I", "var V", "ifnot I", "else I", "return I", "func I", "is I",
-  "isnot I", "and I", "or I", "for I", "while I", "break I", "continue I",
-  "len F", "print F", "println F", "format F", "loadfile F",
+  "var V", "if I", "ifnot I", "else I", "func I",
+  "is I", "isnot I", "and I", "or I", "this V", "return I",
+  "for I", "while I", "break I", "continue I",
+  "println F", "none T", "format F", "len F", "print F", "loadfile F",
   "loop I", "forever I", "do I", "ok K", "notok K", "true K", "false K",
-  "lambda F", "array V", "public V", "string T", "integer T", "number T",
-  "typeof F", "typeofArray F", "none V",
+  "lambda F", "array V", "public V", "private V",
+  "string T", "integer T", "number T", "typeof F", "typeofArray F",
   "bool V", "not V", "const V",
    NULL
 };

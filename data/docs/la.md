@@ -18,23 +18,22 @@ A very small yet another programming language (yala) that compiles in C.
     return arg * 2
   }
 
- - a function can be used as an argument to a function.
-
- - this is synonymous with the above
+ # this is synonymous with the above
 
    var name = func (arg) {
      return arg * 2
    }
 
+ - a function can be used as an argument to a function.
+
  - a function without an argument list can be declared as:
 
    func name { block }
 
-- code blocks delimited with braces '{}' and are mandatory.
+# code blocks delimited with braces '{}', and are mandatory.
 
-- statements are separated with a semicolon or with a new line character,
-  and they can continue to the next line, if it is too long to fit on the
-  screen.
+# statements are separated with a semicolon or with a new line character,
+  and they can spawn to multiply lines
 
 # Conditionals:
 
@@ -46,7 +45,7 @@ A very small yet another programming language (yala) that compiles in C.
 
   ifnot (condition) { ... }
 
- - both can get an `else` clause, that is evalueated when the prior conditional
+ - both can get an `else` clause, that is evaluated when the prior conditional
    block hasn't been executed.
 
  - both can be extended with an `else if[not]` conditional block:
@@ -65,11 +64,12 @@ A very small yet another programming language (yala) that compiles in C.
 
   while (condition) { block }
 
-# `for` loop
+# `for` loop (same semantics with C)
 
   for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
-# `loop` loop
+
+# `loop` loop (loop for nth times)
 
   loop (num iterations) { block }
 
@@ -77,7 +77,7 @@ A very small yet another programming language (yala) that compiles in C.
 
   loop (init_statement[[s], ...]; num iterations) { block }
 
-# `forever` loop
+# `forever` loop (like a for (;;) or while (true) in C)
 
   forever { block }
 
@@ -85,23 +85,28 @@ A very small yet another programming language (yala) that compiles in C.
 
   forever (init_statement[[s], ...]) { block }
 
-# `do/while` loop
+# `do/while` loop (same semantics with C)
 
   do { block } while (condition)
 
-- the `break` statement breaks out of a loop.
+- a `break` statement breaks out of a loop.
 
-- the `continue` statement continues with the next iteration.
+- a `continue` statement continues with the next iteration.
 
 # Constant types (those types can not be reassigned)
 
   const c = "constant"
+  c = 1  # this should fail
 
-# Variables can not be redeclared at the current scope.
+# Variables can not be redeclared at the current scope
+
+  var v = 1
+  var v = 100 # this should fail
 
 # Assign with a string literal (multibyte (UTF-8) strings are handled).
 
   var str = "oh la la lala, it's the natural la"
+  var mb  = "Είναι το φυσικό ΛΑ που φαίρνει η κάθε ύπαρξη"
 
   - you can get the underlying byte by using an index and can be negative
 
@@ -110,16 +115,16 @@ A very small yet another programming language (yala) that compiles in C.
     again: this has byte semantics, though there isn't a certainity if it is
     the right thing to do, as it might make also sense to return a character.
 
-# This can be reassigned
+# Variables can be reassigned if they are not declared as `const`.
 
   str = "that everyone brings"
 
   in that case, the previous value should be freed automatically
 
-- you can pass a string literal as an argument to a user defined function, or
+# you can pass a string literal as an argument to a user defined function, or
   to a C function.
 
-- functions can get at most nine arguments.
+# functions can get at most nine arguments.
 
 # Comparison operators:
 
@@ -175,7 +180,10 @@ A very small yet another programming language (yala) that compiles in C.
 
   If `fname` is not an absolute path, then it is relative to the current
   evaluated unit. If that fails, then it is relative to the current directory,
-  else it is relative to the `__loadpath` variable.
+  else it is relative to the `__loadpath` intrinsic variable. If it couldn't
+  be found then an error terminates execution.
+
+# syntax errors are fatal.
 
 # print functions syntax:
 
@@ -184,9 +192,7 @@ A very small yet another programming language (yala) that compiles in C.
   - file pointer can be either `stdout` or `stderr`, or any file pointer
     object that was created with the fopen() function:
 
-      fopen (filename, mode)
-
-      and which has the same semantics with C.
+      var fp = fopen (filename, mode)  # same semantics with C
 
     Without a file pointer argument, default is to redirect to the standard output.
 
@@ -206,10 +212,14 @@ A very small yet another programming language (yala) that compiles in C.
 
 # Array declaration:
 
+  # first form
     var ar = [1, 2, 3]
 
-  Array declaration and assignment syntax with predefined length and type:
-  (note that with current code, this method should execute faster)
+  # second form
+   Array declaration and assignment syntax with a predefined length and type:
+   (note that with current code, this method should execute faster than the
+    above, since the above requires first a "light" parsing, to determinate
+    the length of the array, and then the "real" evaluation)
 
     array string ar[3] = ["holidays", "in", "cambodia"]
 
@@ -222,8 +232,9 @@ A very small yet another programming language (yala) that compiles in C.
       - number
       - string
 
-  - the assignment syntax is:
+# Array assignment syntax:
 
+  # first form
     ar_symbol[first index : [last index]] = [first index, [...,...,] last_index]
 
       where assignment starts at `first index` and stops at `last index`.
@@ -232,22 +243,55 @@ A very small yet another programming language (yala) that compiles in C.
       The number of expressions should match, or else it will result to an
       OUT_OF_BOUNDS error.
 
-    or
+  # second form
 
     ar_symbol = [..., ...]
 
       in this case the mumber of expressions is considered the length of the
       array. If not, the interpreter will throw an OUT_OF_BOUNDS error.
 
-  - you can set all the array items with a specific value using:
+  # you can set _all_ the array items, with a specific value using:
 
     ar[*] = value
 
     *Note* that this syntax should attributed to S-Lang programming language.
 
-  - you can get or set an item from or to an array, using indices that can
+  # you can get or set an item from or to an array, using indices that can
     be negative.  Array indices are starting from zero, and -1 denotes the
     last item in the array.
+
+# Maps or Tables (this is a hybrid type, similar to associative arrays and structures)
+
+  # Map Declaration
+
+  var m = {}  # empty container
+
+  var mm = {
+    "one" = 1,
+    "two" = "string",
+    "fn"  = func (x) { return this.one * x },
+    private "privatevar" = "accessible only by the members of the map"
+  }
+
+  - keys are only string types
+
+  # Accessing maps
+
+    mm.one
+    mm.fn (10)
+    mm.privatevar = "something" # this should fail
+
+  # the `this` keyword is being used from the members of the map and
+    provide access to the other fields.
+
+  # extending maps
+
+    mm.new = 1
+
+  # in those cases those field are accessible to their scope.
+    Members can be attributed as `private` only at the construction time,
+    not even within the members at runtime.
+
 ```
 
 ## keywords and Operators (reserved):

@@ -719,31 +719,75 @@ func test_array (length) {
 
 test_array (10)
 
+func test_maps {
+  var m = {}
+
+  m.a = 1
+  m.b = "string"
+  m.c = func { return this.a + 999 }
+
+  assert_true ("testing map",
+      m.a is 1 and
+      m.b is "string" and
+      m.c () is 1000)
+
+  var map = {
+    private "one" = 1,
+    "two" = 2,
+    private "three" = "three",
+    private "fun" = func { return (this.one + this.two) * 10000 }
+    "threefun" = func { return this.three },
+    "fn" = func (x) { return x * this.fun () }
+  }
+
+  assert_true ("testing map functions", map.fn (2) is 60000 and map.two is 2)
+
+  map.new = "new"
+  assert_true ("testing map extension", map.new is "new")
+
+  map.newfun = func (x) { return (x * 2) + this.one }
+  assert_true ("testing map new function and visibility", map.newfun (10) is 21)
+}
+
+test_maps ()
+
 func types () {
   var str = "string"
   var int = 1
   var num = 1.0
-  array i_ar[0]
-  array string s_ar[0]
-  array number n_ar[0]
+  array i_ar[1] = [0]
+  array string s_ar[1] = ["str"]
+  array number n_ar[1] = [10.0]
+  var map = {}
 
   var type = none
 
-  assert_true ("testing types", typeof (type) is NoneType)
+  var sl = "NoneType"
+  assert_true ("testing NoneType[s]", typeof (type) is NoneType)
+  assert_equal ("testing ",    typeAsString (none), "NoneType")
   type = typeof (str)
-  assert_true ("testing types", type is StringType)
+  assert_true ("testing StringType[s]", type is StringType)
+  assert_equal ("testing StringType[s]", typeAsString (str), "StringType")
   type = typeof (int)
-  assert_true ("testing types", type is IntegerType)
+  assert_true ("testing IntegerType[s]", type is IntegerType)
+  assert_equal ("testing IntegerType[s]", typeAsString (1), "IntegerType")
   type = typeof (num)
-  assert_true ("testing types", type is NumberType)
+  assert_true ("testing NumberType[s]", type is NumberType)
+  assert_equal ("testing NumberType[s]", typeAsString (1.1), "NumberType")
   type = typeof (i_ar)
-  assert_true ("testing types", type is ArrayType)
+  assert_true ("testing ArrayType[s]", type is ArrayType)
+  assert_equal ("testing ArrayType[s]", typeAsString (i_ar), "ArrayType")
   type = typeofArray (i_ar)
-  assert_true ("testing array sub types", type is IntegerType)
+  assert_true ("testing Array Integer sub types", type is IntegerType)
+  assert_equal("testing Array Integer sub types", typeAsString (i_ar[0]), "IntegerType")
   type = typeofArray (s_ar)
-  assert_true ("testing array sub types", type is StringType)
+  assert_true ("testing array String sub types", type is StringType)
+  assert_equal("testing array String sub types", typeAsString (s_ar[0]), "StringType")
   type = typeofArray (n_ar)
-  assert_true ("testing array sub types", type is NumberType)
+  assert_true ("testing array Number sub types", type is NumberType)
+  assert_equal("testing array Number sub types", typeAsString (n_ar[0]), "NumberType")
+  assert_true ("testing map type", typeof (map) is MapType)
+  assert_equal("testing map type", typeAsString (map), "MapType")
 }
 
 types ()
