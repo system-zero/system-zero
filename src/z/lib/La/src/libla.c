@@ -2341,7 +2341,10 @@ static int la_parse_expr_list (la_t *this) {
     count++;
 
     c = this->curToken;
-    if (c is LA_TOKEN_COMMA) la_next_token (this);
+    if (c is LA_TOKEN_COMMA) {
+      this->curState |= STRING_LITERAL_ARG_STATE;
+      la_next_token (this);
+    }
   } while (c is LA_TOKEN_COMMA);
 
 
@@ -2552,7 +2555,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
           uf_sym->value = non;
         } else {
           if (v.type is STRING_TYPE and
-            ns_is_malloced_string (this->curScope, AS_STRING(v))) {
+              ns_is_malloced_string (this->curScope, AS_STRING(v))) {
             VALUE non = NONE;
             uf_sym->value = non;
           }
@@ -2878,6 +2881,7 @@ do_token:
       if (len > 2 or len is 0)
         return this->syntax_error (this, "expected [+/*-]=");
 
+      VALUE result;
       int operator = *ptr;
       if (operator isnot LA_TOKEN_ASSIGN) {
         if (*(ptr + 1) isnot LA_TOKEN_ASSIGN)
@@ -2899,7 +2903,6 @@ do_token:
 
       if (Cstring.eq_n (ptr, "func", 4) and 0 is is_identifier (*(ptr + 4))) {
         la_release_sym (Vmap.pop (scope->symbols, sym_key (this, name)));
-
         Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, la_StringGetPtr(name), la_StringGetLen(name));
         la_next_token (this);
         err = la_parse_func_def (this);
@@ -2933,7 +2936,6 @@ do_token:
           if (operator is LA_TOKEN_ASSIGN)
             la_free (this, symbol->value);
 
-      VALUE result;
       switch (operator) {
         case LA_TOKEN_ASSIGN:
           val.sym = symbol;
@@ -2960,6 +2962,7 @@ do_token:
 
       assign_and_return:
       symbol->value = result;
+
       this->curState &= ~LITERAL_STRING_STATE;
       return LA_OK;
     }
@@ -2996,20 +2999,27 @@ do_token:
 // parse a level n expression
 // level 0 is the lowest level (highest precedence)
 static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
+  int c = this->curToken;
+  ifnot ((c & 0xff) is LA_TOKEN_BINOP)
+    return LA_OK;
+
   int err = LA_OK;
-  int c;
-  VALUE lhs;
+  VALUE lhs = *vp;
   VALUE rhs;
 
-  lhs = *vp;
-  c = this->curToken;
+  string *x = NULL;
+  if (lhs.type is STRING_TYPE and lhs.sym is NULL)
+    if (this->curState & LITERAL_STRING_STATE)
+      ifnot (ns_is_malloced_string (this->curScope, AS_STRING(lhs)))
+        x = AS_STRING(lhs);
 
-  while ((c & 0xff) is LA_TOKEN_BINOP) {
+  do {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
 
     OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
 
+    this->curState |= STRING_LITERAL_ARG_STATE;
     la_next_token (this);
 
     err = la_parse_primary (this, &rhs);
@@ -3030,9 +3040,14 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     }
 
     lhs = op (this, lhs, rhs);
-  }
+    this->curState &= ~LITERAL_STRING_STATE;
+  } while ((c & 0xff) is LA_TOKEN_BINOP);
 
+  this->curState &= ~(STRING_LITERAL_ARG_STATE|LITERAL_STRING_STATE);
   *vp = lhs;
+
+  String.release (x);
+
   return err;
 }
 
@@ -3842,7 +3857,7 @@ static int la_parse_func_def (la_t *this) {
   VALUE v = PTR(uf);
 
   funT *scope = (this->scopeState & PUBLIC_SCOPE ? this->function : this->curScope);
-  this->curSym = la_define_symbol (this, scope, fn,  (UFUNC_TYPE | (nargs << 8)), v, 0);
+  this->curSym = la_define_symbol (this, scope, fn, (UFUNC_TYPE | (nargs << 8)), v, 0);
   this->scopeState &= ~PUBLIC_SCOPE;
 
   this->curFunDef = uf;
@@ -4604,11 +4619,12 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             string *new = String.new_with_len (x_str->bytes, x_str->num_bytes);
             String.append_with_len (new, y_str->bytes, y_str->num_bytes);
             result = STRING(new);
-            if (x.sym is NULL)
+
+            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str))
               String.release (x_str);
           }
 
-          if (y.sym is NULL)
+          if (y.sym is NULL and 0 is ns_is_malloced_string (this->curScope, y_str))
             String.release (y_str);
 
           goto theend;
@@ -4623,7 +4639,8 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             new = x_str;
           } else {
             new = String.new_with_len (x_str->bytes, x_str->num_bytes);
-            if (x.sym is NULL)
+            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str)
+                and 0 is (this->curState & LITERAL_STRING_STATE))
               String.release (x_str);
           }
 

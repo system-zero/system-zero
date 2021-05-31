@@ -189,6 +189,8 @@ func semantics () {
            lambda ((y) {return y / 2}) (20) +
            lambda ((z) {return z % 2}) (21) + 11
 
+  assert_true ("testing lambdas", retval is 42)
+
   retval = lambda ((x, y) {
     var xl = x + y
     return lambda ((k) { return k * 2}) (x) +
@@ -548,7 +550,9 @@ func semantics () {
      "probably a freed variable that shouldn't be freed",  s_str is " and μπακακάκια")
 
   var str_hh = "κοάξ"
+
   str_h = '"' + "Βρεκεκεκὲ" + 'ξ' + ' ' + "κοὰξ" + ' ' + str_hh + '"'
+
   assert_true ("testing string concatenation using the [+] operator",
       str_h is "\"Βρεκεκεκὲξ κοὰξ κοάξ\"")
 
@@ -762,32 +766,31 @@ func types () {
 
   var type = none
 
-  var sl = "NoneType"
-  assert_true ("testing NoneType[s]", typeof (type) is NoneType)
-  assert_equal ("testing ",    typeAsString (none), "NoneType")
+  assert_true ("testing NoneType[s]", typeof (type) is NoneType and
+     typeAsString (none) is "NoneType")
   type = typeof (str)
-  assert_true ("testing StringType[s]", type is StringType)
-  assert_equal ("testing StringType[s]", typeAsString (str), "StringType")
+  assert_true ("testing StringType[s]", type is StringType and
+     typeAsString (str) is "StringType")
   type = typeof (int)
-  assert_true ("testing IntegerType[s]", type is IntegerType)
-  assert_equal ("testing IntegerType[s]", typeAsString (1), "IntegerType")
+  assert_true ("testing IntegerType[s]", type is IntegerType and
+      typeAsString (1) is "IntegerType")
   type = typeof (num)
-  assert_true ("testing NumberType[s]", type is NumberType)
-  assert_equal ("testing NumberType[s]", typeAsString (1.1), "NumberType")
+  assert_true ("testing NumberType[s]", type is NumberType and
+      typeAsString (1.1) is "NumberType")
   type = typeof (i_ar)
-  assert_true ("testing ArrayType[s]", type is ArrayType)
-  assert_equal ("testing ArrayType[s]", typeAsString (i_ar), "ArrayType")
+  assert_true ("testing ArrayType[s]", type is ArrayType and
+      typeAsString (i_ar) is "ArrayType")
   type = typeofArray (i_ar)
-  assert_true ("testing Array Integer sub types", type is IntegerType)
-  assert_equal("testing Array Integer sub types", typeAsString (i_ar[0]), "IntegerType")
+  assert_true ("testing Array Integer sub types", type is IntegerType and
+      typeAsString (i_ar[0]) is "IntegerType")
   type = typeofArray (s_ar)
-  assert_true ("testing array String sub types", type is StringType)
-  assert_equal("testing array String sub types", typeAsString (s_ar[0]), "StringType")
+  assert_true ("testing array String sub types", type is StringType and
+      typeAsString (s_ar[0]) is "StringType")
   type = typeofArray (n_ar)
-  assert_true ("testing array Number sub types", type is NumberType)
-  assert_equal("testing array Number sub types", typeAsString (n_ar[0]), "NumberType")
-  assert_true ("testing map type", typeof (map) is MapType)
-  assert_equal("testing map type", typeAsString (map), "MapType")
+  assert_true ("testing array Number sub types", type is NumberType and
+      typeAsString (n_ar[0]) is "NumberType")
+  assert_true ("testing map type", typeof (map) is MapType and
+      typeAsString (map) is "MapType")
 }
 
 types ()
@@ -826,6 +829,9 @@ func valgrind_tests () {
   }
 
   var f = format ("${%s, vv()}")
+
+  var saa = ("a" is "a" and "v" is "v" or "x" is "x")
+  var sab = "z" + 'x' + 'c' + 'v'
 }
 
 if (run_valgrind_tests) {
