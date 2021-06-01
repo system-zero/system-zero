@@ -3,7 +3,7 @@
 
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_SYMBOL      63
-
+#define MAXLEN_MSG         255
 typedef struct la_T la_T;
 typedef struct la_t la_t;
 typedef struct la_prop la_prop;

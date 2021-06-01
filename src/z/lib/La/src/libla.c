@@ -237,6 +237,8 @@ struct la_t {
   char symKey[MAXLEN_SYMBOL + 1];
   char curMapKey[MAXLEN_SYMBOL + 1];
   char curFunName[MAXLEN_SYMBOL + 1];
+  char curMsg[MAXLEN_MSG + 1];
+
   funT *curFunDef;
 
   sym_t
@@ -1083,6 +1085,12 @@ static inline char *map_key (la_t *this, la_string x) {
   return this->curMapKey;
 }
 
+static inline char *cur_msg_str (la_t *this, la_string x) {
+  Cstring.cp (this->curMsg, MAXLEN_MSG + 1,
+      la_StringGetPtr (x), la_StringGetLen (x));
+  return this->curMsg;
+}
+
 static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
   (void) this;
   ifnot (key) return NULL;
@@ -1218,6 +1226,10 @@ static int la_do_next_token (la_t *this, int israw) {
       const char *ptr = la_StringGetPtr (this->curStrToken);
 
       uint toklen = la_StringGetLen (this->curStrToken);
+      if (toklen > MAXLEN_SYMBOL)
+        return la_syntax_error_fmt (this, "%s: exceeds MAXIMUM LENGTH (%d) of an identifier",
+            cur_msg_str (this, this->curStrToken), MAXLEN_SYMBOL);
+
       switch (toklen) {
         case 2:
           if (Cstring.eq_n (ptr, "is", 2))
@@ -1700,7 +1712,8 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   VALUE fidx = INT(1);
   VALUE lidx = INT(num_elem - 1);
 
-  err = la_array_assign (this, &ary, fidx, lidx, 1);
+  ifnot (1 is num_elem)
+    err = la_array_assign (this, &ary, fidx, lidx, 1);
   return err;
 }
 
@@ -2664,6 +2677,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   }
 
   this->CFuncError = LA_OK;
+  this->curMsg[0] = '\0';
 
   *vp = op (this, this->funArgs[0], this->funArgs[1], this->funArgs[2],
                   this->funArgs[3], this->funArgs[4], this->funArgs[5],
@@ -3149,7 +3163,26 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
       c = this->curToken;
     }
 
+    this->CFuncError = LA_OK;
+    this->curMsg[0] = '\0';
+    VALUE sv_lhs = lhs;
     lhs = op (this, lhs, rhs);
+    if (this->CFuncError isnot LA_OK) {
+      if (this->curMsg[0] isnot '\0')
+        this-> print_fmt_bytes (this->err_fp, "binary operation: %s\n", this->curMsg);
+      return this->CFuncError;
+    }
+
+    if (sv_lhs.type isnot STRING_TYPE) {
+      if (sv_lhs.sym is NULL)
+        la_free (this, sv_lhs);
+    }
+
+    if (rhs.type isnot STRING_TYPE) {
+      if (rhs.sym is NULL)
+        la_free (this, rhs);
+    }
+
     this->curState &= ~LITERAL_STRING_STATE;
   } while ((c & 0xff) is LA_TOKEN_BINOP);
 
@@ -3916,14 +3949,20 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
 static int la_parse_func_def (la_t *this) {
   la_string name;
   int c;
+  int err;
   int nargs = 0;
   size_t len = 0;
 
   char *fn = NULL;
 
   ifnot (this->curFunName[0]) {
-    c = la_next_raw_token (this); // do not interpret the symbol
-    if (c isnot LA_TOKEN_SYMBOL) return this->syntax_error (this, "function definition, not a symbol");
+    c = err = la_next_raw_token (this); // do not interpret the symbol
+    if (c isnot LA_TOKEN_SYMBOL) {
+      if (err is LA_ERR_SYNTAX)
+        return err;
+      else
+        return this->syntax_error (this, "function definition, not a symbol");
+    }
 
     name = this->curStrToken;
     len = la_StringGetLen (name);
@@ -3932,11 +3971,11 @@ static int la_parse_func_def (la_t *this) {
     ifnot (NULL is sym)
       return this->syntax_error (this, "can not redefine a standard function");
 
-    if (len >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "function name exceeded maximum length (64)");
   } else {
     name = la_StringNew (this->curFunName);
     len = bytelen (this->curFunName);
+    if (len >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "function name exceeded maximum length (64)");
     fn = this->curFunName;
   }
 
@@ -4511,6 +4550,13 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
           result = INT(AS_NUMBER(x) == AS_NUMBER(y)); goto theend;
         case INTEGER_TYPE:
           result = INT(AS_NUMBER(x) == AS_INT(y)); goto theend;
+        case NONE_TYPE: goto theend;
+        default:
+          this->CFuncError = LA_ERR_TYPE_MISMATCH;
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "NumberType == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, y)));
+          goto theend;
       }
       goto theend;
 
@@ -4520,6 +4566,13 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
           result = INT(AS_INT(x) == AS_NUMBER(y)); goto theend;
         case INTEGER_TYPE:
           result = INT(AS_INT(x) == AS_INT(y)); goto theend;
+        case NONE_TYPE: goto theend;
+        default:
+          this->CFuncError = LA_ERR_TYPE_MISMATCH;
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "IntegerType == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, y)));
+          goto theend;
       }
       goto theend;
 
@@ -4527,6 +4580,13 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
       switch (y.type) {
         case STRING_TYPE:
           result = INT(Cstring.eq (AS_STRING_BYTES(x), AS_STRING_BYTES(y)));
+          goto theend;
+        case NONE_TYPE: goto theend;
+        default:
+          this->CFuncError = LA_ERR_TYPE_MISMATCH;
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "StringType == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, y)));
           goto theend;
       }
       goto theend;
@@ -4536,7 +4596,28 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
         case ARRAY_TYPE:
           result = INT(la_array_eq (x, y));
           goto theend;
+        case NONE_TYPE: goto theend;
+        default:
+          this->CFuncError = LA_ERR_TYPE_MISMATCH;
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "ArrayType == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, y)));
+          goto theend;
       }
+      goto theend;
+
+    case NONE_TYPE:
+      switch (y.type) {
+        case NONE_TYPE: result = INT(1); goto theend;
+        default: goto theend;
+      }
+
+    default:
+      this->CFuncError = LA_ERR_TYPE_MISMATCH;
+      Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+         "%s == %s is not possible",
+         AS_STRING_BYTES(la_typeAsString (this, x)),
+         AS_STRING_BYTES(la_typeAsString (this, y)));
       goto theend;
   }
 

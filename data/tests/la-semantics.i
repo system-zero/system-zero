@@ -592,6 +592,18 @@ func semantics () {
     return x * 2
   }
 
+  func comparisons () {
+    assert_true ("testing none with other types",
+       none is none and
+       none isnot 1 and
+       none isnot 1.1 and
+       none isnot [1] and
+       none isnot {"1" = 1} and
+       none isnot "string")
+  }
+
+  comparisons ()
+
   public array a_visible[2] = [1, 2]
   public const c_visible = "visible constant"
 }
@@ -697,7 +709,7 @@ func test_array (length) {
       xs[1], xs[2])
 
   assert_false ("testing for inequality for array members",
-      xs[1] is 1)
+      xs[1] is "a")
 
   array i_ar[4]
   i_ar[*] = 31

@@ -445,6 +445,18 @@ A very small yet another programming language (yala) that compiles in C.
   declared as `public`. In that case the symbol belongs to `global` scope and
   should be visible from any scope.
 
+# Comparisons.
+
+  - a value of `none` it is the only that can be compared with all the other
+    types for truethness
+
+  - an ArrayType can be compared also with only other arrays
+
+  - an IntegerType can be compared also with other integers and with a number,
+    and vice versa
+
+  - a StringType can be compared also with only other strings
+
 # Limits
 
   - maximum number of function arguments is nine
