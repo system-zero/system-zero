@@ -232,10 +232,10 @@ struct la_t {
   Vmap_t *units;
 
   char name[32];
-
   const char *script_buffer;
 
   char symKey[MAXLEN_SYMBOL + 1];
+  char curMapKey[MAXLEN_SYMBOL + 1];
   char curFunName[MAXLEN_SYMBOL + 1];
   funT *curFunDef;
 
@@ -323,6 +323,7 @@ static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
 static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
 static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
+static VALUE la_copy_map (VALUE);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -1076,6 +1077,12 @@ static inline char *sym_key (la_t *this, la_string x) {
   return this->symKey;
 }
 
+static inline char *map_key (la_t *this, la_string x) {
+  Cstring.cp (this->curMapKey, MAXLEN_SYMBOL + 1,
+      la_StringGetPtr (x), la_StringGetLen (x));
+  return this->curMapKey;
+}
+
 static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
   (void) this;
   ifnot (key) return NULL;
@@ -1396,8 +1403,32 @@ static funT *la_fun_stack_pop (la_t *this) {
   return f;
 }
 
-static void *la_clone_sym_item (void *item) {
-  sym_t *sym = (void *) item;
+static VALUE la_copy_value (VALUE v) {
+  VALUE new;
+
+  switch (v.type) {
+    case STRING_TYPE:
+      new = STRING(String.dup (AS_STRING(v)));
+      break;
+
+    case ARRAY_TYPE:
+      new = ARRAY(array_copy ((ArrayType *) AS_ARRAY(v)));
+      break;
+
+    case MAP_TYPE:
+      new = la_copy_map (v);
+      break;
+
+    default:
+      new = v;
+  }
+
+  return new;
+}
+
+static void *la_clone_sym_item (void *item, void *obj) {
+  (void) obj;
+  sym_t *sym = (sym_t *) item;
 
   sym_t *new = Alloc (sizeof (sym_t));
 
@@ -1423,7 +1454,7 @@ static void *la_clone_sym_item (void *item) {
 
 static void la_symbol_stack_push (la_t *this, Vmap_t *symbols) {
   symbolstack_t *item = Alloc (sizeof (symbolstack_t));
-  item->symbols = Vmap.clone (symbols, la_clone_sym_item);
+  item->symbols = Vmap.clone (symbols, la_clone_sym_item, NULL);
   ListStackPush (this->symbolstack, item);
 }
 
@@ -2149,7 +2180,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, funT *scope) {
 
   sym_t *sym = Alloc (sizeof (sym_t));
   sym->scope = scope;
-  sym->value = PTR(map);
+  sym->value = MAP(map);
 
   val->sym = sym;
 
@@ -2166,6 +2197,38 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, funT *scope) {
   }
 
   return LA_OK;
+}
+
+static void *la_copy_map_cb (void *value, void *mapval) {
+  Vmap_t *map = (Vmap_t *) mapval;
+  VALUE *v = (VALUE *) value;
+
+  VALUE *val = Alloc (sizeof (VALUE));
+  val->refcount = v->refcount;
+  val->type = v->type;
+
+  sym_t *sym = Alloc (sizeof (sym_t));
+  sym->scope = v->sym->scope;
+  sym->value = MAP(map);
+  val->sym = sym;
+
+  switch (val->type) {
+    case STRING_TYPE: val->asString  = AS_STRING(la_copy_value (*v)); break;
+    case MAP_TYPE   : val->asInteger = AS_PTR(la_copy_value (*v));    break;
+    case ARRAY_TYPE : val->asInteger = AS_PTR(la_copy_value(*v));     break;
+    case NUMBER_TYPE: val->asNumber  = v->asNumber;                   break;
+    case NONE_TYPE  : val->asNone    = v->asNone;                     break;
+    default         : val->asInteger = v->asInteger;                  break;
+  }
+
+  return val;
+}
+
+static VALUE la_copy_map (VALUE mapval) {
+  Vmap_t *map = AS_MAP(mapval);
+  Vmap_t *new = Vmap.clone (map, la_copy_map_cb, map);
+  VALUE nval = MAP(new);
+  return nval;
 }
 
 static int la_parse_map (la_t *this, VALUE *vp) {
@@ -2230,8 +2293,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   this->scopeState |= PRIVATE_SCOPE;
   this->parsePtr = saved_ptr;
 
-  v = PTR(map);
-  v.type = MAP_TYPE;
+  v = MAP(map);
   *vp = v;
   la_next_token (this);
   return LA_OK;
@@ -2248,6 +2310,8 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   }
 
   int err;
+
+  redo: {}
   this->objectState |= IDENT_LEAD_CHAR_CAN_BE_DIGIT;
   c = err = la_next_raw_token (this);
   this->objectState &= ~IDENT_LEAD_CHAR_CAN_BE_DIGIT;
@@ -2257,8 +2321,8 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   if (c isnot LA_TOKEN_SYMBOL)
     return this->syntax_error (this, "not a symbol");
 
-  char *key = sym_key (this, this->curStrToken);
-  Vmap_t *map = (Vmap_t *) AS_PTR(this->tokenValue);
+  char *key = map_key (this, this->curStrToken);
+  Vmap_t *map = AS_MAP(this->tokenValue);
 
   VALUE *v = Vmap.get (map, key);
 
@@ -2271,13 +2335,22 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   *vp = *v;
 
-  la_next_token (this);
+  c = la_next_token (this);
+  if (c is LA_TOKEN_DOT) {
+    if (v->type isnot MAP_TYPE)
+      return la_syntax_error_fmt (this, "%s, not a map", key);
+    this->tokenValue = *v;
+    goto redo;
+  }
+
+  if (v->type is MAP_TYPE)
+    *vp = la_copy_map (*v);
 
   return LA_OK;
 }
 
 static int la_parse_map_set (la_t *this) {
-  Vmap_t *map = (Vmap_t *) AS_PTR(this->tokenValue);
+  Vmap_t *map = AS_MAP(this->tokenValue);
 
   int c = la_next_token (this);
 
@@ -2768,7 +2841,31 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return la_string_get (this, vp);
 
     case LA_TOKEN_BLOCK:
-      return la_parse_map (this, vp);
+      err = la_parse_map (this, vp);
+      if (err isnot LA_OK)
+        return err;
+
+      while (this->curToken is LA_TOKEN_DOT) {
+        la_unget_char (this);
+
+        this->tokenValue = *vp;
+        VALUE mapval = this->tokenValue;
+
+        this->curToken = LA_TOKEN_MAP;
+        err = la_parse_primary (this, vp);
+        if (err isnot LA_OK)
+          return err;
+
+        if (mapval.sym is NULL) {
+          VALUE v = *vp;
+          if (v.type isnot MAP_TYPE)
+            *vp = la_copy_value (v);
+
+          la_free (this, mapval);
+        }
+      }
+
+      return err;
 
     default:
       if ((c & 0xff) is LA_TOKEN_BINOP) {

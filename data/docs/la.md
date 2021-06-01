@@ -274,7 +274,7 @@ A very small yet another programming language (yala) that compiles in C.
     private "privatevar" = "accessible only by the members of the map"
   }
 
-  - keys can be only string types and can start with a digit
+  - keys can be only string types and may start with a digit or an underscore
 
   # Accessing maps
 
@@ -402,7 +402,7 @@ A very small yet another programming language (yala) that compiles in C.
 # Argument list variables
 # __argc     - holds the length of the list, zero if it hasn't been set
 # __argv     - string type array, that holds the items of the list if it
-#              has been set
+#              has been set and its length should correspond to `__argc`.
 
 # Info variables
 # __file__   - current evaluated filename. If a string is evaluated defaults
@@ -410,12 +410,11 @@ A very small yet another programming language (yala) that compiles in C.
 # __func__   - current function name
 # __loadpath - directory to lookup up when loading scripts
 
-# Do not use those as they might change
+# The followings might change semantics or removed.
 # not        -  !value
 # bool       -  !!value
-
 # Likewise, the following memory handling functions are not needed with
-# current code.
+  current code.
 # free      -  release memory
 # alloc     -  allocate memory
 # realloc   -  reallocate memory
@@ -424,8 +423,14 @@ A very small yet another programming language (yala) that compiles in C.
 
   - standard keywords and functions can not be redefined and reassigned
 
-  - function arguments that are memory types (like strings and arrays), are
-    passed by reference and so can been modified by the function
+  - function arguments that are memory types (like strings, arrays and maps),
+    are passed by reference and so can been modified by the called function
+
+  - valid identifiers is [_a-zA-Z] and may include digits after the leading
+    byte (with an exception to map members that may start with a digit)
+
+  - when assigning a map type or a subtype map to a variable from another map,
+    creates a new copy of the map
 
 # Lexical Scope and visibility order
   - standard scope (lookup for standard operators and internal functions first)
@@ -440,6 +445,21 @@ A very small yet another programming language (yala) that compiles in C.
   declared as `public`. In that case the symbol belongs to `global` scope and
   should be visible from any scope.
 
+# Limits
+
+  - maximum number of function arguments is nine
+
+  - maximum length of any identifier is 63 bytes
+
+# Types
+
+  NoneType    : (void *) 0 (declared as `none`)
+  NumberType  : double
+  IntegerType : integer (wide as ptrdiff_t)
+  StringType  : string type (container that holds C strings)
+  ArrayType   : array
+  MapType     : map
+
 # Aplication Programming Interface.
 
 ```C
@@ -450,6 +470,9 @@ A very small yet another programming language (yala) that compiles in C.
   retval = I.eval_string (i, bytes);
   __deinit_i__ (&In);
 ```
+  The whole interface is exposed as a structure with function pointers, at the
+  `la.h` unit, that map to their corresponded private functions, as there isn't
+  and probably will never be an API documentation.
 
 # Quirks.
 
@@ -471,8 +494,9 @@ style. However it should be okey if practicing consistency.
 
 - normally releasing memory it happens automatically, but many cases are handled
   internally explicitly, as there is no a real mechanism underneath, just a very
-  primitive one
-
+  primitive one. However running the extensive test suite and the applications
+  that use the language under valgring, it doesn't reveal any memory leaks, but
+  this is just a sign that quite probably is false.
 
 # DEVELOPMENT
 

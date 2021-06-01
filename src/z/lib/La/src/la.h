@@ -3,7 +3,6 @@
 
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_SYMBOL      63
-#define MAXLEN_TYPE_NAME   32
 
 typedef struct la_T la_T;
 typedef struct la_t la_t;
@@ -95,6 +94,9 @@ typedef ValueType VALUE;
 
 #define AS_NONE(__v__) __v__.asNone
 #define    NONE (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0, .sym = NULL}
+
+#define AS_MAP(__v__) (Vmap_t *) AS_PTR(__v__)
+#define    MAP(__v__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __v__, .refcount = 0, .sym = NULL}
 
 typedef VALUE (*ObjectRelease) (la_t *, VALUE);
 typedef VALUE (*ObjectToString) (VALUE);

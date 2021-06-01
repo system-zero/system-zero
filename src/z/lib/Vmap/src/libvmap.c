@@ -95,13 +95,13 @@ static int vmap_key_exists (Vmap_t *vmap, char *key) {
   return (NULL isnot item);
 }
 
-static Vmap_t *vmap_clone (Vmap_t *vmap, VmapCopy_cb copy) {
+static Vmap_t *vmap_clone (Vmap_t *vmap, VmapCopy_cb copy, void *object) {
   Vmap_t *new = vmap_new (vmap->num_slots);
 
   for (size_t i = 0; i < vmap->num_slots; i++) {
     vmap_t *item = vmap->slots[i];
     while (item) {
-      void *value = copy (item->value);
+      void *value = copy (item->value, object);
       vmap_set (new, item->key, value, item->release, item->is_constant);
       item = item->next;
     }

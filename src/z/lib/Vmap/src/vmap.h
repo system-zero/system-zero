@@ -5,12 +5,7 @@ typedef struct Vmap_t Vmap_t;
 typedef struct vmap_t vmap_t;
 
 typedef void (*VmapRelease_cb) (void *);
-typedef void *(*VmapCopy_cb) (void *);
-
-typedef struct vmap_loop {
-  void *val;
-  char *key;
-} vmap_loop;
+typedef void *(*VmapCopy_cb) (void *, void *);
 
 typedef struct vmap_self {
   void
@@ -19,7 +14,7 @@ typedef struct vmap_self {
 
   Vmap_t
     *(*new) (int),
-    *(*clone) (Vmap_t *, VmapCopy_cb);
+    *(*clone) (Vmap_t *, VmapCopy_cb, void *);
 
   int
     (*num_keys) (Vmap_t *),

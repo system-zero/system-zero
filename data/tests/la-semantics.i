@@ -780,6 +780,25 @@ func test_maps {
 
   assert_true ("testing anonymous map", x ({"key" = 22, "aa" = 2}) is 22)
 
+  var k = {"key" = 'k', "aa" = 2}.key
+  assert_true ("testing getting key from an anonymous map", k is 'k' and
+     typeof (k) is IntegerType)
+
+  var s = {"key" = "string"}.key
+  assert_true ("testing getting string key from an anonymous map", s is "string" and
+     typeof (s) is StringType)
+
+  var a = {"key" = ["string", "a", "z"]}.key
+  assert_true ("testing getting string array key from an anonymous map", a[0] is "string" and
+     typeof (a) is ArrayType)
+
+  var maa = {"next" = {"next" = {"a" = "a"}}}
+  var maaa = maa.next.next;
+  assert_true ("testing assignment to a map subtype", maaa.a is "a")
+
+  var mb = {"next" = {"next" = {"a" = "aa"}}}.next.next
+  assert_true ("testing assignment to a direct map subtype", mb.a is "aa")
+
 }
 
 test_maps ()

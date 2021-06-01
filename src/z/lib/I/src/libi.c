@@ -827,7 +827,8 @@ static funT *i_fun_stack_pop (i_t *this) {
   return f;
 }
 
-static void *i_clone_sym_item (void *item) {
+static void *i_clone_sym_item (void *item, void *obj) {
+  (void) obj;
   sym_t *sym = (void *) item;
 
   sym_t *new = Alloc (sizeof (sym_t));
@@ -851,7 +852,7 @@ static void *i_clone_sym_item (void *item) {
 
 static void i_symbol_stack_push (i_t *this, Vmap_t *symbols) {
   symbolstack_t *item = Alloc (sizeof (symbolstack_t));
-  item->symbols = Vmap.clone (symbols, i_clone_sym_item);
+  item->symbols = Vmap.clone (symbols, i_clone_sym_item, NULL);
   ListStackPush (this->symbolstack, item);
 }
 
