@@ -751,6 +751,35 @@ func test_maps {
 
   map.newfun = func (x) { return (x * 2) + this.one }
   assert_true ("testing map new function and visibility", map.newfun (10) is 21)
+
+  func x (m) {
+    return m.two
+  }
+
+  assert_true ("testing map as a function argument", x (map) is 2 and x (map) is map.two)
+
+  func xx () {
+    var m = {"1" = 11, "2" = 2, "k" = 10}
+    return m
+  }
+
+  var mapf = xx ()
+  assert_true ("testing returning map from a function", mapf.1 is 11 and
+      typeof (mapf) is MapType)
+
+  func mapfa () {
+    return {"11" = 11, "12" = 12}
+  }
+
+  var el = mapfa () 
+  assert_true ("testing returning anonymous map from a function", el.11 is 11)
+
+  func x (a) {
+    return a.key
+  }
+
+  assert_true ("testing anonymous map", x ({"key" = 22, "aa" = 2}) is 22)
+
 }
 
 test_maps ()

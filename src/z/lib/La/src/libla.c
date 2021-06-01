@@ -63,6 +63,7 @@
 #define FMT_LITERAL                   (1 << 0)
 
 #define OBJECT_APPEND                 (1 << 0)
+#define IDENT_LEAD_CHAR_CAN_BE_DIGIT  (1 << 1)
 
 #define PRIVATE_SCOPE                 (1 << 0)
 #define PUBLIC_SCOPE                  (1 << 1)
@@ -1150,10 +1151,11 @@ static int la_do_next_token (la_t *this, int israw) {
 
   if (c is '#')
     token = LA_TOKEN_COMMENT;
+  else if (is_alpha (c) or c is '_' or (
+     (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c)))
+    token = LA_TOKEN_SYMBOL;
   else if (is_digit (c) or (c is '-' and is_digit (la_peek_char (this, 0))))
     token = LA_TOKEN_NUMBER;
-  else if (is_alpha (c) or c is '_')
-    token = LA_TOKEN_SYMBOL;
   else if (is_operator (c))
     token = LA_TOKEN_OPERATOR;
 
@@ -2231,6 +2233,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   v = PTR(map);
   v.type = MAP_TYPE;
   *vp = v;
+  la_next_token (this);
   return LA_OK;
 }
 
@@ -2245,17 +2248,22 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   }
 
   int err;
+  this->objectState |= IDENT_LEAD_CHAR_CAN_BE_DIGIT;
   c = err = la_next_raw_token (this);
+  this->objectState &= ~IDENT_LEAD_CHAR_CAN_BE_DIGIT;
   if (err < LA_OK)
     return err;
 
   if (c isnot LA_TOKEN_SYMBOL)
-    return err;
+    return this->syntax_error (this, "not a symbol");
 
   char *key = sym_key (this, this->curStrToken);
   Vmap_t *map = (Vmap_t *) AS_PTR(this->tokenValue);
 
   VALUE *v = Vmap.get (map, key);
+
+  if (v is NULL)
+    return la_syntax_error_fmt (this, "%s, not a key", key);
 
   if (v->sym->scope is NULL)
     ifnot (is_this)
@@ -2341,6 +2349,7 @@ static int la_parse_expr_list (la_t *this) {
     count++;
 
     c = this->curToken;
+
     if (c is LA_TOKEN_COMMA) {
       this->curState |= STRING_LITERAL_ARG_STATE;
       la_next_token (this);
@@ -2556,6 +2565,10 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
         } else {
           if (v.type is STRING_TYPE and
               ns_is_malloced_string (this->curScope, AS_STRING(v))) {
+            VALUE non = NONE;
+            uf_sym->value = non;
+          }
+          if (v.type is MAP_TYPE and v.sym isnot NULL) {
             VALUE non = NONE;
             uf_sym->value = non;
           }

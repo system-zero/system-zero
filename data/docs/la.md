@@ -269,11 +269,12 @@ A very small yet another programming language (yala) that compiles in C.
   var mm = {
     "one" = 1,
     "two" = "string",
+    "1"   = 1,
     "fn"  = func (x) { return this.one * x },
     private "privatevar" = "accessible only by the members of the map"
   }
 
-  - keys are only string types
+  - keys can be only string types and can start with a digit
 
   # Accessing maps
 
