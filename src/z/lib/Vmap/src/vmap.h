@@ -27,6 +27,7 @@ typedef struct vmap_self {
   int
     (*set) (Vmap_t *, char *, void *, VmapRelease_cb, int);
 
+  size_t (*size_of) (void);
 } vmap_self;
 
 typedef struct vmap_T {

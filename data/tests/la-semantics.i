@@ -598,7 +598,7 @@ func semantics () {
        none isnot 1 and
        none isnot 1.1 and
        none isnot [1] and
-       none isnot {"1" = 1} and
+       none isnot {"1" : 1} and
        none isnot "string")
   }
 
@@ -609,7 +609,6 @@ func semantics () {
 }
 
 semantics ()
-
 assert_equal ("testing public variable attribute", v_visible, "visible variable")
 assert_equal ("testing public function attribute", f_visible (22), 44)
 assert_equal ("testing public array attribute", a_visible[0], 1)
@@ -715,6 +714,13 @@ func test_array (length) {
   i_ar[*] = 31
   assert_equal ("testing array set '*' operator", ar_sum (i_ar), 124)
 
+  var mar = [{"k" : "K", "l" : "L"}, {"A" : "a", "V" : "v"}]
+  assert_true ("testing array maps", typeof (mar) is ArrayType and
+      typeArrayAsString (mar) is "MapType")
+
+  var mak = mar[0].k
+  assert_true ("testing array map access", mak is "K")
+
   func fibo_array (n) {
     array f[n + 2]
     f[0:1] = [0, 1]
@@ -748,12 +754,12 @@ func test_maps {
       m.c () is 1000)
 
   var map = {
-    private "one" = 1,
-    "two" = 2,
-    private "three" = "three",
-    private "fun" = func { return (this.one + this.two) * 10000 }
-    "threefun" = func { return this.three },
-    "fn" = func (x) { return x * this.fun () }
+    private "one" : 1,
+    "two" : 2,
+    private "three" : "three",
+    private "fun" : func { return (this.one + this.two) * 10000 }
+    "threefun" : func { return this.three },
+    "fn" : func (x) { return x * this.fun () }
   }
 
   assert_true ("testing map functions", map.fn (2) is 60000 and map.two is 2)
@@ -771,7 +777,7 @@ func test_maps {
   assert_true ("testing map as a function argument", x (map) is 2 and x (map) is map.two)
 
   func xx () {
-    var m = {"1" = 11, "2" = 2, "k" = 10}
+    var m = {"1" : 11, "2" : 2, "k" : 10}
     return m
   }
 
@@ -780,7 +786,7 @@ func test_maps {
       typeof (mapf) is MapType)
 
   func mapfa () {
-    return {"11" = 11, "12" = 12}
+    return {"11" : 11, "12" : 12}
   }
 
   var el = mapfa () 
@@ -790,27 +796,26 @@ func test_maps {
     return a.key
   }
 
-  assert_true ("testing anonymous map", x ({"key" = 22, "aa" = 2}) is 22)
+  assert_true ("testing anonymous map", x ({"key" : 22, "aa" : 2}) is 22)
 
-  var k = {"key" = 'k', "aa" = 2}.key
+  var k = {"key" : 'k', "aa" : 2}.key
   assert_true ("testing getting key from an anonymous map", k is 'k' and
      typeof (k) is IntegerType)
 
-  var s = {"key" = "string"}.key
+  var s = {"key" : "string"}.key
   assert_true ("testing getting string key from an anonymous map", s is "string" and
      typeof (s) is StringType)
 
-  var a = {"key" = ["string", "a", "z"]}.key
+  var a = {"key" : ["string", "a", "z"]}.key
   assert_true ("testing getting string array key from an anonymous map", a[0] is "string" and
      typeof (a) is ArrayType)
 
-  var maa = {"next" = {"next" = {"a" = "a"}}}
+  var maa = {"next" : {"next" : {"a" : "a"}}}
   var maaa = maa.next.next;
   assert_true ("testing assignment to a map subtype", maaa.a is "a")
 
-  var mb = {"next" = {"next" = {"a" = "aa"}}}.next.next
+  var mb = {"next" : {"next" : {"a" : "aa"}}}.next.next
   assert_true ("testing assignment to a direct map subtype", mb.a is "aa")
-
 }
 
 test_maps ()

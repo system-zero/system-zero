@@ -79,6 +79,12 @@ typedef ValueType VALUE;
       s_ar[i] = String.new_with ("");                   \
     }                                                   \
     ary_ = ARRAY(s_ar);                                 \
+  } else if (array_->type is MAP_TYPE) {                \
+    Vmap_t **m_ar = Alloc (__len__ * Vmap.size_of ());  \
+    for (integer i = 0; i < __len__; i++) {             \
+      m_ar[i] = NULL;                                   \
+    }                                                   \
+    ary_ = ARRAY(m_ar);                                 \
   }                                                     \
                                                         \
   array_->value = ary_;                                 \

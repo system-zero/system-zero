@@ -114,6 +114,10 @@ static int vmap_num_keys (Vmap_t *vmap) {
   return (int) vmap->num_keys;
 }
 
+static size_t vmap_sizeof (void) {
+  return sizeof (Vmap_t);
+}
+
 public vmap_T __init_vmap__ (void) {
   __INIT__ (string);
   __INIT__ (cstring);
@@ -126,6 +130,7 @@ public vmap_T __init_vmap__ (void) {
       .pop = vmap_pop,
       .clear = vmap_clear,
       .clone = vmap_clone,
+      .size_of = vmap_sizeof,
       .release = vmap_release,
       .num_keys = vmap_num_keys,
       .key_exists = vmap_key_exists

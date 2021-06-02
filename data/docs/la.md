@@ -231,6 +231,7 @@ A very small yet another programming language (yala) that compiles in C.
       - integer (this is the default)
       - number
       - string
+      - map
 
 # Array assignment syntax:
 
@@ -260,21 +261,25 @@ A very small yet another programming language (yala) that compiles in C.
     be negative.  Array indices are starting from zero, and -1 denotes the
     last item in the array.
 
-# Maps or Tables (this is a hybrid type, similar to associative arrays and structures)
+# Maps (this is a hybrid type, similar to associative arrays and structures,
+  and almost similar to json format).
 
   # Map Declaration
 
   var m = {}  # empty container
 
   var mm = {
-    "one" = 1,
-    "two" = "string",
-    "1"   = 1,
-    "fn"  = func (x) { return this.one * x },
-    private "privatevar" = "accessible only by the members of the map"
+    "one" : 1,
+    "two" : "string",
+    "1"   : 1,
+    "fn"  : func (x) { return this.one * x },
+    private privatevar : "accessible only by the members of the map"
   }
 
-  - keys can be only string types and may start with a digit or an underscore
+  - the `this` keyword is being used from the members of the map and
+    provide access to the other fields.
+
+  - keys are valid string identifiers and may start with a digit or an underscore
 
   # Accessing maps
 
@@ -282,14 +287,11 @@ A very small yet another programming language (yala) that compiles in C.
     mm.fn (10)
     mm.privatevar = "something" # this should fail
 
-  # the `this` keyword is being used from the members of the map and
-    provide access to the other fields.
-
   # extending maps
 
     mm.new = 1
 
-  # in those cases those field are accessible to their scope.
+  # in those cases those fields are accessible from their scope.
     Members can be attributed as `private` only at the construction time,
     not even within the members at runtime.
 
@@ -367,7 +369,7 @@ A very small yet another programming language (yala) that compiles in C.
 # typeof            -  type of a value
 #                      args: object
 #                      Type can be any of the followings:
-#                        Integer|Number|String|Array|Object|
+#                        Integer|Number|String|Array|Map|Object|
 #                        Function|None)Type
 # typeAsString      -  type of a value as string represantation
 #                      args: object

@@ -64,6 +64,8 @@
 
 #define OBJECT_APPEND                 (1 << 0)
 #define IDENT_LEAD_CHAR_CAN_BE_DIGIT  (1 << 1)
+#define MMT_OBJECT                    (1 << 2)
+#define ASSIGNMENT_STATE              (1 << 3)
 
 #define PRIVATE_SCOPE                 (1 << 0)
 #define PUBLIC_SCOPE                  (1 << 1)
@@ -1173,6 +1175,12 @@ static int la_do_next_token (la_t *this, int israw) {
     token = LA_TOKEN_NUMBER;
   else if (is_operator (c))
     token = LA_TOKEN_OPERATOR;
+  else if (c is LA_TOKEN_COLON) {
+    if (la_peek_char (this, 0) is ' ') {
+      this->curToken = LA_TOKEN_COLON;
+      return c;
+    }
+  }
 
   switch (token) {
     case LA_TOKEN_COMMENT:
@@ -1619,7 +1627,13 @@ static VALUE array_release (VALUE value) {
       String.release (s_ar[i]);
     free (s_ar);
     s_ar = NULL;
-
+  } else if (array->type is MAP_TYPE) {
+    Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ary);
+    if (m_ar is NULL) return result;
+    for (size_t i = 0; i < array->len; i++)
+      Vmap.release (m_ar[i]);
+    free (m_ar);
+    m_ar = NULL;
   } else {
     char *ar = (char *) AS_ARRAY(ary);
     if (ar is NULL) return result;
@@ -1645,6 +1659,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   int pc;
   int c = 0;
   int instr = 0;
+  int inmap = 0;
   int indtokopen = 1;
   int num_elem = 1;
 
@@ -1674,7 +1689,17 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       continue;
     }
 
-    if (c is LA_TOKEN_COMMA and 0 is instr)
+    if (c is LA_TOKEN_BLOCK_OPEN and 0 is instr) {
+      inmap++;
+      continue;
+    }
+
+    if (c is LA_TOKEN_BLOCK_CLOS and 0 is instr) {
+      inmap--;
+      continue;
+    }
+
+    if (c is LA_TOKEN_COMMA and 0 is instr and 0 is inmap)
       num_elem++;
   }
 
@@ -1698,6 +1723,12 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
     string *item = s_ar[0];
     string *val = AS_STRING(v);
     String.replace_with_len (item, val->bytes, val->num_bytes);
+  } else if (type is MAP_TYPE) {
+    Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ar);
+    Vmap_t *item = m_ar[0];
+    ifnot (NULL is item)
+      Vmap.release (item);
+    m_ar[0] = AS_MAP(v);
   } else if (type is INTEGER_TYPE) {
     integer *i_ar = (integer *) AS_ARRAY(ar);
     i_ar[0] = AS_INT(v);
@@ -1750,6 +1781,18 @@ static ArrayType *array_copy (ArrayType *array) {
       break;
     }
 
+    case MAP_TYPE: {
+      Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
+
+      Vmap_t **m_ar = Alloc (len * Vmap.size_of ());
+      for (size_t i = 0; i < len; i++) {
+        Vmap_t *item = ary[i];
+        m_ar[i] = AS_MAP(la_copy_map (MAP(item)));
+      }
+      new_array->value = ARRAY(m_ar);
+      break;
+    }
+
     default: {
       integer *ary = (integer *) AS_ARRAY(array->value);
 
@@ -1763,6 +1806,34 @@ static ArrayType *array_copy (ArrayType *array) {
   }
 
   return new_array;
+}
+
+static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
+  int err;
+  VALUE val;
+  Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ar);
+
+  do {
+    if (idx < 0 or idx >= len or idx > last_idx)
+      return la_out_of_bounds (this);
+
+    la_next_token (this);
+
+    err = la_parse_expr (this, &val);
+
+    if (err isnot LA_OK) return err;
+
+    if (val.type isnot MAP_TYPE)
+      return this->syntax_error (this, "error while setting Map array, awaiting a Map Type");
+
+    m_ar[idx] = AS_MAP(val);
+    idx++;
+  } while (this->curToken is LA_TOKEN_COMMA);
+
+  if (idx - 1 isnot last_idx)
+    return la_out_of_bounds (this);
+
+  return LA_OK;
 }
 
 static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
@@ -1870,6 +1941,8 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
     err = la_array_set_as_int (this, ary, len, idx, last_idx);
   } else if (array->type is STRING_TYPE) {
     err = la_array_set_as_string (this, ary, len, idx, last_idx);
+  } else if (array->type is MAP_TYPE) {
+    err = la_array_set_as_map (this, ary, len, idx, last_idx);
   } else
     err = la_array_set_as_number (this, ary, len, idx, last_idx);
 
@@ -1910,6 +1983,8 @@ static int la_parse_array_def (la_t *this) {
     type = POINTER_TYPE;
   else if (Cstring.eq_n ("string ", sp, 7))
     type = STRING_TYPE;
+  else if (Cstring.eq_n ("map ", sp, 4))
+    type = MAP_TYPE;
   else
     isname = 1;
 
@@ -2091,6 +2166,9 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
       string **ary = (string **) AS_ARRAY(array->value);
       *vp = STRING(ary[idx]);
       vp->sym = ar.sym;
+    } else if (array->type is MAP_TYPE) {
+      Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
+      *vp = MAP(ary[idx]);
     } else
       return la_unknown_type (this);
 
@@ -2288,9 +2366,8 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
     c = la_next_token (this);
 
-    if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
-        la_StringGetLen (this->curStrToken) isnot 1)
-      return this->syntax_error (this, "awaiting =");
+    if (c isnot LA_TOKEN_COLON)
+      return this->syntax_error (this, "error while setting map field, awaiting :");
 
     scope = ((this->scopeState & PUBLIC_SCOPE or this->scopeState is 0)
         ? this->function : NULL);
@@ -2335,7 +2412,9 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     return this->syntax_error (this, "not a symbol");
 
   char *key = map_key (this, this->curStrToken);
-  Vmap_t *map = AS_MAP(this->tokenValue);
+
+  VALUE mapv = this->tokenValue;
+  Vmap_t *map = AS_MAP(mapv);
 
   VALUE *v = Vmap.get (map, key);
 
@@ -2348,7 +2427,15 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   *vp = *v;
 
+  if (this->objectState & ASSIGNMENT_STATE) {
+    switch (v->type) {
+      case STRING_TYPE:
+      this->objectState |= MMT_OBJECT;
+    }
+  }
+
   c = la_next_token (this);
+
   if (c is LA_TOKEN_DOT) {
     if (v->type isnot MAP_TYPE)
       return la_syntax_error_fmt (this, "%s, not a map", key);
@@ -2801,7 +2888,19 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return LA_OK;
 
     case LA_TOKEN_ARRAY:
-      return la_parse_array_get (this, vp);
+      err = la_parse_array_get (this, vp);
+      if (err isnot LA_OK)
+        return err;
+
+      if (this->curToken isnot LA_TOKEN_DOT)
+        return err;
+
+      if (vp->type isnot MAP_TYPE)
+        return this->syntax_error (this, "not a map");
+
+      la_unget_char (this);
+      this->tokenValue = *vp;
+      /* fall through */
 
     case LA_TOKEN_MAP: {
       err = la_parse_map_get (this, vp);
@@ -2872,8 +2971,11 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
         if (mapval.sym is NULL) {
           VALUE v = *vp;
-          if (v.type isnot MAP_TYPE)
+
+          if (v.type isnot MAP_TYPE) {
             *vp = la_copy_value (v);
+            this->objectState &= ~MMT_OBJECT;
+          }
 
           la_free (this, mapval);
         }
@@ -3039,7 +3141,19 @@ do_token:
       if (is_un)
         la_next_token (this);
 
+      this->objectState |= ASSIGNMENT_STATE;
       err = la_parse_expr (this, &val);
+      this->objectState &= ~ASSIGNMENT_STATE;
+
+      if (this->objectState & MMT_OBJECT) {
+        switch (val.type) {
+          case STRING_TYPE: {
+            VALUE v = val;
+            val = la_copy_value (v);
+          }
+        }
+        this->objectState &= ~MMT_OBJECT;
+      }
 
       if (err isnot LA_OK) return err;
 
