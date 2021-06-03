@@ -265,6 +265,7 @@ func semantics () {
    }) ()
 
   assert_true ("testing `for` loop", sum is 499500)
+
   sum = lambda ({ var s = 0
     for (var i = 1; i < 1000 ; i += 1) {
       if (i is 100) { continue }
@@ -575,6 +576,7 @@ func semantics () {
 
   fmt = format ("${%s, load_va} ${%s, load_vd}")
   assert_true ("testing format function",  fmt is "string is 6 bytes length")
+
   fmt = format ("${%s, load_va} ${%s, load_vd}")
   assert_true ("testing format function",  fmt is "string is 6 bytes length")
 
@@ -714,6 +716,11 @@ func test_array (length) {
   i_ar[*] = 31
   assert_equal ("testing array set '*' operator", ar_sum (i_ar), 124)
 
+  var m_ar = [{"t" : 11}, {"s" : 2}]
+  m_ar[*] = {"sa" : 11, "tt" : 4, "a" : 5}
+  assert_true ("testing array set '*' operator for maps",
+      m_ar[1].sa is 11)
+
   var mar = [{"k" : "K", "l" : "L"}, {"A" : "a", "V" : "v"}]
   assert_true ("testing array maps", typeof (mar) is ArrayType and
       typeArrayAsString (mar) is "MapType")
@@ -819,11 +826,11 @@ func test_maps {
 
   var mc = {"l" : 1, "next" : {"next" : {"key" : 1}}}
   mc.next.next.key = 2
-  assert_true ("testing setting map val in arbitrary depth",
+  assert_true ("testing setting map value in arbitrary depth",
       mc.next.next.key is 2)
 
   mc.next.next.next = {"next" : {"key" : "string"}}
-  assert_true ("testing setting map val in arbitrary depth as a new map",
+  assert_true ("testing setting map value in arbitrary depth as a new map",
       mc.next.next.next.next.key is "string")
 }
 

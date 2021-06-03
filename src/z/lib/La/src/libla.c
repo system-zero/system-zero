@@ -2083,6 +2083,18 @@ static int la_parse_array_set (la_t *this) {
           return LA_OK;
         }
 
+        case MAP_TYPE: {
+          Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(array->value);
+          for (size_t i = 0; i < array->len; i++) {
+            ifnot (NULL is m_ar[i])
+              Vmap.release (m_ar[i]);
+            m_ar[i] = AS_MAP(la_copy_value (ar_val));
+          }
+
+          la_free (this, ar_val);
+          return LA_OK;
+        }
+
         case INTEGER_TYPE: {
           int i_val = AS_INT(ar_val);
           integer *i_ar = (integer *) AS_ARRAY(array->value);
