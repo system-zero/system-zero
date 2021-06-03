@@ -4211,7 +4211,7 @@ static int readline_complete_arg (menu_t *menu) {
 
 static int readline_complete_command (menu_t *menu) {
   readline_com_t **commands = menu->user_data[2];
-  int num_commands = *(int *) menu->user_data[3];
+  //int num_commands = *(int *) menu->user_data[3];
 
   if (menu->state & MENU_INIT) {
     menu->state &= ~MENU_INIT;

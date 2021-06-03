@@ -1232,7 +1232,7 @@ static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str
       return OK;
 
     default:
-      snprintf (buf, 256, "%d", AS_INT(v));
+      snprintf (buf, 256, "%ld", AS_INT(v));
   }
 
   Ed.reg.set (ed, '$', CHARWISE, buf, NORMAL_ORDER);
@@ -6723,13 +6723,15 @@ static int buf_insert_change_line (buf_t *this, utf8 c, Action_t **action, int d
     if (isatend) {
       self(current.append_with, $my(ftype)->autoindent (this, this->current)->bytes);
     } else {
-      char bytes[MAXLEN_LINE];
-      int len = $mycur(data)->num_bytes - $mycur(cur_col_idx);
-      Cstring.cp (bytes, MAXLEN_LINE, $mycur(data)->bytes + $mycur(cur_col_idx), len);
+      int len = ($mycur(data)->num_bytes - $mycur(cur_col_idx)) +
+          $my(ftype)->autoindent (this, this->current)->num_bytes;
+      char bytes[len + 1];
+      Cstring.cp_fmt (bytes, len + 1, "%s%s",
+        $my(ftype)->autoindent (this, this->current)->bytes,
+           $mycur(data)->bytes + $mycur(cur_col_idx));
 
       String.clear_at ($mycur(data), $mycur(cur_col_idx));
-      self(current.append_with, STR_FMT ("%s%s",
-          $my(ftype)->autoindent (this, this->current)->bytes, bytes));
+      self(current.append_with, bytes);
     }
 
     this->current = this->current->prev;
@@ -11491,7 +11493,7 @@ static void ed_deinit_record (ed_t *this) {
 static int ed_buf_normal_cmd (ed_t *ed, buf_t **thisp, utf8 com, int count, int regidx) {
   buf_t *this = *thisp;
 
-  if (0 >= count or count > this->num_items)
+  if (0 >= count) // or count > this->num_items)
      return NOTHING_TODO;
 
   if (regidx < 0 or regidx >= NUM_REGISTERS)

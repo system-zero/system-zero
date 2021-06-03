@@ -2335,7 +2335,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   funT *scope;
 
   this->curState |= MAP_STATE;
-  this->scopeState |= PUBLIC_SCOPE;
+  this->scopeState = PUBLIC_SCOPE;
 
   for (;;) {
     this->curState |= STRING_LITERAL_ARG_STATE;
@@ -2349,13 +2349,18 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
     if (c is LA_TOKEN_COMMA or c is LA_TOKEN_NL) continue;
 
-    if (c is LA_TOKEN_PRIVATE) {
-      this->scopeState |= PRIVATE_SCOPE;
-      continue;
-    } else if (c is LA_TOKEN_PUBLIC) {
-      this->scopeState |= PUBLIC_SCOPE;
-      continue;
-    }
+    switch (c) {
+      case LA_TOKEN_PRIVATE:
+        this->scopeState = PRIVATE_SCOPE;
+        continue;
+
+      case LA_TOKEN_PUBLIC:
+        this->scopeState = PUBLIC_SCOPE;
+        continue;
+
+      default:
+        this->scopeState = PUBLIC_SCOPE;
+      }
 
     v = this->tokenValue;
 
@@ -2369,8 +2374,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
     if (c isnot LA_TOKEN_COLON)
       return this->syntax_error (this, "error while setting map field, awaiting :");
 
-    scope = ((this->scopeState & PUBLIC_SCOPE or this->scopeState is 0)
-        ? this->function : NULL);
+    scope = ((this->scopeState & PUBLIC_SCOPE) ? this->function : NULL);
     this->scopeState &= ~(PUBLIC_SCOPE|PRIVATE_SCOPE);
 
     err = map_set_rout (this, map, key, scope);
@@ -2379,8 +2383,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   }
 
   this->curState &= ~MAP_STATE;
-  this->scopeState &= ~PUBLIC_SCOPE;
-  this->scopeState |= PRIVATE_SCOPE;
+  this->scopeState = PRIVATE_SCOPE;
   this->parsePtr = saved_ptr;
 
   v = MAP(map);
@@ -2417,7 +2420,6 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   Vmap_t *map = AS_MAP(mapv);
 
   VALUE *v = Vmap.get (map, key);
-
   if (v is NULL)
     return la_syntax_error_fmt (this, "%s, not a key", key);
 
@@ -2430,6 +2432,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   if (this->objectState & ASSIGNMENT_STATE) {
     switch (v->type) {
       case STRING_TYPE:
+      case ARRAY_TYPE:
       this->objectState |= MMT_OBJECT;
     }
   }
@@ -2456,6 +2459,8 @@ static int la_parse_map_set (la_t *this) {
 
   if (c isnot LA_TOKEN_DOT)
     return this->syntax_error (this, "awaiting .");
+
+  redo: {}
 
   int err;
   c = err = la_next_raw_token (this);
@@ -2492,8 +2497,19 @@ static int la_parse_map_set (la_t *this) {
   }
 
   if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
-      la_StringGetLen (this->curStrToken) isnot 1)
-    return this->syntax_error (this, "syntax error while setting map, awaiting =");
+      la_StringGetLen (this->curStrToken) isnot 1) {
+
+    ifnot (Vmap.key_exists (map, key))
+      return this->syntax_error (this, "syntax error while setting map, awaiting =");
+
+    if (this->curToken is LA_TOKEN_DOT) {
+      VALUE *vp = Vmap.get (map, key);
+      if (vp->type isnot MAP_TYPE)
+        return this->syntax_error (this, "not a map");
+      map = AS_MAP((*vp));
+      goto redo;
+    }
+  }
 
   if (Vmap.key_exists (map, key))
     la_release_map_val (Vmap.pop (map, key));
@@ -3147,6 +3163,7 @@ do_token:
 
       if (this->objectState & MMT_OBJECT) {
         switch (val.type) {
+          case ARRAY_TYPE:
           case STRING_TYPE: {
             VALUE v = val;
             val = la_copy_value (v);

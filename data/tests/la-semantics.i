@@ -816,6 +816,15 @@ func test_maps {
 
   var mb = {"next" : {"next" : {"a" : "aa"}}}.next.next
   assert_true ("testing assignment to a direct map subtype", mb.a is "aa")
+
+  var mc = {"l" : 1, "next" : {"next" : {"key" : 1}}}
+  mc.next.next.key = 2
+  assert_true ("testing setting map val in arbitrary depth",
+      mc.next.next.key is 2)
+
+  mc.next.next.next = {"next" : {"key" : "string"}}
+  assert_true ("testing setting map val in arbitrary depth as a new map",
+      mc.next.next.next.next.key is "string")
 }
 
 test_maps ()

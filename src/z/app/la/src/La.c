@@ -14,6 +14,7 @@
 
 #include <z/cenv.h>
 
+/*
 static int __readfile_cb (Vstring_t *notused, char *line, size_t size, int nth, void *user_data) {
   (void) notused; (void) nth;
   string_t *evalbuf = (string_t *) user_data;
@@ -21,6 +22,7 @@ static int __readfile_cb (Vstring_t *notused, char *line, size_t size, int nth, 
   String.append_with_len (evalbuf, line, size);
   return OK;
 }
+*/
 
 int main (int argc, char **argv) {
   la_T *LaN = __init_la__ ();

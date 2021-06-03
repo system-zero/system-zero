@@ -13,7 +13,7 @@
 #define  REQUIRE_TIME
 #define  REQUIRE_PTY
 #define  REQUIRE_TERMIOS
-#define  REQUIRE_IOCTL
+//#define  REQUIRE_IOCTL
 #define  REQUIRE_SYS_TYPES
 #define  REQUIRE_SYS_STAT
 #define  REQUIRE_SYS_SELECT
@@ -29,11 +29,11 @@
 #define  REQUIRE_DIR_TYPE      DECLARE
 #define  REQUIRE_SYS_TYPE      DECLARE
 #define  REQUIRE_ARGPARSE_TYPE DECLARE
-#define  REQUIRE_VWM_TYPE      DECLARE
+#define  REQUIRE_VWM_TYPE      DONOT_DECLARE
 #define  REQUIRE_ERROR_TYPE    DECLARE
 #define  REQUIRE_READLINE_TYPE DECLARE
 #define  REQUIRE_LA_TYPE       DECLARE
-#define  REQUIRE_VSTRING_TYPE  DECLARE
+//#define  REQUIRE_VSTRING_TYPE  DECLARE
 #define  REQUIRE_VIDEO_TYPE    DONOT_DECLARE
 #define  REQUIRE_V_TYPE        DONOT_DECLARE
 
@@ -1248,7 +1248,7 @@ static VALUE la_v_main (la_t *la, VALUE v_value) {
   if (NOTOK is self(init.pty, sockname))
     return v_notok;
 
-  vwm_t *vwm = $my(user_data)[VWM_OBJECT];
+  //vwm_t *vwm = $my(user_data)[VWM_OBJECT];
 
   v_init_commands (this);
 
@@ -1267,6 +1267,7 @@ static VALUE la_v_main (la_t *la, VALUE v_value) {
   return v;
 }
 
+#define NONE_VALUE INT(0)
 struct v_lafun_t {
   const char *name;
   VALUE val;
@@ -1293,7 +1294,7 @@ struct v_lafun_t {
   { "v_win_set_current_at",   PTR(la_v_win_set_current_at), 3},
   { "v_new_win",              PTR(la_v_new_win), 3},
   { "v_main",                 PTR(la_v_main), 1},
-  { NULL, 0, 0}
+  { NULL, NONE_VALUE, 0}
 };
 
 static int v_la_define_funs_cb (la_t *this) {
@@ -1345,9 +1346,9 @@ static int v_init_pty (v_t *this, char *sockname) {
   return OK;
 }
 
-static void v_set_object (v_t *this, void *object, int idx) {
+static void v_set_object (v_t *this, void *obj, int idx) {
   if (idx >= NUM_OBJECTS or idx < 0) return;
-  $my(user_data)[idx] = object;
+  $my(user_data)[idx] = obj;
 }
 
 static void v_set_exec_child_cb (v_t *this, PtyOnExecChild_cb cb) {
@@ -1947,7 +1948,7 @@ static int v_main (v_t *this) {
   if (NOTOK is self(init.pty, sockname))
     return 1;
 
-  vwm_t *vwm = $my(user_data)[VWM_OBJECT];
+  //vwm_t *vwm = $my(user_data)[VWM_OBJECT];
 
   v_init_commands (this);
 

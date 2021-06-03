@@ -1,4 +1,4 @@
-#define APPLICATION "v"
+//#define APPLICATION "v"
 
 #define REQUIRE_STDIO
 #define REQUIRE_TERMIOS
