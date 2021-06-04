@@ -1673,8 +1673,8 @@ static int v_save_image (v_t *this, char *fname) {
     "  var max_frames = 0\n"
     "  var log = 0\n"
     "  var remove_log = 1\n"
-    "  var win = none\n"
-    "  var frame = none\n"
+    "  var win = null\n"
+    "  var frame = null\n"
     "  var cur_frame_idx = 0\n"
     "  var visibility = 0\n"
     "  var num_visible_frames = 0\n"
@@ -1749,7 +1749,7 @@ static int v_save_image (v_t *this, char *fname) {
 
       ifnot (NULL is logfile) {
         fprintf (fp, "  remove_log = %d\n", Vframe.get.remove_log (frame));
-        fprintf (fp, "  v_set_frame_log (v, frame, none, remove_log)\n");
+        fprintf (fp, "  v_set_frame_log (v, frame, null, remove_log)\n");
       }
 
       fprintf (fp, "\n");

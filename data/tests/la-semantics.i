@@ -594,14 +594,17 @@ func semantics () {
     return x * 2
   }
 
+  var nilstr = format ("${%s, null}")
+  assert_true ("testing null string representation", nilstr is "(null)")
+
   func comparisons () {
-    assert_true ("testing none with other types",
-       none is none and
-       none isnot 1 and
-       none isnot 1.1 and
-       none isnot [1] and
-       none isnot {"1" : 1} and
-       none isnot "string")
+    assert_true ("testing null with other types",
+       null is null and
+       null isnot 1 and
+       null isnot 1.1 and
+       null isnot [1] and
+       null isnot {"1" : 1} and
+       null isnot "string")
   }
 
   comparisons ()
@@ -721,12 +724,24 @@ func test_array (length) {
   assert_true ("testing array set '*' operator for maps",
       m_ar[1].sa is 11)
 
+  var am = {"sa" : 22, "sb" : 33}
+  m_ar[*] = am
+  assert_true ("testing array set '*' operator for maps from a symbol",
+      m_ar[1].sa is 22)
+
   var mar = [{"k" : "K", "l" : "L"}, {"A" : "a", "V" : "v"}]
   assert_true ("testing array maps", typeof (mar) is ArrayType and
       typeArrayAsString (mar) is "MapType")
 
   var mak = mar[0].k
   assert_true ("testing array map access", mak is "K")
+
+  array map marnil[3] = [{"A" : 1}, null, {"b" : 3}]
+  assert_true ("testing map array with a null element",
+      marnil[1] is null and typeof (marnil[1]) is NoneType)
+
+  array string anil[3] = ["a", null, "b"]
+  assert_true ("testing string array with a null element", anil[1] is null)
 
   func fibo_array (n) {
     array f[n + 2]
@@ -832,6 +847,7 @@ func test_maps {
   mc.next.next.next = {"next" : {"key" : "string"}}
   assert_true ("testing setting map value in arbitrary depth as a new map",
       mc.next.next.next.next.key is "string")
+
 }
 
 test_maps ()
@@ -845,10 +861,10 @@ func types () {
   array number n_ar[1] = [10.0]
   var map = {}
 
-  var type = none
+  var type = null
 
   assert_true ("testing NoneType[s]", typeof (type) is NoneType and
-     typeAsString (none) is "NoneType")
+     typeAsString (null) is "NoneType")
   type = typeof (str)
   assert_true ("testing StringType[s]", type is StringType and
      typeAsString (str) is "StringType")

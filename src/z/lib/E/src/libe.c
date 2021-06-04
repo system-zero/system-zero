@@ -748,7 +748,7 @@ char *i_keywords[] = {
   "var V", "if I", "ifnot I", "else I", "func I",
   "is I", "isnot I", "and I", "or I", "this V", "return I",
   "for I", "while I", "break I", "continue I",
-  "println F", "none T", "format F", "len F", "print F", "loadfile F",
+  "println F", "null T", "format F", "len F", "print F", "loadfile F",
   "loop I", "forever I", "do I", "ok K", "notok K", "true K", "false K",
   "lambda F", "array V", "public V", "private V",
   "string T", "integer T", "number T", "typeof F", "typeofArray F",
@@ -12849,9 +12849,9 @@ static string_t *E_create_image (E_T *this) {
        "  var ed_cur_idx = %d\n"
        "  var win_cur_idx = %d\n"
        "  var buf_cur_idx = %d\n"
-       "  var ed = none\n"
-       "  var cwin = none\n"
-       "  var buf = none\n\n",
+       "  var ed = null\n"
+       "  var cwin = null\n"
+       "  var buf = null\n\n",
     $my(num_items),
     $my(save_image),
     $my(persistent_layout),

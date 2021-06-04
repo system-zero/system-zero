@@ -1623,8 +1623,11 @@ static VALUE array_release (VALUE value) {
   if (array->type is STRING_TYPE) {
     string **s_ar = (string **) AS_ARRAY(ary);
     if (s_ar is NULL) return result;
-    for (size_t i = 0; i < array->len; i++)
-      String.release (s_ar[i]);
+    for (size_t i = 0; i < array->len; i++) {
+      ifnot (NULL is s_ar[i])
+        String.release (s_ar[i]);
+    }
+
     free (s_ar);
     s_ar = NULL;
   } else if (array->type is MAP_TYPE) {
@@ -1718,25 +1721,39 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   ArrayType *array = (ArrayType *) AS_ARRAY(ary);
   VALUE ar = array->value;
 
-  if (type is STRING_TYPE) {
-    string **s_ar = (string **) AS_ARRAY(ar);
-    string *item = s_ar[0];
-    string *val = AS_STRING(v);
-    String.replace_with_len (item, val->bytes, val->num_bytes);
-  } else if (type is MAP_TYPE) {
-    Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ar);
-    Vmap_t *item = m_ar[0];
-    ifnot (NULL is item)
-      Vmap.release (item);
-    m_ar[0] = AS_MAP(v);
-  } else if (type is INTEGER_TYPE) {
-    integer *i_ar = (integer *) AS_ARRAY(ar);
-    i_ar[0] = AS_INT(v);
-  } else if (type is NUMBER_TYPE) {
-    number *n_ar = (number *) AS_ARRAY(ar);
-    n_ar[0] = AS_NUMBER(v);
-  } else
-    return this->syntax_error (this, "unsupported array type");
+  switch (type) {
+    case STRING_TYPE: {
+      string **s_ar = (string **) AS_ARRAY(ar);
+      string *item = s_ar[0];
+      string *val = AS_STRING(v);
+      String.replace_with_len (item, val->bytes, val->num_bytes);
+      break;
+    }
+
+    case MAP_TYPE: {
+      Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ar);
+      Vmap_t *item = m_ar[0];
+      ifnot (NULL is item)
+        Vmap.release (item);
+      m_ar[0] = AS_MAP(v);
+      break;
+    }
+
+    case INTEGER_TYPE: {
+      integer *i_ar = (integer *) AS_ARRAY(ar);
+      i_ar[0] = AS_INT(v);
+      break;
+    }
+
+    case NUMBER_TYPE: {
+      number *n_ar = (number *) AS_ARRAY(ar);
+      n_ar[0] = AS_NUMBER(v);
+      break;
+    }
+
+    default:
+      return this->syntax_error (this, "unsupported array type");
+  }
 
   *vp = ary;
 
@@ -1823,10 +1840,10 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
 
     if (err isnot LA_OK) return err;
 
-    if (val.type isnot MAP_TYPE)
-      return this->syntax_error (this, "error while setting Map array, awaiting a Map Type");
+    if (val.type isnot MAP_TYPE and val.type isnot NONE_TYPE)
+      return this->syntax_error (this, "error while setting Map array, awaiting a map or null");
 
-    m_ar[idx] = AS_MAP(val);
+    m_ar[idx] = (val.type is MAP_TYPE) ? AS_MAP(val) : NULL;
     idx++;
   } while (this->curToken is LA_TOKEN_COMMA);
 
@@ -1854,9 +1871,27 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
 
     if (err isnot LA_OK) return err;
 
-    string *item = s_ar[idx];
-    string *s_val = AS_STRING(val);
-    String.replace_with_len (item, s_val->bytes, s_val->num_bytes);
+    switch (val.type) {
+      case STRING_TYPE: {
+        string *item = s_ar[idx];
+        string *s_val = AS_STRING(val);
+        String.replace_with_len (item, s_val->bytes, s_val->num_bytes);
+        break;
+      }
+
+      case NONE_TYPE:
+        ifnot (NULL is s_ar[idx]) {
+          string *item = s_ar[idx];
+          String.release (item);
+        }
+
+        s_ar[idx] = NULL;
+        break;
+
+      default:
+        return this->syntax_error (this, "error while setting string array, awaiting a string or null");
+    }
+
     idx++;
   } while (this->curToken is LA_TOKEN_COMMA);
 
@@ -2091,7 +2126,9 @@ static int la_parse_array_set (la_t *this) {
             m_ar[i] = AS_MAP(la_copy_value (ar_val));
           }
 
-          la_free (this, ar_val);
+          if (NULL is ar_val.sym)
+            la_free (this, ar_val);
+
           return LA_OK;
         }
 
@@ -2171,16 +2208,26 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     if (array->type is INTEGER_TYPE) {
       integer *ary = (integer *) AS_ARRAY(array->value);
       *vp = INT(ary[idx]);
+
     } else if (array->type is NUMBER_TYPE) {
       number *ary = (number *) AS_ARRAY(array->value);
       *vp = NUMBER(ary[idx]);
+
     } else if (array->type is STRING_TYPE) {
       string **ary = (string **) AS_ARRAY(array->value);
-      *vp = STRING(ary[idx]);
-      vp->sym = ar.sym;
+      if (ary[idx] isnot NULL) {
+        *vp = STRING(ary[idx]);
+        vp->sym = ar.sym;
+      } else
+        *vp = NONE;
+
     } else if (array->type is MAP_TYPE) {
       Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
-      *vp = MAP(ary[idx]);
+      if (ary[idx] isnot NULL)
+        *vp = MAP(ary[idx]);
+      else
+        *vp = NONE;
+
     } else
       return la_unknown_type (this);
 
@@ -4260,12 +4307,16 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
 
               break;
 
+            case NONE_TYPE:
+              String.append_with_len (str, "(null)", 6);
+              break;
+
             case ARRAY_TYPE: {
               VALUE v;
               this->tokenValue = value;
               err = la_parse_array_get (this, &v);
               if (err isnot LA_OK) {
-                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
+                this->print_bytes (this->err_fp, "string fmt error, awaiting an array\n");
                 err = LA_ERR_SYNTAX;
                 goto theend;
               }
@@ -4276,7 +4327,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
                   break;
 
                 default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting string type\n");
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting a string\n");
                   err = LA_ERR_SYNTAX;
                   goto theend;
 
@@ -4284,7 +4335,12 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
               break;
             }
 
+            default:
+              this->print_bytes (this->err_fp, "string fmt error, awaiting a string\n");
+              err = LA_ERR_SYNTAX;
+              goto theend;
           }
+
           break;
 
         case 'p':
@@ -4299,12 +4355,31 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           break;
 
         case 'o':
-          String.append_with_fmt (str, "0%o", AS_INT(value));
+          switch (value.type) {
+            case INTEGER_TYPE:
+              String.append_with_fmt (str, "0%o", AS_INT(value));
+              break;
+
+            default:
+              this->print_bytes (this->err_fp, "string fmt error, awaiting an integer\n");
+              err = LA_ERR_SYNTAX;
+              goto theend;
+          }
+
           break;
 
         case 'x':
-          String.append_with_fmt (str, "0x%x", AS_INT(value));
-          break;
+          switch (value.type) {
+            case INTEGER_TYPE:
+              String.append_with_fmt (str, "0x%x", AS_INT(value));
+              break;
+
+            default:
+              this->print_bytes (this->err_fp, "string fmt error, awaiting an integer\n");
+              err = LA_ERR_SYNTAX;
+              goto theend;
+           }
+           break;
 
         case 'f':
           switch (value.type) {
@@ -4313,7 +4388,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
               this->tokenValue = value;
               err = la_parse_array_get (this, &v);
               if (err isnot LA_OK) {
-                this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
+                this->print_bytes (this->err_fp, "string fmt error, awaiting an array\n");
                 err = LA_ERR_SYNTAX;
                 goto theend;
               }
@@ -4324,15 +4399,21 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
                   break;
 
                 default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting number type\n");
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting a number\n");
                   err = LA_ERR_SYNTAX;
                   goto theend;
               }
               break;
             }
 
-          default:
+          case NUMBER_TYPE:
             String.append_with_fmt (str, "%.15f", AS_NUMBER(value));
+            break;
+
+            default:
+              this->print_bytes (this->err_fp, "string fmt error, awaiting a number\n");
+              err = LA_ERR_SYNTAX;
+              goto theend;
           }
 
           break;
@@ -4356,7 +4437,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
                   break;
 
                 default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting an integer\n");
                   err = LA_ERR_SYNTAX;
                   goto theend;
 
@@ -4369,7 +4450,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
               this->tokenValue = value;
               err = la_string_get (this, &v);
               if (err isnot LA_OK) {
-                this->print_bytes (this->err_fp, "string fmt error, awaiting string\n");
+                this->print_bytes (this->err_fp, "string fmt error, awaiting a string\n");
                 err = LA_ERR_SYNTAX;
                 goto theend;
               }
@@ -4380,15 +4461,21 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
                   break;
 
                 default:
-                  this->print_bytes (this->err_fp, "string fmt error, awaiting integer type\n");
+                  this->print_bytes (this->err_fp, "string fmt error, awaiting an integer\n");
                   err = LA_ERR_SYNTAX;
                   goto theend;
               }
               break;
             }
 
+          case INTEGER_TYPE:
+            String.append_with_fmt (str, "%d", AS_INT(value));
+            break;
+
           default:
-          String.append_with_fmt (str, "%d", AS_INT(value));
+            this->print_bytes (this->err_fp, "string fmt error, awaiting an integer\n");
+            err = LA_ERR_SYNTAX;
+            goto theend;
         }
       }
 
@@ -5328,7 +5415,7 @@ static struct def {
   { "notok",       INTEGER_TYPE,  INT(-1) },
   { "true",        INTEGER_TYPE,  INT(1) },
   { "false",       INTEGER_TYPE,  INT(0) },
-  { "none",        NONE_TYPE,     NONE },
+  { "null",        NONE_TYPE,     NONE },
   { NULL,          NONE_TYPE,     NONE_VALUE }
 };
 

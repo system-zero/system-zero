@@ -10,7 +10,7 @@ A very small yet another programming language (yala) that compiles in C.
   var double = 1.1
 
   - a variable should be initialized at declaration time (in absence of a useful
-    value, it can be initialized as `none`).
+    value, it can be initialized as `null`).
 
 # Function declaration
 
@@ -302,7 +302,7 @@ A very small yet another programming language (yala) that compiles in C.
 # var         -  variable definition
 # const       -  constant definition
 #                can not change state since initialization; an uninitialized
-#                object is considered the one that has a value of `none`
+#                object is considered the one that has a value of `null`
 # func        -  function definition
 # lambda      -  lambda function
 # array       -  array definition
@@ -394,7 +394,7 @@ A very small yet another programming language (yala) that compiles in C.
 # notok      -  -1
 # true       -  1
 # false      -  0
-# none       -  (void *) 0
+# null       -  (void *) 0
 #
 # FILE Pointers Of Standard Streams.
 # stdout
@@ -449,7 +449,7 @@ A very small yet another programming language (yala) that compiles in C.
 
 # Comparisons.
 
-  - a value of `none` it is the only that can be compared with all the other
+  - a value of `null` it is the only that can be compared with all the other
     types for truethness
 
   - an ArrayType can be compared also with only other arrays
@@ -467,7 +467,7 @@ A very small yet another programming language (yala) that compiles in C.
 
 # Types
 
-  NoneType    : (void *) 0 (declared as `none`)
+  NoneType    : (void *) 0 (declared as `null`)
   NumberType  : double
   IntegerType : integer (wide as ptrdiff_t)
   StringType  : string type (container that holds C strings)
