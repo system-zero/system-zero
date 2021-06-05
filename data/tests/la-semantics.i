@@ -738,7 +738,7 @@ func test_array (length) {
 
   array map marnil[3] = [{"A" : 1}, null, {"b" : 3}]
   assert_true ("testing map array with a null element",
-      marnil[1] is null and typeof (marnil[1]) is NoneType)
+      marnil[1] is null and typeof (marnil[1]) is NullType)
 
   array string anil[3] = ["a", null, "b"]
   assert_true ("testing string array with a null element", anil[1] is null)
@@ -863,8 +863,8 @@ func types () {
 
   var type = null
 
-  assert_true ("testing NoneType[s]", typeof (type) is NoneType and
-     typeAsString (null) is "NoneType")
+  assert_true ("testing NullType[s]", typeof (type) is NullType and
+     typeAsString (null) is "NullType")
   type = typeof (str)
   assert_true ("testing StringType[s]", type is StringType and
      typeAsString (str) is "StringType")

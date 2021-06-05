@@ -369,8 +369,7 @@ A very small yet another programming language (yala) that compiles in C.
 # typeof            -  type of a value
 #                      args: object
 #                      Type can be any of the followings:
-#                        Integer|Number|String|Array|Map|Object|
-#                        Function|None)Type
+#                        (Integer|Number|String|Array|Map|Object|Function|Null)Type
 # typeAsString      -  type of a value as string represantation
 #                      args: object
 # typeofArray       -  type of an array value
@@ -467,7 +466,7 @@ A very small yet another programming language (yala) that compiles in C.
 
 # Types
 
-  NoneType    : (void *) 0 (declared as `null`)
+  NullType    : (void *) 0 (declared as `null`)
   NumberType  : double
   IntegerType : integer (wide as ptrdiff_t)
   StringType  : string type (container that holds C strings)

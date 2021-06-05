@@ -17,7 +17,7 @@ typedef integer     memsize;
 typedef integer     pointer;
 typedef string_t    string;
 
-#define NONE_TYPE      0
+#define NULL_TYPE      0
 #define NUMBER_TYPE    (1 << 0)
 #define INTEGER_TYPE   (1 << 1)
 #define FUNCPTR_TYPE   (1 << 2)
@@ -32,7 +32,7 @@ struct ValueType {
     number   asNumber;
     integer  asInteger;
     string*  asString;
-     void *  asNone;
+     void *  asNull;
   };
 
   int type;
@@ -98,8 +98,8 @@ typedef ValueType VALUE;
 #define AS_VOID_PTR(__v__) (void *) AS_PTR(__v__)
 #define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
 
-#define AS_NONE(__v__) __v__.asNone
-#define    NONE (VALUE) {.type = NONE_TYPE, .refcount = 0, .asNone = (void *) 0, .sym = NULL}
+#define AS_NONE(__v__) __v__.asNull
+#define    NONE (VALUE) {.type = NULL_TYPE, .refcount = 0, .asNull = (void *) 0, .sym = NULL}
 
 #define AS_MAP(__v__) (Vmap_t *) AS_PTR(__v__)
 #define    MAP(__v__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __v__, .refcount = 0, .sym = NULL}

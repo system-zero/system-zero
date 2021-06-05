@@ -748,7 +748,7 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
     case STRING_TYPE:  String.append_with_len (buf, "StringType",  10); break;
     case OBJECT_TYPE:  String.append_with_len (buf, "ObjectType",  10); break;
     case ARRAY_TYPE:   String.append_with_len (buf, "ArrayType",    9); break;
-    case NONE_TYPE:    String.append_with_len (buf, "NoneType",     8); break;
+    case NULL_TYPE:    String.append_with_len (buf, "NullType",     8); break;
     case MAP_TYPE:     String.append_with_len (buf, "MapType",      7); break;
 
     default:
@@ -787,7 +787,7 @@ static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, V
 static VALUE la_fclose (la_t *this, VALUE fp_val) {
   VALUE result = INT(LA_NOTOK);
 
-  if (fp_val.type is NONE_TYPE) return result;
+  if (fp_val.type is NULL_TYPE) return result;
 
   FILE *fp = AS_FILEPTR(fp_val);
   if (NULL is fp) {
@@ -805,7 +805,7 @@ static VALUE la_fclose (la_t *this, VALUE fp_val) {
 static VALUE la_fflush (la_t *this, VALUE fp_val) {
   VALUE result = INT(LA_NOTOK);
 
-  if (fp_val.type is NONE_TYPE) return result;
+  if (fp_val.type is NULL_TYPE) return result;
 
   FILE *fp = AS_FILEPTR(fp_val);
   if (NULL is fp) return result;
@@ -1840,7 +1840,7 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
 
     if (err isnot LA_OK) return err;
 
-    if (val.type isnot MAP_TYPE and val.type isnot NONE_TYPE)
+    if (val.type isnot MAP_TYPE and val.type isnot NULL_TYPE)
       return this->syntax_error (this, "error while setting Map array, awaiting a map or null");
 
     m_ar[idx] = (val.type is MAP_TYPE) ? AS_MAP(val) : NULL;
@@ -1879,7 +1879,7 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
         break;
       }
 
-      case NONE_TYPE:
+      case NULL_TYPE:
         ifnot (NULL is s_ar[idx]) {
           string *item = s_ar[idx];
           String.release (item);
@@ -2337,7 +2337,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, funT *scope) {
   switch (val->type) {
     case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
     case STRING_TYPE: val->asString  = v.asString;  break;
-    case NONE_TYPE  : val->asNone    = v.asNone;    break;
+    case NULL_TYPE  : val->asNull    = v.asNull;    break;
     default:          val->asInteger = v.asInteger; break;
   }
 
@@ -2367,7 +2367,7 @@ static void *la_copy_map_cb (void *value, void *mapval) {
     case MAP_TYPE   : val->asInteger = AS_PTR(la_copy_value (*v));    break;
     case ARRAY_TYPE : val->asInteger = AS_PTR(la_copy_value(*v));     break;
     case NUMBER_TYPE: val->asNumber  = v->asNumber;                   break;
-    case NONE_TYPE  : val->asNone    = v->asNone;                     break;
+    case NULL_TYPE  : val->asNull    = v->asNull;                     break;
     default         : val->asInteger = v->asInteger;                  break;
   }
 
@@ -3153,7 +3153,7 @@ do_token:
       ifnot (NULL is sym)
         return this->syntax_error (this, "can not redeclare a symbol in this scope");
       else if (is_const) {
-        type = NONE_TYPE;
+        type = NULL_TYPE;
         v = NONE;
       }
 
@@ -3195,7 +3195,7 @@ do_token:
       }
 
       if (symbol->is_const)
-        if (symbol->value.type isnot NONE_TYPE)
+        if (symbol->value.type isnot NULL_TYPE)
           return this->syntax_error (this, "can not reassign to a constant");
 
       ptr += len;
@@ -3271,7 +3271,7 @@ do_token:
         default: return this->syntax_error (this, "unknown operator");
       }
 
-      if (result.type is NONE_TYPE)
+      if (result.type is NULL_TYPE)
         return this->syntax_error (this, "unxpected operation");
 
       assign_and_return:
@@ -4307,7 +4307,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
 
               break;
 
-            case NONE_TYPE:
+            case NULL_TYPE:
               String.append_with_len (str, "(null)", 6);
               break;
 
@@ -4780,7 +4780,7 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
           result = INT(AS_NUMBER(x) == AS_NUMBER(y)); goto theend;
         case INTEGER_TYPE:
           result = INT(AS_NUMBER(x) == AS_INT(y)); goto theend;
-        case NONE_TYPE: goto theend;
+        case NULL_TYPE: goto theend;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
@@ -4796,7 +4796,7 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
           result = INT(AS_INT(x) == AS_NUMBER(y)); goto theend;
         case INTEGER_TYPE:
           result = INT(AS_INT(x) == AS_INT(y)); goto theend;
-        case NONE_TYPE: goto theend;
+        case NULL_TYPE: goto theend;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
@@ -4811,7 +4811,7 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
         case STRING_TYPE:
           result = INT(Cstring.eq (AS_STRING_BYTES(x), AS_STRING_BYTES(y)));
           goto theend;
-        case NONE_TYPE: goto theend;
+        case NULL_TYPE: goto theend;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
@@ -4826,7 +4826,7 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
         case ARRAY_TYPE:
           result = INT(la_array_eq (x, y));
           goto theend;
-        case NONE_TYPE: goto theend;
+        case NULL_TYPE: goto theend;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
@@ -4836,9 +4836,9 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
       }
       goto theend;
 
-    case NONE_TYPE:
+    case NULL_TYPE:
       switch (y.type) {
-        case NONE_TYPE: result = INT(1); goto theend;
+        case NULL_TYPE: result = INT(1); goto theend;
         default: goto theend;
       }
 
@@ -5403,7 +5403,7 @@ static struct def {
   { "and",     BINOP(5),          PTR(la_logical_and) },
   { "||",      BINOP(5),          PTR(la_logical_or) },
   { "or",      BINOP(5),          PTR(la_logical_or) },
-  { "NoneType",    INTEGER_TYPE,  INT(NONE_TYPE) },
+  { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
   { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
   { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
@@ -5415,8 +5415,8 @@ static struct def {
   { "notok",       INTEGER_TYPE,  INT(-1) },
   { "true",        INTEGER_TYPE,  INT(1) },
   { "false",       INTEGER_TYPE,  INT(0) },
-  { "null",        NONE_TYPE,     NONE },
-  { NULL,          NONE_TYPE,     NONE_VALUE }
+  { "null",        NULL_TYPE,     NONE },
+  { NULL,          NULL_TYPE,     NONE_VALUE }
 };
 
 struct la_def_fun_t {
@@ -5444,7 +5444,7 @@ struct la_def_fun_t {
   { "term_new",         PTR(la_term_new), 0},
   { "term_raw_mode",    PTR(la_term_raw_mode), 1},
   { "term_sane_mode",   PTR(la_term_sane_mode), 1},
-  { NULL,               NONE_VALUE, NONE_TYPE},
+  { NULL,               NONE_VALUE, NULL_TYPE},
 };
 
 static int la_std_def (la_t *this, la_opts opts) {
