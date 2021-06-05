@@ -1127,7 +1127,7 @@ static VALUE la_v_set_frame_log (la_t *la, VALUE v_value, VALUE fr_value, VALUE 
   vwm_frame *frame = AS_F(fr_value);
   int val = AS_INT(val_value);
 
-  if (fn_value.type is NONE_TYPE) {
+  if (fn_value.type is NULL_TYPE) {
     Vframe.set.log (frame, NULL, val);
     return v;
   }
@@ -1267,7 +1267,6 @@ static VALUE la_v_main (la_t *la, VALUE v_value) {
   return v;
 }
 
-#define NONE_VALUE INT(0)
 struct v_lafun_t {
   const char *name;
   VALUE val;
@@ -1294,7 +1293,7 @@ struct v_lafun_t {
   { "v_win_set_current_at",   PTR(la_v_win_set_current_at), 3},
   { "v_new_win",              PTR(la_v_new_win), 3},
   { "v_main",                 PTR(la_v_main), 1},
-  { NULL, NONE_VALUE, 0}
+  { NULL, NULL_VALUE, 0}
 };
 
 static int v_la_define_funs_cb (la_t *this) {

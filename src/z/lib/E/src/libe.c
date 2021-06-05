@@ -13659,7 +13659,7 @@ struct lafun_t {
   { "win_append_buf",        PTR(la_win_append_buf), 2},
   { "win_set_current_buf",   PTR(la_win_set_current_buf), 3},
   { "win_get_current_buf",   PTR(la_win_get_current_buf), 1},
-  { NULL, INT(0), 0}
+  { NULL, NULL_VALUE, 0}
 };
 
 static int la_define_funs_default_cb (la_t *this) {

@@ -98,8 +98,14 @@ typedef ValueType VALUE;
 #define AS_VOID_PTR(__v__) (void *) AS_PTR(__v__)
 #define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
 
-#define AS_NONE(__v__) __v__.asNull
-#define    NONE (VALUE) {.type = NULL_TYPE, .refcount = 0, .asNull = (void *) 0, .sym = NULL}
+#define AS_NULL(__v__) __v__.asNull
+#define    NULL_VALUE (VALUE) {.type = NULL_TYPE, .refcount = 0, .asNull = (void *) 0, .sym = NULL}
+
+#define  TRUE_VALUE INT(1)
+#define FALSE_VALUE INT(0)
+
+#define    OK_VALUE INT(0)
+#define NOTOK_VALUE INT(-1)
 
 #define AS_MAP(__v__) (Vmap_t *) AS_PTR(__v__)
 #define    MAP(__v__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __v__, .refcount = 0, .sym = NULL}

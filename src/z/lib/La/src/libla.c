@@ -125,15 +125,23 @@
 #define LA_TOKEN_DOT        '.'
 #define LA_TOKEN_COMMA      ','
 #define LA_TOKEN_COMMENT    '#'
+#define LA_TOKEN_UNARY      '~'
 #define LA_TOKEN_DQUOTE     '"'
 #define LA_TOKEN_SQUOTE     '\''
 #define LA_TOKEN_STAR       '*'
-#define LA_TOKEN_ASSIGN     '='
 #define LA_TOKEN_NL         '\n'
 #define LA_TOKEN_SLASH      '\\'
-//#define LA_TOKEN_LINE_CONT  LA_TOKEN_SLASH
 #define LA_TOKEN_ESCAPE_CHR LA_TOKEN_SLASH
-#define LA_TOKEN_NONE       '0'
+#define LA_TOKEN_NULL       '0'
+#define LA_TOKEN_ASSIGN      1000
+#define LA_TOKEN_ASSIGN_APP  1001
+#define LA_TOKEN_ASSIGN_SUB  1002
+#define LA_TOKEN_ASSIGN_DIV  1003
+#define LA_TOKEN_ASSIGN_MUL  1004
+#define LA_TOKEN_ASSIGN_MOD  1005
+#define LA_TOKEN_ASSIGN_BAR  1006
+#define LA_TOKEN_ASSIGN_AND  1007
+#define LA_TOKEN_ASSIGN_LAST_VAL LA_TOKEN_ASSIGN_AND
 #define LA_TOKEN_EOF        -1
 
 typedef struct la_string {
@@ -838,7 +846,7 @@ static VALUE la_format (la_t *this, VALUE v_fmt) {
   if (err isnot LA_OK) {
     this->CFuncError = err;
     String.release (str);
-    v = NONE;
+    v = NULL_VALUE;
     return v;
   }
 
@@ -859,7 +867,7 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
   FILE *fp = fopen (fn, mode);
   if (NULL is fp) {
     this->Errno = errno;
-    VALUE v = NONE;
+    VALUE v = NULL_VALUE;
     return v;
   }
 
@@ -963,7 +971,7 @@ static VALUE string_release (VALUE value) {
 
   String.release (AS_STRING(value));
 
-  value = NONE;
+  value = NULL_VALUE;
 
 theend:
   value.refcount--;
@@ -984,7 +992,7 @@ static VALUE object_release (la_t *this, VALUE value) {
 
   free (o);
 
-  value = NONE;
+  value = NULL_VALUE;
 
 theend:
   value.refcount--;
@@ -1008,7 +1016,7 @@ static VALUE la_free (la_t *this, VALUE value) {
 
   ifnot (NULL is obj) {
     free (obj);
-    value = NONE;
+    value = NULL_VALUE;
   }
 
   obj = NULL;
@@ -1587,8 +1595,7 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
   if (0 > idx) idx += str->num_bytes;
   if (idx < 0 or (size_t) idx >= str->num_bytes) return la_out_of_bounds (this);
 
-  if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
-      la_StringGetLen (this->curStrToken) isnot 1)
+  if (this->curToken isnot LA_TOKEN_ASSIGN)
     return this->syntax_error (this, "syntax error while setting string, awaiting =");
 
   la_next_token (this);
@@ -1646,7 +1653,7 @@ static VALUE array_release (VALUE value) {
   free ((void *) array);
   array = NULL;
 
-  value = NONE;
+  value = NULL_VALUE;
 
 theend:
   value.refcount--;
@@ -2058,8 +2065,7 @@ static int la_parse_array_def (la_t *this) {
       ar, 0);
   this->scopeState &= ~PUBLIC_SCOPE;
 
-  if (la_StringGetPtr (this->curStrToken)[0] is LA_TOKEN_ASSIGN and
-      la_StringGetLen (this->curStrToken) is 1) {
+  if (this->curToken is LA_TOKEN_ASSIGN) {
     VALUE at_idx = INT(0);
     VALUE last_idx = INT(-1);
     return la_array_assign (this, &ar, at_idx, last_idx, 0);
@@ -2093,8 +2099,7 @@ static int la_parse_array_set (la_t *this) {
 
       c = la_next_token (this);
 
-      if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
-          la_StringGetLen (this->curStrToken) isnot 1)
+      if (this->curToken isnot LA_TOKEN_ASSIGN)
         return this->syntax_error (this, "syntax error while setting array, awaiting =");
 
       VALUE ar_val;
@@ -2172,8 +2177,7 @@ static int la_parse_array_set (la_t *this) {
     }
   }
 
-  if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
-      la_StringGetLen (this->curStrToken) isnot 1)
+  if (this->curToken isnot LA_TOKEN_ASSIGN)
     return this->syntax_error (this, "syntax error while setting array, awaiting =");
 
   ifnot (is_index)
@@ -2219,14 +2223,14 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
         *vp = STRING(ary[idx]);
         vp->sym = ar.sym;
       } else
-        *vp = NONE;
+        *vp = NULL_VALUE;
 
     } else if (array->type is MAP_TYPE) {
       Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
       if (ary[idx] isnot NULL)
         *vp = MAP(ary[idx]);
       else
-        *vp = NONE;
+        *vp = NULL_VALUE;
 
     } else
       return la_unknown_type (this);
@@ -2555,9 +2559,7 @@ static int la_parse_map_set (la_t *this) {
     return err;
   }
 
-  if (la_StringGetPtr (this->curStrToken)[0] isnot LA_TOKEN_ASSIGN or
-      la_StringGetLen (this->curStrToken) isnot 1) {
-
+  if (this->curToken isnot LA_TOKEN_ASSIGN) {
     ifnot (Vmap.key_exists (map, key))
       return this->syntax_error (this, "syntax error while setting map, awaiting =");
 
@@ -2771,7 +2773,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     }
 
     this->didReturn = 0;
-    uf->result = NONE;
+    uf->result = NULL_VALUE;
 
     la_fun_stack_push (this, this->curScope);
 
@@ -2793,7 +2795,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
       sym_t *sym = uf->result.sym;
       this->curState |= FUNC_CALL_RESULT_IS_MMT;
       ifnot (NULL is sym) {
-        VALUE none = NONE;
+        VALUE none = NULL_VALUE;
         sym->value = none;
         uf->result.sym = NULL;
       }
@@ -2808,16 +2810,16 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
         if (sym isnot NULL and uf_sym->scope isnot sym->scope) {
           sym->value = uf_val;
-          VALUE non = NONE;
+          VALUE non = NULL_VALUE;
           uf_sym->value = non;
         } else {
           if (v.type is STRING_TYPE and
               ns_is_malloced_string (this->curScope, AS_STRING(v))) {
-            VALUE non = NONE;
+            VALUE non = NULL_VALUE;
             uf_sym->value = non;
           }
           if (v.type is MAP_TYPE and v.sym isnot NULL) {
-            VALUE non = NONE;
+            VALUE non = NULL_VALUE;
             uf_sym->value = non;
           }
         }
@@ -3154,7 +3156,7 @@ do_token:
         return this->syntax_error (this, "can not redeclare a symbol in this scope");
       else if (is_const) {
         type = NULL_TYPE;
-        v = NONE;
+        v = NULL_VALUE;
       }
 
       this->tokenSymbol = la_define_symbol (this, scope, key, type, v, is_const);
@@ -3175,19 +3177,12 @@ do_token:
         if (la_peek_char (this, 0) is LA_TOKEN_INDEX_OPEN)
           return la_string_set_char (this, symbol->value, symbol->is_const);
 
-      c = la_next_token (this);
+      la_next_token (this);
 
-      const char *ptr = la_StringGetPtr (this->curStrToken);
-      int len = la_StringGetLen (this->curStrToken);
-      if (len > 2 or len is 0)
-        return this->syntax_error (this, "expected [+/*-]=");
-
-      VALUE result;
-      int operator = *ptr;
-      if (operator isnot LA_TOKEN_ASSIGN) {
-        if (*(ptr + 1) isnot LA_TOKEN_ASSIGN)
-          return this->syntax_error (this, "expected =");
-      }
+      int token = this->curToken;
+      if (token < LA_TOKEN_ASSIGN and
+          token > LA_TOKEN_ASSIGN_LAST_VAL)
+        return this->syntax_error (this, "expected assignment operator");
 
       ifnot (symbol) {
         la_print_lastring (this, this->err_fp, name);
@@ -3198,9 +3193,8 @@ do_token:
         if (symbol->value.type isnot NULL_TYPE)
           return this->syntax_error (this, "can not reassign to a constant");
 
-      ptr += len;
+      const char *ptr = la_StringGetPtr (this->parsePtr);
       while (*ptr is ' ') ptr++;
-      int is_un = *ptr is '~';
 
       if (Cstring.eq_n (ptr, "func", 4) and 0 is is_identifier (*(ptr + 4))) {
         la_release_sym (Vmap.pop (scope->symbols, sym_key (this, name)));
@@ -3211,8 +3205,9 @@ do_token:
         return err;
       }
 
-      la_next_token (this);
+      c = la_next_token (this);
 
+      int is_un = c is LA_TOKEN_UNARY;
       if (is_un)
         la_next_token (this);
 
@@ -3247,27 +3242,29 @@ do_token:
 
       if (symbol->value.type is STRING_TYPE)
         if (Cstring.eq (symbol->scope->funname, scope->funname))
-          if (operator is LA_TOKEN_ASSIGN)
+          if (token is LA_TOKEN_ASSIGN)
             la_free (this, symbol->value);
 
-      switch (operator) {
+      VALUE result;
+
+      switch (token) {
         case LA_TOKEN_ASSIGN:
           val.sym = symbol;
           result = val;
           goto assign_and_return;
 
-        case '+':
+        case LA_TOKEN_ASSIGN_APP:
           this->objectState |= OBJECT_APPEND;
           result = la_add (this, symbol->value, val);
           this->objectState &= ~OBJECT_APPEND;
           break;
 
-        case '-': result = la_sub  (this, symbol->value, val); break;
-        case '/': result = la_div  (this, symbol->value, val); break;
-        case '*': result = la_mul  (this, symbol->value, val); break;
-        case '%': result = la_mod  (this, symbol->value, val); break;
-        case '|': result = la_bset (this, symbol->value, val); break;
-        case '&': result = la_bnot (this, symbol->value, val); break;
+        case LA_TOKEN_ASSIGN_SUB: result = la_sub  (this, symbol->value, val); break;
+        case LA_TOKEN_ASSIGN_DIV: result = la_div  (this, symbol->value, val); break;
+        case LA_TOKEN_ASSIGN_MUL: result = la_mul  (this, symbol->value, val); break;
+        case LA_TOKEN_ASSIGN_MOD: result = la_mod  (this, symbol->value, val); break;
+        case LA_TOKEN_ASSIGN_BAR: result = la_bset (this, symbol->value, val); break;
+        case LA_TOKEN_ASSIGN_AND: result = la_bnot (this, symbol->value, val); break;
         default: return this->syntax_error (this, "unknown operator");
       }
 
@@ -4771,7 +4768,7 @@ static int la_define (la_t *this, const char *key, int typ, VALUE val) {
 
 static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
   (void) this;
-  VALUE result = INT(0);
+  VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -4838,7 +4835,7 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
 
     case NULL_TYPE:
       switch (y.type) {
-        case NULL_TYPE: result = INT(1); goto theend;
+        case NULL_TYPE: result = TRUE_VALUE; goto theend;
         default: goto theend;
       }
 
@@ -4864,7 +4861,7 @@ static VALUE la_ne (la_t *this, VALUE x, VALUE y) {
 
 static VALUE la_lt (la_t *this, VALUE x, VALUE y) {
   (void) this;
-  VALUE result = INT(0);
+  VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -4891,7 +4888,7 @@ theend:
 
 static VALUE la_le (la_t *this, VALUE x, VALUE y) {
   (void) this;
-  VALUE result = INT(0);
+  VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -4918,7 +4915,7 @@ theend:
 
 static VALUE la_gt (la_t *this, VALUE x, VALUE y) {
   (void) this;
-  VALUE result = INT(0);
+  VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -4945,7 +4942,7 @@ theend:
 
 static VALUE la_ge (la_t *this, VALUE x, VALUE y) {
   (void) this;
-  VALUE result = INT(0);
+  VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -4990,7 +4987,7 @@ theend:
 }
 
 static VALUE la_add (la_t *this, VALUE x, VALUE y) {
-  VALUE result = NONE;
+  VALUE result = NULL_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -5281,7 +5278,7 @@ theend:
 
 static VALUE la_logical_and (la_t *this, VALUE x, VALUE y) {
   (void) this;
-  VALUE result = INT(0);
+  VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -5309,7 +5306,7 @@ theend:
 
 static VALUE la_logical_or (la_t *this, VALUE x, VALUE y) {
   (void) this;
-  VALUE result = INT(0);
+  VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
@@ -5346,25 +5343,17 @@ static VALUE la_bool (la_t *this, VALUE value) {
   return result;
 }
 
-#define NONE_VALUE INT(0)
 static struct def {
   const char *name;
   int toktype;
   VALUE val;
 } la_defs[] = {
-  { "var",     LA_TOKEN_VARDEF,   NONE_VALUE },
-  { "const",   LA_TOKEN_CONSTDEF, NONE_VALUE },
-  { "else",    LA_TOKEN_ELSE,     NONE_VALUE },
-  { "elseif",  LA_TOKEN_ELSEIF,   NONE_VALUE },
-  { "break",   LA_TOKEN_BREAK,    NONE_VALUE },
-  { "continue",LA_TOKEN_CONTINUE, NONE_VALUE },
-  { "=",       LA_TOKEN_NONE,     NONE_VALUE },
-  { "+=",      LA_TOKEN_NONE,     NONE_VALUE },
-  { "-=",      LA_TOKEN_NONE,     NONE_VALUE },
-  { "/=",      LA_TOKEN_NONE,     NONE_VALUE },
-  { "*=",      LA_TOKEN_NONE,     NONE_VALUE },
-  { "&=",      LA_TOKEN_NONE,     NONE_VALUE },
-  { "|=",      LA_TOKEN_NONE,     NONE_VALUE },
+  { "var",     LA_TOKEN_VARDEF,   NULL_VALUE },
+  { "const",   LA_TOKEN_CONSTDEF, NULL_VALUE },
+  { "else",    LA_TOKEN_ELSE,     NULL_VALUE },
+  { "elseif",  LA_TOKEN_ELSEIF,   NULL_VALUE },
+  { "break",   LA_TOKEN_BREAK,    NULL_VALUE },
+  { "continue",LA_TOKEN_CONTINUE, NULL_VALUE },
   { "if",      LA_TOKEN_IF,       PTR(la_parse_if) },
   { "ifnot",   LA_TOKEN_IFNOT,    PTR(la_parse_if) },
   { "while",   LA_TOKEN_WHILE,    PTR(la_parse_while) },
@@ -5403,6 +5392,13 @@ static struct def {
   { "and",     BINOP(5),          PTR(la_logical_and) },
   { "||",      BINOP(5),          PTR(la_logical_or) },
   { "or",      BINOP(5),          PTR(la_logical_or) },
+  { "=",       LA_TOKEN_ASSIGN,     NULL_VALUE },
+  { "+=",      LA_TOKEN_ASSIGN_APP, NULL_VALUE },
+  { "-=",      LA_TOKEN_ASSIGN_SUB, NULL_VALUE },
+  { "/=",      LA_TOKEN_ASSIGN_DIV, NULL_VALUE },
+  { "*=",      LA_TOKEN_ASSIGN_MUL, NULL_VALUE },
+  { "&=",      LA_TOKEN_ASSIGN_AND, NULL_VALUE },
+  { "|=",      LA_TOKEN_ASSIGN_BAR, NULL_VALUE },
   { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
   { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
@@ -5411,12 +5407,12 @@ static struct def {
   { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
   { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
   { "MapType",     INTEGER_TYPE,  INT(MAP_TYPE) } ,
-  { "ok",          INTEGER_TYPE,  INT(0) },
-  { "notok",       INTEGER_TYPE,  INT(-1) },
-  { "true",        INTEGER_TYPE,  INT(1) },
-  { "false",       INTEGER_TYPE,  INT(0) },
-  { "null",        NULL_TYPE,     NONE },
-  { NULL,          NULL_TYPE,     NONE_VALUE }
+  { "ok",          INTEGER_TYPE,  OK_VALUE },
+  { "notok",       INTEGER_TYPE,  NOTOK_VALUE },
+  { "true",        INTEGER_TYPE,  TRUE_VALUE },
+  { "false",       INTEGER_TYPE,  FALSE_VALUE },
+  { "null",        NULL_TYPE,     NULL_VALUE },
+  { NULL,          NULL_TYPE,     NULL_VALUE }
 };
 
 struct la_def_fun_t {
@@ -5444,7 +5440,7 @@ struct la_def_fun_t {
   { "term_new",         PTR(la_term_new), 0},
   { "term_raw_mode",    PTR(la_term_raw_mode), 1},
   { "term_sane_mode",   PTR(la_term_sane_mode), 1},
-  { NULL,               NONE_VALUE, NULL_TYPE},
+  { NULL,               NULL_VALUE, NULL_TYPE},
 };
 
 static int la_std_def (la_t *this, la_opts opts) {
