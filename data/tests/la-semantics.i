@@ -180,16 +180,11 @@ func semantics () {
 
   assert_true ("testing lambda", retval is 200)
 
-  retval = lambda ((x, y) {
-    if (x <= 100) {return x * 2} else {return y * 2}}) (101, 200)
-
-  assert_true ("testing single lambda", retval is 400)
-
   retval = lambda ((x) {return x * 2}) (10) +
            lambda ((y) {return y / 2}) (20) +
            lambda ((z) {return z % 2}) (21) + 11
 
-  assert_true ("testing lambdas", retval is 42)
+  assert_true ("testing sequential lambdas", retval is 42)
 
   retval = lambda ((x, y) {
     var xl = x + y
@@ -587,6 +582,27 @@ func semantics () {
   assert_true ("testing expressions to the format function", "42" is fmtexp)
 
   assert_true ("testing stdin and fileno", 0 is fileno (stdin))
+
+  func reassingment () {
+    var s = {"1" : 1}
+
+    s = 2
+    assert_true ("testing reassingment map to integer", s is 2)
+
+    s = {"k" : 3}
+    assert_true ("testing reassingment integer to map", s.k is 3)
+
+    s = [4]
+    assert_true ("testing reassingment map to array", s[0] is 4)
+
+    s = "string"
+    assert_true ("testing reassingment array to string", s is "string")
+
+    s = {"k" : "stringkey"}
+    assert_true ("testing reassingment string to map", s.k is "stringkey")
+  }
+
+  reassingment ()
 
   public var v_visible = "visible variable"
 

@@ -66,6 +66,7 @@
 #define IDENT_LEAD_CHAR_CAN_BE_DIGIT  (1 << 1)
 #define MMT_OBJECT                    (1 << 2)
 #define ASSIGNMENT_STATE              (1 << 3)
+#define OBJECT_MMT_REASSIGN           (1 << 4)
 
 #define PRIVATE_SCOPE                 (1 << 0)
 #define PUBLIC_SCOPE                  (1 << 1)
@@ -574,10 +575,7 @@ static int la_peek_char_nows (la_t *this, uint *n) {
   while (1) {
     c = la_peek_char (this, *n);
 
-    if (c is LA_TOKEN_EOF)
-      return LA_TOKEN_EOF;
-
-    if (0 is is_space (c) or c isnot '\n')
+    if (0 is is_space (c) and c isnot '\n')
       return c;
 
     *n += 1;
@@ -586,6 +584,10 @@ static int la_peek_char_nows (la_t *this, uint *n) {
   return LA_TOKEN_EOF;
 }
 
+static int la_next_char (la_t *this) {
+  uint n = 0;
+  return la_peek_char_nows (this, &n);
+}
 
 static void la_get_span (la_t *this, int (*testfn) (int)) {
   int c;
@@ -1146,7 +1148,6 @@ static int la_lambda (la_t *this) {
     (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
   la_ignore_ws (this);
-
   this->curFunDef = NULL;
 
   int err = la_parse_func_def (this);
@@ -1159,6 +1160,10 @@ static int la_lambda (la_t *this) {
   this->tokenValue = this->tokenSymbol->value;
 
   this->curFunName[0] = '\0';
+
+  if (this->curToken isnot LA_TOKEN_PAREN_CLOS)
+    return this->syntax_error (this, "awaiting a )");
+
   return (this->tokenSymbol->type & 0xff);
 }
 
@@ -1661,8 +1666,7 @@ theend:
 }
 
 static int la_get_anon_array (la_t *this, VALUE *vp) {
-  uint n = 0;
-  if (la_peek_char_nows (this, &n) is LA_TOKEN_INDEX_CLOS)
+  if (la_next_char (this) is LA_TOKEN_INDEX_CLOS)
     return this->syntax_error (this, "empty array");
 
   int err;
@@ -1673,7 +1677,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   int indtokopen = 1;
   int num_elem = 1;
 
-  n = 0;
+  int n = 0;
   while (1) {
     pc = c;
     c = la_peek_char (this, n++);
@@ -2075,12 +2079,28 @@ static int la_parse_array_def (la_t *this) {
 }
 
 static int la_parse_array_set (la_t *this) {
-  int err;
+  int c = la_next_char (this);
+
+  if (c is '=') {
+    VALUE v = this->tokenValue;
+    sym_t *sym = v.sym;
+    if (sym isnot NULL) {
+      sym->type = NULL_TYPE;
+      sym->value = NULL_VALUE;
+    }
+
+    array_release (v);
+
+    this->objectState |= OBJECT_MMT_REASSIGN;
+    return LA_OK;
+  }
+
   VALUE ix = INT(0);
 
   VALUE ary = this->tokenValue;
 
-  int c = la_next_token (this);
+  int err;
+  c = la_next_token (this);
 
   VALUE last_ix = INT(-1);
 
@@ -2307,8 +2327,9 @@ static void la_release_map_val (void *v) {
 
 static int map_set_rout (la_t *this, Vmap_t *map, char *key, funT *scope) {
   int err;
-  int c = la_next_token (this);
   VALUE v;
+
+  int c = la_next_token (this);
 
   if (c is LA_TOKEN_FUNCDEF) {
     Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
@@ -2518,7 +2539,23 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 static int la_parse_map_set (la_t *this) {
   Vmap_t *map = AS_MAP(this->tokenValue);
 
-  int c = la_next_token (this);
+  int c = la_next_char (this);
+
+  if (c is '=') {
+    VALUE v = this->tokenValue;
+    sym_t *sym = v.sym;
+    if (sym isnot NULL) {
+      sym->type = NULL_TYPE;
+      sym->value = NULL_VALUE;
+    }
+
+    Vmap.release (map);
+
+    this->objectState |= OBJECT_MMT_REASSIGN;
+    return LA_OK;
+  }
+
+  c = la_next_token (this);
 
   if (c isnot LA_TOKEN_DOT)
     return this->syntax_error (this, "awaiting .");
@@ -2663,6 +2700,12 @@ static int la_parse_string (la_t *this, la_string str) {
     }
 
     if (c < 0) break;
+
+    if (c is UFUNC_TYPE) {
+      c = la_next_char (this);
+      if (c isnot LA_TOKEN_PAREN_OPEN)
+        this->curToken = LA_TOKEN_VAR;
+    }
 
     r = la_parse_stmt (this);
 
@@ -2882,8 +2925,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
           if (c isnot LA_TOKEN_INDEX_CLOS)
             return this->syntax_error (this, "array expression, awaiting ]");
 
-          uint n = 0;
-          c = la_peek_char_nows (this, &n);
+          c = la_next_char (this);
 
           if (c is LA_TOKEN_INDEX_OPEN) {
             VALUE saved_val = *vp;
@@ -3025,6 +3067,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       if (err isnot LA_OK)
         return err;
       *vp = this->tokenValue;
+
       return err;
 
     case LA_TOKEN_STRING:
@@ -3129,7 +3172,7 @@ do_token:
     case LA_TOKEN_CONSTDEF: {
       int is_const = c is LA_TOKEN_CONSTDEF;
 
-      c = la_next_raw_token (this); // we want to get VAR_SYMBOL directly
+      c = la_next_raw_token (this);
 
       if (c isnot LA_TOKEN_SYMBOL)
         return this->syntax_error (this, "expected a symbol");
@@ -3196,16 +3239,16 @@ do_token:
       const char *ptr = la_StringGetPtr (this->parsePtr);
       while (*ptr is ' ') ptr++;
 
-      if (Cstring.eq_n (ptr, "func", 4) and 0 is is_identifier (*(ptr + 4))) {
-        la_release_sym (Vmap.pop (scope->symbols, sym_key (this, name)));
-        Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, la_StringGetPtr(name), la_StringGetLen(name));
-        la_next_token (this);
+      c = la_next_token (this);
+
+      if (c is LA_TOKEN_FUNCDEF) {
+        char *key = sym_key (this, name);
+        la_release_sym (Vmap.pop (scope->symbols, key));
+        Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, key, la_StringGetLen(name));
         err = la_parse_func_def (this);
         this->curFunName[0] = '\0';
         return err;
       }
-
-      c = la_next_token (this);
 
       int is_un = c is LA_TOKEN_UNARY;
       if (is_un)
@@ -3240,10 +3283,24 @@ do_token:
       } else
         symbol->type = val.type;
 
-      if (symbol->value.type is STRING_TYPE)
-        if (Cstring.eq (symbol->scope->funname, scope->funname))
-          if (token is LA_TOKEN_ASSIGN)
+      if (token is LA_TOKEN_ASSIGN) {
+        switch (symbol->value.type) {
+          case STRING_TYPE:
+            if (Cstring.eq (symbol->scope->funname, scope->funname))
+              la_free (this, symbol->value);
+            break;
+
+          default:
+            if (symbol->type & FUNCPTR_TYPE) {
+              funT *f = AS_FUNC_PTR(symbol->value);
+              fun_release (&f);
+              break;
+            }
+
             la_free (this, symbol->value);
+        }
+      }
+
 
       VALUE result;
 
@@ -3279,10 +3336,30 @@ do_token:
     }
 
     case LA_TOKEN_ARRAY:
-      return la_parse_array_set (this);
+      this->objectState &= ~OBJECT_MMT_REASSIGN;
+      err = la_parse_array_set (this);
+      if (err isnot LA_OK)
+        return err;
+
+      if (this->objectState & OBJECT_MMT_REASSIGN) {
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
+
+      return err;
 
     case LA_TOKEN_MAP:
-      return la_parse_map_set (this);
+      this->objectState &= ~OBJECT_MMT_REASSIGN;
+      err = la_parse_map_set (this);
+      if (err isnot LA_OK)
+        return err;
+
+      if (this->objectState & OBJECT_MMT_REASSIGN) {
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
+
+      return err;
 
     case LA_TOKEN_BUILTIN:
     case UFUNC_TYPE:
@@ -4143,7 +4220,7 @@ static int la_parse_func_def (la_t *this) {
   char *fn = NULL;
 
   ifnot (this->curFunName[0]) {
-    c = err = la_next_raw_token (this); // do not interpret the symbol
+    c = err = la_next_raw_token (this);
     if (c isnot LA_TOKEN_SYMBOL) {
       if (err is LA_ERR_SYNTAX)
         return err;
@@ -4199,7 +4276,6 @@ static int la_parse_func_def (la_t *this) {
   this->curFunDef = uf;
 
   la_next_token (this);
-
   return LA_OK;
 }
 
