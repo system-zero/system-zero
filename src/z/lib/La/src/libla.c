@@ -133,7 +133,7 @@
 #define LA_TOKEN_NL         '\n'
 #define LA_TOKEN_SLASH      '\\'
 #define LA_TOKEN_ESCAPE_CHR LA_TOKEN_SLASH
-#define LA_TOKEN_NULL       '0'
+//#define LA_TOKEN_NULL       '0'
 #define LA_TOKEN_ASSIGN      1000
 #define LA_TOKEN_ASSIGN_APP  1001
 #define LA_TOKEN_ASSIGN_SUB  1002
@@ -337,6 +337,7 @@ static ArrayType *array_copy (ArrayType *);
 static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
 static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static VALUE la_copy_map (VALUE);
+static int la_parse_map_get (la_t *, VALUE *);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -2214,51 +2215,88 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
   int c = la_next_token (this);
 
-  if (c is LA_TOKEN_INDEX_OPEN) {
-    VALUE ix;
-    this->curState |= INDEX_STATE;
-    int err = la_parse_primary (this, &ix);
-    this->curState &= ~INDEX_STATE;
-    if (err isnot LA_OK)
-      return err;
+  if (c isnot LA_TOKEN_INDEX_OPEN) {
+    *vp = ar;
+    return LA_OK;
+  }
 
-    integer idx = AS_INT(ix);
-    if (0 > idx)
-      idx += len;
+  VALUE ix;
+  this->curState |= INDEX_STATE;
+  int err = la_parse_primary (this, &ix);
+  this->curState &= ~INDEX_STATE;
+  if (err isnot LA_OK)
+    return err;
 
-    if (idx <= -1 or idx >= len)
-      return la_out_of_bounds (this);
+  integer idx = AS_INT(ix);
+  if (0 > idx)
+    idx += len;
 
-    if (array->type is INTEGER_TYPE) {
+  if (idx <= -1 or idx >= len)
+    return la_out_of_bounds (this);
+
+  switch (array->type) {
+    case INTEGER_TYPE: {
       integer *ary = (integer *) AS_ARRAY(array->value);
       *vp = INT(ary[idx]);
+      break;
+    }
 
-    } else if (array->type is NUMBER_TYPE) {
+    case NUMBER_TYPE: {
       number *ary = (number *) AS_ARRAY(array->value);
       *vp = NUMBER(ary[idx]);
+      break;
+    }
 
-    } else if (array->type is STRING_TYPE) {
+    case STRING_TYPE: {
       string **ary = (string **) AS_ARRAY(array->value);
       if (ary[idx] isnot NULL) {
         *vp = STRING(ary[idx]);
         vp->sym = ar.sym;
       } else
         *vp = NULL_VALUE;
+      break;
+    }
 
-    } else if (array->type is MAP_TYPE) {
+    case MAP_TYPE: {
       Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
       if (ary[idx] isnot NULL)
         *vp = MAP(ary[idx]);
       else
         *vp = NULL_VALUE;
+      break;
+    }
 
-    } else
+    default:
       return la_unknown_type (this);
 
-  } else {
-    // if no parens, then return the pointer to the array
-    // needed for passing to C functions
-    *vp = ar;
+  }
+
+  c = this->curToken;
+
+  if (c is LA_TOKEN_DOT) {
+    VALUE v = *vp;
+    if (v.type isnot MAP_TYPE)
+      return this->syntax_error (this, "not a map");
+    this->tokenValue = v;
+    la_unget_char (this);
+    return la_parse_map_get (this, vp);
+  }
+
+  if (c is LA_TOKEN_INDEX_OPEN) {
+    VALUE v = *vp;
+    switch (v.type) {
+      case STRING_TYPE:
+        this->tokenValue = v;
+        la_unget_char (this);
+        err = la_string_get (this, vp);
+        if (this->curToken is LA_TOKEN_INDEX_OPEN)
+          return this->syntax_error (this, "unsupported indexing");
+
+        return err;
+
+      default:
+        return this->syntax_error (this, "Arrays of arrays haven't been implemented");
+    }
   }
 
   return LA_OK;
@@ -2526,8 +2564,18 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   if (c is LA_TOKEN_DOT) {
     if (v->type isnot MAP_TYPE)
       return la_syntax_error_fmt (this, "%s, not a map", key);
+
     this->tokenValue = *v;
     goto redo;
+  }
+
+  if (c is LA_TOKEN_INDEX_OPEN) {
+    if (v->type isnot ARRAY_TYPE)
+      return this->syntax_error (this, "not an array");
+
+    this->tokenValue = *v;
+    la_unget_char (this);
+    return la_parse_array_get (this, vp);
   }
 
   if (v->type is MAP_TYPE)
