@@ -605,9 +605,15 @@ func semantics () {
   reassingment ()
 
   var sa = [{"l" : 1, "k" : [1, 2, 3, 4], "lk" : {"ka" : 1, "kka" : {"a" : 2,
-    "b" : ["av", "sb", "fg"]}}}]
+      "b" : ["av", "sb", "fg"]}}}]
   assert_true ("testing getting consecutive container types",
       sa[0].lk.kka.b[0][0] is 'a')
+
+  sa[0].lk.kka.b[0] = "wstring"
+  sa[0].lk.kka.b[0][0] = 'x'
+
+  assert_true ("testing setting consecutive container types",
+      sa[0].lk.kka.b[0] is "xstring")
 
   public var v_visible = "visible variable"
 
