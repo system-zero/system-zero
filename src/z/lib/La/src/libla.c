@@ -67,6 +67,7 @@
 #define MMT_OBJECT                    (1 << 2)
 #define ASSIGNMENT_STATE              (1 << 3)
 #define OBJECT_MMT_REASSIGN           (1 << 4)
+#define ARRAY_MEMBER                  (1 << 5)
 
 #define PRIVATE_SCOPE                 (1 << 0)
 #define PUBLIC_SCOPE                  (1 << 1)
@@ -1651,6 +1652,13 @@ static VALUE array_release (VALUE value) {
       Vmap.release (m_ar[i]);
     free (m_ar);
     m_ar = NULL;
+  } else if (array->type is ARRAY_TYPE) {
+    ArrayType **a_ar = (ArrayType **) AS_ARRAY(ary);
+    if (a_ar is NULL) return result;
+    for (size_t i = 0; i < array->len; i++)
+      array_release (ARRAY(a_ar[i]));
+    free (a_ar);
+    a_ar = NULL;
   } else {
     char *ar = (char *) AS_ARRAY(ary);
     if (ar is NULL) return result;
@@ -1667,6 +1675,8 @@ theend:
   return result;
 }
 
+static int la_array_set_as_array (la_t *, VALUE, integer, integer, integer);
+
 static int la_get_anon_array (la_t *this, VALUE *vp) {
   if (la_next_char (this) is LA_TOKEN_INDEX_CLOS)
     return this->syntax_error (this, "empty array");
@@ -1677,9 +1687,17 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   int instr = 0;
   int inmap = 0;
   int indtokopen = 1;
+  int indtokclos = 0;
+  int inar = 0;
+  int is_array_of_array = 0;
   int num_elem = 1;
 
-  int n = 0;
+  uint n = 0;
+  if (la_peek_char_nows (this, &n) is LA_TOKEN_INDEX_OPEN)
+    is_array_of_array = 1;
+
+  n = 0;
+
   while (1) {
     pc = c;
     c = la_peek_char (this, n++);
@@ -1688,16 +1706,30 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       return this->syntax_error (this, "unended array");
 
     if (c is LA_TOKEN_INDEX_CLOS and 0 is instr) {
-      indtokopen--;
-      ifnot (indtokopen)
+      if (inmap)
+        continue;
+
+      indtokclos++;
+
+      ifnot (indtokopen - indtokclos)
         break;
+
+      if (1 is indtokopen - indtokclos)
+        inar = 0;
 
       continue;
     }
 
     if (c is LA_TOKEN_INDEX_OPEN and 0 is instr) {
+      if (inmap)
+        continue;
+
       indtokopen++;
-      continue;
+
+      if (indtokopen - indtokclos is 2)
+        inar = 1;
+
+     continue;
     }
 
     if (c is LA_TOKEN_DQUOTE and pc isnot LA_TOKEN_ESCAPE_CHR) {
@@ -1715,8 +1747,18 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       continue;
     }
 
-    if (c is LA_TOKEN_COMMA and 0 is instr and 0 is inmap)
+    if (c is LA_TOKEN_COMMA and 0 is instr and 0 is inmap and 0 is inar)
       num_elem++;
+  }
+
+  if (is_array_of_array) {
+    VALUE ary = ARRAY(ARRAY_NEW(ARRAY_TYPE, num_elem));
+    ArrayType *array = (ArrayType *) AS_ARRAY(ary);
+    VALUE ar = array->value;
+
+    err = la_array_set_as_array (this, ar, num_elem, 0, num_elem - 1);
+    *vp = ary;
+    return err;
   }
 
   VALUE v;
@@ -1836,6 +1878,41 @@ static ArrayType *array_copy (ArrayType *array) {
   }
 
   return new_array;
+}
+
+static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
+  int err;
+  VALUE val;
+  ArrayType **a_ar = (ArrayType **) AS_ARRAY(ar);
+
+  do {
+    if (idx < 0 or idx >= len or idx > last_idx)
+      return la_out_of_bounds (this);
+
+    la_next_token (this);
+
+    err = la_parse_expr (this, &val);
+
+    if (err isnot LA_OK) return err;
+
+    if (val.type isnot ARRAY_TYPE and val.type isnot NULL_TYPE)
+      return this->syntax_error (this, "error while setting Array of an array, awaiting an array or null");
+
+    if (a_ar[idx] isnot NULL)
+      array_release (val);
+
+    if (ar.type isnot ARRAY_TYPE)
+      a_ar[idx] = NULL;
+    else
+      a_ar[idx] = (ArrayType *) AS_ARRAY(val);
+
+    idx++;
+  } while (this->curToken is LA_TOKEN_COMMA);
+
+  if (idx - 1 isnot last_idx)
+    return la_out_of_bounds (this);
+
+  return LA_OK;
 }
 
 static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
@@ -1997,6 +2074,8 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
     err = la_array_set_as_string (this, ary, len, idx, last_idx);
   } else if (array->type is MAP_TYPE) {
     err = la_array_set_as_map (this, ary, len, idx, last_idx);
+  } else if (array->type is ARRAY_TYPE) {
+    err = la_array_set_as_array (this, ary, len, idx, last_idx);
   } else
     err = la_array_set_as_number (this, ary, len, idx, last_idx);
 
@@ -2039,6 +2118,8 @@ static int la_parse_array_def (la_t *this) {
     type = STRING_TYPE;
   else if (Cstring.eq_n ("map ", sp, 4))
     type = MAP_TYPE;
+  else if (Cstring.eq_n ("array ", sp, 6))
+    type = ARRAY_TYPE;
   else
     isname = 1;
 
@@ -2298,6 +2379,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
       if (ary[idx] isnot NULL) {
         *vp = STRING(ary[idx]);
         vp->sym = ar.sym;
+        this->objectState |= ARRAY_MEMBER;
       } else
         *vp = NULL_VALUE;
       break;
@@ -2307,6 +2389,15 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
       Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
       if (ary[idx] isnot NULL)
         *vp = MAP(ary[idx]);
+      else
+        *vp = NULL_VALUE;
+      break;
+    }
+
+    case ARRAY_TYPE: {
+      ArrayType **ary = (ArrayType **) AS_ARRAY(array->value);
+      if (ary[idx] isnot NULL)
+        *vp = ARRAY(ary[idx]);
       else
         *vp = NULL_VALUE;
       break;
@@ -2334,12 +2425,18 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     switch (v.type) {
       case STRING_TYPE:
         this->tokenValue = v;
+        this->objectState |= ARRAY_MEMBER;
         la_unget_char (this);
         err = la_string_get (this, vp);
         if (this->curToken is LA_TOKEN_INDEX_OPEN)
           return this->syntax_error (this, "unsupported indexing");
 
         return err;
+
+      case ARRAY_TYPE:
+        this->tokenValue = v;
+        la_unget_char (this);
+        return la_parse_array_get (this, vp);
 
       default:
         return this->syntax_error (this, "Arrays of arrays haven't been implemented");
@@ -3367,7 +3464,7 @@ do_token:
       err = la_parse_expr (this, &val);
       this->objectState &= ~ASSIGNMENT_STATE;
 
-      if (this->objectState & MMT_OBJECT) {
+      if (this->objectState & MMT_OBJECT or this->objectState & ARRAY_MEMBER) {
         switch (val.type) {
           case ARRAY_TYPE:
           case STRING_TYPE: {
@@ -4482,11 +4579,13 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
             case STRING_TYPE:
               String.append_with_fmt (str, "%s", AS_STRING_BYTES(value));
               if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
-                  0 is ns_is_malloced_string (this->curScope, AS_STRING(value)))) {
+                  0 is ns_is_malloced_string (this->curScope, AS_STRING(value)) and
+                  0 is (this->objectState & ARRAY_MEMBER))) {
                 la_free (this, value);
-                this->fmtState &= ~FMT_LITERAL;
               }
 
+              this->fmtState &= ~FMT_LITERAL;
+              this->objectState &= ~ARRAY_MEMBER;
               break;
 
             case NULL_TYPE:
@@ -4529,10 +4628,12 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           String.append_with_fmt (str, "%p", AS_PTR(value));
           if (value.type is STRING_TYPE) {
             if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
-               0 is ns_is_malloced_string (this->curScope, AS_STRING(value)))) {
+               0 is ns_is_malloced_string (this->curScope, AS_STRING(value)) and
+               0 is (this->objectState & ARRAY_MEMBER))) {
                 la_free (this, value);
-                this->fmtState &= ~FMT_LITERAL;
             }
+            this->fmtState &= ~FMT_LITERAL;
+            this->objectState &= ~ARRAY_MEMBER;
           }
           break;
 

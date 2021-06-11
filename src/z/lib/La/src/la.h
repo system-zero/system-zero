@@ -56,39 +56,48 @@ typedef ValueType VALUE;
 
 #define AS_ARRAY AS_PTR
 #define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .asInteger = (pointer) __a__, .refcount = 0, .sym = NULL}
-#define    ARRAY_NEW(__type__, __len__) ({              \
-  ArrayType *array_ = Alloc (sizeof (ArrayType));       \
-  VALUE ary_;                                           \
-  array_->type = __type__;                              \
-  array_->len  = __len__;                               \
-  if (array_->type is INTEGER_TYPE) {                   \
-    integer *i_ar = Alloc (__len__ * sizeof (integer)); \
-    for (integer i = 0; i < __len__; i++)               \
-      i_ar[i] = 0;                                      \
-    ary_ = ARRAY(i_ar);                                 \
-                                                        \
-  }  else if (array_->type is NUMBER_TYPE) {            \
-    number *n_ar = Alloc (__len__ * sizeof (number));   \
-    for (integer i = 0; i < __len__; i++)               \
-      n_ar[i] = 0.0;                                    \
-    ary_ = ARRAY(n_ar);                                 \
-                                                        \
-  } else if (array_->type is STRING_TYPE) {             \
-    string **s_ar = Alloc (__len__ * sizeof (string));  \
-    for (integer i = 0; i < __len__; i++) {             \
-      s_ar[i] = String.new_with ("");                   \
-    }                                                   \
-    ary_ = ARRAY(s_ar);                                 \
-  } else if (array_->type is MAP_TYPE) {                \
-    Vmap_t **m_ar = Alloc (__len__ * Vmap.size_of ());  \
-    for (integer i = 0; i < __len__; i++) {             \
-      m_ar[i] = NULL;                                   \
-    }                                                   \
-    ary_ = ARRAY(m_ar);                                 \
-  }                                                     \
-                                                        \
-  array_->value = ary_;                                 \
-  array_;                                               \
+#define    ARRAY_NEW(__type__, __len__) ({               \
+  ArrayType *array_ = Alloc (sizeof (ArrayType));        \
+  VALUE ary_;                                            \
+  array_->type = __type__;                               \
+  array_->len  = __len__;                                \
+  if (array_->type is INTEGER_TYPE) {                    \
+    integer *i_ar = Alloc (__len__ * sizeof (integer));  \
+    for (integer i = 0; i < __len__; i++)                \
+      i_ar[i] = 0;                                       \
+    ary_ = ARRAY(i_ar);                                  \
+                                                         \
+  }  else if (array_->type is NUMBER_TYPE) {             \
+    number *n_ar = Alloc (__len__ * sizeof (number));    \
+    for (integer i = 0; i < __len__; i++)                \
+      n_ar[i] = 0.0;                                     \
+    ary_ = ARRAY(n_ar);                                  \
+                                                         \
+  } else if (array_->type is STRING_TYPE) {              \
+    string **s_ar = Alloc (__len__ * sizeof (string));   \
+    for (integer i = 0; i < __len__; i++) {              \
+      s_ar[i] = String.new_with ("");                    \
+    }                                                    \
+    ary_ = ARRAY(s_ar);                                  \
+                                                         \
+  } else if (array_->type is MAP_TYPE) {                 \
+    Vmap_t **m_ar = Alloc (__len__ * Vmap.size_of ());   \
+    for (integer i = 0; i < __len__; i++) {              \
+      m_ar[i] = NULL;                                    \
+    }                                                    \
+    ary_ = ARRAY(m_ar);                                  \
+                                                         \
+  } else if (array_->type is ARRAY_TYPE) {               \
+    ArrayType **a_ar = Alloc (sizeof (ArrayType) * __len__);\
+    for (integer i = 0; i < __len__; i++) {              \
+      a_ar[i] = NULL;                                    \
+    }                                                    \
+    ary_ = ARRAY(a_ar);                                  \
+                                                         \
+  }                                                      \
+                                                         \
+  array_->value = ary_;                                  \
+  array_;                                                \
 })
 
 #define AS_PTR AS_INT

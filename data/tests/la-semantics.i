@@ -770,6 +770,20 @@ func test_array (length) {
   array string anil[3] = ["a", null, "b"]
   assert_true ("testing string array with a null element", anil[1] is null)
 
+
+  var a = [[1,2,3], [3, 5, 6], ["a", "ab"], [1,2], [3, 4]]
+  assert_true ("testing array of arrays", a[2][1] is "ab")
+
+  var b = [[1,2,3], [3, 5, 6], ["a", "ab"],
+    [[1,2], [3, 4], [[4, 6, 7], [[33, 44]]]]]
+
+  assert_true ("testing nested arrays of arrays", b[3][2][1][0][1] is 44)
+
+  array array c[2]
+  c[0] = [1, 2, 3]
+  c[1] = [4, 5, 6]
+  assert_true ("testing array of an array with specified len", c[1][2] is 6)
+
   func fibo_array (n) {
     array f[n + 2]
     f[0:1] = [0, 1]

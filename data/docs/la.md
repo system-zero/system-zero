@@ -232,6 +232,7 @@ A very small yet another programming language (yala) that compiles in C.
       - number
       - string
       - map
+      - array
 
 # Array assignment syntax:
 
