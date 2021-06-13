@@ -4,6 +4,7 @@
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_SYMBOL      63
 #define MAXLEN_MSG         255
+
 typedef struct la_T la_T;
 typedef struct la_t la_t;
 typedef struct la_prop la_prop;
@@ -43,14 +44,14 @@ struct ValueType {
 typedef ValueType VALUE;
 
 #define AS_NUMBER(__v__) __v__.asNumber
-#define    NUMBER(__d__) (VALUE) {.type = NUMBER_TYPE, .asNumber = __d__, .refcount = 0, .sym = NULL}
+#define    NUMBER(__n__) (VALUE) {.type = NUMBER_TYPE, .asNumber = __n__, .refcount = 0, .sym = NULL}
 
 #define AS_INT(__v__) __v__.asInteger
-#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .refcount = 0, .asInteger = __i__, .sym = NULL}
+#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .asInteger = __i__, .refcount = 0, .sym = NULL}
 
 #define  AS_STRING_BYTES(__v__) AS_STRING(__v__)->bytes
 #define  AS_STRING(__v__)  __v__.asString
-#define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .refcount = 0, .asString = __s__, .sym = NULL}
+#define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .asString = __s__, .refcount = 0, .sym = NULL}
 #define STRING_NEW(__s__) STRING(String.new_with (__s__))
 #define STRING_NEW_WITH_LEN(__s__, __l__) STRING(String.new_with_len (__s__, __l__))
 
@@ -108,7 +109,7 @@ typedef ValueType VALUE;
 #define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
 
 #define AS_NULL(__v__) __v__.asNull
-#define    NULL_VALUE (VALUE) {.type = NULL_TYPE, .refcount = 0, .asNull = (void *) 0, .sym = NULL}
+#define    NULL_VALUE (VALUE) {.type = NULL_TYPE, .asNull = (void *) 0, .refcount = 0, .sym = NULL}
 
 #define  TRUE_VALUE INT(1)
 #define FALSE_VALUE INT(0)
@@ -205,11 +206,14 @@ typedef struct la_opts {
 
 typedef struct la_get_self {
   la_t *(*current) (la_T *);
+
   void *(*user_data) (la_t *);
+
   char
     *(*eval_str) (la_t *),
     *(*message) (la_t *);
-  int (*current_idx) (la_T *);
+
+   int (*current_idx) (la_T *);
 } la_get_self;
 
 typedef struct la_set_self {

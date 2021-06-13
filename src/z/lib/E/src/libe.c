@@ -704,7 +704,7 @@ void buf_action_release (buf_t *this, action_t *action) {
 static char *buf_syn_parser (buf_t *, char *, int, int, row_t *);
 static ftype_t *buf_syn_init (buf_t *);
 static ftype_t *buf_syn_init_c (buf_t *);
-static ftype_t *buf_syn_init_i (buf_t *);
+static ftype_t *buf_syn_init_lai (buf_t *);
 
 char *default_extensions[] = {".txt", NULL};
 
@@ -740,11 +740,11 @@ char c_multiline_comment_continuation[] = " * ";
 char c_operators[] = "+:?-%*^><=/|&~.()[]{}!";
 char c_balanced_pairs[] = "[](){}";
 
-char *i_extensions[] = {".i", NULL};
-char *i_shebangs[] = {"#!/bin/env i", NULL};
-char i_operators[] = "+-%*^><=/|& .(){}![]";
+char *lai_extensions[] = {".lai", NULL};
+char *lai_shebangs[] = {"#!/bin/env La", NULL};
+char lai_operators[] = "+-%*^><=/|& .(){}![]";
 
-char *i_keywords[] = {
+char *lai_keywords[] = {
   "var V", "if I", "ifnot I", "else I", "func I",
   "is I", "isnot I", "and I", "or I", "this V", "return I",
   "for I", "while I", "break I", "continue I",
@@ -756,7 +756,7 @@ char *i_keywords[] = {
    NULL
 };
 
-char i_singleline_comment[] = "#";
+char lai_singleline_comment[] = "#";
 
 char *NULL_ARRAY[] = {NULL};
 
@@ -777,9 +777,9 @@ syn_t HL_DB[] = {
     buf_syn_parser, buf_syn_init_c, 0, 0, NULL, NULL, c_balanced_pairs,
   },
   {
-    "i", NULL_ARRAY, i_extensions, i_shebangs, i_keywords, i_operators,
-    i_singleline_comment, NULL, NULL, NULL, HL_STRINGS, HL_NUMBERS,
-    buf_syn_parser, buf_syn_init_i, 0, 0, NULL, NULL, c_balanced_pairs
+    "lai", NULL_ARRAY, lai_extensions, lai_shebangs, lai_keywords, lai_operators,
+    lai_singleline_comment, NULL, NULL, NULL, HL_STRINGS, HL_NUMBERS,
+    buf_syn_parser, buf_syn_init_lai, 0, 0, NULL, NULL, c_balanced_pairs
   }
 };
 
@@ -1611,8 +1611,8 @@ static ftype_t *buf_syn_init_c (buf_t *this) {
     ));
 }
 
-static ftype_t *buf_syn_init_i (buf_t *this) {
-  int idx = Ed.syn.get_ftype_idx ($my(root), "i");
+static ftype_t *buf_syn_init_lai (buf_t *this) {
+  int idx = Ed.syn.get_ftype_idx ($my(root), "lai");
   return self(ftype.set, idx, FtypeOpts (
       .autoindent = buf_autoindent_c,
       .shiftwidth = C_DEFAULT_SHIFTWIDTH,
@@ -12981,7 +12981,7 @@ static int E_save_image (E_T *this, char *name) {
     String.prepend_with (fname, Sys.get.env_value ("LA_DIR"));
   }
 
-  String.append_with (fname, "i");
+  String.append_with (fname, "lai");
 
   self(set.image_file, fname->bytes);
   self(set.image_name, iname);
@@ -13015,9 +13015,9 @@ static void E_set_image_file (E_T *this, char *name) {
   char *extname = Path.extname (name);
   size_t exlen = bytelen (extname);
 
-  int hasnot_ext = (0 is exlen or (exlen and 0 is Cstring.eq (extname, ".i")));
+  int hasnot_ext = (0 is exlen or (exlen and 0 is Cstring.eq (extname, ".lai")));
 
-  if (hasnot_ext) len += 2;
+  if (hasnot_ext) len += 4;
 
   ifnot (Path.is_absolute (name)) {
     cwd = Dir.current ();
@@ -13030,10 +13030,10 @@ static void E_set_image_file (E_T *this, char *name) {
   ifnot (Path.is_absolute (name))
     Cstring.cp_fmt ($my(image_file), len + 1, "%s/%s", cwd, name);
   else
-    Cstring.cp ($my(image_file), len + 1, name, len - (hasnot_ext ? 2 : 0));
+    Cstring.cp ($my(image_file), len + 1, name, len - (hasnot_ext ? 4 : 0));
 
   if (hasnot_ext)
-    Cstring.cat ($my(image_file), len + 1, ".i");
+    Cstring.cat ($my(image_file), len + 1, ".lai");
 }
 
 static void E_set_image_name (E_T *this, char *name) {

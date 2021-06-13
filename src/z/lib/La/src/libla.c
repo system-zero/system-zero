@@ -43,7 +43,7 @@
 #define NS_BLOCK           "__block__"
 #define NS_BLOCK_LEN       9
 #define NS_ANON            "anonymous"
-#define LA_EXTENSION       "i"
+#define LA_EXTENSION       "lai"
 #define LA_STRING_NS       "__string__"
 
 #define STRING_LITERAL_ARG_STATE      (1 << 0)
@@ -275,7 +275,7 @@ struct la_t {
 
   size_t anon_id;
 
-  string_t
+  string
     *la_dir,
     *message;
 
@@ -284,8 +284,8 @@ struct la_t {
     parsePtr;
 
   VALUE
-     tokenValue,
-     funArgs[MAX_BUILTIN_PARAMS];
+    tokenValue,
+    funArgs[MAX_BUILTIN_PARAMS];
 
   integer stackValIdx;
   VALUE stackVal[MAX_BUILTIN_PARAMS];
@@ -335,6 +335,7 @@ static VALUE la_bset (la_t *, VALUE, VALUE);
 static VALUE la_bnot (la_t *, VALUE, VALUE);
 static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
+static int la_array_set_as_array (la_t *, VALUE, integer, integer, integer);
 static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
 static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static VALUE la_copy_map (VALUE);
@@ -833,6 +834,22 @@ static VALUE la_fflush (la_t *this, VALUE fp_val) {
   return result;
 }
 
+static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
+  char *fn = AS_STRING_BYTES(fn_value);
+  char *mode = AS_STRING_BYTES(mod_value);
+  FILE *fp = fopen (fn, mode);
+  if (NULL is fp) {
+    this->Errno = errno;
+    VALUE v = NULL_VALUE;
+    return v;
+  }
+
+  VALUE v = OBJECT(fp);
+  object *o = la_object_new (la_fclose, NULL, v);
+  v = OBJECT(o);
+  return v;
+}
+
 static VALUE la_format (la_t *this, VALUE v_fmt) {
   int err = LA_NOTOK;
   VALUE v;
@@ -863,22 +880,6 @@ static VALUE la_format (la_t *this, VALUE v_fmt) {
     if (this->funcState & EXPR_LIST_STATE)
       v.refcount--;
 
-  return v;
-}
-
-static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
-  char *fn = AS_STRING_BYTES(fn_value);
-  char *mode = AS_STRING_BYTES(mod_value);
-  FILE *fp = fopen (fn, mode);
-  if (NULL is fp) {
-    this->Errno = errno;
-    VALUE v = NULL_VALUE;
-    return v;
-  }
-
-  VALUE v = OBJECT(fp);
-  object *o = la_object_new (la_fclose, NULL, v);
-  v = OBJECT(o);
   return v;
 }
 
@@ -960,6 +961,12 @@ static VALUE la_len (la_t *this, VALUE value) {
     case ARRAY_TYPE: {
       ArrayType *array = (ArrayType *) AS_ARRAY(value);
       result = INT(array->len);
+      break;
+    }
+
+    case MAP_TYPE: {
+      Vmap_t *map = AS_MAP(value);
+      result = INT(Vmap.num_keys (map));
       break;
     }
   }
@@ -1125,6 +1132,11 @@ static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE v
   return sym;
 }
 
+static int la_define (la_t *this, const char *key, int typ, VALUE val) {
+  sym_t *sym = la_define_symbol (this, this->std, (char *) key, typ, val, 1);
+  return (NULL is sym ? LA_NOTOK : LA_OK);
+}
+
 static inline sym_t *ns_lookup_symbol (funT *scope, char *key) {
   return Vmap.get (scope->symbols, key);
 }
@@ -1165,7 +1177,7 @@ static int la_lambda (la_t *this) {
   this->curFunName[0] = '\0';
 
   if (this->curToken isnot LA_TOKEN_PAREN_CLOS)
-    return this->syntax_error (this, "awaiting a )");
+    return this->syntax_error (this, "awaiting )");
 
   return (this->tokenSymbol->type & 0xff);
 }
@@ -1185,7 +1197,7 @@ static int la_do_next_token (la_t *this, int israw) {
   if (c is '#')
     token = LA_TOKEN_COMMENT;
   else if (is_alpha (c) or c is '_' or (
-     (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c)))
+      (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c)))
     token = LA_TOKEN_SYMBOL;
   else if (is_digit (c) or (c is '-' and is_digit (la_peek_char (this, 0))))
     token = LA_TOKEN_NUMBER;
@@ -1247,36 +1259,42 @@ static int la_do_next_token (la_t *this, int israw) {
       la_get_span (this, is_identifier);
       r = LA_TOKEN_SYMBOL;
 
-      const char *ptr = la_StringGetPtr (this->curStrToken);
-
       uint toklen = la_StringGetLen (this->curStrToken);
       if (toklen > MAXLEN_SYMBOL)
-        return la_syntax_error_fmt (this, "%s: exceeds MAXIMUM LENGTH (%d) of an identifier",
+        return la_syntax_error_fmt (this, "%s: exceeds maximum length (%d) of an identifier",
             cur_msg_str (this, this->curStrToken), MAXLEN_SYMBOL);
+
+      char ident[MAXLEN_SYMBOL + 1];
+      Cstring.cp (ident, MAXLEN_SYMBOL + 1, la_StringGetPtr (this->curStrToken), toklen);
+
+      if (*ident isnot 'i' and *ident isnot 'o' and *ident isnot 'a')
+        goto raw_block;
 
       switch (toklen) {
         case 2:
-          if (Cstring.eq_n (ptr, "is", 2))
+          if (Cstring.eq (ident, "is")) {
             this->tokenSymbol = ns_lookup_symbol (this->std, "is");
-          else if (Cstring.eq_n (ptr, "or", 2))
+            break;
+          } else if (Cstring.eq (ident, "or")) {
             this->tokenSymbol = ns_lookup_symbol (this->std, "or");
-          else goto raw_block;
+            break;
+          }
 
-          break;
+          goto raw_block;
 
         case 3:
-          if (Cstring.eq_n (ptr, "and", 3))
+          if (Cstring.eq (ident, "and")) {
             this->tokenSymbol = ns_lookup_symbol (this->std, "and");
-          else goto raw_block;
+            break;
+          }
 
-          break;
+          goto raw_block;
 
         case 5:
-          if (Cstring.eq_n (ptr, "isnot", 5))
+          if (Cstring.eq (ident, "isnot")) {
             this->tokenSymbol = ns_lookup_symbol (this->std, "isnot");
-          else goto raw_block;
-
-          break;
+            break;
+          }
 
         default:
           goto raw_block;
@@ -1288,7 +1306,7 @@ static int la_do_next_token (la_t *this, int israw) {
 
       raw_block:
       ifnot (israw) {
-        if (Cstring.eq_n ("lambda", ptr, 6) and 0 is is_identifier (*(ptr + 6))) {
+        if (Cstring.eq ("lambda", ident)) {
           r = la_lambda (this);
           if (r < LA_OK)
             return this->syntax_error (this, "lambda error");
@@ -1642,7 +1660,6 @@ static VALUE array_release (VALUE value) {
       ifnot (NULL is s_ar[i])
         String.release (s_ar[i]);
     }
-
     free (s_ar);
     s_ar = NULL;
   } else if (array->type is MAP_TYPE) {
@@ -1674,8 +1691,6 @@ theend:
   value.refcount--;
   return result;
 }
-
-static int la_array_set_as_array (la_t *, VALUE, integer, integer, integer);
 
 static int la_get_anon_array (la_t *this, VALUE *vp) {
   if (la_next_char (this) is LA_TOKEN_INDEX_CLOS)
@@ -4896,6 +4911,25 @@ static int la_parse_exit (la_t *this) {
   return LA_ERR_EXIT;
 }
 
+static int la_parse_return (la_t *this) {
+  int err;
+  la_next_token (this);
+
+  funT *scope = this->curScope;
+  while (scope and Cstring.eq (scope->funname, NS_BLOCK))
+    scope = scope->prev;
+
+  if (NULL is scope)
+    return this->syntax_error (this, "error while parsing return, unknown scope");
+
+  err = la_parse_expr (this, &scope->result);
+
+  la_StringSetLen (&this->parsePtr, 0);
+  this->didReturn = 1;
+
+  return err;
+}
+
 static int la_parse_loadfile (la_t *this) {
   int err;
   int c = la_next_token (this);
@@ -5026,30 +5060,6 @@ theend:
   String.release (fn);
   String.release (ns);
   return err;
-}
-
-static int la_parse_return (la_t *this) {
-  int err;
-  la_next_token (this);
-
-  funT *scope = this->curScope;
-  while (scope and Cstring.eq (scope->funname, NS_BLOCK))
-    scope = scope->prev;
-
-  if (NULL is scope)
-    return this->syntax_error (this, "error while parsing return, unknown scope");
-
-  err = la_parse_expr (this, &scope->result);
-
-  la_StringSetLen (&this->parsePtr, 0);
-  this->didReturn = 1;
-
-  return err;
-}
-
-static int la_define (la_t *this, const char *key, int typ, VALUE val) {
-  sym_t *sym = la_define_symbol (this, this->std, (char *) key, typ, val, 1);
-  return (NULL is sym ? LA_NOTOK : LA_OK);
 }
 
 static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
@@ -5902,12 +5912,12 @@ static int la_eval_file (la_t *this, const char *filename) {
   fclose (fp);
 
   if (r <= 0) {
-    this->print_fmt_bytes (this->err_fp, "Couldn't read script\n");
+    this->print_bytes (this->err_fp, "Couldn't read script\n");
     return LA_NOTOK;
   }
 
   if (r > n) {
-    this->print_fmt_bytes (this->err_fp, "race condition, aborts now\n");
+    this->print_bytes (this->err_fp, "race condition, aborts now\n");
     return LA_NOTOK;
   }
 
@@ -6122,7 +6132,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   int err = 0;
 
   if (NULL is opts.name)
-    la_name_gen (this->name, &$my(name_gen), "i:", 2);
+    la_name_gen (this->name, &$my(name_gen), "lai:", 2);
   else
     Cstring.cp (this->name, 32, opts.name, 31);
 
@@ -6242,14 +6252,15 @@ static int la_load_file (la_T *__la__, la_t *this, char *fn) {
       return la_loadfile (this, fn);
 
     size_t fnlen = bytelen (fn);
-    char fname[fnlen+3];
+    char fname[fnlen+5];
     Cstring.cp (fname, fnlen + 1, fn, fnlen);
 
     char *extname = Path.extname (fname);
     size_t extlen = bytelen (extname);
 
-    if (0 is extlen or 0 is Cstring.eq (".i", extname)) {
-      fname[fnlen] = '.'; fname[fnlen+1] = 'i'; fname[fnlen+2] = '\0';
+    if (0 is extlen or 0 is Cstring.eq ("." LA_EXTENSION, extname)) {
+      fname[fnlen] = '.'; fname[fnlen+1] = 'l'; fname[fnlen+2] = 'a';
+      fname[fnlen+3] = 'i'; fname[fnlen+4] = '\0';
       if (File.exists (fname))
         return la_loadfile (this, fname);
 
@@ -6263,11 +6274,12 @@ static int la_load_file (la_T *__la__, la_t *this, char *fn) {
 
     string *ddir = this->la_dir;
     size_t len = ddir->num_bytes + bytelen (fname) + 2 + 7;
-    char tmp[len + 3];
+    char tmp[len + 5];
     Cstring.cp_fmt (tmp, len + 1, "%s/scripts/%s", ddir->bytes, fname);
 
     if (0 is File.exists (tmp) or 0 is File.is_reg (tmp)) {
-      tmp[len] = '.'; tmp[len+1] = 'i'; tmp[len+2] = '\0';
+      tmp[len] = '.'; tmp[len+1] = 'l'; tmp[len+2] = 'a';
+      tmp[len+3] = 'i'; tmp[len+4] = '\0';
     }
 
     ifnot (File.exists (tmp)) {

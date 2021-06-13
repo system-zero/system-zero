@@ -434,6 +434,13 @@ A very small yet another programming language (yala) that compiles in C.
   - when assigning a map type or a subtype map to a variable from another map,
     creates a new copy of the map
 
+  - a valid array can contain only members with the same type, except if it is
+    an array of arrays, which can contain different types of arrays and which
+    can be nested in arbitrary level
+
+  - arrays are one dimensional arrays (for simplification), though it is not
+    hard to emulate multi dimensional ones if there is a symmetry
+
 # Lexical Scope and visibility order
   - standard scope (lookup for standard operators and internal functions first)
 
@@ -477,13 +484,22 @@ A very small yet another programming language (yala) that compiles in C.
 # Aplication Programming Interface.
 
 ```C
-  #define I   In->self
-  i_T *In = __init_i__ ();
-  i_t *i = I.init_instance (In, IOpts());
-  char *bytes = "func f (n) { var i = 10; print ("i is ${i}\n)}";
-  retval = I.eval_string (i, bytes);
-  __deinit_i__ (&In);
+  /* the following static variable and the corresponded macro, normally
+   * has been defined by the cenv.h header unit, that is responsible
+   * to create the environment, but is posted here for clarity */
+  static  la_T __LA__;	
+  #define La  __LA__.self
+
+  la_T *LaN = __init_la__ ();
+  __LA__ = *LaN;                       // assumed a main function here
+  la_t *la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
+
+  char *bytes = "func f (n) {println (\"result is ${n * 2}\")}";
+  int retval = La.eval_string (la, bytes);
+
+  __deinit_la__ (&LaN);
 ```
+
   The whole interface is exposed as a structure with function pointers, at the
   `la.h` unit, that map to their corresponded private functions, as there isn't
   and probably will never be an API documentation.
@@ -501,10 +517,13 @@ style. However it should be okey if practicing consistency.
   where -1 is considered as a number.
 
 - recursive functions though they should work properly, can be easily overflow
-  the stack.
+  the stack, as the compiler doesn't perform any kind of tail call optimizations
+  (this is a week point, and the worst is that this is quite difficult to change,
+   so it is better to avoid code with recursive function calls beyond some thousand
+   of calls, instead it is prefered the imperative version).
 
 - the number type (typedef'ed as `double`) operations, need an expertise which
-  is absent.
+  is absent to the author.
 
 - normally releasing memory it happens automatically, but many cases are handled
   internally explicitly, as there is no a real mechanism underneath, just a very
@@ -521,7 +540,7 @@ style. However it should be okey if practicing consistency.
     a special `File Pointer` type, we choose to create an Object Type, that it
     might be used by others and for other purposes.
 
-    But how this function or the others that will follow are going to be used?
+    But how this function or the others that will follow, are going to be used?
 
     There is the old fashioned C's boring imperative way:
 
@@ -534,7 +553,7 @@ style. However it should be okey if practicing consistency.
                work               parents           goat
 
     means, possibly chained functions, that act on a kind of type, or object,
-    or an environment, that is maintained a state of properties.
+    or an environment, while it is maintained a state of properties.
 
     In an internal implementation, this requires to pass as the first argument
     to the called method the specific object, and at the same time the functions

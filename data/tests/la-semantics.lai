@@ -555,7 +555,7 @@ func semantics () {
   retval = __argc is 1
   assert_true  ("testing __argc and __argv", retval)
   assert_equal ("testing __argc and __argv", len (__argv), 1)
-  assert_equal ("testing __argc and __argv", __argv[0], "data/tests/la-semantics.i")
+  assert_equal ("testing __argc and __argv", __argv[0], "data/tests/la-semantics.lai")
 
   assert_equal_msg ("testing __func__",
       format ("awaiting |assert_equal_msg|, got |${%s, __func__}|"),

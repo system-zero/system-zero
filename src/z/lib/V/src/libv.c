@@ -1501,9 +1501,9 @@ static void v_set_image_file (v_t *this, char *name) {
   char *extname = Path.extname (name);
   size_t exlen = bytelen (extname);
 
-  int hasnot_ext = (0 is exlen or (exlen and 0 is Cstring.eq (extname, ".i")));
+  int hasnot_ext = (0 is exlen or (exlen and 0 is Cstring.eq (extname, ".lai")));
 
-  if (hasnot_ext) len += 2;
+  if (hasnot_ext) len += 4;
 
   ifnot (Path.is_absolute (name)) {
     cwd = Dir.current ();
@@ -1516,10 +1516,10 @@ static void v_set_image_file (v_t *this, char *name) {
   ifnot (Path.is_absolute (name))
     Cstring.cp_fmt ($my(image_file), len + 1, "%s/%s", cwd, name);
   else
-    Cstring.cp ($my(image_file), len + 1, name, len - (hasnot_ext ? 2 : 0));
+    Cstring.cp ($my(image_file), len + 1, name, len - (hasnot_ext ? 4 : 0));
 
   if (hasnot_ext)
-    Cstring.cat ($my(image_file), len + 1, ".i");
+    Cstring.cat ($my(image_file), len + 1, ".lai");
 }
 
 static void v_set_image_name (v_t *this, char *name) {
@@ -1639,8 +1639,10 @@ static int v_save_image (v_t *this, char *fname) {
       String.append_with (file, "/scripts/");
       String.append_with (file, $my(image_name));
       if (file->bytes[file->num_bytes - 1] isnot 'i' and
-          file->bytes[file->num_bytes - 2] isnot '.')
-        String.append_with (file, ".i");
+          file->bytes[file->num_bytes - 2] isnot 'a' and
+          file->bytes[file->num_bytes - 3] isnot 'l' and
+          file->bytes[file->num_bytes - 4] isnot '.')
+        String.append_with (file, ".lai");
 
       fname = file->bytes;
     } else
