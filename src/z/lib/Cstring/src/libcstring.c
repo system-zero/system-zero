@@ -170,7 +170,7 @@ static char  *cstring_dup (const char *src, size_t len) {
   return dest;
 }
 
-static char  *cstring_trim_end (char *bytes, char c) {
+static char *cstring_trim_end (char *bytes, char c) {
   char *sp = cstring_byte_null_in_str (bytes);
   sp--;
 
@@ -183,7 +183,7 @@ static char  *cstring_trim_end (char *bytes, char c) {
   return bytes;
 }
 
-static char  *cstring_substr (char *dest, size_t len, char *src, size_t src_len, size_t idx) {
+static char *cstring_substr (char *dest, size_t len, char *src, size_t src_len, size_t idx) {
   if (src_len < idx + len) {
     dest[0] = '\0';
     return NULL;

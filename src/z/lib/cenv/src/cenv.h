@@ -727,7 +727,16 @@ typedef ptrdiff_t idx_t;
   #endif /* IOCTL_HDR */
 
 #undef REQUIRE_SYS_IOCTL
-#endif /* REQUIRE_IOCTL */
+#endif /* REQUIRE_SYS_IOCTL */
+
+#ifdef REQUIRE_DLFCN
+  #ifndef DLFCN_HDR
+  #define DLFCN_HDR
+  #include <dlfcn.h>
+  #endif /* DLFCN_HDR */
+
+#undef REQUIRE_DLFCN
+#endif /* REQUIRE_DLFCN */
 
   /* types */
 #ifdef APPLICATION
@@ -1557,6 +1566,9 @@ typedef ptrdiff_t idx_t;
 #ifndef DECLARE
 #define DECLARE 1
 #endif
+
+/* this should be called inside of the __init_module__() */
+#define __INIT_MODULE__(__l__) __LA__ = *la_get_root (__l__)
 
 /* Those application routines are quite the same and is useless
  * to repeat ourselves.

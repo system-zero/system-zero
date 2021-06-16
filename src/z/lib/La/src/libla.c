@@ -9,6 +9,7 @@
 
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
+#define REQUIRE_DLFCN
 
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
@@ -111,6 +112,7 @@
 #define LA_TOKEN_BINOP      'o'
 #define LA_TOKEN_PRINTLN    'p'
 #define LA_TOKEN_LOADFILE   'r'
+#define LA_TOKEN_IMPORT     's'
 #define LA_TOKEN_VAR        'v'
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
@@ -187,6 +189,19 @@ typedef struct symbol_stack {
   symbolstack_t *head;
 } symbol_stack;
 
+typedef struct module_so module_so;
+
+struct module_so {
+  void *handle;
+  ModuleInit init;
+  ModuleDeinit deinit;
+  module_so *next;
+};
+
+typedef struct modules {
+  module_so *head;
+} modules;
+
 struct funType {
   char funname[MAXLEN_SYMBOL + 1];
 
@@ -204,6 +219,8 @@ struct funType {
     *root,
     *prev,
     *next;
+
+  modules *modules;
 };
 
 typedef struct funNewArgs {
@@ -309,6 +326,8 @@ struct la_t {
   LaDefineFuns_cb define_funs_cb;
 
   la_t *next;
+
+  la_T *root;
 };
 
 typedef struct ArrayType {
@@ -1040,6 +1059,19 @@ static void fun_release (funT **thisp) {
   funT *this = *thisp;
   Vmap.release (this->symbols);
   ns_release_malloced_strings (this);
+  if (this->modules isnot NULL) {
+#ifndef STATIC
+    module_so *it = this->modules->head;
+    while (it) {
+      module_so *tmp = it->next;
+      dlclose (it->handle);
+      free (it);
+      it = tmp;
+    }
+#endif
+    free (this->modules);
+  }
+
   free (this);
   *thisp = NULL;
 }
@@ -1087,9 +1119,11 @@ static funT *Fun_new (la_t *this, funNewArgs options) {
 
   if (parent is NULL) {
     this->function = this->curScope = f->root = f;
+    this->function->modules = Alloc (sizeof (modules));
     return f;
   }
 
+  f->modules = NULL;
   f->prev = parent;
   f->root = this->function;
   return f;
@@ -4930,6 +4964,186 @@ static int la_parse_return (la_t *this) {
   return err;
 }
 
+static int la_import_file (la_t *this, const char *module) {
+  const char *err_msg;
+  int err = LA_NOTOK;
+
+  void *handle = dlopen (module, RTLD_NOW|RTLD_GLOBAL);
+  if (handle is NULL) {
+    ifnot (this->curState & LOADFILE_SILENT) {
+      err_msg = dlerror ();
+      this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
+    }
+    return LA_ERR_IMPORT;
+  }
+
+  char *mname = Path.basename_sans_extname ((char *) module);
+  size_t len = bytelen (mname) - 7;
+  char tmp[len+1];
+  Cstring.substr (tmp, len, mname, len + 7, 0);
+  string *init_fun = String.new_with_fmt ("__init_%s__", tmp);
+  string *deinit_fun = String.new_with_fmt ("__deinit_%s__", tmp);
+
+  dlerror ();
+  ModuleInit init_sym = (ModuleInit) dlsym (handle, init_fun->bytes);
+  err_msg = dlerror ();
+  if (err_msg isnot NULL) {
+    this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
+    err =LA_ERR_IMPORT;
+    goto theend;
+  }
+
+  dlerror ();
+  ModuleDeinit deinit_sym = (ModuleDeinit) dlsym (handle, deinit_fun->bytes);
+  err_msg = dlerror ();
+  if (err_msg isnot NULL) {
+    this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
+    err = LA_ERR_IMPORT;
+    goto theend;
+  }
+
+  int retval = init_sym (this);
+  if (retval isnot LA_OK) {
+    dlclose (handle);
+    err = LA_ERR_IMPORT;
+    goto theend;
+  }
+
+  module_so *modl = Alloc (sizeof (module_so));
+  modl->handle = handle;
+  modl->init = init_sym;
+  modl->deinit = deinit_sym;
+  ListStackPush(this->function->modules, modl);
+  err = LA_OK;
+
+theend:
+  free (mname);
+  String.release (init_fun);
+  String.release (deinit_fun);
+  return err;
+}
+
+#ifdef STATIC
+static int la_parse_import (la_t *this) {
+  return this->syntax_error (this, "import is disabled in static objects");
+}
+
+#else
+static int la_parse_import (la_t *this) {
+  int err;
+  int c = la_next_token (this);
+  ifnot (c is LA_TOKEN_PAREN_OPEN)
+    return this->syntax_error (this, "error while parsing import(), awaiting (");
+
+  VALUE v;
+  err = la_parse_expr (this, &v);
+
+  if (err isnot LA_OK)
+    return this->syntax_error (this, "error while parsing import()");
+
+  ifnot (v.type is STRING_TYPE)
+    return this->syntax_error (this, "error while parsing import(), awaiting a string");
+
+  string *fname = AS_STRING(v);
+  string *fn = NULL;
+
+  if (this->curState & LITERAL_STRING_STATE)
+    this->curState &= ~LITERAL_STRING_STATE;
+  else
+    fname = String.dup (fname);
+
+  String.append_with (fname, "-module.so");
+
+  string *ns = NULL;
+  funT *load_ns = this->curScope;
+  funT *prev_ns = load_ns;
+
+  if (this->curToken is LA_TOKEN_COMMA) {
+    la_next_token (this);
+    err = la_parse_expr (this, &v);
+    ifnot (v.type is STRING_TYPE)
+      return this->syntax_error (this, "error while parsing import() ns, awaiting a string");
+
+    ns = AS_STRING(v);
+
+    if (this->curState & LITERAL_STRING_STATE)
+      this->curState &= ~LITERAL_STRING_STATE;
+    else
+      ns = String.dup (ns);
+
+    ifnot (ns->num_bytes)
+      goto theload;
+
+    la_string x = la_StringNew (ns->bytes);
+    sym_t *symbol = la_lookup_symbol (this, x);
+    if (symbol isnot NULL) {
+      v = symbol->value;
+      if (v.type & FUNCPTR_TYPE) {
+        funT *f = AS_FUNC_PTR(v);
+        load_ns = f;
+        goto theload;
+      }
+
+      this->print_fmt_bytes (this->err_fp, "import(): %s is not a namespace\n", ns->bytes);
+      err = LA_ERR_SYNTAX;
+      goto theend;
+    }
+
+    this->print_bytes (this->err_fp, "import(), functionality hasn't been implemented\n");
+    err = LA_ERR_SYNTAX;
+    goto theend;
+    /*
+    funT *uf = Fun_new (this, funNew (
+      .name = ns->bytes, .namelen = ns->num_bytes, .parent = this->curScope
+    ));
+
+    la_define_symbol (this, this->curScope, sym->bytes, (UFUNC_TYPE | (0 << 8)), v, 0);
+    */
+  }
+
+theload:
+  this->curScope = load_ns;
+
+  ifnot (Path.is_absolute (fname->bytes)) {
+    ifnot (Cstring.eq (LA_STRING_NS, AS_STRING_BYTES(this->file->value))) {
+      fn = String.dup (fname);
+      String.prepend_byte (fn, DIR_SEP);
+      char *dname = Path.dirname (AS_STRING_BYTES(this->file->value));
+      String.prepend_with (fn, dname);
+      free (dname);
+      this->curState |= LOADFILE_SILENT;
+      err = la_import_file (this, fn->bytes);
+      this->curState &= ~LOADFILE_SILENT;
+      if (err isnot LA_ERR_IMPORT)
+        goto theend;
+    }
+
+    this->curState |= LOADFILE_SILENT;
+    err = la_import_file (this, fname->bytes);
+    this->curState &= ~LOADFILE_SILENT;
+    if (err isnot LA_ERR_IMPORT)
+      goto theend;
+
+    if (this->la_dir->num_bytes) {
+      String.release (fn);
+      fn = String.dup (fname);
+      String.prepend_with_fmt (fn, "%s/modules/", this->la_dir->bytes);
+      err = la_import_file (this, fn->bytes);
+    }
+    goto theend;
+  }
+
+  err = la_import_file (this, fname->bytes);
+
+theend:
+  this->curScope = prev_ns;
+  String.release (fname);
+  String.release (fn);
+  String.release (ns);
+  return err;
+}
+#endif
+
 static int la_parse_loadfile (la_t *this) {
   int err;
   int c = la_next_token (this);
@@ -5043,12 +5257,18 @@ theload:
     if (this->la_dir->num_bytes) {
       String.release (fn);
       fn = String.dup (fname);
-      String.prepend_byte (fn, DIR_SEP);
-      char *dname = Path.dirname (this->la_dir->bytes);
-      String.prepend_with (fn, dname);
-      free (dname);
+      String.prepend_with_fmt (fn, "%s/scripts/", this->la_dir->bytes);
+      this->curState |= LOADFILE_SILENT;
       err = la_eval_file (this, fn->bytes);
+      this->curState &= ~LOADFILE_SILENT;
+      if (err isnot LA_ERR_LOAD)
+        goto theend;
     }
+
+    String.release (fn);
+    fn = String.dup (fname);
+    String.prepend_with (fn, "/data/la/scripts/");
+    err = la_eval_file (this, fn->bytes);
     goto theend;
   }
 
@@ -5663,6 +5883,7 @@ static struct def {
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
   { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
+  { "import",  LA_TOKEN_IMPORT,   PTR(la_parse_import) },
   { "array",   LA_TOKEN_ARYDEF,   PTR(la_parse_array_def) },
   { "public",  LA_TOKEN_PUBLIC,   PTR(la_parse_visibility) },
   { "private", LA_TOKEN_PRIVATE,  PTR(la_parse_visibility) },
@@ -5778,6 +5999,34 @@ static int la_std_def (la_t *this, la_opts opts) {
   v = STRING(func);
   this->func = la_define_symbol (this, this->std, "__func__", STRING_TYPE, v, 0);
   if (NULL is this->func) return LA_NOTOK;
+
+#ifndef STATIC
+  int len = 1;
+  if (this->la_dir->num_bytes) len++;
+  #ifdef ZLIBDIR
+    len++;
+  #endif
+  #ifdef LIBDIR
+    len++;
+  #endif
+
+  ArrayType *imp_path = ARRAY_NEW(STRING_TYPE, len);
+  string **arimp = (string **) AS_ARRAY(imp_path->value);
+  int ind = 0;
+  if (this->la_dir->num_bytes)
+    String.replace_with_fmt (arimp[ind++], "%s/modules", this->la_dir->bytes);
+  #ifdef ZLIBDIR
+    String.replace_with_fmt (arimp[ind++], "%s/modules", ZLIBDIR);
+  #endif
+  #ifdef LIBDIR
+    String.replace_with_fmt (arimp[ind++], "%s/modules", LIBDIR);
+  #endif
+  String.replace_with (arimp[ind], "/lib/modules");
+
+  v = ARRAY(imp_path);
+  err = la_define (this, "__importpath", ARRAY_TYPE, v);
+  if (err) return LA_NOTOK;
+#endif
 
   string *loadpath = String.dup (this->la_dir);
   v = STRING(loadpath);
@@ -5954,7 +6203,7 @@ static int la_eval_file (la_t *this, const char *filename) {
   char *err_msg[] = {
       "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
       "UNKNOWN TYPE", "BAD ARGUMENTS", "TOO MANY ARGUMENTS",
-      "LOAD ERROR", "OUT OF BOUNDS", "TYPE MISMATCH"
+      "LOAD ERROR", "IMPORT ERROR", "OUT OF BOUNDS", "TYPE MISMATCH"
   };
   this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-retval - 2]);
   return retval;
@@ -6111,6 +6360,10 @@ static char *la_get_message (la_t *this) {
   return this->message->bytes;
 }
 
+public la_T *la_get_root (la_t *this) {
+  return this->root;
+}
+
 static char *la_get_eval_str (la_t *this) {
   return (char *) la_StringGetPtr (this->parsePtr);
 }
@@ -6233,6 +6486,8 @@ static la_t *la_init_instance (la_T *__la__, la_opts opts) {
 
   la_init (__la__, this, opts);
 
+  this->root = __la__;
+
   return this;
 }
 
@@ -6331,6 +6586,7 @@ public la_T *__init_la__ (void) {
       .remove_instance = la_remove_instance,
       .append_instance = la_append_instance,
       .get = (la_get_self) {
+        .root = la_get_root,
         .message = la_get_message,
         .current = la_get_current,
         .eval_str = la_get_eval_str,

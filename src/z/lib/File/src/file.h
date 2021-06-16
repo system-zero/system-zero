@@ -29,6 +29,7 @@ typedef struct file_self {
     (*exists) (const char *);
 
   int
+    (*is_lnk) (const char *),
     (*is_reg) (const char *),
     (*is_elf) (const char *),
     (*is_rwx) (const char *),
@@ -42,6 +43,8 @@ typedef struct file_self {
   ssize_t
     (*write) (char *, char *, ssize_t),
     (*append) (char *, char *, ssize_t);
+
+  string_t *(*readlink) (const char *);
 
   Vstring_t
     *(*readlines) (char *, Vstring_t *, FileReadLines_cb, void *),

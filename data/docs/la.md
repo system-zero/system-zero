@@ -1,4 +1,4 @@
-A very small yet another programming language (yala) that compiles in C.
+A very small yet another programming language that compiles in C.
 
 ## Syntax and Semantics
 ```js
@@ -183,7 +183,30 @@ A very small yet another programming language (yala) that compiles in C.
   else it is relative to the `__loadpath` intrinsic variable. If it couldn't
   be found then an error terminates execution.
 
-# syntax errors are fatal.
+# import syntax and semantics:
+
+  import (fname)
+
+  If `fname` is not an absolute path, then it is relative to the current
+  evaluated unit. If that fails, then it is relative to the current directory,
+  else it is relative to the members of the `__importpath` intrinsic array
+  If it couldn't be found then an error terminates execution.
+
+  The imported file name is composed as `fname`-module.so.
+  A compatible unit should provide two functions with the following signatures:
+    1. int __init_modulename__ (la_t *);
+    2. void __deinit_modulename__ (la_t *);
+
+  For convienence:
+    To the top of the unit:
+
+      #define REQUIRE_LA_TYPE DECLARE
+      #include <z/cenv.h>
+
+    And to the __init_modulename__(la_t *this) function:
+      __INIT_MODULE(this);
+
+    Note that the `import` function is not available in static builds.
 
 # print functions syntax:
 
@@ -365,8 +388,10 @@ A very small yet another programming language (yala) that compiles in C.
 #                      args: string
 # loadfile          -  load a filename for evaluation
 #                      args: a filename
+# import            -  load a compiled C module
+#                      args: a module name
 # exit              -  terminates evaluation of the current evaluated instance.
-#                      args: integer
+#                      args: integer as an exit value
 # typeof            -  type of a value
 #                      args: object
 #                      Type can be any of the followings:
@@ -407,12 +432,14 @@ A very small yet another programming language (yala) that compiles in C.
 #              has been set and its length should correspond to `__argc`.
 
 # Info variables
-# __file__   - current evaluated filename. If a string is evaluated defaults
-#              to "__string__"
-# __func__   - current function name
-# __loadpath - directory to lookup up when loading scripts
+# __file__     - current evaluated filename. If a string is evaluated defaults
+#                to "__string__"
+# __func__     - current function name
+# __loadpath   - directory to lookup up when loading scripts
+# __importpath - string type array with directories as members, to lookup when
+#                importing C modules
 
-# The followings might change semantics or removed.
+# The followings might change semantics or possible removed in the future.
 # not        -  !value
 # bool       -  !!value
 # Likewise, the following memory handling functions are not needed with
@@ -440,6 +467,8 @@ A very small yet another programming language (yala) that compiles in C.
 
   - arrays are one dimensional arrays (for simplification), though it is not
     hard to emulate multi dimensional ones if there is a symmetry
+
+  - syntax errors are fatal and terminate execution
 
 # Lexical Scope and visibility order
   - standard scope (lookup for standard operators and internal functions first)

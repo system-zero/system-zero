@@ -143,9 +143,13 @@ typedef ObjectType object;
 typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*OpFunc) (la_t *, VALUE, VALUE);
 
+typedef int  (*ModuleInit) (la_t *);
+typedef void (*ModuleDeinit) (la_t *);
+
 enum {
-  LA_ERR_TYPE_MISMATCH = -10,
-  LA_ERR_OUTOFBOUNDS   = -9,
+  LA_ERR_TYPE_MISMATCH = -11,
+  LA_ERR_OUTOFBOUNDS   = -10,
+  LA_ERR_IMPORT        = -9,
   LA_ERR_LOAD          = -8,
   LA_ERR_TOOMANYARGS   = -7,
   LA_ERR_BADARGS       = -6,
@@ -214,6 +218,8 @@ typedef struct la_get_self {
     *(*message) (la_t *);
 
    int (*current_idx) (la_T *);
+
+   la_T *(*root) (la_t *);
 } la_get_self;
 
 typedef struct la_set_self {
@@ -260,5 +266,6 @@ struct la_T {
 
 public la_T *__init_la__ (void);
 public void __deinit_la__ (la_T **);
+public la_T *la_get_root (la_t *);
 
 #endif /* LA_HDR */

@@ -750,7 +750,7 @@ char *lai_keywords[] = {
   "for I", "while I", "break I", "continue I",
   "println F", "null T", "format F", "len F", "print F", "loadfile F",
   "loop I", "forever I", "do I", "ok K", "notok K", "true K", "false K",
-  "lambda F", "array V", "public V", "private V",
+  "lambda F", "array V", "public V", "private V", "import F",
   "string T", "integer T", "number T", "typeof F", "typeofArray F",
   "bool V", "not V", "const V",
    NULL
@@ -1232,7 +1232,7 @@ static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str
       return OK;
 
     default:
-      snprintf (buf, 256, "%ld", AS_INT(v));
+      snprintf (buf, 256, "%d", AS_INT(v));
   }
 
   Ed.reg.set (ed, '$', CHARWISE, buf, NORMAL_ORDER);

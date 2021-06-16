@@ -26,6 +26,12 @@
 /* Public TODO:
    StateRetval = fun (args, SomeState()).retval
  */
+static int file_is_lnk (const char *fname) {
+  struct stat st;
+  if (NOTOK is lstat (fname, &st)) return 0;
+  return S_ISLNK (st.st_mode);
+}
+
 static int file_is_reg (const char *fname) {
   struct stat st;
   if (NOTOK is stat (fname, &st)) return 0;
@@ -133,6 +139,24 @@ static char *file_mode_stat_to_string (char *mode_string, mode_t mode) {
 
   mode_string[10] = '\0';
   return mode_string;
+}
+
+static string_t *file_readlink (const char *file) {
+  size_t size = MAXLEN_PATH;
+
+  again: {}
+  char buf[size];
+  ssize_t retval = readlink (file, buf, size);
+  if (-1 is retval)
+    return NULL;
+
+  if ((size_t) retval is size) {
+    size *=  2;
+    goto again;
+  }
+
+  string_t *lnk = String.new_with_len (buf, (size_t) retval);
+  return lnk;
 }
 
 static Vstring_t *file_readlines_from_fp (FILE *fp, Vstring_t *lines,
@@ -308,10 +332,12 @@ public file_T __init_file__ (void) {
       .is_rwx = file_is_rwx,
       .is_elf = file_is_elf,
       .is_reg = file_is_reg,
+      .is_lnk = file_is_lnk,
       .is_sock = file_is_sock,
       .is_readable = file_is_readable,
       .is_writable = file_is_writable,
       .is_executable = file_is_executable,
+      .readlink = file_readlink,
       .readlines = file_readlines,
       .readlines_from_fp = file_readlines_from_fp,
       .tmpfname = (file_tmpfname_self) {

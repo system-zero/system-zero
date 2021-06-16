@@ -93,7 +93,7 @@ LA_STATIC_FLAGS += -lpath-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
 LA_STATIC_FLAGS += -lerror-$(VERSION)
 
 la-shared:
-	$(CC) $(LA).c $(FLAGS) -o $(SYSBINDIR)/$(LA)-shared
+	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(LA)-shared $(SYSBINDIR)/$(LA)
 
 la-static:

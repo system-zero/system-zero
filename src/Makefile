@@ -1,9 +1,9 @@
 # This Makefile is to help us to initialize a minimun functional environment.
 # It also serves as an introductory document, as it declares intentions and describe
 # the implementation through some loud thoughts in comments, so it is more verbose
-# than in usual Makefiles.  This is to be initialized also in the developed type of
-# thinking. So though there are might be some pointers, for those that are not
-# familiar with programming consepts, it was really written for developers, but it
+# than in usual Makefiles and serve also to initialize also a developer way of
+# thinking. So though there are might be some pointers (for those that are not
+# familiar with programming consept), it was really written for developers, but it
 # might be used by others too.
 
 # This is our actual first file, and it is the one that will assist us to build the
@@ -13,17 +13,17 @@
 
 # We use a Make type of building system, which is and the most primitive in Unix land.
 # Particularly the GNU make implementation, though we want to be POSIX compatible, so
-# this Makefile code can be end up to be portable. We'll do this with time and iterations
+# this Makefile code can be end up to be portable. We'll do this with time and iterations.
 
 #-----------------------------------------------#
-# Application Layer.
+# Application Interface and versioning.
 API     := 0
 REV     := 1
 VERSION  = $(API).$(REV)
 #-----------------------------------------------#
 #           HIERARCHY
 
-# we want this variable to be treated as immutable but we can't, as this it cannot
+# We want this variable to be treated as immutable but we can't, as this it cannot
 # be done actually, as the make utility allow variables to be overriden by anyone
 # that call us through the command line of from an external Makefile.
 # The last thing we can do is to use the plain assignment symbol '=' instead of using
@@ -45,7 +45,7 @@ SYSARCH       := $(shell uname -m)
 # our target directory.
 # If it is not already defined in the command line as:
 #   make SYSDIR=/some/dir [target]
-# or from another Makefile, then by default is this_directory/sys/$(uname -m)
+# or from another Makefile, then by default is this_directory/../sys/$(uname -m)
 SYSDIR        := $(THISDIR)/../sys/$(SYSARCH)
 
 SYSLIBDIR      = $(SYSDIR)/lib
@@ -57,6 +57,11 @@ SYSINCDIR      = $(SYSDIR)/include
 #  at runtime by our identity)
 SYSDATADIR     = $(SYSDIR)/../data
 SYSTMPDIR      = $(SYSDIR)/../tmp
+
+SYSLADIR       = $(SYSDATADIR)/la
+SYSSCRIPTDIR   = $(SYSLADIR)/scripts
+SYSMODULEDIR   = $(SYSLIBDIR)/modules
+SYSZMODULEDIR  = $(SYSLIBDIR)/z/modules
 
 UID       := $(shell id -u)
 GID       := $(shell id -g)
@@ -89,7 +94,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Vstring_Type         = Vstring
     Z_VSTRING_SRCDIR    := $(Z_SRCLIBDIR)/$(Vstring_Type)/src
 
-    # our own implementation of string functions with byte semantics
+    # our own implementation of C string functions with byte semantics
     Cstring_Type         = Cstring
     Z_CSTRING_SRCDIR    := $(Z_SRCLIBDIR)/$(Cstring_Type)/src
 
@@ -109,7 +114,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Proc_Type            = Proc
     Z_PROC_SRCDIR       := $(Z_SRCLIBDIR)/$(Proc_Type)/src
 
-    # Readline Type
+    # Readline Type (based on linenoise)
     Rline_Type           = Rline
     Z_RLINE_SRCDIR       = $(Z_SRCLIBDIR)/$(Rline_Type)/src
 
@@ -165,7 +170,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     E_Type               = E
     Z_E_SRCDIR           = $(Z_SRCLIBDIR)/$(E_Type)/src
 
-    # I Type (not used, but stays as a reference)
+    # I Type (not used anymore, but stays as a reference)
     I_Type               = I
     Z_I_SRCDIR           = $(Z_SRCLIBDIR)/$(I_Type)/src
 
@@ -176,7 +181,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Video_Type           = Video
     Z_VIDEO_SRCDIR       = $(Z_SRCLIBDIR)/$(Video_Type)/src
 
-    # Readline Type
+    # Readline Type (this is the main autocompletion mechanism)
     Readline_Type        = Readline
     Z_READLINE_SRCDIR    = $(Z_SRCLIBDIR)/$(Readline_Type)/src
 
@@ -200,14 +205,18 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     V_Type             = V
     Z_V_SRCDIR         = $(Z_SRCLIBDIR)/$(V_Type)/src
 
-    # though not a type, this is a rich double linked list
-    # which is implemented with macros, so to gain abstraction.
-    # a compatible container should include:
+    # though not a type, this is a rich double linked list which is implemented
+    # with macros, to gain abstraction.
+    # A compatible container should include:
     #   head/current/tail pointers
     #   int cur_idx; int num_items; 
     # for any item in the list, it is assumed prev/next pointers
     Z_LIST_SRCDIR      := $(Z_SRCLIBDIR)/list/src
     # it is extended with a list stack implementation (it requires a next pointer)
+
+    # finally, a self library used by the author (ignore)
+    Self_Type          = Self
+    Z_SELF_SRCDIR      = $(Z_SRCLIBDIR)/$(Self_Type)/src
 
   # C applicarion namespace
   Z_SRCAPPDIR  = $(Z_SRCDIR)/app
@@ -233,11 +242,6 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
   #    should respect this hierarchy, that means:
   #      - the name of the compilation units should match
   #      - provide a Makefile that could handle the compilation
-
-    # Development (ignore this section)
-    # Netm Type
-    Netm_Type             = Netm
-    Z_NETM_SRCDIR         = $(Z_SRCLIBDIR)/$(Netm_Type)/src
 
 #-----------------------------------------------#
 
@@ -280,12 +284,14 @@ Z_SU        := $(ZC_SU)
 
   # we use rpath in this early stage, so we do not need to run ldconfig
   ifeq ($(RPATH), 1)
-    BASE_FLAGS  += -Wl,-rpath=$(Z_SYSLIBDIR):$(SYSLIBDIR):/lib/z:/lib
+    BASE_FLAGS  += -Wl,-rpath=$(Z_SYSLIBDIR)
+#:$(SYSLIBDIR):/lib/z:/lib
   endif
 
   ZARGS  = NS=$(ZNAME)
   MARGS :=
   MARGS  = API=$(API) REV=$(REV) VERSION=$(VERSION) DEBUG=$(DEBUG)
+  MARGS += CC=$(CC) CC_STD=$(CC_STD)
   MARGS += SYSDIR=$(SYSDIR) SYSDATADIR=$(SYSDATADIR) SYSTMPDIR=$(SYSTMPDIR)
   MARGS += BASE_FLAGS='$(BASE_FLAGS)'
   MARGS += USERNAME=$(USERNAME) GROUPNAME=$(GROUPNAME)
@@ -707,20 +713,23 @@ clean-libv-static:
 	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 
-# Development (ignore this section)
-libnetm-shared: Env cenv libstring-shared libcstring-shared \
-                libvstring-shared libdir-shared
-	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+# Development and personal stuff (ignore this section)
+libself-shared: Env cenv libstring-shared libcstring-shared \
+                libvstring-shared libdir-shared libfile-shared \
+                libpath-shared libre-shared
+	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libnetm-static: Env cenv libstring-static libcstring-static \
-                libvstring-static libdir-static
-	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+libself-static: Env cenv libstring-static libcstring-static \
+                libvstring-static libdir-static libfile-static \
+                libpath-static libre-static
+	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
-clean-libnetm-shared:
-	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+clean-libself-shared:
+	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
 
-clean-libnetm-static:
-	@cd $(Z_NETM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+clean-libself-static:
+	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+
 #----------------------------------------------------------#
 
 
@@ -995,25 +1004,23 @@ zero-clean-static:\
 
 all: shared static
 
-# Development (ignore this section)
-  # netm
-  ZA_NETM          = netm
-  ZA_NETM_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_NETM)/src
+# Development and personal stuff (ignore this section)
+  ZA_SELF          = self
+  ZA_SELF_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SELF)/src
 
-netm-shared: cenv libstring-shared libdir-shared libargparse-shared\
-             libvstring-shared libcstring-shared libnetm-shared
-	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+self-shared: cenv libstring-shared libdir-shared libargparse-shared\
+             libvstring-shared libcstring-shared libself-shared
+	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-#netm-static: cenv libstring-static libdur-static libargparse-static\
-#             libvstring-static libcstring-static  libnetm-static
-# 	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+self-static: cenv libstring-static libdir-static libargparse-static\
+             libvstring-static libcstring-static  libself-static
+	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
-clean-netm-shared:
-	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+clean-self-shared:
+	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
 
-clean-netm-static:
-	@cd $(ZA_NETM_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
-#----------------------------------------------------------#
+clean-self-static:
+	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 
 #----------------------------------------------------------#
 Env: checkuid makeenv checkenv
@@ -1022,27 +1029,35 @@ checkuid:
 	@if [ $(UID) = 0 ]; then echo "You can not run this makefile as the root user"; exit 1; fi
 
 makeenv:
-	@$(TEST) -d $(SYSDIR)      || $(MKDIR_P) $(SYSDIR)
-	@$(TEST) -d $(SYSLIBDIR)   || $(MKDIR)   $(SYSLIBDIR)
-	@$(TEST) -d $(SYSBINDIR)   || $(MKDIR)   $(SYSBINDIR)
-	@$(TEST) -d $(SYSINCDIR)   || $(MKDIR)   $(SYSINCDIR)
-	@$(TEST) -d $(SYSTMPDIR)   || $(MKDIR)   $(SYSTMPDIR)
-	@$(TEST) -d $(SYSDATADIR)  || $(MKDIR)   $(SYSDATADIR)
-	@$(TEST) -d $(Z_SYSDIR)    || $(MKDIR)   $(Z_SYSDIR)
-	@$(TEST) -d $(Z_SYSBINDIR) || $(MKDIR)   $(Z_SYSBINDIR)
-	@$(TEST) -d $(Z_SYSLIBDIR) || $(MKDIR)   $(Z_SYSLIBDIR)
-	@$(TEST) -d $(Z_SYSINCDIR) || $(MKDIR)   $(Z_SYSINCDIR)
+	@$(TEST) -d $(SYSDIR)        || $(MKDIR_P) $(SYSDIR)
+	@$(TEST) -d $(SYSLIBDIR)     || $(MKDIR)   $(SYSLIBDIR)
+	@$(TEST) -d $(SYSBINDIR)     || $(MKDIR)   $(SYSBINDIR)
+	@$(TEST) -d $(SYSINCDIR)     || $(MKDIR)   $(SYSINCDIR)
+	@$(TEST) -d $(SYSTMPDIR)     || $(MKDIR)   $(SYSTMPDIR)
+	@$(TEST) -d $(SYSDATADIR)    || $(MKDIR)   $(SYSDATADIR)
+	@$(TEST) -d $(SYSLADIR)      || $(MKDIR)   $(SYSLADIR)
+	@$(TEST) -d $(SYSSCRIPTDIR)  || $(MKDIR)   $(SYSSCRIPTDIR)
+	@$(TEST) -d $(SYSZMODULEDIR) || $(MKDIR)   $(SYSZMODULEDIR)
+	@$(TEST) -d $(SYSMODULEDIR)  || $(MKDIR)   $(SYSMODULEDIR)
+	@$(TEST) -d $(Z_SYSDIR)      || $(MKDIR)   $(Z_SYSDIR)
+	@$(TEST) -d $(Z_SYSBINDIR)   || $(MKDIR)   $(Z_SYSBINDIR)
+	@$(TEST) -d $(Z_SYSLIBDIR)   || $(MKDIR)   $(Z_SYSLIBDIR)
+	@$(TEST) -d $(Z_SYSINCDIR)   || $(MKDIR)   $(Z_SYSINCDIR)
 
 checkenv:
-	@$(TEST) -w $(SYSDIR)      || exit 1
-	@$(TEST) -w $(SYSBINDIR)   || exit 1
-	@$(TEST) -w $(SYSLIBDIR)   || exit 1
-	@$(TEST) -w $(SYSINCDIR)   || exit 1
-	@$(TEST) -w $(SYSTMPDIR)   || exit 1
-	@$(TEST) -w $(SYSDATADIR)  || exit 1
-	@$(TEST) -w $(Z_SYSBINDIR) || exit 1
-	@$(TEST) -w $(Z_SYSLIBDIR) || exit 1
-	@$(TEST) -w $(Z_SYSINCDIR) || exit 1
+	@$(TEST) -w $(SYSDIR)        || exit 1
+	@$(TEST) -w $(SYSBINDIR)     || exit 1
+	@$(TEST) -w $(SYSLIBDIR)     || exit 1
+	@$(TEST) -w $(SYSINCDIR)     || exit 1
+	@$(TEST) -w $(SYSTMPDIR)     || exit 1
+	@$(TEST) -w $(SYSDATADIR)    || exit 1
+	@$(TEST) -w $(SYSLADIR)      || exit 1
+	@$(TEST) -w $(SYSSCRIPTDIR)  || exit 1
+	@$(TEST) -w $(SYSZMODULEDIR) || exit 1
+	@$(TEST) -w $(SYSMODULEDIR)  || exit 1
+	@$(TEST) -w $(Z_SYSBINDIR)   || exit 1
+	@$(TEST) -w $(Z_SYSLIBDIR)   || exit 1
+	@$(TEST) -w $(Z_SYSINCDIR)   || exit 1
 
 INSTALL = install
 RM = rm -f

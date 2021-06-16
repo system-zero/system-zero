@@ -400,10 +400,10 @@ char lua_singleline_comment[] = "--";
 char lua_multiline_comment_start[] = "--[[";
 char lua_multiline_comment_end[] = "]]";
 
-char *lai_extensions[] = {".lai", ".du", NULL};
-char *lai_shebangs[] = {"#!/bin/env lai", "#!/usr/bin/dictu", NULL};
-char  lai_operators[] = "+:-*^><=|&~.()[]{}!@/";
-char *lai_keywords[] = {
+char *dictu_extensions[] = {".du", NULL};
+char *dictu_shebangs[] = {"#!/usr/bin/dictu", NULL};
+char  dictu_operators[] = "+:-*^><=|&~.()[]{}!@/";
+char *dictu_keywords[] = {
   "beg I", "end I", "if I", "while I", "else I", "for I", "do I", "orelse I",
   "is I", "isnot I", "nil E", "not I", "var V", "const V", "return V", "and I",
   "or I", "self F", "this V", "then I", "def F",  "continue I", "break I", "init I", "class T",
@@ -412,9 +412,9 @@ char *lai_keywords[] = {
   "use T", "elseif I", "static T",
    NULL};
 
-char lai_singleline_comment[] = "//";
-char lai_multiline_comment_start[] = "/*";
-char lai_multiline_comment_end[] = "*/";
+char dictu_singleline_comment[] = "//";
+char dictu_multiline_comment_start[] = "/*";
+char dictu_multiline_comment_end[] = "*/";
 
 char *md_extensions[] = {".md", NULL};
 
@@ -483,8 +483,8 @@ static string_t *__ex_c_ftype_autoindent (buf_t *this, row_t *row) {
   return autoindent_fun (this, row);
 }
 
-static ftype_t *__ex_lai_syn_init (buf_t *this) {
-  ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "lai"),
+static ftype_t *__ex_dictu_syn_init (buf_t *this) {
+  ftype_t *ft= Buf.ftype.set (this, Ed.syn.get_ftype_idx (E.get.current (__E__), "dictu"),
     FtypeOpts(.autoindent = __ex_c_ftype_autoindent, .tabwidth = 2, .tab_indents = 1));
   return ft;
 }
@@ -547,10 +547,10 @@ syn_t ex_syn[] = {
     __ex_syn_parser, __ex_lua_syn_init, 0, 0, NULL, NULL, __ex_balanced_pairs,
   },
   {
-    "lai", __ex_NULL_ARRAY, lai_extensions, lai_shebangs, lai_keywords, lai_operators,
-    lai_singleline_comment, lai_multiline_comment_start, lai_multiline_comment_end,
+    "dictu", __ex_NULL_ARRAY, dictu_extensions, dictu_shebangs, dictu_keywords, dictu_operators,
+    dictu_singleline_comment, dictu_multiline_comment_start, dictu_multiline_comment_end,
     NULL, HL_STRINGS, HL_NUMBERS,
-    __ex_syn_parser, __ex_lai_syn_init, 0, 0, NULL, NULL, __ex_balanced_pairs,
+    __ex_syn_parser, __ex_dictu_syn_init, 0, 0, NULL, NULL, __ex_balanced_pairs,
   },
   {
     "diff", __ex_NULL_ARRAY, diff_extensions, __ex_NULL_ARRAY,

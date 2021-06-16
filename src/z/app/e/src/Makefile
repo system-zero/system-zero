@@ -99,7 +99,7 @@ E_STATIC_FLAGS  = -lustring-$(VERSION) -lre-$(VERSION) -lspell-$(VERSION)
 E_STATIC_FLAGS += -lvideo-$(VERSION) -lvmap-$(VERSION)
 
 e-shared:
-	$(CC) $(E).c $(FLAGS) -o $(SYSBINDIR)/$(E)-shared
+	$(CC) $(E).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(E)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(E)-shared $(SYSBINDIR)/$(E)
 
 e-static:

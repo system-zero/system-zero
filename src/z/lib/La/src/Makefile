@@ -58,8 +58,8 @@ endif
 # if turn on -Wpedantic gcc gives: ISO C forbids braced-groups within expressions
 # (this is for statement expressions)
 
-SHARED_CFLAGS := -shared -fPIC
-STATIC_CFLAGS := -static
+SHARED_CFLAGS := -shared -fPIC -ldl
+STATIC_CFLAGS := -static -DSTATIC=1
 
 FLAGS         := $(BASE_FLAGS)
 
@@ -83,7 +83,9 @@ ifneq ($(DEBUG), 0)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
-LIBFLAGS += -DDATADIR='"$(SYSDATADIR)"'
+LIBFLAGS += -DDATADIR='"$(SYSDATADIR)"' -DLIBDIR='"$(SYSDIR)/lib"'
+LIBFLAGS += -DZLIBDIR='"$(SYSLIBDIR)"'
+LIBFLAGS += -DBINDIR='"$(SYSBINDIR)"' -DINCLUDEDIR='"$(SYSINCDIR)"'
 LIBFLAGS += -lstring-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)
 LIBFLAGS += -lustring-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION)
 LIBFLAGS += -lerror-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
