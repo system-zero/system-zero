@@ -330,12 +330,6 @@ struct la_t {
   la_T *root;
 };
 
-typedef struct ArrayType {
-  VALUE value;
-  int type;
-  size_t len;
-} ArrayType;
-
 #define MAX_EXPR_LEVEL 5
 
 static int la_parse_stmt (la_t *);
@@ -754,7 +748,13 @@ static VALUE la_getcwd (la_t *this) {
 
 static VALUE la_typeof (la_t *this, VALUE value) {
   (void) this;
-  VALUE v = INT(value.type);
+  VALUE v;
+  if ((value.type & 0xff) is UFUNC_TYPE)
+    v = INT(FUNCPTR_TYPE);
+  else if ((value.type & 0x77) is LA_TOKEN_BUILTIN)
+    v = INT(CFUNCTION_TYPE);
+  else
+    v = INT(value.type);
   return v;
 }
 
@@ -787,6 +787,8 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
     default:
       if (value.type & FUNCPTR_TYPE)
         String.append_with_len (buf, "FunctionType", 12);
+      else if ((value.type & 0xff) is LA_TOKEN_BUILTIN)
+        String.append_with_len (buf, "CFunctionType", 13);
       else
         String.append_with_len (buf, "UnknownType", 11);
       break;
@@ -2825,18 +2827,29 @@ static int la_parse_map_set (la_t *this) {
     if (NULL is v)
       return la_syntax_error_fmt (this, "%s, method doesn't exists", key);
 
-    ifnot (v->type & FUNCPTR_TYPE)
+    int type;
+    if (v->type & FUNCPTR_TYPE)
+      type = FUNCPTR_TYPE;
+    else if ((v->type & 0x77) is LA_TOKEN_BUILTIN)
+      type = CFUNCTION_TYPE;
+    else
       return la_syntax_error_fmt (this, "%s, not a method", key);
 
     la_unget_char (this);
 
-    funT *uf = AS_FUNC_PTR((*v));
-    VALUE th = v->sym->value;
-    la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
-    this->funcState |= MAP_METHOD_STATE;
-    err = la_parse_func_call (this, v, NULL, uf, *v);
+    if (type is FUNCPTR_TYPE) {
+      funT *uf = AS_FUNC_PTR((*v));
+      VALUE th = v->sym->value;
+      la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+      this->funcState |= MAP_METHOD_STATE;
+      err = la_parse_func_call (this, v, NULL, uf, *v);
+      la_next_token (this);
+    } else {
+      CFunc op = (CFunc) AS_PTR((*v));
+      this->tokenArgs = ((*v).type >> 8) & 0xff;
+      err = la_parse_func_call (this, v, op, NULL, *v);
+    }
 
-    la_next_token (this);
     return err;
   }
 
@@ -3014,8 +3027,14 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
   if (c isnot LA_TOKEN_PAREN_OPEN) {
     la_unget_char (this);
-    VALUE v = PTR(uf);
-    v.type |= FUNCPTR_TYPE;
+    VALUE v;
+    if (uf isnot NULL) {
+      v = PTR(uf);
+      v.type |= FUNCPTR_TYPE;
+    } else {
+      v = PTR(op);
+      v.type = value.sym->type;
+    }
     v.sym = value.sym;
     *vp = v;
     return LA_OK;
@@ -3281,7 +3300,12 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       if (err isnot LA_OK)
         return err;
 
-      ifnot (vp->type & FUNCPTR_TYPE)
+      int type;
+      if (vp->type & FUNCPTR_TYPE)
+        type = FUNCPTR_TYPE;
+      else if ((vp->type & 0xff) is LA_TOKEN_BUILTIN)
+        type = CFUNCTION_TYPE;
+      else
         break;
 
       ifnot (this->curToken is LA_TOKEN_PAREN_OPEN)
@@ -3289,14 +3313,20 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       la_unget_char (this);
 
-      funT *uf = AS_FUNC_PTR((*vp));
-      VALUE th = vp->sym->value;
-      la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
-      this->funcState |= MAP_METHOD_STATE;
-      err = la_parse_func_call (this, vp, NULL, uf, *vp);
+      if (type is FUNCPTR_TYPE) {
+        funT *uf = AS_FUNC_PTR((*vp));
+        VALUE th = vp->sym->value;
+        la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+        this->funcState |= MAP_METHOD_STATE;
+        err = la_parse_func_call (this, vp, NULL, uf, *vp);
 
-      la_next_token (this);
-      return err;
+        la_next_token (this);
+        return err;
+      } else {
+        CFunc op = (CFunc) AS_PTR((*vp));
+        this->tokenArgs = ((*vp).type >> 8) & 0xff;
+        return la_parse_func_call (this, vp, op, NULL, *vp);
+      }
     }
 
     case LA_TOKEN_USRFUNC: {
@@ -4981,8 +5011,8 @@ static int la_import_file (la_t *this, const char *module) {
   size_t len = bytelen (mname) - 7;
   char tmp[len+1];
   Cstring.substr (tmp, len, mname, len + 7, 0);
-  string *init_fun = String.new_with_fmt ("__init_%s__", tmp);
-  string *deinit_fun = String.new_with_fmt ("__deinit_%s__", tmp);
+  string *init_fun = String.new_with_fmt ("__init_%s_module__", tmp);
+  string *deinit_fun = String.new_with_fmt ("__deinit_%s_module__", tmp);
 
   dlerror ();
   ModuleInit init_sym = (ModuleInit) dlsym (handle, init_fun->bytes);
@@ -5092,13 +5122,6 @@ static int la_parse_import (la_t *this) {
     this->print_bytes (this->err_fp, "import(), functionality hasn't been implemented\n");
     err = LA_ERR_SYNTAX;
     goto theend;
-    /*
-    funT *uf = Fun_new (this, funNew (
-      .name = ns->bytes, .namelen = ns->num_bytes, .parent = this->curScope
-    ));
-
-    la_define_symbol (this, this->curScope, sym->bytes, (UFUNC_TYPE | (0 << 8)), v, 0);
-    */
   }
 
 theload:
@@ -5124,11 +5147,21 @@ theload:
     if (err isnot LA_ERR_IMPORT)
       goto theend;
 
-    if (this->la_dir->num_bytes) {
+    sym_t *symbol = la_lookup_symbol (this, la_StringNew ("__importpath"));
+    ArrayType *p_ar = (ArrayType *) AS_ARRAY(symbol->value);
+    string **s_ar = (string **) AS_ARRAY(p_ar->value);
+    for (size_t i = 0; i < p_ar->len; i++) {
+      string *p = s_ar[i];
+      ifnot (p->num_bytes) continue;
+
       String.release (fn);
       fn = String.dup (fname);
-      String.prepend_with_fmt (fn, "%s/modules/", this->la_dir->bytes);
-      err = la_import_file (this, fn->bytes);
+      String.prepend_with_fmt (fn, "%s/", p->bytes);
+      this->curState |= LOADFILE_SILENT;  // this is ugly, should do something
+      err = la_import_file (this, fn->bytes); // and should save at least an error msg
+      this->curState &= ~LOADFILE_SILENT;
+      if (err isnot LA_ERR_IMPORT)
+        goto theend;
     }
     goto theend;
   }
@@ -5222,13 +5255,6 @@ static int la_parse_loadfile (la_t *this) {
     this->print_bytes (this->err_fp, "loadfile(), functionality hasn't been implemented\n");
     err = LA_ERR_SYNTAX;
     goto theend;
-    /*
-    funT *uf = Fun_new (this, funNew (
-      .name = ns->bytes, .namelen = ns->num_bytes, .parent = this->curScope
-    ));
-
-    la_define_symbol (this, this->curScope, sym->bytes, (UFUNC_TYPE | (0 << 8)), v, 0);
-    */
   }
 
 theload:
@@ -5920,6 +5946,7 @@ static struct def {
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
   { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
   { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
+  { "CFunctionType",INTEGER_TYPE,  INT(CFUNCTION_TYPE) },
   { "StringType",  INTEGER_TYPE,  INT(STRING_TYPE) },
   { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
   { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
@@ -5932,11 +5959,7 @@ static struct def {
   { NULL,          NULL_TYPE,     NULL_VALUE }
 };
 
-struct la_def_fun_t {
-  const char *name;
-  VALUE val;
-  int nargs;
-} la_funs[] = {
+LaDefCFun la_funs[] = {
   { "not",              PTR(la_not), 1},
   { "len",              PTR(la_len), 1},
   { "bool",             PTR(la_bool), 1},
@@ -6000,7 +6023,15 @@ static int la_std_def (la_t *this, la_opts opts) {
   this->func = la_define_symbol (this, this->std, "__func__", STRING_TYPE, v, 0);
   if (NULL is this->func) return LA_NOTOK;
 
-#ifndef STATIC
+#ifdef STATIC
+  v = INT(1);
+#else
+  v = INT(0);
+#endif
+
+  err = la_define (this, "__static", INTEGER_TYPE, v);
+  if (err) return LA_NOTOK;
+
   int len = 1;
   if (this->la_dir->num_bytes) len++;
   #ifdef ZLIBDIR
@@ -6026,7 +6057,6 @@ static int la_std_def (la_t *this, la_opts opts) {
   v = ARRAY(imp_path);
   err = la_define (this, "__importpath", ARRAY_TYPE, v);
   if (err) return LA_NOTOK;
-#endif
 
   string *loadpath = String.dup (this->la_dir);
   v = STRING(loadpath);

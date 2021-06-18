@@ -26,6 +26,7 @@ typedef string_t    string;
 #define ARRAY_TYPE     (1 << 4)
 #define OBJECT_TYPE    (1 << 5)
 #define MAP_TYPE       (1 << 6)
+#define CFUNCTION_TYPE (1 << 7)
 #define POINTER_TYPE   INTEGER_TYPE
 
 struct ValueType {
@@ -54,6 +55,12 @@ typedef ValueType VALUE;
 #define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .asString = __s__, .refcount = 0, .sym = NULL}
 #define STRING_NEW(__s__) STRING(String.new_with (__s__))
 #define STRING_NEW_WITH_LEN(__s__, __l__) STRING(String.new_with_len (__s__, __l__))
+
+typedef struct ArrayType {
+  VALUE value;
+  int type;
+  size_t len;
+} ArrayType;
 
 #define AS_ARRAY AS_PTR
 #define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .asInteger = (pointer) __a__, .refcount = 0, .sym = NULL}
@@ -164,6 +171,12 @@ enum {
   LA_ERR_CONTINUE      = 3,
   LA_ERR_EXIT          = 4
 };
+
+typedef struct LaDefCFun {
+  const char *name;
+  VALUE val;
+  int nargs;
+} LaDefCFun;
 
 /* Interface */
 typedef int (*LaPrintByte_cb) (FILE *, int);

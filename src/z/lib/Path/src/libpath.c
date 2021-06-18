@@ -52,8 +52,8 @@ static char *path_extname (char *name) {
   return p;
 }
 
-/* as a new c string (null terninated), any new created c strings
- * should be null byte terminated */
+/* as a new c string (null terninated), as a general note any new created
+ * C string should be null byte terminated */
 static char *path_dirname (char *name) {
   size_t len = bytelen (name);
   char *dname = NULL;

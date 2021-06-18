@@ -1,5 +1,26 @@
 A very small yet another programming language that compiles in C.
 
+The main purpose of this project is to describe the semantics and syntax
+of a Programming Language, composed with some of most common and very well
+established and easy to recognize (as they exposed similarly to almost all
+(or at least to those derived from C)), programming consepts. It tries to
+incorporate the very minimum significant datatypes (strings, arrays, maps
+(dictionaries which can be used to implement object oriented techniques),
+with an obvious syntax and easy to get it in minutes.
+
+The following is an early draft, but looks quite close to the final reference,
+but with a couple of exceptions, restrictions and unhandled cases that would
+be good to have.
+
+There is a reference implementation, that should obey the syntax and semantics
+that should pass all the tests, except some expected to fail ones, notably
+operations on doubles, where an expertise is missing and neither exists the
+desirable will to gain this knowledge. This can wait, as and as an author, i
+never had to use the type, except in some quite basic calculations and these
+few. The code is used in two cases internally, to support saving and restore
+editor sessions and virtual window managment sessions, which by alone already
+is precious.
+
 ## Syntax and Semantics
 ```js
 # comment
@@ -103,7 +124,7 @@ A very small yet another programming language that compiles in C.
   var v = 1
   var v = 100 # this should fail
 
-# Assign with a string literal (multibyte (UTF-8) strings are handled).
+# Assignment with a string literal (multibyte (UTF-8) strings are handled).
 
   var str = "oh la la lala, it's the natural la"
   var mb  = "Είναι το φυσικό ΛΑ που φαίρνει η κάθε ύπαρξη"
@@ -113,22 +134,34 @@ A very small yet another programming language that compiles in C.
     str[-2]
 
     again: this has byte semantics, though there isn't a certainity if it is
-    the right thing to do, as it might make also sense to return a character.
+    the right thing to do, as it might make also sense to return a character,
+    but at least it is the well known C way
 
 # Variables can be reassigned if they are not declared as `const`.
 
   str = "that everyone brings"
 
-  in that case, the previous value should be freed automatically
+  in that case, the previous value should be freed automatically by the compiler
 
 # you can pass a string literal as an argument to a user defined function, or
   to a C function.
 
-# functions can get at most nine arguments.
+  call_fun ("with a string literal as an argument")
+
+  in this case this string should be freed automatically
+
+# functions can get at most nine arguments (already too too many, so it looks
+  like a waste)
 
 # Comparison operators:
 
   == or is, != or isnot, >, < , >=, <=
+
+  we use `is` and `isnot` and pay a price for this with en expensive switch
+  just to feel like humans and really after years of using them in C and now
+  in the language, it really offers a more natural humanish way to flow with
+  the written code and the underlying thought, that for certain helps a lot
+  as it gives clarity to the code
 
 # Arithmetic operators:
 
@@ -137,6 +170,15 @@ A very small yet another programming language that compiles in C.
 # Logical operators:
 
   && or and, || or or
+
+ again: the `and` and the `or` keywords, instead of && and ||, it adds clarity
+ to the code, and shows clear the intention of a logical operation, which some
+ of them sometime can be complex. Also slowly the reading of the code becomes
+ a real reading!  As languages that use a syntax that you need at least at the
+ begining, to desipher them first, and for as long it takes to become a second
+ nature to write and especially read from another human, as it doesn't show at
+ all intentions, or you might need to be a genious to understand them as fast
+ as should be and not more.
 
 # Bitwise operators:
 
@@ -185,28 +227,44 @@ A very small yet another programming language that compiles in C.
 
 # import syntax and semantics:
 
-  import (fname)
+  import ("modulename")
 
-  If `fname` is not an absolute path, then it is relative to the current
+  If `modulename` is not an absolute path, then it is relative to the current
   evaluated unit. If that fails, then it is relative to the current directory,
-  else it is relative to the members of the `__importpath` intrinsic array
-  If it couldn't be found then an error terminates execution.
+  else it composed in turn with the members of the `__importpath` intrinsic
+  array constant.
+  If after the search, it couldn't be found then an import error terminates execution.
 
-  The imported file name is composed as `fname`-module.so.
+  The imported compiled module name is composed as `modulename`-module.so.
   A compatible unit should provide two functions with the following signatures:
-    1. int __init_modulename__ (la_t *);
-    2. void __deinit_modulename__ (la_t *);
 
-  For convienence:
-    To the top of the unit:
+    1. public int __init_modulename_module__ (la_t *);
+    2. public void __deinit_modulename_module__ (la_t *);
 
-      #define REQUIRE_LA_TYPE DECLARE
-      #include <z/cenv.h>
+  For convienence and at the top of the compilation unit, could be used the
+  following:
 
-    And to the __init_modulename__(la_t *this) function:
-      __INIT_MODULE(this);
+    #define REQUIRE_LA_TYPE DECLARE
+    #include <z/cenv.h>
 
-    Note that the `import` function is not available in static builds.
+  And then to the __init_modulename_module__(la_t *this) public function, the
+  following macro:
+
+    __INIT_MODULE(this);
+
+  Note that the `import` function is not available on static builds. In that
+  case the interpreter should include any desirable module on build time, and
+  the initialization for the module, should be done at runtime after any new
+  instance. The `__importpath` intrinsic variable is still available but has
+  no effect.
+
+  To avoid inconsistencies, a `__static` intrinsic integer variable is exposed
+  to the standard namespace, and any `import` function call (at least for now)
+  could be wrapped with code such:
+
+     ifnot (__static) {
+       import ("modulename")
+     }
 
 # print functions syntax:
 
@@ -559,6 +617,9 @@ style. However it should be okey if practicing consistency.
   primitive one. However running the extensive test suite and the applications
   that use the language under valgring, it doesn't reveal any memory leaks, but
   this is just a sign that quite probably is false.
+
+  again: this is just a reference implementation, and has no ambition other
+  than to be a reference implemtation and be usefull which already is anyway.
 
 # DEVELOPMENT
 
