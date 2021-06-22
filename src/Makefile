@@ -60,8 +60,8 @@ SYSTMPDIR      = $(SYSDIR)/../tmp
 
 SYSLADIR       = $(SYSDATADIR)/la
 SYSSCRIPTDIR   = $(SYSLADIR)/scripts
-SYSMODULEDIR   = $(SYSLIBDIR)/modules
-SYSZMODULEDIR  = $(SYSLIBDIR)/z/modules
+SYSMODULEDIR  := $(SYSLIBDIR)/modules
+SYSZMODULEDIR  = $(SYSLIBDIR)/z/la-modules
 
 UID       := $(shell id -u)
 GID       := $(shell id -g)
@@ -242,6 +242,8 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
   #    should respect this hierarchy, that means:
   #      - the name of the compilation units should match
   #      - provide a Makefile that could handle the compilation
+
+  Z_SRCMODULEDIR = $(Z_SRCDIR)/la-modules
 
 #-----------------------------------------------#
 
@@ -1004,6 +1006,23 @@ zero-clean-static:\
 
 all: shared static
 
+#----------- [ MODULES ] -----------------------#
+MODULE_FLAGS := $(ZARGS) $(MARGS)
+MODULE_FLAGS += SYSMODULEDIR=$(SYSZMODULEDIR)
+
+modules-all:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) all
+
+modules-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
+
+path-module-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) path-module-shared
+
+path-module-static:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) path-module-static
+	
+#-----------------------------------------------#
 # Development and personal stuff (ignore this section)
   ZA_SELF          = self
   ZA_SELF_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SELF)/src

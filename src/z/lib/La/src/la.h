@@ -154,10 +154,11 @@ typedef int  (*ModuleInit) (la_t *);
 typedef void (*ModuleDeinit) (la_t *);
 
 enum {
-  LA_ERR_TYPE_MISMATCH = -11,
-  LA_ERR_OUTOFBOUNDS   = -10,
-  LA_ERR_IMPORT        = -9,
-  LA_ERR_LOAD          = -8,
+  LA_ERR_DYNLINK       = -12,
+  LA_ERR_IMPORT        = -11,
+  LA_ERR_LOAD          = -10,
+  LA_ERR_TYPE_MISMATCH = -9,
+  LA_ERR_OUTOFBOUNDS   = -8,
   LA_ERR_TOOMANYARGS   = -7,
   LA_ERR_BADARGS       = -6,
   LA_ERR_UNKNOWN_TYPE  = -5,

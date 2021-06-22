@@ -5,6 +5,46 @@
  * for details about syntax and semantics.
  */
 
+ /* this code is based on expectations and|or on non unpredictable cases,
+  * and established in our brain interfaces; and there is nothing (not even
+  * close) like C and|or a C modern library that supports all the standards,
+  * and of course nothing like a generous and blessed by time and wisdom,
+  * UNIX like environment, that respects and offers a POSIX interface, even if
+  * in specific cases offers a saner interface than the standard one (and which
+  * of course if it proves usefull and sane, can be then blessed by POSIX (as
+  * this is the way it works and brings expectativity (if such a word))) */
+
+ /* also it doesn't care much of how it performs, rather than to realize and
+  * implement the needed syntax and set the semantics, perhaps with an (sometimes)
+  * unorthodoxical way (compared with established and common by now techniques
+  * by most (if all) modern programming languages (no, its not that thing)),
+  * and while it borrowed the machinery of TinyScript (a great tiny code) (
+  * and still uses these small bit details abouts bits and bytes from them
+  * (which it makes a difference to get them exact right (like shift right or
+  * shift left (i do not have a single hope to work with them always perferct
+  * in practise (i always forget those really true realizations, but always
+  * forget the exact realization which is important to have to be confident
+  * that what you want is what you write (perhaps because i really never had
+  * any proper (normal) education, (probably because and of my own absense (
+  * okey..., following an instict of an unconscious human child, that really
+  * had no control on dreams) to participate in a system that you didn't really
+  * believe that it was the best we could (not even close), to provide with
+  * fresh energy the continuation of a gained knowledge, with contributions
+  * to stabilization, refiniment and evolution, of humans that love to do what
+  * they do, of that knowledge))))))), and which it wasn't meant to support a
+  * complicated environment other that for what it was made for (basic syntax
+  * enough to develop logic to work with integers (not even strings or arrays)) */
+ /* it was really because i wanted to implement that thing, to extend this system
+  * with scripting cababilities, that will first emulate and the C style way of
+  * this project (so to satisfy expectations and instant familiarity), but with
+  * a proud way (enough datatypes, automatic memory managment, common consepts,
+  * ridiculous easy to understant syntax (to at least realize fast the intentions
+  * of the reading code, and ideally to write within a few explanations)), and
+  * so there isn't a question if it could be implemented better (some thousands
+  * of times better!!! (a proper lexer, parser, compiler)), but what it does?
+  * It seems that it does what it does want to do, or it is close, albeit it
+  * might does it with an unorthodoxical way */
+
 #define LIBRARY "la"
 
 #define REQUIRE_STDIO
@@ -26,7 +66,7 @@
 #define REQUIRE_MAP_MACROS
 #define REQUIRE_LA_TYPE      DONOT_DECLARE
 
-/* IGNORE FOR NOW */
+/* IGNORE FOR NOW (it doesn't fit really here, though it is a core thing) */
 #define REQUIRE_TERMIOS
 #define REQUIRE_TERM_TYPE    DECLARE
 #define REQUIRE_TERM_MACROS
@@ -76,7 +116,7 @@
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
-#define CFUNC_TYPE          'B'  // builtin: number of operands in high 8 bits
+#define CFUNC_TYPE          'B'
 #define UFUNC_TYPE          'f'
 #define BINOP_TYPE          'o'
 
@@ -123,7 +163,9 @@
 #define LA_TOKEN_PAREN_OPEN '('
 #define LA_TOKEN_PAREN_CLOS ')'
 #define LA_TOKEN_BLOCK_OPEN '{'
+#define LA_TOKEN_MAP_OPEN   LA_TOKEN_BLOCK_OPEN
 #define LA_TOKEN_BLOCK_CLOS '}'
+#define LA_TOKEN_MAP_CLOS   LA_TOKEN_BLOCK_CLOS
 #define LA_TOKEN_SEMICOLON  ';'
 #define LA_TOKEN_COLON      ':'
 #define LA_TOKEN_DOT        '.'
@@ -1788,12 +1830,12 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       continue;
     }
 
-    if (c is LA_TOKEN_BLOCK_OPEN and 0 is instr) {
+    if (c is LA_TOKEN_MAP_OPEN and 0 is instr) {
       inmap++;
       continue;
     }
 
-    if (c is LA_TOKEN_BLOCK_CLOS and 0 is instr) {
+    if (c is LA_TOKEN_MAP_CLOS and 0 is instr) {
       inmap--;
       continue;
     }
@@ -2700,6 +2742,8 @@ static int la_parse_map (la_t *this, VALUE *vp) {
     err = map_set_rout (this, map, key, scope);
     if (err isnot LA_OK)
       return err;
+
+    if (this->curToken is LA_TOKEN_EOF) break;
   }
 
   this->curState &= ~MAP_STATE;
@@ -4994,16 +5038,15 @@ static int la_parse_return (la_t *this) {
   return err;
 }
 
-static int la_import_file (la_t *this, const char *module) {
-  const char *err_msg;
+static int la_import_file (la_t *this, const char *module, const char *err_msg) {
   int err = LA_NOTOK;
 
   void *handle = dlopen (module, RTLD_NOW|RTLD_GLOBAL);
   if (handle is NULL) {
-    ifnot (this->curState & LOADFILE_SILENT) {
-      err_msg = dlerror ();
+    err_msg = dlerror ();
+    ifnot (this->curState & LOADFILE_SILENT)
       this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
-    }
+
     return LA_ERR_IMPORT;
   }
 
@@ -5019,7 +5062,7 @@ static int la_import_file (la_t *this, const char *module) {
   err_msg = dlerror ();
   if (err_msg isnot NULL) {
     this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
-    err =LA_ERR_IMPORT;
+    err = LA_ERR_DYNLINK;
     goto theend;
   }
 
@@ -5028,14 +5071,14 @@ static int la_import_file (la_t *this, const char *module) {
   err_msg = dlerror ();
   if (err_msg isnot NULL) {
     this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
-    err = LA_ERR_IMPORT;
+    err = LA_ERR_DYNLINK;
     goto theend;
   }
 
   int retval = init_sym (this);
   if (retval isnot LA_OK) {
     dlclose (handle);
-    err = LA_ERR_IMPORT;
+    err = LA_ERR_DYNLINK;
     goto theend;
   }
 
@@ -5053,13 +5096,12 @@ theend:
   return err;
 }
 
+static int la_parse_import (la_t *this) {
 #ifdef STATIC
-static int la_parse_import (la_t *this) {
   return this->syntax_error (this, "import is disabled in static objects");
-}
+#endif
 
-#else
-static int la_parse_import (la_t *this) {
+  char *err_msg = "";
   int err;
   int c = la_next_token (this);
   ifnot (c is LA_TOKEN_PAREN_OPEN)
@@ -5135,16 +5177,18 @@ theload:
       String.prepend_with (fn, dname);
       free (dname);
       this->curState |= LOADFILE_SILENT;
-      err = la_import_file (this, fn->bytes);
+      err = la_import_file (this, fn->bytes, err_msg);
       this->curState &= ~LOADFILE_SILENT;
-      if (err isnot LA_ERR_IMPORT)
+      if (err is LA_OK or err is LA_ERR_DYNLINK)
         goto theend;
+
     }
 
     this->curState |= LOADFILE_SILENT;
-    err = la_import_file (this, fname->bytes);
+    err = la_import_file (this, fname->bytes, err_msg);
     this->curState &= ~LOADFILE_SILENT;
-    if (err isnot LA_ERR_IMPORT)
+
+    if (err is LA_OK or err is LA_ERR_DYNLINK)
       goto theend;
 
     sym_t *symbol = la_lookup_symbol (this, la_StringNew ("__importpath"));
@@ -5157,25 +5201,32 @@ theload:
       String.release (fn);
       fn = String.dup (fname);
       String.prepend_with_fmt (fn, "%s/", p->bytes);
-      this->curState |= LOADFILE_SILENT;  // this is ugly, should do something
-      err = la_import_file (this, fn->bytes); // and should save at least an error msg
+      this->curState |= LOADFILE_SILENT;
+      err = la_import_file (this, fn->bytes, err_msg);
       this->curState &= ~LOADFILE_SILENT;
-      if (err isnot LA_ERR_IMPORT)
+      if (err is LA_OK or err is LA_ERR_DYNLINK)
         goto theend;
     }
     goto theend;
   }
 
-  err = la_import_file (this, fname->bytes);
+  err = la_import_file (this, fname->bytes, err_msg);
 
 theend:
   this->curScope = prev_ns;
   String.release (fname);
   String.release (fn);
   String.release (ns);
+
+  if (err isnot LA_OK) {
+    if (err isnot LA_ERR_DYNLINK)
+      err = LA_ERR_IMPORT;
+
+    this->print_fmt_bytes (this->err_fp, "import error: %s\n", err_msg);
+  }
+
   return err;
 }
-#endif
 
 static int la_parse_loadfile (la_t *this) {
   int err;
@@ -6035,7 +6086,7 @@ static int la_std_def (la_t *this, la_opts opts) {
   int len = 1;
   if (this->la_dir->num_bytes) len++;
   #ifdef ZLIBDIR
-    len++;
+    len += 2;
   #endif
   #ifdef LIBDIR
     len++;
@@ -6045,14 +6096,15 @@ static int la_std_def (la_t *this, la_opts opts) {
   string **arimp = (string **) AS_ARRAY(imp_path->value);
   int ind = 0;
   if (this->la_dir->num_bytes)
-    String.replace_with_fmt (arimp[ind++], "%s/modules", this->la_dir->bytes);
+    String.replace_with_fmt (arimp[ind++], "%s/la-modules", this->la_dir->bytes);
   #ifdef ZLIBDIR
-    String.replace_with_fmt (arimp[ind++], "%s/modules", ZLIBDIR);
+    String.replace_with_fmt (arimp[ind++], "%s/la-modules", ZLIBDIR);
+    String.replace_with_fmt (arimp[ind++], "%s/la-modules", ZLIBDIR);
   #endif
   #ifdef LIBDIR
-    String.replace_with_fmt (arimp[ind++], "%s/modules", LIBDIR);
+    String.replace_with_fmt (arimp[ind++], "%s/la-modules", LIBDIR);
   #endif
-  String.replace_with (arimp[ind], "/lib/modules");
+  String.replace_with (arimp[ind], "/lib/la-modules");
 
   v = ARRAY(imp_path);
   err = la_define (this, "__importpath", ARRAY_TYPE, v);
@@ -6233,7 +6285,8 @@ static int la_eval_file (la_t *this, const char *filename) {
   char *err_msg[] = {
       "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
       "UNKNOWN TYPE", "BAD ARGUMENTS", "TOO MANY ARGUMENTS",
-      "LOAD ERROR", "IMPORT ERROR", "OUT OF BOUNDS", "TYPE MISMATCH"
+      "OUT OF BOUNDS", "TYPE MISMATCH", "LOAD ERROR", "IMPORT ERROR",
+      "DYNAMIC LINKING ERROR"
   };
   this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-retval - 2]);
   return retval;
