@@ -584,23 +584,21 @@ func semantics () {
   assert_true ("testing stdin and fileno", 0 is fileno (stdin))
 
   func import_test () {
-    ifnot (__static) {
-      import ("path")
-
-      func path_module () {
-        assert_equal ("testing the Path module and the basename method", Path.basename ("/home/aga/t.ext"), "t.ext")
-        assert_equal ("testing the sans_extname method", Path.basename_sans_extname ("/home/aga/t.ext"), "t")
-        assert_equal ("testing the extname method", Path.extname ("/t.ext"), ".ext")
-        assert_equal ("testing the dirname method", Path.dirname ("/home/aga/t.ext"), "/home/aga")
-        assert_equal ("testing the is_absolute method", Path.is_absolute ("t"), 0)
-        var spl = Path.split ("/home/aga/t")
-        assert_true ("testing the split method", len (spl) is 4 and spl[0] is "/" and
-          spl[1] is "home" and spl[2] is "aga" and spl[3] is "t")
-        assert_equal ("testing the real method", Path.real ("/home/../usr/../usr/lib/../../usr/lib/../lib"), "/usr/lib")
-      }
-
-      path_module ()
+    func path_module () {
+      # on static builds this will throw a syntax error if the modules hasn't been initialized
+      import("path")
+      assert_equal ("testing the Path module and the basename method", Path.basename ("/home/aga/t.ext"), "t.ext")
+      assert_equal ("testing the sans_extname method", Path.basename_sans_extname ("/home/aga/t.ext"), "t")
+      assert_equal ("testing the extname method", Path.extname ("/t.ext"), ".ext")
+      assert_equal ("testing the dirname method", Path.dirname ("/home/aga/t.ext"), "/home/aga")
+      assert_equal ("testing the is_absolute method", Path.is_absolute ("t"), 0)
+      var spl = Path.split ("/home/aga/t")
+      assert_true ("testing the split method", len (spl) is 4 and spl[0] is "/" and
+        spl[1] is "home" and spl[2] is "aga" and spl[3] is "t")
+      assert_equal ("testing the real method", Path.real ("/home/../usr/../usr/lib/../../usr/lib/../lib"), "/usr/lib")
     }
+
+    path_module ()
 
   }
 

@@ -741,7 +741,7 @@ char c_operators[] = "+:?-%*^><=/|&~.()[]{}!";
 char c_balanced_pairs[] = "[](){}";
 
 char *lai_extensions[] = {".lai", NULL};
-char *lai_shebangs[] = {"#!/bin/env La", NULL};
+char *lai_shebangs[] = {"#!/bin/env La", "#!La-shared", "#!La-static", NULL};
 char lai_operators[] = "+-%*^><=/|& .(){}![]";
 
 char *lai_keywords[] = {

@@ -1,0 +1,11 @@
+var prog = "Path.basename"
+
+import ("path")
+
+if (__argc is 1) {
+  println (stderr, "${%s, prog}: missing operand")
+  exit (1)
+}
+
+println (stdout, "${%s, Path.basename (__argv[1])}")
+exit (0)

@@ -71,7 +71,8 @@ endif
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -lla-$(VERSION) -lio-$(VERSION) -largparse-$(VERSION)
 FLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lvstring-$(VERSION)
-FLAGS += -lterm-$(VERSION)
+FLAGS += -lterm-$(VERSION) -lcstring-$(VERSION)
+
 la: shared static
 
 shared: clean-shared\
@@ -88,9 +89,15 @@ clean-static:\
 #-----------------------------------------------#
 LA = $(NAME)
 
-LA_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION) -ldir-$(VERSION)
+LA_STATIC_FLAGS  = -lustring-$(VERSION) -ldir-$(VERSION)
 LA_STATIC_FLAGS += -lpath-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
 LA_STATIC_FLAGS += -lerror-$(VERSION)
+
+PATH_MODULE := 1
+ifeq ($(PATH_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_PATH_MODULE
+  LA_STATIC_FLAGS += -lcstring-$(VERSION) -lpath-$(VERSION)
+endif
 
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared

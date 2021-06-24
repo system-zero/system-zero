@@ -816,6 +816,22 @@ clean-dir-shared:
 clean-dir-static:
 	@cd $(ZA_DIR_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
   #----------------------------------------------------------#
+  # path
+  ZA_PATH             = path
+  ZA_PATH_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_PATH)/src
+
+path-shared: libpath-shared libla-shared path-module-shared
+	@cd $(ZA_PATH_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+path-static: libpath-static libla-static la-static
+	@cd $(ZA_PATH_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-path-shared:
+	@cd $(ZA_PATH_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-path-static:
+	@cd $(ZA_PATH_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+  #----------------------------------------------------------#
   # io
   ZA_IO             = io
   ZA_IO_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_IO)/src
@@ -943,7 +959,7 @@ zero-shared:  Env cenv list\
               libjson-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
-              sys-shared
+              sys-shared path-shared
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv list\
@@ -956,7 +972,7 @@ zero-static:  Env cenv list\
               libjson-static\
               zs-static\
               dir-static file-static io-static term-static\
-              sys-static
+              sys-static path-static
 
 clean-shared: zero-clean-shared
 zero-clean-shared:\
@@ -980,6 +996,7 @@ zero-clean-shared:\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared clean-v-shared clean-e-shared\
+              clean-path-shared
 
 clean-static: zero-clean-static
 zero-clean-static:\
@@ -1002,7 +1019,8 @@ zero-clean-static:\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
-              clean-sys-static clean-v-static clean-e-static
+              clean-sys-static clean-v-static clean-e-static\
+              clean-path-static
 
 all: shared static
 
@@ -1018,9 +1036,6 @@ modules-shared:
 
 path-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) path-module-shared
-
-path-module-static:
-	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) path-module-static
 	
 #-----------------------------------------------#
 # Development and personal stuff (ignore this section)

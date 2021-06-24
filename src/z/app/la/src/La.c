@@ -12,7 +12,15 @@
 #define REQUIRE_USTRING_TYPE DONOT_DECLARE
 #define REQUIRE_LA_TYPE      DECLARE
 
+#ifdef REQUIRE_PATH_MODULE
+#define REQUIRE_VMAP_TYPE    DECLARE
+#endif
+
 #include <z/cenv.h>
+
+#ifdef REQUIRE_PATH_MODULE
+#include "../../../la-modules/path/path-module.c"
+#endif
 
 /*
 static int __readfile_cb (Vstring_t *notused, char *line, size_t size, int nth, void *user_data) {
@@ -65,6 +73,11 @@ int main (int argc, char **argv) {
 
 eval:
   la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
+
+  #ifdef REQUIRE_PATH_MODULE
+    __INIT__ (vmap);
+    __init_path_module__ (la);
+  #endif
 
   if (NULL is evalbuf) {
     ifnot (argc) goto theend;

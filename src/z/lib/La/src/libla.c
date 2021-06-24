@@ -5054,6 +5054,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   size_t len = bytelen (mname) - 7;
   char tmp[len+1];
   Cstring.substr (tmp, len, mname, len + 7, 0);
+
   string *init_fun = String.new_with_fmt ("__init_%s_module__", tmp);
   string *deinit_fun = String.new_with_fmt ("__deinit_%s_module__", tmp);
 
@@ -5097,10 +5098,6 @@ theend:
 }
 
 static int la_parse_import (la_t *this) {
-#ifdef STATIC
-  return this->syntax_error (this, "import is disabled in static objects");
-#endif
-
   char *err_msg = "";
   int err;
   int c = la_next_token (this);
@@ -5125,6 +5122,25 @@ static int la_parse_import (la_t *this) {
     fname = String.dup (fname);
 
   String.append_with (fname, "-module.so");
+
+#ifdef STATIC
+  char *mname = Path.basename_sans_extname (fname->bytes);
+  size_t len = bytelen (mname) - 7;
+  char tmp[len+1];
+  Cstring.substr (tmp, len, mname, len + 7, 0);
+  free (mname);
+  if ('a' <= *tmp and *tmp <= 'z') {
+    utf8 chr = Ustring.to_upper (*tmp);
+    *tmp = chr;
+  }
+
+  sym_t *sym = ns_lookup_symbol (this->function, tmp);
+  if (NULL is sym)
+    return la_syntax_error_fmt (this, "%s module hasn't been initialized",
+        tmp);
+
+  return LA_OK;
+#endif
 
   string *ns = NULL;
   funT *load_ns = this->curScope;
