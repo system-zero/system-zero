@@ -1,0 +1,6 @@
+var m = {
+  "s" : 2,
+  private "k" : 1
+}
+
+println ("k ${m.k}")
