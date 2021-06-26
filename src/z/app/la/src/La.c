@@ -14,12 +14,18 @@
 
 #ifdef REQUIRE_PATH_MODULE
 #define REQUIRE_VMAP_TYPE    DECLARE
+#else
+#define REQUIRE_VMAP_TYPE    DONOT_DECLARE
 #endif
 
 #include <z/cenv.h>
 
 #ifdef REQUIRE_PATH_MODULE
 #include "../../../la-modules/path/path-module.c"
+#endif
+
+#ifdef REQUIRE_FILE_MODULE
+#include "../../../la-modules/file/file-module.c"
 #endif
 
 /*
@@ -77,6 +83,10 @@ eval:
   #ifdef REQUIRE_PATH_MODULE
     __INIT__ (vmap);
     __init_path_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_FILE_MODULE
+    __init_file_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

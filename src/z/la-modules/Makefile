@@ -16,19 +16,15 @@ SYSZLIBDIR     = $(SYSDIR)/lib/z
 SYSINCDIR      = $(SYSDIR)/include
 SYSMODULEDIR  := $(SYSLIBDIR)/la-modules
 
-all: shared static
+all: shared
 
 Env: makeenv checkenv
 
-shared: Env clean-shared path-module-shared
+shared: Env clean-shared path-module-shared file-module-shared
 
-static: clean-static
+clean: clean-shared
 
-clean: clean-shared clean-static
-
-clean-shared: clean-path-shared
-
-clean-static:
+clean-shared: clean-path-shared clean-file-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -lla
@@ -41,12 +37,21 @@ endif
 
 SHARED_FLAGS = $(MOD_FLAGS) -shared
 
+#-----------------------------------------------------------
 PATH_FLAGS = -lpath -lcstring -lstring
 path-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/path-module.so $(SHARED_FLAGS) $(PATH_FLAGS) path/path-module.c
 
 clean-path-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/path-module.so  || $(RM)  $(SYSMODULEDIR)/path-module.so
+
+#-----------------------------------------------------------
+FILE_FLAGS = -lfile -lvmap -lstring -lvstring
+file-module-shared:
+	$(CC) -o $(SYSMODULEDIR)/file-module.so $(SHARED_FLAGS) $(FILE_FLAGS) file/file-module.c
+
+clean-file-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/file-module.so  || $(RM)  $(SYSMODULEDIR)/file-module.so
 
 #-----------------------------------------------------------
 makeenv:

@@ -240,15 +240,21 @@ typedef struct la_set_self {
   la_t *(*current) (la_T *, int);
 
   void
+    (*Errno) (la_t *, int),
     (*la_dir) (la_t *, char *),
     (*user_data) (la_t *, void *),
     (*define_funs_cb) (la_t *, LaDefineFuns_cb);
 
 } la_set_self;
 
+typedef struct la_map_self {
+  int (*set_value) (la_t *, Vmap_t *, char *, VALUE, int);
+} la_map_self;
+
 typedef struct la_self {
   la_get_self get;
   la_set_self set;
+  la_map_self map;
 
   void
     (*release) (la_t **),

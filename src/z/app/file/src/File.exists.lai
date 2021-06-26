@@ -1,0 +1,10 @@
+var prog = "File.exists"
+
+import ("file")
+
+if (__argc is 1) {
+  println (stderr, "${%s, prog}: missing operand")
+  exit (1)
+}
+
+exit (File.exists (__argv[1]))

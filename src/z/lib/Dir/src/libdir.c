@@ -295,7 +295,7 @@ theend:
 
 static int dir_rm  (char *dir, dir_opts opts) {
   if (dir is NULL) return NOTOK;
-  int retval =rmdir (dir);
+  int retval = rmdir (dir);
 
   if (retval isnot OK)
     DIR_ERROR ("rmdir: %s %s\n", dir, Error.errno_string (errno));

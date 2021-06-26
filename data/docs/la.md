@@ -252,19 +252,11 @@ is precious.
 
     __INIT_MODULE(this);
 
-  Note that the `import` function is not available on static builds. In that
-  case the interpreter should include any desirable module on build time, and
-  the initialization for the module, should be done at runtime after any new
-  instance. The `__importpath` intrinsic variable is still available but has
-  no effect.
-
-  To avoid inconsistencies, a `__static` intrinsic integer variable is exposed
-  to the standard namespace, and any `import` function call (at least for now)
-  could be wrapped with code such:
-
-     ifnot (__static) {
-       import ("modulename")
-     }
+  Note that for static builds the `import` function is still available, but it
+  only checks if the desired interface has been exposed to the interpreter, that
+  should include any desirable module on build time, and the initialization for
+  the module, should be done at runtime after any new instance. The `__importpath`
+  intrinsic variable is still available but has no effect.
 
 # print functions syntax:
 
@@ -505,6 +497,27 @@ is precious.
 # free      -  release memory
 # alloc     -  allocate memory
 # realloc   -  reallocate memory
+
+# C Modules
+# They are initialized with the `import` function on shared targets, or as
+# builtins on static targets.
+
+  # Path Module Interface
+    # StringType  Path.real (StringType path)
+    # ArrayType   Path.split (StringType path)
+    # StringType  Path.dirname (StringType path)
+    # StringType  Path.extname (StringType path)
+    # StringType  Path.basename (StringType path)
+    # IntegerType Path.is_absolute (StringType path)
+    # StringType  Path.basename_sans_extname (StringTYpe path)
+
+  # File Module Interface
+    # MapType     File.stat (StringType file)
+    # IntegerType File.size (StringType file)
+    # IntegerType File.exists (StringType file)
+    # StringType  File.readlink (StringType file)
+    # StringType  File.mode_to_string (IntegerType mode)
+    # StringType  File.mode_to_octal_string (IntegerType mode)
 
 # Semantics
 

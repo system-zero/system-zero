@@ -37,6 +37,8 @@ is attempted to be written as a prose, with a just in time compilation of some
 thoughts to words, that are destined to describe, reveal or|and discover logic
 and dimensions, that they can be used in a practical systematic way.
 
+Again: the only ambition is to be honest to itself.
+
 ## Zero Point Description.
 
 The  first  stage  is of  course  to  be  able  to get  control  after  kernel
@@ -66,8 +68,7 @@ done through a very simple mechanism. Such a procedure it looks in a directory
 for files, which are usually shell scripts and loads them by usually using the
 default shell  in UNIX,  which simply is  called `sh`, and  by default  found as
 `/bin/sh`. This location  is standardized by the POSIX standard,  and this shell
-is referred commonly as POSIX `sh`, though very few or none of the current shell
-implementations are fully conformant with the specification.
+is referred commonly as POSIX `sh`.
 
 The sequence of executing those scripts is  dictated by the first two bytes in
 the filenames, which should  be digits, so the lower one in  this list, is the
@@ -120,15 +121,15 @@ So at  the same  time C  obeys truly the  spirit and  basic intention  of this
 project, as we  have to implement ourselves at least  the basic functionality.
 It is s system zero point anyway.
 
-Our only requirement at this stage is a standard C library (`libc`), plus `libpam`
-as  our authentication  mechanism, and  our building  tool, will  be the  `make`
+Our only requirements at this stage is a standard C library (`libc`), plus `libpam`
+as our authentication mechanism, and our building tool, which will be the `make`
 utility, which is  also and the most primitive building  tool, since the birth
 of `systemV`.
 
 We're gonna to use some other core utilities, installed by default in all UNIX
 systems, like `mkdir`, `ln`, `cp`, ... utilities.
 
-Also the `sudo` utility (which only  required once to build its replacement) and
+Also the `sudo` utility (which is only required once to build its replacement) and
 a `linker`.
 
 The main development  environment here is a `Void` Linux  distribution, with GNU
@@ -170,7 +171,7 @@ time and patches.
 
 But  our main  intention  is  to describe  and  provide  the shorted  possible
 solution  to  a  need.  And  at  this stage  we  care  only  about  the  basic
-functionality. But as it has been said already a shell is capable to do almost
+functionality. ut as it has been said already a shell is capable to do almost
 everything, this really depends of the  availability of a ecosystem. We'll try
 to build some common tools in time.
 
@@ -904,7 +905,7 @@ which is an excellent implementation of the Book, from my friend Jason.
 
 But though it is economical and fast, it is too much "hardwarish" for my taste,
 as I do not really understand all those bits, how they really work. Or I do, but
-I do not have such enthusiam  to hold them in my mind, so i never really learned
+I do not have such enthusiasm to hold them in my mind, so i never really learned
 them really. I just use them in safe cases, but without really knowing them.
 
 What I like most is to design and implement primitive interfaces, and that is
@@ -932,7 +933,7 @@ way to interfere with the system at runtime. So we need at least __One__.
 We are actually walking at the One! That is where we're going, and we want to
 be stable and end up on things with our API, when we reach a this point. If we
 don't do that, we have to be prepared to introduce incompatibilities,  during
-the logical evoluation. This is almost always a frustration for a developer to
+the logical evolution.  This is almost always a frustration for a developer to
 adapt, especially when even point releases introduce such incompatibilities.
 C success proves that simple fact, since C nener changes, or it changes in a
 gradual way, leaving a decade between new revisions and standards. However it

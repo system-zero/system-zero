@@ -1,0 +1,11 @@
+var prog = "File.size"
+
+import ("file")
+
+if (__argc is 1) {
+  println (stderr, "${%s, prog}: missing operand")
+  exit (1)
+}
+
+println (stdout, "${File.size (__argv[1])}")
+exit (0)

@@ -110,8 +110,8 @@
 #define OBJECT_MMT_REASSIGN           (1 << 4)
 #define ARRAY_MEMBER                  (1 << 5)
 
-#define PRIVATE_SCOPE                 (1 << 0)
-#define PUBLIC_SCOPE                  (1 << 1)
+#define PRIVATE_SCOPE                 0
+#define PUBLIC_SCOPE                  1
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -867,15 +867,19 @@ static VALUE la_fclose (la_t *this, VALUE fp_val) {
   if (fp_val.type is NULL_TYPE) return result;
 
   FILE *fp = AS_FILEPTR(fp_val);
+
   if (NULL is fp) {
-    this->Errno = errno;
     return result;
   }
 
-  fclose (fp);
-  fp = NULL;
+  this->Errno = 0;
+  if (0 isnot fclose (fp)) {
+    this->Errno = errno;
+    result = INT(LA_NOTOK);
+  } else
+    result = INT(LA_OK);
 
-  result = INT(LA_OK);
+  fp = NULL;
   return result;
 }
 
@@ -887,6 +891,7 @@ static VALUE la_fflush (la_t *this, VALUE fp_val) {
   FILE *fp = AS_FILEPTR(fp_val);
   if (NULL is fp) return result;
 
+  this->Errno = 0;
   int retval = fflush (fp);
   if (retval) {
     this->Errno = errno;
@@ -992,6 +997,7 @@ static VALUE la_term_sane_mode (la_t *this, VALUE term_val) {
 static VALUE la_fileno (la_t *this, VALUE fp_val) {
   (void) this;
   FILE *fp = AS_FILEPTR(fp_val);
+  this->Errno = 0;
   int fd = fileno (fp);
   VALUE v = INT(fd);
   if (fd is -1)
@@ -2246,10 +2252,10 @@ static int la_parse_array_def (la_t *this) {
 
   ar = ARRAY(ARRAY_NEW(type, nlen));
 
-  funT *scope = (this->scopeState & PUBLIC_SCOPE ? this->function : this->curScope);
+  funT *scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
   this->tokenSymbol = la_define_symbol (this, scope, sym_key (this, name), ARRAY_TYPE,
       ar, 0);
-  this->scopeState &= ~PUBLIC_SCOPE;
+  this->scopeState = 0;
 
   if (this->curToken is LA_TOKEN_ASSIGN) {
     VALUE at_idx = INT(0);
@@ -2600,7 +2606,36 @@ static void la_release_map_val (void *v) {
   free (val);
 }
 
-static int map_set_rout (la_t *this, Vmap_t *map, char *key, funT *scope) {
+static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int scope) { 
+  VALUE *val = Alloc (sizeof (VALUE));
+  val->refcount = v.refcount;
+  val->type = v.type;
+
+  sym_t *sym = Alloc (sizeof (sym_t));
+  sym->scope = (scope ? this->function : NULL);
+  sym->value = MAP(map);
+
+  val->sym = sym;
+
+  switch (val->type) {
+    case STRING_TYPE:
+      val->asString  = v.asString;
+      this->curState &= ~LITERAL_STRING_STATE;
+      break;
+    case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
+    case NULL_TYPE  : val->asNull    = v.asNull;    break;
+    default:          val->asInteger = v.asInteger; break;
+  }
+
+  if (NOTOK is Vmap.set (map, key, val, la_release_map_val, 0)) {
+    this->print_bytes (this->err_fp, "Map.set() internal error\n");
+    return LA_NOTOK;
+  }
+
+  return LA_OK;
+}
+
+static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   int err;
   VALUE v;
 
@@ -2624,32 +2659,8 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, funT *scope) {
     return err;
 
   assign: {}
-  VALUE *val = Alloc (sizeof (VALUE));
-  val->refcount = v.refcount;
-  val->type = v.type;
 
-  sym_t *sym = Alloc (sizeof (sym_t));
-  sym->scope = scope;
-  sym->value = MAP(map);
-
-  val->sym = sym;
-
-  switch (val->type) {
-    case STRING_TYPE:
-      val->asString  = v.asString;
-      this->curState &= ~LITERAL_STRING_STATE;
-      break;
-    case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
-    case NULL_TYPE  : val->asNull    = v.asNull;    break;
-    default:          val->asInteger = v.asInteger; break;
-  }
-
-  if (NOTOK is Vmap.set (map, key, val, la_release_map_val, 0)) {
-    this->print_bytes (this->err_fp, "Map.set() internal error\n");
-    return LA_NOTOK;
-  }
-
-  return LA_OK;
+  return la_map_set_value (this, map, key, v, scope);
 }
 
 static void *la_copy_map_cb (void *value, void *mapval) {
@@ -2694,8 +2705,6 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   int c;
   int err = LA_OK;
 
-  funT *scope;
-
   this->curState |= MAP_STATE;
   this->scopeState = PUBLIC_SCOPE;
 
@@ -2719,10 +2728,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
       case LA_TOKEN_PUBLIC:
         this->scopeState = PUBLIC_SCOPE;
         continue;
-
-      default:
-        this->scopeState = PUBLIC_SCOPE;
-      }
+    }
 
     v = this->tokenValue;
 
@@ -2736,10 +2742,9 @@ static int la_parse_map (la_t *this, VALUE *vp) {
     if (c isnot LA_TOKEN_COLON)
       return this->syntax_error (this, "error while setting map field, awaiting :");
 
-    scope = ((this->scopeState & PUBLIC_SCOPE) ? this->function : NULL);
-    this->scopeState &= ~(PUBLIC_SCOPE|PRIVATE_SCOPE);
+    err = map_set_rout (this, map, key, this->scopeState is PUBLIC_SCOPE);
+    this->scopeState = PUBLIC_SCOPE;
 
-    err = map_set_rout (this, map, key, scope);
     if (err isnot LA_OK)
       return err;
 
@@ -2924,7 +2929,7 @@ static int la_parse_map_set (la_t *this) {
   if (Vmap.key_exists (map, key))
     la_release_map_val (Vmap.pop (map, key));
 
-  return map_set_rout (this, map, key, this->function);
+  return map_set_rout (this, map, key, 1);
 }
 
 static int la_parse_expr_list (la_t *this) {
@@ -3517,7 +3522,7 @@ do_token:
       ifnot (NULL is sym)
         return this->syntax_error (this, "can not redefine a standard symbol");
 
-      scope = (this->scopeState & PUBLIC_SCOPE ? this->function : this->curScope);
+      scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
 
       sym = ns_lookup_symbol (scope, key);
 
@@ -3532,7 +3537,7 @@ do_token:
       }
 
       this->tokenSymbol = la_define_symbol (this, scope, key, type, v, is_const);
-      this->scopeState &= ~PUBLIC_SCOPE;
+      this->scopeState = 0;
 
       if (NULL is this->tokenSymbol)
         return this->syntax_error (this, "unknown error on declaration");
@@ -4471,7 +4476,7 @@ theend:
 }
 
 static int la_parse_visibility (la_t *this) {
-  this->scopeState &= ~(PUBLIC_SCOPE|PRIVATE_SCOPE);
+  this->scopeState = 0;
   int token = Cstring.eq_n (la_StringGetPtr (this->curStrToken), "public", 6)
       ? LA_TOKEN_PUBLIC : LA_TOKEN_PRIVATE;
   int scope = (token is LA_TOKEN_PUBLIC ? PUBLIC_SCOPE : PRIVATE_SCOPE);
@@ -4483,12 +4488,12 @@ static int la_parse_visibility (la_t *this) {
     case LA_TOKEN_VARDEF:
     case LA_TOKEN_CONSTDEF:
     case LA_TOKEN_FUNCDEF:
-      this->scopeState |= scope;
+      this->scopeState = scope;
       break;
 
     default:
       if (this->curState & MAP_STATE) {
-        this->scopeState |= scope;
+        this->scopeState = scope;
         break;
       }
 
@@ -4598,9 +4603,9 @@ static int la_parse_func_def (la_t *this) {
 
   VALUE v = PTR(uf);
 
-  funT *scope = (this->scopeState & PUBLIC_SCOPE ? this->function : this->curScope);
+  funT *scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
   this->curSym = la_define_symbol (this, scope, fn, (UFUNC_TYPE | (nargs << 8)), v, 0);
-  this->scopeState &= ~PUBLIC_SCOPE;
+  this->scopeState = 0;
 
   this->curFunDef = uf;
 
@@ -4689,12 +4694,8 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
       err = la_parse_expr (this, &value);
       this->funcState &= ~EXPR_LIST_STATE;
 
-      if (err isnot LA_OK) {
-        this->print_bytes (this->err_fp, "string fmt error, while evaluating expression\n");
-        la_err_ptr (this, LA_NOTOK);
-        err = LA_ERR_SYNTAX;
+      if (err isnot LA_OK)
         goto theend;
-      }
 
       switch (directive) {
         case 's':
@@ -6434,6 +6435,10 @@ static la_t *la_set_current (la_T *this, int idx) {
   return it;
 }
 
+static void la_set_Errno (la_t *this, int err) {
+  this->Errno = err;
+}
+
 static void la_set_la_dir (la_t *this, char *fn) {
   if (NULL is fn) return;
   size_t len = bytelen (fn);
@@ -6693,10 +6698,14 @@ public la_T *__init_la__ (void) {
         .current_idx = la_get_current_idx,
       },
       .set = (la_set_self) {
+        .Errno = la_set_Errno,
         .la_dir = la_set_la_dir,
         .current = la_set_current,
         .user_data = la_set_user_data,
         .define_funs_cb = la_set_define_funs_cb
+      },
+      .map = (la_map_self) {
+        .set_value = la_map_set_value
       }
     },
     .prop = $myprop,

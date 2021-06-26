@@ -1039,20 +1039,6 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_I_TYPE
 #endif /* REQUIRE_I_TYPE */
 
-#ifdef REQUIRE_LA_TYPE
-  #ifndef LA_TYPE_HDR
-  #define LA_TYPE_HDR
-  #include <z/la.h>
-  #endif /* LA_TYPE_HDR */
-
-  #if (REQUIRE_LA_TYPE == DECLARE)
-  static  la_T __LA__;	
-  #define La   __LA__.self
-  #endif
-
-#undef REQUIRE_LA_TYPE
-#endif /* REQUIRE_LA_TYPE */
-
 #ifdef REQUIRE_IMAP_TYPE
   #ifndef IMAP_TYPE_HDR
   #define IMAP_TYPE_HDR
@@ -1195,6 +1181,20 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_READLINE_TYPE
 #endif /* REQUIRE_READLINE_TYPE */
+
+#ifdef REQUIRE_LA_TYPE
+  #ifndef LA_TYPE_HDR
+  #define LA_TYPE_HDR
+  #include <z/la.h>
+  #endif /* LA_TYPE_HDR */
+
+  #if (REQUIRE_LA_TYPE == DECLARE)
+  static  la_T __LA__;	
+  #define La   __LA__.self
+  #endif
+
+#undef REQUIRE_LA_TYPE
+#endif /* REQUIRE_LA_TYPE */
 
 #ifdef REQUIRE_E_TYPE
   #ifndef E_TYPE_HDR

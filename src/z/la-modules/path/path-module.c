@@ -60,14 +60,15 @@ static VALUE path_is_absolute (la_t *this, VALUE v) {
 }
 
 static VALUE path_real (la_t *this, VALUE v) {
-  (void) this;
+  La.set.Errno (this, 0);
   string *p = AS_STRING(v);
   char buf[PATH_MAX];
   char *n = Path.real (p->bytes, buf);
   VALUE r;
-  if (n is NULL)
+  if (n is NULL) {
+    La.set.Errno (this, errno);
     r = NULL_VALUE;
-  else {
+  } else {
     string *s = String.new_with (n);
     r = STRING(s);
   }
@@ -91,17 +92,6 @@ static VALUE path_split (la_t *this, VALUE v) {
   return r;
 }
 
-LaDefCFun lafuns[] = {
-  { "path_real",        PTR(path_real), 1 },
-  { "path_split",       PTR(path_split), 1 },
-  { "path_extname",     PTR(path_extname), 1 },
-  { "path_dirname",     PTR(path_dirname), 1 },
-  { "path_basename",    PTR(path_basename), 1 },
-  { "path_is_absolute", PTR(path_is_absolute), 1 },
-  { "path_basename_sans_extname", PTR(path_basename_sans_extname), 1 },
-  { NULL, NULL_VALUE, 0}
-};
-
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_path_module__ (la_t *this) {
@@ -110,6 +100,17 @@ public int __init_path_module__ (la_t *this) {
   __INIT__(string);
   __INIT__(cstring);
   __INIT__(vstring);
+
+  LaDefCFun lafuns[] = {
+    { "path_real",        PTR(path_real), 1 },
+    { "path_split",       PTR(path_split), 1 },
+    { "path_extname",     PTR(path_extname), 1 },
+    { "path_dirname",     PTR(path_dirname), 1 },
+    { "path_basename",    PTR(path_basename), 1 },
+    { "path_is_absolute", PTR(path_is_absolute), 1 },
+    { "path_basename_sans_extname", PTR(path_basename_sans_extname), 1 },
+    { NULL, NULL_VALUE, 0}
+  };
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {

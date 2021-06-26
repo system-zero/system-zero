@@ -1037,6 +1037,9 @@ modules-shared:
 path-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) path-module-shared
 	
+file-module-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) file-module-shared
+
 #-----------------------------------------------#
 # Development and personal stuff (ignore this section)
   ZA_SELF          = self

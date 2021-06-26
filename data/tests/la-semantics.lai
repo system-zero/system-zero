@@ -600,6 +600,15 @@ func semantics () {
 
     path_module ()
 
+    func file_module () {
+      import ("file")
+      assert_true ("testing the File module and the exists method", File.exists ("Makefile"))
+      var m = File.stat ("Makefile")
+      assert_true ("testing the stat method", typeof (m) is MapType and
+          m.st_size is 801)
+    }
+
+    file_module ()
   }
 
   import_test ()
