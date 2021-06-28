@@ -100,6 +100,7 @@
 
 #define EXPR_LIST_STATE               (1 << 0)
 #define MAP_METHOD_STATE              (1 << 1)
+#define OBJECT_RELEASE_STATE          (1 << 2)
 
 #define FMT_LITERAL                   (1 << 0)
 
@@ -868,18 +869,28 @@ static VALUE la_fclose (la_t *this, VALUE fp_val) {
 
   FILE *fp = AS_FILEPTR(fp_val);
 
-  if (NULL is fp) {
-    return result;
-  }
+  if (NULL is fp) return result;
 
-  this->Errno = 0;
+  ifnot (NULL is this) this->Errno = 0;
+
   if (0 isnot fclose (fp)) {
-    this->Errno = errno;
+    ifnot (NULL is this) this->Errno = errno;
     result = INT(LA_NOTOK);
   } else
     result = INT(LA_OK);
 
+  ifnot (this->funcState & OBJECT_RELEASE_STATE) {
+    object *o = AS_OBJECT(fp_val);
+    free (o);
+  }
+
   fp = NULL;
+  ifnot (NULL is fp_val.sym)
+    fp_val.sym->value = NULL_VALUE;
+
+  fp_val.sym = NULL;
+  fp_val = NULL_VALUE;
+
   return result;
 }
 
@@ -1066,10 +1077,15 @@ static VALUE object_release (la_t *this, VALUE value) {
 
   if (value.refcount) goto theend;
 
+  if (value.type is NULL_TYPE) goto theend;
+
   object *o = AS_OBJECT(value);
 
-  ifnot (NULL is o->release)
+  ifnot (NULL is o->release) {
+    ifnot (NULL is this) this->funcState |= OBJECT_RELEASE_STATE;
     o->release (this, value);
+    ifnot (NULL is this) this->funcState &= ~OBJECT_RELEASE_STATE;
+  }
 
   free (o);
 
@@ -2486,8 +2502,9 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
     case MAP_TYPE: {
       Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
-      if (ary[idx] isnot NULL)
+      if (ary[idx] isnot NULL) {
         *vp = MAP(ary[idx]);
+      }
       else
         *vp = NULL_VALUE;
       break;
@@ -2962,7 +2979,6 @@ static int la_parse_expr_list (la_t *this) {
 
 
   return count;
-
 }
 
 static int la_parse_char (la_t *this, VALUE *vp, la_string token) {
@@ -3730,10 +3746,16 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
   VALUE rhs;
 
   string *x = NULL;
-  if (lhs.type is STRING_TYPE and lhs.sym is NULL)
-    if (this->curState & LITERAL_STRING_STATE)
+  if (lhs.type is STRING_TYPE and lhs.sym is NULL) {
+    if (this->curState & LITERAL_STRING_STATE) {
       ifnot (ns_is_malloced_string (this->curScope, AS_STRING(lhs)))
         x = AS_STRING(lhs);
+    } else {
+      if (0 is (this->objectState & ARRAY_MEMBER) and
+          0 is (ns_is_malloced_string (this->curScope, AS_STRING(lhs))))
+        x = AS_STRING(lhs);
+    }
+  }
 
   do {
     int level = (c >> 8) & 0xff;
@@ -3776,9 +3798,13 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
         la_free (this, sv_lhs);
     }
 
-    if (rhs.type isnot STRING_TYPE) {
-      if (rhs.sym is NULL)
+    if (rhs.sym is NULL) {
+      if (rhs.type isnot STRING_TYPE) {
         la_free (this, rhs);
+      } else {
+        ifnot (ns_is_malloced_string (this->curScope, AS_STRING(rhs)))
+          String.release (AS_STRING(rhs));
+      }
     }
 
     this->curState &= ~LITERAL_STRING_STATE;
@@ -5443,6 +5469,17 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
       }
       goto theend;
 
+    case OBJECT_TYPE:
+      switch (y.type) {
+        case NULL_TYPE: goto theend;
+        default:
+          this->CFuncError = LA_ERR_TYPE_MISMATCH;
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "ObjectType == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, y)));
+          goto theend;
+      }
+
     case NULL_TYPE:
       switch (y.type) {
         case NULL_TYPE: result = TRUE_VALUE; goto theend;
@@ -6037,6 +6074,7 @@ LaDefCFun la_funs[] = {
   { "format",           PTR(la_format), 1},
   { "fopen",            PTR(la_fopen), 2},
   { "fflush",           PTR(la_fflush), 1},
+  { "fclose",           PTR(la_fclose), 1},
   { "getkey",           PTR(la_getkey), 1},
   { "fileno",           PTR(la_fileno), 1},
   { "getcwd",           PTR(la_getcwd), 0},
@@ -6050,6 +6088,16 @@ LaDefCFun la_funs[] = {
   { "term_sane_mode",   PTR(la_term_sane_mode), 1},
   { NULL,               NULL_VALUE, NULL_TYPE},
 };
+
+static int la_def_std (la_t *this, char *name, int type, VALUE v, int is_const) {
+  ifnot (is_const) {
+    sym_t *sym = la_define_symbol (this, this->std, name, type, v, 0);
+    return (sym is NULL ? LA_NOTOK : LA_OK);
+  }
+
+  int err = la_define (this, name, type, v);
+  return (err ? LA_NOTOK : LA_OK);
+}
 
 static int la_std_def (la_t *this, la_opts opts) {
   VALUE v = OBJECT(opts.out_fp);
@@ -6679,6 +6727,7 @@ public la_T *__init_la__ (void) {
       .new = la_new,
       .init = la_init,
       .def =  la_define,
+      .def_std = la_def_std,
       .release = la_release,
       .eval_file = la_eval_file,
       .eval_expr = la_eval_expr,

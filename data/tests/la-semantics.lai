@@ -602,10 +602,39 @@ func semantics () {
 
     func file_module () {
       import ("file")
-      assert_true ("testing the File module and the exists method", File.exists ("Makefile"))
-      var m = File.stat ("Makefile")
-      assert_true ("testing the stat method", typeof (m) is MapType and
-          m.st_size is 801)
+      var tmp_file = "/tmp/test_file_module"
+      var fp = fopen (tmp_file, "w")
+      if (fp is null) {
+        println (stderr, "fatal error while testing the file module");
+        return
+      } else {
+        println (fp, "101010101")
+        fclose (fp)
+      }
+
+      assert_true ("testing the File module and the exists method",
+         File.exists (tmp_file))
+      var m = File.stat (tmp_file)
+      assert_true ("testing the stat method and size method",
+          typeof (m) is MapType and m.st_size is 10 and
+          File.size (tmp_file) is 10)
+      assert_true ("testing the access method",
+          File.access (tmp_file, W_OK|R_OK) is 0 and
+          File.access (tmp_file, X_OK) is -1)
+      assert_true ("testing the chmod method",
+          File.chmod (tmp_file, S_IRWXU) is 0 and
+          File.access (tmp_file, X_OK) is 0)
+      var slink = "/tmp/test_file_module_link"
+      assert_true ("testing the symlink method",
+          File.symlink (tmp_file, slink) is 0)
+      assert_true ("testing the readlink method",
+          File.readlink (slink) is tmp_file)
+      var new = "/tmp/test_file_module_new"
+      assert_true ("testing the rename method",
+          File.rename (tmp_file, new) is 0)
+      assert_true ("testing the remove method",
+          File.remove (slink) is 0 and
+          File.remove (new) is 0)
     }
 
     file_module ()

@@ -268,6 +268,7 @@ typedef struct la_self {
   int
     (*def) (la_t *, const char *, int, VALUE),
     (*init) (la_T *, la_t *, la_opts),
+    (*def_std) (la_t *, char *, int, VALUE, int),
     (*eval_file) (la_t *, const char *),
     (*eval_expr) (la_t *, const char *, VALUE *),
     (*load_file) (la_T *, la_t *, char *),

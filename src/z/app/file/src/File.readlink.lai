@@ -7,5 +7,10 @@ if (__argc is 1) {
   exit (1)
 }
 
-println (stdout, "${%s, File.readlink (__argv[1])}")
-exit (0)
+var lnk = File.readlink (__argv[1])
+ifnot (null is lnk) {
+  println (stdout, "${%s, File.readlink (__argv[1])}")
+  exit (0)
+} else {
+  exit (1)
+}
