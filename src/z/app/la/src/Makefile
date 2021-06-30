@@ -87,6 +87,9 @@ clean-shared:\
 clean-static:\
     clean-la-static
 #-----------------------------------------------#
+CSTRING_DECLARED = 0
+STRING_DECLARED = 0
+#-----------------------------------------------#
 LA = $(NAME)
 
 LA_STATIC_FLAGS  = -lustring-$(VERSION) -ldir-$(VERSION)
@@ -96,7 +99,8 @@ LA_STATIC_FLAGS += -lerror-$(VERSION)
 PATH_MODULE := 1
 ifeq ($(PATH_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_PATH_MODULE
-  LA_STATIC_FLAGS += -lcstring-$(VERSION) -lpath-$(VERSION)
+  LA_STATIC_FLAGS += -lcstring-$(VERSION)
+  CSTRING_DECLARED = 1
 endif
 
 FILE_MODULE := 1
@@ -109,8 +113,23 @@ STRING_MODULE := 1
 ifeq ($(STRING_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_STRING_MODULE
   LA_STATIC_FLAGS += -lstring-$(VERSION)
-  ifeq ($(PATH_MODULE), 0)
+  STRING_DECLARED = 1
+  ifeq ($(CSTRING_DECLARED), 0)
     LA_STATIC_FLAGS += -lcstring-$(VERSION)
+    CSTRING_DECLARED = 1
+  endif
+endif
+
+STD_MODULE := 1
+ifeq ($(STD_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_STD_MODULE
+  ifeq ($(STRING_DECLARED), 0)
+    LA_STATIC_FLAGS += -lstring-$(VERSION)
+    STRING_DECLARED = 1
+  endif
+  ifeq ($(CSTRING_DECLARED), 0)
+    LA_STATIC_FLAGS += -lcstring-$(VERSION)
+    CSTRING_DECLARED = 1
   endif
 endif
 

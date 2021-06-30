@@ -507,41 +507,48 @@ is precious.
 # builtins on static targets.
 
   # Path Module Interface
-    # StringType  Path.real (StringType path)
-    # ArrayType   Path.split (StringType path)
-    # StringType  Path.dirname (StringType path)
-    # StringType  Path.extname (StringType path)
-    # StringType  Path.basename (StringType path)
-    # IntegerType Path.is_absolute (StringType path)
-    # StringType  Path.basename_sans_extname (StringTYpe path)
+    # StringType    Path.real (StringType path)
+    # StringType[]  Path.split (StringType path)
+    # StringType    Path.dirname (StringType path)
+    # StringType    Path.extname (StringType path)
+    # StringType    Path.basename (StringType path)
+    # IntegerType   Path.is_absolute (StringType path)
+    # StringType    Path.basename_sans_extname (StringTYpe path)
 
   # File Module Interface
-    # MapType     File.stat (StringType file)
-    # IntegerType File.size (StringType file)
-    # IntegerType File.chown (StringType file, IntegerType uid, IntegerType gid)
-    # IntegerType File.chmod (StringType file, IntegerType mode)
-    # IntegerType File.exists (StringType file)
-    # IntegerType File.access (StringType file, IntegerType mode)
-    # IntegerType File.mkfifo (StringType file, IntegerType mode)
-    # IntegerType File.remove (StringType file)
-    # IntegerType File.rename (StringType src, StringType dest)
-    # IntegerType File.symlink (StringType src, StringType dest)
-    # IntegerType File.hardlink (StringType src, StringType dest)
-    # StringType  File.readlink (StringType file)
-    # StringType  File.mode_to_string (IntegerType mode)
-    # StringType  File.mode_to_octal_string (IntegerType mode)
+    # MapType       File.stat (StringType file)
+    # IntegerType   File.size (StringType file)
+    # IntegerType   File.chown (StringType file, IntegerType uid, IntegerType gid)
+    # IntegerType   File.chmod (StringType file, IntegerType mode)
+    # IntegerType   File.exists (StringType file)
+    # IntegerType   File.access (StringType file, IntegerType mode)
+    # IntegerType   File.mkfifo (StringType file, IntegerType mode)
+    # IntegerType   File.remove (StringType file)
+    # IntegerType   File.rename (StringType src, StringType dest)
+    # IntegerType   File.symlink (StringType src, StringType dest)
+    # IntegerType   File.hardlink (StringType src, StringType dest)
+    # StringType    File.readlink (StringType file)
+    # StringType    File.mode_to_string (IntegerType mode)
+    # StringType    File.mode_to_octal_string (IntegerType mode)
 
     # Constants
-    # IntegerType F_OK, X_OK, W_OK, R_OK
-    # IntegerType S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR
-    # IntegerType S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP
-    # IntegerType S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
+    # IntegerType   F_OK, X_OK, W_OK, R_OK
+    # IntegerType   S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR
+    # IntegerType   S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP
+    # IntegerType   S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
 
   # String Module Interface
-    # IntegerType String.eq (StringType a, StringType b)
-    # IntegerType String.eq_n (StringType a, StringType b, IntegerType n)
-    # IntegerType String.cmp_n (StringType a, StringType b, IntegerType n)
-    # ArrayType   String.tokenize (StringType str, StringType token)
+    # IntegerType   String.eq (StringType a, StringType b)
+    # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
+    # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
+    # StringType[]  String.tokenize (StringType str, StringType token)
+
+  # Std Module Interface
+    # IntegerType   Map.set (MapType map, StringType key, Value v)
+    # IntegerType   Map.remove (MapType map, StringType key)
+    # IntegerType   Map.key_exists (MapType map, StringType key)
+
+    # IntegerType[] Array.where (ArrayType ar, Value expression)
 
 # Semantics
 

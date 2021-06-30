@@ -667,6 +667,34 @@ func semantics () {
 
     string_module ()
 
+    func std_module () {
+      import ("std")
+      var s = {
+        "f" : 11
+      }
+
+      func sa (m, k, v) {
+        Map.set (m, k, v)
+      }
+
+      sa (s, "f", 12)
+      assert_true ("testing the std module and the map set method",
+	  s.f is 12)
+
+      Map.remove (s, "f")
+      assert_true ("testing the the map remove and key_exists methods",
+	 Map.key_exists (s, "f") is 0)
+
+     var ar = [10, 20, 10, 40, 10]
+     var n = Array.where (ar, 10)
+     var a = ["a", "b", "a", "vv", "a"]
+     var an = Array.where (a, "a")
+     assert_true ("testing the array where method",
+       n[0] is 1 and n[1] is 0 and n[2] is 1 and n[3] is 0 and n[4] is 1 and
+      an[0] is 1 and an[1] is 0 and an[2] is 1 and an[3] is 0 and an[4] is 1)
+     }
+
+     std_module ()
   }
 
   import_test ()

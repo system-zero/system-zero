@@ -27,6 +27,10 @@
 #include "../../../la-modules/string/string-module.c"
 #endif
 
+#ifdef REQUIRE_STD_MODULE
+#include "../../../la-modules/std/std-module.c"
+#endif
+
 /*
 static int __readfile_cb (Vstring_t *notused, char *line, size_t size, int nth, void *user_data) {
   (void) notused; (void) nth;
@@ -92,6 +96,10 @@ eval:
 
   #ifdef REQUIRE_STRING_MODULE
     __init_string_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_STD_MODULE
+    __init_std_module__ (la);
   #endif
 
   if (NULL is evalbuf) {
