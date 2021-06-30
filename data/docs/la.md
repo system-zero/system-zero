@@ -463,6 +463,10 @@ is precious.
 #                      args: file pointer
 # fileno             - returns a file descriptor of a stream
 #                      args: file pointer
+# errno_string       - returns a string represantation of a system error
+#                      args: error number
+# errno_name         - returns a string represantation of a system error name
+#                      args: error number
 
 # Standard Constant Variables.
 # ok         -  0

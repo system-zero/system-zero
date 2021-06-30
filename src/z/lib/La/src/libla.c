@@ -791,6 +791,24 @@ static VALUE la_getcwd (la_t *this) {
   return v;
 }
 
+static VALUE la_errno_string (la_t *this, VALUE v_err) {
+  (void) this;
+  int errnum = AS_INT(v_err);
+  char buf[256];
+  Error.errno_string_s (errnum, buf, 256);
+  string *estr = String.new_with (buf);
+  return STRING(estr);
+}
+
+static VALUE la_errno_name (la_t *this, VALUE v_err) {
+  (void) this;
+  int errnum = AS_INT(v_err);
+  char buf[32];
+  Error.errno_name_s (errnum, buf, 32);
+  string *estr = String.new_with (buf);
+  return STRING(estr);
+}
+
 static VALUE la_typeof (la_t *this, VALUE value) {
   (void) this;
   VALUE v;
@@ -6091,6 +6109,8 @@ LaDefCFun la_funs[] = {
   { "getkey",           PTR(la_getkey), 1},
   { "fileno",           PTR(la_fileno), 1},
   { "getcwd",           PTR(la_getcwd), 0},
+  { "errno_string",     PTR(la_errno_string), 1},
+  { "errno_name",       PTR(la_errno_name), 1},
   { "typeof",           PTR(la_typeof), 1},
   { "typeAsString",     PTR(la_typeAsString), 1},
   { "typeofArray",      PTR(la_typeofArray), 1},

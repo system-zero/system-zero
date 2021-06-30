@@ -173,7 +173,7 @@ static char *errno_name (int errnum) {
 static char *errno_name_s (int errnum, char *buf, size_t buflen) {
   char *name = errno_name (errnum);
 
-  size_t len = strlen (name);
+  size_t len = bytelen (name);
 
   size_t idx = 0;
   for (;idx < len && idx < buflen - 1; idx++) {
@@ -193,7 +193,7 @@ static char *errno_string (int errnum) {
 static char *errno_string_s (int errnum, char *buf, size_t buflen) {
   char *msg = errno_string (errnum);
 
-  size_t len = strlen (msg);
+  size_t len = bytelen (msg);
 
   size_t idx = 0;
   for (;idx < len && idx < buflen - 1; idx++) {
