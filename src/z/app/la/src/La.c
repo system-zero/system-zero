@@ -4,6 +4,7 @@
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 
+#define REQUIRE_VMAP_TYPE    DECLARE
 #define REQUIRE_PATH_TYPE    DONOT_DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
@@ -11,12 +12,6 @@
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_USTRING_TYPE DONOT_DECLARE
 #define REQUIRE_LA_TYPE      DECLARE
-
-#ifdef REQUIRE_PATH_MODULE
-#define REQUIRE_VMAP_TYPE    DECLARE
-#else
-#define REQUIRE_VMAP_TYPE    DONOT_DECLARE
-#endif
 
 #include <z/cenv.h>
 
@@ -26,6 +21,10 @@
 
 #ifdef REQUIRE_FILE_MODULE
 #include "../../../la-modules/file/file-module.c"
+#endif
+
+#ifdef REQUIRE_STRING_MODULE
+#include "../../../la-modules/string/string-module.c"
 #endif
 
 /*
@@ -53,6 +52,8 @@ int main (int argc, char **argv) {
     OPT_BOOLEAN(0, "version", &version, "show version", NULL, 0, 0),
     OPT_END()
   };
+
+  argparse_flags |= ARGPARSE_DONOT_EXIT_ON_UNKNOWN;
 
   PARSE_ARGS;
 
@@ -87,6 +88,10 @@ eval:
 
   #ifdef REQUIRE_FILE_MODULE
     __init_file_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_STRING_MODULE
+    __init_string_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

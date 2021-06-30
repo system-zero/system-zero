@@ -162,7 +162,7 @@ static size_t cstring_cp_fmt (char *dest, size_t dest_len, char *fmt, ...) {
 }
 
 /* the signature changed as in this namespace, size has been already computed */
-static char  *cstring_dup (const char *src, size_t len) {
+static char *cstring_dup (const char *src, size_t len) {
   /* avoid recomputation */
   // size_t len = bytelen (src);
   char *dest = Alloc (len + 1);

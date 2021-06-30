@@ -105,6 +105,15 @@ ifeq ($(FILE_MODULE), 1)
   LA_STATIC_FLAGS += -lfile-$(VERSION)
 endif
 
+STRING_MODULE := 1
+ifeq ($(STRING_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_STRING_MODULE
+  LA_STATIC_FLAGS += -lstring-$(VERSION)
+  ifeq ($(PATH_MODULE), 0)
+    LA_STATIC_FLAGS += -lcstring-$(VERSION)
+  endif
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(LA)-shared $(SYSBINDIR)/$(LA)

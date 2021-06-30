@@ -638,6 +638,35 @@ func semantics () {
     }
 
     file_module ()
+
+    func string_module () {
+      import ("string")
+
+      assert_true ("testing the string module and the eq method",
+          String.eq ("asd", "asd") and 0 is
+          String.eq ("asd", "asa"))
+
+      assert_true ("testing the eq_n method",
+          String.eq_n ("asdf", "asd", 3) and 0 is
+          String.eq_n ("asdf", "asd", 4))
+
+      assert_true ("testing the cmp_n method",
+          String.cmp_n ("asdf", "asd", 4) is 1 and
+          String.cmp_n ("asd",  "asdf", 4) is -1 and
+          String.cmp_n ("asd",  "asdf", 3) is 0)
+
+      var tok = String.tokenize ("asd:fgh:jkl:mno", ":")
+      assert_true ("testing the tokenize method",
+          typeof (tok) is ArrayType and
+          len (tok) is 4  and
+          tok[0] is "asd" and
+          tok[1] is "fgh" and
+          tok[2] is "jkl" and
+          tok[3] is "mno")
+    }
+
+    string_module ()
+
   }
 
   import_test ()

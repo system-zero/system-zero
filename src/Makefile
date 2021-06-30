@@ -1040,6 +1040,9 @@ path-module-shared:
 file-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) file-module-shared
 
+string-module-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) string-module-shared
+
 #-----------------------------------------------#
 # Development and personal stuff (ignore this section)
   ZA_SELF          = self

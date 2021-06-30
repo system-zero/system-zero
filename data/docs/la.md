@@ -533,6 +533,12 @@ is precious.
     # IntegerType S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP
     # IntegerType S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
 
+  # String Module Interface
+    # IntegerType String.eq (StringType a, StringType b)
+    # IntegerType String.eq_n (StringType a, StringType b, IntegerType n)
+    # IntegerType String.cmp_n (StringType a, StringType b, IntegerType n)
+    # ArrayType   String.tokenize (StringType str, StringType token)
+
 # Semantics
 
   - standard keywords and functions can not be redefined and reassigned
