@@ -2644,6 +2644,11 @@ static void la_release_map_val (void *v) {
   free (val);
 }
 
+static void la_map_release_value (la_t *this, VALUE *v) {
+  (void) this;
+  la_release_map_val (v);
+}
+
 static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int scope) { 
   VALUE *val = Alloc (sizeof (VALUE));
   val->refcount = v.refcount;
@@ -2677,6 +2682,14 @@ static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int sc
   }
 
   return LA_OK;
+}
+
+static int la_map_reset_value (la_t *this, Vmap_t *map, char *key, VALUE v) {
+  VALUE *val = Vmap.pop (map, key);
+  if (val isnot NULL)
+    la_release_map_val (val);
+
+  return la_map_set_value (this, map, key, v, 1);
 }
 
 static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
@@ -3274,6 +3287,10 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     this->curState |= FUNC_CALL_RESULT_IS_MMT;
 
   err = this->CFuncError;
+
+  if (err isnot LA_OK)
+    if (*this->curMsg)
+      this-> print_fmt_bytes (this->err_fp, "C function error: %s\n", this->curMsg);
 
   la_next_token (this);
 
@@ -6520,6 +6537,14 @@ static void la_set_Errno (la_t *this, int err) {
   this->Errno = err;
 }
 
+static void la_set_CFuncError (la_t *this, int err) {
+  this->CFuncError = err;
+}
+
+static void la_set_curMsg (la_t *this, char *msg) {
+  Cstring.cp (this->curMsg, MAXLEN_MSG + 1, msg, bytelen (msg));
+}
+
 static void la_set_la_dir (la_t *this, char *fn) {
   if (NULL is fn) return;
   size_t len = bytelen (fn);
@@ -6782,12 +6807,16 @@ public la_T *__init_la__ (void) {
       .set = (la_set_self) {
         .Errno = la_set_Errno,
         .la_dir = la_set_la_dir,
+        .curMsg = la_set_curMsg,
         .current = la_set_current,
         .user_data = la_set_user_data,
+        .CFuncError = la_set_CFuncError,
         .define_funs_cb = la_set_define_funs_cb
       },
       .map = (la_map_self) {
-        .set_value = la_map_set_value
+        .set_value = la_map_set_value,
+        .reset_value = la_map_reset_value,
+        .release_value = la_map_release_value
       }
     },
     .prop = $myprop,

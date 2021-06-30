@@ -243,12 +243,19 @@ typedef struct la_set_self {
     (*Errno) (la_t *, int),
     (*la_dir) (la_t *, char *),
     (*user_data) (la_t *, void *),
+    (*CFuncError) (la_t *, int),
+    (*curMsg) (la_t *, char *),
     (*define_funs_cb) (la_t *, LaDefineFuns_cb);
 
 } la_set_self;
 
 typedef struct la_map_self {
-  int (*set_value) (la_t *, Vmap_t *, char *, VALUE, int);
+  void
+    (*release_value) (la_t *, VALUE *);
+
+  int
+    (*set_value) (la_t *, Vmap_t *, char *, VALUE, int),
+    (*reset_value) (la_t *, Vmap_t *, char *, VALUE);
 } la_map_self;
 
 typedef struct la_self {
