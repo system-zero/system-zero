@@ -81,8 +81,10 @@
 #define NS_GLOBAL_LEN      6
 #define NS_STD             "std"
 #define NS_STD_LEN         3
-#define NS_BLOCK           "__block__"
-#define NS_BLOCK_LEN       9
+#define NS_LOOP_BLOCK      "__block_loop__"
+#define NS_LOOP_BLOCK_LEN  14
+#define NS_IF_BLOCK        "__block_if__"
+#define NS_IF_BLOCK_LEN    12
 #define NS_ANON            "anonymous"
 #define LA_EXTENSION       "lai"
 #define LA_STRING_NS       "__string__"
@@ -1102,6 +1104,7 @@ static VALUE la_free (la_t *this, VALUE value) {
   if (value.type < STRING_TYPE) return result;
 
   void *obj = NULL;
+
   switch (value.type) {
     case POINTER_TYPE: obj = AS_VOID_PTR(value); break;
     case   ARRAY_TYPE: return array_release (value);
@@ -2636,9 +2639,15 @@ static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int sc
 
   switch (val->type) {
     case STRING_TYPE:
-      val->asString  = v.asString;
-      this->curState &= ~LITERAL_STRING_STATE;
+      if (this->objectState & ARRAY_MEMBER) {
+        val->asString  = AS_STRING(la_copy_value (v));
+        this->objectState &= ~ARRAY_MEMBER;
+      } else {
+        val->asString  = v.asString;
+        this->curState &= ~LITERAL_STRING_STATE;
+      }
       break;
+
     case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
     case NULL_TYPE  : val->asNull    = v.asNull;    break;
     default:          val->asInteger = v.asInteger; break;
@@ -2908,12 +2917,14 @@ static int la_parse_map_set (la_t *this) {
       VALUE th = v->sym->value;
       la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
       this->funcState |= MAP_METHOD_STATE;
-      err = la_parse_func_call (this, v, NULL, uf, *v);
+      VALUE vp;
+      err = la_parse_func_call (this, &vp, NULL, uf, *v);
       la_next_token (this);
     } else {
       CFunc op = (CFunc) AS_PTR((*v));
       this->tokenArgs = ((*v).type >> 8) & 0xff;
-      err = la_parse_func_call (this, v, op, NULL, *v);
+      VALUE vp;
+      err = la_parse_func_call (this, &vp, op, NULL, *v);
     }
 
     return err;
@@ -2978,6 +2989,7 @@ static int la_parse_expr_list (la_t *this) {
   } while (c is LA_TOKEN_COMMA);
 
 
+  this->objectState &= ~ARRAY_MEMBER;
   return count;
 }
 
@@ -3230,7 +3242,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
                   this->funArgs[6], this->funArgs[7], this->funArgs[8]);
 
   for (int i = 0; i < expectargs; i++) {
-    VALUE v = this->funArgs[0];
+    VALUE v = this->funArgs[i];
     if (v.type is STRING_TYPE)
       if (ns_is_malloced_string (this->curScope, AS_STRING(v)))
         continue;
@@ -3384,7 +3396,6 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
         this->funcState |= MAP_METHOD_STATE;
         err = la_parse_func_call (this, vp, NULL, uf, *vp);
-
         la_next_token (this);
         return err;
       } else {
@@ -3616,7 +3627,7 @@ do_token:
             val = la_copy_value (v);
           }
         }
-        this->objectState &= ~MMT_OBJECT;
+        this->objectState &= ~(MMT_OBJECT|ARRAY_MEMBER);
       }
 
       if (err isnot LA_OK) return err;
@@ -3650,7 +3661,6 @@ do_token:
             la_free (this, symbol->value);
         }
       }
-
 
       VALUE result;
 
@@ -3811,6 +3821,8 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
   } while ((c & 0xff) is LA_TOKEN_BINOP);
 
   this->curState &= ~(STRING_LITERAL_ARG_STATE|LITERAL_STRING_STATE);
+  this->objectState &= ~ARRAY_MEMBER;
+
   *vp = lhs;
 
   String.release (x);
@@ -3867,7 +3879,8 @@ static int la_parse_if (la_t *this) {
 
   c = this->curToken;
 
-  if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "parsing if, not a block string");
+  if (c isnot LA_TOKEN_BLOCK)
+    return this->syntax_error (this, "parsing if, not a block string");
 
   la_string elsepart;
   la_string ifpart = this->curStrToken;
@@ -3897,7 +3910,7 @@ static int la_parse_if (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
+    .name = NS_IF_BLOCK, .namelen = NS_IF_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -3937,7 +3950,7 @@ static int la_parse_while (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
+    .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -4122,7 +4135,7 @@ static int la_parse_do (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
+    .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -4185,7 +4198,7 @@ static int la_parse_for (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
+    .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -4316,7 +4329,7 @@ static int la_parse_loop (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
+    .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -4433,7 +4446,7 @@ static int la_parse_forever (la_t *this) {
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
-    .name = NS_BLOCK, .namelen = NS_BLOCK_LEN, .parent = this->curScope
+    .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
   this->curScope = fun;
@@ -5051,7 +5064,7 @@ static int la_parse_return (la_t *this) {
   la_next_token (this);
 
   funT *scope = this->curScope;
-  while (scope and Cstring.eq (scope->funname, NS_BLOCK))
+  while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
     scope = scope->prev;
 
   if (NULL is scope)

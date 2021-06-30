@@ -1029,6 +1029,23 @@ func valgrind_tests () {
 
   var saa = ("a" is "a" and "v" is "v" or "x" is "x")
   var sab = "z" + 'x' + 'c' + 'v'
+
+  var ma = {
+    "f" : func { return 0 }
+  }
+  ma.f ()
+  ma.f ()
+
+  var arr = ["a", "b"]
+  var mb = {
+    "f" : func {
+      if (arr[0] is "a") {
+        var nar = ["c", "d"]
+      }
+    }
+  }
+
+  mb.f ()
 }
 
 if (run_valgrind_tests) {
