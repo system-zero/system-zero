@@ -86,7 +86,7 @@ LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
 LIBFLAGS += -lvwm-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)
 LIBFLAGS += -lstring-$(VERSION) -lpath-$(VERSION) -lla-$(VERSION)
 LIBFLAGS += -lsys-$(VERSION) -lfile-$(VERSION) -lerror-$(VERSION) -largparse-$(VERSION)
-LIBFLAGS += -lutil
+LIBFLAGS += -lvmap-$(VERSION) -lutil
 
 all: shared static
 

@@ -1209,10 +1209,12 @@ func summary () {
 
 summary ()
 
-func development () {
+func term_tests () {
+  import ("term")
+
   var term = term_new ()
   println ("press q to exit")
-  if (notok is term_raw_mode (term)) {
+  if (notok is Term.raw_mode (term)) {
     return notok
   }
 
@@ -1223,14 +1225,14 @@ func development () {
       return notok
     }
 
-    key = getkey (fd)
+    key = Term.getkey (fd)
   }
 
-  return term_sane_mode (term)
+  return Term.sane_mode (term)
 }
 
-if (run_development_tests) {
-  if (notok is development ()) {
-    println ("terminal error")
-  }
+if (term_tests () is notok) {
+  println ("terminal error")
 }
+
+exit (0)

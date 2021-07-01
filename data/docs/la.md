@@ -21,6 +21,14 @@ few. The code is used in two cases internally, to support saving and restore
 editor sessions and virtual window managment sessions, which by alone already
 is precious.
 
+The syntax and the semantics of the language, should feel familiar with already
+established programming languages consepts, and should obey the principle of the
+least surpise and should not violate expectations. If it does not or if it does,
+this should be considered as a bug. It is important to note that this language,
+doesn't bring even the singlest new consept in the programming language universe.
+It is written for C and follows C where it make sense, and had been influenced
+a lot by the S-Lang programming language, which is quite like C.
+
 ## Syntax and Semantics
 ```js
 # comment
@@ -45,13 +53,13 @@ is precious.
      return arg * 2
    }
 
- - a function can be used as an argument to a function.
+# a function can be used as an argument to a function
 
- - a function without an argument list can be declared as:
+# a function without an argument list can be declared as:
 
    func name { block }
 
-# code blocks delimited with braces '{}', and are mandatory.
+# code blocks are delimited with braces '{}', and are mandatory
 
 # statements are separated with a semicolon or with a new line character,
   and they can spawn to multiply lines
@@ -66,18 +74,18 @@ is precious.
 
   ifnot (condition) { ... }
 
- - both can get an `else` clause, that is evaluated when the prior conditional
-   block hasn't been executed.
+# both can get an `else` clause, that is evaluated when the prior conditional
+  block hasn't been executed
 
- - both can be extended with an `else if[not]` conditional block:
+# both can be extended with an `else if[not]` conditional block:
 
-     } else if (condition) { block }
+   } else if (condition) { block }
 
-   or
+ or
 
-     } else ifnot (condition) { block }
+   } else ifnot (condition) { block }
 
-   if the prior conditional block hasn't been executed.
+ if the prior conditional block hasn't been executed
 
 # Loops:
 
@@ -110,41 +118,41 @@ is precious.
 
   do { block } while (condition)
 
-- a `break` statement breaks out of a loop.
+# a `break` statement breaks out of a loop
 
-- a `continue` statement continues with the next iteration.
+# a `continue` statement continues with the next iteration
 
 # Constant types (those types can not be reassigned)
 
   const c = "constant"
   c = 1  # this should fail
 
-# Variables can not be redeclared at the current scope
+# variables can not be redeclared at the current scope
 
   var v = 1
   var v = 100 # this should fail
 
-# Assignment with a string literal (multibyte (UTF-8) strings are handled).
+# assignment with a string literal (multibyte (UTF-8) strings are handled)
 
   var str = "oh la la lala, it's the natural la"
   var mb  = "Είναι το φυσικό ΛΑ που φαίρνει η κάθε ύπαρξη"
 
-  - you can get the underlying byte by using an index and can be negative
+# you can get the underlying byte by using an index and can be negative
 
-    str[-2]
+  str[-2]
 
-    again: this has byte semantics, though there isn't a certainity if it is
-    the right thing to do, as it might make also sense to return a character,
-    but at least it is the well known C way
+  again: this has byte semantics, though there isn't a certainity if it is
+  the right thing to do, as it might make also sense to return a character,
+  but at least it is the well known C way
 
-# Variables can be reassigned if they are not declared as `const`.
+# variables can be reassigned if they are not declared as `const`
 
   str = "that everyone brings"
 
   in that case, the previous value should be freed automatically by the compiler
 
 # you can pass a string literal as an argument to a user defined function, or
-  to a C function.
+  to a C function
 
   call_fun ("with a string literal as an argument")
 
@@ -157,8 +165,8 @@ is precious.
 
   == or is, != or isnot, >, < , >=, <=
 
-  we use `is` and `isnot` and pay a price for this with en expensive switch
-  just to feel like humans and really after years of using them in C and now
+  we use `is` and `isnot` and pay a price for this with en expensive switch block
+  just to feel like humans, and really after years of using them in C and now
   in the language, it really offers a more natural humanish way to flow with
   the written code and the underlying thought, that for certain helps a lot
   as it gives clarity to the code
@@ -173,9 +181,9 @@ is precious.
 
  again: the `and` and the `or` keywords, instead of && and ||, it adds clarity
  to the code, and shows clear the intention of a logical operation, which some
- of them sometime can be complex. Also slowly the reading of the code becomes
- a real reading!  As languages that use a syntax that you need at least at the
- begining, to desipher them first, and for as long it takes to become a second
+ of them sometimes can be complex. Also slowly the reading of the code becomes
+ a real reading!  As languages that use a syntax that you need (at least at the
+ begining) to desipher them first, and for as long it takes to become a second
  nature to write and especially read from another human, as it doesn't show at
  all intentions, or you might need to be a genious to understand them as fast
  as should be and not more.
@@ -184,10 +192,9 @@ is precious.
 
   |, ^, >>, <<, and [|&]=
 
+# all the operators should have the same semantics with C
 
-  - all the operators should have the same semantics with C.
-
-# Functions can be defined in arbitrary nested level, in fact a whole unit can be a
+# functions can be defined in arbitrary nested level, in fact a whole unit can be a
   function
 
   func fu () {
@@ -206,15 +213,15 @@ is precious.
 
   var i = lambda ((x, y) {return x * y}) (10, 100)
 
-  - it is like a function declaration without a name, enclosed in parentheses.
+# it is like a function declaration without a name, but enclosed in parentheses
 
-  - the parameter list can be omited if it is empty.
+# the parameter list can be omited if it is empty.
 
-  - if there is no argument list, this lambda can be assigned in a variable,
-    but its lifetime can not be guarranteed yet, though it might work too.
-    The `func` keyword can be used for that.
+# if there is no argument list, this lambda can be assigned in a variable,
+  but its lifetime can not be guarranteed yet, though it might work too.
+  The `func` keyword can be used for that.
 
-  - lambdas like functions can be nested in arbitrary level.
+# lambdas, like functions, can be nested in arbitrary level
 
 # loadfile syntax and semantics:
 
@@ -258,18 +265,22 @@ is precious.
   the module, should be done at runtime after any new instance. The `__importpath`
   intrinsic variable is still available but has no effect.
 
+  Modules should expose a MapType with the same name with the module name, with
+  the first character capitalized. This Map should expose the functions as its
+  methods.
+
 # print functions syntax:
 
   print[ln] ([file pointer object], "string ${expression} ...")
 
-  - file pointer can be either `stdout` or `stderr`, or any file pointer
-    object that was created with the fopen() function:
+  file pointer can be either `stdout` or `stderr`, or any file pointer object
+  that has been created with the fopen() function:
 
-      var fp = fopen (filename, mode)  # same semantics with C
+    var fp = fopen (filename, mode)  # same semantics with C
 
-    Without a file pointer argument, default is to redirect to the standard output.
+  Without a file pointer argument, default is to redirect to the standard output.
 
-  - interpolation expression syntax:
+  interpolation expression syntax:
 
     ${[%directive], symbol or expression}
 
@@ -281,7 +292,7 @@ is precious.
       - %x as a hexadecimal (0x is prefixed in the output)
       - %f as a double
 
-  -  the `println()` is like `print`, but also emits a new line character.
+# the `println()` function is like `print`, but also emits a new line character.
 
 # Array declaration:
 
@@ -351,7 +362,7 @@ is precious.
   }
 
   - the `this` keyword is being used from the members of the map and
-    provide access to the other fields.
+    provide access to the other fields
 
   - keys are valid string identifiers and may start with a digit or an underscore
 
@@ -371,7 +382,7 @@ is precious.
 
 ```
 
-## keywords and Operators (reserved):
+## keywords and Operators (reserved keywords):
 ```sh
 # var         -  variable definition
 # const       -  constant definition
@@ -550,6 +561,12 @@ is precious.
 
     # IntegerType[] Array.where (ArrayType ar, Value expression)
 
+  # Term Module Interface
+    # ObjectType    Term.new ()
+    # IntegerType   Term.getkey (IntegerType fd)
+    # IntegerType   Term.raw_mode (ObjectType term)
+    # IntegerType   Term.sane_mode (ObjectType term)
+
 # Semantics
 
   - standard keywords and functions can not be redefined and reassigned
@@ -650,8 +667,8 @@ style. However it should be okey if practicing consistency.
 - recursive functions though they should work properly, can be easily overflow
   the stack, as the compiler doesn't perform any kind of tail call optimizations
   (this is a week point, and the worst is that this is quite difficult to change,
-   so it is better to avoid code with recursive function calls beyond some thousand
-   of calls, instead it is prefered the imperative version).
+  so it is better to avoid code with recursive function calls beyond some thousand
+  of calls, instead it is prefered the imperative version).
 
 - the number type (typedef'ed as `double`) operations, need an expertise which
   is absent to the author.

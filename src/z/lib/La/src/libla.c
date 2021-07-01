@@ -66,12 +66,6 @@
 #define REQUIRE_MAP_MACROS
 #define REQUIRE_LA_TYPE      DONOT_DECLARE
 
-/* IGNORE FOR NOW (it doesn't fit really here, though it is a core thing) */
-#define REQUIRE_TERMIOS
-#define REQUIRE_TERM_TYPE    DECLARE
-#define REQUIRE_TERM_MACROS
-#define REQUIRE_KEYS_MACROS
-
 #include <z/cenv.h>
 
 #define $myprop      this->prop
@@ -237,6 +231,7 @@ typedef struct symbol_stack {
 typedef struct module_so module_so;
 
 struct module_so {
+  char *name;
   void *handle;
   ModuleInit init;
   ModuleDeinit deinit;
@@ -982,49 +977,6 @@ static VALUE la_format (la_t *this, VALUE v_fmt) {
   return v;
 }
 
-static VALUE la_getkey (la_t *this, VALUE fd) {
-  (void) this;
-  utf8 k = IO.input.getkey (AS_INT(fd));
-  VALUE v = INT(k);
-  return v;
-}
-
-static VALUE la_term_release (la_t *this, VALUE term_val) {
-  (void) this;
-  object *o = AS_OBJECT(term_val);
-  term_t *term = (term_t *) AS_PTR(o->value);
-  Term.release (&term);
-  VALUE v = INT(LA_OK);
-  return v;
-}
-
-static VALUE la_term_new (la_t *this) {
-  (void) this;
-  term_t *term = Term.new ();
-  VALUE v = OBJECT(term);
-  object *o = la_object_new (la_term_release, NULL, v);
-  v = OBJECT(o);
-  return v;
-}
-
-static VALUE la_term_raw_mode (la_t *this, VALUE term_val) {
-  (void) this;
-  object *o = AS_OBJECT(term_val);
-  term_t *term = (term_t *) AS_PTR(o->value);
-  int retval = Term.raw_mode (term);
-  VALUE v = INT(retval);
-  return v;
-}
-
-static VALUE la_term_sane_mode (la_t *this, VALUE term_val) {
-  (void) this;
-  object *o = AS_OBJECT(term_val);
-  term_t *term = (term_t *) AS_PTR(o->value);
-  int retval = Term.sane_mode (term);
-  VALUE v = INT(retval);
-  return v;
-}
-
 static VALUE la_fileno (la_t *this, VALUE fp_val) {
   (void) this;
   FILE *fp = AS_FILEPTR(fp_val);
@@ -1151,6 +1103,7 @@ static void fun_release (funT **thisp) {
     module_so *it = this->modules->head;
     while (it) {
       module_so *tmp = it->next;
+      free (it->name);
       dlclose (it->handle);
       free (it);
       it = tmp;
@@ -5116,16 +5069,28 @@ static int la_parse_return (la_t *this) {
 static int la_import_file (la_t *this, const char *module, const char *err_msg) {
   int err = LA_NOTOK;
 
+  char *mname = Path.basename_sans_extname ((char *) module);
+
+  module_so *it = this->function->modules->head;
+  while (it) {
+    if (Cstring.eq (it->name, mname)) {
+      free (mname);
+      return LA_OK;
+    }
+
+    it = it->next;
+  }
+
   void *handle = dlopen (module, RTLD_NOW|RTLD_GLOBAL);
   if (handle is NULL) {
     err_msg = dlerror ();
     ifnot (this->curState & LOADFILE_SILENT)
       this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
 
+    free (mname);
     return LA_ERR_IMPORT;
   }
 
-  char *mname = Path.basename_sans_extname ((char *) module);
   size_t len = bytelen (mname) - 7;
   char tmp[len+1];
   Cstring.substr (tmp, len, mname, len + 7, 0);
@@ -5159,6 +5124,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   }
 
   module_so *modl = Alloc (sizeof (module_so));
+  modl->name = mname;
   modl->handle = handle;
   modl->init = init_sym;
   modl->deinit = deinit_sym;
@@ -5166,7 +5132,9 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   err = LA_OK;
 
 theend:
-  free (mname);
+  ifnot (err is LA_OK)
+    free (mname);
+
   String.release (init_fun);
   String.release (deinit_fun);
   return err;
@@ -5211,8 +5179,7 @@ static int la_parse_import (la_t *this) {
 
   sym_t *sym = ns_lookup_symbol (this->function, tmp);
   if (NULL is sym)
-    return la_syntax_error_fmt (this, "%s module hasn't been initialized",
-        tmp);
+    return la_syntax_error_fmt (this, "%s module hasn't been initialized", tmp);
 
   return LA_OK;
 #endif
@@ -6088,18 +6055,18 @@ static struct def {
   { "and",     BINOP(5),          PTR(la_logical_and) },
   { "||",      BINOP(5),          PTR(la_logical_or) },
   { "or",      BINOP(5),          PTR(la_logical_or) },
-  { "=",       LA_TOKEN_ASSIGN,     NULL_VALUE },
-  { "+=",      LA_TOKEN_ASSIGN_APP, NULL_VALUE },
-  { "-=",      LA_TOKEN_ASSIGN_SUB, NULL_VALUE },
-  { "/=",      LA_TOKEN_ASSIGN_DIV, NULL_VALUE },
-  { "*=",      LA_TOKEN_ASSIGN_MUL, NULL_VALUE },
-  { "&=",      LA_TOKEN_ASSIGN_AND, NULL_VALUE },
-  { "|=",      LA_TOKEN_ASSIGN_BAR, NULL_VALUE },
+  { "=",     LA_TOKEN_ASSIGN,     NULL_VALUE },
+  { "+=",    LA_TOKEN_ASSIGN_APP, NULL_VALUE },
+  { "-=",    LA_TOKEN_ASSIGN_SUB, NULL_VALUE },
+  { "/=",    LA_TOKEN_ASSIGN_DIV, NULL_VALUE },
+  { "*=",    LA_TOKEN_ASSIGN_MUL, NULL_VALUE },
+  { "&=",    LA_TOKEN_ASSIGN_AND, NULL_VALUE },
+  { "|=",    LA_TOKEN_ASSIGN_BAR, NULL_VALUE },
   { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
   { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
   { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
-  { "CFunctionType",INTEGER_TYPE,  INT(CFUNCTION_TYPE) },
+  { "CFunctionType",INTEGER_TYPE, INT(CFUNCTION_TYPE) },
   { "StringType",  INTEGER_TYPE,  INT(STRING_TYPE) },
   { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
   { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
@@ -6123,7 +6090,6 @@ LaDefCFun la_funs[] = {
   { "fopen",            PTR(la_fopen), 2},
   { "fflush",           PTR(la_fflush), 1},
   { "fclose",           PTR(la_fclose), 1},
-  { "getkey",           PTR(la_getkey), 1},
   { "fileno",           PTR(la_fileno), 1},
   { "getcwd",           PTR(la_getcwd), 0},
   { "errno_string",     PTR(la_errno_string), 1},
@@ -6132,10 +6098,6 @@ LaDefCFun la_funs[] = {
   { "typeAsString",     PTR(la_typeAsString), 1},
   { "typeofArray",      PTR(la_typeofArray), 1},
   { "typeArrayAsString",PTR(la_typeArrayAsString), 1},
-  /* testing or undecided */
-  { "term_new",         PTR(la_term_new), 0},
-  { "term_raw_mode",    PTR(la_term_raw_mode), 1},
-  { "term_sane_mode",   PTR(la_term_sane_mode), 1},
   { NULL,               NULL_VALUE, NULL_TYPE},
 };
 
@@ -6770,7 +6732,6 @@ public la_T *__init_la__ (void) {
   __INIT__ (file);
   __INIT__ (vmap);
   __INIT__ (imap);
-  __INIT__ (term);
   __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
@@ -6817,6 +6778,9 @@ public la_T *__init_la__ (void) {
         .set_value = la_map_set_value,
         .reset_value = la_map_reset_value,
         .release_value = la_map_release_value
+      },
+      .object = (la_object_self) {
+        .new = la_object_new
       }
     },
     .prop = $myprop,

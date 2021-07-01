@@ -249,6 +249,10 @@ typedef struct la_set_self {
 
 } la_set_self;
 
+typedef struct la_object_self {
+  object *(*new) (ObjectRelease, ObjectToString, VALUE);
+} la_object_self;
+
 typedef struct la_map_self {
   void
     (*release_value) (la_t *, VALUE *);
@@ -262,6 +266,7 @@ typedef struct la_self {
   la_get_self get;
   la_set_self set;
   la_map_self map;
+  la_object_self object;
 
   void
     (*release) (la_t **),
