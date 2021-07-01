@@ -690,8 +690,8 @@ func semantics () {
      var a = ["a", "b", "a", "vv", "a"]
      var an = Array.where (a, "a")
      assert_true ("testing the array where method",
-       n[0] is 1 and n[1] is 0 and n[2] is 1 and n[3] is 0 and n[4] is 1 and
-      an[0] is 1 and an[1] is 0 and an[2] is 1 and an[3] is 0 and an[4] is 1)
+         len (n) is 3 and n[0] is 0 and n[1] is 2 and n[2] is 4 and
+         len (an) is 3 and an[0] is 0 and an[1] is 2 and an[2] is 4)
      }
 
      std_module ()

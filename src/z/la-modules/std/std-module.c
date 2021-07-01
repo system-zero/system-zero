@@ -54,36 +54,55 @@ static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
       return NULL_VALUE;
   }
 
-  ArrayType *res_ar = ARRAY_NEW(INTEGER_TYPE, array->len);
-  integer *r_ar = (integer *) AS_ARRAY(res_ar->value);
+  integer *r_ar = Alloc (sizeof (integer));
+  integer len = 0;
 
   switch (type) {
     case STRING_TYPE: {
       char *expr = AS_STRING_BYTES(v_expr);
       string **s_ar = (string **) AS_ARRAY(array->value);
-      for (size_t i = 0; i < array->len; i++)
-        r_ar[i] = Cstring.eq (s_ar[i]->bytes, expr);
+      for (size_t i = 0; i < array->len; i++) {
+        if (Cstring.eq (s_ar[i]->bytes, expr)) {
+          len++;
+          r_ar = Realloc (r_ar, len * sizeof (integer));
+          r_ar[len-1] = i;
+        }
+      }
       break;
     }
 
     case INTEGER_TYPE: {
       int expr = AS_INT(v_expr);
       integer *i_ar = (integer *) AS_ARRAY(array->value);
-      for (size_t i = 0; i < array->len; i++)
-        r_ar[i] = i_ar[i] is expr;
+      for (size_t i = 0; i < array->len; i++) {
+        if (i_ar[i] is expr) {
+          len++;
+          r_ar = Realloc (r_ar, len * sizeof (integer));
+          r_ar[len-1] = i;
+        }
+      }
       break;
     }
 
     case NUMBER_TYPE: {
       double expr = AS_NUMBER(v_expr);
       double *d_ar = (double *) AS_ARRAY(array->value);
-      for (size_t i = 0; i < array->len; i++)
-        r_ar[i] = d_ar[i] is expr;
+      for (size_t i = 0; i < array->len; i++) {
+        if (d_ar[i] is expr) {
+          len++;
+          r_ar = Realloc (r_ar, len * sizeof (integer));
+          r_ar[len-1] = i;
+        }
+      }
       break;
     }
   }
 
-  return ARRAY(res_ar);
+  ArrayType *res_array = Alloc (sizeof (ArrayType));
+  res_array->type = INTEGER_TYPE;
+  res_array->len  = len;
+  res_array->value = ARRAY(r_ar);
+  return ARRAY(res_array);
 }
 
 #define EvalString(...) #__VA_ARGS__
