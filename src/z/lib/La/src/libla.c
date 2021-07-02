@@ -1099,7 +1099,7 @@ static void fun_release (funT **thisp) {
   Vmap.release (this->symbols);
   ns_release_malloced_strings (this);
   if (this->modules isnot NULL) {
-#ifndef STATIC
+  #ifndef STATIC
     module_so *it = this->modules->head;
     while (it) {
       module_so *tmp = it->next;
@@ -1108,7 +1108,7 @@ static void fun_release (funT **thisp) {
       free (it);
       it = tmp;
     }
-#endif
+  #endif
     free (this->modules);
   }
 
@@ -1768,7 +1768,7 @@ theend:
 
 static int la_get_anon_array (la_t *this, VALUE *vp) {
   if (la_next_char (this) is LA_TOKEN_INDEX_CLOS)
-    return this->syntax_error (this, "empty array");
+    return this->syntax_error (this, "inline empty array is not supported");
 
   int err;
   int pc;
@@ -1905,7 +1905,8 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   VALUE lidx = INT(num_elem - 1);
 
   ifnot (1 is num_elem)
-    err = la_array_assign (this, &ary, fidx, lidx, 1);
+    return la_array_assign (this, &ary, fidx, lidx, 1);
+
   return err;
 }
 
@@ -2424,10 +2425,65 @@ static int la_parse_array_set (la_t *this) {
   return la_array_assign (this, &ary, ix, last_ix, is_index);
 }
 
+static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALUE *vp) {
+  (void) this;
+  ArrayType *ary = (ArrayType *) AS_ARRAY(v_iar);
+
+  if (ary->type isnot INTEGER_TYPE)
+    return this->syntax_error (this, "awaiting an integer type array");
+
+  ArrayType *array = ARRAY_NEW(src_ar->type, (integer) ary->len);
+
+  integer *x_ar = (integer *) AS_ARRAY(ary->value);
+
+  switch (src_ar->type) {
+    case STRING_TYPE: {
+      string **s_ar = (string **) AS_ARRAY(array->value);
+      string **s_ar_src = (string **) AS_ARRAY(src_ar->value);
+      for (size_t i = 0; i < ary->len; i++) {
+        size_t idx = x_ar[i];
+        if (idx >= src_ar->len)
+          return la_out_of_bounds (this);
+        String.replace_with_len (s_ar[i], s_ar_src[idx]->bytes, s_ar_src[idx]->num_bytes);
+      }
+      break;
+    }
+
+    case INTEGER_TYPE: {
+      integer *i_ar = (integer *) AS_ARRAY(array->value);
+      integer *i_ar_src = (integer *) AS_ARRAY(src_ar->value);
+      for (size_t i = 0; i < ary->len; i++) {
+        size_t idx = x_ar[i];
+        if (idx >= src_ar->len)
+          return la_out_of_bounds (this);
+        i_ar[i] = i_ar_src[idx];
+      }
+      break;
+    }
+
+    case NUMBER_TYPE: {
+      double *d_ar = (double *) AS_ARRAY(array->value);
+      double *d_ar_src = (double *) AS_ARRAY(src_ar->value);
+      for (size_t i = 0; i < ary->len; i++) {
+        size_t idx = x_ar[i];
+        if (idx >= src_ar->len)
+          return la_out_of_bounds (this);
+        d_ar[i] = d_ar_src[idx];
+      }
+      break;
+    }
+  }
+
+  *vp = ARRAY(array);
+
+  if (v_iar.sym is NULL) array_release (v_iar);
+
+  return LA_OK;
+}
+
 static int la_parse_array_get (la_t *this, VALUE *vp) {
   VALUE ar = this->tokenValue;
   ArrayType *array = (ArrayType *) AS_ARRAY(ar);
-  integer len = array->len;
 
   int c = la_next_token (this);
 
@@ -2436,14 +2492,43 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     return LA_OK;
   }
 
+  int err;
+  if (la_next_char (this) is LA_TOKEN_INDEX_OPEN) {
+     la_next_token (this);
+     VALUE v;
+     err = la_get_anon_array (this, &v);
+     if (err isnot LA_OK) return err;
+
+     c = la_next_token (this);
+     if (c isnot LA_TOKEN_INDEX_CLOS)
+       return this->syntax_error (this, "array get, awaiting ]");
+
+     err = la_array_from_array (this, array, v, vp);
+
+     if (this->curToken isnot LA_TOKEN_INDEX_CLOS)
+       return this->syntax_error (this, "array get, awaiting ]");
+
+     la_next_token (this);
+
+     return err;
+  }
+
   VALUE ix;
   this->curState |= INDEX_STATE;
-  int err = la_parse_primary (this, &ix);
+  err = la_parse_primary (this, &ix);
   this->curState &= ~INDEX_STATE;
   if (err isnot LA_OK)
     return err;
 
+  if (ix.type is ARRAY_TYPE)
+    return la_array_from_array (this, array, ix, vp);
+
+  if (ix.type isnot INTEGER_TYPE)
+    return this->syntax_error (this, "array get, awaiting an integer expression");
+
+  integer len = array->len;
   integer idx = AS_INT(ix);
+
   if (0 > idx)
     idx += len;
 
