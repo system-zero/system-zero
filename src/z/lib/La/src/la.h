@@ -16,7 +16,6 @@ typedef double      number;
 typedef ptrdiff_t   integer;
 typedef integer     memsize;
 typedef integer     pointer;
-typedef string_t    string;
 
 #define NULL_TYPE      0
 #define NUMBER_TYPE    (1 << 0)

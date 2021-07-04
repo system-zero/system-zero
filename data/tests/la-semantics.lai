@@ -1021,6 +1021,20 @@ func test_maps {
   assert_true ("testing setting map value in arbitrary depth as a new map",
       mc.next.next.next.next.key is "string")
 
+  var mm = {
+    "a" : 11,
+    "b" : 22,
+    "c" : 33
+  }
+
+  var sum = 0
+  for |k, v| in mm {
+    if (k is "c") { continue }
+    sum += v
+  }
+
+println ("sum ${sum}")
+  assert_true ("testing map iteration", sum is 33)
 }
 
 test_maps ()

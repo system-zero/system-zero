@@ -167,6 +167,7 @@
 #define LA_TOKEN_COLON      ':'
 #define LA_TOKEN_DOT        '.'
 #define LA_TOKEN_COMMA      ','
+#define LA_TOKEN_BAR        '|'
 #define LA_TOKEN_COMMENT    '#'
 #define LA_TOKEN_UNARY      '~'
 #define LA_TOKEN_DQUOTE     '"'
@@ -4261,10 +4262,221 @@ theend:
   return LA_OK;
 }
 
+static char *find_end_foreach_ident (const char *str) {
+  int in_str = 0;
+
+  char *ptr = (char *) str;
+  char prev_c = *ptr;
+
+  for (;;) {
+    if (*ptr is LA_TOKEN_EOF)
+      return NULL;
+
+    if (*ptr is LA_TOKEN_BAR) {
+      ifnot (in_str) return ptr;
+    }
+
+    if (*ptr is LA_TOKEN_DQUOTE and prev_c isnot LA_TOKEN_ESCAPE_CHR) {
+      if (in_str)
+        in_str--;
+      else
+        in_str++;
+    }
+
+    prev_c = *ptr;
+    ptr++;
+  }
+
+  return ptr;
+}
+
+static int la_parse_foreach (la_t *this) {
+  int err;
+
+  funT *save_scope = this->curScope;
+
+  funT *fun = Fun_new (this, funNew (
+    .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
+  ));
+
+  this->curScope = fun;
+
+  size_t p_len = la_StringGetLen (this->parsePtr);
+  const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
+
+  char *ptr = find_end_foreach_ident (tmp_ptr);
+  if (NULL is ptr)
+    return this->syntax_error (this, "error while parsing for loop, awaiting |");
+  integer ident_len = ptr - tmp_ptr;
+  char ident[ident_len + 1];
+  Cstring.cp (ident, ident_len + 1, tmp_ptr, ident_len);
+
+  ptr++;
+  while (is_space (*ptr)) ptr++;
+
+  ifnot (Cstring.eq_n (ptr, "in ", 3))
+    return this->syntax_error (this, "error parsing for, awaiting in");
+
+  ptr += 3;
+  while (is_space (*ptr)) ptr++;
+
+  char sym[MAXLEN_SYMBOL + 1];
+  int idx = 0;
+  while (*ptr is '_') {
+    if (idx is MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
+    sym[idx++] = '_';
+    ptr++;
+  }
+
+  while (*ptr) {
+    if (*ptr is LA_TOKEN_EOF)
+      return this->syntax_error (this, "error while parsing for, unended expresion");
+
+    ifnot (is_identifier (*ptr)) break;
+    if (idx is MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
+
+    sym[idx++] = *ptr;
+    ptr++;
+  }
+
+  sym[idx] = '\0';
+
+  la_StringSetPtr (&this->parsePtr, ptr);
+  la_StringSetLen (&this->parsePtr, p_len - (ptr - tmp_ptr));
+
+  int c = la_next_token (this);
+  if (c isnot LA_TOKEN_BLOCK)
+    return this->syntax_error (this, "awaiting {");
+
+  size_t len = la_StringGetLen (this->curStrToken);
+  char body[len+1];
+  Cstring.cp (body, len + 1, la_StringGetPtr (this->curStrToken), len);
+
+  la_string savepc = this->parsePtr;
+
+  la_string x = la_StringNew (sym);
+  sym_t *symbol = la_lookup_symbol (this, x);
+  if (NULL is symbol)
+    return la_syntax_error_fmt (this, "%s: unknown symbol", sym);
+
+  VALUE v = symbol->value;
+  int type = v.type;
+
+  if (type isnot MAP_TYPE)
+    return la_type_mismatch (this);
+
+  ptr = ident;
+  while (*ptr isnot LA_TOKEN_COMMA) ptr++;
+  len = ptr - ident;
+
+  size_t orig_len = len;
+  while (is_space (ident[len-1])) len--;
+  ifnot (len) return this->syntax_error (this, "empty identifier");
+
+  char key[len + 1];
+  Cstring.cp (key, len + 1, ident, len);
+
+  ptr++;
+  while (is_space (*ptr)) { ptr++; orig_len++;}
+  len = 0;
+  while (*ptr++) len++;
+  ifnot (len) return this->syntax_error (this, "empty identifier");
+  char val[len + 1];
+  Cstring.cp (val, len + 1, ident + orig_len + len, len);
+
+  Vmap_t *map = AS_MAP(v);
+  v = INT(0);
+  sym_t *key_sym = la_define_symbol (this, fun, key, STRING_TYPE, v, 0);
+  sym_t *val_sym = la_define_symbol (this, fun, val, INTEGER_TYPE, v, 0);
+
+  int num = Vmap.num_keys (map);
+  string **keys = Vmap.keys (map);
+
+  la_string body_str = la_StringNew (body);
+
+  for (int i = 0; i < num; i++) {
+    key_sym->value = STRING(keys[i]);
+    VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
+    val_sym->value = *value;
+
+    this->curState |= LOOP_STATE;
+    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
+    err = la_parse_string (this, body_str);
+    if (err is LA_NOTOK) return err;
+    this->curState &= ~LOOP_STATE;
+
+    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+      la_next_token (this);
+      goto theend;
+    }
+
+    if (this->didReturn) {
+      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+      this->curToken = LA_TOKEN_SEMICOLON;
+      this->parsePtr = savepc;
+      fun_release (&fun);
+      return LA_OK;
+    }
+
+    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+      continue;
+  }
+
+theend:
+  this->curScope = save_scope;
+  fun_release (&fun);
+  this->parsePtr = savepc;
+  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+  la_next_token (this);
+  return LA_OK;
+}
+
+static char *find_end_for_stmt (const char *str) {
+  int in_str = 0;
+  int op_par = 0;
+  int cl_par = 0;
+
+  char *ptr = (char *) str;
+  char prev_c = *ptr;
+
+  while (cl_par <= op_par) {
+    if (*ptr is LA_TOKEN_EOF)
+      return NULL;
+
+    if (*ptr is LA_TOKEN_PAREN_CLOS) {
+      ifnot (in_str) cl_par++;
+      goto next;
+    }
+
+    if (*ptr is LA_TOKEN_PAREN_OPEN) {
+      ifnot (in_str) op_par++;
+      goto next;
+    }
+
+    if (*ptr is LA_TOKEN_DQUOTE and prev_c isnot LA_TOKEN_ESCAPE_CHR) {
+      if (in_str)
+        in_str--;
+      else
+        in_str++;
+      goto next;
+    }
+
+   next: prev_c = *ptr; ptr++;
+  }
+
+  return ptr;
+}
+
 static int la_parse_for (la_t *this) {
   int err;
 
   int c = la_next_token (this);
+
+  if (la_StringGetPtr(this->curStrToken)[0] is LA_TOKEN_BAR)
+    return la_parse_foreach (this);
+
   if (c isnot LA_TOKEN_PAREN_OPEN)
     return this->syntax_error (this, "error while parsing for loop, awaiting (");
 
@@ -4304,7 +4516,7 @@ static int la_parse_for (la_t *this) {
   advanced_len++;
 
   tmp_ptr = ptr + 1;
-  ptr = Cstring.byte.in_str (tmp_ptr, ')');
+  ptr = find_end_for_stmt (tmp_ptr);
   if (NULL is ptr)
     return this->syntax_error (this, "error while parsing for loop, awaiting )");
 

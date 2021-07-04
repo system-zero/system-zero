@@ -553,9 +553,12 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
     # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
     # StringType[]  String.tokenize (StringType str, StringType token)
+    # StringType    String.character (IntegerType c)
 
   # Std Module Interface
     # IntegerType   Map.set (MapType map, StringType key, Value v)
+    # ValueType     Map.get (MapType map, StringType key)
+    # StringType[]  Map.keys (MapType map)
     # IntegerType   Map.remove (MapType map, StringType key)
     # IntegerType   Map.key_exists (MapType map, StringType key)
 
