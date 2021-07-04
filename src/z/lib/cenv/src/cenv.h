@@ -826,6 +826,8 @@ typedef ptrdiff_t idx_t;
   #define String   stringType.self
   #endif
 
+  typedef string_t string;
+
 #undef REQUIRE_STRING_TYPE
 #endif /* REQUIRE_STRING_TYPE */
 

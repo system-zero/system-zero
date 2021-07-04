@@ -118,6 +118,20 @@ static size_t vmap_sizeof (void) {
   return sizeof (Vmap_t);
 }
 
+static string **vmap_keys (Vmap_t *vmap) {
+  string **keys = Alloc (sizeof (string) * vmap->num_keys);
+  int idx = 0;
+  for (size_t i = 0; i < vmap->num_slots; i++) {
+    vmap_t *item = vmap->slots[i];
+    while (item) {
+      keys[idx++] = String.new_with (item->key);
+      item = item->next;
+    }
+  }
+
+  return keys;
+}
+
 public vmap_T __init_vmap__ (void) {
   __INIT__ (string);
   __INIT__ (cstring);
@@ -128,6 +142,7 @@ public vmap_T __init_vmap__ (void) {
       .get = vmap_get,
       .set = vmap_set,
       .pop = vmap_pop,
+      .keys = vmap_keys,
       .clear = vmap_clear,
       .clone = vmap_clone,
       .size_of = vmap_sizeof,

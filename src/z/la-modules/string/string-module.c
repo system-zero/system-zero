@@ -3,6 +3,7 @@
 #define REQUIRE_VMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
+#define REQUIRE_USTRING_TYPE  DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
@@ -55,18 +56,29 @@ static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
   return ARRAY(array);
 }
 
+static VALUE string_character (la_t *this, VALUE v_c) {
+  utf8 c = AS_INT(v_c);
+  char buf[8];
+  int len = 0;
+  Ustring.character (c, buf, &len);
+  string *s = String.new_with (buf);
+  return STRING(s);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_string_module__ (la_t *this) {
   __INIT_MODULE__(this);
-  __INIT__(cstring);
   __INIT__(string);
+  __INIT__(cstring);
+  __INIT__(ustring);
 
   LaDefCFun lafuns[] = {
     { "string_eq",       PTR(string_eq), 2 },
     { "string_eq_n",     PTR(string_eq_n), 3 },
     { "string_cmp_n",    PTR(string_cmp_n), 3 },
     { "string_tokenize", PTR(string_tokenize), 2 },
+    { "string_character",PTR(string_character), 1 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -81,7 +93,8 @@ public int __init_string_module__ (la_t *this) {
        "eq" : string_eq,
        "eq_n" : string_eq_n,
        "cmp_n" : string_cmp_n,
-       "tokenize" : string_tokenize
+       "tokenize" : string_tokenize,
+       "character" : string_character
      }
    );
 

@@ -56,7 +56,7 @@ clean-file-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/file-module.so  || $(RM)  $(SYSMODULEDIR)/file-module.so
 
 #-----------------------------------------------------------
-STRING_FLAGS = -lcstring -lstring
+STRING_FLAGS = -lcstring -lstring -lustring
 string-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/string-module.so $(SHARED_FLAGS) $(STRING_FLAGS) string/string-module.c
 

@@ -15,6 +15,13 @@ static VALUE map_set (la_t *this, VALUE v_map, VALUE v_key, VALUE v_val) {
   return INT(LA_OK);
 }
 
+static VALUE map_get (la_t *this, VALUE v_map, VALUE v_key) {
+  Vmap_t *map = AS_MAP(v_map);
+  char *key = AS_STRING_BYTES(v_key);
+  VALUE *v = (VALUE *) Vmap.get (map, key);
+  return (*v);
+}
+
 static VALUE map_remove (la_t *this, VALUE v_map, VALUE v_key) {
   Vmap_t *map = AS_MAP(v_map);
   char *key = AS_STRING_BYTES(v_key);
@@ -31,6 +38,17 @@ static VALUE map_key_exists (la_t *this, VALUE v_map, VALUE v_key) {
   char *key = AS_STRING_BYTES(v_key);
 
   return INT(Vmap.key_exists (map, key));
+}
+
+static VALUE map_keys (la_t *this, VALUE v_map) {
+  Vmap_t *map = AS_MAP(v_map);
+  int num = Vmap.num_keys (map);
+  ArrayType *v_keys = Alloc (sizeof (ArrayType));
+  v_keys->type = STRING_TYPE;
+  v_keys->len  = num;
+  string **keys = Vmap.keys (map);
+  v_keys->value = ARRAY(keys);
+  return ARRAY(v_keys);
 }
 
 static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
@@ -115,6 +133,8 @@ public int __init_std_module__ (la_t *this) {
 
   LaDefCFun lafuns[] = {
     { "map_set",         PTR(map_set), 3 },
+    { "map_get",         PTR(map_get), 2 },
+    { "map_keys",        PTR(map_keys), 1 },
     { "map_remove",      PTR(map_remove), 2 },
     { "map_key_exists",  PTR(map_key_exists), 2 },
     { "array_where",     PTR(array_where), 2 },
@@ -130,6 +150,8 @@ public int __init_std_module__ (la_t *this) {
   const char evalString[] = EvalString (
     public var Map = {
        "set" : map_set,
+       "get" : map_get,
+       "keys" : map_keys,
        "remove" : map_remove,
        "key_exists" : map_key_exists
      };
