@@ -346,8 +346,16 @@ a lot by the S-Lang programming language, which is quite like C.
     be negative.  Array indices are starting from zero, and -1 denotes the
     last item in the array.
 
+  # A special form of the `for` loop, can be used as an iterator:
+
+    for |i| in array { block }
+
+    In this case 'i' holds the index of the array, and which initially starts
+    from zero.
+
 # Maps (this is a hybrid type, similar to associative arrays and structures,
-  and almost similar to json format).
+  and almost similar to json format). This is an unordered list, where a key
+  is associated with value.
 
   # Map Declaration
 
@@ -380,6 +388,15 @@ a lot by the S-Lang programming language, which is quite like C.
     Members can be attributed as `private` only at the construction time,
     not even within the members at runtime.
 
+  # A special form of the `for` loop, can be used as an iterator that can
+    loop over Maps:
+
+    for |k, v| in map { block }
+
+    In this case 'k' holds the key of the map, and 'v' its associated
+    value.
+
+   Note, since a Map is an unordered list, there is no guarrantee of the order.
 ```
 
 ## keywords and Operators (reserved keywords):

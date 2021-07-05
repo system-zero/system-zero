@@ -932,6 +932,29 @@ func test_array (length) {
   retval = fibo_array (92)
   assert_equal ("testing fibonacci array implementation",
       retval, 7540113804746346429)
+
+  var ara = [1, 2, 3, 4, 5, 6]
+
+  var sum_a = 0
+  for |i| in ara {
+    sum_a += ara[i]
+  }
+
+  var sum_b = 0
+  for |i| in ara {
+    sum_b += ara[i]
+    i += 1
+  }
+
+  var str_ar = ["1", "2", "3", "4", "5", "6"]
+  var str_a = ""
+
+  for |i| in str_ar {
+    str_a += str_ar[i]
+  }
+
+  assert_true ("testing array iteration",
+      sum_a is 21 and sum_b is 9 and str_a is "123456")
 }
 
 test_array (10)
@@ -1033,7 +1056,6 @@ func test_maps {
     sum += v
   }
 
-println ("sum ${sum}")
   assert_true ("testing map iteration", sum is 33)
 }
 

@@ -4364,64 +4364,129 @@ static int la_parse_foreach (la_t *this) {
   VALUE v = symbol->value;
   int type = v.type;
 
-  if (type isnot MAP_TYPE)
+  if (type isnot MAP_TYPE and type isnot ARRAY_TYPE)
     return la_type_mismatch (this);
 
-  ptr = ident;
-  while (*ptr isnot LA_TOKEN_COMMA) ptr++;
-  len = ptr - ident;
+  if (type is MAP_TYPE) {
+    ptr = ident;
+    while (*ptr and *ptr isnot LA_TOKEN_COMMA) ptr++;
+    if (*ptr is LA_TOKEN_EOF)
+      return this->syntax_error (this, "awaiting comma");
 
-  size_t orig_len = len;
-  while (is_space (ident[len-1])) len--;
-  ifnot (len) return this->syntax_error (this, "empty identifier");
+    len = ptr - ident;
 
-  char key[len + 1];
-  Cstring.cp (key, len + 1, ident, len);
+    size_t orig_len = len;
+    while (is_space (ident[len-1])) len--;
+    ifnot (len) return this->syntax_error (this, "empty key identifier");
 
-  ptr++;
-  while (is_space (*ptr)) { ptr++; orig_len++;}
-  len = 0;
-  while (*ptr++) len++;
-  ifnot (len) return this->syntax_error (this, "empty identifier");
-  char val[len + 1];
-  Cstring.cp (val, len + 1, ident + orig_len + len, len);
+    char key[len + 1];
+    Cstring.cp (key, len + 1, ident, len);
 
-  Vmap_t *map = AS_MAP(v);
-  v = INT(0);
-  sym_t *key_sym = la_define_symbol (this, fun, key, STRING_TYPE, v, 0);
-  sym_t *val_sym = la_define_symbol (this, fun, val, INTEGER_TYPE, v, 0);
+    ptr++;
+    while (*ptr and is_space (*ptr)) { ptr++; orig_len++;}
+    if (*ptr is LA_TOKEN_EOF)
+      return this->syntax_error (this, "awaiting a value identifier");
 
-  int num = Vmap.num_keys (map);
-  string **keys = Vmap.keys (map);
+    len = 0;
+    while (*ptr) { ptr++; len++; }
+    ifnot (len) return this->syntax_error (this, "empty value identifier");
+    char val[len + 1];
+    Cstring.cp (val, len + 1, ident + orig_len + len, len);
+    if (*ptr isnot '\0')
+      return this->syntax_error (this, "trailing identifiers");
 
-  la_string body_str = la_StringNew (body);
+    Vmap_t *map = AS_MAP(v);
+    v = INT(0);
+    sym_t *key_sym = la_define_symbol (this, fun, key, STRING_TYPE, v, 0);
+    sym_t *val_sym = la_define_symbol (this, fun, val, INTEGER_TYPE, v, 0);
 
-  for (int i = 0; i < num; i++) {
-    key_sym->value = STRING(keys[i]);
-    VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
-    val_sym->value = *value;
+    int num = Vmap.num_keys (map);
+    string **keys = Vmap.keys (map);
 
-    this->curState |= LOOP_STATE;
-    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
-    err = la_parse_string (this, body_str);
-    if (err is LA_NOTOK) return err;
-    this->curState &= ~LOOP_STATE;
+    la_string body_str = la_StringNew (body);
 
-    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
-      la_next_token (this);
-      goto theend;
+    for (int i = 0; i < num; i++) {
+      key_sym->value = STRING(keys[i]);
+      VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
+      val_sym->value = *value;
+
+      this->curState |= LOOP_STATE;
+      this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
+      err = la_parse_string (this, body_str);
+      if (err is LA_NOTOK) return err;
+      this->curState &= ~LOOP_STATE;
+
+      if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+        la_next_token (this);
+        goto theend;
+      }
+
+      if (this->didReturn) {
+        this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+        this->curToken = LA_TOKEN_SEMICOLON;
+        this->parsePtr = savepc;
+        fun_release (&fun);
+        return LA_OK;
+      }
+
+      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+        continue;
     }
 
-    if (this->didReturn) {
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-      this->curToken = LA_TOKEN_SEMICOLON;
-      this->parsePtr = savepc;
-      fun_release (&fun);
-      return LA_OK;
+  } else {
+    ptr = ident;
+    while (*ptr) {
+      if (*ptr is LA_TOKEN_COMMA)
+        return this->syntax_error (this, "trailing comma");
+      ptr++;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
-      continue;
+    len = ptr - ident;
+
+    while (is_space (ident[len-1])) len--;
+    ifnot (len) return this->syntax_error (this, "empty index identifier");
+
+    char index[len + 1];
+    Cstring.cp (index, len + 1, ident, len);
+    if (*ptr isnot '\0')
+      return this->syntax_error (this, "trailing identifiers");
+
+    ArrayType *array = (ArrayType *) AS_ARRAY(v);
+    v = INT(-1);
+    sym_t *index_sym = la_define_symbol (this, fun, index, INTEGER_TYPE, v, 0);
+
+    int num = array->len;
+
+    la_string body_str = la_StringNew (body);
+
+    for (int i = 0; i < num; i++) {
+      integer v_idx = AS_INT(index_sym->value);
+      v_idx++;
+      if (v_idx >= num) break;
+      index_sym->value = INT(v_idx);
+
+      this->curState |= LOOP_STATE;
+      this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
+      err = la_parse_string (this, body_str);
+      if (err is LA_NOTOK) return err;
+      this->curState &= ~LOOP_STATE;
+
+      if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+        la_next_token (this);
+        goto theend;
+      }
+
+      if (this->didReturn) {
+        this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+        this->curToken = LA_TOKEN_SEMICOLON;
+        this->parsePtr = savepc;
+        fun_release (&fun);
+        return LA_OK;
+      }
+
+      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+        continue;
+    }
   }
 
 theend:
