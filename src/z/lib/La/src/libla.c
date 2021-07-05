@@ -4364,8 +4364,14 @@ static int la_parse_foreach (la_t *this) {
   VALUE v = symbol->value;
   int type = v.type;
 
-  if (type isnot MAP_TYPE and type isnot ARRAY_TYPE)
-    return la_type_mismatch (this);
+  switch (type) {
+    case MAP_TYPE:
+    case ARRAY_TYPE:
+    case STRING_TYPE:
+      break;
+
+    default: return la_type_mismatch (this);
+  }
 
   if (type is MAP_TYPE) {
     ptr = ident;
@@ -4396,8 +4402,10 @@ static int la_parse_foreach (la_t *this) {
       return this->syntax_error (this, "trailing identifiers");
 
     Vmap_t *map = AS_MAP(v);
-    v = INT(0);
+
+    v = STRING_NEW_WITH_LEN("", 0);
     sym_t *key_sym = la_define_symbol (this, fun, key, STRING_TYPE, v, 0);
+    v = INT(0);
     sym_t *val_sym = la_define_symbol (this, fun, val, INTEGER_TYPE, v, 0);
 
     int num = Vmap.num_keys (map);
@@ -4406,7 +4414,8 @@ static int la_parse_foreach (la_t *this) {
     la_string body_str = la_StringNew (body);
 
     for (int i = 0; i < num; i++) {
-      key_sym->value = STRING(keys[i]);
+      string *v_k = AS_STRING(key_sym->value);
+      String.replace_with_len (v_k, keys[i]->bytes, keys[i]->num_bytes);
       VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
       val_sym->value = *value;
 
@@ -4418,6 +4427,9 @@ static int la_parse_foreach (la_t *this) {
 
       if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
         la_next_token (this);
+        for (int j = 0; j < num; j++)
+          String.release (keys[j]);
+        free (keys);
         goto theend;
       }
 
@@ -4426,6 +4438,9 @@ static int la_parse_foreach (la_t *this) {
         this->curToken = LA_TOKEN_SEMICOLON;
         this->parsePtr = savepc;
         fun_release (&fun);
+        for (int j = 0; j < num; j++)
+          String.release (keys[j]);
+        free (keys);
         return LA_OK;
       }
 
@@ -4433,7 +4448,11 @@ static int la_parse_foreach (la_t *this) {
         continue;
     }
 
-  } else {
+    for (int j = 0; j < num; j++)
+      String.release (keys[j]);
+    free (keys);
+
+  } else if (type is ARRAY_TYPE) {
     ptr = ident;
     while (*ptr) {
       if (*ptr is LA_TOKEN_COMMA)
@@ -4486,6 +4505,138 @@ static int la_parse_foreach (la_t *this) {
 
       if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
         continue;
+    }
+
+  } else {
+    int args = 1;
+    ptr = ident;
+    while (*ptr and *ptr isnot LA_TOKEN_COMMA) ptr++;
+    if (*ptr is LA_TOKEN_COMMA)
+      args = 3;
+
+    len = ptr - ident;
+
+    size_t orig_len = len;
+    while (is_space (ident[len-1])) len--;
+    ifnot (len) return this->syntax_error (this, "empty identifier");
+
+    char ci[len + 1];
+    Cstring.cp (ci, len + 1, ident, len);
+    args--;
+
+    if (args) {
+      ptr++; orig_len++;
+      while (*ptr and is_space (*ptr)) { ptr++, orig_len++; }
+      len = 0;
+      while (*ptr and *ptr isnot LA_TOKEN_COMMA) {
+        ptr++; len++;
+      }
+
+      if (*ptr is LA_TOKEN_EOF)
+        return this->syntax_error (this, "awaiting comma");
+
+      ifnot (len) return this->syntax_error (this, "empty identifier");
+
+      char s[len + 1];
+      Cstring.cp (s, len + 1, ident + orig_len, len);
+
+      orig_len += len;
+      ptr++; orig_len++;
+      while (*ptr and is_space (*ptr)) { ptr++, orig_len++; }
+      len = 0;
+      while (*ptr) { ptr++; len++; }
+      ifnot (len) return this->syntax_error (this, "empty identifier");
+
+      char w[len + 1];
+      Cstring.cp (w, len + 1, ident + orig_len, len);
+
+      if (*ptr isnot '\0')
+        return this->syntax_error (this, "trailing identifiers");
+
+      string *str = AS_STRING(v);
+      v = INT(0);
+      sym_t *c_sym = la_define_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
+      v = STRING_NEW_WITH_LEN("", 0);
+      sym_t *s_sym = la_define_symbol (this, fun, s, STRING_TYPE, v, 0);
+      v = INT(0);
+      sym_t *w_sym = la_define_symbol (this, fun, w, INTEGER_TYPE, v, 0);
+
+      Ustring_t *U = Ustring.new ();
+      ustring_t *u = Ustring.encode (U, str->bytes, str->num_bytes, 0, 8, 0);
+      int num = U->num_items;
+
+      la_string body_str = la_StringNew (body);
+
+      for (int i = 0; i < num; i++) {
+        c_sym->value = INT(u->code);
+        string *v_s = AS_STRING(s_sym->value);
+        String.replace_with (v_s, u->buf);
+        w_sym->value = INT(u->width);
+        u = u->next;
+
+        this->curState |= LOOP_STATE;
+        this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
+        err = la_parse_string (this, body_str);
+        if (err is LA_NOTOK) return err;
+        this->curState &= ~LOOP_STATE;
+
+        if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+          la_next_token (this);
+          Ustring.release (U);
+          goto theend;
+        }
+
+        if (this->didReturn) {
+          this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+          this->curToken = LA_TOKEN_SEMICOLON;
+          this->parsePtr = savepc;
+          fun_release (&fun);
+          Ustring.release (U);
+          return LA_OK;
+        }
+
+        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+          continue;
+      }
+
+      Ustring.release (U);
+
+    } else {
+      if (*ptr is LA_TOKEN_EOF)
+        return this->syntax_error (this, "awaiting comma");
+
+      string *str = AS_STRING(v);
+      v = INT(0);
+      sym_t *c_sym = la_define_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
+      int num = str->num_bytes;
+
+      la_string body_str = la_StringNew (body);
+
+      for (int i = 0; i < num; i++) {
+        c_sym->value = INT(str->bytes[i]);
+
+        this->curState |= LOOP_STATE;
+        this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
+        err = la_parse_string (this, body_str);
+        if (err is LA_NOTOK) return err;
+        this->curState &= ~LOOP_STATE;
+
+        if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+          la_next_token (this);
+          goto theend;
+        }
+
+        if (this->didReturn) {
+          this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+          this->curToken = LA_TOKEN_SEMICOLON;
+          this->parsePtr = savepc;
+          fun_release (&fun);
+          return LA_OK;
+        }
+
+        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+          continue;
+      }
     }
   }
 

@@ -552,6 +552,35 @@ func semantics () {
   assert_true ("testing string concatenation using the [+] operator",
       str_h is "\"Βρεκεκεκὲξ κοὰξ κοάξ\"")
 
+  var str_iter = "κοάξasd"
+  var sum_i = 0
+  var width = 0
+  var s_iter = ""
+  var n_chars = 0
+
+  for |c, v, w| in str_iter {
+    sum_i += c
+    s_iter += v
+    width += w
+    n_chars += 1
+  }
+
+  assert_true ("testing string character iteration form",
+      sum_i is 4123 and width is 7 and s_iter is "κοάξasd" and n_chars is 7)
+
+  var n_bytes = 0
+  sum_i = 0
+  var s_b = "asdf"
+  var s_c = ""
+  for |c| in s_b {
+    n_bytes += 1
+    sum_i += c
+    s_c += c
+  }
+
+  assert_true ("testing string byte iteration form",
+      sum_i is 414 and  s_c is "asdf" and n_bytes is 4)
+
   retval = __argc is 1
   assert_true  ("testing __argc and __argv", retval)
   assert_equal ("testing __argc and __argv", len (__argv), 1)

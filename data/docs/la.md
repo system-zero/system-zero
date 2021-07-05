@@ -396,7 +396,26 @@ a lot by the S-Lang programming language, which is quite like C.
     In this case 'k' holds the key of the map, and 'v' its associated
     value.
 
-   Note, since a Map is an unordered list, there is no guarrantee of the order.
+    Note, since a Map is an unordered list, there is no guarrantee of the order.
+
+# Strings
+  # Two special forms of the `for` loop, can be used as an iterator that can
+    loop over strings:
+
+    first form is iteration over the bytes:
+
+      for |c| in str { block }
+
+      in this case 'c' holds the integer value of the underlying byte
+
+    second form is iteration over the characters:
+
+      for |c, b, w| in str { block }
+
+      in this case 'c' holds the integer value of the underlying byte,
+      while 'b' holds the string representation and 'w' holds the cell
+      width of the character
+
 ```
 
 ## keywords and Operators (reserved keywords):
