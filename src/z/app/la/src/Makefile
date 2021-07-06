@@ -133,6 +133,22 @@ ifeq ($(STD_MODULE), 1)
   endif
 endif
 
+TERM_MODULE := 1
+ifeq ($(TERM_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_TERM_MODULE
+  LA_STATIC_FLAGS += -lterm-$(VERSION)
+endif
+
+DIR_MODULE := 1
+ifeq ($(DIR_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_DIR_MODULE
+  LA_STATIC_FLAGS += -ldir-$(VERSION)
+  ifeq ($(STRING_DECLARED), 0)
+    LA_STATIC_FLAGS += -lstring-$(VERSION)
+    STRING_DECLARED = 1
+  endif
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(LA)-shared $(SYSBINDIR)/$(LA)

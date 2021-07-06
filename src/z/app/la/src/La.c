@@ -31,15 +31,13 @@
 #include "../../../la-modules/std/std-module.c"
 #endif
 
-/*
-static int __readfile_cb (Vstring_t *notused, char *line, size_t size, int nth, void *user_data) {
-  (void) notused; (void) nth;
-  string_t *evalbuf = (string_t *) user_data;
+#ifdef REQUIRE_TERM_MODULE
+#include "../../../la-modules/term/term-module.c"
+#endif
 
-  String.append_with_len (evalbuf, line, size);
-  return OK;
-}
-*/
+#ifdef REQUIRE_DIR_MODULE
+#include "../../../la-modules/dir/dir-module.c"
+#endif
 
 int main (int argc, char **argv) {
   la_T *LaN = __init_la__ ();
@@ -100,6 +98,14 @@ eval:
 
   #ifdef REQUIRE_STD_MODULE
     __init_std_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_TERM_MODULE
+    __init_term_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_DIR_MODULE
+    __init_dir_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

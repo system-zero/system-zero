@@ -61,6 +61,9 @@ public int __init_term_module__ (la_t *this) {
   __INIT__(io);
   __INIT__(term);
 
+  (void) vmapType;
+  (void) stringType;
+
   LaDefCFun lafuns[] = {
     { "term_new",         PTR(term_new), 0 },
     { "term_raw_mode",    PTR(term_raw_mode), 1 },

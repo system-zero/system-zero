@@ -502,7 +502,6 @@ a lot by the S-Lang programming language, which is quite like C.
 # len               -  length of the object (for array and string types),
 #                      note that this has byte semantics for string types
 #                      args: object
-# getcwd            -  returns the current working directory
 #                      args:
 # fopen             -  returns a file pointer
 #                      args: filename, mode (C semantics)
@@ -590,6 +589,9 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
     # StringType[]  String.tokenize (StringType str, StringType token)
     # StringType    String.character (IntegerType c)
+    # NumberType    String.to_number (StringType str)
+    # IntegerType   String.to_integer (StringType str)
+    # StringType    String.from_integer (IntegerType i, IntegerType base)
 
   # Std Module Interface
     # IntegerType   Map.set (MapType map, StringType key, Value v)
@@ -605,6 +607,15 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   Term.getkey (IntegerType fd)
     # IntegerType   Term.raw_mode (ObjectType term)
     # IntegerType   Term.sane_mode (ObjectType term)
+
+  # Dir Module Interface
+    # IntegerType   Dir.make (StringType dir, IntegerType mode)
+    # IntegerType   Dir.remove (StringType dir)
+    # IntegerType   Dir.change (StringType dir)
+    # StringType    Dir.current ()
+    # IntegerType   Dir.is_directory (StringType dir)
+    # IntegerType   Dir.make_parents (StringType dir, IntegerType mode)
+    # IntegerType   Dir.remove_parents (StringType dir)
 
 # Semantics
 
@@ -627,6 +638,12 @@ a lot by the S-Lang programming language, which is quite like C.
     hard to emulate multi dimensional ones if there is a symmetry
 
   - syntax errors are fatal and terminate execution
+
+  - integer types can be specified in:
+    - base 10
+    - hexadecimal notation (base 16) that start with 0[xX] and consists with
+      [0-9][a-f][A-F] characters
+    - octal notation (base 8) that start with 0 and consists with [0-7] characters
 
 # Lexical Scope and visibility order
   - standard scope (lookup for standard operators and internal functions first)

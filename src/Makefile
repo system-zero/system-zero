@@ -1049,6 +1049,9 @@ std-module-shared:
 term-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) term-module-shared
 
+dir-module-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) dir-module-shared
+
 #-----------------------------------------------#
 # Development and personal stuff (ignore this section)
   ZA_SELF          = self

@@ -793,15 +793,6 @@ static malloced_string *new_malloced_string (size_t len) {
   return mbuf;
 }
 
-static VALUE la_getcwd (la_t *this) {
-  (void) this;
-  char *dir = Dir.current ();
-  string *cwd = String.new_with (dir);
-  free (dir);
-  VALUE v = STRING(cwd);
-  return v;
-}
-
 static VALUE la_errno_string (la_t *this, VALUE v_err) {
   (void) this;
   int errnum = AS_INT(v_err);
@@ -6640,7 +6631,6 @@ LaDefCFun la_funs[] = {
   { "fflush",           PTR(la_fflush), 1},
   { "fclose",           PTR(la_fclose), 1},
   { "fileno",           PTR(la_fileno), 1},
-  { "getcwd",           PTR(la_getcwd), 0},
   { "errno_string",     PTR(la_errno_string), 1},
   { "errno_name",       PTR(la_errno_name), 1},
   { "typeof",           PTR(la_typeof), 1},

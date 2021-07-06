@@ -1,7 +1,7 @@
 #define REQUIRE_STDIO
 
 #define REQUIRE_VMAP_TYPE     DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_STRING_TYPE   DONOT_DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
@@ -16,6 +16,7 @@ static VALUE map_set (la_t *this, VALUE v_map, VALUE v_key, VALUE v_val) {
 }
 
 static VALUE map_get (la_t *this, VALUE v_map, VALUE v_key) {
+  (void) this;
   Vmap_t *map = AS_MAP(v_map);
   char *key = AS_STRING_BYTES(v_key);
   VALUE *v = (VALUE *) Vmap.get (map, key);
@@ -34,6 +35,7 @@ static VALUE map_remove (la_t *this, VALUE v_map, VALUE v_key) {
 }
 
 static VALUE map_key_exists (la_t *this, VALUE v_map, VALUE v_key) {
+  (void) this;
   Vmap_t *map = AS_MAP(v_map);
   char *key = AS_STRING_BYTES(v_key);
 
@@ -41,6 +43,7 @@ static VALUE map_key_exists (la_t *this, VALUE v_map, VALUE v_key) {
 }
 
 static VALUE map_keys (la_t *this, VALUE v_map) {
+  (void) this;
   Vmap_t *map = AS_MAP(v_map);
   int num = Vmap.num_keys (map);
   ArrayType *v_keys = Alloc (sizeof (ArrayType));
@@ -128,8 +131,9 @@ static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
 public int __init_std_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(vmap);
-  __INIT__(string);
   __INIT__(cstring);
+
+  (void) stringType;
 
   LaDefCFun lafuns[] = {
     { "map_set",         PTR(map_set), 3 },
@@ -158,7 +162,9 @@ public int __init_std_module__ (la_t *this) {
 
     public var Array = {
       "where" : array_where
-    }
+    };
+
+    public var Std = null
  );
 
   err = La.eval_string (this, evalString);

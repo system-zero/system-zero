@@ -21,12 +21,13 @@ all: shared
 Env: makeenv checkenv
 
 shared: Env clean-shared path-module-shared file-module-shared\
-        string-module-shared std-module-shared term-module-shared
+        string-module-shared std-module-shared term-module-shared\
+        dir-module-shared
 
 clean: clean-shared
 
 clean-shared: clean-path-shared clean-file-shared clean-string-shared\
-              clean-std-shared clean-term-shared
+              clean-std-shared clean-term-shared clean-dir-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC -lla
@@ -78,6 +79,14 @@ term-module-shared:
 
 clean-term-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/term-module.so  || $(RM)  $(SYSMODULEDIR)/term-module.so
+
+#-----------------------------------------------------------
+DIR_FLAGS = -ldir
+dir-module-shared:
+	$(CC) -o $(SYSMODULEDIR)/dir-module.so $(SHARED_FLAGS) $(DIR_FLAGS) dir/dir-module.c
+
+clean-dir-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/dir-module.so  || $(RM)  $(SYSMODULEDIR)/dir-module.so
 
 #-----------------------------------------------------------
 makeenv:

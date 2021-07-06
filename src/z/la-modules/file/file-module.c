@@ -6,7 +6,7 @@
 
 #define REQUIRE_VMAP_TYPE     DECLARE
 #define REQUIRE_VSTRING_TYPE  DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_STRING_TYPE   DONOT_DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
@@ -208,6 +208,7 @@ static VALUE file_stat (la_t *this, VALUE v_file) {
 }
 
 static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
+  (void) this;
   mode_t mode = AS_INT(v_mode);
   char mode_string[12];
   File.mode.stat_to_string (mode_string, mode);
@@ -216,6 +217,7 @@ static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
 }
 
 static VALUE file_mode_to_octal_string (la_t *this, VALUE v_mode) {
+  (void) this;
   mode_t mode = AS_INT(v_mode);
   char oct_str[16];
   snprintf (oct_str, 16, "%o", mode);
@@ -229,7 +231,8 @@ public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(file);
   __INIT__(vmap);
-  __INIT__(string);
+
+  (void) vstringType;
 
   LaDefCFun lafuns[] = {
     { "file_stat",       PTR(file_stat), 1 },
