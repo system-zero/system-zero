@@ -148,6 +148,7 @@
 #define LA_TOKEN_NUMBER     'n'
 #define LA_TOKEN_BINOP      'o'
 #define LA_TOKEN_PRINTLN    'p'
+#define LA_TOKEN_HEX_CHAR   'q'
 #define LA_TOKEN_LOADFILE   'r'
 #define LA_TOKEN_IMPORT     's'
 #define LA_TOKEN_OCTAL      't'
@@ -648,6 +649,17 @@ static int la_peek_char_nows (la_t *this, uint *n) {
 static int la_next_char (la_t *this) {
   uint n = 0;
   return la_peek_char_nows (this, &n);
+}
+
+static int la_peek_nows_char_inline (la_t *this, uint *n) {
+  int c;
+  while (1) {
+    c = la_peek_char (this, *n);
+    ifnot (is_space (c))  return c;
+    *n += 1;
+  }
+
+  return LA_TOKEN_EOF;
 }
 
 static void la_get_span (la_t *this, int (*testfn) (int)) {
@@ -1327,7 +1339,27 @@ static int la_do_next_token (la_t *this, int israw) {
 
     case LA_TOKEN_SQUOTE: {
         c = la_get_char (this); // get first
-        if (c is LA_TOKEN_ESCAPE_CHR) la_get_char (this);
+        if (c is LA_TOKEN_ESCAPE_CHR) {
+          if (la_peek_char (this, 0) is 'x') {
+            la_get_char (this);
+            if (la_peek_char (this, 0) isnot '{')
+              return this->syntax_error (this, "error while parsing char, awaiting {");
+            la_get_char (this);
+            la_reset_token (this);
+            la_get_span (this, is_hexchar);
+            c = la_get_char (this);
+            if (c isnot '}')
+              return this->syntax_error (this, "error while parsing char, awaiting }");
+            la_ignore_last_token (this);
+            c = la_get_char (this);
+            if (c isnot LA_TOKEN_SQUOTE)
+              return this->syntax_error (this, "error while parsing char, awaiting '");
+            la_ignore_last_token (this);
+            r = LA_TOKEN_HEX_CHAR;
+            break;
+          } else
+            la_get_char (this);
+        }
 
         int max = 4;
         r = LA_TOKEN_SYNTAX_ERR;
@@ -1477,7 +1509,8 @@ static int la_do_next_token (la_t *this, int israw) {
         pc = 0;
         for (size_t i = 0; i < len; i++) {
           c = la_get_char (this);
-          if (c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR)
+          if ((c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR) or
+              (c is LA_TOKEN_NL and pc is LA_TOKEN_ESCAPE_CHR))
             String.clear_at (str, -1);
 
           String.append_byte (str, c);
@@ -1492,7 +1525,8 @@ static int la_do_next_token (la_t *this, int israw) {
         pc = 0;
         for (size_t i = 0; i < len; i++) {
           c = la_get_char (this);
-          if (c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR)
+          if ((c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR) or
+              (c is LA_TOKEN_NL and pc is LA_TOKEN_ESCAPE_CHR) )
             String.clear_at (mbuf->data, -1);
           String.append_byte (mbuf->data, c);
           pc = c;
@@ -3468,6 +3502,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       la_next_token (this);
       return LA_OK;
 
+    case LA_TOKEN_HEX_CHAR:
     case LA_TOKEN_HEX_NUMBER:
       *vp = la_HexStringToNum (this->curStrToken);
       la_next_token (this);
@@ -3620,6 +3655,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
 static int la_parse_stmt (la_t *this) {
   int c;
+  int prev_token = 0;
   la_string name;
   funT *scope = this->curScope;
   VALUE val;
@@ -3660,9 +3696,12 @@ do_token:
 
     case LA_TOKEN_VARDEF:
     case LA_TOKEN_CONSTDEF: {
+      prev_token = c;
       int is_const = c is LA_TOKEN_CONSTDEF;
 
       c = la_next_raw_token (this);
+      if (c is LA_TOKEN_NL)
+        c = la_next_token (this);
 
       if (c isnot LA_TOKEN_SYMBOL)
         return this->syntax_error (this, "expected a symbol");
@@ -3821,6 +3860,23 @@ do_token:
       symbol->value = result;
 
       this->curState &= ~LITERAL_STRING_STATE;
+
+      if (prev_token isnot LA_TOKEN_VARDEF)
+        return LA_OK;
+
+      if (this->curToken is LA_TOKEN_COMMA) {
+        uint n = 0;
+        c = la_peek_nows_char_inline (this, &n);
+        if (c  is LA_TOKEN_NL) {
+          for (uint i = 0; i <= n; i++)
+            la_get_char (this);
+          la_reset_token (this);
+        }
+
+        this->curToken = LA_TOKEN_VARDEF;
+        goto do_token;
+      }
+
       return LA_OK;
     }
 

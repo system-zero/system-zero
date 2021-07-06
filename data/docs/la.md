@@ -97,6 +97,8 @@ a lot by the S-Lang programming language, which is quite like C.
 
   for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
+  Special forms of the `for` loop that work as an iterator, can be found to
+  the specific datatype section.
 
 # `loop` loop (loop for nth times)
 
@@ -646,6 +648,25 @@ a lot by the S-Lang programming language, which is quite like C.
     - octal notation (base 8) that start with 0 and consists with [0-7] characters
     - binary notation (base 2) that start with 0b and consists with 0|1 characters
 
+  - single characters can be specified as integers, when are enclosed in signle
+    quotes:
+
+      'a' => 97
+
+    this doesn't limit for characters in the ASCII range:
+
+      'α' => 945
+
+    but they can be also specified in hexadecimal notation using this form:
+
+      '\x{3b1}' => 945
+
+   - multiline literal strings are enclosed also in double quotes, but they
+     can continue to the next line if an escape '\' character is encountered
+     before the new line character
+
+   - variables can be declared in consecutive manner, separated with a comma
+     and they can spawn to multiply lines
 # Lexical Scope and visibility order
   - standard scope (lookup for standard operators and internal functions first)
 
