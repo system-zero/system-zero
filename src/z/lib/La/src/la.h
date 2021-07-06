@@ -146,6 +146,19 @@ typedef ObjectType object;
   _fp_;                                     \
 })
 
+#define IS_INT(__v__) (__v__.type == INTEGER_TYPE)
+#define IS_MAP(__v__) (__v__.type == MAP_TYPE)
+#define IS_ARRAY(__v__) (__v__.type == ARRAY_TYPE)
+#define IS_STRING(__v__) (__v__.type == STRING_TYPE)
+#define IS_NUMBER(__v__) (__v__.type == NUMBER_TYPE)
+#define IS_OBJECT(__v__) (__v__.type == OBJECT_TYPE)
+
+#define THROW(__e__, __m__) do {    \
+  La.set.CFuncError (this,  __e__); \
+  La.set.curMsg (this, __m__);      \
+  return NULL_VALUE;                \
+} while (0)
+
 typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*OpFunc) (la_t *, VALUE, VALUE);
 

@@ -150,6 +150,7 @@
 #define LA_TOKEN_PRINTLN    'p'
 #define LA_TOKEN_LOADFILE   'r'
 #define LA_TOKEN_IMPORT     's'
+#define LA_TOKEN_OCTAL      't'
 #define LA_TOKEN_VAR        'v'
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
@@ -236,6 +237,7 @@ struct module_so {
   void *handle;
   ModuleInit init;
   ModuleDeinit deinit;
+  la_t *instance;
   module_so *next;
 };
 
@@ -696,7 +698,16 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   int plus_found = 0;
   int minus_found = 0;
 
+  int is_oct = c is '0';
+
   c = la_get_char (this);
+
+  if (is_oct) {
+    ifnot (is_digit (c))
+      is_oct = 0;
+    else
+      *token_type = LA_TOKEN_OCTAL;
+  }
 
   if (c is '-' or c is '+')
     return LA_NOTOK;
@@ -742,6 +753,10 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
     }
 
     ifnot (is_digit (c)) break;
+
+    if (*token_type is LA_TOKEN_OCTAL)
+      if (c > '7')
+        return this->syntax_error (this, "not an octal number");
   }
 
   if (c isnot LA_TOKEN_EOF) la_unget_char (this);
@@ -1105,6 +1120,7 @@ static void fun_release (funT **thisp) {
     while (it) {
       module_so *tmp = it->next;
       free (it->name);
+      it->deinit (it->instance);
       dlclose (it->handle);
       free (it);
       it = tmp;
@@ -1628,6 +1644,20 @@ static VALUE la_HexStringToNum (la_string s) {
       r = 16 * r + (c - 'A' + 10);
     else
       r = 16 * r + (c - 'a' + 10);
+  }
+
+  VALUE result = INT(r);
+  return result;
+}
+
+static VALUE la_OctalStringToNum (la_string s) {
+  integer r = 0;
+  int c;
+  const char *ptr = la_StringGetPtr (s);
+  int len = la_StringGetLen (s);
+  while (len-- > 0) {
+    c = *ptr++;
+    r = 8 * r + (c - '0');
   }
 
   VALUE result = INT(r);
@@ -3412,6 +3442,11 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       la_next_token (this);
       return LA_OK;
     }
+
+    case LA_TOKEN_OCTAL:
+      *vp = la_OctalStringToNum (this->curStrToken);
+      la_next_token (this);
+      return LA_OK;
 
     case LA_TOKEN_HEX_NUMBER:
       *vp = la_HexStringToNum (this->curStrToken);
@@ -5641,6 +5676,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   modl->handle = handle;
   modl->init = init_sym;
   modl->deinit = deinit_sym;
+  modl->instance = this;
   ListStackPush(this->function->modules, modl);
   err = LA_OK;
 
