@@ -814,6 +814,15 @@ func semantics () {
 
   reassingment ()
 
+  func integers () {
+    assert_true ("testing integers in hexadecimal/octal/binary notation",
+      0b1010010111000011 is 42435 and
+      0122703 is 42435 and
+      0xa5c3 is  42435)
+  }
+
+  integers ()
+
   var sa = [{"l" : 1, "k" : [1, 2, 3, 4], "lk" : {"ka" : 1, "kka" : {"a" : 2,
       "b" : ["av", "sb", "fg"]}}}]
 

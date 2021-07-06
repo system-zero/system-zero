@@ -644,6 +644,7 @@ a lot by the S-Lang programming language, which is quite like C.
     - hexadecimal notation (base 16) that start with 0[xX] and consists with
       [0-9][a-f][A-F] characters
     - octal notation (base 8) that start with 0 and consists with [0-7] characters
+    - binary notation (base 2) that start with 0b and consists with 0|1 characters
 
 # Lexical Scope and visibility order
   - standard scope (lookup for standard operators and internal functions first)

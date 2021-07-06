@@ -151,6 +151,7 @@
 #define LA_TOKEN_LOADFILE   'r'
 #define LA_TOKEN_IMPORT     's'
 #define LA_TOKEN_OCTAL      't'
+#define LA_TOKEN_BINARY     'u'
 #define LA_TOKEN_VAR        'v'
 #define LA_TOKEN_WHILE      'w'
 #define LA_TOKEN_HEX_NUMBER 'x'
@@ -698,14 +699,18 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   int plus_found = 0;
   int minus_found = 0;
 
-  int is_oct = c is '0';
+  int is_octOrbin = c is '0';
 
   c = la_get_char (this);
 
-  if (is_oct) {
-    ifnot (is_digit (c))
-      is_oct = 0;
-    else
+  if (is_octOrbin) {
+    ifnot (is_digit (c)) {
+      if (c is 'b') {
+        *token_type = LA_TOKEN_BINARY;
+        la_reset_token (this);
+        c = la_get_char (this);
+      }
+    } else
       *token_type = LA_TOKEN_OCTAL;
   }
 
@@ -757,6 +762,10 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
     if (*token_type is LA_TOKEN_OCTAL)
       if (c > '7')
         return this->syntax_error (this, "not an octal number");
+
+    if (*token_type is LA_TOKEN_BINARY)
+      if (c > '1')
+        return this->syntax_error (this, "not a binary number");
   }
 
   if (c isnot LA_TOKEN_EOF) la_unget_char (this);
@@ -1649,6 +1658,21 @@ static VALUE la_OctalStringToNum (la_string s) {
   while (len-- > 0) {
     c = *ptr++;
     r = 8 * r + (c - '0');
+  }
+
+  VALUE result = INT(r);
+  return result;
+}
+
+static VALUE la_BinaryStringToNum (la_string s) {
+  integer r = 0;
+  int c;
+  const char *ptr = la_StringGetPtr (s);
+  int len = la_StringGetLen (s);
+
+  while (len-- > 0) {
+    c = *ptr++;
+    r = 2 * r + (c - '0');
   }
 
   VALUE result = INT(r);
@@ -3436,6 +3460,11 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     case LA_TOKEN_OCTAL:
       *vp = la_OctalStringToNum (this->curStrToken);
+      la_next_token (this);
+      return LA_OK;
+
+    case LA_TOKEN_BINARY:
+      *vp = la_BinaryStringToNum (this->curStrToken);
       la_next_token (this);
       return LA_OK;
 
