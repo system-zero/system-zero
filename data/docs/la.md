@@ -541,15 +541,6 @@ a lot by the S-Lang programming language, which is quite like C.
 # __importpath - string type array with directories as members, to lookup when
 #                importing C modules
 
-# The followings might change semantics or possible removed in the future.
-# not        -  !value
-# bool       -  !!value
-# Likewise, the following memory handling functions are not needed with
-  current code.
-# free      -  release memory
-# alloc     -  allocate memory
-# realloc   -  reallocate memory
-
 # C Modules
 # They are initialized with the `import` function on shared targets, or as
 # builtins on static targets.

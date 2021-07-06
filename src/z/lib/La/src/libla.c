@@ -1017,16 +1017,6 @@ static VALUE la_fileno (la_t *this, VALUE fp_val) {
   return v;
 }
 
-static void *la_malloc (la_t *this, VALUE size) {
-  (void) this;
-  return Alloc (AS_MEMSIZE(size));
-}
-
-static void *la_realloc (la_t *this, VALUE obj, VALUE size) {
-  (void) this;
-  return Realloc (AS_VOID_PTR(obj), AS_MEMSIZE(size));
-}
-
 static VALUE la_len (la_t *this, VALUE value) {
   (void) this;
   VALUE result = INT(0);
@@ -6618,18 +6608,6 @@ theend:
   return result;
 }
 
-static VALUE la_not (la_t *this, VALUE value) {
-  (void) this;
-  VALUE result = INT(!AS_INT(value));
-  return result;
-}
-
-static VALUE la_bool (la_t *this, VALUE value) {
-  (void) this;
-  VALUE result = INT(!!AS_INT(value));
-  return result;
-}
-
 static struct def {
   const char *name;
   int toktype;
@@ -6705,12 +6683,7 @@ static struct def {
 };
 
 LaDefCFun la_funs[] = {
-  { "not",              PTR(la_not), 1},
   { "len",              PTR(la_len), 1},
-  { "bool",             PTR(la_bool), 1},
-  { "free",             PTR(la_free), 1},
-  { "malloc",           PTR(la_malloc), 1},
-  { "realloc",          PTR(la_realloc), 2},
   { "format",           PTR(la_format), 1},
   { "fopen",            PTR(la_fopen), 2},
   { "fflush",           PTR(la_fflush), 1},
