@@ -746,14 +746,15 @@ char *lai_shebangs[] = {"#!/bin/env La", "#!La-shared", "#!La-static", NULL};
 char lai_operators[] = "+-%*^><=/|& .(){}![]";
 
 char *lai_keywords[] = {
-  "var V", "if I", "ifnot I", "else I", "func I",
-  "is I", "isnot I", "and I", "or I", "in I", "this V", "return I",
-  "for I", "while I", "break I", "continue I",
-  "println F", "null T", "format F", "len F", "print F", "loadfile F",
-  "loop I", "forever I", "do I", "ok K", "notok K", "true K", "false K",
-  "lambda F", "array V", "public V", "private V", "import F",
-  "string T", "integer T", "number T", "typeof F", "typeofArray F",
-  "bool V", "not V", "const V",
+  "var V", "if I", "ifnot I", "else I", "func I",  "is I", "isnot I",
+  "and I", "or I", "in I", "this V", "return I",  "for I", "while I",
+  "break I", "continue I",  "println F", "format F", "len F",
+  "null T", "ok T", "notok T", "true T", "false T",
+  "array V", "map V", "string T", "integer T", "number T",
+  "loop I", "forever I", "do I", "lambda F",
+  "public V", "private V", "import F", "loadfile F",
+  "typeof F", "typeofArray F", "typeAsString F", "typeArrayAsString F",
+  "print F", "const V",
    NULL
 };
 

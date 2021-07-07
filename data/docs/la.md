@@ -12,14 +12,15 @@ The following is an early draft, but looks quite close to the final reference,
 but with a couple of exceptions, restrictions and unhandled cases that would
 be good to have.
 
-There is a reference implementation, that should obey the syntax and semantics
-that should pass all the tests, except some expected to fail ones, notably
+There is a reference implementation, that should obey the syntax and semantics,
+that is owe to pass all the tests, except some expected to fail ones, notably
 operations on doubles, where an expertise is missing and neither exists the
 desirable will to gain this knowledge. This can wait, as and as an author, i
 never had to use the type, except in some quite basic calculations and these
-few. The code is used in two cases internally, to support saving and restore
-editor sessions and virtual window managment sessions, which by alone already
-is precious.
+few.
+The reference interpreter is being used in two cases internally in this system.
+This is to support saving and restore editor sessions and virtual window managment
+sessions, which by alone already is precious.
 
 The syntax and the semantics of the language, should feel familiar with already
 established programming languages consepts, and should obey the principle of the
@@ -31,7 +32,8 @@ a lot by the S-Lang programming language, which is quite like C.
 
 ## Syntax and Semantics
 ```js
-# comment
+# A comment that may be used only as the first character of a line. There are
+# no multiline comments and they cannot be used inline.
 
 # Variable assignment
 
@@ -62,7 +64,7 @@ a lot by the S-Lang programming language, which is quite like C.
 # code blocks are delimited with braces '{}', and are mandatory
 
 # statements are separated with a semicolon or with a new line character,
-  and they can spawn to multiply lines
+  and they can spawn to multiply lines based on the context.
 
 # Conditionals:
 
@@ -85,7 +87,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
    } else ifnot (condition) { block }
 
- if the prior conditional block hasn't been executed
+ if the prior conditional expression evaluated to zero
 
 # Loops:
 
@@ -227,12 +229,12 @@ a lot by the S-Lang programming language, which is quite like C.
 
 # loadfile syntax and semantics:
 
-  loadfile (fname)
+  loadfile ("fname")
 
   If `fname` is not an absolute path, then it is relative to the current
   evaluated unit. If that fails, then it is relative to the current directory,
-  else it is relative to the `__loadpath` intrinsic variable. If it couldn't
-  be found then an error terminates execution.
+  else it is relative to the `__loadpath` intrinsic string type variable. If
+  the unit couldn't be found, then an error terminates execution.
 
 # import syntax and semantics:
 
@@ -241,7 +243,7 @@ a lot by the S-Lang programming language, which is quite like C.
   If `modulename` is not an absolute path, then it is relative to the current
   evaluated unit. If that fails, then it is relative to the current directory,
   else it composed in turn with the members of the `__importpath` intrinsic
-  array constant.
+  string array constant.
   If after the search, it couldn't be found then an import error terminates execution.
 
   The imported compiled module name is composed as `modulename`-module.so.
@@ -262,10 +264,10 @@ a lot by the S-Lang programming language, which is quite like C.
     __INIT_MODULE(this);
 
   Note that for static builds the `import` function is still available, but it
-  only checks if the desired interface has been exposed to the interpreter, that
-  should include any desirable module on build time, and the initialization for
-  the module, should be done at runtime after any new instance. The `__importpath`
-  intrinsic variable is still available but has no effect.
+  only checks if the desired interface has been exposed to the interpreter, thus
+  it should include any desirable module on build time, and the initialization 
+  for the module, should be done at runtime after any new instance. The `__importpath`
+  intrinsic variable is still available but has no effect on static builds.
 
   Modules should expose a MapType with the same name with the module name, with
   the first character capitalized. This Map should expose the functions as its
@@ -301,20 +303,26 @@ a lot by the S-Lang programming language, which is quite like C.
   # first form
     var ar = [1, 2, 3]
 
-  # second form
-   Array declaration and assignment syntax with a predefined length and type:
-   (note that with current code, this method should execute faster than the
-    above, since the above requires first a "light" parsing, to determinate
-    the length of the array, and then the "real" evaluation)
+    this is an anonymous array that get assigned to the symbol `ar`. It takes
+    its type of the first element, which in this case is an integer type.
 
-    array string ar[3] = ["holidays", "in", "cambodia"]
+    Such "on the fly" arrays can be used elsewhere in expressions, and they should
+    be freed automatically.
+
+  # second form
+    Array declaration and assignment syntax with a predefined length and type:
+    (note that with current code, this method should execute faster than the
+    above, since the above requires first a "light" parsing, to determinate
+    the length of the array, and then redo the "real" evaluation)
+
+    var string[3] ar = ["holidays", "in", "cambodia"]
 
   - the declaration syntax is:
 
-    array [type] name[length]
+    var type[length] varname
 
-    - a type can be omited and can be one of the following
-      - integer (this is the default)
+    - a `type` can be one of the followings
+      - integer
       - number
       - string
       - map
@@ -348,7 +356,7 @@ a lot by the S-Lang programming language, which is quite like C.
     be negative.  Array indices are starting from zero, and -1 denotes the
     last item in the array.
 
-  # A special form of the `for` loop, can be used as an iterator:
+  # A special form of the `for` loop, can be used as an array iterator:
 
     for |i| in array { block }
 
@@ -357,7 +365,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
 # Maps (this is a hybrid type, similar to associative arrays and structures,
   and almost similar to json format). This is an unordered list, where a key
-  is associated with value.
+  is associated with a value.
 
   # Map Declaration
 
@@ -424,11 +432,10 @@ a lot by the S-Lang programming language, which is quite like C.
 ```sh
 # var         -  variable definition
 # const       -  constant definition
-#                can not change state since initialization; an uninitialized
+#                a constant can not reassigned since initialization; an uninitialized
 #                object is considered the one that has a value of `null`
 # func        -  function definition
 # lambda      -  lambda function
-# array       -  array definition
 # if          -  if conditional
 # ifnot       -  ifnot conditional
 # else        -  else clause
@@ -442,13 +449,14 @@ a lot by the S-Lang programming language, which is quite like C.
 # return      -  return statement
 # break       -  break statement
 # continue    -  continue statement
-# exit        -  terminates evaluation
 # *           -  multiplication
 # /           -  division
 # %           -  modulo
 # +           -  addition
-#                for strings this is a concatenation operator, an integer in that case
-#                has character semantics
+#                for strings this is a concatenation operator. In that case
+#                an integer operand, it has the value of the string representation
+#                and may be valid, if it is in the UTF8 range. If it is not
+#                the result is unspecified.
 # -           -  subtract
 # &           -  bit and
 # |           -  bit or
@@ -468,17 +476,22 @@ a lot by the S-Lang programming language, which is quite like C.
 # >           -  greater
 # >=          -  greater or equal than
 # +=          -  increment variable value and assign the result
-#                if the first operand is a string then
+#                if the first operand is a string then:
 #                  if the second operand is a string then appends this string
 #                  else if the second operand is an integer type, then it
 #                  appends a byte if it is within the ascii range or else a
 #                  multibyte sequence to form the character
 # -=          -  decrement variable and assign the result
-# *=          -  multiply        -||-
-# /=          -  divide          -||-
-# %=          -  modulo          -||-
-# |=          -  bit or          -||-
-# &=          -  bit and         -||-
+# *=          -  multiply          -||-
+# /=          -  divide            -||-
+# %=          -  modulo            -||-
+# |=          -  bit or            -||-
+# &=          -  bit and           -||-
+
+# Predefined types:
+# integer, string, map, number, array (those actually will throw a bit different
+# error (if it is tryied to use them as an identifier), as they are being used
+# on array declarations)
 
 # Standard Functions.
 # print and println -  print functions
@@ -489,34 +502,39 @@ a lot by the S-Lang programming language, which is quite like C.
 #                      args: a filename
 # import            -  load a compiled C module
 #                      args: a module name
-# exit              -  terminates evaluation of the current evaluated instance.
+# exit              -  terminates evaluation of the current evaluated instance,
+#                      as it deoes only returns control back to the caller. So
+#                      it actually doesn't exits to the system environment.
 #                      args: integer as an exit value
 # typeof            -  type of a value
 #                      args: object
-#                      Type can be any of the followings:
-#                        (Integer|Number|String|Array|Map|Object|Function|Null)Type
+#                      The returned Type can be any of the followings intege type
+#                      constants:
+#                      (Integer|Number|String|Array|Map|Object|[C]Function|Null)Type
 # typeAsString      -  type of a value as string represantation
 #                      args: object
+#                      The returned string can be any of the above but formated
+#                      as stings.
 # typeofArray       -  type of an array value
 #                      args: array
 # typeArrayAsString -  type of an array value as string represantation
 #                      args: array
-# len               -  length of the object (for array and string types),
+# len               -  length of the object (for array, map and string types),
 #                      note that this has byte semantics for string types
 #                      args: object
-#                      args:
 # fopen             -  returns a file pointer
 #                      args: filename, mode (C semantics)
 # fflush            -  flush the specified stream
 #                      args: file pointer
-# fileno             - returns a file descriptor of a stream
+# fileno             - returns the underlying file descriptor of a stream or
+#                      a file pointer object
 #                      args: file pointer
 # errno_string       - returns a string represantation of a system error
 #                      args: error number
 # errno_name         - returns a string represantation of a system error name
 #                      args: error number
 
-# Standard Constant Variables.
+# Standard Integer Constants.
 # ok         -  0
 # notok      -  -1
 # true       -  1
@@ -537,13 +555,15 @@ a lot by the S-Lang programming language, which is quite like C.
 # __file__     - current evaluated filename. If a string is evaluated defaults
 #                to "__string__"
 # __func__     - current function name
-# __loadpath   - directory to lookup up when loading scripts
+# __loadpath   - string type directory to lookup up when loading scripts
 # __importpath - string type array with directories as members, to lookup when
 #                importing C modules
 
 # C Modules
 # They are initialized with the `import` function on shared targets, or as
-# builtins on static targets.
+# builtins on static targets. When importing a module, the leading char is
+# in lower case, e.g., import ("path"). Those exposing a public variable of
+# a MapType, that has the exact name but the leading char is capitalized.
 
   # Path Module Interface
     # StringType    Path.real (StringType path)
@@ -615,9 +635,9 @@ a lot by the S-Lang programming language, which is quite like C.
   - standard keywords and functions can not be redefined and reassigned
 
   - function arguments that are memory types (like strings, arrays and maps),
-    are passed by reference and so can been modified by the called function
+    are passed by reference and so can be modified by the callee function
 
-  - valid identifiers is [_a-zA-Z] and may include digits after the leading
+  - valid identifiers are [_a-zA-Z] and may include digits after the leading
     byte (with an exception to map members that may start with a digit)
 
   - when assigning a map type or a subtype map to a variable from another map,
@@ -625,7 +645,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
   - a valid array can contain only members with the same type, except if it is
     an array of arrays, which can contain different types of arrays and which
-    can be nested in arbitrary level
+    can be nested in arbitrary depth
 
   - arrays are one dimensional arrays (for simplification), though it is not
     hard to emulate multi dimensional ones if there is a symmetry
@@ -633,31 +653,38 @@ a lot by the S-Lang programming language, which is quite like C.
   - syntax errors are fatal and terminate execution
 
   - integer types can be specified in:
+    - binary notation (base 2) that start with "0b" and consists with 0|1 characters
+    - octal notation (base 8) that start with "0" and consists with [0-7] characters
     - base 10
-    - hexadecimal notation (base 16) that start with 0[xX] and consists with
+    - hexadecimal notation (base 16) that start with "0[xX]" and consists with
       [0-9][a-f][A-F] characters
-    - octal notation (base 8) that start with 0 and consists with [0-7] characters
-    - binary notation (base 2) that start with 0b and consists with 0|1 characters
 
   - single characters can be specified as integers, when are enclosed in signle
     quotes:
 
       'a' => 97
 
-    this doesn't limit for characters in the ASCII range:
+    those doesn't limit for characters in the ASCII range, in that case it
+    return the codepoint of the UTF8 byte sequence:
 
       'α' => 945
 
-    but they can be also specified in hexadecimal notation using this form:
+    They can be also specified in hexadecimal notation using this form:
 
       '\x{3b1}' => 945
 
    - multiline literal strings are enclosed also in double quotes, but they
      can continue to the next line if an escape '\' character is encountered
-     before the new line character
+     before the new line character. In any other case it is considered an error.
 
    - variables can be declared in consecutive manner, separated with a comma
-     and they can spawn to multiply lines
+     and they can spawn to multiply lines, e.g.,:
+
+       var i = 0, ii = 1,
+         a = null,
+         integer[2] b = [1, 2],
+         m = {"key" : "value"}
+
 # Lexical Scope and visibility order
   - standard scope (lookup for standard operators and internal functions first)
 
@@ -665,7 +692,9 @@ a lot by the S-Lang programming language, which is quite like C.
 
   - function scope
 
-  - previous function scope -> ... -> ... global scope
+  - previous function scope -> ... -> ... -> global scope
+
+  if the symbol can not be found, then the compiler throws an error.
 
   By default symbols are private to their local scope, unless the symbol has been
   declared as `public`. In that case the symbol belongs to `global` scope and
@@ -689,7 +718,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
   - maximum length of any identifier is 63 bytes
 
-# Types
+# Types (integer type constants)
 
   NullType    : (void *) 0 (declared as `null`)
   NumberType  : double
@@ -730,8 +759,11 @@ So it can be considered as a strict in syntax language, that might enforces a
 style. However it should be okey if practicing consistency.
 
 - every token should be separated with at least a space, though it might work
-  without that rule, but the parser can not handle all the cases, like in x-1
-  where -1 is considered as a number.
+  without that rule, but the parser can not handle all the cases, like in (x-1)
+  where -1 is considered as a number and should be coded as (x - -1). It is
+  actually the only known case that is not handled correctly (but they might be
+  others). No matter the parser, it is believed that a space that it separates
+  tokens, it adds visually clarity.
 
 - recursive functions though they should work properly, can be easily overflow
   the stack, as the compiler doesn't perform any kind of tail call optimizations
@@ -740,7 +772,8 @@ style. However it should be okey if practicing consistency.
   of calls, instead it is prefered the imperative version).
 
 - the number type (typedef'ed as `double`) operations, need an expertise which
-  is absent to the author.
+  is absent to the author. So this isn't going to change soon, but the mechanism
+  it is there.
 
 - normally releasing memory it happens automatically, but many cases are handled
   internally explicitly, as there is no a real mechanism underneath, just a very
@@ -785,3 +818,9 @@ style. However it should be okey if practicing consistency.
 
     Anyway, for functions like fopen(), this is not issue, as it is desirable
     to map one to one with the well known and established C interface.
+
+And as the last note. This documentation written in a single unit, owes to be
+enough and should cover all the aspects of the language. If it is not enough,
+then it should be considered rather as an error of the language itself, as one
+of the main purposes of this is to be exceptional easy to start writting within
+minutes.

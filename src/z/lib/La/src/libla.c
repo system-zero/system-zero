@@ -298,6 +298,7 @@ struct la_prop {
 struct la_t {
   funT *function;
   funT *std;
+  funT *types;
   funT *curScope;
 
   fun_stack funstack[1];
@@ -1230,6 +1231,10 @@ static int la_define (la_t *this, const char *key, int typ, VALUE val) {
   return (NULL is sym ? LA_NOTOK : LA_OK);
 }
 
+static int la_define_type (la_t *this, const char *key, int typ, VALUE val) {
+  sym_t *sym = la_define_symbol (this, this->types, (char *) key, typ, val, 1);
+  return (NULL is sym ? LA_NOTOK : LA_OK);
+}
 static inline sym_t *ns_lookup_symbol (funT *scope, char *key) {
   return Vmap.get (scope->symbols, key);
 }
@@ -1237,6 +1242,9 @@ static inline sym_t *ns_lookup_symbol (funT *scope, char *key) {
 static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   char *key = sym_key (this, name);
   sym_t *sym = ns_lookup_symbol (this->std, key);
+  ifnot (NULL is sym) return sym;
+
+  sym = ns_lookup_symbol (this->types, key);
   ifnot (NULL is sym) return sym;
 
   funT *f = this->curScope;
@@ -2253,54 +2261,16 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
 }
 
 static int la_parse_array_def (la_t *this) {
-  la_string name;
-  int c;
-  int err;
-  VALUE len;
-  VALUE ar;
+  int type = this->tokenSymbol->type;
 
-  c = la_next_raw_token (this);
-
-  if (c isnot LA_TOKEN_SYMBOL)
-    return this->syntax_error (this, "syntax error, awaiting a name");
-
-  const char *sp = la_StringGetPtr (this->curStrToken);
-  int isname = 0;
-  int type = INTEGER_TYPE;
-
-  if (Cstring.eq_n ("integer ", sp, 8))
-    type = INTEGER_TYPE;
-  else if (Cstring.eq_n ("number ", sp, 7))
-    type = NUMBER_TYPE;
-  else if (Cstring.eq_n ("pointer ", sp, 8))
-    type = POINTER_TYPE;
-  else if (Cstring.eq_n ("string ", sp, 7))
-    type = STRING_TYPE;
-  else if (Cstring.eq_n ("map ", sp, 4))
-    type = MAP_TYPE;
-  else if (Cstring.eq_n ("array ", sp, 6))
-    type = ARRAY_TYPE;
-  else
-    isname = 1;
-
-  if (isname)
-    name = this->curStrToken;
-  else {
-    c = la_next_raw_token (this);
-
-    if (c isnot LA_TOKEN_SYMBOL)
-      return this->syntax_error (this, "syntax error, awaiting a name");
-
-    name = this->curStrToken;
-  }
-
-  c = la_next_token (this);
+  int c = la_next_token (this);
 
   if (c isnot LA_TOKEN_INDEX_OPEN)
     return this->syntax_error (this, "syntax error, awaiting [");
 
+  VALUE len;
   this->curState |= INDEX_STATE;
-  err = la_parse_primary (this, &len);
+  int err = la_parse_primary (this, &len);
   this->curState &= ~INDEX_STATE;
 
   if (err isnot LA_OK)
@@ -2309,16 +2279,22 @@ static int la_parse_array_def (la_t *this) {
   if (len.type isnot INTEGER_TYPE)
     return this->syntax_error (this, "awaiting an integer expression, when getting array length");
 
+  if (this->curToken isnot LA_TOKEN_SYMBOL)
+   return this->syntax_error (this, "syntax error, awaiting an identifier for the array declaration");
+
+  la_string name = this->curStrToken;
+
   integer nlen = AS_INT(len);
 
-  ar = ARRAY(ARRAY_NEW(type, nlen));
+  VALUE ar = ARRAY(ARRAY_NEW(type, nlen));
 
   funT *scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
   this->tokenSymbol = la_define_symbol (this, scope, sym_key (this, name), ARRAY_TYPE,
       ar, 0);
   this->scopeState = 0;
 
-  if (this->curToken is LA_TOKEN_ASSIGN) {
+  c = la_next_token (this);
+  if (c is LA_TOKEN_ASSIGN) {
     VALUE at_idx = INT(0);
     VALUE last_idx = INT(-1);
     return la_array_assign (this, &ar, at_idx, last_idx, 0);
@@ -3707,6 +3683,29 @@ do_token:
       ifnot (NULL is sym)
         return this->syntax_error (this, "can not redefine a standard symbol");
 
+      sym = ns_lookup_symbol (this->types, key);
+      ifnot (NULL is sym) {
+        this->tokenSymbol = sym;
+        int (*func) (la_t *) = AS_VOID_PTR(sym->value);
+        err = (*func) (this);
+        if (err isnot LA_OK)
+          return err;
+
+        if (this->curToken is LA_TOKEN_COMMA) {
+          uint n = 0;
+          c = la_peek_nows_char_inline (this, &n);
+          if (c  is LA_TOKEN_NL) {
+            for (uint i = 0; i <= n; i++)
+              la_ignore_next_char (this);
+          }
+
+          this->curToken = LA_TOKEN_VARDEF;
+          goto do_token;
+        }
+
+        return err;
+      }
+
       scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
 
       sym = ns_lookup_symbol (scope, key);
@@ -3754,9 +3753,6 @@ do_token:
       if (symbol->is_const)
         if (symbol->value.type isnot NULL_TYPE)
           return this->syntax_error (this, "can not reassign to a constant");
-
-      const char *ptr = la_StringGetPtr (this->parsePtr);
-      while (*ptr is ' ') ptr++;
 
       c = la_next_token (this);
 
@@ -3859,8 +3855,7 @@ do_token:
         c = la_peek_nows_char_inline (this, &n);
         if (c  is LA_TOKEN_NL) {
           for (uint i = 0; i <= n; i++)
-            la_get_char (this);
-          la_reset_token (this);
+            la_ignore_next_char (this);
         }
 
         this->curToken = LA_TOKEN_VARDEF;
@@ -6633,7 +6628,6 @@ static struct def {
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
   { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
   { "import",  LA_TOKEN_IMPORT,   PTR(la_parse_import) },
-  { "array",   LA_TOKEN_ARYDEF,   PTR(la_parse_array_def) },
   { "public",  LA_TOKEN_PUBLIC,   PTR(la_parse_visibility) },
   { "private", LA_TOKEN_PRIVATE,  PTR(la_parse_visibility) },
   { "*",       BINOP(1),          PTR(la_mul) },
@@ -6680,6 +6674,19 @@ static struct def {
   { "false",       INTEGER_TYPE,  FALSE_VALUE },
   { "null",        NULL_TYPE,     NULL_VALUE },
   { NULL,          NULL_TYPE,     NULL_VALUE }
+};
+
+static struct deftype {
+  const char *name;
+  int toktype;
+  VALUE val;
+} la_def_types[] = {
+  { "array",   ARRAY_TYPE,   PTR(la_parse_array_def) },
+  { "integer", INTEGER_TYPE, PTR(la_parse_array_def) },
+  { "map",     MAP_TYPE,     PTR(la_parse_array_def) },
+  { "string",  STRING_TYPE,  PTR(la_parse_array_def) },
+  { "number",  NUMBER_TYPE,  PTR(la_parse_array_def) },
+  { NULL,      NULL_TYPE,    NULL_VALUE }
 };
 
 LaDefCFun la_funs[] = {
@@ -7210,11 +7217,23 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->std = fun_new (
       funNew (.name = NS_STD, .namelen = NS_STD_LEN, .num_symbols = 256));
 
+  this->types = fun_new (
+      funNew (.name = "__types__", .namelen = 9, .num_symbols = 256));
+
   Fun_new (this,
       funNew (.name = NS_GLOBAL, .namelen = NS_GLOBAL_LEN, .num_symbols = 256));
 
   for (i = 0; la_defs[i].name; i++) {
     err = la_define (this, la_defs[i].name, la_defs[i].toktype, la_defs[i].val);
+
+    if (err isnot LA_OK) {
+      la_release (&this);
+      return err;
+    }
+  }
+
+  for (i = 0; la_def_types[i].name; i++) {
+    err = la_define_type (this, la_def_types[i].name, la_def_types[i].toktype, la_def_types[i].val);
 
     if (err isnot LA_OK) {
       la_release (&this);
