@@ -396,6 +396,7 @@ static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
 static int la_array_set_as_array (la_t *, VALUE, integer, integer, integer);
 static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
+static int la_parse_array_def (la_t *);
 static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static VALUE la_copy_map (VALUE);
 static int la_parse_map_get (la_t *, VALUE *);
@@ -1436,8 +1437,12 @@ static int la_do_next_token (la_t *this, int israw) {
         }
 
         this->tokenSymbol = symbol = la_lookup_symbol (this, this->curStrToken);
-
         if (symbol) {
+          if (IS_INT(symbol->value) and AS_VOID_PTR(symbol->value) is la_parse_array_def) {
+            r = LA_TOKEN_ARYDEF;
+            goto theend;
+          }
+
           r = symbol->type & 0xff;
 
           this->tokenArgs = (symbol->type >> 8) & 0xff;
@@ -2279,14 +2284,24 @@ static int la_parse_array_def (la_t *this) {
   if (len.type isnot INTEGER_TYPE)
     return this->syntax_error (this, "awaiting an integer expression, when getting array length");
 
-  if (this->curToken isnot LA_TOKEN_SYMBOL)
-   return this->syntax_error (this, "syntax error, awaiting an identifier for the array declaration");
+  VALUE ar;
+  if (this->curState & MAP_STATE) {
+    c = this->curToken;
+    integer nlen = AS_INT(len);
+    ar = ARRAY(ARRAY_NEW(type, nlen));
+    this->tokenValue = ar;
+    goto assign;
+  }
+
+  if (this->curToken isnot LA_TOKEN_SYMBOL and
+      this->curToken isnot LA_TOKEN_ARRAY)
+    return this->syntax_error (this, "syntax error, awaiting an identifier for the array declaration");
 
   la_string name = this->curStrToken;
 
   integer nlen = AS_INT(len);
 
-  VALUE ar = ARRAY(ARRAY_NEW(type, nlen));
+  ar = ARRAY(ARRAY_NEW(type, nlen));
 
   funT *scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
   this->tokenSymbol = la_define_symbol (this, scope, sym_key (this, name), ARRAY_TYPE,
@@ -2294,6 +2309,7 @@ static int la_parse_array_def (la_t *this) {
   this->scopeState = 0;
 
   c = la_next_token (this);
+assign:
   if (c is LA_TOKEN_ASSIGN) {
     VALUE at_idx = INT(0);
     VALUE last_idx = INT(-1);
@@ -2365,6 +2381,8 @@ static int la_parse_array_set (la_t *this) {
             string *item = s_ar[i];
             String.replace_with_len (item, s_val->bytes, s_val->num_bytes);
           }
+
+          String.release (s_val);
           return LA_OK;
         }
 
@@ -2792,6 +2810,22 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
 
     v = PTR(this->curFunDef);
     v.type = FUNCPTR_TYPE;
+    goto assign;
+  }
+
+  if (c is LA_TOKEN_ARYDEF) {
+    this->curState |= MAP_STATE;
+    err = la_parse_array_def (this);
+    if (err isnot LA_OK)
+      return err;
+    this->curState &= ~MAP_STATE;
+    v = this->tokenValue;
+    goto assign;
+  }
+
+  if (c is LA_TOKEN_ARRAY) {
+    sym_t *sym = this->tokenSymbol;
+    v =  ARRAY(array_copy ((ArrayType *) AS_ARRAY(sym->value)));
     goto assign;
   }
 
@@ -3597,8 +3631,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     default:
       if ((c & 0xff) is LA_TOKEN_BINOP) {
         OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
-        VALUE v;
         la_next_token (this);
+        VALUE v;
         err = la_parse_expr (this, &v);
         if (err is LA_OK)
           *vp = op (this, INT(0), v);
@@ -4438,7 +4472,47 @@ static int la_parse_foreach (la_t *this) {
   }
 
   sym[idx] = '\0';
+  sym_t *symbol = NULL;
+  VALUE v;
+  la_string x;
 
+  if (*ptr is LA_TOKEN_DOT) {
+    x = la_StringNew (sym);
+    symbol = la_lookup_symbol (this, x);
+    ifnot (symbol)
+      return this->syntax_error (this, "unknown symbol");
+
+    if (symbol->type isnot MAP_TYPE)
+       return this->syntax_error (this, "awaiting a MapType");
+
+    this->tokenValue = symbol->value;
+    this->parsePtr = la_StringNew (ptr);
+    la_StringSetLen (&this->parsePtr, MAXLEN_SYMBOL + 1);
+    err = la_parse_map_get (this, &v);
+    if (err isnot LA_OK)
+      return err;
+    while (0 is is_space (*ptr)) ptr++;
+    ptr++;
+  }
+
+  if (*ptr is LA_TOKEN_INDEX_OPEN) {
+    x = la_StringNew (sym);
+    symbol = la_lookup_symbol (this, x);
+    ifnot (symbol)
+      return this->syntax_error (this, "unknown symbol");
+
+    if (symbol->type isnot ARRAY_TYPE)
+       return this->syntax_error (this, "awaiting a ArrayType");
+
+    this->tokenValue = symbol->value;
+    this->parsePtr = la_StringNew (ptr);
+    la_StringSetLen (&this->parsePtr, MAXLEN_SYMBOL + 1);
+    err = la_parse_array_get (this, &v);
+    if (err isnot LA_OK)
+      return err;
+    while (0 is is_space (*ptr)) ptr++;
+    ptr++;
+  }
   la_StringSetPtr (&this->parsePtr, ptr);
   la_StringSetLen (&this->parsePtr, p_len - (ptr - tmp_ptr));
 
@@ -4452,12 +4526,14 @@ static int la_parse_foreach (la_t *this) {
 
   la_string savepc = this->parsePtr;
 
-  la_string x = la_StringNew (sym);
-  sym_t *symbol = la_lookup_symbol (this, x);
-  if (NULL is symbol)
-    return la_syntax_error_fmt (this, "%s: unknown symbol", sym);
+  if (symbol is NULL) {
+    x = la_StringNew (sym);
+    symbol = la_lookup_symbol (this, x);
+    if (NULL is symbol)
+      return la_syntax_error_fmt (this, "%s: unknown symbol", sym);
+    v = symbol->value;
+  }
 
-  VALUE v = symbol->value;
   int type = v.type;
 
   switch (type) {
@@ -6028,87 +6104,85 @@ theend:
 }
 
 static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
-  (void) this;
   VALUE result = FALSE_VALUE;
 
   switch (x.type) {
     case NUMBER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_NUMBER(x) == AS_NUMBER(y)); goto theend;
+          return INT(AS_NUMBER(x) == AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_NUMBER(x) == AS_INT(y)); goto theend;
-        case NULL_TYPE: goto theend;
+          return INT(AS_NUMBER(x) == AS_INT(y));
+        case NULL_TYPE: return result;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
               "NumberType == %s is not possible",
               AS_STRING_BYTES(la_typeAsString (this, y)));
-          goto theend;
+          return result;
       }
-      goto theend;
+      return result;
 
     case INTEGER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_INT(x) == AS_NUMBER(y)); goto theend;
+          return INT(AS_INT(x) == AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_INT(x) == AS_INT(y)); goto theend;
-        case NULL_TYPE: goto theend;
+          return INT(AS_INT(x) == AS_INT(y));
+        case NULL_TYPE: return result;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
               "IntegerType == %s is not possible",
               AS_STRING_BYTES(la_typeAsString (this, y)));
-          goto theend;
+          return result;
       }
-      goto theend;
+      return result;
 
     case STRING_TYPE:
       switch (y.type) {
         case STRING_TYPE:
-          result = INT(Cstring.eq (AS_STRING_BYTES(x), AS_STRING_BYTES(y)));
-          goto theend;
-        case NULL_TYPE: goto theend;
+          return INT(Cstring.eq (AS_STRING_BYTES(x), AS_STRING_BYTES(y)));
+
+        case NULL_TYPE: return result;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
               "StringType == %s is not possible",
               AS_STRING_BYTES(la_typeAsString (this, y)));
-          goto theend;
+          return result;
       }
-      goto theend;
+      return result;
 
     case ARRAY_TYPE:
       switch (y.type) {
         case ARRAY_TYPE:
-          result = INT(la_array_eq (x, y));
-          goto theend;
-        case NULL_TYPE: goto theend;
+          return INT(la_array_eq (x, y));
+        case NULL_TYPE: return result;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
               "ArrayType == %s is not possible",
               AS_STRING_BYTES(la_typeAsString (this, y)));
-          goto theend;
+          return result;
       }
-      goto theend;
+      return result;
 
     case OBJECT_TYPE:
       switch (y.type) {
-        case NULL_TYPE: goto theend;
+        case NULL_TYPE: return result;
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
               "ObjectType == %s is not possible",
               AS_STRING_BYTES(la_typeAsString (this, y)));
-          goto theend;
+          return result;
       }
 
     case NULL_TYPE:
       switch (y.type) {
-        case NULL_TYPE: result = TRUE_VALUE; goto theend;
-        default: goto theend;
+        case NULL_TYPE: return TRUE_VALUE;
+        default: return result;
       }
 
     default:
@@ -6117,18 +6191,15 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
          "%s == %s is not possible",
          AS_STRING_BYTES(la_typeAsString (this, x)),
          AS_STRING_BYTES(la_typeAsString (this, y)));
-      goto theend;
+      return result;
   }
 
-theend:
   return result;
 }
 
 static VALUE la_ne (la_t *this, VALUE x, VALUE y) {
-  (void) this;
   VALUE result = la_equals (this, x, y);
-  result = INT(0 == AS_INT(result));
-  return result;
+  return INT(0 == AS_INT(result));
 }
 
 static VALUE la_lt (la_t *this, VALUE x, VALUE y) {
@@ -6139,22 +6210,21 @@ static VALUE la_lt (la_t *this, VALUE x, VALUE y) {
     case NUMBER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_NUMBER(x) < AS_NUMBER(y)); goto theend;
+          return INT(AS_NUMBER(x) < AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_NUMBER(x) < AS_INT(y)); goto theend;
+          return INT(AS_NUMBER(x) < AS_INT(y));
       }
-      goto theend;
+      return result;
 
     case INTEGER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_INT(x) < AS_NUMBER(y)); goto theend;
+          return INT(AS_INT(x) < AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_INT(x) < AS_INT(y)); goto theend;
+          return INT(AS_INT(x) < AS_INT(y));
       }
   }
 
-theend:
   return result;
 }
 
@@ -6166,22 +6236,21 @@ static VALUE la_le (la_t *this, VALUE x, VALUE y) {
     case NUMBER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_NUMBER(x) <= AS_NUMBER(y)); goto theend;
+          return INT(AS_NUMBER(x) <= AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_NUMBER(x) <= AS_INT(y)); goto theend;
+          return INT(AS_NUMBER(x) <= AS_INT(y));
       }
-      goto theend;
+      return result;
 
     case INTEGER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_INT(x) <= AS_NUMBER(y)); goto theend;
+          return INT(AS_INT(x) <= AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_INT(x) <= AS_INT(y)); goto theend;
+          return INT(AS_INT(x) <= AS_INT(y));
       }
   }
 
-theend:
   return result;
 }
 
@@ -6193,22 +6262,21 @@ static VALUE la_gt (la_t *this, VALUE x, VALUE y) {
     case NUMBER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_NUMBER(x) > AS_NUMBER(y)); goto theend;
+          return INT(AS_NUMBER(x) > AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_NUMBER(x) > AS_INT(y)); goto theend;
+          return INT(AS_NUMBER(x) > AS_INT(y));
       }
-      goto theend;
+      return result;
 
     case INTEGER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_INT(x) > AS_NUMBER(y)); goto theend;
+          return INT(AS_INT(x) > AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_INT(x) > AS_INT(y)); goto theend;
+          return INT(AS_INT(x) > AS_INT(y));
       }
   }
 
-theend:
   return result;
 }
 
@@ -6220,22 +6288,21 @@ static VALUE la_ge (la_t *this, VALUE x, VALUE y) {
     case NUMBER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_NUMBER(x) >= AS_NUMBER(y)); goto theend;
+          return INT(AS_NUMBER(x) >= AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_NUMBER(x) >= AS_INT(y)); goto theend;
+          return INT(AS_NUMBER(x) >= AS_INT(y));
       }
-      goto theend;
+      return result;
 
     case INTEGER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = INT(AS_INT(x) >= AS_NUMBER(y)); goto theend;
+          return INT(AS_INT(x) >= AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_INT(x) >= AS_INT(y)); goto theend;
+          return INT(AS_INT(x) >= AS_INT(y));
       }
   }
 
-theend:
   return result;
 }
 
@@ -6681,11 +6748,11 @@ static struct deftype {
   int toktype;
   VALUE val;
 } la_def_types[] = {
-  { "array",   ARRAY_TYPE,   PTR(la_parse_array_def) },
-  { "integer", INTEGER_TYPE, PTR(la_parse_array_def) },
   { "map",     MAP_TYPE,     PTR(la_parse_array_def) },
+  { "array",   ARRAY_TYPE,   PTR(la_parse_array_def) },
   { "string",  STRING_TYPE,  PTR(la_parse_array_def) },
   { "number",  NUMBER_TYPE,  PTR(la_parse_array_def) },
+  { "integer", INTEGER_TYPE, PTR(la_parse_array_def) },
   { NULL,      NULL_TYPE,    NULL_VALUE }
 };
 
@@ -7011,6 +7078,7 @@ static void la_release (la_t **thisp) {
   Vmap.release   (this->units);
   fun_release (&this->function);
   fun_release (&this->std);
+  fun_release (&this->types);
 
   free (this);
   *thisp = NULL;

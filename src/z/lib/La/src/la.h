@@ -147,7 +147,9 @@ typedef ObjectType object;
 })
 
 #define IS_INT(__v__) (__v__.type == INTEGER_TYPE)
+#define IS_PTR IS_INT
 #define IS_MAP(__v__) (__v__.type == MAP_TYPE)
+#define IS_NULL(__v__) (__v__.type == NULL_TYPE)
 #define IS_ARRAY(__v__) (__v__.type == ARRAY_TYPE)
 #define IS_STRING(__v__) (__v__.type == STRING_TYPE)
 #define IS_NUMBER(__v__) (__v__.type == NUMBER_TYPE)

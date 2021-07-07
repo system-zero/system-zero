@@ -52,6 +52,7 @@ static VALUE dir_is_directory (la_t *this, VALUE v_dir) {
 }
 
 static VALUE dir_current (la_t *this) {
+  (void) this;
   char *dir = Dir.current ();
   if (NULL is dir)
     return NULL_VALUE;
@@ -78,6 +79,9 @@ public int __init_dir_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(dir);
   __INIT__(string);
+
+  (void) vstringType;
+  (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "dir_make",           PTR(dir_make), 2 },

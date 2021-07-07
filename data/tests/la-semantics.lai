@@ -1053,8 +1053,24 @@ func test_array (length) {
     str_a += str_ar[i]
   }
 
+  var array[1] x
+  x[0] = [1, 2, 3]
+  var sum_c = 0
+  for |i| in x[0] {
+    sum_c += x[0][i]
+  }
+
+  var mm = {
+    "ar" : [1, 2, 3]
+  }
+  var sum_d = 0
+  for |i| in mm.ar {
+    sum_d += mm.ar[i]
+  }
+
   assert_true ("testing array iteration",
-      sum_a is 21 and sum_b is 9 and str_a is "123456")
+      sum_a is 21 and sum_b is 9 and str_a is "123456" and
+      sum_c is 6 and sum_d is 6)
 }
 
 test_array (10)
@@ -1156,7 +1172,21 @@ func test_maps {
     sum += v
   }
 
-  assert_true ("testing map iteration", sum is 33)
+  var mmm = {
+    "ar" : integer[3],
+    "ara" : integer[3] = [4, 5, 6]
+  }
+  mmm.ar[0:] = [1, 2, 3]
+  var sum_a = 0
+
+  for |i| in mmm.ar {
+    sum_a += mmm.ar[i]
+  }
+  for |i| in mmm.ara {
+    sum_a += mmm.ara[i]
+  }
+
+  assert_true ("testing map iteration", sum is 33 and sum_a is 21)
 }
 
 test_maps ()

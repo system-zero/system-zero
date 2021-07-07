@@ -63,6 +63,7 @@ struct argparse_t {
     cpidx;
 
   const argparse_option_t *options;
+  int num_options;
 };
 
 typedef struct argparse_self {

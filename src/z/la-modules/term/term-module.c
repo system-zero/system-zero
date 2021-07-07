@@ -11,20 +11,24 @@
 
 #include <z/cenv.h>
 
-static VALUE term_getkey (la_t *this, VALUE fd) {
+static VALUE term_getkey (la_t *this, VALUE v_fd) {
   (void) this;
-  utf8 k = IO.input.getkey (AS_INT(fd));
-  VALUE v = INT(k);
-  return v;
+  ifnot (IS_INT(v_fd))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer as fd descriptor");
+
+  utf8 k = IO.input.getkey (AS_INT(v_fd));
+  return INT(k);
 }
 
-static VALUE term_release (la_t *this, VALUE term_val) {
+static VALUE term_release (la_t *this, VALUE v_term) {
   (void) this;
-  object *o = AS_OBJECT(term_val);
+  ifnot (IS_OBJECT(v_term))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+
+  object *o = AS_OBJECT(v_term);
   term_t *term = (term_t *) AS_PTR(o->value);
   Term.release (&term);
-  VALUE v = INT(LA_OK);
-  return v;
+  return INT(LA_OK);
 }
 
 static VALUE term_new (la_t *this) {
@@ -32,26 +36,29 @@ static VALUE term_new (la_t *this) {
   term_t *term = Term.new ();
   VALUE v = OBJECT(term);
   object *o = La.object.new (term_release, NULL, v);
-  v = OBJECT(o);
-  return v;
+  return OBJECT(o);
 }
 
-static VALUE term_raw_mode (la_t *this, VALUE term_val) {
+static VALUE term_raw_mode (la_t *this, VALUE v_term) {
   (void) this;
-  object *o = AS_OBJECT(term_val);
+  ifnot (IS_OBJECT(v_term))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+
+  object *o = AS_OBJECT(v_term);
   term_t *term = (term_t *) AS_PTR(o->value);
   int retval = Term.raw_mode (term);
-  VALUE v = INT(retval);
-  return v;
+  return INT(retval);
 }
 
-static VALUE term_sane_mode (la_t *this, VALUE term_val) {
+static VALUE term_sane_mode (la_t *this, VALUE v_term) {
   (void) this;
-  object *o = AS_OBJECT(term_val);
+  ifnot (IS_OBJECT(v_term))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+
+  object *o = AS_OBJECT(v_term);
   term_t *term = (term_t *) AS_PTR(o->value);
   int retval = Term.sane_mode (term);
-  VALUE v = INT(retval);
-  return v;
+  return INT(retval);
 }
 
 #define EvalString(...) #__VA_ARGS__
