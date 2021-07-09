@@ -93,6 +93,7 @@
 #define FORCE_LOADFILE                (1 << 7)
 #define INDEX_STATE                   (1 << 8)
 #define MAP_STATE                     (1 << 9)
+#define BLOCK_STATE                   (1 << 10)
 
 #define EXPR_LIST_STATE               (1 << 0)
 #define MAP_METHOD_STATE              (1 << 1)
@@ -256,6 +257,7 @@ struct funType {
   char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL + 1];
 
   Vmap_t *symbols;
+  Vmap_t *block_symbols;
 
   VALUE result;
   malloced_string *head;
@@ -1170,6 +1172,7 @@ static funT *fun_new (funNewArgs options) {
   uf->root = options.root;
   uf->next = NULL;
   uf->symbols = Vmap.new (options.num_symbols);
+  uf->block_symbols = NULL;
   return uf;
 }
 
@@ -1208,8 +1211,30 @@ static inline char *cur_msg_str (la_t *this, la_string x) {
   return this->curMsg;
 }
 
+static sym_t *la_define_block_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
+  (void) this;
+  ifnot (key) return NULL;
+
+  sym_t *sym = Alloc (sizeof (sym_t));
+  sym->type = typ;
+  sym->value = value;
+  sym->value.sym = sym;
+  sym->is_const = is_const;
+  sym->scope = f;
+
+  if (NOTOK is Vmap.set (f->block_symbols, key, sym, la_release_sym, is_const)) {
+    free (sym);
+    return NULL;
+  }
+
+  return sym;
+}
+
 static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
   (void) this;
+  if (this->curState & BLOCK_STATE)
+    return la_define_block_symbol (this, f, key, typ, value, is_const);
+
   ifnot (key) return NULL;
 
   sym_t *sym = Alloc (sizeof (sym_t));
@@ -1236,6 +1261,7 @@ static int la_define_type (la_t *this, const char *key, int typ, VALUE val) {
   sym_t *sym = la_define_symbol (this, this->types, (char *) key, typ, val, 1);
   return (NULL is sym ? LA_NOTOK : LA_OK);
 }
+
 static inline sym_t *ns_lookup_symbol (funT *scope, char *key) {
   return Vmap.get (scope->symbols, key);
 }
@@ -1249,6 +1275,14 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   ifnot (NULL is sym) return sym;
 
   funT *f = this->curScope;
+
+  if (this->curState & (LOOP_STATE|BLOCK_STATE)) {
+    ifnot (NULL is f->block_symbols) {
+      sym = Vmap.get (f->block_symbols, key);
+      ifnot (NULL is sym) return sym;
+    }
+  }
+
   while (NULL isnot f) {
     sym = ns_lookup_symbol (f, key);
 
@@ -4309,6 +4343,8 @@ static int la_parse_while (la_t *this) {
     .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
+  fun->block_symbols = Vmap.new (8);
+
   this->curScope = fun;
 
   const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
@@ -4381,7 +4417,9 @@ static int la_parse_while (la_t *this) {
     this->parsePtr = cond_str;
 
     this->curToken = LA_TOKEN_PAREN_OPEN;
+    this->curState |= BLOCK_STATE;
     err = la_parse_expr (this, &v);
+    this->curState &= ~BLOCK_STATE;
     if (err isnot LA_OK) return err;
 
     ifnot (AS_INT(v)) goto theend;
@@ -4399,18 +4437,24 @@ static int la_parse_while (la_t *this) {
     if (this->didReturn) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       la_StringSetLen (&this->parsePtr, 0);
+      Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+      la_fun_release_symbols (fun, 1, 0);
       continue;
+    }
+
+    la_fun_release_symbols (fun, 1, 0);
 
     if (err isnot LA_OK) return err;
   }
 
 theend:
   this->curScope = save_scope;
+  Vmap.release (fun->block_symbols);
   fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;
@@ -4494,6 +4538,8 @@ static int la_parse_do (la_t *this) {
     .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
+  fun->block_symbols = Vmap.new (8);
+
   this->curScope = fun;
 
   la_StringSetPtr (&this->parsePtr, ptr + 1);
@@ -4518,26 +4564,33 @@ static int la_parse_do (la_t *this) {
     if (this->didReturn) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       la_StringSetLen (&this->parsePtr, 0);
+      Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+      la_fun_release_symbols (fun, 1, 0);
       continue;
+    }
 
     if (err isnot LA_OK) return err;
 
     this->parsePtr = cond_str;
 
     this->curToken = LA_TOKEN_PAREN_OPEN;
+    this->curState |= BLOCK_STATE;
     err = la_parse_expr (this, &v);
+    this->curState &= ~BLOCK_STATE;
     if (err isnot LA_OK) return err;
 
     ifnot (AS_INT(v)) goto theend;
+    la_fun_release_symbols (fun, 1, 0);
   }
 
 theend:
   this->curScope = save_scope;
+  Vmap.release (fun->block_symbols);
   fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;
@@ -4580,6 +4633,8 @@ static int la_parse_foreach (la_t *this) {
   funT *fun = Fun_new (this, funNew (
     .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
+
+  fun->block_symbols = Vmap.new (8);
 
   this->curScope = fun;
 
@@ -4729,9 +4784,9 @@ static int la_parse_foreach (la_t *this) {
     Vmap_t *map = AS_MAP(v);
 
     v = STRING_NEW_WITH_LEN("", 0);
-    sym_t *key_sym = la_define_symbol (this, fun, key, STRING_TYPE, v, 0);
+    sym_t *key_sym = la_define_block_symbol (this, fun, key, STRING_TYPE, v, 0);
     v = INT(0);
-    sym_t *val_sym = la_define_symbol (this, fun, val, INTEGER_TYPE, v, 0);
+    sym_t *val_sym = la_define_block_symbol (this, fun, val, INTEGER_TYPE, v, 0);
 
     int num = Vmap.num_keys (map);
     string **keys = Vmap.keys (map);
@@ -4765,6 +4820,7 @@ static int la_parse_foreach (la_t *this) {
         this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
         this->curToken = LA_TOKEN_SEMICOLON;
         this->parsePtr = savepc;
+        Vmap.release (fun->block_symbols);
         fun_release (&fun);
         for (int j = 0; j < num; j++)
           String.release (keys[j]);
@@ -4772,8 +4828,12 @@ static int la_parse_foreach (la_t *this) {
         return LA_OK;
       }
 
-      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+        la_fun_release_symbols (fun, 1, 0);
         continue;
+      }
+
+      la_fun_release_symbols (fun, 1, 0);
     }
 
     for (int j = 0; j < num; j++)
@@ -4800,7 +4860,7 @@ static int la_parse_foreach (la_t *this) {
 
     ArrayType *array = (ArrayType *) AS_ARRAY(v);
     v = INT(-1);
-    sym_t *index_sym = la_define_symbol (this, fun, index, INTEGER_TYPE, v, 0);
+    sym_t *index_sym = la_define_block_symbol (this, fun, index, INTEGER_TYPE, v, 0);
 
     int num = array->len;
 
@@ -4827,12 +4887,17 @@ static int la_parse_foreach (la_t *this) {
         this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
         this->curToken = LA_TOKEN_SEMICOLON;
         this->parsePtr = savepc;
+        Vmap.release (fun->block_symbols);
         fun_release (&fun);
         return LA_OK;
       }
 
-      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+        la_fun_release_symbols (fun, 1, 0);
         continue;
+      }
+
+      la_fun_release_symbols (fun, 1, 0);
     }
 
   } else {
@@ -4883,11 +4948,11 @@ static int la_parse_foreach (la_t *this) {
 
       string *str = AS_STRING(v);
       v = INT(0);
-      sym_t *c_sym = la_define_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
+      sym_t *c_sym = la_define_block_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
       v = STRING_NEW_WITH_LEN("", 0);
-      sym_t *s_sym = la_define_symbol (this, fun, s, STRING_TYPE, v, 0);
+      sym_t *s_sym = la_define_block_symbol (this, fun, s, STRING_TYPE, v, 0);
       v = INT(0);
-      sym_t *w_sym = la_define_symbol (this, fun, w, INTEGER_TYPE, v, 0);
+      sym_t *w_sym = la_define_block_symbol (this, fun, w, INTEGER_TYPE, v, 0);
 
       Ustring_t *U = Ustring.new ();
       ustring_t *u = Ustring.encode (U, str->bytes, str->num_bytes, 0, 8, 0);
@@ -4918,13 +4983,18 @@ static int la_parse_foreach (la_t *this) {
           this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
           this->curToken = LA_TOKEN_SEMICOLON;
           this->parsePtr = savepc;
+          Vmap.release (fun->block_symbols);
           fun_release (&fun);
           Ustring.release (U);
           return LA_OK;
         }
 
-        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+          la_fun_release_symbols (fun, 1, 0);
           continue;
+        }
+
+        la_fun_release_symbols (fun, 1, 0);
       }
 
       Ustring.release (U);
@@ -4935,7 +5005,7 @@ static int la_parse_foreach (la_t *this) {
 
       string *str = AS_STRING(v);
       v = INT(0);
-      sym_t *c_sym = la_define_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
+      sym_t *c_sym = la_define_block_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
       int num = str->num_bytes;
 
       la_string body_str = la_StringNew (body);
@@ -4958,18 +5028,24 @@ static int la_parse_foreach (la_t *this) {
           this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
           this->curToken = LA_TOKEN_SEMICOLON;
           this->parsePtr = savepc;
+          Vmap.release (fun->block_symbols);
           fun_release (&fun);
           return LA_OK;
         }
 
-        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+          la_fun_release_symbols (fun, 1, 0);
           continue;
+        }
+
+        la_fun_release_symbols (fun, 1, 0);
       }
     }
   }
 
 theend:
   this->curScope = save_scope;
+  Vmap.release (fun->block_symbols);
   fun_release (&fun);
   this->parsePtr = savepc;
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
@@ -5029,15 +5105,18 @@ static int la_parse_for (la_t *this) {
   funT *fun = Fun_new (this, funNew (
     .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
+  fun->block_symbols = Vmap.new (8);
 
   this->curScope = fun;
 
   la_next_token (this);
 
+  this->curState |= BLOCK_STATE;
   do {
     err = la_parse_stmt (this);
     if (err isnot LA_OK) return err;
   } while (this->curToken is LA_TOKEN_COMMA);
+  this->curState &= ~BLOCK_STATE;
 
   const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
   char *ptr = Cstring.byte.in_str (tmp_ptr, LA_TOKEN_SEMICOLON);
@@ -5104,7 +5183,9 @@ static int la_parse_for (la_t *this) {
     this->parsePtr = cond_str;
 
     this->curToken = LA_TOKEN_PAREN_OPEN;
+    this->curState |= BLOCK_STATE;
     err = la_parse_expr (this, &v);
+    this->curState &= ~BLOCK_STATE;
     if (err isnot LA_OK) return err;
 
     ifnot (AS_INT(v)) goto theend;
@@ -5123,6 +5204,7 @@ static int la_parse_for (la_t *this) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       this->curToken = LA_TOKEN_SEMICOLON;
       la_StringSetLen (&this->parsePtr, 0);
+      Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
@@ -5134,15 +5216,20 @@ static int la_parse_for (la_t *this) {
 
     ctl_stmt:
       this->parsePtr = stmt_str;
+      this->curState |= BLOCK_STATE;
       do {
         la_next_token (this);
         err = la_parse_stmt (this);
         if (err isnot LA_OK) return err;
       } while (this->curToken is LA_TOKEN_COMMA);
+      this->curState &= ~BLOCK_STATE;
+
+      la_fun_release_symbols (fun, 1, 0);
   }
 
 theend:
   this->curScope = save_scope;
+  Vmap.release (fun->block_symbols);
   fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;
@@ -5160,6 +5247,8 @@ static int la_parse_loop (la_t *this) {
   funT *fun = Fun_new (this, funNew (
     .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
+
+  fun->block_symbols = Vmap.new (8);
 
   this->curScope = fun;
 
@@ -5198,10 +5287,12 @@ static int la_parse_loop (la_t *this) {
 
   if (stmt_found) {
     la_next_token (this);
+    this->curState |= BLOCK_STATE;
     do {
       err = la_parse_stmt (this);
       if (err isnot LA_OK) return err;
     } while (this->curToken is LA_TOKEN_COMMA);
+    this->curState &= ~BLOCK_STATE;
 
     if (this->curToken isnot LA_TOKEN_SEMICOLON)
       return this->syntax_error (this, "awaiting ;");
@@ -5210,7 +5301,9 @@ static int la_parse_loop (la_t *this) {
   }
 
   VALUE v;
+  this->curState |= BLOCK_STATE;
   err = la_parse_expr (this, &v);
+  this->curState &= ~BLOCK_STATE;
   if (err isnot LA_OK) return err;
 
   if (v.type isnot INTEGER_TYPE)
@@ -5251,18 +5344,24 @@ static int la_parse_loop (la_t *this) {
     if (this->didReturn) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       la_StringSetLen (&this->parsePtr, 0);
+      Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+      la_fun_release_symbols (fun, 1, 0);
       continue;
+    }
+
+    la_fun_release_symbols (fun, 1, 0);
 
     if (err isnot LA_OK) return err;
   }
 
 theend:
   this->curScope = save_scope;
+  Vmap.release (fun->block_symbols);
   fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;
@@ -5278,16 +5377,20 @@ static int la_parse_forever (la_t *this) {
     .name = NS_LOOP_BLOCK, .namelen = NS_LOOP_BLOCK_LEN, .parent = this->curScope
   ));
 
+  fun->block_symbols = Vmap.new (8);
+
   this->curScope = fun;
 
   int c = la_next_token (this);
 
   if (c is LA_TOKEN_PAREN_OPEN) {
     la_next_token (this);
+    this->curState |= BLOCK_STATE;
     do {
       err = la_parse_stmt (this);
       if (err isnot LA_OK) return err;
     } while (this->curToken is LA_TOKEN_COMMA);
+    this->curState &= ~BLOCK_STATE;
 
     if (this->curToken isnot LA_TOKEN_PAREN_CLOS)
       return this->syntax_error (this, "awaiting (");
@@ -5325,18 +5428,24 @@ static int la_parse_forever (la_t *this) {
     if (this->didReturn) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       la_StringSetLen (&this->parsePtr, 0);
+      Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+      la_fun_release_symbols (fun, 1, 0);
       continue;
+    }
+
+    la_fun_release_symbols (fun, 1, 0);
 
     if (err isnot LA_OK) return err;
   }
 
 theend:
   this->curScope = save_scope;
+  Vmap.release (fun->block_symbols);
   fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   this->parsePtr = savepc;

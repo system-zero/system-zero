@@ -243,6 +243,8 @@ func semantics () {
     var i = 0;
     var sum = 0;
     while (i < len (ar)) {
+      var ign = 0
+      var ign_str = "a"
       if (i is 2) { i += 1; continue }
       sum += ar[i]
       i += 1;
@@ -264,6 +266,8 @@ func semantics () {
 
   sum = lambda ({ var s = 0
     for (var i = 1; i < 100 ; i += 1) {
+      var ign = 0
+      var ign_str = "a"
       if (i is 10) { continue }
       s += i
     }
@@ -311,6 +315,8 @@ func semantics () {
   sum = lambda ({
     var s = 0; var i = 0;
     loop (100) {
+      var ign = 0
+      var ign_str = "a"
       if (i is 10) {
         i += 1
         continue
@@ -371,6 +377,8 @@ func semantics () {
 
   sum = lambda ({ var s = 0; var i = 0;
     do {
+      var ign = 0
+      var ign_str = "a"
       if (i is 10) { i += 1; continue }
       s += i
       i += 1
@@ -1178,6 +1186,8 @@ func test_maps {
 
   var sum = 0
   for |k, v| in mm {
+    var ign = 0
+    var ign_str = "a"
     if (k is "c") { continue }
     sum += v
   }
