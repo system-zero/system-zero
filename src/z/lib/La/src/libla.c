@@ -2360,7 +2360,7 @@ static int la_parse_array_set (la_t *this) {
 
       c = la_next_token (this);
 
-      if (this->curToken isnot LA_TOKEN_ASSIGN)
+      if (this->curToken < LA_TOKEN_ASSIGN)
         return this->syntax_error (this, "syntax error while setting array, awaiting =");
 
       VALUE ar_val;
@@ -2479,8 +2479,100 @@ static int la_parse_array_set (la_t *this) {
     }
   }
 
-  if (this->curToken isnot LA_TOKEN_ASSIGN)
-    return this->syntax_error (this, "syntax error while setting array, awaiting =");
+  if (c is LA_TOKEN_MAP) {
+    err = la_parse_map_get (this, &ix);
+    if (err isnot LA_OK)
+      return err;
+    if (this->curToken is LA_TOKEN_INDEX_CLOS) {
+      la_next_token (this);
+      is_index = 1;
+    }
+  }
+
+  int token = this->curToken;
+
+  if (token > LA_TOKEN_ASSIGN) {
+    la_next_token (this);
+    VALUE v;
+    err = la_parse_expr (this, &v);
+    if (err isnot LA_OK) return err;
+
+    ArrayType *array = (ArrayType *) AS_ARRAY(ary);
+    int idx = AS_INT(ix);
+    VALUE val;
+    switch (array->type) {
+      case STRING_TYPE: {
+        string **s_ar = (string **) AS_ARRAY(array->value);
+        val = STRING(s_ar[idx]);
+        break;
+      }
+
+      case INTEGER_TYPE: {
+        integer *i_ar = (integer *) AS_ARRAY(array->value);
+        val = INT(i_ar[idx]);
+        break;
+      }
+
+      case NUMBER_TYPE: {
+        number *n_ar = (number *) AS_ARRAY(array->value);
+        val = NUMBER(n_ar[idx]);
+        break;
+      }
+
+      default:
+        return la_type_mismatch (this);
+    }
+
+    VALUE result;
+    switch (token) {
+      case LA_TOKEN_ASSIGN_APP:
+        this->objectState |= OBJECT_APPEND;
+        result = la_add (this, val, v);
+        this->objectState &= ~OBJECT_APPEND;
+        break;
+
+      case LA_TOKEN_ASSIGN_SUB:
+        result = la_sub  (this, val, v); break;
+      case LA_TOKEN_ASSIGN_DIV:
+        result = la_div  (this, val, v); break;
+      case LA_TOKEN_ASSIGN_MUL:
+        result = la_mul  (this, val, v); break;
+      case LA_TOKEN_ASSIGN_MOD:
+        result = la_mod  (this, val, v); break;
+      case LA_TOKEN_ASSIGN_BAR:
+        result = la_bset (this, val, v); break;
+      case LA_TOKEN_ASSIGN_AND:
+        result = la_bnot (this, val, v); break;
+    }
+
+    if (result.type is NULL_TYPE)
+       return this->syntax_error (this, "unxpected operation");
+
+    switch (array->type) {
+      case STRING_TYPE: {
+        string **s_ar = (string **) AS_ARRAY(array->value);
+        s_ar[idx] = AS_STRING(result);
+        break;
+      }
+
+      case INTEGER_TYPE: {
+        integer *i_ar = (integer *) AS_ARRAY(array->value);
+        i_ar[idx] = AS_INT(result);
+        break;
+      }
+
+      case NUMBER_TYPE: {
+        number *n_ar = (number *) AS_ARRAY(array->value);
+        n_ar[idx] = AS_NUMBER(result);
+        break;
+      }
+    }
+
+    return LA_OK;
+  }
+
+  if (this->curToken < LA_TOKEN_ASSIGN)
+    return this->syntax_error (this, "Asyntax error while setting array, awaiting =");
 
   ifnot (is_index)
     return la_array_assign (this, &ary, ix, last_ix, is_index);
@@ -2794,6 +2886,52 @@ static int la_map_reset_value (la_t *this, Vmap_t *map, char *key, VALUE v) {
   return la_map_set_value (this, map, key, v, 1);
 }
 
+static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
+  VALUE *val = Vmap.get (map, key);
+  if (NULL is val)
+    return la_syntax_error_fmt (this, "%s key doesn't exists", key);
+
+  if (val->type > STRING_TYPE or val->type is FUNCPTR_TYPE)
+    return la_type_mismatch (this);
+
+  VALUE v;
+  la_next_token (this);
+  int err = la_parse_expr (this, &v);
+  if (err isnot LA_OK)
+    return err;
+
+  VALUE result;
+  switch (token) {
+    case LA_TOKEN_ASSIGN_APP:
+      this->objectState |= OBJECT_APPEND;
+      result = la_add (this, *val, v);
+      this->objectState &= ~OBJECT_APPEND;
+      break;
+
+    case LA_TOKEN_ASSIGN_SUB:
+      result = la_sub  (this, *val, v); break;
+    case LA_TOKEN_ASSIGN_DIV:
+      result = la_div  (this, *val, v); break;
+    case LA_TOKEN_ASSIGN_MUL:
+      result = la_mul  (this, *val, v); break;
+    case LA_TOKEN_ASSIGN_MOD:
+      result = la_mod  (this, *val, v); break;
+    case LA_TOKEN_ASSIGN_BAR:
+      result = la_bset (this, *val, v); break;
+    case LA_TOKEN_ASSIGN_AND:
+      result = la_bnot (this, *val, v); break;
+  }
+
+  if (result.type is NULL_TYPE)
+     return this->syntax_error (this, "unxpected operation");
+
+  sym_t *sym = val->sym;
+  *val = result;
+  val->sym = sym;
+
+  return LA_OK;
+}
+
 static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   int err;
   VALUE v;
@@ -3046,8 +3184,19 @@ static int la_parse_map_set (la_t *this) {
 
   c = la_next_token (this);
 
+  VALUE *v;
+  // = Vmap.get (map, key);
+  //ifnot (NULL is v) {
+  //  if (v->type is ARRAY_TYPE) {
+   //   if (c is LA_TOKEN_INDEX_OPEN) {
+   //     this->tokenValue = *v;
+   //     return la_parse_array_set (this);
+  //    }
+  //  }
+ // }
+
   if (c is LA_TOKEN_PAREN_OPEN) {
-    VALUE *v = Vmap.get (map, key);
+    v = Vmap.get (map, key);
     if (NULL is v)
       return la_syntax_error_fmt (this, "%s, method doesn't exists", key);
 
@@ -3079,12 +3228,12 @@ static int la_parse_map_set (la_t *this) {
     return err;
   }
 
-  if (c isnot LA_TOKEN_ASSIGN) {
+  if (c < LA_TOKEN_ASSIGN) {
     ifnot (Vmap.key_exists (map, key))
       return this->syntax_error (this, "syntax error while setting map, awaiting =");
 
     if (c is LA_TOKEN_DOT) {
-      VALUE *v = Vmap.get (map, key);
+      v = Vmap.get (map, key);
       if (v->type isnot MAP_TYPE)
         return la_syntax_error_fmt (this, "%s, not a map", key);
 
@@ -3093,7 +3242,7 @@ static int la_parse_map_set (la_t *this) {
     }
 
     if (c is LA_TOKEN_INDEX_OPEN) {
-      VALUE *v = Vmap.get (map, key);
+      v = Vmap.get (map, key);
       if (v->type isnot ARRAY_TYPE)
         return la_syntax_error_fmt (this, "%s, not an array", key);
 
@@ -3103,8 +3252,11 @@ static int la_parse_map_set (la_t *this) {
     }
   }
 
-  if (Vmap.key_exists (map, key))
-    la_release_map_val (Vmap.pop (map, key));
+  if (c <= LA_TOKEN_ASSIGN) {
+    if (Vmap.key_exists (map, key))
+      la_release_map_val (Vmap.pop (map, key));
+  } else
+    return map_set_append_rout (this, map, key, c);
 
   return map_set_rout (this, map, key, 1);
 }
@@ -4513,6 +4665,7 @@ static int la_parse_foreach (la_t *this) {
     while (0 is is_space (*ptr)) ptr++;
     ptr++;
   }
+
   la_StringSetPtr (&this->parsePtr, ptr);
   la_StringSetLen (&this->parsePtr, p_len - (ptr - tmp_ptr));
 
@@ -4590,12 +4743,15 @@ static int la_parse_foreach (la_t *this) {
       String.replace_with_len (v_k, keys[i]->bytes, keys[i]->num_bytes);
       VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
       val_sym->value = *value;
+      val_sym->type = value->type;
 
       this->curState |= LOOP_STATE;
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
       err = la_parse_string (this, body_str);
       if (err is LA_NOTOK) return err;
       this->curState &= ~LOOP_STATE;
+
+      val_sym->value = NULL_VALUE;
 
       if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
         la_next_token (this);
@@ -6327,23 +6483,22 @@ theend:
 
 static VALUE la_add (la_t *this, VALUE x, VALUE y) {
   VALUE result = NULL_VALUE;
-
   switch (x.type) {
     case NUMBER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = NUMBER(AS_NUMBER(x) + AS_NUMBER(y)); goto theend;
+          return NUMBER(AS_NUMBER(x) + AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = NUMBER(AS_NUMBER(x) + AS_INT(y)); goto theend;
+          return NUMBER(AS_NUMBER(x) + AS_INT(y));
       }
-      goto theend;
+      return result;
 
     case INTEGER_TYPE:
       switch (y.type) {
         case NUMBER_TYPE:
-          result = NUMBER(AS_INT(x) + AS_NUMBER(y)); goto theend;
+          return NUMBER(AS_INT(x) + AS_NUMBER(y));
         case INTEGER_TYPE:
-          result = INT(AS_INT(x) + AS_INT(y)); goto theend;
+          return INT(AS_INT(x) + AS_INT(y));
         case STRING_TYPE: {
           integer x_i = AS_INT(x);
           string *nx = String.new (8);
@@ -6360,7 +6515,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
         }
       }
 
-      goto theend;
+      return result;
 
     case STRING_TYPE:
       string_type:
