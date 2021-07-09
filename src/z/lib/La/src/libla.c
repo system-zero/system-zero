@@ -6532,12 +6532,17 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             String.append_with_len (new, y_str->bytes, y_str->num_bytes);
             result = STRING(new);
 
-            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str))
+            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str) and
+                0 is (this->objectState & ARRAY_MEMBER)) {
               String.release (x_str);
+            }
           }
 
           if (y.sym is NULL and 0 is ns_is_malloced_string (this->curScope, y_str))
             String.release (y_str);
+
+          if (this->objectState & (ASSIGNMENT_STATE|MMT_OBJECT))
+            this->objectState &= ~MMT_OBJECT;
 
           goto theend;
         }

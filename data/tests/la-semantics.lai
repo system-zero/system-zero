@@ -1313,6 +1313,12 @@ func valgrind_tests () {
   }
 
   mb.f ()
+
+  var aras = ["as"]
+  var sasa = "g" + aras[0]
+  var assa = aras[0] + "x"
+  var masa = {"k" : "masa"}
+  var asma = masa.k + " tsagga"
 }
 
 if (run_valgrind_tests) {
