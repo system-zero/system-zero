@@ -412,6 +412,30 @@ func semantics () {
 
   assert_true ("testing `do/while` loop return statement", sum is 45)
 
+  var map_sum = {
+    "res" : 0
+    "ara" : [1, 2, 3],
+    "arb" : [1, 2, 3],
+    "arc" : [1, 2, 3],
+    "calc" : func (v) {
+      this.res = v
+      for |i| in this.ara {
+        for |j| in this.arb {
+          for |k| in this.arc {
+            if (this.ara[i] is 3 or
+                this.arb[j] is 3 or
+                this.arc[k] is 3) {
+              continue
+            }
+            this.res += (this.ara[i] + this.arb[j] + this.arc[k])
+          }
+        }
+      }
+    }
+  }
+  map_sum.calc (0)
+  assert_true ("testing nested loops", map_sum.res is 36)
+
   var n = 10
 
   var nifelse = lambda ((n) {

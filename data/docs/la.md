@@ -32,8 +32,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
 ## Syntax and Semantics
 ```js
-# A comment that may be used only as the first character of a line. There are
-# no multiline comments and they cannot be used inline.
+# A `#' denotes the begining of a comment that ends up to the end of line.
 
 # Variable assignment
 

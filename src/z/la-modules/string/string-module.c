@@ -10,6 +10,10 @@
 
 static VALUE string_cmp_n (la_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
   (void) this;
+  ifnot (IS_STRING(v_sa)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_sb)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_n))     THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
   char *sa = AS_STRING_BYTES(v_sa);
   char *sb = AS_STRING_BYTES(v_sb);
   int n = AS_INT(v_n);
@@ -23,6 +27,10 @@ static VALUE string_cmp_n (la_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
 
 static VALUE string_eq_n (la_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
   (void) this;
+  ifnot (IS_STRING(v_sa)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_sb)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_n))     THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
   char *sa = AS_STRING_BYTES(v_sa);
   char *sb = AS_STRING_BYTES(v_sb);
   int n = AS_INT(v_n);
@@ -32,6 +40,9 @@ static VALUE string_eq_n (la_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
 
 static VALUE string_eq (la_t *this, VALUE v_sa, VALUE v_sb) {
   (void) this;
+  ifnot (IS_STRING(v_sa)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_sb)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
   char *sa = AS_STRING_BYTES(v_sa);
   char *sb = AS_STRING_BYTES(v_sb);
   return INT(Cstring.eq (sa, sb));
@@ -39,6 +50,9 @@ static VALUE string_eq (la_t *this, VALUE v_sa, VALUE v_sb) {
 
 static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
   (void) this;
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_tok)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
   char *str = AS_STRING_BYTES(v_str);
   char *tok = AS_STRING_BYTES(v_tok);
   cstring_tok *ctok = Cstring.tokenize (NULL, str, tok, NULL, NULL);
@@ -59,6 +73,8 @@ static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
 
 static VALUE string_character (la_t *this, VALUE v_c) {
   (void) this;
+  ifnot (IS_INT(v_c)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
   utf8 c = AS_INT(v_c);
   char buf[8];
   int len = 0;
@@ -69,15 +85,13 @@ static VALUE string_character (la_t *this, VALUE v_c) {
 
 static VALUE string_to_integer (la_t *this, VALUE v_str) {
   (void) this;
-  ifnot (IS_STRING(v_str))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   return INT(atoi (AS_STRING_BYTES(v_str)));
 }
 
 static VALUE string_to_number (la_t *this, VALUE v_str) {
   (void) this;
-  ifnot (IS_STRING(v_str))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   return NUMBER(strtod (AS_STRING_BYTES(v_str), NULL));
 }
 
