@@ -232,7 +232,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
   If `fname` is not an absolute path, then it is relative to the current
   evaluated unit. If that fails, then it is relative to the current directory,
-  else it is relative to the `__loadpath` intrinsic string type variable. If
+  else it is relative to the `__loadpath` intrinsic string array variable. If
   the unit couldn't be found, then an error terminates execution.
 
 # import syntax and semantics:
@@ -242,7 +242,7 @@ a lot by the S-Lang programming language, which is quite like C.
   If `modulename` is not an absolute path, then it is relative to the current
   evaluated unit. If that fails, then it is relative to the current directory,
   else it composed in turn with the members of the `__importpath` intrinsic
-  string array constant.
+  string array variable.
   If after the search, it couldn't be found then an import error terminates execution.
 
   The imported compiled module name is composed as `modulename`-module.so.
@@ -554,7 +554,8 @@ a lot by the S-Lang programming language, which is quite like C.
 # __file__     - current evaluated filename. If a string is evaluated defaults
 #                to "__string__"
 # __func__     - current function name
-# __loadpath   - string type directory to lookup up when loading scripts
+# __loadpath   - string type array with directories as members, to lookup up when
+#                loading scripts
 # __importpath - string type array with directories as members, to lookup when
 #                importing C modules
 
@@ -599,11 +600,14 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   String.eq (StringType a, StringType b)
     # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
     # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
+    # StringType    String.advance (StringType str, IntegerType num)
     # StringType[]  String.tokenize (StringType str, StringType token)
     # StringType    String.character (IntegerType c)
     # NumberType    String.to_number (StringType str)
     # IntegerType   String.to_integer (StringType str)
+    # StringType    String.byte_in_str (StringType str, IntegerType byte)
     # StringType    String.from_integer (IntegerType i, IntegerType base)
+    # StringType    String.advance_on_byte (StringType str, IntegerType c)
 
   # Std Module Interface
     # IntegerType   Map.set (MapType map, StringType key, Value v)

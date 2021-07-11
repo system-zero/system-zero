@@ -1084,14 +1084,14 @@ makeenv:
 	@$(TEST) -d $(SYSINCDIR)     || $(MKDIR)   $(SYSINCDIR)
 	@$(TEST) -d $(SYSTMPDIR)     || $(MKDIR)   $(SYSTMPDIR)
 	@$(TEST) -d $(SYSDATADIR)    || $(MKDIR)   $(SYSDATADIR)
-	@$(TEST) -d $(SYSLADIR)      || $(MKDIR)   $(SYSLADIR)
-	@$(TEST) -d $(SYSSCRIPTDIR)  || $(MKDIR)   $(SYSSCRIPTDIR)
-	@$(TEST) -d $(SYSZMODULEDIR) || $(MKDIR)   $(SYSZMODULEDIR)
-	@$(TEST) -d $(SYSMODULEDIR)  || $(MKDIR)   $(SYSMODULEDIR)
 	@$(TEST) -d $(Z_SYSDIR)      || $(MKDIR)   $(Z_SYSDIR)
 	@$(TEST) -d $(Z_SYSBINDIR)   || $(MKDIR)   $(Z_SYSBINDIR)
 	@$(TEST) -d $(Z_SYSLIBDIR)   || $(MKDIR)   $(Z_SYSLIBDIR)
 	@$(TEST) -d $(Z_SYSINCDIR)   || $(MKDIR)   $(Z_SYSINCDIR)
+	@$(TEST) -d $(SYSLADIR)      || $(MKDIR)   $(SYSLADIR)
+	@$(TEST) -d $(SYSSCRIPTDIR)  || $(MKDIR)   $(SYSSCRIPTDIR)
+	@$(TEST) -d $(SYSZMODULEDIR) || $(MKDIR)   $(SYSZMODULEDIR)
+	@$(TEST) -d $(SYSMODULEDIR)  || $(MKDIR)   $(SYSMODULEDIR)
 
 checkenv:
 	@$(TEST) -w $(SYSDIR)        || exit 1

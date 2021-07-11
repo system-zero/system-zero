@@ -3,4 +3,4 @@ var m = {
   private "k" : 1
 }
 
-println ("k ${m.k}")
+m.k = 11

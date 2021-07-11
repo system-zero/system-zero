@@ -48,6 +48,47 @@ static VALUE string_eq (la_t *this, VALUE v_sa, VALUE v_sb) {
   return INT(Cstring.eq (sa, sb));
 }
 
+static VALUE string_byte_in_str (la_t *this, VALUE v_str, VALUE v_byte) {
+  (void) this;
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_byte)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  char *str = AS_STRING_BYTES(v_str);
+  int byte = AS_INT(v_byte);
+  if (byte < 0 or byte > 255)  THROW(LA_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
+  char *new = Cstring.byte.in_str (str, byte);
+  if (NULL is new)
+    return NULL_VALUE;
+  string *result = String.new_with (new);
+  return STRING(result);
+}
+
+static VALUE string_advance_on_byte (la_t *this, VALUE v_str, VALUE v_byte) {
+  (void) this;
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_byte)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  char *str = AS_STRING_BYTES(v_str);
+  int byte = AS_INT(v_byte);
+  char *new = Cstring.byte.in_str (str, byte);
+  if (NULL is new) return v_str;
+  int n = new - str;
+  String.delete_numbytes_at (AS_STRING(v_str), n, 0);
+  return v_str;
+}
+
+static VALUE string_advance (la_t *this, VALUE v_str, VALUE v_n) {
+  (void) this;
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_n)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  string *str = AS_STRING(v_str);
+  int n = AS_INT(v_n);
+
+  if (n < 1) return STRING(str);
+
+  if (n >= str->num_bytes) n = str->num_bytes - 1;
+  String.delete_numbytes_at (str, n, 0);
+  return STRING(str);
+}
+
 static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -150,11 +191,14 @@ public int __init_string_module__ (la_t *this) {
     { "string_eq",          PTR(string_eq), 2 },
     { "string_eq_n",        PTR(string_eq_n), 3 },
     { "string_cmp_n",       PTR(string_cmp_n), 3 },
+    { "string_advance",     PTR(string_advance), 2 },
     { "string_tokenize",    PTR(string_tokenize), 2 },
     { "string_character",   PTR(string_character), 1 },
     { "string_to_number",   PTR(string_to_number), 1 },
     { "string_to_integer",  PTR(string_to_integer), 1 },
+    { "string_byte_in_str", PTR(string_byte_in_str), 2 },
     { "string_from_integer",PTR(string_from_integer), 2 },
+    { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
     { NULL, NULL_VALUE, 0}
   };
 
@@ -169,11 +213,14 @@ public int __init_string_module__ (la_t *this) {
        "eq" : string_eq,
        "eq_n" : string_eq_n,
        "cmp_n" : string_cmp_n,
+       "advance" : string_advance,
        "tokenize" : string_tokenize,
        "character" : string_character,
        "to_number" : string_to_number,
        "to_integer" : string_to_integer,
-       "from_integer" : string_from_integer
+       "byte_in_str" : string_byte_in_str,
+       "from_integer" : string_from_integer,
+       "advance_on_byte" : string_advance_on_byte,
      }
    );
 

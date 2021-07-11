@@ -8,15 +8,19 @@
 #include <z/cenv.h>
 
 static VALUE map_set (la_t *this, VALUE v_map, VALUE v_key, VALUE v_val) {
+  ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
+  ifnot (IS_STRING(v_key)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string as a key");
   Vmap_t *map = AS_MAP(v_map);
   char *key = AS_STRING_BYTES(v_key);
 
-  La.map.reset_value (this, map, key, v_val);
-  return INT(LA_OK);
+  int retval = La.map.reset_value (this, map, key, v_val);
+  return INT(retval);
 }
 
 static VALUE map_get (la_t *this, VALUE v_map, VALUE v_key) {
   (void) this;
+  ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
+  ifnot (IS_STRING(v_key)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string as a key");
   Vmap_t *map = AS_MAP(v_map);
   char *key = AS_STRING_BYTES(v_key);
   VALUE *v = (VALUE *) Vmap.get (map, key);
@@ -24,6 +28,8 @@ static VALUE map_get (la_t *this, VALUE v_map, VALUE v_key) {
 }
 
 static VALUE map_remove (la_t *this, VALUE v_map, VALUE v_key) {
+  ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
+  ifnot (IS_STRING(v_key)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string as a key");
   Vmap_t *map = AS_MAP(v_map);
   char *key = AS_STRING_BYTES(v_key);
 
@@ -36,6 +42,8 @@ static VALUE map_remove (la_t *this, VALUE v_map, VALUE v_key) {
 
 static VALUE map_key_exists (la_t *this, VALUE v_map, VALUE v_key) {
   (void) this;
+  ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
+  ifnot (IS_STRING(v_key)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string as a key");
   Vmap_t *map = AS_MAP(v_map);
   char *key = AS_STRING_BYTES(v_key);
 
@@ -44,6 +52,7 @@ static VALUE map_key_exists (la_t *this, VALUE v_map, VALUE v_key) {
 
 static VALUE map_keys (la_t *this, VALUE v_map) {
   (void) this;
+  ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
   Vmap_t *map = AS_MAP(v_map);
   int num = Vmap.num_keys (map);
   ArrayType *v_keys = Alloc (sizeof (ArrayType));
@@ -55,6 +64,7 @@ static VALUE map_keys (la_t *this, VALUE v_map) {
 }
 
 static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
+  ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
   ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
   int type = array->type;
   if (type isnot v_expr.type) {

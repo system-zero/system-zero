@@ -26,6 +26,7 @@ typedef integer     pointer;
 #define OBJECT_TYPE    (1 << 5)
 #define MAP_TYPE       (1 << 6)
 #define CFUNCTION_TYPE (1 << 7)
+#define BOOLEAN_TYPE   (1 << 8)
 #define POINTER_TYPE   INTEGER_TYPE
 
 struct ValueType {

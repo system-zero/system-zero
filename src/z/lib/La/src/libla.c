@@ -2624,7 +2624,7 @@ static int la_parse_array_set (la_t *this) {
   }
 
   if (this->curToken < LA_TOKEN_ASSIGN)
-    return this->syntax_error (this, "Asyntax error while setting array, awaiting =");
+    return this->syntax_error (this, "syntax error while setting array, awaiting =");
 
   ifnot (is_index)
     return la_array_assign (this, &ary, ix, last_ix, is_index);
@@ -2908,13 +2908,17 @@ static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int sc
 
   switch (val->type) {
     case STRING_TYPE:
-      if (this->objectState & ARRAY_MEMBER) {
-        val->asString  = AS_STRING(la_copy_value (v));
-        this->objectState &= ~ARRAY_MEMBER;
-      } else {
-        val->asString  = v.asString;
-        this->curState &= ~LITERAL_STRING_STATE;
-      }
+        if (this->objectState & ARRAY_MEMBER) {
+          val->asString = AS_STRING(la_copy_value (v));
+          this->objectState &= ~ARRAY_MEMBER;
+        } else {
+          if (v.sym is NULL) {
+            val->asString  = v.asString;
+            this->curState &= ~LITERAL_STRING_STATE;
+          } else {
+            val->asString = AS_STRING(la_copy_value (v));
+          }
+        }
       break;
 
     case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
@@ -3190,13 +3194,16 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     return la_parse_array_get (this, vp);
   }
 
-  if (v->type is MAP_TYPE)
+  if (v->type is MAP_TYPE and 0 is is_this)
     *vp = la_copy_map (*v);
 
   return LA_OK;
 }
 
 static int la_parse_map_set (la_t *this) {
+  int is_this = (la_StringGetLen (this->curStrToken) is 4 and
+      Cstring.eq_n (la_StringGetPtr (this->curStrToken), "this", 4));
+
   Vmap_t *map = AS_MAP(this->tokenValue);
 
   int c = la_next_char (this);
@@ -3243,6 +3250,9 @@ static int la_parse_map_set (la_t *this) {
     if (NULL is v)
       return la_syntax_error_fmt (this, "%s, method doesn't exists", key);
 
+    if (v->sym->scope is NULL and 0 is is_this)
+      return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+
     int type;
     if (v->type & FUNCPTR_TYPE)
       type = FUNCPTR_TYPE;
@@ -3281,6 +3291,7 @@ static int la_parse_map_set (la_t *this) {
         return la_syntax_error_fmt (this, "%s, not a map", key);
 
       map = AS_MAP((*v));
+      is_this = 0;
       goto redo;
     }
 
@@ -3295,8 +3306,12 @@ static int la_parse_map_set (la_t *this) {
     }
   }
 
+  v = Vmap.get (map, key);
+  if (v isnot NULL and (v->sym->scope is NULL and 0 is is_this))
+    return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+
   if (c <= LA_TOKEN_ASSIGN) {
-    if (Vmap.key_exists (map, key))
+    if (v isnot NULL)
       la_release_map_val (Vmap.pop (map, key));
   } else
     return map_set_append_rout (this, map, key, c);
@@ -4771,6 +4786,7 @@ static int la_parse_foreach (la_t *this) {
   }
 
   if (type is MAP_TYPE) {
+    int is_this = Cstring.eq (sym, "this");
     ptr = ident;
     while (*ptr and *ptr isnot LA_TOKEN_COMMA) ptr++;
     if (*ptr is LA_TOKEN_EOF)
@@ -4811,9 +4827,12 @@ static int la_parse_foreach (la_t *this) {
     la_string body_str = la_StringNew (body);
 
     for (int i = 0; i < num; i++) {
+      VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
+      if (value->sym->scope is NULL and 0 is is_this)
+        continue;
+
       string *v_k = AS_STRING(key_sym->value);
       String.replace_with_len (v_k, keys[i]->bytes, keys[i]->num_bytes);
-      VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
       val_sym->value = *value;
       val_sym->type = value->type;
 
@@ -6369,7 +6388,31 @@ theload:
     if (this->la_dir->num_bytes) {
       String.release (fn);
       fn = String.dup (fname);
+      String.prepend_with (fn, this->la_dir->bytes);
+      this->curState |= LOADFILE_SILENT;
+      err = la_eval_file (this, fn->bytes);
+      this->curState &= ~LOADFILE_SILENT;
+      if (err isnot LA_ERR_LOAD) goto theend;
+
+      String.release (fn);
+      fn = String.dup (fname);
       String.prepend_with_fmt (fn, "%s/scripts/", this->la_dir->bytes);
+      this->curState |= LOADFILE_SILENT;
+      err = la_eval_file (this, fn->bytes);
+      this->curState &= ~LOADFILE_SILENT;
+      if (err isnot LA_ERR_LOAD) goto theend;
+    }
+
+    sym_t *symbol = la_lookup_symbol (this, la_StringNew ("__loadtpath"));
+    ArrayType *p_ar = (ArrayType *) AS_ARRAY(symbol->value);
+    string **s_ar = (string **) AS_ARRAY(p_ar->value);
+    for (size_t i = 0; i < p_ar->len; i++) {
+      string *p = s_ar[i];
+      ifnot (p->num_bytes) continue;
+
+      String.release (fn);
+      fn = String.dup (fname);
+      String.prepend_with_fmt (fn, "%s/", p->bytes);
       this->curState |= LOADFILE_SILENT;
       err = la_eval_file (this, fn->bytes);
       this->curState &= ~LOADFILE_SILENT;
@@ -6377,10 +6420,6 @@ theload:
         goto theend;
     }
 
-    String.release (fn);
-    fn = String.dup (fname);
-    String.prepend_with (fn, "/data/la/scripts/");
-    err = la_eval_file (this, fn->bytes);
     goto theend;
   }
 
@@ -7030,6 +7069,7 @@ static struct def {
   { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
   { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
   { "MapType",     INTEGER_TYPE,  INT(MAP_TYPE) } ,
+  { "BooleanType", INTEGER_TYPE,  INT(BOOLEAN_TYPE) },
   { "ok",          INTEGER_TYPE,  OK_VALUE },
   { "notok",       INTEGER_TYPE,  NOTOK_VALUE },
   { "true",        INTEGER_TYPE,  TRUE_VALUE },
@@ -7126,10 +7166,10 @@ static int la_std_def (la_t *this, la_opts opts) {
   err = la_define (this, "__static", INTEGER_TYPE, v);
   if (err) return LA_NOTOK;
 
-  int len = 1;
+  int len = 2;
   if (this->la_dir->num_bytes) len++;
   #ifdef ZLIBDIR
-    len += 2;
+    len++;
   #endif
   #ifdef LIBDIR
     len++;
@@ -7142,20 +7182,45 @@ static int la_std_def (la_t *this, la_opts opts) {
     String.replace_with_fmt (arimp[ind++], "%s/la-modules", this->la_dir->bytes);
   #ifdef ZLIBDIR
     String.replace_with_fmt (arimp[ind++], "%s/la-modules", ZLIBDIR);
-    String.replace_with_fmt (arimp[ind++], "%s/la-modules", ZLIBDIR);
   #endif
   #ifdef LIBDIR
     String.replace_with_fmt (arimp[ind++], "%s/la-modules", LIBDIR);
   #endif
-  String.replace_with (arimp[ind], "/lib/la-modules");
+  String.replace_with (arimp[ind++], "/lib/la-modules");
+  String.replace_with (arimp[ind], "/lib/z/la-modules");
 
   v = ARRAY(imp_path);
   err = la_define (this, "__importpath", ARRAY_TYPE, v);
   if (err) return LA_NOTOK;
 
-  string *loadpath = String.dup (this->la_dir);
-  v = STRING(loadpath);
-  err = la_define (this, "__loadpath", STRING_TYPE, v);
+  len = 2;
+  if (this->la_dir->num_bytes)
+    len += 2;
+  #ifdef ZLIBDIR
+    len++;
+  #endif
+  #ifdef LIBDIR
+    len++;
+  #endif
+
+  ArrayType *load_path = ARRAY_NEW(STRING_TYPE, len);
+  string **arload = (string **) AS_ARRAY(load_path->value);
+  ind = 0;
+  if (this->la_dir->num_bytes) {
+    String.replace_with (arload[ind++], this->la_dir->bytes);
+    String.replace_with_fmt (arload[ind++], "%s/scripts", this->la_dir->bytes);
+  }
+  #ifdef ZLIBDIR
+    String.replace_with_fmt (arload[ind++], "%s/la-lib", ZLIBDIR);
+  #endif
+  #ifdef LIBDIR
+    String.replace_with_fmt (arload[ind++], "%s/la-lib", LIBDIR);
+  #endif
+  String.replace_with (arload[ind++], "/lib/la-lib");
+  String.replace_with (arload[ind], "/lib/z/la-lib");
+
+  v = ARRAY(load_path);
+  err = la_define (this, "__loadpath", ARRAY_TYPE, v);
 
   return err;
 }
@@ -7478,9 +7543,6 @@ static void la_set_la_dir (la_t *this, char *fn) {
   if (NULL is fn) return;
   size_t len = bytelen (fn);
   String.replace_with_len (this->la_dir, fn, len);
-  sym_t *sym = ns_lookup_symbol (this->std, "__loadpath");
-  string *loadpath = AS_STRING(sym->value);
-  String.replace_with_len (loadpath, fn, len);
 }
 
 static void la_set_define_funs_cb (la_t *this, LaDefineFuns_cb cb) {

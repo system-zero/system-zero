@@ -728,6 +728,24 @@ func semantics () {
           tok[2] is "jkl" and
           tok[3] is "mno")
 
+      var c = String.character (945)
+      var ca = String.character ('α')
+
+      assert_true ("testing the character method", c is "α" and ca is "α")
+
+      var stra = "asdfg"
+      String.advance (stra, 3)
+
+      assert_true ("testing the advance method", stra is "fg")
+
+      var strb = "asdfg"
+      String.advance_on_byte (strb, 'f')
+      assert_true ("testing the advance_on_byte method", strb is "fg")
+
+      var strc = "asdfg"
+      var strd = String.byte_in_str (strc, 'f')
+      assert_true ("testing the byte_in_str method", strb is "fg")
+
       var si = "1234"
       var sf = "1234.1234"
       assert_true ("testing string to integer and number convertions",
@@ -1226,11 +1244,34 @@ func test_maps {
   for |i| in mmm.ar {
     sum_a += mmm.ar[i]
   }
+
   for |i| in mmm.ara {
     sum_a += mmm.ara[i]
   }
 
   assert_true ("testing map iteration", sum is 33 and sum_a is 21)
+
+  var sum_p = 0
+  var sum_pa = 0
+  var mmmm = {
+    private "k" : 10,
+    "ka" : 10,
+    "kb" : 11,
+    "f"  : func {
+      for |k, v| in this {
+        ifnot (String.eq (k, "f") { sum_p += v }
+      }
+    }
+  }    
+
+  mmmm.f ()
+
+  for |k, v| in mmmm {
+    ifnot (String.eq (k, "f") { sum_pa += v }
+  }
+
+  assert_true ("testing map iteration with members with private scope",
+      sum_p is 31 and sum_pa is 21)
 
   var mapp = {
     "i" : 1,
