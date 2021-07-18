@@ -49,7 +49,7 @@ int main (int argc, char **argv) {
   __INIT_APP__;
 
   argparse_option_t options[] = {
-    OPT_HELP (),
+   // OPT_HELP (),
     OPT_GROUP("Options:"),
     OPT_BOOLEAN(0, "version", &version, "show version", NULL, 0, 0),
     OPT_END()

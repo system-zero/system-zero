@@ -950,9 +950,11 @@ static VALUE la_fclose (la_t *this, VALUE fp_val) {
   } else
     result = INT(LA_OK);
 
-  ifnot (this->funcState & OBJECT_RELEASE_STATE) {
-    object *o = AS_OBJECT(fp_val);
-    free (o);
+  ifnot (NULL is this) {
+    ifnot (this->funcState & OBJECT_RELEASE_STATE) {
+      object *o = AS_OBJECT(fp_val);
+      free (o);
+    }
   }
 
   fp = NULL;

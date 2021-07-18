@@ -661,6 +661,47 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   Dir.make_parents (StringType dir, IntegerType mode)
     # IntegerType   Dir.remove_parents (StringType dir)
 
+# Library
+  # Argparse Interface
+
+    loadfile ("argparse")
+    var argparse = New Argparse (num_options, argparse_flags, message)
+    argparse.add (variableName, shortopt, longopt, description, type, arg_flags)
+    var retval = argparse.process (argv, start_index)
+
+    # argparse_flags exposed constants
+      ARGPARSE_NO_VERBOSE
+      ARGPARSE_DONOT_EXIT_ON_UNKNOWN
+      ARGPARSE_DONOT_PRINT_AND_EXIT_ON_HELP
+      ARGPARSE_SHORT_H_ISNOT_HELP
+
+    # arg_flags exposed constants
+      ARG_VALUE_REQUIRED
+      ARG_VALUE_OPTIONAL
+
+    # retval can be `ok` that denotes success, otherwise it returns `notok`.
+      In the latter case, and if `verbose` has been set (on by default), it
+      prints the error message, otherwise it can be retrieved as a string, by
+      accessing the err_message property:
+
+         argparse.err_message
+
+      If argparse.exit is true then it denotes that a help argument has been
+      given.
+
+    # Results are stored in argparse.results and the value of the variableName
+      can be retrieved by accessing the appropriate field:
+
+         argparse.results.variableName
+
+    # Types can be one (for now) of the followings:
+
+      IntegerType, StringType, BooleanType
+
+    # All the options that do not correspond to none of the given options, are
+      stored in the argparse.argv, while the argparse.argc holds the length of
+      that array of strings.
+
 # Semantics
 
   - standard keywords and functions can not be redefined and reassigned

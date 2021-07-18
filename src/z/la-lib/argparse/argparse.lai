@@ -17,7 +17,7 @@ private
   "verbose"
   "exit_on_unknown"
   "print_and_exit_on_help"
-  "short_h_isnot_help"
+  "short_h_is_help"
   "types"
   "flags"
   "as"
@@ -32,9 +32,10 @@ private
     this.maxlen =  2
     this.argv = null
     this.argc = 0
-    this.input_argc = 0
-    this.input_argv = null
-    this.results = {}
+    this.input_argc  = 0
+    this.input_argv  = null
+    this.err_message = ""
+    this.results   = {}
     this.message   = message
     this.types     = integer[num_options]
     this.flags     = integer[num_options]
@@ -45,28 +46,30 @@ private
     this.verbose                = (flags & ARGPARSE_NO_VERBOSE is 0)
     this.exit_on_unknown        = (flags & ARGPARSE_DONOT_EXIT_ON_UNKNOWN is 0)
     this.print_and_exit_on_help = (flags & ARGPARSE_DONOT_PRINT_AND_EXIT_ON_HELP is 0)
-    this.short_h_isnot_help     = (flags & ARGPARSE_SHORT_H_ISNOT_HELP is 0)
+    this.short_h_is_help        = (flags & ARGPARSE_SHORT_H_ISNOT_HELP is 0)
+    this.exit = false
   }
 
   "parse_short_arg" :
   func (arg) {
-    if (arg is "h") {
-      ifnot (this.short_h_isnot_help) {
+    if (arg is "-h") {
+      if (this.short_h_is_help) {
         if (this.print_and_exit_on_help) {
           this.print_description ()
+          this.exit = true
           return ok
         }
       }
     }
 
-    var found = 0
+    var found = false
     for |j| in this.shortopts {
       if (null isnot this.shortopts[j] and len (this.shortopts[j])) {
         var short =  "-" + this.shortopts[j]
         var short_len = len (short)
 
         if (String.eq_n (short, arg, short_len)) {
-          found = 1
+          found = true
           var type = this.types[j]
           var as = this.as[j]
           var flags = this.flags[j]
@@ -74,16 +77,18 @@ private
           if (type is BooleanType) {
             Map.set (this.results, as, true)
           } else {
-            if (this.curidx is this.input_argc) {
+            if (this.curidx is this.input_argc - 1) {
               if (flags & ARG_VALUE_REQUIRED) {
                 if (this.verbose is true) {
                   println (stderr, "error ${%s, arg) argument awaits an integer")
+                } else {
+                  this.err_message = format ("error ${%s, arg) argument awaits an integer")
                 }
 
                 return notok
               }
 
-              return ok
+              return true
             }
 
             this.curidx += 1
@@ -103,20 +108,21 @@ private
 
   "parse_long_arg" :
   func (arg) {
-    if (arg is "help") {
+    if (arg is "--help") {
       if (this.print_and_exit_on_help) {
         this.print_description ()
+        this.exit = true
         return ok
       }
     }
 
-    var found = 0
+    var found = false
     for |j| in this.longopts {
       if (null isnot this.longopts[j] and len (this.longopts[j])) {
         var long = "--" + this.longopts[j]
         var long_len = len (long)
         if (String.eq_n (long, arg, long_len)) {
-          found = 1
+          found = true
           var type = this.types[j]
           var as = this.as[j]
           var flags = this.flags[j]
@@ -124,6 +130,8 @@ private
             if (flags & ARG_VALUE_REQUIRED) {
               if (this.verbose is true) {
                 println (stderr, "error ${%s, arg) argument requires a value")
+              } else {
+                this.err_message = format ("error ${%s, arg) requires a value")
               }
 
               return notok
@@ -132,7 +140,7 @@ private
               Map.set (this.results, as, true)
             }
 
-            continue
+            return true
           }
 
           var optval = String.byte_in_str (arg, '=')
@@ -142,6 +150,8 @@ private
             if (flags & ARG_VALUE_REQUIRED) {
               if (this.verbose is true) {
                 println (stderr, "error ${%s, arg) argument requires a value")
+              } else {
+                this.err_message = format ("error ${%s, arg) requires a value")
               }
 
               return notok
@@ -168,7 +178,7 @@ private
       }
     }
 
-    ifnot (found) {
+    if (found is false) {
       this.argv[this.argc] = arg
       this.argc += 1
     }
@@ -200,7 +210,7 @@ public
         this.maxlen = llen
       }
     }
-  },
+  }
 
   "print_description" :
   func {
@@ -259,7 +269,7 @@ public
     this.input_argc = argc
     this.input_argv = argv
 
-    var found = 0
+    var found = false
 
     for (this.curidx = 0; this.curidx < argc; this.curidx += 1) {
       if (this.curidx < start) { continue }
@@ -280,20 +290,24 @@ public
         continue
       }
 
-      found = 0
+      found = false
       if (arg[1] isnot '-') {
         found = this.parse_short_arg (arg)
         if (found is notok) { return notok }
       }
 
-      if (found) { continue }
+      if (this.exit is true) {
+        return ok
+      }
+
+      if (found is true) { continue }
 
       found = this.parse_long_arg (arg)
       if (found is notok) {
         return notok
       }
 
-      ifnot (found) {
+      if (found is false) {
         if (this.exit_on_unknown) {
           if (this.verbose) {
             this.print_description ()
@@ -302,6 +316,13 @@ public
           return notok
         }
       }
+
+      if (this.exit is true) {
+        return ok
+      }
+
     }
+
+    return ok
   }
 }

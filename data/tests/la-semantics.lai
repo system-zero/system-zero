@@ -1,8 +1,25 @@
-var
-  run_invalid_memory_read_tests = 0,
-  run_fileptr_tests = 0,
-  run_valgrind_tests = 1,
-  run_development_tests = 1
+loadfile ("argparse")
+
+var argparse = New Argparse (5, 0, "La data/tests/la-semantics.lai [options]")
+
+argparse.add ("run_invalid_memory_read_tests", null, "run-invalid-memory-read-tests", "run invalid memory read tests", BooleanType, 0)
+argparse.add ("run_fileptr_tests", null, "run-fileptr-tests", "run fileptr tests", BooleanType, 0)
+argparse.add ("run_valgrind_tests", null, "run-valgrind-tests", "run valgrind tests", BooleanType, 0)
+argparse.add ("run_development_tests", null, "run-development-tests", "run development tests", BooleanType, 0)
+argparse.add ("help", "h", "help", "show this message", BooleanType, 0)
+
+ifnot (ok is argparse.process (__argv, 0)) {
+  exit (1)
+}
+
+if (argparse.exit is true) {
+  exit (0)
+}
+
+var run_invalid_memory_read_tests = argparse.results.run_invalid_memory_read_tests
+var run_fileptr_tests = argparse.results.run_fileptr_tests
+var run_valgrind_tests = argparse.results.run_valgrind_tests
+var run_development_tests = argparse.results.run_development_tests
 
 var test_num = 0
 
@@ -617,8 +634,6 @@ func semantics () {
       sum_i is 414 and  s_c is "asdf" and n_bytes is 4)
 
   retval = __argc is 1
-  assert_true  ("testing __argc and __argv", retval)
-  assert_equal ("testing __argc and __argv", len (__argv), 1)
   assert_equal ("testing __argc and __argv", __argv[0], "data/tests/la-semantics.lai")
 
   assert_equal_msg ("testing __func__",
@@ -1418,7 +1433,7 @@ func invalid_memory_read_tests {
       println (fp, "fptype ${%s, typeAsString (fp)}")
     }
 
-    var f = fff()
+    var f = fff ()
     p (f)
   }
 
