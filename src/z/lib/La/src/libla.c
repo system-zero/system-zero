@@ -2993,6 +2993,8 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   VALUE v;
 
   int c = la_next_token (this);
+  while (c is LA_TOKEN_NL)
+    c = la_next_token (this);
 
   if (c is LA_TOKEN_FUNCDEF) {
     Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
@@ -3003,6 +3005,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
     this->curFunName[0] = '\0';
     if (err isnot LA_OK)
       return err;
+
 
     v = PTR(this->curFunDef);
     v.type = FUNCPTR_TYPE;
@@ -3079,8 +3082,10 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
   this->curState |= MAP_STATE;
   this->scopeState = PUBLIC_SCOPE;
+  int scope = this->scopeState;
 
   for (;;) {
+
     this->curState |= STRING_LITERAL_ARG_STATE;
     c = err = la_next_token (this);
     this->curState &= ~STRING_LITERAL_ARG_STATE;
@@ -3094,11 +3099,11 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
     switch (c) {
       case LA_TOKEN_PRIVATE:
-        this->scopeState = PRIVATE_SCOPE;
+        scope = this->scopeState = PRIVATE_SCOPE;
         continue;
 
       case LA_TOKEN_PUBLIC:
-        this->scopeState = PUBLIC_SCOPE;
+        scope = this->scopeState = PUBLIC_SCOPE;
         continue;
     }
 
@@ -3115,7 +3120,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
       return this->syntax_error (this, "error while setting map field, awaiting :");
 
     err = map_set_rout (this, map, key, this->scopeState is PUBLIC_SCOPE);
-    this->scopeState = PUBLIC_SCOPE;
+    this->scopeState = scope;
 
     if (err isnot LA_OK)
       return err;

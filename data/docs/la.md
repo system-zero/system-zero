@@ -27,7 +27,7 @@ established programming languages consepts, and should obey the principle of the
 least surpise and should not violate expectations. If it does not or if it does,
 this should be considered as a bug. It is important to note that this language,
 doesn't bring even the singlest new consept in the programming language universe.
-It is written for C and follows C where it make sense, and had been influenced
+It is written for C and follows C where it makes sense, and had been influenced
 a lot by the S-Lang programming language, which is quite like C.
 
 ## Syntax and Semantics
@@ -362,9 +362,11 @@ a lot by the S-Lang programming language, which is quite like C.
     In this case 'i' holds the index of the array, and which initially starts
     from zero.
 
-# Maps (this is a hybrid type, similar to associative arrays and structures,
-  and almost similar to json format). This is an unordered list, where a key
-  is associated with a value.
+# Maps. This is the only container type in the language, and which associates (maps)
+  a "key" with a "value". This is a hybrid type, similar to associative arrays
+  and structures in other languages and almost similar to json format. Note that
+  this is an unordered list, and there is no guarrantee that keys and values, will
+  will have the order of the declaration, when looping over a map.
 
   # Map Declaration
 
@@ -375,15 +377,17 @@ a lot by the S-Lang programming language, which is quite like C.
     "two" : "string",
     "1"   : 1,
     "fn"  : func (x) { return this.one * x },
-    private privatevar : "accessible only by the members of the map"
+    private "privatevar" : "accessible only by the members of the map"
   }
 
-  - the `this` keyword is being used from the members of the map and
-    provide access to the other fields
+  - the `this` keyword is being used _only_ from the members of a map, and it
+    provides access to the other fields, as it holds the value of the underlying
+    map
 
   - keys are valid string identifiers and may start with a digit or an underscore
 
-  # Accessing maps
+  # Accessing maps. This is done by using a dot ('.') after a symbol that refers
+    to a Map Type.
 
     mm.one
     mm.fn (10)
@@ -489,7 +493,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
 # Predefined types:
 # integer, string, map, number, array (those actually will throw a bit different
-# error (if it is tryied to use them as an identifier), as they are being used
+# error (if it is attempted to use them as an identifier), as they are being used
 # on array declarations)
 
 # Standard Functions.
@@ -702,6 +706,23 @@ a lot by the S-Lang programming language, which is quite like C.
   By default symbols are private to their local scope, unless the symbol has been
   declared as `public`. In that case the symbol belongs to `global` scope and
   should be visible from any scope.
+
+  For Maps though it is the reverse. By default all the fields are accessible
+  from their caller, unless they had been attributed as `private`. In that case
+  all the followed fields also belong to the private scope and are accessible
+  only from the functions of the map, by using the reserved `this` keyword that
+  holds the value of the underlying map. The `public` keyword make them accessible
+  again, with the same semantics with the above, that is, all the consecutive
+  fields will be accessible outside of the map, untill a field will be attributed
+  as `private`.
+
+  This Map specific mechanism, is just for to hide internal implementation details,
+  and to separate them from the exposed interface.
+
+  In a nutshell, the `private` and `public` keywords can be used inside of a Map,
+  or else the `public` keyword can be used to expose a symbol in the `global`
+  namespace. The `private` attribute to a variable is reduntant, as this is the
+  default.
 
 # Comparisons.
 

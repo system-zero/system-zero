@@ -1148,11 +1148,14 @@ func test_maps {
       m.c () is 1000)
 
   var mapa = {
-    private "one" : 1,
-    "two" : 2,
-    private "three" : "three",
-    private "fun" : func { return (this.one + this.two) * 10000 }
+    private
+    "one" : 1,
+    "three" : "three",
+    "fun" : func { return (this.one + this.two) * 10000 },
     "threefun" : func { return this.three },
+
+    public
+    "two" : 2,
     "fn" : func (x) { return x * this.fun () }
   }
 
@@ -1254,7 +1257,10 @@ func test_maps {
   var sum_p = 0
   var sum_pa = 0
   var mmmm = {
-    private "k" : 10,
+    private
+    "k" : 10,
+
+    public
     "ka" : 10,
     "kb" : 11,
     "f"  : func {

@@ -11,23 +11,26 @@ const ARG_VALUE_OPTIONAL       = 1 << 1
 
 func argparse_new (num_options, flags, message) {
   return {
-    "results" : {},
-    private  "idx"       : -1,
-    private  "curidx"    : -1,
-    private  "as"        : string[num_options],
-    private  "types"     : integer[num_options],
-    private  "flags"     : integer[num_options],
-    private  "shortopts" : string[num_options],
-    private  "longopts"  : string[num_options],
-    private  "descr"     : string[num_options],
-    private  "message"   : message,
-    private  "verbose"   : (flags & ARGPARSE_NO_VERBOSE is 0),
-    private  "exit_on_unknown" : (flags & ARGPARSE_DONOT_EXIT_ON_UNKNOWN is 0),
-    private  "print_and_exit_on_help" : (flags & ARGPARSE_DONOT_PRINT_AND_EXIT_ON_HELP is 0),
-    private  "short_h_isnot_help"     : (flags & ARGPARSE_SHORT_H_ISNOT_HELP is 0),
-    private  "maxlen"    : 2,
+    public "results" : {},
 
-    private  "parse_short_arg"  :  func (arg) {
+    private
+    "idx"       : -1
+    "curidx"    : -1
+    "as"        : string[num_options]
+    "types"     : integer[num_options]
+    "flags"     : integer[num_options]
+    "shortopts" : string[num_options]
+    "longopts"  : string[num_options]
+    "descr"     : string[num_options]
+    "message"   : message
+    "verbose"   : (flags & ARGPARSE_NO_VERBOSE is 0)
+    "exit_on_unknown" : (flags & ARGPARSE_DONOT_EXIT_ON_UNKNOWN is 0)
+    "print_and_exit_on_help" : (flags & ARGPARSE_DONOT_PRINT_AND_EXIT_ON_HELP is 0)
+    "short_h_isnot_help"     : (flags & ARGPARSE_SHORT_H_ISNOT_HELP is 0)
+    "maxlen"    : 2
+
+    "parse_short_arg" :
+    func (arg) {
       if (arg is "h") {
         ifnot (this.short_h_isnot_help) {
           if (this.print_and_exit_on_help) {
@@ -77,9 +80,10 @@ func argparse_new (num_options, flags, message) {
       }
 
       return found
-    },
+    }
 
-    private "parse_long_arg" :  func (arg) {
+    "parse_long_arg" :
+    func (arg) {
       if (arg is "help") {
         if (this.print_and_exit_on_help) {
           this.print_description ()
@@ -151,9 +155,10 @@ func argparse_new (num_options, flags, message) {
       }
 
       return found
-    },
+    }
 
-    "add" : func (as, short, long, descr, type, flags) {
+    public "add" :
+    func (as, short, long, descr, type, flags) {
       this.idx += 1
       this.shortopts[this.idx] = short
       this.longopts[this.idx]  = long
@@ -176,7 +181,8 @@ func argparse_new (num_options, flags, message) {
       }
     },
 
-    "print_description" : func {
+    "print_description" :
+    func {
       var msg = "Usage: \n\n"
       var arlen = len (this.shortopts)
 
@@ -222,9 +228,10 @@ func argparse_new (num_options, flags, message) {
       }
 
       println ("${%s, msg}")
-    },
+    }
 
-    "process" : func (argv, start) {
+    "process" :
+    func (argv, start) {
       var argc = len (argv)
       this.argv = string[argc]
       this.argc = 0
