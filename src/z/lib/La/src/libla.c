@@ -1586,7 +1586,6 @@ static int la_do_next_token (la_t *this, int israw) {
           String.append_byte (mbuf->data, c);
           pc = c;
         }
-
         ListStackPush (this->curScope, mbuf);
         this->tokenValue = STRING (mbuf->data);
       }
@@ -2903,23 +2902,24 @@ static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int sc
   sym_t *sym = Alloc (sizeof (sym_t));
   sym->scope = (scope ? this->function : NULL);
   sym->value = MAP(map);
-
   val->sym = sym;
 
   switch (val->type) {
     case STRING_TYPE:
-        if (this->objectState & ARRAY_MEMBER) {
-          val->asString = AS_STRING(la_copy_value (v));
-          this->objectState &= ~ARRAY_MEMBER;
+      if (this->objectState & ARRAY_MEMBER) {
+        val->asString = AS_STRING(la_copy_value (v));
+        val->refcount = 0;
+        this->objectState &= ~ARRAY_MEMBER;
+      } else {
+        if (v.sym is NULL) {
+          val->asString  = v.asString;
+          this->curState &= ~LITERAL_STRING_STATE;
         } else {
-          if (v.sym is NULL) {
-            val->asString  = v.asString;
-            this->curState &= ~LITERAL_STRING_STATE;
-          } else {
-            val->asString = AS_STRING(la_copy_value (v));
-          }
+          val->asString = AS_STRING(la_copy_value (v));
+          val->refcount = 0;
         }
-      break;
+      }
+    break;
 
     case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
     case NULL_TYPE  : val->asNull    = v.asNull;    break;
@@ -2997,6 +2997,8 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   if (c is LA_TOKEN_FUNCDEF) {
     Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
+    ifnot (scope) this->scopeState = PUBLIC_SCOPE;
+
     err = la_parse_func_def (this);
     this->curFunName[0] = '\0';
     if (err isnot LA_OK)
@@ -3020,6 +3022,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   if (c is LA_TOKEN_ARRAY) {
     sym_t *sym = this->tokenSymbol;
     v =  ARRAY(array_copy ((ArrayType *) AS_ARRAY(sym->value)));
+    la_next_token (this);
     goto assign;
   }
 
@@ -3027,7 +3030,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   if (err isnot LA_OK)
     return err;
 
-  assign: {}
+  assign:
 
   return la_map_set_value (this, map, key, v, scope);
 }
@@ -3158,12 +3161,14 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   Vmap_t *map = AS_MAP(mapv);
 
   VALUE *v = Vmap.get (map, key);
+
   if (v is NULL)
     return la_syntax_error_fmt (this, "%s, not a key", key);
 
-  if (v->sym->scope is NULL)
+  if (v->sym->scope is NULL) {
     ifnot (is_this)
       return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+  }
 
   *vp = *v;
 
@@ -3329,6 +3334,7 @@ static int la_parse_expr_list (la_t *this) {
     this->funcState |= EXPR_LIST_STATE;
     err = la_parse_expr (this, &v);
     this->funcState &= ~EXPR_LIST_STATE;
+
     if (err isnot LA_OK) return err;
 
     if (this->curState & FUNC_CALL_RESULT_IS_MMT)
@@ -4015,6 +4021,7 @@ do_token:
         la_next_token (this);
 
       this->objectState |= ASSIGNMENT_STATE;
+
       err = la_parse_expr (this, &val);
       this->objectState &= ~ASSIGNMENT_STATE;
 
@@ -4211,7 +4218,9 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     this->CFuncError = LA_OK;
     this->curMsg[0] = '\0';
     VALUE sv_lhs = lhs;
+
     lhs = op (this, lhs, rhs);
+
     if (this->CFuncError isnot LA_OK) {
       if (this->curMsg[0] isnot '\0')
         this-> print_fmt_bytes (this->err_fp, "binary operation: %s\n", this->curMsg);
@@ -4852,8 +4861,7 @@ static int la_parse_foreach (la_t *this) {
 
       if (this->didReturn) {
         this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-        this->curToken = LA_TOKEN_SEMICOLON;
-        this->parsePtr = savepc;
+        la_StringSetLen (&this->parsePtr, 0);
         Vmap.release (fun->block_symbols);
         fun_release (&fun);
         for (int j = 0; j < num; j++)
@@ -4919,8 +4927,7 @@ static int la_parse_foreach (la_t *this) {
 
       if (this->didReturn) {
         this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-        this->curToken = LA_TOKEN_SEMICOLON;
-        this->parsePtr = savepc;
+        la_StringSetLen (&this->parsePtr, 0);
         Vmap.release (fun->block_symbols);
         fun_release (&fun);
         return LA_OK;
@@ -5015,8 +5022,7 @@ static int la_parse_foreach (la_t *this) {
 
         if (this->didReturn) {
           this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-          this->curToken = LA_TOKEN_SEMICOLON;
-          this->parsePtr = savepc;
+          la_StringSetLen (&this->parsePtr, 0);
           Vmap.release (fun->block_symbols);
           fun_release (&fun);
           Ustring.release (U);
@@ -5060,8 +5066,7 @@ static int la_parse_foreach (la_t *this) {
 
         if (this->didReturn) {
           this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-          this->curToken = LA_TOKEN_SEMICOLON;
-          this->parsePtr = savepc;
+          la_StringSetLen (&this->parsePtr, 0);
           Vmap.release (fun->block_symbols);
           fun_release (&fun);
           return LA_OK;
@@ -5243,6 +5248,7 @@ static int la_parse_for (la_t *this) {
       this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
       this->curToken = LA_TOKEN_SEMICOLON;
       la_StringSetLen (&this->parsePtr, 0);
+      //this->parsePtr = savepc;
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
@@ -5379,7 +5385,6 @@ static int la_parse_loop (la_t *this) {
     this->curState &= ~LOOP_STATE;
 
     if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
-      la_next_token (this);
       goto theend;
     }
 
@@ -5407,6 +5412,7 @@ theend:
   fun_release (&fun);
   this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
   if (is_inloop) this->curState |= LOOP_STATE;
+  this->curToken = LA_TOKEN_SEMICOLON;
   this->parsePtr = savepc;
   return LA_OK;
 }
@@ -6403,7 +6409,7 @@ theload:
       if (err isnot LA_ERR_LOAD) goto theend;
     }
 
-    sym_t *symbol = la_lookup_symbol (this, la_StringNew ("__loadtpath"));
+    sym_t *symbol = la_lookup_symbol (this, la_StringNew ("__loadpath"));
     ArrayType *p_ar = (ArrayType *) AS_ARRAY(symbol->value);
     string **s_ar = (string **) AS_ARRAY(p_ar->value);
     for (size_t i = 0; i < p_ar->len; i++) {
@@ -6707,9 +6713,8 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             result = STRING(new);
 
             if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str) and
-                0 is (this->objectState & ARRAY_MEMBER)) {
+                0 is (this->objectState & ARRAY_MEMBER))
               String.release (x_str);
-            }
           }
 
           if (y.sym is NULL and 0 is ns_is_malloced_string (this->curScope, y_str))

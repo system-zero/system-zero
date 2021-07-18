@@ -60,8 +60,10 @@ SYSTMPDIR      = $(SYSDIR)/../tmp
 
 SYSLADIR       = $(SYSDATADIR)/la
 SYSSCRIPTDIR   = $(SYSLADIR)/scripts
-SYSMODULEDIR  := $(SYSLIBDIR)/modules
+SYSMODULEDIR   = $(SYSLIBDIR)/la-modules
+SYSSCRIPTDIR   = $(SYSLIBDIR)/la-lib
 SYSZMODULEDIR  = $(SYSLIBDIR)/z/la-modules
+SYSZSCRIPTDIR  = $(SYSLIBDIR)/z/la-lib
 
 UID       := $(shell id -u)
 GID       := $(shell id -g)
@@ -244,6 +246,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
   #      - provide a Makefile that could handle the compilation
 
   Z_SRCMODULEDIR = $(Z_SRCDIR)/la-modules
+  Z_SRCLALIBDIR  = $(Z_SRCDIR)/la-lib
 
 #-----------------------------------------------#
 
@@ -1052,6 +1055,12 @@ term-module-shared:
 dir-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) dir-module-shared
 
+#----------- [ LALIBRARY ] -----------------------#
+LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
+
+la-library:
+	@cd $(Z_SRCLALIBDIR) && make $(LALIB_ARGS)
+
 #-----------------------------------------------#
 # Development and personal stuff (ignore this section)
   ZA_SELF          = self
@@ -1089,9 +1098,11 @@ makeenv:
 	@$(TEST) -d $(Z_SYSLIBDIR)   || $(MKDIR)   $(Z_SYSLIBDIR)
 	@$(TEST) -d $(Z_SYSINCDIR)   || $(MKDIR)   $(Z_SYSINCDIR)
 	@$(TEST) -d $(SYSLADIR)      || $(MKDIR)   $(SYSLADIR)
-	@$(TEST) -d $(SYSSCRIPTDIR)  || $(MKDIR)   $(SYSSCRIPTDIR)
+	@$(TEST) -d $(SYSDSCRIPTDIR) || $(MKDIR)   $(SYSDSCRIPTDIR)
 	@$(TEST) -d $(SYSZMODULEDIR) || $(MKDIR)   $(SYSZMODULEDIR)
+	@$(TEST) -d $(SYSZSCRIPTDIR) || $(MKDIR)   $(SYSZSCRIPTDIR)
 	@$(TEST) -d $(SYSMODULEDIR)  || $(MKDIR)   $(SYSMODULEDIR)
+	@$(TEST) -d $(SYSSCRIPTDIR)  || $(MKDIR)   $(SYSSCRIPTDIR)
 
 checkenv:
 	@$(TEST) -w $(SYSDIR)        || exit 1
@@ -1101,9 +1112,11 @@ checkenv:
 	@$(TEST) -w $(SYSTMPDIR)     || exit 1
 	@$(TEST) -w $(SYSDATADIR)    || exit 1
 	@$(TEST) -w $(SYSLADIR)      || exit 1
-	@$(TEST) -w $(SYSSCRIPTDIR)  || exit 1
+	@$(TEST) -w $(SYSDSCRIPTDIR) || exit 1
 	@$(TEST) -w $(SYSZMODULEDIR) || exit 1
+	@$(TEST) -w $(SYSZSCRIPTDIR) || exit 1
 	@$(TEST) -w $(SYSMODULEDIR)  || exit 1
+	@$(TEST) -w $(SYSSCRIPTDIR)  || exit 1
 	@$(TEST) -w $(Z_SYSBINDIR)   || exit 1
 	@$(TEST) -w $(Z_SYSLIBDIR)   || exit 1
 	@$(TEST) -w $(Z_SYSINCDIR)   || exit 1
