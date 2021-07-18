@@ -752,6 +752,7 @@ char *lai_keywords[] = {
   "null T", "ok T", "notok T", "true T", "false T",
   "array V", "map V", "string T", "integer T", "number T",
   "loop I", "forever I", "do I", "lambda F",
+  "Type V", "New V",
   "public V", "private V", "import F", "loadfile F",
   "typeof F", "typeofArray F", "typeAsString F", "typeArrayAsString F",
   "print F", "const V",

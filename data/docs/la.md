@@ -411,6 +411,28 @@ a lot by the S-Lang programming language, which is quite like C.
 
     Note, since a Map is an unordered list, there is no guarrantee of the order.
 
+# Types.
+  These are user defined types, which are like Maps, with a couple of differences
+  that are described below.
+
+  A new type is defined by using the `Type` keyword, with an identifier that the
+  leading character should be capitalized.
+
+    Type Typename {  ... }
+
+  A type is initialized by using the `New` keyword like:
+
+    var s = New Typename ([init arguments])
+
+  Then it can be called like a MapType.
+
+  Types should provide an `init` method. This can be declared as `private` or as
+  `public`. In the latter case the state can be reinitialized at the runtime
+  by the user, without the `New` keyword.
+
+  Declared fields are not obligated to provide a value. In this case these properties
+  are initialized as `null`.
+
 # Strings
   # Two special forms of the `for` loop, can be used as an iterator that can
     loop over strings:
@@ -439,6 +461,8 @@ a lot by the S-Lang programming language, which is quite like C.
 #                object is considered the one that has a value of `null`
 # func        -  function definition
 # lambda      -  lambda function
+# Type        -  user defined type
+# New         -  initializer for user defined types
 # if          -  if conditional
 # ifnot       -  ifnot conditional
 # else        -  else clause

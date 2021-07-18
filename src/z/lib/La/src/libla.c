@@ -98,6 +98,7 @@
 #define EXPR_LIST_STATE               (1 << 0)
 #define MAP_METHOD_STATE              (1 << 1)
 #define OBJECT_RELEASE_STATE          (1 << 2)
+#define TYPE_NEW_STATE                (1 << 3)
 
 #define FMT_LITERAL                   (1 << 0)
 
@@ -132,6 +133,8 @@
 #define LA_TOKEN_PRINT      'P'
 #define LA_TOKEN_RETURN     'R'
 #define LA_TOKEN_STRING     'S'
+#define LA_TOKEN_TYPE       'T'
+#define LA_TOKEN_NEW        'U'
 #define LA_TOKEN_VARDEF     'V'
 #define LA_TOKEN_EXIT       'X'
 #define LA_TOKEN_ARYDEF     'Y'
@@ -300,13 +303,14 @@ struct la_prop {
 struct la_t {
   funT *function;
   funT *std;
-  funT *types;
+  funT *datatypes;
   funT *curScope;
 
   fun_stack funstack[1];
   symbol_stack symbolstack[1];
   Imap_t *funRefcount;
   Vmap_t *units;
+  Vmap_t *types;
 
   char name[32];
   const char *script_buffer;
@@ -1278,7 +1282,7 @@ static int la_define (la_t *this, const char *key, int typ, VALUE val) {
 }
 
 static int la_define_type (la_t *this, const char *key, int typ, VALUE val) {
-  sym_t *sym = la_define_symbol (this, this->types, (char *) key, typ, val, 1);
+  sym_t *sym = la_define_symbol (this, this->datatypes, (char *) key, typ, val, 1);
   return (NULL is sym ? LA_NOTOK : LA_OK);
 }
 
@@ -1291,7 +1295,7 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   sym_t *sym = ns_lookup_symbol (this->std, key);
   ifnot (NULL is sym) return sym;
 
-  sym = ns_lookup_symbol (this->types, key);
+  sym = ns_lookup_symbol (this->datatypes, key);
   ifnot (NULL is sym) return sym;
 
   funT *f = this->curScope;
@@ -3116,8 +3120,15 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
     c = la_next_token (this);
 
-    if (c isnot LA_TOKEN_COLON)
-      return this->syntax_error (this, "error while setting map field, awaiting :");
+    if (c isnot LA_TOKEN_COLON) {
+      ifnot (this->funcState & TYPE_NEW_STATE) {
+        return this->syntax_error (this, "error while setting map field, awaiting :");
+      } else {
+        la_map_set_value (this, map, key, NULL_VALUE, scope);
+        la_unget_char (this);
+        continue;
+      }
+    }
 
     err = map_set_rout (this, map, key, this->scopeState is PUBLIC_SCOPE);
     this->scopeState = scope;
@@ -3327,6 +3338,81 @@ static int la_parse_map_set (la_t *this) {
     return map_set_append_rout (this, map, key, c);
 
   return map_set_rout (this, map, key, 1);
+}
+
+static int la_parse_new (la_t *this, VALUE *vp) {
+  int c = la_next_raw_token (this);
+  if (c isnot LA_TOKEN_SYMBOL)
+    return this->syntax_error (this, "awaiting a type name");
+
+  char type[MAXLEN_SYMBOL + 1];
+  Cstring.cp (type, MAXLEN_SYMBOL + 1, la_StringGetPtr (this->curStrToken),
+      la_StringGetLen (this->curStrToken));
+
+  ifnot (Vmap.key_exists (this->types, type))
+    return la_syntax_error_fmt (this, "%s, not such type", type);
+
+  string *block = (string *) Vmap.get (this->types, type);
+
+  this->curStrToken = la_StringNew (block->bytes);
+
+  this->funcState |= TYPE_NEW_STATE;
+  int err = la_parse_map (this, vp);
+  this->funcState &= ~TYPE_NEW_STATE;
+  if (err) return err;
+
+  if (vp->type isnot MAP_TYPE)
+    return this->syntax_error (this, "not a type");
+
+  Vmap_t *map = AS_MAP((*vp));
+
+  if (this->curToken isnot LA_TOKEN_PAREN_OPEN)
+    return this->syntax_error (this, "awaiting (");
+
+  VALUE *val = Vmap.get (map, "init");
+  if (NULL is val)
+    return this->syntax_error (this, "init method doesn't exists");
+
+  ifnot (val->type & FUNCPTR_TYPE)
+    return this->syntax_error (this, "init, not a function method");
+
+  la_unget_char (this);
+
+  funT *uf = AS_FUNC_PTR((*val));
+  VALUE th = val->sym->value;
+  la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+  this->funcState |= MAP_METHOD_STATE;
+  VALUE v;
+  err = la_parse_func_call (this, &v, NULL, uf, *val);
+
+  la_next_token (this);
+  return err;
+}
+
+static int la_parse_type (la_t *this) {
+  int c = la_next_raw_token (this);
+  if (c isnot LA_TOKEN_SYMBOL)
+    return this->syntax_error (this, "awaiting a type name");
+
+  char type[MAXLEN_SYMBOL + 1];
+  Cstring.cp (type, MAXLEN_SYMBOL + 1, la_StringGetPtr (this->curStrToken),
+      la_StringGetLen (this->curStrToken));
+
+  if ('Z' < type[0] or type[0] < 'A')
+    return this->syntax_error (this, "type names begin with a capital");
+
+  c = la_next_token (this);
+  if (c isnot LA_TOKEN_BLOCK)
+    return this->syntax_error (this, "awaiting block");
+
+  string *block = String.new_with_len (la_StringGetPtr (this->curStrToken),
+      la_StringGetLen (this->curStrToken));
+
+  Vmap.set (this->types, type, block, la_release_unit, 0);
+
+  la_next_token (this);
+
+  return LA_OK;
 }
 
 static int la_parse_expr_list (la_t *this) {
@@ -3820,6 +3906,35 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     case LA_TOKEN_STRING:
       return la_string_get (this, vp);
 
+    case LA_TOKEN_NEW:
+      err = la_parse_new (this, vp);
+      if (err isnot LA_OK)
+        return err;
+
+      while (this->curToken is LA_TOKEN_DOT) {
+        la_unget_char (this);
+
+        this->tokenValue = *vp;
+        VALUE mapval = this->tokenValue;
+
+        this->curToken = LA_TOKEN_MAP;
+        err = la_parse_primary (this, vp);
+        if (err isnot LA_OK)
+          return err;
+
+        if (mapval.sym is NULL) {
+          VALUE v = *vp;
+
+          if (v.type isnot MAP_TYPE) {
+            *vp = la_copy_value (v);
+            this->objectState &= ~MMT_OBJECT;
+          }
+
+          la_free (this, mapval);
+        }
+      }
+
+      return err;
     case LA_TOKEN_BLOCK:
       err = la_parse_map (this, vp);
       if (err isnot LA_OK)
@@ -3939,7 +4054,7 @@ do_token:
       ifnot (NULL is sym)
         return this->syntax_error (this, "can not redefine a standard symbol");
 
-      sym = ns_lookup_symbol (this->types, key);
+      sym = ns_lookup_symbol (this->datatypes, key);
       ifnot (NULL is sym) {
         this->tokenSymbol = sym;
         int (*func) (la_t *) = AS_VOID_PTR(sym->value);
@@ -5742,7 +5857,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
               }
 
               this->fmtState &= ~FMT_LITERAL;
-              this->objectState &= ~ARRAY_MEMBER;
+              this->objectState &= ~(ARRAY_MEMBER|MMT_OBJECT);
               break;
 
             case NULL_TYPE:
@@ -7041,6 +7156,8 @@ static struct def {
   { "import",  LA_TOKEN_IMPORT,   PTR(la_parse_import) },
   { "public",  LA_TOKEN_PUBLIC,   PTR(la_parse_visibility) },
   { "private", LA_TOKEN_PRIVATE,  PTR(la_parse_visibility) },
+  { "Type",    LA_TOKEN_TYPE,     PTR(la_parse_type) },
+  { "New",     LA_TOKEN_NEW,      NULL_VALUE  },
   { "*",       BINOP(1),          PTR(la_mul) },
   { "/",       BINOP(1),          PTR(la_div) },
   { "%",       BINOP(1),          PTR(la_mod) },
@@ -7092,7 +7209,7 @@ static struct deftype {
   const char *name;
   int toktype;
   VALUE val;
-} la_def_types[] = {
+} la_def_datatypes[] = {
   { "map",     MAP_TYPE,     PTR(la_parse_array_def) },
   { "array",   ARRAY_TYPE,   PTR(la_parse_array_def) },
   { "string",  STRING_TYPE,  PTR(la_parse_array_def) },
@@ -7446,9 +7563,10 @@ static void la_release (la_t **thisp) {
   String.release (this->message);
   Imap.release   (this->funRefcount);
   Vmap.release   (this->units);
+  Vmap.release   (this->types);
   fun_release (&this->function);
   fun_release (&this->std);
-  fun_release (&this->types);
+  fun_release (&this->datatypes);
 
   free (this);
   *thisp = NULL;
@@ -7652,7 +7770,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->std = fun_new (
       funNew (.name = NS_STD, .namelen = NS_STD_LEN, .num_symbols = 256));
 
-  this->types = fun_new (
+  this->datatypes = fun_new (
       funNew (.name = "__types__", .namelen = 9, .num_symbols = 256));
 
   Fun_new (this,
@@ -7667,8 +7785,8 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
     }
   }
 
-  for (i = 0; la_def_types[i].name; i++) {
-    err = la_define_type (this, la_def_types[i].name, la_def_types[i].toktype, la_def_types[i].val);
+  for (i = 0; la_def_datatypes[i].name; i++) {
+    err = la_define_type (this, la_def_datatypes[i].name, la_def_datatypes[i].toktype, la_def_datatypes[i].val);
 
     if (err isnot LA_OK) {
       la_release (&this);
@@ -7698,6 +7816,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
 
   this->funRefcount = Imap.new (256);
   this->units = Vmap.new (32);
+  this->types = Vmap.new (32);
 
   la_append_instance (interp, this);
 
