@@ -253,9 +253,7 @@ public
         msg += ' '
       }
 
-      msg += "  " + this.descr[i]
-      # this is (for now) to avoid a memory leak
-      msg += "\n"
+      msg += "  " + this.descr[i] + "\n"
     }
 
     println ("${%s, msg}")

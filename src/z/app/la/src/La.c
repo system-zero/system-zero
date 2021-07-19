@@ -1,5 +1,5 @@
 #define APPLICATION "La"
-#define APP_OPTS    "script"
+#define APP_OPTS    "filename"
 
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
@@ -48,10 +48,9 @@ int main (int argc, char **argv) {
 
   __INIT_APP__;
 
+  (void) vmapType;
+
   argparse_option_t options[] = {
-   // OPT_HELP (),
-    OPT_GROUP("Options:"),
-    OPT_BOOLEAN(0, "version", &version, "show version", NULL, 0, 0),
     OPT_END()
   };
 

@@ -4311,6 +4311,8 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     }
   }
 
+  int num_iter = 0;
+
   do {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
@@ -4341,6 +4343,8 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     this->curMsg[0] = '\0';
     VALUE sv_lhs = lhs;
 
+    if (num_iter++) this->objectState |= OBJECT_APPEND;
+
     lhs = op (this, lhs, rhs);
 
     if (this->CFuncError isnot LA_OK) {
@@ -4367,7 +4371,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
   } while ((c & 0xff) is LA_TOKEN_BINOP);
 
   this->curState &= ~(STRING_LITERAL_ARG_STATE|LITERAL_STRING_STATE);
-  this->objectState &= ~ARRAY_MEMBER;
+  this->objectState &= ~(ARRAY_MEMBER|OBJECT_APPEND);
 
   *vp = lhs;
 
