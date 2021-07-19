@@ -149,6 +149,16 @@ ifeq ($(DIR_MODULE), 1)
   endif
 endif
 
+SH_MODULE := 1
+ifeq ($(SH_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_SH_MODULE
+  LA_STATIC_FLAGS += -lsh-$(VERSION) -lproc-$(VERSION)
+  ifeq ($(STRING_DECLARED), 0)
+    LA_STATIC_FLAGS += -lstring-$(VERSION)
+    STRING_DECLARED = 1
+  endif
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(LA)-shared $(SYSBINDIR)/$(LA)

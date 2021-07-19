@@ -39,6 +39,10 @@
 #include "../../../la-modules/dir/dir-module.c"
 #endif
 
+#ifdef REQUIRE_SH_MODULE
+#include "../../../la-modules/sh/sh-module.c"
+#endif
+
 int main (int argc, char **argv) {
   la_T *LaN = __init_la__ ();
   __LA__ = *LaN;
@@ -105,6 +109,10 @@ eval:
 
   #ifdef REQUIRE_DIR_MODULE
     __init_dir_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_SH_MODULE
+    __init_sh_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

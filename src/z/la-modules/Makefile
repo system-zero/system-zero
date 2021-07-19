@@ -89,6 +89,13 @@ clean-dir-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/dir-module.so  || $(RM)  $(SYSMODULEDIR)/dir-module.so
 
 #-----------------------------------------------------------
+SH_FLAGS = -lvmap -lvstring -lstring -lsh
+sh-module-shared:
+	$(CC) -o $(SYSMODULEDIR)/sh-module.so $(SHARED_FLAGS) $(SH_FLAGS) sh/sh-module.c
+
+clean-sh-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/sh-module.so  || $(RM)  $(SYSMODULEDIR)/sh-module.so
+#-----------------------------------------------------------
 makeenv:
 	@$(TEST) -d $(SYSMODULEDIR)     || $(MKDIR) -p $(SYSMODULEDIR)
 checkenv:

@@ -1055,6 +1055,9 @@ term-module-shared:
 dir-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) dir-module-shared
 
+sh-module-shared: libsh-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sh-module-shared
+
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 
