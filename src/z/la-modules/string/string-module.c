@@ -84,7 +84,7 @@ static VALUE string_advance (la_t *this, VALUE v_str, VALUE v_n) {
 
   if (n < 1) return STRING(str);
 
-  if (n >= str->num_bytes) n = str->num_bytes - 1;
+  if (n >= (int) str->num_bytes) n = str->num_bytes - 1;
   String.delete_numbytes_at (str, n, 0);
   return STRING(str);
 }

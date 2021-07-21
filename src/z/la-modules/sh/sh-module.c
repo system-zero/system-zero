@@ -49,6 +49,7 @@ public int __init_sh_module__ (la_t *this) {
 
   (void) vstringType;
   (void) vmapType;
+  (void) stringType;
 
   LaDefCFun lafuns[] = {
     { "sh_new",             PTR(sh_new), 0 },

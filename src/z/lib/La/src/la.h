@@ -246,7 +246,9 @@ typedef struct la_get_self {
     *(*eval_str) (la_t *),
     *(*message) (la_t *);
 
-   int (*current_idx) (la_T *);
+   int
+     (*didExit) (la_t *),
+     (*current_idx) (la_T *);
 
    la_T *(*root) (la_t *);
 } la_get_self;

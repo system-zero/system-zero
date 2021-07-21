@@ -330,7 +330,6 @@ struct la_t {
   int
     Errno,
     CFuncError,
-    lineNum,
     curToken,
     curState,
     funcState,
@@ -340,7 +339,8 @@ struct la_t {
     fmtRefcount,
     exitValue,
     tokenArgs,
-    didReturn;
+    didReturn,
+    didExit;
 
   size_t anon_id;
 
@@ -1375,7 +1375,6 @@ static int la_do_next_token (la_t *this, int israw) {
       do
         c = la_get_char (this);
       while (c >= 0 and c isnot LA_TOKEN_NL);
-      this->lineNum++;
 
       r = c;
       break;
@@ -3497,10 +3496,8 @@ static int la_parse_string (la_t *this, la_string str) {
   for (;;) {
     c = la_next_token (this);
 
-    while (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON) {
-      if (c is LA_TOKEN_NL) this->lineNum++;
+    while (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON)
       c = la_next_token (this);
-    }
 
     if (c < 0) break;
 
@@ -3516,10 +3513,9 @@ static int la_parse_string (la_t *this, la_string str) {
 
     c = this->curToken;
 
-    if (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON or c < 0) {
-      if (c is LA_TOKEN_NL) this->lineNum++;
+    if (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON or c < 0)
       continue;
-    } else
+    else
       return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
   }
 
@@ -4015,7 +4011,6 @@ static int la_parse_stmt (la_t *this) {
 
 do_token:
   c = this->curToken;
-
   switch (c) {
     case LA_TOKEN_BREAK:
       if (this->curState & LOOP_STATE) {
@@ -4517,7 +4512,6 @@ static int la_parse_while (la_t *this) {
   int parenopen = 1;
   while (*ptr) {
     if (*ptr is LA_TOKEN_NL) {
-      this->lineNum++;
       ptr++;
       continue;
     }
@@ -4661,7 +4655,6 @@ static int la_parse_do (la_t *this) {
   int parenopen = 1;
   while (*ptr) {
     if (*ptr is LA_TOKEN_NL) {
-      this->lineNum++;
       ptr++;
       continue;
     }
@@ -5451,10 +5444,7 @@ static int la_parse_loop (la_t *this) {
       break;
     }
 
-    if (*ptr is LA_TOKEN_NL) {
-      this->lineNum++;
-      ptr++;
-    }
+    if (*ptr is LA_TOKEN_NL) ptr++;
 
     ptr++;
   }
@@ -7403,19 +7393,16 @@ static int la_eval_string (la_t *this, const char *buf) {
   Cstring.cp (prev_file, len + 1, file->bytes, len);
   String.replace_with (file, LA_STRING_NS);
 
-  int prev_linenum = this->lineNum;
-  this->lineNum = 0;
-
   int retval = la_parse_string (this, x);
-
-  this->lineNum = prev_linenum;
 
   String.replace_with_len (file, prev_file, len);
 
   this->script_buffer = prev_buffer;
 
-  if (retval is LA_ERR_EXIT)
+  if (retval is LA_ERR_EXIT) {
+    this->didExit = 1;
     return this->exitValue;
+  }
 
   return retval;
 }
@@ -7507,14 +7494,9 @@ static int la_eval_file (la_t *this, const char *filename) {
   Cstring.cp (prev_file, len + 1, file->bytes, len);
   String.replace_with (file, fn);
 
-  int prev_linenum = this->lineNum;
-  this->lineNum = 0;
-
   la_string x = la_StringNew (script_buf->bytes);
 
   int retval = la_parse_string (this, x);
-
-  this->lineNum = prev_linenum;
 
   String.replace_with_len (file, prev_file, len);
 
@@ -7695,6 +7677,10 @@ static char *la_get_message (la_t *this) {
   return this->message->bytes;
 }
 
+static int la_get_didExit (la_t *this) {
+  return this->didExit;
+}
+
 public la_T *la_get_root (la_t *this) {
   return this->root;
 }
@@ -7735,6 +7721,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->user_data = opts.user_data;
   this->define_funs_cb = opts.define_funs_cb;
 
+  this->didExit = 0;
   this->didReturn = 0;
   this->exitValue = LA_OK;
   this->curState = 0;
@@ -7937,9 +7924,10 @@ public la_T *__init_la__ (void) {
         .root = la_get_root,
         .message = la_get_message,
         .current = la_get_current,
+        .didExit = la_get_didExit,
         .eval_str = la_get_eval_str,
         .user_data = la_get_user_data,
-        .current_idx = la_get_current_idx,
+        .current_idx = la_get_current_idx
       },
       .set = (la_set_self) {
         .Errno = la_set_Errno,

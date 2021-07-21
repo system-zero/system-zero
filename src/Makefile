@@ -887,16 +887,20 @@ clean-i-static:
   ZA_LA          = la
   ZA_LA_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_LA)/src
 
-la-shared: libargparse-shared libla-shared
+lai-shared: libargparse-shared librline-shared libla-shared
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-la-static: libargparse-static libla-static
+lai-static: libargparse-static librline-static libla-static
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
-clean-la-shared:
+la-shared: lai-shared modules-shared la-library
+
+la-static: lai-shared la-library
+
+clean-lai-shared:
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
 
-clean-la-static:
+clean-lai-static:
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
   # e

@@ -22,12 +22,13 @@ Env: makeenv checkenv
 
 shared: Env clean-shared path-module-shared file-module-shared\
         string-module-shared std-module-shared term-module-shared\
-        dir-module-shared
+        dir-module-shared sh-module-shared
 
 clean: clean-shared
 
 clean-shared: clean-path-shared clean-file-shared clean-string-shared\
-              clean-std-shared clean-term-shared clean-dir-shared
+              clean-std-shared clean-term-shared clean-dir-shared\
+              clean-sh-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC -lla
