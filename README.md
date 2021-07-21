@@ -23,7 +23,7 @@ Since this is a quite huge task, we'll  have to extend our system in a gradual
 way, so  we have to divide  it into stages. At  the end of any  stage, the end
 result should be in a usable state.
 
-*Note* that this needs a serious revision. This is a quite first prototype, that
+*Note* that this document needs a serious revision, as it is a quite first prototype, that
 is expressed here sometimes in a list of ideas form. Some paragraphs are quite
 verbose, and might loose their intented meaning. Some statements might overlap
 with others. Expressions can be sometimes confusing, as the natural mind  flow
@@ -171,7 +171,7 @@ time and patches.
 
 But  our main  intention  is  to describe  and  provide  the shorted  possible
 solution  to  a  need.  And  at  this stage  we  care  only  about  the  basic
-functionality. ut as it has been said already a shell is capable to do almost
+functionality. But as it has been said already a shell is capable to do almost
 everything, this really depends of the  availability of a ecosystem. We'll try
 to build some common tools in time.
 
@@ -204,7 +204,7 @@ the linked libraries should match. There are reasons  for  this  probably,  but
 that means that there is no much benefit for  linking  this  utility statically,
 even if the compilation succeeded. And which it did, after  I  manually compiled
 pam and cretated a static library. But there are many other functions that can
-to be used safely, like many of the important nss functions or dlopen(), and
+not be used safely, like many of the important nss functions or dlopen(), and
 popular libraries like libcurl.
 
 The  installed system hierarchy for now is:
@@ -221,45 +221,17 @@ product made by humans, should offer first (almost as prerequisitie), the most
 primitive access level of the provided functionality possible. And is probably
 wise to apply this principle rigorously when they are being extended.
 
-For instance  C++,  is a superset of C, and any C++ compiler should compile C,
-since any C code is valid code for C++. However C++, which at the begining was
-just C with classes, during the natural evolution, it has been extended   with
-more and more paradigms and so many features, without a gradual extensibility.
-
-So steadily became so wide and rich at the same time, that a common human mind
-can not learn and use all of its functionality, so usually a C++ programmer is
-trying to focus on a specific set of the language. As it is obvious that since
-that everybody has a different way to express when coding, this might makes the
-language inadequate for a smooth collaboration or/and to attract envolvement in
-development. And so even if admittedly it has all the qualifications to be even
-considered as the the One True Language, sometimes you might feel, that you are
-just loosing the point and your time, searching for the ultimate way to do your
-job. And this is of course a pity, for a language that if it was designed today
-and kept the quite best of its evolution, could rule the programming world. But
-so much code has been written that has incorporated already historical mistakes
-or immature features, that it should still be compiled by the compiler,  or/and
-should be maintained by usually people that haven't written that code. So  and
-as a resume, it's not only about to  be powerfull, but and how you handle this
-power at the end, in such a way that it would be easy to be used by everybody,
-and with a well defined and more importantly stable specification. In contrast
-that though C is much less capable than C++, it took the world, as even  today
-code that has been written some light years ago, still it is compiled and it is
-understandable today.
-
 We also believe  that the description shares the same  importance with the end
 result. This  satisfy first  the inner human  curiosity, but  most importantly
 allows a system to be further developed. But mainly because a human being gets
 answers and has the chance to create a system based on own efforts, if there is
-the desire. We want to know how to catch fishes, don't we? If not, and we like
-just to be like kings, then please do not go any further, neither in this next
-paragraph, nor in this life. It really doesn't makes sense such a life, as  it
-can not bring happiness with no f way. Our meal that we've cooked by ourselves
-and which were cultivated in our garden, it has the sweetest taste  possible.
+such a desire.
 
 We have also to appreciate the availability of the required tools to build the
 system. These tools are free to use them (free as free beer) by anyone in this
 world. But it is so, because we obey  and serve, to the one and only principle
 that is:  the source code should be free (free as in freedom here).
+
 We can be sure, that the people of this world, wouldn't be possible to produce
 this tremendous in size and quality code, in that so sort time, if they had to
 pay for those tools, or wouldn't be available code to study. We don't even want
@@ -277,8 +249,8 @@ the ultimate freedom and a pride path to our evolution, without  hiding  behind
 our known by now illusions. But we are free to choose. There are ready solutions
 and conveniences, special made to hold us back on our lifes, by pushing us in a
 eternal painfull cycle. Somehow we should climb that hill. We are saying instead
-of a torture this can became a pleasant journey. But even if its gettin painfull,
-it is much better if we walk this path with others. So it isn't the open  source
+of a torture, this can became a pleasant journey. But even if its getting painfull
+sometimes, it is much better if we walk this path with others. So it isn't the open  source
 model that should adjust, it is the other way around. The society and the system
 should do this task, no matter how painfull that is for us. The end result  will
 repay us with uncountable and precious gifts.
@@ -287,10 +259,10 @@ repay us with uncountable and precious gifts.
 
 So far, we've implemented an utility,  that can act as an intermediary between
 the user  and the  kernel of  the Operating  System. This  implementation gets
-input from  the keyboard, and then it parses and interprets this text, and  at
-then makes the request for this kernel service. This kind of utility is called
-a `shell`, and it is the traditional UNIX system powerfull interface, and which served the
-people wi
+input from  the keyboard, then it parses and interprets this text, and then
+makes the request for this kernel service. This kind of utility is called a `shell`,
+and it is the traditional UNIX system powerfull interface, and which served the
+people through the very first days.
 
 For instance in UNIX, if we wish to get a list of the contents of a directory,
 we use the `ls` utility. If we use it without an argument, then it prints  the
@@ -432,7 +404,7 @@ Quite convenient mechanisms.
 
 And some fragile too.
 We've also introduced pipelines and also commands that use them. Its not easy to
-make them work reliabe, as there many side affects:
+make them work reliabe, as there are many side affects:
 ```sh
   $ printf newdir/another/andanother | Dir.make --parents --verbose
   created directory: newdir, with mode 0755 (drwxr-xr-x)
@@ -445,13 +417,13 @@ make them work reliabe, as there many side affects:
 ```
 But what if we've used `echo` instead of printf? The echo utility it isn't  that
 portable and the usual implementations they print a newline by default.
-And what it determinates that the output of printf will be the input of `Dir.make`.
+And what it determinates that the output of printf will be the input of `Dir.make`?
 We assume it is not an argument. What to do in a case  of an error and we are  in
 the middle of the pipe, or our second command needs some info from the user (like
 a password). In the latter case, what it determinates that the argunments are for
 the `sudo` utility and not for the command itself?
 
-As a remark, a pipeline it look like a `function composition`.
+As a remark, a pipeline it looks like a `function composition`.
 
 ### The argument mechanism.
 Here  we've used  two  arguments  known  in  everyone  that  used  those  tools.
@@ -510,7 +482,7 @@ underlying inode.
 Couldn't have been  done simpler for us  mere mortals, as with  this number in
 our hands, we now can access and manipulate the data.
 
-Note that,  what is almost  unbelievable, is  that how ridiculously  simple to
+Note that,  what is almost  unbelievable, is  that how ridiculously simple is to
 read and  write back. The document  about [Pointers](data/docs/pointers.md) is
 trying to explain some bits, by using the above example.
 
@@ -578,7 +550,7 @@ us, and allows consistency, which is quite important to a system.
 ## Interface.
 In this  sample system, we are  choosing to implement, a  user interface, that
 will  resemble a  `vi(m)`  like  interface. Because  of  historical reasons  and
-because is  an intuitive,  this is  very popular  and already  established, as
+because is  intuitive,  this is  very popular  and already  established, as
 quite many applications offer this capability.
 
 A common  interface is quite  important for obvious  reasons, as it  allows to
@@ -1031,6 +1003,60 @@ its own [documentation](data/docs/la.md).
 
     This also reveals and the future route. We'll simply make it more slow, by
     adding a couple more of features and convienences!
+
+## ZERO_POINT_ONE_STATE
+
+And so we did. We've added many features and convienences, during those last three
+months, and now we have a way to extend the system in a dynamical way.
+
+But this development fulfiled one other purpose too. The idea for a Common Programming
+Language Specification. This is an implemetation of such a specification, which it is
+believed that can be used as a base, to define the semantics and its syntax.
+
+As a small synopsis of the development of this system, and as of now (20 July), we've
+implemented:
+  - an ala [vim](http://www.vim.org) [editor](data/docs/editor.md)
+  - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
+  - a very early draft of a [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility](data/docs/zs.md)
+  - an early draft of a sudo like utility (audit review required)
+  - a [programming language](data/docs/la.md)
+  - a little bit more than a couple of commands that initialize the libraries and
+    for first time the programming language
+
+Install Instructions.
+
+Requirenments:
+
+The make utility, a C compiler, a linker, a libc and libpam.
+
+```sh
+  cd src
+
+  # note that to clean up previous libraries, issue:
+    make REV=0 clean-shared
+    make REV=0 clean-static
+  # or/and
+    make REV=1 clean-shared
+    make REV=1 clean-static
+
+  # shared targets
+  make shared && make e-shared && make la-shared && make v-shared
+
+  # static targets
+  make static && make e-static && make la-static && make v-static
+
+  # Note, that the installation of the zsu utility requires the
+  # sudo utility, as it has to be installed as setuid root.
+
+```
+Tested with `gcc` but the targets they should compiled with clang also.
+The compilation should endup without a single warning, even with DEBUG enabled.
+To do that use:
+```
+  make DEBUG=1 shared
+  # or/and
+  make DEBUG=1 static
+```
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

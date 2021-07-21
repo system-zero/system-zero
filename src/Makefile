@@ -18,7 +18,7 @@
 #-----------------------------------------------#
 # Application Interface and versioning.
 API     := 0
-REV     := 1
+REV     := 2
 VERSION  = $(API).$(REV)
 #-----------------------------------------------#
 #           HIERARCHY
