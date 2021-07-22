@@ -11,6 +11,7 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
+#define REQUIRE_OS_TYPE      DECLARE
 #define REQUIRE_FILE_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -111,6 +112,8 @@ static mode_t file_mode_from_octal_string (char *oct_str) {
  * License, or (at your option) any later version.
  */
 
+#if 0
+//moved to libos
 static char *file_mode_stat_to_string (char *mode_string, mode_t mode) {
   /* assumed at least 11 bytes */
 
@@ -140,6 +143,7 @@ static char *file_mode_stat_to_string (char *mode_string, mode_t mode) {
   mode_string[10] = '\0';
   return mode_string;
 }
+#endif
 
 static string_t *file_readlink (const char *file) {
   size_t size = MAXLEN_PATH;
@@ -318,6 +322,7 @@ theend:
 }
 
 public file_T __init_file__ (void) {
+  __INIT__ (os);
   __INIT__ (dir);
   __INIT__ (string);
   __INIT__ (vstring);
@@ -345,7 +350,7 @@ public file_T __init_file__ (void) {
         .release = file_tmpfname_release
       },
       .mode = (file_mode_self) {
-        .stat_to_string = file_mode_stat_to_string,
+        .stat_to_string = OS.mode.stat_to_string,
         .from_octal_string = file_mode_from_octal_string
 
       }

@@ -26,6 +26,7 @@
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_TERM_TYPE    DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
+#define REQUIRE_OS_TYPE      DECLARE
 #define REQUIRE_AUTH_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -323,14 +324,13 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
     return NULL;
   }
 
-  errno = 0;
-  struct passwd *pswd = getpwuid (uid);
-  if (NULL is pswd) {
-    Stderr.print_fmt ("can not read password record %s\n", Error.errno_string (errno));
+  char *pwname = OS.get.pwname (uid);
+  if (NULL is pwname) {
+    Stderr.print_fmt ("can not find user with uid %d\n", uid);
     return NULL;
   }
 
-  size_t name_len = bytelen (pswd->pw_name);
+  size_t name_len = bytelen (pwname);
 
   ifnot (name_len) {
     Stderr.print ("user name has no length\n");
@@ -343,19 +343,19 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
   }
 
   ifnot (NULL is user) {
-    ifnot (Cstring.eq  (pswd->pw_name, user)) {
+    ifnot (Cstring.eq  (pwname, user)) {
       Stderr.print_fmt ("%s: invalid user\n", user);
       return NULL;
     }
   }
 
-  struct group *gr = getgrgid (gid);
-  if (NULL is gr) {
-    Stderr.print_fmt ("can not read group record %s\n", Error.errno_string (errno));
+  char *grname = OS.get.grname (gid);
+  if (NULL is grname) {
+    Stderr.print_fmt ("can not find group name for gid %d\n", gid);
     return NULL;
   }
 
-  size_t group_len = bytelen (gr->gr_name);
+  size_t group_len = bytelen (grname);
 
   ifnot (group_len) {
     Stderr.print ("group name has no length\n");
@@ -378,8 +378,10 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
   $my(hashed_data) = NULL;
   $my(test_prog) = NULL;
 
-  $my(user) = String.new_with (pswd->pw_name);
-  $my(group) = String.new_with (gr->gr_name);
+  $my(user) = String.new_with (pwname);
+  $my(group) = String.new_with (grname);
+  free (pwname);
+  free (grname);
 
   $my(hashed_data) = String.new (32);
 
@@ -400,6 +402,7 @@ static auth_t *auth_new (const char *user, const char *test_prog, int cached_tim
 
 public auth_T  __init_auth__ (void) {
   __INIT__ (io);
+  __INIT__ (os);
   __INIT__ (term);
   __INIT__ (error);
   __INIT__ (string);

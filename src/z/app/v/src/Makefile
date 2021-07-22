@@ -101,7 +101,7 @@ V_FLAGS += -lcstring-$(VERSION)
 
 V_STATIC_FLAGS  = -lio-$(VERSION) -lustring-$(VERSION) -lreadline-$(VERSION)
 V_STATIC_FLAGS += -lvideo-$(VERSION) -lvui-$(VERSION) -lvmap-$(VERSION)
-V_STATIC_FLAGS += -limap-$(VERSION) -lsmap-$(VERSION)
+V_STATIC_FLAGS += -limap-$(VERSION) -lsmap-$(VERSION) -los-$(VERSION)
 
 v-util-shared:
 	$(CC) $(V).c $(V_FLAGS) -o $(SYSBINDIR)/$(V)-shared
@@ -128,7 +128,8 @@ V_WM_FLAGS += -lterm-$(VERSION) -lfile-$(VERSION) -lsmap-$(VERSION)
 V_WM_STATIC_FLAGS  = -ldir-$(VERSION) -lreadline-$(VERSION) -lvideo-$(VERSION)
 V_WM_STATIC_FLAGS += -lvstring-$(VERSION) -lpath-$(VERSION)
 V_WM_STATIC_FLAGS += -lsys-$(VERSION) -lerror-$(VERSION) -lsmap-$(VERSION)
-V_WM_STATIC_FLAGS += -lvui-$(VERSION)
+V_WM_STATIC_FLAGS += -lvui-$(VERSION) -los-$(VERSION)
+
 v-wm-shared:
 	$(CC) $(V_WM).c $(V_WM_FLAGS) -o $(SYSBINDIR)/$(V_WM)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(V_WM)-shared $(SYSBINDIR)/$(V_WM)

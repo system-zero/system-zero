@@ -105,9 +105,7 @@ static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
   for (int i = 0; i < ctok->num_tokens; i++)
     String.replace_with_len (ar[i], ctok->tokens[i], ctok->length[i]);
 
-  for (int i = 0; i < ctok->num_tokens; i++)
-    free (ctok->tokens[i]);
-  free (ctok->tokens); free (ctok->length); free (ctok);
+  Cstring.tok_release (ctok);
 
   return ARRAY(array);
 }

@@ -44,7 +44,7 @@ endif
 # if turn on -Wpedantic gcc gives: ISO C forbids braced-groups within expressions
 # (this is for statement expressions)
 
-STATIC_CFLAGS := -static
+STATIC_CFLAGS :=  -L$(SYSLIBDIR)/.. -static
 
 FLAGS         := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(BASE_FLAGS)
 
@@ -68,7 +68,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -lauth-$(VERSION) -lcstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION) -lproc-$(VERSION) -lpam
-FLAGS += -lio-$(VERSION) -lterm-$(VERSION) -lerror-$(VERSION)
+FLAGS += -lio-$(VERSION) -lterm-$(VERSION) -lerror-$(VERSION) -los-$(VERSION)
 
 SHARED_FLAGS = $(FLAGS)
 STATIC_FLAGS = $(FLAGS) $(STATIC_CFLAGS) -ldl

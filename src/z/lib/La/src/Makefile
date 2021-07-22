@@ -90,7 +90,6 @@ LIBFLAGS += -lstring-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)
 LIBFLAGS += -lustring-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION)
 LIBFLAGS += -lerror-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
 LIBFLAGS += -ldir-$(VERSION)
-LIBFLAGS += -lterm-$(VERSION)
 
 all: shared static
 

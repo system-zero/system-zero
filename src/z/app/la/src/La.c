@@ -45,6 +45,10 @@
 #include "../../../la-modules/sh/sh-module.c"
 #endif
 
+#ifdef REQUIRE_OS_MODULE
+#include "../../../la-modules/os/os-module.c"
+#endif
+
 static void la_completion (const char *buf, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
 
@@ -68,9 +72,6 @@ static rline_t *la_init_rline (char *histfile) {
   Rline.set.hints_cb (this, la_hints, this); // UNUSED
   Rline.history.set.file (this, histfile);
   Rline.history.load (this);
-
-  Rline.set.prompt (this, ">> ");
-
   return this;
 }
 
@@ -185,7 +186,7 @@ static int la_interactive (la_t *this) {
 
     if (should_eval) {
       retval = La.eval_string (this, evalbuf->bytes + len);
-      len += (evalbuf->num_bytes - len);
+      len = evalbuf->num_bytes;
       if (retval < LA_OK or La.get.didExit (this)) {
         Rline.history.add (rline, line);
         free (line);
@@ -276,6 +277,10 @@ eval:
 
   #ifdef REQUIRE_SH_MODULE
     __init_sh_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_OS_MODULE
+    __init_os_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

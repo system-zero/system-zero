@@ -368,6 +368,7 @@ public cstring_T __init_cstring__ (void) {
       .substr = cstring_substr,
       .cp_fmt = cstring_cp_fmt,
       .tokenize = cstring_tokenize,
+      .tok_release = cstring_tok_release,
       .bytes_in_str = strstr,
       .extract_word_at = cstring_extract_word_at,
       .trim = (cstring_trim_self) {

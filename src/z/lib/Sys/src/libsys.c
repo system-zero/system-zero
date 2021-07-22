@@ -17,6 +17,7 @@
 #define REQUIRE_SMAP_TYPE     DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
+#define REQUIRE_OS_TYPE       DECLARE
 #define REQUIRE_SYS_TYPE      DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -145,9 +146,10 @@ static int sys_init_environment (sys_env_opts opts) {
 
   errno = 0;
 
-  struct passwd *pswd = getpwuid (uid);
-  ifnot (NULL is pswd) {
-    sys_set_env_as (pswd->pw_name, "USERNAME", opts.overwrite);
+  char *pwname = OS.get.pwname (uid);
+  ifnot (NULL is pwname) {
+    sys_set_env_as (pwname, "USERNAME", opts.overwrite);
+    free (pwname);
   } else {
     do {
       if (opts.username isnot NULL) {
@@ -181,9 +183,10 @@ static int sys_init_environment (sys_env_opts opts) {
 
   errno = 0;
 
-  struct group *gr = getgrgid (gid);
-  ifnot (NULL is gr) {
-    sys_set_env_as (gr->gr_name, "GROUPNAME", opts.overwrite);
+  char *grname = OS.get.grname (gid);
+  ifnot (NULL is grname) {
+    sys_set_env_as (grname, "GROUPNAME", opts.overwrite);
+    free (grname);
   } else {
     do {
       if (opts.groupname isnot NULL) {
@@ -226,8 +229,10 @@ static int sys_init_environment (sys_env_opts opts) {
         break;
       }
 
-      ifnot (NULL is pswd) {
-        home = sys_set_env_as (pswd->pw_dir, "HOME", opts.overwrite);
+      char *hmname = OS.get.pwdir (uid);
+      ifnot (NULL is hmname) {
+        home = sys_set_env_as (hmname, "HOME", opts.overwrite);
+        free (hmname);
         break;
       }
 
@@ -468,6 +473,7 @@ public sys_T __init_sys__ (void) {
   if (is_initialized) return __SYS__;
 
   __INIT__ (io);
+  __INIT__ (os);
   __INIT__ (dir);
   __INIT__ (path);
   __INIT__ (file);

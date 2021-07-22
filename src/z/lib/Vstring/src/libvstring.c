@@ -171,7 +171,7 @@ static Vstring_t *vstring_dup (Vstring_t *this) {
 }
 
 /* so far, we always want sorted and unique members */
-static Vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, char *bytes) {
+static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, char *bytes) {
   vstring_t *vs = Alloc (sizeof (vstring_t));
   vs->data = String.new_with (bytes);
 
@@ -239,9 +239,10 @@ theend:
   else {
     String.release (vs->data);
     free (vs);
+    vs = NULL:
   }
 
-  return this;
+  return vs;
 }
 
 static void vstring_append_uniq (Vstring_t *this, char *bytes) {

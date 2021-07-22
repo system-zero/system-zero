@@ -17,8 +17,9 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
-#define REQUIRE_DIR_TYPE     DONOT_DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
+#define REQUIRE_OS_TYPE      DECLARE
+#define REQUIRE_DIR_TYPE     DONOT_DECLARE
 
 #include <z/cenv.h>
 #include "__dir.h"
@@ -58,16 +59,18 @@ static dirlist_t *dir_list (char *dir, int flags) {
   ifnot (flags & DIRLIST_DONOT_CHECK_DIRECTORY)
     ifnot (dir_is_directory (dir)) return NULL;
 
+  int is_long = flags & DIRLIST_LONG_FORMAT;
+
   DIR *dh = NULL;
   if (NULL is (dh = opendir (dir))) return NULL;
   struct dirent *dp;
 
   size_t len;
-
   dirlist_t *dlist = Alloc (sizeof (dirlist_t));
   dlist->release = dir_list_release;
   dlist->list = Vstring.new ();
   Cstring.cp (dlist->dir, PATH_MAX, dir, PATH_MAX - 1);
+  size_t dirlen = bytelen (dlist->dir);
 
   while (1) {
     errno = 0;
@@ -81,15 +84,30 @@ static dirlist_t *dir_list (char *dir, int flags) {
       if (len is 1 or dp->d_name[1] is '.')
         continue;
 
-    vstring_t *vstr = Vstring.new_item ();
-    vstr->data = String.new_with (dp->d_name);
+    vstring_t *vstr = Vstring.add.sort_and_uniq (dlist->list, dp->d_name);
+
     /* continue logic (though not sure where to store) */
     switch (dp->d_type) {
       case DT_DIR:
         String.append_byte (vstr->data, '/');
     }
 
-    DListAppendCurrent (dlist->list, vstr);
+    if (is_long) {
+      struct stat st;
+      char f[dirlen + len + 2];
+      Cstring.cp_fmt (f, dirlen + len + 2, "%s/%s", dlist->dir, dp->d_name);
+      int retval = stat (f, &st);
+      ifnot (retval) {
+        char *suid = OS.get.pwname (st.st_uid);
+        char *sgid = OS.get.grname (st.st_gid);
+        char buf[16];
+        OS.mode.stat_to_string (buf, st.st_mode);
+        String.prepend_with_fmt (vstr->data, "%s %4d %s %s %d ",
+            buf, st.st_nlink, suid, sgid, st.st_size);
+        if (NULL isnot suid) free (suid);
+        if (NULL isnot sgid) free (sgid);
+      }
+    }
   }
 
   closedir (dh);
@@ -341,6 +359,7 @@ static int dir_rm_parents (char *dir, dir_opts opts) {
 }
 
 public dir_T __init_dir__ (void) {
+  __INIT__(os);
   __INIT__(path);
   __INIT__(error);
   __INIT__ (string);

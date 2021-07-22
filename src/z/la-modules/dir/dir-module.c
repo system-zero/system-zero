@@ -3,7 +3,7 @@
 #define REQUIRE_UNISTD
 
 #define REQUIRE_VMAP_TYPE    DONOT_DECLARE
-#define REQUIRE_VSTRING_TYPE DONOT_DECLARE
+#define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_LA_TYPE      DECLARE
@@ -73,18 +73,63 @@ static VALUE dir_change (la_t *this, VALUE v_dir) {
   return INT(retval);
 }
 
+/* temporarly method, as it needs a serious revision, so ignore */
+static VALUE dir_list (la_t *this, VALUE v_dir) {
+  ifnot (IS_STRING(v_dir))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  char *dir = AS_STRING_BYTES (v_dir);
+
+  ifnot (Dir.is_directory (dir)) {
+    ArrayType *array = ARRAY_NEW(STRING_TYPE, 1);
+    string **ar = (string **) AS_ARRAY(array->value);
+    String.replace_with (ar[0], dir);
+    return ARRAY(array);
+  }
+
+  dirlist_t *dlist = Dir.list (dir, DIRLIST_LONG_FORMAT);
+  if (NULL is dlist)
+    return NULL_VALUE;
+
+  Vstring_t *vs = Vstring.new ();
+  vstring_t *it = dlist->list->head;
+
+  while (it) {
+    Vstring.add.sort_and_uniq (vs, it->data->bytes);
+    it = it->next;
+  }
+
+  dlist->release (dlist);
+
+  ArrayType *array = ARRAY_NEW(STRING_TYPE, vs->num_items);
+  string **ar = (string **) AS_ARRAY(array->value);
+
+  it = vs->head;
+  int idx = 0;
+  while (it) {
+    String.replace_with_len (ar[idx++], it->data->bytes, it->data->num_bytes);
+    it = it->next;
+  }
+
+  Vstring.release (vs);
+
+  return ARRAY(array);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_dir_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(dir);
   __INIT__(string);
+  __INIT__(vstring);
 
   (void) vstringType;
   (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "dir_make",           PTR(dir_make), 2 },
+    { "dir_list",           PTR(dir_list), 1 },
     { "dir_remove",         PTR(dir_remove), 1 },
     { "dir_change",         PTR(dir_change), 1 },
     { "dir_current",        PTR(dir_current), 0 },
@@ -103,6 +148,7 @@ public int __init_dir_module__ (la_t *this) {
   const char evalString[] = EvalString (
     public var Dir = {
        "make"   : dir_make,
+       "list"   : dir_list,
        "remove" : dir_remove,
        "change" : dir_change,
        "current" : dir_current,

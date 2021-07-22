@@ -95,7 +95,7 @@ LA = $(NAME)
 
 LA_STATIC_FLAGS  = -lustring-$(VERSION) -ldir-$(VERSION)
 LA_STATIC_FLAGS += -lpath-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
-LA_STATIC_FLAGS += -lerror-$(VERSION)
+LA_STATIC_FLAGS += -lerror-$(VERSION) -los-$(VERSION)
 
 PATH_MODULE := 1
 ifeq ($(PATH_MODULE), 1)
@@ -154,6 +154,16 @@ SH_MODULE := 1
 ifeq ($(SH_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_SH_MODULE
   LA_STATIC_FLAGS += -lsh-$(VERSION) -lproc-$(VERSION)
+  ifeq ($(STRING_DECLARED), 0)
+    LA_STATIC_FLAGS += -lstring-$(VERSION)
+    STRING_DECLARED = 1
+  endif
+endif
+
+OS_MODULE := 1
+ifeq ($(OS_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_OS_MODULE
+  LA_STATIC_FLAGS += -los-$(VERSION)
   ifeq ($(STRING_DECLARED), 0)
     LA_STATIC_FLAGS += -lstring-$(VERSION)
     STRING_DECLARED = 1

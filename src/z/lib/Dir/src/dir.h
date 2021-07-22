@@ -60,6 +60,7 @@ struct dirwalk_t {
 };
 
 #define DIRLIST_DONOT_CHECK_DIRECTORY (1 << 0)
+#define DIRLIST_LONG_FORMAT           (1 << 1)
 
 typedef struct dirlist_t dirlist_t;
 

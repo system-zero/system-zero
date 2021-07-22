@@ -661,6 +661,14 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   Dir.make_parents (StringType dir, IntegerType mode)
     # IntegerType   Dir.remove_parents (StringType dir)
 
+  # Os Module Interface
+    # IntegerType   Os.getuid ()
+    # IntegerType   Os.getgid ()
+    # IntegerType   Os.getpid ()
+    # StringType    Os.getpwdir (IntegerType uid)
+    # StringType    Os.getgrname (IntegerType gid)
+    # StringType    Os.getpwname (IntegerType uid)
+
 # Library
   # Argparse Interface
 

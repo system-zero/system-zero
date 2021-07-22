@@ -88,8 +88,7 @@ static VALUE path_split (la_t *this, VALUE v) {
     it = it->next;
   }
   Vstring.release (a);
-  VALUE r = ARRAY(array);
-  return r;
+  return ARRAY(array);
 }
 
 #define EvalString(...) #__VA_ARGS__

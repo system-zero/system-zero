@@ -536,3 +536,8 @@ public sh_T __init_sh__ (void) {
     }
   };
 }
+
+public void __deinit_sh__ (sh_T **thisp) {
+  (void) thisp;
+  return;
+}

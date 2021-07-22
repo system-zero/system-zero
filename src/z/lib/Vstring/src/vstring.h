@@ -29,7 +29,7 @@ typedef struct vstring_get_self {
 } vstring_get_self;
 
 typedef struct vstring_add_self {
-  Vstring_t *(*sort_and_uniq) (Vstring_t *, char *bytes);
+  vstring_t *(*sort_and_uniq) (Vstring_t *, char *bytes);
 } vstring_add_self;
 
 typedef struct vstring_to_self {

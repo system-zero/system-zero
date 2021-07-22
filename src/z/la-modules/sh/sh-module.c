@@ -18,6 +18,7 @@ static VALUE sh_exec (la_t *this, VALUE v_sh, VALUE v_command) {
   object *o = AS_OBJECT(v_sh);
   sh_t *sh = (sh_t *) AS_PTR(o->value);
   char *command = AS_STRING_BYTES(v_command);
+  Sh.release_list (sh);
   return INT(Sh.exec (sh, command));
 }
 

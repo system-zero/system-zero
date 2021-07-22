@@ -110,7 +110,7 @@
 */
 
 /* strlen might made sence, but now is confusing for young minds.
- * so dissasoiate it violently by forbiding it in the code.
+ * so dissasociate it violently by forbiding it in the code.
  * Today a standard charlen() might justfied. */
 
 inline size_t bytelen (const char *str) {
@@ -934,6 +934,20 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_SH_TYPE
 #endif /* REQUIRE_SH_TYPE */
+
+#ifdef REQUIRE_OS_TYPE
+  #ifndef OS_TYPE_HDR
+  #define OS_TYPE_HDR
+  #include <z/os.h>
+  #endif /* OS_TYPE_HDR */
+
+  #if (REQUIRE_OS_TYPE == DECLARE)
+  static  os_T osType;
+  #define OS   osType.self
+  #endif
+
+#undef REQUIRE_OS_TYPE
+#endif /* REQUIRE_OS_TYPE */
 
 #ifdef REQUIRE_FILE_TYPE
   #ifndef FILE_TYPE_HDR

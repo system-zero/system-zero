@@ -33,6 +33,8 @@ typedef struct cstring_self {
   cstring_trim_self trim;
   cstring_byte_self byte;
 
+  void (*tok_release) (cstring_tok *);
+
   char
     *(*dup) (const char *, size_t),
     *(*itoa) (int, char *, int),

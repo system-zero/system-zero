@@ -124,6 +124,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Sh_Type              = Sh
     Z_SH_SRCDIR          = $(Z_SRCLIBDIR)/$(Sh_Type)/src
 
+    # OS Type
+    OS_Type              = OS
+    Z_OS_SRCDIR          = $(Z_SRCLIBDIR)/$(OS_Type)/src
+
     # File Type
     File_Type            = File
     Z_FILE_SRCDIR        = $(Z_SRCLIBDIR)/$(File_Type)/src
@@ -368,11 +372,11 @@ clean-libvstring-static:
 	@cd $(Z_VSTRING_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libdir-shared: Env cenv libstring-shared libvstring-shared libcstring-shared\
-               liberror-shared libpath-shared
+               liberror-shared libpath-shared libos-shared
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libdir-static: Env cenv libstring-static libvstring-static libcstring-static\
-               liberror-static libpath-static
+               liberror-static libpath-static libos-static
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libdir-shared:
@@ -382,11 +386,11 @@ clean-libdir-static:
 	@cd $(Z_DIR_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libauth-shared: Env cenv libstring-shared libcstring-shared libustring-shared\
-                libio-shared libterm-shared liberror-shared
+                libio-shared libterm-shared liberror-shared libos-shared
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libauth-static: Env cenv libstring-static libcstring-static libustring-static\
-                libio-static libterm-static liberror-static
+                libio-static libterm-static liberror-static libos-static
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libauth-shared:
@@ -431,10 +435,24 @@ clean-libsh-shared:
 clean-libsh-static:
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libfile-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libdir-shared libpath-shared
+libos-shared: Env cenv libcstring-shared
+	@cd $(Z_OS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libos-static: Env cenv libcstring-static
+	@cd $(Z_OS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libos-shared:
+	@cd $(Z_OS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libos-static:
+	@cd $(Z_OS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libfile-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libdir-shared libpath-shared\
+                libos-shared
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libfile-static: Env cenv libstring-static libcstring-static libvstring-static libdir-static libpath-static
+libfile-static: Env cenv libstring-static libcstring-static libvstring-static libdir-static libpath-static\
+                libos-static
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libfile-shared:
@@ -895,7 +913,7 @@ lai-static: libargparse-static librline-static libla-static
 
 la-shared: lai-shared modules-shared la-library
 
-la-static: lai-shared la-library
+la-static: lai-static la-library
 
 clean-lai-shared:
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
@@ -999,6 +1017,7 @@ zero-clean-shared:\
               clean-libvui-shared clean-libvmap-shared\
               clean-liberror-shared clean-libvwm-shared\
               clean-libla-shared clean-libv-shared\
+              clean-libos-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1023,6 +1042,7 @@ zero-clean-static:\
               clean-libvui-static clean-libvmap-static\
               clean-liberror-static clean-libvwm-static\
               clean-libla-static clean-libv-static\
+              clean-libos-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
@@ -1052,6 +1072,9 @@ string-module-shared:
 
 std-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) std-module-shared
+
+os-module-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) os-module-shared
 
 term-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) term-module-shared
