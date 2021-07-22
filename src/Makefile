@@ -1076,6 +1076,9 @@ std-module-shared:
 os-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) os-module-shared
 
+sys-module-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sys-module-shared
+
 term-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) term-module-shared
 

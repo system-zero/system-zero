@@ -49,6 +49,10 @@
 #include "../../../la-modules/os/os-module.c"
 #endif
 
+#ifdef REQUIRE_SYS_MODULE
+#include "../../../la-modules/sys/sys-module.c"
+#endif
+
 static void la_completion (const char *buf, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
 
@@ -281,6 +285,10 @@ eval:
 
   #ifdef REQUIRE_OS_MODULE
     __init_os_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_SYS_MODULE
+    __init_sys_module__ (la);
   #endif
 
   if (NULL is evalbuf) {
