@@ -108,6 +108,7 @@
 #define ASSIGNMENT_STATE              (1 << 3)
 #define OBJECT_MMT_REASSIGN           (1 << 4)
 #define ARRAY_MEMBER                  (1 << 5)
+#define MAP_ASSIGNMENT                (1 << 6)
 
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
@@ -3034,7 +3035,10 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
     goto assign;
   }
 
+  this->objectState |= MAP_ASSIGNMENT;
   err = la_parse_expr (this, &v);
+  this->objectState &= ~MAP_ASSIGNMENT;
+
   if (err isnot LA_OK)
     return err;
 
@@ -3156,7 +3160,10 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   int c = la_next_token (this);
   if (c isnot LA_TOKEN_DOT) {
-    *vp = this->tokenValue;
+    if (this->objectState & MAP_ASSIGNMENT)
+      *vp = la_copy_map (this->tokenValue);
+    else
+      *vp = this->tokenValue;
     return LA_OK;
   }
 
@@ -3216,7 +3223,41 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     return la_parse_array_get (this, vp);
   }
 
-  if (v->type is MAP_TYPE and 0 is is_this)
+  if (c is LA_TOKEN_PAREN_OPEN) {
+    if (NULL is v)
+      return la_syntax_error_fmt (this, "%s, method doesn't exists", key);
+
+    if (v->sym->scope is NULL and 0 is is_this)
+      return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+
+    int type;
+    if (v->type & FUNCPTR_TYPE)
+      type = FUNCPTR_TYPE;
+    else if ((v->type & 0x77) is LA_TOKEN_BUILTIN)
+      type = CFUNCTION_TYPE;
+    else
+      return la_syntax_error_fmt (this, "%s, not a method", key);
+
+    la_unget_char (this);
+
+    if (type is FUNCPTR_TYPE) {
+      funT *uf = AS_FUNC_PTR((*v));
+      VALUE th = v->sym->value;
+      la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+      this->funcState |= MAP_METHOD_STATE;
+      err = la_parse_func_call (this, vp, NULL, uf, *v);
+      la_next_token (this);
+    } else {
+      CFunc op = (CFunc) AS_PTR((*v));
+      this->tokenArgs = ((*v).type >> 8) & 0xff;
+      err = la_parse_func_call (this, vp, op, NULL, *v);
+    }
+
+    return err;
+  }
+
+  if ((v->type is MAP_TYPE and 0 is is_this) or
+      this->objectState & MAP_ASSIGNMENT)
     *vp = la_copy_map (*v);
 
   return LA_OK;
@@ -6621,6 +6662,17 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
       return result;
 
     case OBJECT_TYPE:
+      switch (y.type) {
+        case NULL_TYPE: return result;
+        default:
+          this->CFuncError = LA_ERR_TYPE_MISMATCH;
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "ObjectType == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, y)));
+          return result;
+      }
+
+    case MAP_TYPE:
       switch (y.type) {
         case NULL_TYPE: return result;
         default:

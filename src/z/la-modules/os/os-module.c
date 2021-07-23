@@ -4,10 +4,68 @@
 
 #define REQUIRE_VMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_OS_TYPE       DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+extern char **environ;
+
+static VALUE os_environ (la_t *this) {
+  (void) this;
+  char **env = environ;
+  int num = 0;
+  while (*env isnot NULL) {
+    num++;
+    env++;
+  }
+
+  ArrayType *array = ARRAY_NEW(STRING_TYPE, num);
+  string **ar = (string **) AS_ARRAY(array->value);
+
+  env = environ;
+  for (int i = 0; i < num; i++)
+    String.replace_with (ar[i], env[i]);
+
+  return ARRAY(array);
+}
+
+static VALUE os_getenv (la_t *this, VALUE v_e) {
+  (void) this;
+  ifnot (IS_STRING(v_e)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  string *s = AS_STRING(v_e);
+  char *e = s->bytes;
+  size_t len = s->num_bytes;
+
+  char **env = environ;
+  while (*env isnot NULL) {
+    ifnot (Cstring.cmp_n (*env, e, len))
+      if (*((*env) + len) is '=')
+        goto found;
+    env++;
+  }
+
+  return NULL_VALUE;
+
+found: {}
+  char *val = (*env) + len + 1;
+  s = String.new_with (val);
+  return STRING(s);
+}
+
+static VALUE os_setenv (la_t *this, VALUE v_as, VALUE v_val, VALUE v_overwrite) {
+  (void) this;
+  ifnot (IS_STRING(v_as)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_val)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_overwrite)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  char *as = AS_STRING_BYTES(v_as);
+  char *val = AS_STRING_BYTES(v_val);
+  int overwrite = AS_INT(v_overwrite);
+  return INT(setenv (as, val, overwrite));
+}
 
 static VALUE os_getpid (la_t *this) {
   (void) this;
@@ -76,6 +134,7 @@ public int __init_os_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(os);
   __INIT__(string);
+  __INIT__(cstring);
 
   (void) vmapType;
 
@@ -83,6 +142,9 @@ public int __init_os_module__ (la_t *this) {
     { "getpid",         PTR(os_getpid), 0 },
     { "getuid",         PTR(os_getuid), 0 },
     { "getgid",         PTR(os_getgid), 0 },
+    { "getenv",         PTR(os_getenv), 1 },
+    { "setenv",         PTR(os_setenv), 3 },
+    { "environ",        PTR(os_environ), 0 },
     { "getpwdir",       PTR(os_getpwdir), 1 },
     { "getgrname",      PTR(os_getgrname), 1 },
     { "getpwname",      PTR(os_getpwname), 1 },
@@ -100,6 +162,9 @@ public int __init_os_module__ (la_t *this) {
        "getpid" : getpid,
        "getuid" : getuid,
        "getgid" : getgid,
+       "getenv" : getenv,
+       "setenv" : setenv,
+       "environ": environ,
        "getpwdir" : getpwdir,
        "getgrname" : getgrname,
        "getpwname" : getpwname
