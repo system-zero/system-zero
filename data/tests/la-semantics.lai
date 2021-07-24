@@ -206,14 +206,15 @@ func semantics () {
 
   retval = lambda ((x, y) {
     var xl = x + y
-    return lambda ((k) { return k * 2}) (x) +
+    return lambda ((k) { return k * 2 }) (x) +
            lambda ((z) {
-             var i = lambda ((x) {return x + 100}) (z)
+             var i = lambda ((x) { return x + 100 }) (z)
              return (z * 2) + i }) (xl)
   }) (50, 100)
 
   assert_true ("testing complex nested lambdas", retval is 650)
 
+  retval = 650
   retval -= 50
   assert_true ("testing binary assignment operator [-=]", retval is 600)
   retval /= 20
@@ -455,7 +456,7 @@ func semantics () {
 
   var n = 10
 
-  var nifelse = lambda ((n) {
+  var nifelse = func (n) {
     if (n isnot 10) {
       return false
     } else {
@@ -477,12 +478,12 @@ func semantics () {
         }
       }
     }
-  })
+  }
 
   assert_true ("testing nested if/else",  nifelse (n))
   assert_false("testing nested if/else",  nifelse (n - 1))
 
-  var felseifnot = lambda ((n) {
+  var felseifnot = func (n) {
     if (n isnot 10) {
       return false
     } else ifnot (n is 10) {
@@ -494,7 +495,7 @@ func semantics () {
         return true
       }
     }
-  })
+  }
 
   assert_true ("testing else if[not]", felseifnot (n))
   assert_false ("testing else if[not]", felseifnot (n + 1))

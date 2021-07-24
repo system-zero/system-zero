@@ -216,15 +216,12 @@ a lot by the S-Lang programming language, which is quite like C.
 
   var i = lambda ((x, y) {return x * y}) (10, 100)
 
-# it is like a function declaration without a name, but enclosed in parentheses
-
-# the parameter list can be omited if it is empty.
-
-# if there is no argument list, this lambda can be assigned in a variable,
-  but its lifetime can not be guarranteed yet, though it might work too.
-  The `func` keyword can be used for that.
-
-# lambdas, like functions, can be nested in arbitrary level
+# A lambda function, it is like a function declaration but without a name,
+  and it is enclosed in parentheses. A lambda function it is evaluated at
+  the time of the declaration, and so it requires an argument list after its
+  declaration.
+  The parameter list can be omited if it is empty, and like functions, can be
+  nested in arbitrary level. After the evaluation it gets released.
 
 # loadfile syntax and semantics:
 
@@ -248,7 +245,7 @@ a lot by the S-Lang programming language, which is quite like C.
   were functions.
 
   Such units are always freed after evaluation, so they should return memory
-  types that survive from the releasing.
+  managment types that survive from the releasing.
 
 # import syntax and semantics:
 

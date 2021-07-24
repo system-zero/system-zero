@@ -126,6 +126,7 @@
 #define LA_TOKEN_DO         'D'
 #define LA_TOKEN_ELSEIF     'E'
 #define LA_TOKEN_FUNCDEF    'F'
+#define LA_TOKEN_LAMBDA     'G'
 #define LA_TOKEN_IFNOT      'I'
 #define LA_TOKEN_LOOP       'L'
 #define LA_TOKEN_MAP        'M'
@@ -1321,7 +1322,7 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   return NULL;
 }
 
-static int la_lambda (la_t *this) {
+static int la_parse_lambda (la_t *this, VALUE *vp) {
   Cstring.cp_fmt
     (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
@@ -1331,18 +1332,26 @@ static int la_lambda (la_t *this) {
   int err = la_parse_func_def (this);
   if (err isnot LA_OK)
     return err;
-
-  this->tokenSymbol = this->curSym;
-  funT *lambda = this->curFunDef;
-  this->tokenArgs = lambda->nargs;
-  this->tokenValue = this->tokenSymbol->value;
-
   this->curFunName[0] = '\0';
 
   if (this->curToken isnot LA_TOKEN_PAREN_CLOS)
     return this->syntax_error (this, "awaiting )");
 
-  return (this->tokenSymbol->type & 0xff);
+  sym_t *sym = this->curSym;
+  sym->value = NULL_VALUE;
+  funT *lambda = this->curFunDef;
+  this->tokenArgs = lambda->nargs;
+
+  if (la_next_char (this) isnot LA_TOKEN_PAREN_OPEN)
+    return this->syntax_error (this, "lambda error, awaiting (");
+
+  err = la_parse_func_call (this, vp, NULL, lambda, this->tokenValue);
+
+  fun_release (&lambda);
+
+  la_next_token (this);
+
+  return err;
 }
 
 static int la_do_next_token (la_t *this, int israw) {
@@ -1488,14 +1497,6 @@ static int la_do_next_token (la_t *this, int israw) {
 
       raw_block:
       ifnot (israw) {
-        if (Cstring.eq ("lambda", ident)) {
-          r = la_lambda (this);
-          if (r < LA_OK)
-            return this->syntax_error (this, "lambda error");
-
-          goto theend;
-        }
-
         this->tokenSymbol = symbol = la_lookup_symbol (this, this->curStrToken);
         if (symbol) {
           if (IS_INT(symbol->value) and AS_VOID_PTR(symbol->value) is la_parse_array_def) {
@@ -3952,13 +3953,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return la_parse_func_call (this, vp, op, NULL, this->tokenSymbol->value);
     }
 
-    case LA_TOKEN_FUNCDEF:
-      err = la_lambda (this);
-      if (err isnot LA_OK)
-        return err;
-      *vp = this->tokenValue;
-
-      return err;
+    case LA_TOKEN_LAMBDA:
+      return la_parse_lambda (this, vp);
 
     case LA_TOKEN_STRING:
       return la_string_get (this, vp);
@@ -7216,6 +7212,7 @@ static struct def {
   { "print",   LA_TOKEN_PRINT,    PTR(la_parse_print) },
   { "println", LA_TOKEN_PRINTLN,  PTR(la_parse_println) },
   { "func",    LA_TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
+  { "lambda",  LA_TOKEN_LAMBDA,   NULL_VALUE },
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
   { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
