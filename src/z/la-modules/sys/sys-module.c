@@ -20,6 +20,17 @@ static VALUE sys_which (la_t *this, VALUE v_prog) {
   return STRING(ex);
 }
 
+static VALUE sys_get (la_t *this, VALUE v_val) {
+  (void) this;
+  ifnot (IS_STRING(v_val)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *setting = AS_STRING_BYTES(v_val);
+  char *v = Sys.get.env_value (setting);
+  if (NULL is v)
+    return NULL_VALUE;
+  string *s = String.new_with (v);
+  return STRING(s);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_sys_module__ (la_t *this) {
@@ -30,6 +41,7 @@ public int __init_sys_module__ (la_t *this) {
   (void) vmapType;
 
   LaDefCFun lafuns[] = {
+    { "get",            PTR(sys_get), 1 },
     { "which",          PTR(sys_which), 1 },
     { NULL, NULL_VALUE, 0}
   };
@@ -42,6 +54,7 @@ public int __init_sys_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Sys = {
+      "get"   : get,
       "which" : which,
      }
   );

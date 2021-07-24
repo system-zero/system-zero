@@ -90,7 +90,6 @@
 #define LITERAL_STRING_STATE          (1 << 4)
 #define FUNC_CALL_RESULT_IS_MMT       (1 << 5)
 #define LOADFILE_SILENT               (1 << 6)
-#define FORCE_LOADFILE                (1 << 7)
 #define INDEX_STATE                   (1 << 8)
 #define MAP_STATE                     (1 << 9)
 #define BLOCK_STATE                   (1 << 10)
@@ -99,6 +98,7 @@
 #define MAP_METHOD_STATE              (1 << 1)
 #define OBJECT_RELEASE_STATE          (1 << 2)
 #define TYPE_NEW_STATE                (1 << 3)
+#define EVAL_UNIT_STATE               (1 << 4)
 
 #define FMT_LITERAL                   (1 << 0)
 
@@ -132,6 +132,7 @@
 #define LA_TOKEN_CONTINUE   'N'
 #define LA_TOKEN_OPERATOR   'O'
 #define LA_TOKEN_PRINT      'P'
+#define LA_TOKEN_EVALFILE   'Q'
 #define LA_TOKEN_RETURN     'R'
 #define LA_TOKEN_STRING     'S'
 #define LA_TOKEN_TYPE       'T'
@@ -408,6 +409,7 @@ static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static VALUE la_copy_map (VALUE);
 static int la_parse_map_get (la_t *, VALUE *);
 static int la_parse_map_set (la_t *);
+static int la_parse_loadfile (la_t *);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -3005,13 +3007,12 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   if (c is LA_TOKEN_FUNCDEF) {
     Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
-    ifnot (scope) this->scopeState = PUBLIC_SCOPE;
+    this->scopeState = PUBLIC_SCOPE; // this is for map.f = func ... cases
 
     err = la_parse_func_def (this);
     this->curFunName[0] = '\0';
     if (err isnot LA_OK)
       return err;
-
 
     v = PTR(this->curFunDef);
     v.type = FUNCPTR_TYPE;
@@ -3914,6 +3915,23 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         this->tokenArgs = ((*vp).type >> 8) & 0xff;
         return la_parse_func_call (this, vp, op, NULL, *vp);
       }
+    }
+
+    case LA_TOKEN_EVALFILE: {
+      this->funcState |= EVAL_UNIT_STATE;
+      err = la_parse_loadfile (this);
+      if (err isnot LA_OK)
+        return err;
+      this->funcState &= ~EVAL_UNIT_STATE;
+
+      funT *uf = this->curFunDef;
+      VALUE ufv = PTR(uf);
+      la_string savepc = this->parsePtr;
+      this->parsePtr = la_StringNew ("()");
+      err = la_parse_func_call (this, vp, NULL, uf, ufv);
+      fun_release (&uf);
+      this->parsePtr = savepc;
+      return err;
     }
 
     case LA_TOKEN_USRFUNC: {
@@ -7201,6 +7219,7 @@ static struct def {
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
   { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
+  { "evalfile",LA_TOKEN_EVALFILE, NULL_VALUE },
   { "import",  LA_TOKEN_IMPORT,   PTR(la_parse_import) },
   { "public",  LA_TOKEN_PUBLIC,   PTR(la_parse_visibility) },
   { "private", LA_TOKEN_PRIVATE,  PTR(la_parse_visibility) },
@@ -7488,9 +7507,9 @@ static int la_eval_file (la_t *this, const char *filename) {
     return LA_ERR_LOAD;
   }
 
-  if (Vmap.key_exists (this->units, fn))
-    ifnot (this->curState & FORCE_LOADFILE)
-      return LA_OK;
+  int exists = Vmap.key_exists (this->units, fn);
+  if (exists and 0 is (this->funcState & EVAL_UNIT_STATE))
+    return LA_OK;
 
   FILE *fp = fopen (fn, "r");
   if (NULL is fp) {
@@ -7533,6 +7552,29 @@ static int la_eval_file (la_t *this, const char *filename) {
   }
 
   script[r] = '\0';
+
+  if (this->funcState & EVAL_UNIT_STATE) {
+    Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
+    size_t flen = bytelen (this->curFunName);
+    funT *uf = Fun_new (this, funNew (
+      .name = this->curFunName, .namelen = flen, .parent = this->curScope));
+
+    string *script_buf;
+    if (exists) {
+      void *fn_item = Vmap.get (this->units, fn);
+      string *str = (string *) fn_item;
+      String.replace_with_len (str, script, r);
+      script_buf = str;
+    } else {
+      script_buf = String.new_with_len (script, r);
+      Vmap.set (this->units, fn, script_buf, la_release_unit, 0);
+    }
+
+    uf->body = la_StringNew (script_buf->bytes);
+    uf->nargs = 0;
+    this->curFunDef = uf;
+    return LA_OK;
+  }
 
   string *script_buf = String.new_with_len (script, r);
   Vmap.set (this->units, fn, script_buf, la_release_unit, 0);

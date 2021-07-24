@@ -239,7 +239,7 @@ theend:
   else {
     String.release (vs->data);
     free (vs);
-    vs = NULL:
+    vs = NULL;
   }
 
   return vs;

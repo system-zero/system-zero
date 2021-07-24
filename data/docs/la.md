@@ -235,6 +235,21 @@ a lot by the S-Lang programming language, which is quite like C.
   else it is relative to the `__loadpath` intrinsic string array variable. If
   the unit couldn't be found, then an error terminates execution.
 
+# evalfile syntax and semantics:
+
+  var val = evalfile ("fname")
+
+  evalfile is like loadfile, with some differences described below.
+
+  Files that are loaded with `evalfile` always reevaluated, thus they can
+  provide different code.
+
+  Such units should provide a return statement that return a value, like they
+  were functions.
+
+  Such units are always freed after evaluation, so they should return memory
+  types that survive from the releasing.
+
 # import syntax and semantics:
 
   import ("modulename")
@@ -527,6 +542,8 @@ a lot by the S-Lang programming language, which is quite like C.
 #                      args: string
 # loadfile          -  load a filename for evaluation
 #                      args: a filename
+# evalfile          -  immediately evaluate filename contents
+#                      args: a filename
 # import            -  load a compiled C module
 #                      args: a module name
 # exit              -  terminates evaluation of the current evaluated instance,
@@ -662,6 +679,7 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   Dir.remove_parents (StringType dir)
 
   # Os Module Interface
+    # IntegerType   Os.sleep (NumberType secs)
     # IntegerType   Os.getuid ()
     # IntegerType   Os.getgid ()
     # IntegerType   Os.getpid ()
@@ -671,6 +689,10 @@ a lot by the S-Lang programming language, which is quite like C.
     # StringType    Os.getpwdir (IntegerType uid)
     # StringType    Os.getgrname (IntegerType gid)
     # StringType    Os.getpwname (IntegerType uid)
+
+  # Sys Module Interface
+    # StringType    Sys.get (StringType sys_setting)
+    # StringType    Sys.which (StringType exec)
 
 # Library
   # Argparse Interface

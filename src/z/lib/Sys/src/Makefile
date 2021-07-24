@@ -67,6 +67,8 @@ USERNAME  := (shell id -un)
 GROUPNAME := (shell id -gn)
 
 FLAGS += -DUSERNAME='"$(USERNAME)"' -DGROUPNAME='"$(GROUPNAME)"'
+FLAGS += -DDATADIR='"$(SYSDATADIR)"' -DTMPDIR='"$(SYSTMPDIR)"'
+FLAGS += -DSYSDIR='"$(SYSDIR)"'
 
 CHECK_PTR_BOUNDS_FLAGS := -mmpx -fcheck-pointer-bounds
 
@@ -88,7 +90,6 @@ ifneq ($(DEBUG), 0)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR)
-LIBFLAGS += -DDATADIR='"$(SYSDATADIR)"' -DTMPDIR='"$(SYSTMPDIR)"'
 LIBFLAGS += $(FLAGS)
 LIBFLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lcstring-$(VERSION)
 LIBFLAGS += -ldir-$(VERSION) -lerror-$(VERSION) -lsmap-$(VERSION) -lpath-$(VERSION)

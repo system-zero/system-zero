@@ -1,6 +1,7 @@
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_TYPES
+#define REQUIRE_SYS_SELECT
 
 #define REQUIRE_VMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
@@ -128,6 +129,26 @@ static VALUE os_getpwdir (la_t *this, VALUE v_uid) {
   return STRING(s);
 }
 
+static VALUE os_sleep (la_t *this, VALUE v_nsecs) {
+  ifnot (IS_NUMBER(v_nsecs)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a double");
+  number nsecs = AS_NUMBER(v_nsecs);
+
+  /* with a little bit of help of sltime.c at S-Lang distribution */
+  unsigned long usecs;
+  unsigned int secs;
+
+  if (nsecs < 0.0)
+    nsecs = 0.0;
+  secs = (unsigned int) nsecs;
+  sleep (secs);
+  nsecs -= (double) secs;
+  usecs = (unsigned long) (1e6 * nsecs);
+  struct timeval tv;
+  tv.tv_sec = usecs / 1000000;
+  tv.tv_usec = usecs % 1000000;
+  return INT(select (0, NULL, NULL, NULL, &tv));
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_os_module__ (la_t *this) {
@@ -139,6 +160,7 @@ public int __init_os_module__ (la_t *this) {
   (void) vmapType;
 
   LaDefCFun lafuns[] = {
+    { "sleep",          PTR(os_sleep), 1 },
     { "getpid",         PTR(os_getpid), 0 },
     { "getuid",         PTR(os_getuid), 0 },
     { "getgid",         PTR(os_getgid), 0 },
@@ -159,15 +181,16 @@ public int __init_os_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Os = {
-       "getpid" : getpid,
-       "getuid" : getuid,
-       "getgid" : getgid,
-       "getenv" : getenv,
-       "setenv" : setenv,
-       "environ": environ,
-       "getpwdir" : getpwdir,
-       "getgrname" : getgrname,
-       "getpwname" : getpwname
+      "sleep" : sleep,
+      "getpid" : getpid,
+      "getuid" : getuid,
+      "getgid" : getgid,
+      "getenv" : getenv,
+      "setenv" : setenv,
+      "environ": environ,
+      "getpwdir" : getpwdir,
+      "getgrname" : getgrname,
+      "getpwname" : getpwname
      }
   );
 

@@ -28,6 +28,7 @@ typedef struct sys_env_opts {
   char *home;
   char *tmpdir;
   char *datadir;
+  char *sysdir;
   int   uid;
   int   gid;
 } sys_env_opts;
@@ -43,6 +44,7 @@ typedef struct sys_env_opts {
   .home = NULL,         \
   .tmpdir = NULL,       \
   .datadir = NULL,      \
+  .sysdir = NULL,       \
   .uid = -1,            \
   .gid = -1,            \
   __VA_ARGS__ }

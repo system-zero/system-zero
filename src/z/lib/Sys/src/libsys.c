@@ -63,6 +63,7 @@ static string_t *sys_get_env (char *as) {
 
 static char *sys_get_env_value (char *as) {
   string_t *env = sys_get_env (as);
+
   if (NULL is env)
     return NULL;
 
@@ -244,7 +245,35 @@ static int sys_init_environment (sys_env_opts opts) {
     } while (0);
   }
 
-  String.trim_end (home, DIR_SEP);
+  if (home->num_bytes isnot 6)
+    String.trim_end (home, DIR_SEP);
+
+  char *sdir = getenv ("SYSDIR");
+  string_t *sysdir = NULL;
+
+  ifnot (NULL is sdir)
+    sysdir = sys_set_env_as (sdir, "SYSDIR", opts.overwrite);
+  else {
+    do {
+      if (opts.sysdir isnot NULL) {
+        sysdir = sys_set_env_as (opts.sysdir, "SYSDIR", opts.overwrite);
+        break;
+      }
+
+      #ifdef SYSDIR
+        char tmp[PATH_MAX + 1];
+        if (NULL is Path.real (SYSDIR, tmp))
+          sysdir = sys_set_env_as (SYSDIR, "SYSDIR", opts.overwrite);
+        else
+          sysdir = sys_set_env_as (tmp, "SYSDIR", opts.overwrite);
+      #else
+        sysdir = sys_set_env_as (DIR_SEP_STR, "SYSDIR", opts.overwrite);
+     #endif
+    } while (0);
+  }
+
+  if (sysdir->num_bytes isnot 8)
+    String.trim_end (sysdir, DIR_SEP);
 
   char *tdir = getenv ("TMPDIR");
   string_t *tmpdir = NULL;
@@ -270,7 +299,8 @@ static int sys_init_environment (sys_env_opts opts) {
     } while (0);
   }
 
-  String.trim_end (tmpdir, DIR_SEP);
+  if (tmpdir->num_bytes isnot 8)
+    String.trim_end (tmpdir, DIR_SEP);
 
   char *ddir = getenv ("DATADIR");
   string_t *datadir = NULL;
@@ -302,7 +332,8 @@ static int sys_init_environment (sys_env_opts opts) {
     } while (0);
   }
 
-  String.trim_end (datadir, DIR_SEP);
+  if (datadir->num_bytes isnot 9)
+    String.trim_end (datadir, DIR_SEP);
 
   char *term_name = getenv ("TERM");
   ifnot (NULL is term_name)

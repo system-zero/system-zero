@@ -1100,7 +1100,8 @@ la-library:
   ZA_SELF_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SELF)/src
 
 self-shared: cenv libstring-shared libdir-shared libargparse-shared\
-             libvstring-shared libcstring-shared libself-shared
+             libvstring-shared libcstring-shared libe-shared\
+             libself-shared
 	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
 self-static: cenv libstring-static libdir-static libargparse-static\
