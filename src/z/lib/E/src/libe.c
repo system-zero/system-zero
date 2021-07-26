@@ -743,7 +743,7 @@ char c_balanced_pairs[] = "[](){}";
 
 char *lai_extensions[] = {".lai", NULL};
 char *lai_shebangs[] = {"#!/bin/env La", "#!La-shared", "#!La-static", NULL};
-char lai_operators[] = "+-%*^><=/|& .(){}![]";
+char lai_operators[] = "+-%*^><=/|& .(){}![]:";
 
 char *lai_keywords[] = {
   "var V", "if I", "ifnot I", "else I", "func I",  "is I", "isnot I",
@@ -2131,7 +2131,7 @@ theend:
 }
 
 static row_t *buf_current_delete (buf_t *this) {
-  row_t *row;
+  row_t *row = NULL;
   __buf_current_delete (this, &row);
 
   if (row isnot NULL) self(release.row, row);
@@ -2140,7 +2140,8 @@ static row_t *buf_current_delete (buf_t *this) {
 }
 
 static row_t *buf_current_pop (buf_t *this) {
-  row_t *row;  __buf_current_delete (this, &row);
+  row_t *row = NULL;
+  __buf_current_delete (this, &row);
   return row;
 }
 

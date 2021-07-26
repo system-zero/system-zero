@@ -65,20 +65,22 @@ public int __init_sh_module__ (la_t *this) {
   }
 
   const char evalString[] = EvalString (
-     public var Sh =  {};
+    public var Sh =  {};
 
-     Type Shell {
-       "instance",
-       private
-         "init" : func {
-           this.instance = sh_new ()
-         },
-       public
-         "exec" : func (command) {
-           return sh_exec (this.instance, command)
-          }
-       }
-   );
+    Type Shell {
+    private
+      "instance",
+
+      "init" : func {
+        this.instance = sh_new ()
+      },
+
+    public
+      "exec" : func (command) {
+        return sh_exec (this.instance, command)
+      }
+    }
+  );
 
   err = La.eval_string (this, evalString);
   if (err isnot LA_OK) return err;

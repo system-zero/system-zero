@@ -214,7 +214,6 @@ func semantics () {
 
   assert_true ("testing complex nested lambdas", retval is 650)
 
-  retval = 650
   retval -= 50
   assert_true ("testing binary assignment operator [-=]", retval is 600)
   retval /= 20
@@ -652,9 +651,6 @@ func semantics () {
   fmt = format ("${%s, load_va} ${%s, load_vd}")
   assert_true ("testing format function",  fmt is "string is 6 bytes length")
 
-  fmt = format ("${%s, load_va} ${%s, load_vd}")
-  assert_true ("testing format function",  fmt is "string is 6 bytes length")
-
   var dollars = "$$$$$$ $$$$$$ are 12 dollars"
   assert_true ("testing format function with escaped characters", load_vf is dollars)
 
@@ -666,7 +662,7 @@ func semantics () {
   func import_test () {
     func path_module () {
       # on static builds this will throw a syntax error if the modules hasn't been initialized
-      import("path")
+      import ("path")
       assert_equal ("testing the Path module and the basename method", Path.basename ("/home/aga/t.ext"), "t.ext")
       assert_equal ("testing the sans_extname method", Path.basename_sans_extname ("/home/aga/t.ext"), "t")
       assert_equal ("testing the extname method", Path.extname ("/t.ext"), ".ext")
@@ -859,6 +855,21 @@ func semantics () {
     }
 
     dir_module ()
+
+    func sys_module () {
+      import ("sys")
+      Sys.set ("key", "val", 1)
+      var v = Sys.get ("key")
+      Sys.set ("key", "value", 0)
+      var va = "key=" + Sys.get ("key")
+      Sys.set ("key", "value", 1)
+      var vaa = "key=" + Sys.get ("key")
+      var val = Sys.get ("key")
+      assert_true ("testing the sys module and the set/get methods",
+         v is "val" and va is "key=val" and vaa is "key=value" and val is "value")
+    }
+
+    sys_module ()
   }
 
   import_test ()
@@ -1311,6 +1322,18 @@ func test_maps {
   assert_true ("testing map member manipulation", mapp.i is 10 and
       mapp.a[0] is 10) 
 
+  var subm = {
+    "k" : 11
+    "f" : func { return this.k }
+  }
+
+  var parm = {
+    "k" : 22
+    "submap" : subm
+  }
+
+  assert_true ("testing submap accessors", parm.submap.f () is 22 and
+     parm.submap:f () is 11)
 }
 
 test_maps ()

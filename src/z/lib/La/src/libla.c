@@ -108,7 +108,9 @@
 #define ASSIGNMENT_STATE              (1 << 3)
 #define OBJECT_MMT_REASSIGN           (1 << 4)
 #define ARRAY_MEMBER                  (1 << 5)
-#define MAP_ASSIGNMENT                (1 << 6)
+#define MAP_MEMBER                    (1 << 6)
+#define MAP_ASSIGNMENT                (1 << 7)
+
 
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
@@ -127,6 +129,7 @@
 #define LA_TOKEN_ELSEIF     'E'
 #define LA_TOKEN_FUNCDEF    'F'
 #define LA_TOKEN_LAMBDA     'G'
+#define LA_TOKEN_FORMAT     'H'
 #define LA_TOKEN_IFNOT      'I'
 #define LA_TOKEN_LOOP       'L'
 #define LA_TOKEN_MAP        'M'
@@ -1006,37 +1009,89 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
   return v;
 }
 
-static VALUE la_format (la_t *this, VALUE v_fmt) {
-  int err = LA_NOTOK;
-  VALUE v;
 
-  string *fmt = AS_STRING(v_fmt);
-  string *str = String.new (8);
+static int la_parse_format (la_t *, VALUE *);
+static int la_parse_format (la_t *this, VALUE *vp) {
+  int err;
+  string *str = String.new (32);
 
-  la_string saved_ptr = this->parsePtr;
+  int c = la_ignore_ws (this);
 
-  this->parsePtr = la_StringNew (fmt->bytes);
-
-  err = la_parse_fmt (this, str, 1);
-
- this->parsePtr = saved_ptr;
-
-  if (err isnot LA_OK) {
-    this->CFuncError = err;
-    String.release (str);
-    v = NULL_VALUE;
-    return v;
+  if (c isnot LA_TOKEN_PAREN_OPEN) {
+    this->print_bytes (this->err_fp, "format error, awaiting (\n");
+    la_err_ptr (this, LA_NOTOK);
+    return LA_NOTOK;
   }
 
-  v = STRING(str);
+  int is_expr = 0;
+
+  c= la_ignore_ws (this);
+
+  if (c isnot LA_TOKEN_DQUOTE) {
+    la_unget_char (this);
+    c = la_next_token (this);
+    VALUE v;
+    err = la_parse_expr (this, &v);
+    if (err isnot LA_OK)
+      return err;
+
+    if (v.type is STRING_TYPE) {
+      c = this->curToken
+      ;
+      la_string savepc = this->parsePtr;
+      string *v_s = AS_STRING(v);
+      /* very crude algorithm (buf for a minor case (evaluation of a string
+       * that might include embedded interpolation syntax)) */
+      /* Update: mind change. Always include the required characters for the
+         evaluation, and remove ambiguities and false interpretation. */
+
+      size_t len = v_s->num_bytes + 4;
+      char buf[len + 1];
+      buf[0] = '('; buf[1] = '"';
+      Cstring.cp (buf + 2, len + 1, v_s->bytes, v_s->num_bytes);
+      buf[len - 2] = '"'; buf[len - 1] = ')'; buf[len] = '\0';
+
+      this->parsePtr = la_StringNew (buf);
+      err = la_parse_format (this, &v);
+      if (err isnot LA_OK)
+        return err;
+      this->parsePtr = savepc;
+
+      string *vs = AS_STRING(v);
+
+      String.append_with_len (str, vs->bytes, vs->num_bytes);
+      String.release (vs);
+
+      is_expr = 1;
+      goto theend;
+    }
+  }
+
+  if (c isnot LA_TOKEN_DQUOTE)
+    return this->syntax_error (this, "format error, awaiting \"");
+
+  err = la_parse_fmt (this, str, 0);
+  if (err isnot LA_OK)
+    return err;
+
+theend:
+  *vp = STRING(str);
+
+  ifnot (is_expr)
+    c = la_next_token (this);
+
+  if (c isnot LA_TOKEN_PAREN_CLOS)
+    return this->syntax_error (this, "format error, awaiting )");
+
+  c = la_next_token (this);
 
   if (this->fmtRefcount)
     this->fmtState |= FMT_LITERAL;
   else
     if (this->funcState & EXPR_LIST_STATE)
-      v.refcount--;
+      vp->refcount--;
 
-  return v;
+  return LA_OK;
 }
 
 static VALUE la_fileno (la_t *this, VALUE fp_val) {
@@ -1376,10 +1431,8 @@ static int la_do_next_token (la_t *this, int israw) {
   else if (is_operator (c))
     token = LA_TOKEN_OPERATOR;
   else if (c is LA_TOKEN_COLON) {
-    if (la_peek_char (this, 0) is ' ') {
-      this->curToken = LA_TOKEN_COLON;
-      return c;
-    }
+    this->curToken = LA_TOKEN_COLON;
+    return c;
   }
 
   switch (token) {
@@ -2316,6 +2369,9 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
     return err;
 
   ifnot (is_single) {
+    if (this->curToken is LA_TOKEN_NL)
+      la_next_token (this);
+
     if (this->curToken isnot LA_TOKEN_INDEX_CLOS)
       return this->syntax_error (this, "array assignment: awaiting ]");
 
@@ -2915,10 +2971,10 @@ static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int sc
 
   switch (val->type) {
     case STRING_TYPE:
-      if (this->objectState & ARRAY_MEMBER) {
+      if (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) {
         val->asString = AS_STRING(la_copy_value (v));
         val->refcount = 0;
-        this->objectState &= ~ARRAY_MEMBER;
+        this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
       } else {
         if (v.sym is NULL) {
           val->asString  = v.asString;
@@ -3169,8 +3225,10 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     return LA_OK;
   }
 
-  int err;
+  int err = 0;
+  VALUE map_par = this->tokenValue;
 
+  int submap = 0;
   redo: {}
   this->objectState |= IDENT_LEAD_CHAR_CAN_BE_DIGIT;
   c = err = la_next_raw_token (this);
@@ -3208,11 +3266,18 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   c = la_next_token (this);
 
-  if (c is LA_TOKEN_DOT) {
+  if (c is LA_TOKEN_DOT or c is LA_TOKEN_COLON) {
+
     if (v->type isnot MAP_TYPE)
       return la_syntax_error_fmt (this, "%s, not a map", key);
 
     this->tokenValue = *v;
+
+    if (c is LA_TOKEN_COLON)
+      submap = 1;
+    else
+      submap = 0;
+
     goto redo;
   }
 
@@ -3244,10 +3309,18 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
     if (type is FUNCPTR_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
-      VALUE th = v->sym->value;
+
+      VALUE th;
+
+      if (submap )
+        th = v->sym->value;
+      else
+        th = map_par.sym->value;
+
       la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
       this->funcState |= MAP_METHOD_STATE;
       err = la_parse_func_call (this, vp, NULL, uf, *v);
+
       la_next_token (this);
     } else {
       CFunc op = (CFunc) AS_PTR((*v));
@@ -3269,7 +3342,8 @@ static int la_parse_map_set (la_t *this) {
   int is_this = (la_StringGetLen (this->curStrToken) is 4 and
       Cstring.eq_n (la_StringGetPtr (this->curStrToken), "this", 4));
 
-  Vmap_t *map = AS_MAP(this->tokenValue);
+  VALUE map_par = this->tokenValue;
+  Vmap_t *map = AS_MAP(map_par);
 
   int c = la_next_char (this);
 
@@ -3330,7 +3404,7 @@ static int la_parse_map_set (la_t *this) {
 
     if (type is FUNCPTR_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
-      VALUE th = v->sym->value;
+      VALUE th = map_par.sym->value;
       la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
       this->funcState |= MAP_METHOD_STATE;
       VALUE vp;
@@ -3400,9 +3474,12 @@ static int la_parse_new (la_t *this, VALUE *vp) {
 
   this->curStrToken = la_StringNew (block->bytes);
 
+  int state = this->funcState;
   this->funcState |= TYPE_NEW_STATE;
   int err = la_parse_map (this, vp);
-  this->funcState &= ~TYPE_NEW_STATE;
+  ifnot (state & TYPE_NEW_STATE)
+    this->funcState &= ~TYPE_NEW_STATE;
+
   if (err) return err;
 
   if (vp->type isnot MAP_TYPE)
@@ -3489,7 +3566,7 @@ static int la_parse_expr_list (la_t *this) {
   } while (c is LA_TOKEN_COMMA);
 
 
-  this->objectState &= ~ARRAY_MEMBER;
+  this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
   return count;
 }
 
@@ -3862,6 +3939,10 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       la_next_token (this);
       return err;
 
+    case LA_TOKEN_FORMAT:
+      err = la_parse_format (this, vp);
+      return err;
+
     case LA_TOKEN_VAR:
       if (this->tokenValue.type is STRING_TYPE)
         return la_string_get (this, vp);
@@ -4197,7 +4278,8 @@ do_token:
       err = la_parse_expr (this, &val);
       this->objectState &= ~ASSIGNMENT_STATE;
 
-      if (this->objectState & MMT_OBJECT or this->objectState & ARRAY_MEMBER) {
+      if (this->objectState & MMT_OBJECT or
+         (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
         switch (val.type) {
           case ARRAY_TYPE:
           case STRING_TYPE: {
@@ -4205,7 +4287,7 @@ do_token:
             val = la_copy_value (v);
           }
         }
-        this->objectState &= ~(MMT_OBJECT|ARRAY_MEMBER);
+        this->objectState &= ~(MMT_OBJECT|ARRAY_MEMBER|MAP_MEMBER);
       }
 
       if (err isnot LA_OK) return err;
@@ -4355,19 +4437,20 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
       ifnot (ns_is_malloced_string (this->curScope, AS_STRING(lhs)))
         x = AS_STRING(lhs);
     } else {
-      if (0 is (this->objectState & ARRAY_MEMBER) and
+      if (0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
           0 is (ns_is_malloced_string (this->curScope, AS_STRING(lhs))))
         x = AS_STRING(lhs);
     }
   }
 
   int num_iter = 0;
+  OpFunc op = NULL;
 
   do {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
 
-    OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
+    op = (OpFunc) AS_PTR(this->tokenValue);
 
     this->curState |= STRING_LITERAL_ARG_STATE;
     la_next_token (this);
@@ -4412,20 +4495,24 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
       if (rhs.type isnot STRING_TYPE) {
         la_free (this, rhs);
       } else {
-        ifnot (ns_is_malloced_string (this->curScope, AS_STRING(rhs)))
-          String.release (AS_STRING(rhs));
-      }
+        if (op isnot la_add) {
+          if (0 is ns_is_malloced_string (this->curScope, AS_STRING(rhs)) and
+              0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+            String.release (AS_STRING(rhs));
+         }
+       }
     }
 
     this->curState &= ~LITERAL_STRING_STATE;
   } while ((c & 0xff) is LA_TOKEN_BINOP);
 
   this->curState &= ~(STRING_LITERAL_ARG_STATE|LITERAL_STRING_STATE);
-  this->objectState &= ~(ARRAY_MEMBER|OBJECT_APPEND);
+  this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|OBJECT_APPEND);
 
   *vp = lhs;
 
-  String.release (x);
+  if (op isnot la_add)
+    String.release (x);
 
   return err;
 }
@@ -5889,9 +5976,10 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
         c = la_next_token (this);
       }
 
+      int funcState = this->funcState;
       this->funcState |= EXPR_LIST_STATE;
       err = la_parse_expr (this, &value);
-      this->funcState &= ~EXPR_LIST_STATE;
+      this->funcState = funcState;
 
       if (err isnot LA_OK)
         goto theend;
@@ -5903,12 +5991,12 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
               String.append_with_fmt (str, "%s", AS_STRING_BYTES(value));
               if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
                   0 is ns_is_malloced_string (this->curScope, AS_STRING(value)) and
-                  0 is (this->objectState & ARRAY_MEMBER))) {
+                  0 is (this->objectState & (MAP_MEMBER|ARRAY_MEMBER)))) {
                 la_free (this, value);
               }
 
               this->fmtState &= ~FMT_LITERAL;
-              this->objectState &= ~(ARRAY_MEMBER|MMT_OBJECT);
+              this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|MMT_OBJECT);
               break;
 
             case NULL_TYPE:
@@ -5952,11 +6040,11 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           if (value.type is STRING_TYPE) {
             if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
                0 is ns_is_malloced_string (this->curScope, AS_STRING(value)) and
-               0 is (this->objectState & ARRAY_MEMBER))) {
+               0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))) {
                 la_free (this, value);
             }
             this->fmtState &= ~FMT_LITERAL;
-            this->objectState &= ~ARRAY_MEMBER;
+            this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
           }
           break;
 
@@ -6108,7 +6196,7 @@ static int la_parse_print (la_t *this) {
   int c = la_ignore_ws (this);
 
   if (c isnot LA_TOKEN_PAREN_OPEN) {
-    this->print_bytes (this->err_fp, "string fmt error, awaiting (\n");
+    this->print_bytes (this->err_fp, "print string error, awaiting (\n");
     la_err_ptr (this, LA_NOTOK);
     goto theend;
   }
@@ -6151,7 +6239,7 @@ static int la_parse_print (la_t *this) {
       c = la_next_token (this);
       err = la_parse_expr (this, &v);
       if (err isnot LA_OK or v.type isnot STRING_TYPE) {
-        this->print_bytes (this->err_fp, "string fmt error, awaiting a string value\n");
+        this->print_bytes (this->err_fp, "print string error, awaiting a string value\n");
         la_err_ptr (this, LA_NOTOK);
         goto theend;
       }
@@ -6163,10 +6251,8 @@ static int la_parse_print (la_t *this) {
     }
   }
 
-  this->print_fp = fp;
-
   if (c isnot LA_TOKEN_DQUOTE) {
-    this->print_bytes (this->err_fp, "string fmt error, awaiting double quote\n");
+    this->print_bytes (this->err_fp, "print string error, awaiting double quote\n");
     la_err_ptr (this, LA_NOTOK);
     goto theend;
   }
@@ -6177,6 +6263,8 @@ static int la_parse_print (la_t *this) {
   c = la_get_char (this);
 
 print_str:
+  this->print_fp = fp;
+
   if (c isnot LA_TOKEN_PAREN_CLOS) {
     this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
     la_err_ptr (this, LA_NOTOK);
@@ -6479,8 +6567,13 @@ static int la_parse_loadfile (la_t *this) {
 
   if (this->curState & LITERAL_STRING_STATE)
     this->curState &= ~LITERAL_STRING_STATE;
-  else
-    fname = String.dup (fname);
+  else {
+    string *tmp = fname;
+    fname = String.dup (tmp);
+    if (v.sym is NULL and 0 is ns_is_malloced_string (this->curScope, tmp) and
+        0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+      String.release (tmp);
+  }
 
   char *extname = Path.extname (fname->bytes);
 
@@ -6895,11 +6988,12 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             result = STRING(new);
 
             if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str) and
-                0 is (this->objectState & ARRAY_MEMBER))
+                0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
               String.release (x_str);
           }
 
-          if (y.sym is NULL and 0 is ns_is_malloced_string (this->curScope, y_str))
+          if (y.sym is NULL and 0 is ns_is_malloced_string (this->curScope, y_str) and
+              0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
             String.release (y_str);
 
           if (this->objectState & (ASSIGNMENT_STATE|MMT_OBJECT))
@@ -7221,7 +7315,8 @@ static struct def {
   { "public",  LA_TOKEN_PUBLIC,   PTR(la_parse_visibility) },
   { "private", LA_TOKEN_PRIVATE,  PTR(la_parse_visibility) },
   { "Type",    LA_TOKEN_TYPE,     PTR(la_parse_type) },
-  { "New",     LA_TOKEN_NEW,      NULL_VALUE  },
+  { "New",     LA_TOKEN_NEW,      NULL_VALUE },
+  { "format",  LA_TOKEN_FORMAT,   NULL_VALUE },
   { "*",       BINOP(1),          PTR(la_mul) },
   { "/",       BINOP(1),          PTR(la_div) },
   { "%",       BINOP(1),          PTR(la_mod) },
@@ -7284,7 +7379,6 @@ static struct deftype {
 
 LaDefCFun la_funs[] = {
   { "len",              PTR(la_len), 1},
-  { "format",           PTR(la_format), 1},
   { "fopen",            PTR(la_fopen), 2},
   { "fflush",           PTR(la_fflush), 1},
   { "fclose",           PTR(la_fclose), 1},

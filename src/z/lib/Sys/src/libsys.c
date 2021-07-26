@@ -40,7 +40,7 @@ static string_t *sys_set_env_as (char *val, char *as, int replace) {
 
   string_t *old = Smap.get (__ENV__, as);
 
-  if (val is NULL)  val = "";
+  if (val is NULL) val = "";
 
   if (old isnot NULL) {
     ifnot (replace)

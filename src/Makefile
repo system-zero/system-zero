@@ -280,6 +280,9 @@ Z_SU        := $(ZC_SU)
   BASE_FLAGS    += -g -O2 -march=native -fdollars-in-identifiers
   BASE_FLAGS    += -DDECLARE=1 -DDONOT_DECLARE=0
 
+  # this is for ld --version => 2.36.1 (allow multiply definitions (for AllocErrorHandler in static builds))
+  BASE_FLAGS    += -z muldefs
+
   DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
 
   ifeq (-$(CC), -clang)
@@ -745,6 +748,7 @@ libself-shared: Env cenv libstring-shared libcstring-shared \
 libself-static: Env cenv libstring-static libcstring-static \
                 libvstring-static libdir-static libfile-static \
                 libpath-static libre-static
+
 	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libself-shared:
@@ -1058,7 +1062,7 @@ MODULE_FLAGS += SYSMODULEDIR=$(SYSZMODULEDIR)
 modules-all:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) all
 
-modules-shared:
+modules-shared: libsh-shared libsys-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
 
 path-module-shared:
@@ -1076,7 +1080,7 @@ std-module-shared:
 os-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) os-module-shared
 
-sys-module-shared:
+sys-module-shared: libsys-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sys-module-shared
 
 term-module-shared:
@@ -1101,11 +1105,12 @@ la-library:
 
 self-shared: cenv libstring-shared libdir-shared libargparse-shared\
              libvstring-shared libcstring-shared libe-shared\
-             libself-shared
+             libvui-shared libjson-shared libauth-shared libself-shared
 	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
 self-static: cenv libstring-static libdir-static libargparse-static\
-             libvstring-static libcstring-static  libself-static
+             libvstring-static libcstring-static libe-static\
+             libvui-static libjson-static libauth-static libself-static
 	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-self-shared:

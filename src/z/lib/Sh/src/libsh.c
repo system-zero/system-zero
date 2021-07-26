@@ -59,7 +59,7 @@ typedef struct shproc_t {
     redir_type,
     redir_streams;
 
-  string_t
+  string
     *redir_stdout_file,
     *redir_stderr_file;
 
@@ -120,7 +120,7 @@ static void sh_release (sh_t *this) {
 static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
   shproc_t *sh = (shproc_t *) Proc.get.user_data (proc);
 
-  string_t *file = NULL;
+  string *file = NULL;
 
   if (stream is stdout)
     file = sh->redir_stdout_file;
@@ -138,8 +138,10 @@ static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
     }
 
     fp = fopen (file->bytes, "w");
+
   } else if (sh->redir_type is REDIR_APPEND) {
     fp = fopen (file->bytes, "a+");
+
   } else {
     if (stream is stdout) {
       fp = fopen (file->bytes, "w");

@@ -396,6 +396,13 @@ a lot by the S-Lang programming language, which is quite like C.
     provides access to the other fields, as it holds the value of the underlying
     map
 
+  - on submaps methods, `this` is a reference to the parent map, unless they are
+    accessing using a colon (':'), thus on:
+
+    map.submap:method (...)
+
+    `this` is a reference to submap
+
   - keys are valid string identifiers and may start with a digit or an underscore
 
   # Accessing maps. This is done by using a dot ('.') after a symbol that refers

@@ -31,6 +31,18 @@ static VALUE sys_get (la_t *this, VALUE v_val) {
   return STRING(s);
 }
 
+static VALUE sys_set (la_t *this, VALUE v_key, VALUE v_val, VALUE v_replace) {
+  ifnot (IS_STRING(v_key)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_val)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_replace)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  char *key = AS_STRING_BYTES(v_key);
+  char *val = AS_STRING_BYTES(v_val);
+  int replace = AS_INT(v_replace);
+  Sys.set.env_as (val, key, replace);
+  return INT(LA_OK);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_sys_module__ (la_t *this) {
@@ -41,6 +53,7 @@ public int __init_sys_module__ (la_t *this) {
   (void) vmapType;
 
   LaDefCFun lafuns[] = {
+    { "set",            PTR(sys_set), 3 },
     { "get",            PTR(sys_get), 1 },
     { "which",          PTR(sys_which), 1 },
     { NULL, NULL_VALUE, 0}
@@ -54,6 +67,7 @@ public int __init_sys_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Sys = {
+      "set"   : set,
       "get"   : get,
       "which" : which,
      }
