@@ -917,7 +917,8 @@ lai-static: libargparse-static librline-static libla-static
 
 la-shared: lai-shared modules-shared la-library
 
-la-static: lai-static la-library
+la-static: libsh-static libsys-static libos-static\
+           libdir-static libfile-static lai-static la-library
 
 clean-lai-shared:
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared

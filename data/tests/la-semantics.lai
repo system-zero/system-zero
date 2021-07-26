@@ -1227,6 +1227,7 @@ func test_maps {
      typeof (k) is IntegerType)
 
   var s = {"key" : "string"}.key
+
   assert_true ("testing getting string key from an anonymous map", s is "string" and
      typeof (s) is StringType)
 

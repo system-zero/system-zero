@@ -3267,7 +3267,6 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   c = la_next_token (this);
 
   if (c is LA_TOKEN_DOT or c is LA_TOKEN_COLON) {
-
     if (v->type isnot MAP_TYPE)
       return la_syntax_error_fmt (this, "%s, not a map", key);
 
@@ -3334,6 +3333,9 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   if ((v->type is MAP_TYPE and 0 is is_this) or
       this->objectState & MAP_ASSIGNMENT)
     *vp = la_copy_map (*v);
+
+  if (vp->type is STRING_TYPE)
+    this->objectState |= MAP_MEMBER;
 
   return LA_OK;
 }
@@ -4069,6 +4071,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       }
 
       return err;
+
     case LA_TOKEN_BLOCK:
       err = la_parse_map (this, vp);
       if (err isnot LA_OK)
@@ -4090,7 +4093,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
           if (v.type isnot MAP_TYPE) {
             *vp = la_copy_value (v);
-            this->objectState &= ~MMT_OBJECT;
+            this->objectState &= ~(MMT_OBJECT|MAP_MEMBER);
           }
 
           la_free (this, mapval);
@@ -6998,6 +7001,9 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
 
           if (this->objectState & (ASSIGNMENT_STATE|MMT_OBJECT))
             this->objectState &= ~MMT_OBJECT;
+
+          if (this->funcState & EXPR_LIST_STATE)
+            result.refcount--;
 
           goto theend;
         }
