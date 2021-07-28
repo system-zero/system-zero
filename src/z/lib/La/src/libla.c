@@ -109,7 +109,7 @@
 #define ARRAY_MEMBER                  (1 << 5)
 #define MAP_MEMBER                    (1 << 6)
 #define MAP_ASSIGNMENT                (1 << 7)
-
+#define FUNC_OVERRIDE                  (1 << 8)
 
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
@@ -152,6 +152,7 @@
 #define LA_TOKEN_PUBLIC     'g'
 #define LA_TOKEN_PRIVATE    'h'
 #define LA_TOKEN_IF         'i'
+#define LA_TOKEN_OVERRIDE    'j'
 #define LA_TOKEN_FOR        'l'
 #define LA_TOKEN_FOREVER    'm'
 #define LA_TOKEN_NUMBER     'n'
@@ -3381,6 +3382,8 @@ static int la_parse_map_set (la_t *this) {
 
   VALUE map_par = this->tokenValue;
   Vmap_t *map = AS_MAP(map_par);
+  int override = this->objectState & FUNC_OVERRIDE;
+  this->objectState &= ~FUNC_OVERRIDE;
 
   int c = la_next_char (this);
 
@@ -3483,8 +3486,16 @@ static int la_parse_map_set (la_t *this) {
   }
 
   v = Vmap.get (map, key);
-  if (v isnot NULL and (v->sym->scope is NULL and 0 is is_this))
-    return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+  if (v isnot NULL) {
+    if (v->sym->scope is NULL and 0 is is_this)
+      return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+
+    if (v->type & FUNCPTR_TYPE or
+       (v->type & 0x77) is LA_TOKEN_BUILTIN) {
+      if (c is LA_TOKEN_ASSIGN and 0 is override)
+        return this->syntax_error (this, "you can not override a method");
+    }
+  }
 
   if (c <= LA_TOKEN_ASSIGN) {
     if (v isnot NULL)
@@ -4456,6 +4467,14 @@ do_token:
       }
 
       return err;
+
+    case LA_TOKEN_OVERRIDE:
+      c = la_next_token (this);
+      if (c isnot LA_TOKEN_MAP)
+        return this->syntax_error (this, "override works only for maps");
+      this->objectState |= FUNC_OVERRIDE;
+      this->curToken = LA_TOKEN_MAP;
+      goto do_token;
 
     case LA_TOKEN_BUILTIN:
     case UFUNC_TYPE:
@@ -7464,6 +7483,7 @@ static struct def {
   { "lambda",  LA_TOKEN_LAMBDA,   NULL_VALUE },
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
+  { "override", LA_TOKEN_OVERRIDE,  NULL_VALUE },
   { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
   { "evalfile",LA_TOKEN_EVALFILE, NULL_VALUE },
   { "import",  LA_TOKEN_IMPORT,   PTR(la_parse_import) },

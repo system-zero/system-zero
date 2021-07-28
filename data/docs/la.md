@@ -123,10 +123,11 @@ a lot by the S-Lang programming language, which is quite like C.
 
 # a `continue` statement continues with the next iteration
 
-# a `break` statement breaks out of a loop. By default is one (the current)
-  loop level. However it can be set explicitly to break to outer loop levels.
-  If the given level is greater than the existing loop levels, a syntax error
-  is raised.
+# a `break` statement returns control to an outter scope, of the current loop
+  state. This by default is one (the current one) loop level. However it can be
+  set explicitly (with a given `count` that follows the statement), to break to
+  `count` outer loop levels. If the given `count` is greater than the existing
+  loop level, a syntax error is raised.
 
   Likewise if a `continue` or a `break` is a statement that is not into a loop
   state, a syntax error is raised.
@@ -315,7 +316,8 @@ a lot by the S-Lang programming language, which is quite like C.
 
 # the `println()` function is like `print`, but also emits a new line character.
 
-# Array declaration:
+# Arrays
+  # Array declaration:
 
   # first form
     var ar = [1, 2, 3]
@@ -411,6 +413,15 @@ a lot by the S-Lang programming language, which is quite like C.
 
   - keys are valid string identifiers and may start with a digit or an underscore
 
+  - by default it is not possible to override a method of a map, unless
+    the statement it is attributed explicitly with the `override` keyword:
+
+      var m = { "f" : func { return 1 } }
+      func c { return 11 }
+      override m.f = c
+      m.f () => 11
+      m.f = c # error
+
   # Accessing maps. This is done by using a dot ('.') after a symbol that refers
     to a Map Type.
 
@@ -451,12 +462,12 @@ a lot by the S-Lang programming language, which is quite like C.
 
   Then it can be called like a MapType.
 
-  Types should provide an `init` method. This can be declared as `private` or as
+  Types _should_ provide an `init` method. This can be attributed as `private` or as
   `public`. In the latter case the state can be reinitialized at the runtime
   by the user, without the `New` keyword.
 
-  Declared fields are not obligated to provide a value. In this case these properties
-  are initialized as `null`.
+  Declared fields are not obligated to provide a value on declaration
+  time. In this case these properties are initialized as `null`.
 
 # Strings
   # Two special forms of the `for` loop, can be used as an iterator that can

@@ -244,7 +244,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
   #    being respected
   #  - likewise for the returned types, the number and the type of
   #    arguments of the functions/methods
-  #  - the new directory that overides one or all of the above,
+  #  - the new directory that overrides one or all of the above,
   #    should respect this hierarchy, that means:
   #      - the name of the compilation units should match
   #      - provide a Makefile that could handle the compilation

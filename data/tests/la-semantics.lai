@@ -1455,6 +1455,15 @@ func test_maps {
 
   assert_true ("testing submap accessors", parm.submap.f () is 22 and
      parm.submap:f () is 11)
+
+  var mmma = {
+    "f" : func { return 1 }
+  }
+  var res = mmma.f ()
+  func t { return 11 }
+  override mmma.f = t
+
+  assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
 }
 
 test_maps ()

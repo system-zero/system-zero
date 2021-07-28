@@ -86,7 +86,7 @@ $PRINTF "\r\b\r               \n"
 $PRINTF "----- [ Tests that should fail ] -----\n"
 
 test_failed data/tests/failed_map_private_field.lai "testing map field with private scope"
-
+test_failed data/tests/failed_map_override.lai "testing overriding a method, without to set it explicitly"
 $PRINTF "\n"
 $PRINTF "====- FAILED TESTS SUMMARY -====\n"
 $PRINTF "NUM TESTS: $NUM\n"
