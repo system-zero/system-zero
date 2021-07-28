@@ -629,6 +629,16 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   File.chown (StringType file, IntegerType uid, IntegerType gid)
     # IntegerType   File.chmod (StringType file, IntegerType mode)
     # IntegerType   File.exists (StringType file)
+    # IntegerType   File.is_rwx (StringType file)
+    # IntegerType   File.is_reg (StringType file)
+    # IntegerType   File.is_lnk (StringType file)
+    # IntegerType   File.is_fifo (StringType file)
+    # IntegerType   File.is_sock (StringType file)
+    # IntegerType   File.is_readable (StringType file)
+    # IntegerType   File.is_writable (StringType file)
+    # IntegerType   File.is_executable (StringType file)
+    # StringType[]  File.readlines (StringType file)
+    # IntegerType   File.writelines (StringType file, StringType[] array)
     # IntegerType   File.access (StringType file, IntegerType mode)
     # IntegerType   File.mkfifo (StringType file, IntegerType mode)
     # IntegerType   File.remove (StringType file)
@@ -696,6 +706,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
   # Sys Module Interface
     # StringType    Sys.get (StringType sys_setting)
+    # IntegerType   Sys.set (StringType asname, StringType sys_setting, IntegerType replaceanyold) 
     # StringType    Sys.which (StringType exec)
 
 # Library

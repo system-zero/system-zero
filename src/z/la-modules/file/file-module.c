@@ -5,8 +5,8 @@
 #define REQUIRE_UNISTD
 
 #define REQUIRE_VMAP_TYPE     DECLARE
-#define REQUIRE_VSTRING_TYPE  DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DONOT_DECLARE
+#define REQUIRE_VSTRING_TYPE  DECLARE
+#define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
@@ -14,8 +14,7 @@
 
 static VALUE file_exists (la_t *this, VALUE v_file) {
   (void) this;
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *file = AS_STRING_BYTES(v_file);
   return INT(File.exists (file));
@@ -23,16 +22,14 @@ static VALUE file_exists (la_t *this, VALUE v_file) {
 
 static VALUE file_size (la_t *this, VALUE v_file) {
   (void) this;
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *file = AS_STRING_BYTES(v_file);
   return INT(File.size (file));
 }
 
 static VALUE file_readlink (la_t *this, VALUE v_file) {
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *file = AS_STRING_BYTES(v_file);
 
@@ -50,11 +47,8 @@ static VALUE file_readlink (la_t *this, VALUE v_file) {
 }
 
 static VALUE file_hardlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
-  ifnot (IS_STRING(v_src_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  ifnot (IS_STRING(v_dest_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_src_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_dest_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
@@ -72,11 +66,8 @@ static VALUE file_hardlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
 }
 
 static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
-  ifnot (IS_STRING(v_src_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  ifnot (IS_STRING(v_dest_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_src_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_dest_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
@@ -94,14 +85,9 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
 }
 
 static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  ifnot (IS_INT(v_uid))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-
-  ifnot (IS_INT(v_gid))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_uid)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_INT(v_gid)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   char *file = AS_STRING_BYTES(v_file);
   uid_t uid = (uid_t) AS_INT(v_uid);
@@ -120,11 +106,8 @@ static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {
 }
 
 static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  ifnot (IS_INT(v_mode))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   char *file = AS_STRING_BYTES(v_file);
   mode_t mode = (mode_t) AS_INT(v_mode);
@@ -142,11 +125,8 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
 }
 
 static VALUE file_mkfifo (la_t *this, VALUE v_file, VALUE v_mode) {
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  ifnot (IS_INT(v_mode))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   char *file = AS_STRING_BYTES(v_file);
   int mode = AS_INT(v_mode);
@@ -164,8 +144,7 @@ static VALUE file_mkfifo (la_t *this, VALUE v_file, VALUE v_mode) {
 }
 
 static VALUE file_remove (la_t *this, VALUE v_file) {
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *file = AS_STRING_BYTES(v_file);
 
@@ -182,11 +161,8 @@ static VALUE file_remove (la_t *this, VALUE v_file) {
 }
 
 static VALUE file_rename (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
-  ifnot (IS_STRING(v_src_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  ifnot (IS_STRING(v_dest_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_src_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_dest_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
@@ -204,11 +180,8 @@ static VALUE file_rename (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
 }
 
 static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  ifnot (IS_INT(v_mode))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   char *file = AS_STRING_BYTES(v_file);
   int mode = AS_INT(v_mode);
@@ -225,8 +198,7 @@ static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
 }
 
 static VALUE file_stat (la_t *this, VALUE v_file) {
-  ifnot (IS_STRING(v_file))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   La.set.Errno (this, 0);
 
@@ -263,8 +235,7 @@ static VALUE file_stat (la_t *this, VALUE v_file) {
 
 static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
   (void) this;
-  ifnot (IS_INT(v_mode))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   mode_t mode = AS_INT(v_mode);
   char mode_string[12];
@@ -275,8 +246,7 @@ static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
 
 static VALUE file_mode_to_octal_string (la_t *this, VALUE v_mode) {
   (void) this;
-  ifnot (IS_INT(v_mode))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   mode_t mode = AS_INT(v_mode);
   char oct_str[16];
@@ -285,12 +255,123 @@ static VALUE file_mode_to_octal_string (la_t *this, VALUE v_mode) {
   return STRING(s);
 }
 
+static VALUE file_is_rwx (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_rwx (file));
+}
+
+static VALUE file_is_reg (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_reg (file));
+}
+
+static VALUE file_is_lnk (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_lnk (file));
+}
+
+static VALUE file_is_fifo (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_fifo (file));
+}
+
+static VALUE file_is_sock (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_sock (file));
+}
+
+static VALUE file_is_readable (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_readable (file));
+}
+
+static VALUE file_is_writable (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_writable (file));
+}
+
+static VALUE file_is_executable (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+  return INT(File.is_executable (file));
+}
+
+static VALUE file_readlines (la_t *this, VALUE v_file) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  char *file = AS_STRING_BYTES(v_file);
+
+  Vstring_t *vs = File.readlines (file, NULL, NULL, NULL);
+  if (NULL is vs)
+    return NULL_VALUE;
+
+  ArrayType *array = ARRAY_NEW(STRING_TYPE, vs->num_items);
+  string **ar = (string **) AS_ARRAY(array->value);
+
+  vstring_t *it = vs->head;
+
+  int idx = 0;
+  while (it) {
+    String.replace_with_len (ar[idx++], it->data->bytes, it->data->num_bytes);
+    it = it->next;
+  }
+
+  Vstring.release (vs);
+
+  return ARRAY(array);
+}
+
+static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_ARRAY(v_ar)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
+
+  char *file = AS_STRING_BYTES(v_file);
+  ArrayType *array = (ArrayType *) AS_ARRAY(v_ar);
+  if (array->type isnot STRING_TYPE)
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string type array");
+
+  FILE *fp = fopen (file, "w");
+  if (NULL is fp)
+    return INT(LA_NOTOK);
+
+  string **ar = (string **) AS_ARRAY(array->value);
+
+  for (size_t i = 0; i < array->len; i++) {
+    if (fprintf (fp, "%s\n", ar[i]->bytes) isnot ar[i]->num_bytes + 1) {
+      fclose (fp);
+      return INT(LA_NOTOK);
+    }
+  }
+
+  fclose (fp);
+  return INT(LA_OK);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(file);
   __INIT__(vmap);
+  __INIT__(string);
+  __INIT__(vstring);
 
   (void) vstringType;
 
@@ -307,6 +388,16 @@ public int __init_file_module__ (la_t *this) {
     { "file_symlink",    PTR(file_symlink), 2 },
     { "file_hardlink",   PTR(file_hardlink), 2 },
     { "file_readlink",   PTR(file_readlink), 1 },
+    { "file_is_rwx",     PTR(file_is_rwx), 1 },
+    { "file_is_reg",     PTR(file_is_reg), 1 },
+    { "file_is_lnk",     PTR(file_is_lnk), 1 },
+    { "file_is_fifo",    PTR(file_is_fifo), 1 },
+    { "file_is_sock",    PTR(file_is_sock), 1 },
+    { "file_is_readable",PTR(file_is_readable), 1 },
+    { "file_is_writable",PTR(file_is_writable), 1 },
+    { "file_is_executable", PTR(file_is_executable), 1 },
+    { "file_readlines",  PTR(file_readlines), 1 },
+    { "file_writelines", PTR(file_writelines), 2 },
     { "file_mode_to_string", PTR(file_mode_to_string), 1 },
     { "file_mode_to_octal_string", PTR(file_mode_to_octal_string), 1 },
     { NULL, NULL_VALUE, 0}
@@ -366,6 +457,16 @@ public int __init_file_module__ (la_t *this) {
        "symlink" : file_symlink,
        "hardlink" : file_hardlink,
        "readlink" : file_readlink,
+       "is_rwx" : file_is_rwx,
+       "is_reg" : file_is_reg,
+       "is_lnk" : file_is_lnk,
+       "is_fifo" : file_is_fifo,
+       "is_sock" : file_is_sock,
+       "is_readable" : file_is_readable,
+       "is_writable" : file_is_writable,
+       "is_executable" : file_is_executable,
+       "readlines"     : file_readlines,
+       "writelines"    : file_writelines,
        "mode_to_string" : file_mode_to_string,
        "mode_to_octal_string" : file_mode_to_octal_string
      }

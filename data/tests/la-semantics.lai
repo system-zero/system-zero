@@ -690,27 +690,64 @@ func semantics () {
 
       assert_true ("testing the File module and the exists method",
          File.exists (tmp_file))
+
+      assert_true ("testing the is_reg method",
+         File.is_reg (tmp_file))
+
       var m = File.stat (tmp_file)
       assert_true ("testing the stat method and size method",
           typeof (m) is MapType and m.st_size is 10 and
           File.size (tmp_file) is 10)
+
       assert_true ("testing the access method",
           File.access (tmp_file, W_OK|R_OK) is 0 and
           File.access (tmp_file, X_OK) is -1)
+
       assert_true ("testing the chmod method",
           File.chmod (tmp_file, S_IRWXU) is 0 and
           File.access (tmp_file, X_OK) is 0)
+
+      assert_true ("testing the is_executable method",
+         File.is_executable (tmp_file))
+
+      assert_true ("testing the is_rwx method",
+         File.is_rwx (tmp_file))
+
       var slink = "/tmp/test_file_module_link"
       assert_true ("testing the symlink method",
-          File.symlink (tmp_file, slink) is 0)
+          File.symlink (tmp_file, slink) is ok)
+
       assert_true ("testing the readlink method",
           File.readlink (slink) is tmp_file)
+
+      assert_true ("testing the is_lnk method",
+          File.is_lnk (slink))
+
       var new = "/tmp/test_file_module_new"
       assert_true ("testing the rename method",
-          File.rename (tmp_file, new) is 0)
+          File.rename (tmp_file, new) is ok)
+
+      var fifname = "/tmp/test_file_module_fifo"
+
+      assert_true ("testing the mkfifo method",
+          File.mkfifo (fifname, 0600) is ok)
+
+      assert_true ("testing the is_lnk method",
+          File.is_fifo (fifname))
+
+      var far = ["asdfghjkl", "qwertyuiop", "zxcvbnm,."]
+      var farfn = "/tmp/test_file_write_and_read"
+      var rv = File.writelines (farfn, far)
+      var farb = File.readlines (farfn)
+
+      assert_true ("testing the writelines and readlines methods",
+          rv is ok and far is farb)
+
       assert_true ("testing the remove method",
-          File.remove (slink) is 0 and
-          File.remove (new) is 0)
+          File.remove (slink) is ok and
+          File.remove (new) is ok and
+          File.remove (fifname) is ok and
+          File.remove (farfn) is ok)
     }
 
     file_module ()

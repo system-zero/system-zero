@@ -34,6 +34,7 @@ typedef struct file_self {
     (*is_elf) (const char *),
     (*is_rwx) (const char *),
     (*is_sock) (const char *),
+    (*is_fifo) (const char *),
     (*is_readable) (const char *),
     (*is_writable) (const char *),
     (*is_executable) (const char *);

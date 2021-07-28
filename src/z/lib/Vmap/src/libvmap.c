@@ -110,6 +110,20 @@ static Vmap_t *vmap_clone (Vmap_t *vmap, VmapCopy_cb copy, void *object) {
   return new;
 }
 
+static char *vmap_key (Vmap_t *vmap, void *object) {
+  if (NULL is vmap) return NULL;
+
+  for (size_t i = 0; i < vmap->num_slots; i++) {
+    vmap_t *item = vmap->slots[i];
+    while (item) {
+      if (item->value is object)  return item->key;
+      item = item->next;
+    }
+  }
+
+  return NULL;
+}
+
 static int vmap_num_keys (Vmap_t *vmap) {
   return (int) vmap->num_keys;
 }
@@ -142,6 +156,7 @@ public vmap_T __init_vmap__ (void) {
       .get = vmap_get,
       .set = vmap_set,
       .pop = vmap_pop,
+      .key = vmap_key,
       .keys = vmap_keys,
       .clear = vmap_clear,
       .clone = vmap_clone,

@@ -99,6 +99,7 @@
 #define OBJECT_RELEASE_STATE          (1 << 2)
 #define TYPE_NEW_STATE                (1 << 3)
 #define EVAL_UNIT_STATE               (1 << 4)
+#define RETURN_STATE                  (1 << 5)
 
 #define FMT_LITERAL                   (1 << 0)
 
@@ -184,6 +185,7 @@
 #define LA_TOKEN_COMMENT    '#'
 #define LA_TOKEN_UNARY      '~'
 #define LA_TOKEN_DQUOTE     '"'
+#define LA_TOKEN_ADD        '+'
 #define LA_TOKEN_SQUOTE     '\''
 #define LA_TOKEN_STAR       '*'
 #define LA_TOKEN_NL         '\n'
@@ -411,6 +413,7 @@ static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
 static int la_parse_array_def (la_t *);
 static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static VALUE la_copy_map (VALUE);
+static VALUE map_release (VALUE);
 static int la_parse_map_get (la_t *, VALUE *);
 static int la_parse_map_set (la_t *);
 static int la_parse_loadfile (la_t *);
@@ -1031,13 +1034,14 @@ static int la_parse_format (la_t *this, VALUE *vp) {
     la_unget_char (this);
     c = la_next_token (this);
     VALUE v;
+    this->curState |= STRING_LITERAL_ARG_STATE;
     err = la_parse_expr (this, &v);
+    this->curState &= ~STRING_LITERAL_ARG_STATE;
     if (err isnot LA_OK)
       return err;
 
     if (v.type is STRING_TYPE) {
-      c = this->curToken
-      ;
+      c = this->curToken;
       la_string savepc = this->parsePtr;
       string *v_s = AS_STRING(v);
       /* very crude algorithm (buf for a minor case (evaluation of a string
@@ -1050,6 +1054,11 @@ static int la_parse_format (la_t *this, VALUE *vp) {
       buf[0] = '('; buf[1] = '"';
       Cstring.cp (buf + 2, len + 1, v_s->bytes, v_s->num_bytes);
       buf[len - 2] = '"'; buf[len - 1] = ')'; buf[len] = '\0';
+
+      if (v.sym is NULL and
+          0 is ns_is_malloced_string (this->curScope, v_s) and
+          0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+        String.release (v_s);
 
       this->parsePtr = la_StringNew (buf);
       err = la_parse_format (this, &v);
@@ -1187,7 +1196,7 @@ static VALUE la_free (la_t *this, VALUE value) {
     case   ARRAY_TYPE: return array_release (value);
     case  STRING_TYPE: return string_release (value);
     case  OBJECT_TYPE: return object_release (this, value);
-    case     MAP_TYPE: Vmap.release ((Vmap_t *) AS_PTR(value));
+    case     MAP_TYPE: return map_release (value);
     default: return result;
   }
 
@@ -3105,6 +3114,20 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   return la_map_set_value (this, map, key, v, scope);
 }
 
+static VALUE map_release (VALUE value) {
+  VALUE result = INT(LA_OK);
+  if (value.sym isnot NULL) {
+  if (value.refcount < 0) return result;
+
+  if (value.refcount) goto theend;
+}
+  Vmap.release ((Vmap_t *) AS_PTR(value));
+
+theend:
+  value.refcount--;
+  return result;
+}
+
 static void *la_copy_map_cb (void *value, void *mapval) {
   Vmap_t *map = (Vmap_t *) mapval;
   VALUE *v = (VALUE *) value;
@@ -3207,6 +3230,10 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   this->parsePtr = saved_ptr;
 
   v = MAP(map);
+
+  if (this->funcState & EXPR_LIST_STATE)
+    v.refcount--;
+
   *vp = v;
   la_next_token (this);
   return LA_OK;
@@ -3330,9 +3357,18 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     return err;
   }
 
-  if ((v->type is MAP_TYPE and 0 is is_this) or
-      this->objectState & MAP_ASSIGNMENT)
-    *vp = la_copy_map (*v);
+  if (v->type is MAP_TYPE) {
+    if (0 is is_this or this->objectState & MAP_ASSIGNMENT) {
+      *vp = la_copy_map (*v);
+    } else {
+      if (v->sym isnot NULL and
+          is_this and this->funcState & RETURN_STATE and
+          0 is (this->funcState & EXPR_LIST_STATE)) {
+        vp->refcount++;
+        this->objectState |= MAP_MEMBER;
+      }
+    }
+  }
 
   if (vp->type is STRING_TYPE)
     this->objectState |= MAP_MEMBER;
@@ -6207,12 +6243,18 @@ static int la_parse_print (la_t *this) {
   c = la_ignore_ws (this);
 
   FILE *fp = this->out_fp;
+  int is_add_operation = 0;
+  VALUE v;
 
   if (c isnot LA_TOKEN_DQUOTE) {
     la_unget_char (this);
     c = la_next_token (this);
-    VALUE v;
+
+    this->curState |= STRING_LITERAL_ARG_STATE;
     err = la_parse_expr (this, &v);
+    this->curState &= ~STRING_LITERAL_ARG_STATE;
+
+    check_expr:
     if (err isnot LA_OK) {
       this->print_bytes (this->err_fp, "string fmt error, awaiting a file ptr value\n");
       la_err_ptr (this, LA_NOTOK);
@@ -6221,8 +6263,19 @@ static int la_parse_print (la_t *this) {
 
     if (v.type is STRING_TYPE) {
       string *vs = AS_STRING(v);
-      String.append_with_len (str, vs->bytes, vs->num_bytes);
-      c = this->curToken;
+
+      ifnot (is_add_operation)
+        String.append_with_len (str, vs->bytes, vs->num_bytes);
+      else
+        String.replace_with_len (str, vs->bytes, vs->num_bytes);
+
+      if (v.sym is NULL and
+          0 is ns_is_malloced_string (this->curScope, vs) and
+          0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+        String.release (vs);
+
+      c =this->curToken;
+
       goto print_str;
     }
 
@@ -6263,12 +6316,24 @@ static int la_parse_print (la_t *this) {
   err = la_parse_fmt (this, str, 0);
   if (err isnot LA_OK) goto theend;
 
-  c = la_get_char (this);
+  c = la_next_token (this);
 
 print_str:
   this->print_fp = fp;
 
   if (c isnot LA_TOKEN_PAREN_CLOS) {
+    if ((c & 0xff) is LA_TOKEN_BINOP) {
+      if (AS_VOID_PTR(this->tokenValue) is la_add) {
+        is_add_operation = 1;
+        this->curToken = c;
+        v = STRING(str);
+        this->curState |= STRING_LITERAL_ARG_STATE;
+        err = la_parse_expr_level (this, MAX_EXPR_LEVEL, &v);
+        this->curState &= ~STRING_LITERAL_ARG_STATE;
+        goto check_expr;
+      }
+    }
+
     this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
     la_err_ptr (this, LA_NOTOK);
     err = LA_ERR_SYNTAX;
@@ -6321,7 +6386,9 @@ static int la_parse_return (la_t *this) {
   if (NULL is scope)
     return this->syntax_error (this, "error while parsing return, unknown scope");
 
-  err = la_parse_expr (this, &scope->result);
+  this->funcState |= RETURN_STATE;
+   err = la_parse_expr (this, &scope->result);
+  this->funcState &= ~RETURN_STATE;
 
   la_StringSetLen (&this->parsePtr, 0);
   this->didReturn = 1;
@@ -6981,6 +7048,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
         case STRING_TYPE: {
           string *x_str = AS_STRING(x);
           string *y_str = AS_STRING(y);
+
           if (this->objectState & OBJECT_APPEND) {
             this->objectState &= ~OBJECT_APPEND;
             String.append_with_len (x_str, y_str->bytes, y_str->num_bytes);

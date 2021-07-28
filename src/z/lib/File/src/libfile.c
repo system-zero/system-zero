@@ -27,10 +27,11 @@
 /* Public TODO:
    StateRetval = fun (args, SomeState()).retval
  */
+
 static int file_is_lnk (const char *fname) {
   struct stat st;
   if (NOTOK is lstat (fname, &st)) return 0;
-  return S_ISLNK (st.st_mode);
+  return S_ISLNK(st.st_mode);
 }
 
 static int file_is_reg (const char *fname) {
@@ -43,6 +44,13 @@ static int file_is_sock (const char *fname) {
   struct stat st;
   if (NOTOK is stat (fname, &st)) return 0;
   return S_ISSOCK (st.st_mode);
+}
+
+static int file_is_fifo (const char *fname) {
+  struct stat st;
+  if (NOTOK is stat (fname, &st)) return 0;
+
+  return S_ISFIFO (st.st_mode);
 }
 
 static int file_is_executable (const char *fname) {
@@ -339,6 +347,7 @@ public file_T __init_file__ (void) {
       .is_reg = file_is_reg,
       .is_lnk = file_is_lnk,
       .is_sock = file_is_sock,
+      .is_fifo = file_is_fifo,
       .is_readable = file_is_readable,
       .is_writable = file_is_writable,
       .is_executable = file_is_executable,
