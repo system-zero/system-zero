@@ -85,14 +85,12 @@
 
 #define STRING_LITERAL_ARG_STATE      (1 << 0)
 #define LOOP_STATE                    (1 << 1)
-#define BREAK_STATE                   (1 << 2)
-#define CONTINUE_STATE                (1 << 3)
-#define LITERAL_STRING_STATE          (1 << 4)
-#define FUNC_CALL_RESULT_IS_MMT       (1 << 5)
-#define LOADFILE_SILENT               (1 << 6)
-#define INDEX_STATE                   (1 << 8)
-#define MAP_STATE                     (1 << 9)
-#define BLOCK_STATE                   (1 << 10)
+#define LITERAL_STRING_STATE          (1 << 2)
+#define FUNC_CALL_RESULT_IS_MMT       (1 << 3)
+#define LOADFILE_SILENT               (1 << 4)
+#define INDEX_STATE                   (1 << 5)
+#define MAP_STATE                     (1 << 6)
+#define BLOCK_STATE                   (1 << 7)
 
 #define EXPR_LIST_STATE               (1 << 0)
 #define MAP_METHOD_STATE              (1 << 1)
@@ -185,7 +183,6 @@
 #define LA_TOKEN_COMMENT    '#'
 #define LA_TOKEN_UNARY      '~'
 #define LA_TOKEN_DQUOTE     '"'
-#define LA_TOKEN_ADD        '+'
 #define LA_TOKEN_SQUOTE     '\''
 #define LA_TOKEN_STAR       '*'
 #define LA_TOKEN_NL         '\n'
@@ -348,7 +345,9 @@ struct la_t {
     exitValue,
     tokenArgs,
     didReturn,
-    didExit;
+    didExit,
+    loopCount,
+    breakCount;
 
   size_t anon_id;
 
@@ -673,7 +672,7 @@ static int la_peek_nows_char_inline (la_t *this, uint *n) {
   int c;
   while (1) {
     c = la_peek_char (this, *n);
-    ifnot (is_space (c))  return c;
+    ifnot (is_space (c)) return c;
     *n += 1;
   }
 
@@ -1769,7 +1768,7 @@ static Vmap_t *la_symbol_stack_pop (la_t *this) {
   return symbols;
 }
 
-static VALUE la_string_to_num (la_string s) {
+static VALUE la_string_to_dec (la_string s) {
   integer r = 0;
   int c;
   const char *ptr = la_StringGetPtr (s);
@@ -3789,7 +3788,12 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     string *func = AS_STRING(this->func->value);
     String.replace_with (func, uf->funname);
 
+    int loopcount = this->loopCount;
+    this->loopCount = 0;
+
     err = la_parse_string (this, uf->body);
+
+    this->loopCount = loopcount;
 
     this->curScope = la_fun_stack_pop (this);
 
@@ -3941,7 +3945,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     }
 
     case LA_TOKEN_NUMBER: {
-      VALUE val = la_string_to_num (this->curStrToken);
+      VALUE val = la_string_to_dec (this->curStrToken);
       *vp = val;
       la_next_token (this);
       return LA_OK;
@@ -4186,10 +4190,28 @@ static int la_parse_stmt (la_t *this) {
 
 do_token:
   c = this->curToken;
+
   switch (c) {
     case LA_TOKEN_BREAK:
       if (this->curState & LOOP_STATE) {
-        this->curState |= BREAK_STATE;
+        uint n = 0;
+        int num = la_peek_char_nows (this, &n);
+        if ('1' <= num and num <= '9') {
+          n++;
+          c = la_peek_nows_char_inline (this, &n);
+
+          if (c isnot LA_TOKEN_SEMICOLON and c isnot LA_TOKEN_NL and
+              c isnot LA_TOKEN_BLOCK_CLOS and c isnot LA_TOKEN_EOF)
+            return this->syntax_error (this, "unexpected token after a break statement");
+          num -= ('0' + 1);
+
+          if (num >= this->loopCount)
+            return this->syntax_error (this, "break statement: too many loop count levels");
+
+          this->breakCount = num;
+        } else
+          this->breakCount = 0;
+
         return LA_ERR_BREAK;
       }
 
@@ -4197,7 +4219,6 @@ do_token:
 
     case LA_TOKEN_CONTINUE:
       if (this->curState & LOOP_STATE) {
-        this->curState |= CONTINUE_STATE;
         return LA_ERR_CONTINUE;
       }
 
@@ -4670,8 +4691,8 @@ static int la_parse_if (la_t *this) {
 }
 
 static int la_parse_while (la_t *this) {
+  this->loopCount++;
   int err;
-  int is_inloop = (this->curState & LOOP_STATE);
 
   int c = la_next_token (this);
   if (c isnot LA_TOKEN_PAREN_OPEN)
@@ -4764,24 +4785,23 @@ static int la_parse_while (la_t *this) {
     ifnot (AS_INT(v)) goto theend;
 
     this->curState |= LOOP_STATE;
-    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+    if (err is LA_ERR_BREAK) {
       la_next_token (this);
       goto theend;
     }
 
     if (this->didReturn) {
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+      this->curState &= ~LOOP_STATE;
       la_StringSetLen (&this->parsePtr, 0);
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+    if (err is LA_ERR_CONTINUE) {
       la_fun_release_symbols (fun, 1, 0);
       continue;
     }
@@ -4795,16 +4815,27 @@ theend:
   this->curScope = save_scope;
   Vmap.release (fun->block_symbols);
   fun_release (&fun);
-  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-  if (is_inloop) this->curState |= LOOP_STATE;
+
+  this->loopCount--;
+  ifnot (this->loopCount)
+    this->curState &= ~LOOP_STATE;
+  else
+    this->curState |= LOOP_STATE;
+
   this->parsePtr = savepc;
+
+  if (err is LA_ERR_BREAK and this->breakCount) {
+    this->breakCount--;
+    return LA_ERR_BREAK;
+  }
+
   return LA_OK;
 }
 
 static int la_parse_do (la_t *this) {
   int err;
 
-  int is_inloop = (this->curState & LOOP_STATE);
+  this->loopCount++;
   int c = la_next_token (this);
 
   if (c isnot LA_TOKEN_BLOCK)
@@ -4892,24 +4923,23 @@ static int la_parse_do (la_t *this) {
   VALUE v;
   for (;;) {
     this->curState |= LOOP_STATE;
-    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+    if (err is LA_ERR_BREAK) {
       la_next_token (this);
       goto theend;
     }
 
     if (this->didReturn) {
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+      this->curState &= ~LOOP_STATE;
       la_StringSetLen (&this->parsePtr, 0);
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+    if (err is LA_ERR_CONTINUE) {
       la_fun_release_symbols (fun, 1, 0);
       continue;
     }
@@ -4932,9 +4962,20 @@ theend:
   this->curScope = save_scope;
   Vmap.release (fun->block_symbols);
   fun_release (&fun);
-  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-  if (is_inloop) this->curState |= LOOP_STATE;
+
+  this->loopCount--;
+  ifnot (this->loopCount)
+    this->curState &= ~LOOP_STATE;
+  else
+    this->curState |= LOOP_STATE;
+
   this->parsePtr = savepc;
+
+  if (err is LA_ERR_BREAK and this->breakCount) {
+    this->breakCount--;
+    return LA_ERR_BREAK;
+  }
+
   return LA_OK;
 }
 
@@ -4969,7 +5010,8 @@ static char *find_end_foreach_ident (const char *str) {
 static int la_parse_foreach (la_t *this) {
   int err;
 
-  int is_inloop = (this->curState & LOOP_STATE);
+  this->loopCount++;
+
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
@@ -5146,13 +5188,12 @@ static int la_parse_foreach (la_t *this) {
       val_sym->type = value->type;
 
       this->curState |= LOOP_STATE;
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
       err = la_parse_string (this, body_str);
       this->curState &= ~LOOP_STATE;
 
       val_sym->value = NULL_VALUE;
 
-      if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+      if (err is LA_ERR_BREAK) {
         for (int j = 0; j < num; j++)
           String.release (keys[j]);
         free (keys);
@@ -5160,7 +5201,7 @@ static int la_parse_foreach (la_t *this) {
       }
 
       if (this->didReturn) {
-        this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+        this->curState &= ~LOOP_STATE;
         la_StringSetLen (&this->parsePtr, 0);
         Vmap.release (fun->block_symbols);
         fun_release (&fun);
@@ -5170,7 +5211,7 @@ static int la_parse_foreach (la_t *this) {
         return LA_OK;
       }
 
-      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+      if (err is LA_ERR_CONTINUE) {
         la_fun_release_symbols (fun, 1, 0);
         continue;
       }
@@ -5217,23 +5258,22 @@ static int la_parse_foreach (la_t *this) {
       index_sym->value = INT(v_idx);
 
       this->curState |= LOOP_STATE;
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
       err = la_parse_string (this, body_str);
       this->curState &= ~LOOP_STATE;
 
-      if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+      if (err is LA_ERR_BREAK) {
         goto theend;
       }
 
       if (this->didReturn) {
-        this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+        this->curState &= ~LOOP_STATE;
         la_StringSetLen (&this->parsePtr, 0);
         Vmap.release (fun->block_symbols);
         fun_release (&fun);
         return LA_OK;
       }
 
-      if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+      if (err is LA_ERR_CONTINUE) {
         la_fun_release_symbols (fun, 1, 0);
         continue;
       }
@@ -5311,17 +5351,16 @@ static int la_parse_foreach (la_t *this) {
         u = u->next;
 
         this->curState |= LOOP_STATE;
-        this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
         err = la_parse_string (this, body_str);
         this->curState &= ~LOOP_STATE;
 
-        if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+        if (err is LA_ERR_BREAK) {
           Ustring.release (U);
           goto theend;
         }
 
         if (this->didReturn) {
-          this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+          this->curState &= ~LOOP_STATE;
           la_StringSetLen (&this->parsePtr, 0);
           Vmap.release (fun->block_symbols);
           fun_release (&fun);
@@ -5329,7 +5368,7 @@ static int la_parse_foreach (la_t *this) {
           return LA_OK;
         }
 
-        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+        if (err is LA_ERR_CONTINUE) {
           la_fun_release_symbols (fun, 1, 0);
           continue;
         }
@@ -5356,23 +5395,22 @@ static int la_parse_foreach (la_t *this) {
         c_sym->value = INT(str->bytes[i]);
 
         this->curState |= LOOP_STATE;
-        this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
         err = la_parse_string (this, body_str);
         this->curState &= ~LOOP_STATE;
 
-        if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+        if (err is LA_ERR_BREAK) {
           goto theend;
         }
 
         if (this->didReturn) {
-          this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+          this->curState &= ~LOOP_STATE;
           la_StringSetLen (&this->parsePtr, 0);
           Vmap.release (fun->block_symbols);
           fun_release (&fun);
           return LA_OK;
         }
 
-        if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+        if (err is LA_ERR_CONTINUE) {
           la_fun_release_symbols (fun, 1, 0);
           continue;
         }
@@ -5389,9 +5427,20 @@ theend:
   Vmap.release (fun->block_symbols);
   fun_release (&fun);
   this->parsePtr = savepc;
-  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-  if (is_inloop) this->curState |= LOOP_STATE;
+
+  this->loopCount--;
+  ifnot (this->loopCount)
+    this->curState &= ~LOOP_STATE;
+  else
+    this->curState |= LOOP_STATE;
+
   la_next_token (this);
+
+  if (err is LA_ERR_BREAK and this->breakCount) {
+    this->breakCount--;
+    return LA_ERR_BREAK;
+  }
+
   return LA_OK;
 }
 
@@ -5439,7 +5488,7 @@ static int la_parse_for (la_t *this) {
   if (la_StringGetPtr(this->curStrToken)[0] is LA_TOKEN_BAR)
     return la_parse_foreach (this);
 
-  int is_inloop = (this->curState & LOOP_STATE);
+  this->loopCount++;
 
   if (c isnot LA_TOKEN_PAREN_OPEN)
     return this->syntax_error (this, "error while parsing for loop, awaiting (");
@@ -5535,17 +5584,16 @@ static int la_parse_for (la_t *this) {
     ifnot (AS_INT(v)) goto theend;
 
     this->curState |= LOOP_STATE;
-    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+    if (err is LA_ERR_BREAK) {
       la_next_token (this);
       goto theend;
     }
 
     if (this->didReturn) {
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+      this->curState &= ~LOOP_STATE;
       this->curToken = LA_TOKEN_SEMICOLON;
       la_StringSetLen (&this->parsePtr, 0);
       //this->parsePtr = savepc;
@@ -5554,7 +5602,7 @@ static int la_parse_for (la_t *this) {
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE)
+    if (err is LA_ERR_CONTINUE)
       goto ctl_stmt;
 
     if (err isnot LA_OK) return err;
@@ -5576,15 +5624,27 @@ theend:
   this->curScope = save_scope;
   Vmap.release (fun->block_symbols);
   fun_release (&fun);
-  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-  if (is_inloop) this->curState |= LOOP_STATE;
+
+  this->loopCount--;
+  ifnot (this->loopCount)
+    this->curState &= ~LOOP_STATE;
+  else
+    this->curState |= LOOP_STATE;
+
   this->parsePtr = savepc;
+
+  if (err is LA_ERR_BREAK and this->breakCount) {
+    this->breakCount--;
+    return LA_ERR_BREAK;
+  }
+
   return LA_OK;
 }
 
 static int la_parse_loop (la_t *this) {
   int err;
-  int is_inloop = (this->curState & LOOP_STATE);
+
+  this->loopCount++;
 
   int c = la_next_token (this);
   if (c isnot LA_TOKEN_PAREN_OPEN)
@@ -5677,23 +5737,22 @@ static int la_parse_loop (la_t *this) {
 
   for (integer i = 0; i < num; i++) {
     this->curState |= LOOP_STATE;
-    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+    if (err is LA_ERR_BREAK) {
       goto theend;
     }
 
     if (this->didReturn) {
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+      this->curState &= ~LOOP_STATE;
       la_StringSetLen (&this->parsePtr, 0);
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+    if (err is LA_ERR_CONTINUE) {
       la_fun_release_symbols (fun, 1, 0);
       continue;
     }
@@ -5707,17 +5766,29 @@ theend:
   this->curScope = save_scope;
   Vmap.release (fun->block_symbols);
   fun_release (&fun);
-  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-  if (is_inloop) this->curState |= LOOP_STATE;
+
+  this->loopCount--;
+  ifnot (this->loopCount)
+    this->curState &= ~LOOP_STATE;
+  else
+    this->curState |= LOOP_STATE;
+
   this->curToken = LA_TOKEN_SEMICOLON;
   this->parsePtr = savepc;
+
+  if (err is LA_ERR_BREAK and this->breakCount) {
+    this->breakCount--;
+    return LA_ERR_BREAK;
+  }
+
   return LA_OK;
 }
 
 static int la_parse_forever (la_t *this) {
   int err;
 
-  int is_inloop = (this->curState & LOOP_STATE);
+  this->loopCount++;
+
   funT *save_scope = this->curScope;
 
   funT *fun = Fun_new (this, funNew (
@@ -5763,24 +5834,23 @@ static int la_parse_forever (la_t *this) {
 
   for (;;) {
     this->curState |= LOOP_STATE;
-    this->curState &= ~(BREAK_STATE|CONTINUE_STATE);
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK or this->curState & BREAK_STATE) {
+    if (err is LA_ERR_BREAK) {
       la_next_token (this);
       goto theend;
     }
 
     if (this->didReturn) {
-      this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
+      this->curState &= ~LOOP_STATE;
       la_StringSetLen (&this->parsePtr, 0);
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
     }
 
-    if (err is LA_ERR_CONTINUE or this->curState & CONTINUE_STATE) {
+    if (err is LA_ERR_CONTINUE) {
       la_fun_release_symbols (fun, 1, 0);
       continue;
     }
@@ -5794,9 +5864,20 @@ theend:
   this->curScope = save_scope;
   Vmap.release (fun->block_symbols);
   fun_release (&fun);
-  this->curState &= ~(BREAK_STATE|CONTINUE_STATE|LOOP_STATE);
-  if (is_inloop) this->curState |= LOOP_STATE;
+
+  this->loopCount--;
+  ifnot (this->loopCount)
+    this->curState &= ~LOOP_STATE;
+  else
+    this->curState |= LOOP_STATE;
+
   this->parsePtr = savepc;
+
+  if (err is LA_ERR_BREAK and this->breakCount) {
+    this->breakCount--;
+    return LA_ERR_BREAK;
+  }
+
   return LA_OK;
 }
 
@@ -7989,6 +8070,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->scopeState = 0;
   this->stackValIdx = -1;
   this->anon_id = 0;
+  this->loopCount = 0;
 
   if (NULL is opts.la_dir) {
     char *ddir = getenv ("DATADIR");

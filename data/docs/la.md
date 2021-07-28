@@ -121,9 +121,15 @@ a lot by the S-Lang programming language, which is quite like C.
 
   do { block } while (condition)
 
-# a `break` statement breaks out of a loop
-
 # a `continue` statement continues with the next iteration
+
+# a `break` statement breaks out of a loop. By default is one (the current)
+  loop level. However it can be set explicitly to break to outer loop levels.
+  If the given level is greater than the existing loop levels, a syntax error
+  is raised.
+
+  Likewise if a `continue` or a `break` is a statement that is not into a loop
+  state, a syntax error is raised.
 
 # Constant types (those types can not be reassigned)
 

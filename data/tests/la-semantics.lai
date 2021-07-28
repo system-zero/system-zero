@@ -256,6 +256,89 @@ func semantics () {
   retval = loop_test_break (50)
   assert_true ("testing break statement", retval is 50)
 
+
+  var tsum = 0
+  var aar = [1, 2, 3]
+  var bar = [4, 5, 6]
+  var car = [7, 8, 9]
+
+  for |i| in aar {
+    for |j| in bar {
+      for |k| in car {
+        tsum += car[k]
+        if (k is 1) { break 1 }
+      }
+
+      tsum += bar[j]
+      if (j is 1) { break 1 }
+    }
+
+    tsum += aar[i]
+  }
+
+  var first_sum = tsum
+  var first_sum_should_be = 123
+
+  tsum = 0
+
+  for |i| in aar {
+    for |j| in bar {
+      for |k| in car {
+        tsum += car[k]
+        if (k is 2) { break 3 }
+      }
+
+      tsum += bar[j]
+      if (j is 1) { break 2 }
+    }
+
+    tsum += aar[i]
+  }
+
+  var second_sum = tsum
+  var second_sum_should_be = 24
+
+  for |i| in aar {
+    for |j| in bar {
+      for |k| in car {
+        tsum += car[k]
+        if (k is 1) { break 1 }
+      }
+
+      tsum += bar[j]
+      if (j is 1) { break 2 }
+    }
+
+    tsum += aar[i]
+  }
+
+  var third_sum = tsum
+  var third_sum_should_be = 63
+
+  tsum = 0
+  for |i| in aar {
+    for |j| in bar {
+      for |k| in car {
+        tsum += car[k]
+        if (k is 1) { break 2 }
+      }
+
+      tsum += bar[j]
+      if (j is 1) { break 2 }
+    }
+
+    tsum += aar[i]
+  }
+
+  var fourth_sum = tsum
+  var fourth_sum_should_be = 51
+
+  assert_true ("testing break statement with explicit break levels",
+      first_sum is first_sum_should_be and
+      second_sum is second_sum_should_be and
+      third_sum is third_sum_should_be and
+      fourth_sum is fourth_sum_should_be)
+
   func loop_test_continue (ar) {
     var i = 0;
     var sum = 0;
