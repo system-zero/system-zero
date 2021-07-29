@@ -16,7 +16,7 @@
 #
 # to run the semantic tests under valgrind use:
 # MEMCHECK_IT=1 data/scripts/test_interpreter.sh
-# the ouput will be saved under /tmp/valgring_output
+# the ouput will be saved under /tmp/valgrind_output
 #
 # to run the semantic tests under gdb use:
 # DEBUG_IT=1 data/scripts/test_interpreter.sh
@@ -33,7 +33,10 @@ DEBUG_IT=${DEBUG_IT-0}
 BINPATH=sys/$(uname -m)/bin
 VALGRIND=$(which valgrind)
 VALGRIND_ARGS="--show-leak-kinds=all --leak-check=full -v --track-origins=yes"
+VALGRIND_OUTPUT="/tmp/valgrind_output"
 GDB=$(which gdb)
+
+PROG_ARGS="--run-invalid-memory-read-tests --run-fileptr-tests --run-valgrind-tests"
 
 if [ $# = 0 ]; then
   PROG=$BINPATH/La-shared
@@ -45,15 +48,17 @@ $PRINTF "testing $PROG interpreter\n\n"
 
 test_semantics() {
   if [ $MEMCHECK_IT = 1 ]; then
-    $VALGRIND $VALGRIND_ARGS $PROG data/tests/la-semantics.lai 2>/tmp/valgrind_output
+    $PRINTF "Running under valgrind (log will be saved to $VALGRIND_OUTPUT).\n"
+    $VALGRIND $VALGRIND_ARGS $PROG data/tests/la-semantics.lai \
+        $PROG_ARGS 2>$VALGRIND_OUTPUT
   elif [ $DEBUG_IT = 1 ]; then
     $GDB \
       -ex "set logging file /tmp/gdb_output" \
       -ex "set logging overwrite on" \
       -ex "set logging on" -ex "run" --args \
-      $PROG data/tests/la-semantics.lai
+      $PROG data/tests/la-semantics.lai $PROG_ARGS
   else
-    $PROG data/tests/la-semantics.lai
+    $PROG data/tests/la-semantics.lai $PROG_ARGS
   fi
 }
 

@@ -103,13 +103,14 @@
 
 #define OBJECT_APPEND                 (1 << 0)
 #define IDENT_LEAD_CHAR_CAN_BE_DIGIT  (1 << 1)
-#define MMT_OBJECT                    (1 << 2)
-#define ASSIGNMENT_STATE              (1 << 3)
-#define OBJECT_MMT_REASSIGN           (1 << 4)
-#define ARRAY_MEMBER                  (1 << 5)
-#define MAP_MEMBER                    (1 << 6)
-#define MAP_ASSIGNMENT                (1 << 7)
-#define FUNC_OVERRIDE                  (1 << 8)
+#define ASSIGNMENT_STATE              (1 << 2)
+#define OBJECT_MMT_REASSIGN           (1 << 3)
+#define ARRAY_MEMBER                  (1 << 4)
+#define MAP_MEMBER                    (1 << 5)
+#define MAP_ASSIGNMENT                (1 << 6)
+#define FUNC_OVERRIDE                 (1 << 7)
+#define LHS_STRING_RELEASED           (1 << 8)
+#define RHS_STRING_RELEASED           (1 << 9)
 
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
@@ -3283,14 +3284,6 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   *vp = *v;
 
-  if (this->objectState & ASSIGNMENT_STATE) {
-    switch (v->type) {
-      case STRING_TYPE:
-      case ARRAY_TYPE:
-      this->objectState |= MMT_OBJECT;
-    }
-  }
-
   c = la_next_token (this);
 
   if (c is LA_TOKEN_DOT or c is LA_TOKEN_COLON) {
@@ -3370,7 +3363,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     }
   }
 
-  if (vp->type is STRING_TYPE)
+  if (vp->type is STRING_TYPE or vp->type is ARRAY_TYPE)
     this->objectState |= MAP_MEMBER;
 
   return LA_OK;
@@ -3805,6 +3798,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     err = la_parse_string (this, uf->body);
 
     this->loopCount = loopcount;
+    if (this->loopCount)
+      this->curState |= LOOP_STATE;
 
     this->curScope = la_fun_stack_pop (this);
 
@@ -4114,7 +4109,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
           if (v.type isnot MAP_TYPE) {
             *vp = la_copy_value (v);
-            this->objectState &= ~MMT_OBJECT;
+            this->objectState &= ~MAP_MEMBER;
           }
 
           la_free (this, mapval);
@@ -4144,7 +4139,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
           if (v.type isnot MAP_TYPE) {
             *vp = la_copy_value (v);
-            this->objectState &= ~(MMT_OBJECT|MAP_MEMBER);
+            this->objectState &= ~MAP_MEMBER;
           }
 
           la_free (this, mapval);
@@ -4345,12 +4340,10 @@ do_token:
         la_next_token (this);
 
       this->objectState |= ASSIGNMENT_STATE;
-
       err = la_parse_expr (this, &val);
       this->objectState &= ~ASSIGNMENT_STATE;
 
-      if (this->objectState & MMT_OBJECT or
-         (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
+      if (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) {
         switch (val.type) {
           case ARRAY_TYPE:
           case STRING_TYPE: {
@@ -4358,7 +4351,7 @@ do_token:
             val = la_copy_value (v);
           }
         }
-        this->objectState &= ~(MMT_OBJECT|ARRAY_MEMBER|MAP_MEMBER);
+        this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
       }
 
       if (err isnot LA_OK) return err;
@@ -4517,19 +4510,20 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
         x = AS_STRING(lhs);
     } else {
       if (0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
-          0 is (ns_is_malloced_string (this->curScope, AS_STRING(lhs))))
+          0 is (ns_is_malloced_string (this->curScope, AS_STRING(lhs))) and
+          0 is lhs.refcount)
         x = AS_STRING(lhs);
     }
   }
 
   int num_iter = 0;
-  OpFunc op = NULL;
+  int lhs_released = 0;
 
   do {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
 
-    op = (OpFunc) AS_PTR(this->tokenValue);
+    OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
 
     this->curState |= STRING_LITERAL_ARG_STATE;
     la_next_token (this);
@@ -4544,6 +4538,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
       int nextlevel = (c >> 8) & 0xff;
       if (level <= nextlevel) break;
 
+      this->objectState &= ~(LHS_STRING_RELEASED|RHS_STRING_RELEASED);
       err = la_parse_expr_level (this, nextlevel, &rhs);
 
       if (err isnot LA_OK) return err;
@@ -4556,8 +4551,12 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     VALUE sv_lhs = lhs;
 
     if (num_iter++) this->objectState |= OBJECT_APPEND;
+    this->objectState &= ~(LHS_STRING_RELEASED|RHS_STRING_RELEASED);
 
     lhs = op (this, lhs, rhs);
+
+    ifnot (num_iter - 1)
+      lhs_released = this->objectState & LHS_STRING_RELEASED;
 
     if (this->CFuncError isnot LA_OK) {
       if (this->curMsg[0] isnot '\0')
@@ -4574,7 +4573,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
       if (rhs.type isnot STRING_TYPE) {
         la_free (this, rhs);
       } else {
-        if (op isnot la_add) {
+        ifnot (this->objectState & RHS_STRING_RELEASED) {
           if (0 is ns_is_malloced_string (this->curScope, AS_STRING(rhs)) and
               0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
             String.release (AS_STRING(rhs));
@@ -4586,11 +4585,11 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
   } while ((c & 0xff) is LA_TOKEN_BINOP);
 
   this->curState &= ~(STRING_LITERAL_ARG_STATE|LITERAL_STRING_STATE);
-  this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|OBJECT_APPEND);
+  this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|OBJECT_APPEND|LHS_STRING_RELEASED|RHS_STRING_RELEASED);
 
   *vp = lhs;
 
-  if (op isnot la_add)
+  ifnot (lhs_released)
     String.release (x);
 
   return err;
@@ -5119,6 +5118,7 @@ static int la_parse_foreach (la_t *this) {
     err = la_parse_array_get (this, &v);
     if (err isnot LA_OK)
       return err;
+
     while (0 is is_space (*ptr)) ptr++;
     ptr++;
   }
@@ -6135,7 +6135,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
               }
 
               this->fmtState &= ~FMT_LITERAL;
-              this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|MMT_OBJECT);
+              this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
               break;
 
             case NULL_TYPE:
@@ -6369,10 +6369,11 @@ static int la_parse_print (la_t *this) {
       else
         String.replace_with_len (str, vs->bytes, vs->num_bytes);
 
-      if (v.sym is NULL and
-          0 is ns_is_malloced_string (this->curScope, vs) and
-          0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
-        String.release (vs);
+      ifnot (this->objectState & RHS_STRING_RELEASED)
+        if (v.sym is NULL and
+            0 is ns_is_malloced_string (this->curScope, vs) and
+            0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+          String.release (vs);
 
       c =this->curToken;
 
@@ -6427,8 +6428,10 @@ print_str:
         is_add_operation = 1;
         this->curToken = c;
         v = STRING(str);
+        v.refcount++;
         this->curState |= STRING_LITERAL_ARG_STATE;
         err = la_parse_expr_level (this, MAX_EXPR_LEVEL, &v);
+        v.refcount--;
         this->curState &= ~STRING_LITERAL_ARG_STATE;
         goto check_expr;
       }
@@ -7159,16 +7162,20 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             result = STRING(new);
 
             if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str) and
-                0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+                0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
+                0 is x.refcount) {
               String.release (x_str);
+              this->objectState |= LHS_STRING_RELEASED;
+            }
           }
 
           if (y.sym is NULL and 0 is ns_is_malloced_string (this->curScope, y_str) and
-              0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+              0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
             String.release (y_str);
+            this->objectState |= RHS_STRING_RELEASED;
+          }
 
-          if (this->objectState & (ASSIGNMENT_STATE|MMT_OBJECT))
-            this->objectState &= ~MMT_OBJECT;
+          this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
           if (this->funcState & EXPR_LIST_STATE)
             result.refcount--;
@@ -7185,10 +7192,15 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             new = x_str;
           } else {
             new = String.new_with_len (x_str->bytes, x_str->num_bytes);
-            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str)
-                and 0 is (this->curState & LITERAL_STRING_STATE))
+
+            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str) and
+                0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
               String.release (x_str);
+              this->objectState |= LHS_STRING_RELEASED;
+            }
           }
+
+          this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
           integer y_i = AS_INT(y);
           if (y_i <= '~' + 1) {
@@ -7483,7 +7495,7 @@ static struct def {
   { "lambda",  LA_TOKEN_LAMBDA,   NULL_VALUE },
   { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
   { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
-  { "override", LA_TOKEN_OVERRIDE,  NULL_VALUE },
+  { "override",LA_TOKEN_OVERRIDE, NULL_VALUE },
   { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
   { "evalfile",LA_TOKEN_EVALFILE, NULL_VALUE },
   { "import",  LA_TOKEN_IMPORT,   PTR(la_parse_import) },

@@ -512,6 +512,7 @@ a lot by the S-Lang programming language, which is quite like C.
 # return      -  return statement
 # break       -  break statement
 # continue    -  continue statement
+# override    -  overriding attribute
 # *           -  multiplication
 # /           -  division
 # %           -  modulo
