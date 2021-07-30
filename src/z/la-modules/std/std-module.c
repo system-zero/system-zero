@@ -137,6 +137,13 @@ static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
   return ARRAY(res_array);
 }
 
+static VALUE array_len (la_t *this, VALUE v_array) {
+  (void) this;
+  ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
+  ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
+  return INT(array->len);
+}
+
 static VALUE string_cmp_n (la_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
   (void) this;
   ifnot (IS_STRING(v_sa)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -332,6 +339,7 @@ public int __init_std_module__ (la_t *this) {
     { "map_keys",           PTR(map_keys), 1 },
     { "map_remove",         PTR(map_remove), 2 },
     { "map_key_exists",     PTR(map_key_exists), 2 },
+    { "array_len",          PTR(array_len), 1},
     { "array_where",        PTR(array_where), 2 },
     { "string_eq",          PTR(string_eq), 2 },
     { "string_eq_n",        PTR(string_eq_n), 3 },
@@ -365,6 +373,7 @@ public int __init_std_module__ (la_t *this) {
      };
 
     public var Array = {
+      "len"   : array_len,
       "where" : array_where
     };
 

@@ -934,8 +934,6 @@ func semantics () {
           String.bytelen ("asdf") is 4 and
           String.bytelen ("ασδφ") is 8)
 
-println ("${String.numchars ("asdf")}")
-println ("${String.numchars ("ασδφ")}")
       assert_true ("testing the numchars method",
           String.numchars ("asdf") is 4 and
           String.numchars ("ασδφ") is 4)
@@ -1069,6 +1067,440 @@ println ("${String.numchars ("ασδφ")}")
 
   comparisons ()
 
+  func doubles () {
+    var d = 113.3131
+    var da = 113.3131
+
+    assert_equal ("testing Double vars equality", d, da)
+
+    func d1 (d) {
+      return d + 12
+    }
+
+    func d2 (d) {
+      return d - 12
+    }
+
+    var df = d2
+    var dfr = df (da)
+    var d2r = d2 (da)
+
+    assert_equal ("testing Double function reference", dfr, d2r)
+
+    var dd = d1 (da)
+    var dd2r = (df (da) + dd) - da;
+    assert_equal ("testing operations on doubles", da, dd2r)
+
+    da = 1.3131
+
+    dd = d1 (da)
+    dd2r = (df (da) + dd) - da;
+    expected_to_fail ("testing expected to fail operations on doubles",
+        format ("awaiting ${%f, da} got ${%f, dd2r}"), da, dd2r)
+  }
+
+  doubles ()
+
+  func test_array (length) {
+    var retval = 0
+
+    var ar = ["a", "b"]
+    assert_true ("testing array", typeof (ar) is ArrayType)
+    assert_true ("testing array", typeofArray (ar) is StringType)
+    assert_true ("testing array get", "a" is ar[0])
+    assert_true ("testing anonymous array", typeofArray ([1.1, 2.2, 3.3]) is NumberType)
+    assert_true ("testing anonymous array", 23 is [1, 10, 23, 43][2])
+
+    var integer[length] x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    retval = len (x)
+    assert_true ("testing array length", retval is length)
+
+    var integer[length] y = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    assert_true ("testing array equality", x is y)
+
+    y[0] = 11
+
+    assert_false ("testing array inequality", x is y)
+
+    func ar_set_at (xx, idx, y) {
+      xx[idx] = y
+      return xx[idx]
+    }
+
+    retval = ar_set_at (x, length - 1, 20)
+    assert_true ("testing array set|get methods", (retval is 20) and
+        (x[length - 1] is 20))
+
+    func ar_sum (xx) {
+      var sum = 0
+      var idx = 0
+      var length = len (xx)
+      for (idx = 0; idx < length; idx += 1) {
+        sum += xx[idx]
+      }
+
+      return sum
+    }
+
+    x[0:8] = [100, 200, 300, 400, 500, 600, 700, 800, 900]
+
+    assert_equal ("testing array sum", 4520, ar_sum (x))
+
+    x[6:7] = [10, 20]
+
+    assert_equal ("testing array sum and setting indices", 3050, ar_sum (x))
+
+    var string[4] xs = ["through", "the", "ocean", "drive"]
+
+    assert_equal ("testing for string equality for string array members",
+        "ocean", xs[2])
+
+    assert_not_equal ("testing for string inequality for string array members",
+        xs[1], xs[2])
+
+    assert_false ("testing for inequality for array members",
+        xs[1] is "a")
+
+    var integer[4] i_ar
+    i_ar[*] = 31
+    assert_equal ("testing array set '*' operator", ar_sum (i_ar), 124)
+
+    var m_ar = [{"t" : 11}, {"s" : 2}]
+    m_ar[*] = {"sa" : 11, "tt" : 4, "a" : 5}
+    assert_true ("testing array set '*' operator for maps",
+        m_ar[1].sa is 11)
+
+    var am = {"sa" : 22, "sb" : 33}
+    m_ar[*] = am
+    assert_true ("testing array set '*' operator for maps from a symbol",
+        m_ar[1].sa is 22)
+
+    var mar = [{"k" : "K", "l" : "L"}, {"A" : "a", "V" : "v"}]
+    assert_true ("testing array maps", typeof (mar) is ArrayType and
+        typeArrayAsString (mar) is "MapType")
+
+    var mak = mar[0].k
+    assert_true ("testing array map access", mak is "K")
+
+    var map[3] marnil = [{"A" : 1}, null, {"b" : 3}]
+    assert_true ("testing map array with a null element",
+        marnil[1] is null and typeof (marnil[1]) is NullType)
+
+    var string[3] anil = ["a", null, "b"]
+    assert_true ("testing string array with a null element", anil[1] is null)
+
+
+    var a = [[1,2,3], [3, 5, 6], ["a", "ab"], [1,2], [3, 4]]
+    assert_true ("testing array of arrays", a[2][1] is "ab")
+
+    var b = [[1,2,3], [3, 5, 6], ["a", "ab"],
+      [[1,2], [3, 4], [[4, 6, 7], [[33, 44]]]]]
+
+    assert_true ("testing nested arrays of arrays", b[3][2][1][0][1] is 44)
+
+    var array[2] car
+    car[0] = [1, 2, 3]
+    car[1] = [4, 5, 6]
+    assert_true ("testing array of arrays with specified len", car[1][2] is 6)
+
+    func fibo_array (n) {
+      var integer[n + 2] f
+      f[0:1] = [0, 1]
+
+      var i = 2
+      while (i <= n) {
+        f[i] = f[i - 1] + f[i - 2]
+        i += 1
+      }
+
+      return f[n]
+    }
+
+    retval = fibo_array (92)
+    assert_equal ("testing fibonacci array implementation",
+        retval, 7540113804746346429)
+
+    var ara = [1, 2, 3, 4, 5, 6]
+
+    var sum_a = 0
+    for |i| in ara {
+      sum_a += ara[i]
+    }
+
+    var sum_b = 0
+    for |i| in ara {
+      sum_b += ara[i]
+      i += 1
+    }
+
+    var str_ar = ["1", "2", "3", "4", "5", "6"]
+    var str_a = ""
+
+    for |i| in str_ar {
+      str_a += str_ar[i]
+    }
+
+    var array[1] x
+    x[0] = [1, 2, 3]
+    var sum_c = 0
+    for |i| in x[0] {
+      sum_c += x[0][i]
+    }
+
+    var mm = {
+      "ar" : [1, 2, 3]
+    }
+    var sum_d = 0
+    for |i| in mm.ar {
+      sum_d += mm.ar[i]
+    }
+
+    assert_true ("testing array iteration",
+        sum_a is 21 and sum_b is 9 and str_a is "123456" and
+        sum_c is 6 and sum_d is 6)
+
+    var aaa = [1, 3, 3]
+    aaa[0] += 9; aaa[0] *= aaa[1]; aaa[0] /= aaa[2]; aaa[0] -= 5
+    assert_true ("testing array manipulation", aaa[0] is 5)
+
+    var map[1] mama = [{"i" : 1, "a" : integer[2] = [1, 2]}]
+    mama[0].i += mama[0].a[1]
+    mama[0].a[0] += mama[0].i; mama[0].a[0] *= mama[0].a[0]
+    assert_true ("testing array and map manipulation", mama[0].i is 3 and
+        mama[0].a[0] is 16)
+  }
+
+  test_array (10)
+
+  func test_maps {
+    var m = {}
+
+    m.a = 1
+    m.b = "string"
+    m.c = func { return this.a + 999 }
+
+    assert_true ("testing map",
+        m.a is 1 and
+        m.b is "string" and
+        m.c () is 1000)
+
+    var mapa = {
+      private
+      "one" : 1,
+      "three" : "three",
+      "fun" : func { return (this.one + this.two) * 10000 },
+      "threefun" : func { return this.three },
+
+      public
+      "two" : 2,
+      "fn" : func (x) { return x * this.fun () }
+    }
+
+    assert_true ("testing map functions", mapa.fn (2) is 60000 and mapa.two is 2)
+
+    mapa.new = "new"
+    assert_true ("testing map extension", mapa.new is "new")
+
+    mapa.newfun = func (x) { return (x * 2) + this.one }
+    assert_true ("testing map new function and visibility", mapa.newfun (10) is 21)
+
+    func x (m) {
+      return m.two
+    }
+
+    assert_true ("testing map as a function argument", x (mapa) is 2 and x (mapa) is mapa.two)
+
+    func xx () {
+      var m = {"1" : 11, "2" : 2, "k" : 10}
+      return m
+    }
+
+    var mapf = xx ()
+    assert_true ("testing returning map from a function", mapf.1 is 11 and
+        typeof (mapf) is MapType)
+
+    func mapfa () {
+      return {"11" : 11, "12" : 12}
+    }
+
+    var el = mapfa () 
+    assert_true ("testing returning anonymous map from a function", el.11 is 11)
+
+    func x (a) {
+      return a.key
+    }
+
+    assert_true ("testing anonymous map", x ({"key" : 22, "aa" : 2}) is 22)
+
+    var k = {"key" : 'k', "aa" : 2}.key
+    assert_true ("testing getting key from an anonymous map", k is 'k' and
+       typeof (k) is IntegerType)
+
+    var s = {"key" : "string"}.key
+
+    assert_true ("testing getting string key from an anonymous map", s is "string" and
+       typeof (s) is StringType)
+
+    var a = {"key" : ["string", "a", "z"]}.key
+    assert_true ("testing getting string array key from an anonymous map", a[0] is "string" and
+       typeof (a) is ArrayType)
+
+    var maa = {"next" : {"next" : {"a" : "a"}}}
+    var maaa = maa.next.next;
+    assert_true ("testing assignment to a map subtype", maaa.a is "a")
+
+    var mb = {"next" : {"next" : {"a" : "aa"}}}.next.next
+    assert_true ("testing assignment to a direct map subtype", mb.a is "aa")
+
+    var mc = {"l" : 1, "next" : {"next" : {"key" : 1}}}
+    mc.next.next.key = 2
+    assert_true ("testing setting map value in arbitrary depth",
+        mc.next.next.key is 2)
+
+    mc.next.next.next = {"next" : {"key" : "string"}}
+    assert_true ("testing setting map value in arbitrary depth as a new map",
+        mc.next.next.next.next.key is "string")
+
+    var mm = {
+      "a" : 11,
+      "b" : 22,
+      "c" : 33
+    }
+
+    var sum = 0
+    for |k, v| in mm {
+      var ign = 0
+      var ign_str = "a"
+      if (k is "c") { continue }
+      sum += v
+    }
+
+    var mmm = {
+      "ar" : integer[3],
+      "ara" : integer[3] = [4, 5, 6]
+    }
+    mmm.ar[0:] = [1, 2, 3]
+    var sum_a = 0
+
+    for |i| in mmm.ar {
+      sum_a += mmm.ar[i]
+    }
+
+    for |i| in mmm.ara {
+      sum_a += mmm.ara[i]
+    }
+
+    assert_true ("testing map iteration", sum is 33 and sum_a is 21)
+
+    var sum_p = 0
+    var sum_pa = 0
+    var mmmm = {
+      private
+      "k" : 10,
+
+      public
+      "ka" : 10,
+      "kb" : 11,
+      "f"  : func {
+        for |k, v| in this {
+          ifnot (String.eq (k, "f") { sum_p += v }
+        }
+      }
+    }    
+
+    mmmm.f ()
+
+    for |k, v| in mmmm {
+      ifnot (String.eq (k, "f") { sum_pa += v }
+    }
+
+    assert_true ("testing map iteration with members with private scope",
+        sum_p is 31 and sum_pa is 21)
+
+    var mapp = {
+      "i" : 1,
+      "a" : integer[2] = [0, 1]
+    }
+
+    mapp.i += 19
+    mapp.i /= 2
+    mapp.i *= 10
+    mapp.i -= 90
+    mapp.a[0] += 10
+    mapp.a[0] /= 2
+    mapp.a[0] *= 4
+    mapp.a[0] -= 10
+    assert_true ("testing map member manipulation", mapp.i is 10 and
+        mapp.a[0] is 10) 
+
+    var subm = {
+      "k" : 11
+      "f" : func { return this.k }
+    }
+
+    var parm = {
+      "k" : 22
+      "submap" : subm
+    }
+
+    assert_true ("testing submap accessors", parm.submap.f () is 22 and
+       parm.submap:f () is 11)
+
+    var mmma = {
+      "f" : func { return 1 }
+    }
+    var res = mmma.f ()
+    func t { return 11 }
+    override mmma.f = t
+
+    assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
+  }
+
+  test_maps ()
+
+  func types () {
+    var
+      stra = "string",
+      int = 1,
+      num = 1.0,
+      mapa = {},
+      string[1] s_ar = ["str"],
+      number[1] n_ar = [10.0],
+      integer[1] i_ar = [0]
+
+    var type = null
+
+    assert_true ("testing NullType[s]", typeof (type) is NullType and
+       typeAsString (null) is "NullType")
+    type = typeof (stra)
+    assert_true ("testing StringType[s]", type is StringType and
+       typeAsString (stra) is "StringType")
+    type = typeof (int)
+    assert_true ("testing IntegerType[s]", type is IntegerType and
+        typeAsString (1) is "IntegerType")
+    type = typeof (num)
+    assert_true ("testing NumberType[s]", type is NumberType and
+        typeAsString (1.1) is "NumberType")
+    type = typeof (i_ar)
+    assert_true ("testing ArrayType[s]", type is ArrayType and
+        typeAsString (i_ar) is "ArrayType")
+    type = typeofArray (i_ar)
+    assert_true ("testing Array Integer sub types", type is IntegerType and
+        typeAsString (i_ar[0]) is "IntegerType")
+    type = typeofArray (s_ar)
+    assert_true ("testing array String sub types", type is StringType and
+        typeAsString (s_ar[0]) is "StringType")
+    type = typeofArray (n_ar)
+    assert_true ("testing array Number sub types", type is NumberType and
+        typeAsString (n_ar[0]) is "NumberType")
+    assert_true ("testing map type", typeof (mapa) is MapType and
+        typeAsString (mapa) is "MapType")
+  }
+
+  types ()
+
   public var integer[2] a_visible = [1, 2]
   public const c_visible = "visible constant"
 }
@@ -1079,439 +1511,32 @@ assert_equal ("testing public function attribute", f_visible (22), 44)
 assert_equal ("testing public array attribute", a_visible[0], 1)
 assert_equal ("testing public constant attribute", c_visible, "visible constant")
 
-func doubles () {
-  var d = 113.3131
-  var da = 113.3131
+func chains {
+  var sa = ("10":to_integer () * 12 + 52 - 24) : to_string (2)
+  assert_true ("testing development of chained functions",
+      sa is "10010100")
 
-  assert_equal ("testing Double vars equality", d, da)
+  var sd = "97"
+  var dd = sd:to_integer ()
+  var ii = 111:to_string (10)
+  var vv = "asdf":eq ("asdf")
+  var vx = "asdf":eq_n ("asdfg", 5)
+  var xx = format ("fa:fb:fc"):tokenize (":")
+  var xa = [1, 2, 3]:len ()
+  var xm = {"k" : 1, "l" : 2}
+  var xk = xm:keys ():len ()
 
-  func d1 (d) {
-    return d + 12
-  }
-
-  func d2 (d) {
-    return d - 12
-  }
-
-  var df = d2
-  var dfr = df (da)
-  var d2r = d2 (da)
-
-  assert_equal ("testing Double function reference", dfr, d2r)
-
-  var dd = d1 (da)
-  var dd2r = (df (da) + dd) - da;
-  assert_equal ("testing operations on doubles", da, dd2r)
-
-  da = 1.3131
-
-  dd = d1 (da)
-  dd2r = (df (da) + dd) - da;
-  expected_to_fail ("testing expected to fail operations on doubles",
-      format ("awaiting ${%f, da} got ${%f, dd2r}"), da, dd2r)
+  assert_true ("testing chained functions",
+      xk is 2 and
+      xa is 3 and
+      xx is ["fa", "fb", "fc"] and
+      vx is false and
+      vv is true  and
+      ii is "111" and
+      dd is 'a')
 }
 
-doubles ()
-
-func test_array (length) {
-  var retval = 0
-
-  var ar = ["a", "b"]
-  assert_true ("testing array", typeof (ar) is ArrayType)
-  assert_true ("testing array", typeofArray (ar) is StringType)
-  assert_true ("testing array get", "a" is ar[0])
-  assert_true ("testing anonymous array", typeofArray ([1.1, 2.2, 3.3]) is NumberType)
-  assert_true ("testing anonymous array", 23 is [1, 10, 23, 43][2])
-
-  var integer[length] x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-  retval = len (x)
-  assert_true ("testing array length", retval is length)
-
-  var integer[length] y = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-  assert_true ("testing array equality", x is y)
-
-  y[0] = 11
-
-  assert_false ("testing array inequality", x is y)
-
-  func ar_set_at (xx, idx, y) {
-    xx[idx] = y
-    return xx[idx]
-  }
-
-  retval = ar_set_at (x, length - 1, 20)
-  assert_true ("testing array set|get methods", (retval is 20) and
-      (x[length - 1] is 20))
-
-  func ar_sum (xx) {
-    var sum = 0
-    var idx = 0
-    var length = len (xx)
-    for (idx = 0; idx < length; idx += 1) {
-      sum += xx[idx]
-    }
-
-    return sum
-  }
-
-  x[0:8] = [100, 200, 300, 400, 500, 600, 700, 800, 900]
-
-  assert_equal ("testing array sum", 4520, ar_sum (x))
-
-  x[6:7] = [10, 20]
-
-  assert_equal ("testing array sum and setting indices", 3050, ar_sum (x))
-
-  var string[4] xs = ["through", "the", "ocean", "drive"]
-
-  assert_equal ("testing for string equality for string array members",
-      "ocean", xs[2])
-
-  assert_not_equal ("testing for string inequality for string array members",
-      xs[1], xs[2])
-
-  assert_false ("testing for inequality for array members",
-      xs[1] is "a")
-
-  var integer[4] i_ar
-  i_ar[*] = 31
-  assert_equal ("testing array set '*' operator", ar_sum (i_ar), 124)
-
-  var m_ar = [{"t" : 11}, {"s" : 2}]
-  m_ar[*] = {"sa" : 11, "tt" : 4, "a" : 5}
-  assert_true ("testing array set '*' operator for maps",
-      m_ar[1].sa is 11)
-
-  var am = {"sa" : 22, "sb" : 33}
-  m_ar[*] = am
-  assert_true ("testing array set '*' operator for maps from a symbol",
-      m_ar[1].sa is 22)
-
-  var mar = [{"k" : "K", "l" : "L"}, {"A" : "a", "V" : "v"}]
-  assert_true ("testing array maps", typeof (mar) is ArrayType and
-      typeArrayAsString (mar) is "MapType")
-
-  var mak = mar[0].k
-  assert_true ("testing array map access", mak is "K")
-
-  var map[3] marnil = [{"A" : 1}, null, {"b" : 3}]
-  assert_true ("testing map array with a null element",
-      marnil[1] is null and typeof (marnil[1]) is NullType)
-
-  var string[3] anil = ["a", null, "b"]
-  assert_true ("testing string array with a null element", anil[1] is null)
-
-
-  var a = [[1,2,3], [3, 5, 6], ["a", "ab"], [1,2], [3, 4]]
-  assert_true ("testing array of arrays", a[2][1] is "ab")
-
-  var b = [[1,2,3], [3, 5, 6], ["a", "ab"],
-    [[1,2], [3, 4], [[4, 6, 7], [[33, 44]]]]]
-
-  assert_true ("testing nested arrays of arrays", b[3][2][1][0][1] is 44)
-
-  var array[2] c
-  c[0] = [1, 2, 3]
-  c[1] = [4, 5, 6]
-  assert_true ("testing array of an array with specified len", c[1][2] is 6)
-
-  func fibo_array (n) {
-    var integer[n + 2] f
-    f[0:1] = [0, 1]
-
-    var i = 2
-    while (i <= n) {
-      f[i] = f[i - 1] + f[i - 2]
-      i += 1
-    }
-
-    return f[n]
-  }
-
-  retval = fibo_array (92)
-  assert_equal ("testing fibonacci array implementation",
-      retval, 7540113804746346429)
-
-  var ara = [1, 2, 3, 4, 5, 6]
-
-  var sum_a = 0
-  for |i| in ara {
-    sum_a += ara[i]
-  }
-
-  var sum_b = 0
-  for |i| in ara {
-    sum_b += ara[i]
-    i += 1
-  }
-
-  var str_ar = ["1", "2", "3", "4", "5", "6"]
-  var str_a = ""
-
-  for |i| in str_ar {
-    str_a += str_ar[i]
-  }
-
-  var array[1] x
-  x[0] = [1, 2, 3]
-  var sum_c = 0
-  for |i| in x[0] {
-    sum_c += x[0][i]
-  }
-
-  var mm = {
-    "ar" : [1, 2, 3]
-  }
-  var sum_d = 0
-  for |i| in mm.ar {
-    sum_d += mm.ar[i]
-  }
-
-  assert_true ("testing array iteration",
-      sum_a is 21 and sum_b is 9 and str_a is "123456" and
-      sum_c is 6 and sum_d is 6)
-
-  var aaa = [1, 3, 3]
-  aaa[0] += 9; aaa[0] *= aaa[1]; aaa[0] /= aaa[2]; aaa[0] -= 5
-  assert_true ("testing array manipulation", aaa[0] is 5)
-
-  var map[1] mama = [{"i" : 1, "a" : integer[2] = [1, 2]}]
-  mama[0].i += mama[0].a[1]
-  mama[0].a[0] += mama[0].i; mama[0].a[0] *= mama[0].a[0]
-  assert_true ("testing array and map manipulation", mama[0].i is 3 and
-      mama[0].a[0] is 16)
-}
-
-test_array (10)
-
-func test_maps {
-  var m = {}
-
-  m.a = 1
-  m.b = "string"
-  m.c = func { return this.a + 999 }
-
-  assert_true ("testing map",
-      m.a is 1 and
-      m.b is "string" and
-      m.c () is 1000)
-
-  var mapa = {
-    private
-    "one" : 1,
-    "three" : "three",
-    "fun" : func { return (this.one + this.two) * 10000 },
-    "threefun" : func { return this.three },
-
-    public
-    "two" : 2,
-    "fn" : func (x) { return x * this.fun () }
-  }
-
-  assert_true ("testing map functions", mapa.fn (2) is 60000 and mapa.two is 2)
-
-  mapa.new = "new"
-  assert_true ("testing map extension", mapa.new is "new")
-
-  mapa.newfun = func (x) { return (x * 2) + this.one }
-  assert_true ("testing map new function and visibility", mapa.newfun (10) is 21)
-
-  func x (m) {
-    return m.two
-  }
-
-  assert_true ("testing map as a function argument", x (mapa) is 2 and x (mapa) is mapa.two)
-
-  func xx () {
-    var m = {"1" : 11, "2" : 2, "k" : 10}
-    return m
-  }
-
-  var mapf = xx ()
-  assert_true ("testing returning map from a function", mapf.1 is 11 and
-      typeof (mapf) is MapType)
-
-  func mapfa () {
-    return {"11" : 11, "12" : 12}
-  }
-
-  var el = mapfa () 
-  assert_true ("testing returning anonymous map from a function", el.11 is 11)
-
-  func x (a) {
-    return a.key
-  }
-
-  assert_true ("testing anonymous map", x ({"key" : 22, "aa" : 2}) is 22)
-
-  var k = {"key" : 'k', "aa" : 2}.key
-  assert_true ("testing getting key from an anonymous map", k is 'k' and
-     typeof (k) is IntegerType)
-
-  var s = {"key" : "string"}.key
-
-  assert_true ("testing getting string key from an anonymous map", s is "string" and
-     typeof (s) is StringType)
-
-  var a = {"key" : ["string", "a", "z"]}.key
-  assert_true ("testing getting string array key from an anonymous map", a[0] is "string" and
-     typeof (a) is ArrayType)
-
-  var maa = {"next" : {"next" : {"a" : "a"}}}
-  var maaa = maa.next.next;
-  assert_true ("testing assignment to a map subtype", maaa.a is "a")
-
-  var mb = {"next" : {"next" : {"a" : "aa"}}}.next.next
-  assert_true ("testing assignment to a direct map subtype", mb.a is "aa")
-
-  var mc = {"l" : 1, "next" : {"next" : {"key" : 1}}}
-  mc.next.next.key = 2
-  assert_true ("testing setting map value in arbitrary depth",
-      mc.next.next.key is 2)
-
-  mc.next.next.next = {"next" : {"key" : "string"}}
-  assert_true ("testing setting map value in arbitrary depth as a new map",
-      mc.next.next.next.next.key is "string")
-
-  var mm = {
-    "a" : 11,
-    "b" : 22,
-    "c" : 33
-  }
-
-  var sum = 0
-  for |k, v| in mm {
-    var ign = 0
-    var ign_str = "a"
-    if (k is "c") { continue }
-    sum += v
-  }
-
-  var mmm = {
-    "ar" : integer[3],
-    "ara" : integer[3] = [4, 5, 6]
-  }
-  mmm.ar[0:] = [1, 2, 3]
-  var sum_a = 0
-
-  for |i| in mmm.ar {
-    sum_a += mmm.ar[i]
-  }
-
-  for |i| in mmm.ara {
-    sum_a += mmm.ara[i]
-  }
-
-  assert_true ("testing map iteration", sum is 33 and sum_a is 21)
-
-  var sum_p = 0
-  var sum_pa = 0
-  var mmmm = {
-    private
-    "k" : 10,
-
-    public
-    "ka" : 10,
-    "kb" : 11,
-    "f"  : func {
-      for |k, v| in this {
-        ifnot (String.eq (k, "f") { sum_p += v }
-      }
-    }
-  }    
-
-  mmmm.f ()
-
-  for |k, v| in mmmm {
-    ifnot (String.eq (k, "f") { sum_pa += v }
-  }
-
-  assert_true ("testing map iteration with members with private scope",
-      sum_p is 31 and sum_pa is 21)
-
-  var mapp = {
-    "i" : 1,
-    "a" : integer[2] = [0, 1]
-  }
-
-  mapp.i += 19
-  mapp.i /= 2
-  mapp.i *= 10
-  mapp.i -= 90
-  mapp.a[0] += 10
-  mapp.a[0] /= 2
-  mapp.a[0] *= 4
-  mapp.a[0] -= 10
-  assert_true ("testing map member manipulation", mapp.i is 10 and
-      mapp.a[0] is 10) 
-
-  var subm = {
-    "k" : 11
-    "f" : func { return this.k }
-  }
-
-  var parm = {
-    "k" : 22
-    "submap" : subm
-  }
-
-  assert_true ("testing submap accessors", parm.submap.f () is 22 and
-     parm.submap:f () is 11)
-
-  var mmma = {
-    "f" : func { return 1 }
-  }
-  var res = mmma.f ()
-  func t { return 11 }
-  override mmma.f = t
-
-  assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
-}
-
-test_maps ()
-
-func types () {
-  var
-    str = "string",
-    int = 1,
-    num = 1.0,
-    mapa = {},
-    string[1] s_ar = ["str"],
-    number[1] n_ar = [10.0],
-    integer[1] i_ar = [0]
-
-  var type = null
-
-  assert_true ("testing NullType[s]", typeof (type) is NullType and
-     typeAsString (null) is "NullType")
-  type = typeof (str)
-  assert_true ("testing StringType[s]", type is StringType and
-     typeAsString (str) is "StringType")
-  type = typeof (int)
-  assert_true ("testing IntegerType[s]", type is IntegerType and
-      typeAsString (1) is "IntegerType")
-  type = typeof (num)
-  assert_true ("testing NumberType[s]", type is NumberType and
-      typeAsString (1.1) is "NumberType")
-  type = typeof (i_ar)
-  assert_true ("testing ArrayType[s]", type is ArrayType and
-      typeAsString (i_ar) is "ArrayType")
-  type = typeofArray (i_ar)
-  assert_true ("testing Array Integer sub types", type is IntegerType and
-      typeAsString (i_ar[0]) is "IntegerType")
-  type = typeofArray (s_ar)
-  assert_true ("testing array String sub types", type is StringType and
-      typeAsString (s_ar[0]) is "StringType")
-  type = typeofArray (n_ar)
-  assert_true ("testing array Number sub types", type is NumberType and
-      typeAsString (n_ar[0]) is "NumberType")
-  assert_true ("testing map type", typeof (mapa) is MapType and
-      typeAsString (mapa) is "MapType")
-}
-
-types ()
+chains ()
 
 func valgrind_tests () {
   func xx () {

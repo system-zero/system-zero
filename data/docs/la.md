@@ -673,7 +673,15 @@ a lot by the S-Lang programming language, which is quite like C.
     # IntegerType   S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP
     # IntegerType   S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
 
-  # String Module Interface
+  # Std Module Interface
+    # IntegerType   Map.set (MapType map, StringType key, Value v)
+    # ValueType     Map.get (MapType map, StringType key)
+    # StringType[]  Map.keys (MapType map)
+    # IntegerType   Map.remove (MapType map, StringType key)
+    # IntegerType   Map.key_exists (MapType map, StringType key)
+
+    # IntegerType[] Array.where (ArrayType ar, Value expression)
+
     # IntegerType   String.eq (StringType a, StringType b)
     # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
     # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
@@ -683,17 +691,9 @@ a lot by the S-Lang programming language, which is quite like C.
     # NumberType    String.to_number (StringType str)
     # IntegerType   String.to_integer (StringType str)
     # StringType    String.byte_in_str (StringType str, IntegerType byte)
-    # StringType    String.from_integer (IntegerType i, IntegerType base)
     # StringType    String.advance_on_byte (StringType str, IntegerType c)
 
-  # Std Module Interface
-    # IntegerType   Map.set (MapType map, StringType key, Value v)
-    # ValueType     Map.get (MapType map, StringType key)
-    # StringType[]  Map.keys (MapType map)
-    # IntegerType   Map.remove (MapType map, StringType key)
-    # IntegerType   Map.key_exists (MapType map, StringType key)
-
-    # IntegerType[] Array.where (ArrayType ar, Value expression)
+    # StringType    Integer.to_string (IntegerType i, IntegerType base)
 
   # Term Module Interface
     # ObjectType    Term.new ()
@@ -802,10 +802,11 @@ a lot by the S-Lang programming language, which is quite like C.
 
       'a' => 97
 
-    those doesn't limit for characters in the ASCII range, in that case it
-    return the codepoint of the UTF8 byte sequence:
+    this doesn't limited for characters in the ASCII range:
 
       'α' => 945
+
+    in the case the value is the codepoint of the UTF8 byte sequence.
 
     They can be also specified in hexadecimal notation using this form:
 
@@ -824,6 +825,7 @@ a lot by the S-Lang programming language, which is quite like C.
          m = {"key" : "value"}
 
 # Lexical Scope and visibility order
+
   - standard scope (lookup for standard operators and internal functions first)
 
   - block scope (conditional statements and loops)
@@ -832,7 +834,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
   - previous function scope -> ... -> ... -> global scope
 
-  if the symbol can not be found, then the compiler throws an error.
+  if the symbol can not be found, then the compiler raises an error.
 
   By default symbols are private to their local scope, unless the symbol has been
   declared as `public`. In that case the symbol belongs to `global` scope and
@@ -973,6 +975,61 @@ style. However it should be okey if practicing consistency.
 
     Anyway, for functions like fopen(), this is not issue, as it is desirable
     to map one to one with the well known and established C interface.
+
+    Update at the end of July.
+    So we did, and we've introduced such a mechanism, albeit in early development,
+    and not in stable state. The difficulty actually is not really to maintain
+    the environment, but to handle properly the resources. Otherwise it is quite
+    easy. We have used ':' though and not a '.' dot, which has a bit of different
+    semantics, to access and call the methods.
+
+    But we have yet to clarify the semantics. What to do in this instance:
+
+      var s = "string"
+      s:to_integer ()
+
+    I'm inclined to say that `s' will not have to be modified. So maybe the prudent
+    thing to do here, that such a chain of function call, it has to be used as
+    a closure, without the ability to modify the participated objects directly,
+    so and with no direct side affects. However, I think that it will never can be
+    possible to guarrante that the called methods, don't have code that influence
+    the outter environment. So probably the objects that enter in such a closed
+    state, should be copies of the originals.
+
+    For the above case and code, and when the intention is to modify `s', perhaps
+    a new operator could be used, like:
+
+      s := to_integer ()
+
+    or something like this, where the result of the chained functions will be
+    reassigned to `s'.
+
+    Of course such functions should always return a proper value. Our functions
+    they return something always. For the C native functions this is guarranteed
+    by the function signature, that always they return a VALUE type. For user
+    defined functions, this is always at least a `null` value.
+
+    Our mechanism currently also allows binary operations at the end of the
+    chain sequence:
+
+       "10":to_Integer () * 12 + 52 - 24
+
+    In this case, it can be seen as like arithmetic operations or other possible
+    transformations, of the final object. Of course the result of the evaluation
+    it can be later reused in a new chain (this works even today, the first 12
+    hours of development):
+
+      ("10":to_integer () * 12 + 52 - 24) : to_string (2) => 10010100 (2 is for base 2)
+
+    This is the only way to sanity. If it wasn't for the parantheses around the
+    expression, what would be the meaning without them:
+
+      "10":to_integer () * 12 + 52 - 24 : to_string (2)
+
+    To some of the very best of parsers, capable to parse every little everything,
+    and at the best of the case would be to trasform `24' into a string, which is
+    besides the side influence, it is also hard for the human mind to parse the
+    intention, so yes at the end looks like an obvious nightmare.
 
 And as the last note. This documentation written in a single unit, owes to be
 enough and should cover all the aspects of the language. If it is not enough,
