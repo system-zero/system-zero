@@ -115,6 +115,8 @@
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
 
+#define LITERAL_OBJECT                -1000
+
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
@@ -147,7 +149,7 @@
 #define LA_TOKEN_SYNTAX_ERR 'Z'
 #define LA_TOKEN_BREAK      'b'
 #define LA_TOKEN_CONSTDEF   'c'
-#define LA_TOKEN_DOUBLE     'd'
+#define LA_TOKEN_NUMBER     'd'
 #define LA_TOKEN_ELSE       'e'
 #define LA_TOKEN_USRFUNC    'f'
 #define LA_TOKEN_PUBLIC     'g'
@@ -156,7 +158,7 @@
 #define LA_TOKEN_OVERRIDE    'j'
 #define LA_TOKEN_FOR        'l'
 #define LA_TOKEN_FOREVER    'm'
-#define LA_TOKEN_NUMBER     'n'
+#define LA_TOKEN_INTEGER    'n'
 #define LA_TOKEN_BINOP      'o'
 #define LA_TOKEN_PRINTLN    'p'
 #define LA_TOKEN_HEX_CHAR   'q'
@@ -264,6 +266,7 @@ struct funType {
   la_string body;
 
   int nargs;
+
   char argName[MAX_BUILTIN_PARAMS][MAXLEN_SYMBOL + 1];
 
   Vmap_t *symbols;
@@ -349,7 +352,8 @@ struct la_t {
     didReturn,
     didExit,
     loopCount,
-    breakCount;
+    breakCount,
+    argCount;
 
   size_t anon_id;
 
@@ -744,7 +748,7 @@ static int la_get_opened_block (la_t *this, char *msg) {
 }
 
 static inline int parse_number (la_t *this, int c, int *token_type) {
-  *token_type = LA_TOKEN_NUMBER;
+  *token_type = LA_TOKEN_INTEGER;
 
   int dot_found = 0;
   int plus_found = 0;
@@ -775,7 +779,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
 
     parse:
     if (c is '-' or '+' is c) {
-      if (*token_type isnot LA_TOKEN_DOUBLE) return LA_NOTOK;
+      if (*token_type isnot LA_TOKEN_NUMBER) return LA_NOTOK;
       if (c is '-') {
         if (minus_found++) return LA_NOTOK;
         else if (plus_found++) return LA_NOTOK;
@@ -787,7 +791,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
     }
 
     if (c is '.') {
-      *token_type = LA_TOKEN_DOUBLE;
+      *token_type = LA_TOKEN_NUMBER;
 
       if (dot_found++) return LA_NOTOK;
       ifnot (is_digit (la_peek_char (this, 0))) return LA_NOTOK;
@@ -795,7 +799,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
     }
 
     if (c is 'e' or c is 'E') {
-      *token_type = LA_TOKEN_DOUBLE;
+      *token_type = LA_TOKEN_NUMBER;
 
       int cc = la_peek_char (this, 0);
       if (0 is is_digit (cc) or
@@ -1437,7 +1441,7 @@ static int la_do_next_token (la_t *this, int israw) {
       (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c)))
     token = LA_TOKEN_SYMBOL;
   else if (is_digit (c) or (c is '-' and is_digit (la_peek_char (this, 0))))
-    token = LA_TOKEN_NUMBER;
+    token = LA_TOKEN_INTEGER;
   else if (is_operator (c))
     token = LA_TOKEN_OPERATOR;
   else if (c is LA_TOKEN_COLON) {
@@ -1454,7 +1458,7 @@ static int la_do_next_token (la_t *this, int israw) {
       r = c;
       break;
 
-    case LA_TOKEN_NUMBER:
+    case LA_TOKEN_INTEGER:
       if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", la_peek_char (this, 0))
           and is_hexchar (la_peek_char(this, 1))) {
         la_get_char (this);
@@ -3606,7 +3610,8 @@ static int la_parse_expr_list (la_t *this) {
     }
   } while (c is LA_TOKEN_COMMA);
 
-
+  count += this->argCount;
+  this->argCount = 0;
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
   return count;
 }
@@ -3742,9 +3747,13 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
   if (c isnot LA_TOKEN_PAREN_CLOS) {
     paramCount = la_parse_expr_list (this);
+
     c = this->curToken;
     if (paramCount < 0)
       return paramCount;
+  } else {
+    paramCount = this->argCount;
+    this->argCount = 0;
   }
 
   this->curState &= ~(STRING_LITERAL_ARG_STATE);
@@ -3892,6 +3901,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 static int la_parse_primary (la_t *this, VALUE *vp) {
   int c, err;
 
+  do_token:
   c = this->curToken;
 
   switch (c) {
@@ -3923,6 +3933,14 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
           c = la_next_token (this);
 
+          if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+            la_unget_char (this);
+            vp->refcount = LITERAL_OBJECT;
+            this->tokenValue = *vp;
+            this->curToken = LA_TOKEN_VAR;
+            goto do_token;
+          }
+
           return LA_OK;
         }
 
@@ -3942,7 +3960,14 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         c = this->curToken;
 
         if (c is close_token) {
-          la_next_token (this);
+          c = la_next_token (this);
+          if (c is LA_TOKEN_COLON) {
+            la_unget_char (this);
+            this->tokenValue = *vp;
+            this->curToken = LA_TOKEN_VAR;
+            goto do_token;
+          }
+
           return LA_OK;
         }
       }
@@ -3950,62 +3975,193 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return err;
     }
 
-    case LA_TOKEN_NUMBER: {
+    case LA_TOKEN_INTEGER: {
       VALUE val = la_string_to_dec (this->curStrToken);
       *vp = val;
-      la_next_token (this);
+      c = la_next_token (this);
+      if (c is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
+
       return LA_OK;
     }
 
-    case LA_TOKEN_DOUBLE: {
+    case LA_TOKEN_NUMBER: {
       char *endptr; char str[32];
       Cstring.cp (str, 32, la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
       double val = strtod (str, &endptr);
       *vp = NUMBER(val);
-      la_next_token (this);
+      c = la_next_token (this);
+      if (c is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
       return LA_OK;
     }
 
     case LA_TOKEN_OCTAL:
       *vp = la_OctalStringToNum (this->curStrToken);
-      la_next_token (this);
+      c = la_next_token (this);
+      if (c is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
       return LA_OK;
 
     case LA_TOKEN_BINARY:
       *vp = la_BinaryStringToNum (this->curStrToken);
-      la_next_token (this);
+      c = la_next_token (this);
+      if (c is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
       return LA_OK;
 
     case LA_TOKEN_HEX_CHAR:
     case LA_TOKEN_HEX_NUMBER:
       *vp = la_HexStringToNum (this->curStrToken);
-      la_next_token (this);
+      c = la_next_token (this);
+      if (c is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
       return LA_OK;
 
     case LA_TOKEN_CHAR:
       err = la_parse_char (this, vp, this->curStrToken);
-      la_next_token (this);
+      c = la_next_token (this);
+      if (c is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
       return err;
 
     case LA_TOKEN_FORMAT:
       err = la_parse_format (this, vp);
+
+      if (this->curToken is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        vp->refcount = LITERAL_OBJECT;
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
       return err;
 
     case LA_TOKEN_VAR:
-      if (this->tokenValue.type is STRING_TYPE)
-        return la_string_get (this, vp);
+      if (this->tokenValue.type is STRING_TYPE) {
+        err = la_string_get (this, vp);
+        if (err isnot LA_OK)
+          return err;
+      } else {
+        *vp = this->tokenValue;
+        la_next_token (this);
+        err = LA_OK;
+      }
 
-      *vp = this->tokenValue;
-      la_next_token (this);
-      return LA_OK;
+      if (this->curToken isnot LA_TOKEN_COLON or
+         (this->curState & INDEX_STATE))
+        return err;
+
+      sym_t *sym = NULL;
+      char method[MAXLEN_MSG * 2];
+      do {
+        c = la_next_raw_token (this);
+        if (c isnot LA_TOKEN_SYMBOL)
+          return this->syntax_error (this, "awaiting a method");
+
+        char *key = map_key (this, this->curStrToken);
+
+        switch (vp->type) {
+          case STRING_TYPE:
+            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "string_%s", key);
+            break;
+
+          case INTEGER_TYPE:
+            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "integer_%s", key);
+            break;
+
+          case NUMBER_TYPE:
+            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "number_%s", key);
+            break;
+
+          case ARRAY_TYPE:
+            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "array_%s", key);
+            break;
+
+          case MAP_TYPE:
+            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "map_%s", key);
+            break;
+
+          default:
+            return this->syntax_error (this, "unsupported datatype");
+        }
+
+        sym = la_lookup_symbol (this, la_StringNew (method));
+        if (sym is NULL)
+          return la_syntax_error_fmt (this, "%s: unknown method", method);
+
+        int type;
+        if (sym->type & FUNCPTR_TYPE)
+          type = FUNCPTR_TYPE;
+        else if ((sym->type & 0xff) is LA_TOKEN_BUILTIN)
+          type = CFUNCTION_TYPE;
+        else
+          return this->syntax_error (this, "not a function type");
+
+        VALUE val = sym->value;
+        VALUE save_v = *vp;
+        stack_push (this, (*vp));
+        vp->refcount++;
+        this->argCount = 1;
+
+        if (type is FUNCPTR_TYPE) {
+          funT *uf = AS_FUNC_PTR(val);
+          err = la_parse_func_call (this, vp, NULL, uf, *vp);
+          la_next_token (this);
+        } else {
+          CFunc op = (CFunc) AS_PTR(sym->value);
+          this->tokenArgs = (sym->type >> 8) & 0xff;
+          err = la_parse_func_call (this, vp, op, NULL, val);
+        }
+
+        if (save_v.refcount is LITERAL_OBJECT) {
+          save_v.refcount = 0;
+          la_free (this, save_v);
+        }
+
+      } while (this->curToken is LA_TOKEN_COLON);
+
+      return err;
 
     case LA_TOKEN_ARRAY:
       err = la_parse_array_get (this, vp);
       if (err isnot LA_OK)
         return err;
 
-      if (this->curToken isnot LA_TOKEN_DOT)
+      if (this->curToken isnot LA_TOKEN_DOT) {
+        if (this->curToken is  LA_TOKEN_COLON) {
+          la_unget_char (this);
+          this->tokenValue = *vp;
+          this->curToken = LA_TOKEN_VAR;
+          goto do_token;
+        }
+
         return err;
+      }
 
       if (vp->type isnot MAP_TYPE)
         return this->syntax_error (this, "not a map");
@@ -4024,8 +4180,16 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         type = FUNCPTR_TYPE;
       else if ((vp->type & 0xff) is LA_TOKEN_BUILTIN)
         type = CFUNCTION_TYPE;
-      else
+      else {
+        if (this->curToken is LA_TOKEN_COLON) {
+          la_unget_char (this);
+          this->tokenValue = *vp;
+          this->curToken = LA_TOKEN_VAR;
+          goto do_token;
+        }
+
         break;
+      }
 
       ifnot (this->curToken is LA_TOKEN_PAREN_OPEN)
         break;
@@ -4086,7 +4250,24 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return la_parse_lambda (this, vp);
 
     case LA_TOKEN_STRING:
-      return la_string_get (this, vp);
+      err = la_string_get (this, vp);
+      if (err isnot LA_OK)
+        return err;
+
+      if (this->curToken is  LA_TOKEN_COLON) {
+        la_unget_char (this);
+        if (vp->sym is NULL and
+            0 is (ns_is_malloced_string (this->curScope, AS_STRING((*vp)))) and
+            0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+          vp->refcount = LITERAL_OBJECT;
+
+        this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
+
+      return err;
 
     case LA_TOKEN_NEW:
       err = la_parse_new (this, vp);
@@ -4122,6 +4303,14 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       err = la_parse_map (this, vp);
       if (err isnot LA_OK)
         return err;
+
+      if (this->curToken is LA_TOKEN_COLON) {
+        la_unget_char (this);
+        vp->refcount = LITERAL_OBJECT;
+        this->tokenValue = *vp;
+        this->curToken = LA_TOKEN_VAR;
+        goto do_token;
+      }
 
       while (this->curToken is LA_TOKEN_DOT) {
         la_unget_char (this);
@@ -4311,6 +4500,19 @@ do_token:
       la_next_token (this);
 
       int token = this->curToken;
+
+      if (token is LA_TOKEN_COLON) {
+        do {
+          VALUE vp;
+          this->curToken = LA_TOKEN_VAR;
+          la_unget_char (this);
+          err = la_parse_primary (this, &vp);
+          this->tokenValue = vp;
+        } while (this->curToken is LA_TOKEN_COLON);
+
+        return err;
+      }
+
       if (token < LA_TOKEN_ASSIGN and
           token > LA_TOKEN_ASSIGN_LAST_VAL)
         return this->syntax_error (this, "expected assignment operator");
@@ -4342,6 +4544,7 @@ do_token:
       this->objectState |= ASSIGNMENT_STATE;
       err = la_parse_expr (this, &val);
       this->objectState &= ~ASSIGNMENT_STATE;
+      if (err isnot LA_OK) return err;
 
       if (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) {
         switch (val.type) {
@@ -4353,8 +4556,6 @@ do_token:
         }
         this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
       }
-
-      if (err isnot LA_OK) return err;
 
       if (is_un)
         AS_INT(val) = ~AS_INT(val);
@@ -4591,6 +4792,12 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 
   ifnot (lhs_released)
     String.release (x);
+
+  if (this->curToken is LA_TOKEN_COLON) {
+    this->tokenValue = *vp;
+    this->curToken = LA_TOKEN_VAR;
+    return la_parse_primary (this, vp);
+  }
 
   return err;
 }
@@ -8103,6 +8310,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->stackValIdx = -1;
   this->anon_id = 0;
   this->loopCount = 0;
+  this->argCount = 0;
 
   if (NULL is opts.la_dir) {
     char *ddir = getenv ("DATADIR");
