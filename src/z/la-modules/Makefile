@@ -21,15 +21,14 @@ all: shared
 Env: makeenv checkenv
 
 shared: Env clean-shared path-module-shared file-module-shared\
-        string-module-shared std-module-shared term-module-shared\
-        dir-module-shared sh-module-shared os-module-shared\
-        sys-module-shared
+        std-module-shared term-module-shared dir-module-shared\
+        sh-module-shared os-module-shared sys-module-shared
 
 clean: clean-shared
 
-clean-shared: clean-path-shared clean-file-shared clean-string-shared\
-              clean-std-shared clean-term-shared clean-dir-shared\
-              clean-sh-shared clean-os-shared clean-sys-shared
+clean-shared: clean-path-shared clean-file-shared clean-std-shared\
+              clean-term-shared clean-dir-shared clean-sh-shared\
+              clean-os-shared clean-sys-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC -lla
@@ -59,15 +58,7 @@ clean-file-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/file-module.so  || $(RM)  $(SYSMODULEDIR)/file-module.so
 
 #-----------------------------------------------------------
-STRING_FLAGS = -lcstring -lstring -lustring
-string-module-shared:
-	$(CC) -o $(SYSMODULEDIR)/string-module.so $(SHARED_FLAGS) $(STRING_FLAGS) string/string-module.c
-
-clean-string-shared:
-	@$(TEST) ! -f $(SYSMODULEDIR)/string-module.so  || $(RM)  $(SYSMODULEDIR)/string-module.so
-
-#-----------------------------------------------------------
-STD_FLAGS = -lvmap -lstring -lcstring
+STD_FLAGS = -lvmap -lstring -lcstring -lustring
 std-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/std-module.so $(SHARED_FLAGS) $(STD_FLAGS) std/std-module.c
 

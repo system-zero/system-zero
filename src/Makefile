@@ -1072,9 +1072,6 @@ path-module-shared:
 file-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) file-module-shared
 
-string-module-shared:
-	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) string-module-shared
-
 std-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) std-module-shared
 

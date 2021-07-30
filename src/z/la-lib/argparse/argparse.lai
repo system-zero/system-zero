@@ -1,5 +1,4 @@
 import ("std")
-import ("string")
 
 const ARGPARSE_NO_VERBOSE                   = 1 << 0
 const ARGPARSE_DONOT_EXIT_ON_UNKNOWN        = 1 << 1

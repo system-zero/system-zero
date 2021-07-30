@@ -53,6 +53,7 @@ static int ustring_char_num (char *bytes, int len) {
     sp += clen;
     clen = ustring_charlen ((uchar) *sp);
     n++;
+    i += (clen - 1);
   }
 
   return n;
