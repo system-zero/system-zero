@@ -1,0 +1,385 @@
+import ("dir")
+import ("file"
+import ("sys")
+import ("os")
+import ("sh")
+
+const PACKMAN_NO_VERBOSE = 0
+const PACKMAN_VERBOSE    = 1
+
+const PACKMAN_SOURCE_ARCHIVE  = 0
+const PACKMAN_SOURCE_REPO     = 1
+
+const PACKMAN_BUILD_EXTRACT   = 0
+const PACKMAN_BUILD_COPY      = 1
+const PACKMAN_BUILD_PATCH     = 2
+const PACKMAN_BUILD_CONFIGURE = 3
+const PACKMAN_BUILD_MAKE      = 4
+const PACKMAN_BUILD_INSTALL   = 5
+var LAST_TYPE = PACKMAN_BUILD_INSTALL
+
+Type PackmanBuild {
+private
+  "msg"
+  "type"
+  "command"
+
+  "init" : func (msg, type com) {
+    this.msg = msg
+    this.type = type
+    this.command = com
+  }
+}
+
+Type PackmanSpec {
+private
+  "name"
+  "home"
+  "type"
+  "repo"
+  "build"
+  "descr"
+  "baseurl"
+  "version"
+  "archive"
+  "build_dirname"
+  "extension"
+
+  "init" : func (name) {
+    this.name = name
+  }
+
+public
+  "set" : {
+    "home"      : func (home)  { this.home = home }
+    "repo"      : func (repo)  { this.repo = repo }
+    "type"      : func (type)  { this.type = type }
+    "descr"     : func (descr) { this.descr = descr }
+    "build"     : func (build) { this.build = build }
+    "baseurl"   : func (url)   { this.baseurl = url }
+    "version"   : func (vers)  { this.version = vers }
+    "archive"   : func (arch)  { this.archive = arch }
+    "sources"   : func (src)   { this.sources = src }
+    "build_dirname"   : func (dir)   { this.build_dirname = dir }
+    "extension" : func (ext)   { this.extension = ext }
+  }
+
+  "get" : {
+    "name"      : func { return this.name }
+    "home"      : func { return this.home }
+    "repo"      : func { return this.repo }
+    "type"      : func { return this.type }
+    "descr"     : func { return this.descr }
+    "build"     : func { return this.build }
+    "baseurl"   : func { return this.baseurl }
+    "version"   : func { return this.version }
+    "archive"   : func { return this.archive }
+    "sources"   : func { return this.sources }
+    "build_dirname"   : func { return this.build_dirname }
+    "extension" : func { return this.extension }
+  }
+}
+
+Type Packman {
+private
+  "spec"
+  "sh"          : New Shell ()
+  "curdir"
+  "user"        : Os.getpwname (Os.getuid ())
+  "group"       : Os.getgrname (Os.getgid ())
+  "make_exec"   : Sys.which ("make")
+  "patch_exec"  : Sys.which ("patch")
+  "fetch_exec"  : Sys.which ("wget")
+  "fetch_args"
+  "tar_exec"    : Sys.which ("tar")
+  "tar_args"    : "xf"
+  "git_exec"    : Sys.which ("git")
+  "clone_args"  : "clone"
+  "pull_args"   : "pull"
+  "cp_exec"     : Sys.which ("cp")
+  "verbose"     : PACKMAN_VERBOSE
+  "spec_dir"    : Sys.get ("DATADIR") + "/Packman/specs"
+  "sources_dir" : Sys.get ("DATADIR") + "/Packman/sources"
+  "build_dir"   : Sys.get ("TMPDIR")  + "/Packman"
+  "platform"    : Sys.get ("PLATFORM")
+  "tmpdir"      : Sys.get ("TMPDIR")
+  "datadir"     : Sys.get ("DATADIR")
+  "homedir"     : Sys.get ("HOME")
+  "sysdir"      : Sys.get ("SYSDIR")
+  "bindir"      : Sys.get ("SYSDIR") + "/bin"
+  "libdir"      : Sys.get ("SYSDIR") + "/lib"
+  "path"        : Sys.get ("PATH")
+
+  "init" : func {
+    this.curdir = Dir.current ()
+    if (this.fetch_exec is null) {
+      this.fetch_exec = Sys.which ("curl")
+      ifnot (null is this.fetch_exec) {
+        this.fetch_args = "-L"
+      } else {
+        println (stderr, "neither wget nor curl has been found")
+      }
+    }
+  }
+
+  "fetch" : func {
+    if (this.spec.archive is null) {
+      println (stderr, "archive property hasn't been set")
+      return notok
+    }
+
+    if (this.spec.baseurl is null) {
+      println (stderr, "baseurl property hasn't been set")
+      return notok
+    }
+
+    if (this.fetch_exec is null) {
+      println (stderr, "fetching executable hasn't been set or couldn't been found")
+      return notok
+    }
+
+    var webarch = this.baseurl + "/" + this.spec.archive
+    var archive = this.sources_dir + "/" + this.spec.archive
+
+    if (ok is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " +
+        "-o" + archive + " " + webarch) {
+      return ok
+    }
+
+    return notok
+  }
+
+  "extract" : func {
+    if (null is this.tar_exec) {
+      println (stderr, "the tar executable couln't been found")
+      return notok
+    }
+
+    if (null is this.spec.archive) {
+      println (stderr, "archive property hasn't been set")
+      return notok
+    }
+
+    var archive = this.sources_dir + "/" + this.spec.archive
+
+    ifnot (File.exists (archive)) {
+      if (notok is this.fetch_archive ()) {
+        return notok
+      }
+    }
+
+    if (ok is this.sh:exec (this.tar_exec + " " + this.tar_args + " " +
+        archive)) { return notok }
+     return ok
+  }
+
+  "fetch_sources" : func {
+    if (this.spec.sources is null) {
+      println (stderr, "sources property hasn't been set")
+      return notok
+    }
+
+    if (this.spec.repo is null) {
+      println (stderr, "repo property hasn't been set")
+      return notok
+    }
+
+    if (this.git_exec is null) {
+      println (stderr, "git executable couldn't been found")
+      return notok
+    }
+
+    var curdir = Dir.current ()
+    if (notok is Dir.change (this.sources_dir)) { return notok }
+
+    var retval = this.sh:exec (this.git_exec + " " + this.clone_args + " " +
+      this->spec->repo)
+
+    if (notok is Dir.change (curdir)) { return notok }
+
+    if (retval) { return notok }
+    return ok
+  }
+
+  "copy_sources" : func () {
+    if (null is this.cp_exec) {
+      println (stderr, "the cp executable couln't been found")
+      return notok
+    }
+
+    if (null is this.spec.sources) {
+      println (stderr, "sources property hasn't been set")
+      return notok
+    }
+
+    ifnot (Dir.is_directory (this.sources_dir)) {
+      if (File.exists (this.sources_dir)) {
+        println (stderr, "${%s, this.sources_dir}: not a directory")
+        return notok
+      }
+
+      if (notok is this.fetch_sources ()) { return notok }
+    }
+
+    if (ok is this.sh:exec (this.cp_exec + " -r -u " +
+        this.sources_dir +  "/" + this.spec.sources + " .")) {
+      return ok
+    }
+
+    return notok
+  }
+
+  "change_to_build_dirname" : func {
+    if (this.spec.build_dirname is null) {
+      println (stderr, "build_dirname property hasn't been set")
+      return notok
+    }
+
+    if (Dir.change (this.spec.build_dirname) is notok) {
+      println (stderr, "couldn't change directory to ${%s, this.spec.build_dirname}")
+      return notok
+    }
+
+    return ok
+  }
+
+public
+  "set" : {
+    "spec"        : func (spec)  { this.spec = spec }
+    "patch_exec"  : func (patch) { this.patch_exec = patch }
+    "fetch_exec"  : func (fetch) { this.fetch_exec = fetch }
+    "fetch_args"  : func (args)  { this.fetch_args = args }
+    "git_exec"    : func (git)   { this.git_exec = git }
+    "clone_args"  : func (args)  { this.clone_args = args }
+    "pull_args"   : func (args)  { this.pull_args = args }
+    "verbose"     : func (what)  { this.verbose = what }
+    "spec_dir"    : func (dir)   { this.spec_dir = dir }
+    "build_dir"   : func (dir)   { this.build_dir = dir }
+    "sources_dir" : func (dir)   { this.sources_dir = dir }
+    "bindir"      : func (dir)   { this.bindir = dir }
+    "sysdir"      : func (dir)   { this.sysdir = dir }
+    "libdir"      : func (dir)   { this.libdir = dir }
+  }
+
+  "get" : {
+    "spec"        : func { return this.spec }
+    "spec_dir"    : func { return this.spec_dir }
+    "build_dir"   : func { return this.build_dir }
+    "sources_dir" : func { return this.sources_dir }
+    "bindir"      : func { return this.bindir }
+    "sysdir"      : func { return this.sysdir }
+    "libdir"      : func { return this.libdir }
+  }
+
+  "new" : {
+    "spec" : func (name) {
+      var specname = this.spec_dir + "/" + name + ".lai"
+      this.spec = evalfile (specname)
+      return this.spec
+    }
+  }
+
+  "update_repo" : func {
+    if (this.spec.sources is null) {
+      println (stderr, "sources property hasn't been set")
+      return notok
+    }
+
+    if (this.spec.repo is null) {
+      println (stderr, "repo property hasn't been set")
+      return notok
+    }
+
+    if (this.git_exec is null) {
+      println (stderr, "git executable couldn't been found")
+      return notok
+    }
+
+    var curdir = Dir.current ()
+    if (notok is Dir.change (this.sources_dir + "/" + this.spec.sources)) {
+      return notok
+    }
+
+    var retval = this.sh:exec (this.git_exec + " " + this.pull_args)
+
+    if (notok is Dir.change (curdir)) { return notok }
+    if (retval) { return notok }
+    return ok
+  }
+
+  "build" : func {
+    var retval = notok
+
+    if (this.spec is null) {
+      println (stderr, "spec hasn't been set")
+      return notok
+    }
+
+    if (this.build_dir is null) {
+      println (stderr, "build_dir property hasn't been set")
+      return notok
+    }
+
+    if (Dir.change (this.build_dir) is notok) {
+      println (stderr, "couldn't change directory to ${%s, this.build_dir}")
+      return notok
+    }
+
+    if (this.verbose is true) {
+      println ("Building " + this.spec.name)
+      if (this.spec.descr isnot null) { println (this.spec.descr) }
+    }
+
+    loop (1) {
+      for |i| in this.spec.build {
+        if (this.verbose is true) {
+          ifnot (null is this.spec.build[i].msg) {
+            println (this.spec.build[i].msg)
+          }
+        }
+
+        if (this.spec.build[i].type is null or
+            this.spec.build[i].type < 0 or
+            this.spec.build[i].type > LAST_TYPE) {
+          println (stderr, "the spec build type, hasn't been set properly")
+          break 2
+        }
+
+        if (this.spec.build[i].type is PACKMAN_BUILD_EXTRACT) {
+          if (this.extract () isnot ok) {
+            break 2
+          }
+
+          if (notok is this.change_to_build_dirname () {
+            break 2
+          }
+
+        } else if (this.spec.build[i].type is PACKMAN_BUILD_COPY) {
+          if (this.copy_sources () is notok) {
+            break 2
+          }
+
+          if (notok is this.change_to_build_dirname () {
+            break 2
+          }
+        }
+
+        if (this.spec.build[i].command is null) {
+          continue
+        }
+
+        var com = format ("${%s, format (this.spec.build[i].command)}")
+        if (this.sh:exec (com) isnot ok) {
+          println (stderr, "error while executing command: ${%s, com}")
+          break 2
+        }
+
+      }
+
+      retval = ok
+    }
+
+    Dir.change (this.curdir)
+    return retval
+  }
+}

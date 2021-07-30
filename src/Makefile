@@ -977,6 +977,18 @@ clean-v-shared:
 
 clean-v-static:
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+
+#----------------------------------------------------------#
+  # packman
+  ZA_PACKMAN          = packman
+  ZA_PACKMAN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_PACKMAN)/src
+
+packman:
+	@cd $(ZA_PACKMAN_SRCDIR) && $(MAKE) $(MARGS)
+
+clean-packman:
+	@cd $(ZA_PACKMAN_SRCDIR) && $(MAKE) $(MARGS) clean
+
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv list\

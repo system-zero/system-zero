@@ -3459,7 +3459,7 @@ static int la_parse_map_set (la_t *this) {
 
   if (c < LA_TOKEN_ASSIGN) {
     ifnot (Vmap.key_exists (map, key))
-      return this->syntax_error (this, "syntax error while setting map, awaiting =");
+      return la_syntax_error_fmt (this, "%s: map key couldn't been found", key);
 
     if (c is LA_TOKEN_DOT) {
       v = Vmap.get (map, key);

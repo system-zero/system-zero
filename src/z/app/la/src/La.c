@@ -25,10 +25,6 @@
 #include "../../../la-modules/file/file-module.c"
 #endif
 
-#ifdef REQUIRE_STRING_MODULE
-#include "../../../la-modules/string/string-module.c"
-#endif
-
 #ifdef REQUIRE_STD_MODULE
 #include "../../../la-modules/std/std-module.c"
 #endif
@@ -261,10 +257,6 @@ eval:
 
   #ifdef REQUIRE_FILE_MODULE
     __init_file_module__ (la);
-  #endif
-
-  #ifdef REQUIRE_STRING_MODULE
-    __init_string_module__ (la);
   #endif
 
   #ifdef REQUIRE_STD_MODULE

@@ -1,0 +1,67 @@
+#!/usr/bin/env La
+
+import ("sys")
+
+loadfile ("argparse")
+loadfile ("packman")
+
+var argparse = New Argparse (4, 0, "Packman option[s] package")
+argparse.add ("install", 0, "install", "install package", BooleanType, 0)
+argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, 0) 
+argparse.add ("force", 'f', "force", "force", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot (ok is argparse.process (__argv, 1)) {
+  exit (1)
+}
+
+if (argparse.exit is true) {
+  exit (0)
+}
+
+var package = lambda ({
+  ifnot (argparse.argc) {
+    println (stderr, "No package has been specified")
+    exit (1)
+  }
+  return argparse.argv[0]
+}) ()
+
+var update_repo = argparse.results.update_repo
+var install     = argparse.results.install
+
+ifnot (install + update_repo) {
+  println ("no action specified for " + package)
+  exit (0)
+}
+
+var p = New Packman ()
+
+var tmpdir = Sys.get ("TMPDIR")
+if (null is tmpdir) { tmpdir = "/tmp" }
+
+p.set.build_dir (tmpdir)
+
+var retval = notok
+
+if (install is true) {
+  p.new.spec (package)
+  if (update_repo is true) {
+    retval = p.update_repo ()
+    if (retval is notok) {
+      ifnot (argparse.results.force) {
+         exit (retval)
+      }
+    }
+  }
+
+  retval = p.build ()
+  exit (retval)
+}
+
+if (update_repo is true) {
+  retval = p.update_repo ()
+  exit (retval)
+}
+
+exit (retval)
