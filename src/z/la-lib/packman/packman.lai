@@ -39,6 +39,7 @@ private
   "repo"
   "build"
   "descr"
+  "license"
   "baseurl"
   "version"
   "archive"
@@ -56,6 +57,7 @@ public
     "type"      : func (type)  { this.type = type }
     "descr"     : func (descr) { this.descr = descr }
     "build"     : func (build) { this.build = build }
+    "license"   : func (lic)   { this.license = lic }
     "baseurl"   : func (url)   { this.baseurl = url }
     "version"   : func (vers)  { this.version = vers }
     "archive"   : func (arch)  { this.archive = arch }
@@ -71,13 +73,42 @@ public
     "type"      : func { return this.type }
     "descr"     : func { return this.descr }
     "build"     : func { return this.build }
+    "license"   : func { return this.license }
     "baseurl"   : func { return this.baseurl }
     "version"   : func { return this.version }
     "archive"   : func { return this.archive }
     "sources"   : func { return this.sources }
-    "build_dirname"   : func { return this.build_dirname }
+    "build_dirname"  : func { return this.build_dirname }
     "extension" : func { return this.extension }
   }
+
+  "info" : func (pkman) {
+    var msg =
+      "SPEC NAME        : " + this.name + "\n" +
+      "DESCRIPTION      : " + this.descr + "\n" +
+      "VERSION          : " + this.version + "\n" +
+      "LICENSE          : " + lambda {
+        if (null is this.license) { return "" }
+        return this.license
+      } () + "\n" +
+      "HOME URL         : " + lambda {
+        if (null is this.home) { return "" }
+        return this.home
+      } () + "\n" +
+      "REPOSITORYY      : " + lambda {
+        if (null is this.repo) { return "" }
+        return this.repo
+      } () + "\n" +
+      "ARCHIVE          : " + lambda {
+        if (null is this.archive) { return "" }
+        if (File.exists (pkman.get ("sources_dir") + "/" + this.archive)) {
+          return this.archive + " exists in the filesystem"
+        }
+       return this.archive + " doesn't exists in the filesystem"
+      } () + "\n"
+
+     println (msg)
+   }
 }
 
 Type Packman {
@@ -277,6 +308,18 @@ public
       this.spec = evalfile (specname)
       return this.spec
     }
+  }
+
+  "info" : func {
+    var msg =
+      "PLATFORM         : " + this.platform + "\n" +
+      "SYSTEM DIRECTORY : " + this.sysdir + "\n" +
+      "BIN    DIRECTORY : " + this.bindir + "\n" +
+      "LIB    DIRECTORY : " + this.libdir + "\n" +
+      "USER             : " + this.user + "\n" +
+      "GROUP            : " + this.group + "\n"
+
+    println (msg)
   }
 
   "update_repo" : func {

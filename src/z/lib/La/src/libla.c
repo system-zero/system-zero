@@ -1395,7 +1395,6 @@ static int la_parse_lambda (la_t *this, VALUE *vp) {
   Cstring.cp_fmt
     (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
-  la_ignore_ws (this);
   this->curFunDef = NULL;
 
   int err = la_parse_func_def (this);
@@ -1403,16 +1402,15 @@ static int la_parse_lambda (la_t *this, VALUE *vp) {
     return err;
   this->curFunName[0] = '\0';
 
-  if (this->curToken isnot LA_TOKEN_PAREN_CLOS)
-    return this->syntax_error (this, "awaiting )");
-
   sym_t *sym = this->curSym;
   sym->value = NULL_VALUE;
   funT *lambda = this->curFunDef;
   this->tokenArgs = lambda->nargs;
 
-  if (la_next_char (this) isnot LA_TOKEN_PAREN_OPEN)
+  if (this->curToken isnot LA_TOKEN_PAREN_OPEN)
     return this->syntax_error (this, "lambda error, awaiting (");
+
+  la_unget_char (this);
 
   err = la_parse_func_call (this, vp, NULL, lambda, this->tokenValue);
 
@@ -3952,7 +3950,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       int close_token = (c is LA_TOKEN_PAREN_OPEN
          ? LA_TOKEN_PAREN_CLOS : LA_TOKEN_INDEX_CLOS);
 
-      la_next_token (this);
+      c = la_next_token (this);
 
       err = la_parse_expr (this, vp);
 
@@ -6172,7 +6170,7 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
     } else if (c is LA_TOKEN_PAREN_CLOS)
       break;
     else
-      return this->syntax_error (this, "var definition, unexpected token");
+      return this->syntax_error (this, "argument list definition, awaiting a symbol name");
   }
 
   uf->nargs = nargs;
@@ -6245,6 +6243,7 @@ static int la_parse_func_def (la_t *this) {
   this->curFunDef = uf;
 
   la_next_token (this);
+
   return LA_OK;
 }
 

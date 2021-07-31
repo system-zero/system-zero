@@ -219,16 +219,38 @@ a lot by the S-Lang programming language, which is quite like C.
 
 # lambda function syntax:
 
-  lambda ([([arg], ...)] {body}) ([arg], ...)
+    lambda [([arg], ...)]   {body}  ([arg], ...)
 
-  var i = lambda ((x, y) {return x * y}) (10, 100)
+    var i = lambda (x, y) { return x * y } (10, 100)
 
-# A lambda function, it is like a function declaration but without a name,
-  and it is enclosed in parentheses. A lambda function it is evaluated at
-  the time of the declaration, and so it requires an argument list after its
-  declaration.
-  The parameter list can be omited if it is empty, and like functions, can be
-  nested in arbitrary level. After the evaluation it gets released.
+# A lambda function, it is like a function without a name, but it is called
+  immediately. It is illegal to omit an argument list after the declaration,
+  even if it is empty. If it is this case they could constructed like:
+
+    lambda { return x * y } ()
+
+  Lambdas like functions, can be nested in arbitrary level, though they
+  can be complicated to parse, but legal:
+
+    var r = lambda (x, y) {
+      var xl = x + y
+
+      return lambda (k) {
+        return k * 2
+      } (x) +
+
+      lambda (z) {
+        var i =
+          lambda (x) {
+            return x + 100
+          } (z)
+
+        return (z * 2) + i
+      } (xl)
+
+    } (50, 100)
+
+    println ("${r}") => 650
 
 # loadfile syntax and semantics:
 
@@ -486,6 +508,39 @@ a lot by the S-Lang programming language, which is quite like C.
       in this case 'c' holds the integer value of the underlying byte,
       while 'b' holds the string representation and 'w' holds the cell
       width of the character
+
+# Chaining with a Sequence of Functions Calls and Continuational Expressions.
+    (this is at the early development)
+
+    The language wants to support a mechanism, where the current value,
+    is the next first argument to a function, or the last result value.
+
+    At this stage is capable to satisfy the following code:
+
+      import ("std")
+      var s = "97"
+      s: to_integer ()          => 97
+      'a' is s: to_integer ()   => true
+      "asdf": eq ("asdfg")      => false
+      "asdf": eq_n ("asdfg", 4) => true
+      111:to_string (16)        => 0x67
+      ("10": to_integer () * 12 + 52 - 24) : to_string (2) => 10010100
+      "fa:fb:fc": tokenize (":") => ["fa", "fb", "fc"]
+      [1, 2, 3]: len ()          => 3
+      var xm = {"k" : 1, "l" : 2}
+      var xk = xm:keys ()        => an array of the unordered xm keys ("k" and "l")
+
+    Those functions correspond to the exposed by the `std' module function
+    names, that are concatenated based on the underlying type of the value.
+    For instance and if it is StringType, then a "string_" is prepended.
+    But they can be any function:
+
+      func x (y) { return (y * 2): to_string (16) }
+      println (26: x())      => 0x34 (in base 16)
+
+    At this stage, we still have to understand and endup with the underlying
+    semantics, so and to handle appropriate the memory resources. For now it
+    is not.
 
 ```
 

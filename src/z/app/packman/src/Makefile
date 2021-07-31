@@ -23,7 +23,7 @@ SYSTMPDIR  = $(SYSDIR)/tmp
 packman: Env
 	@$(CP) $(NAME) $(SYSBINDIR)
 	@$(CHMOD) 755  $(SYSBINDIR)/$(NAME)
-	$(CP) specs/* $(SYSDATADIR)/$(NAME)/specs
+	@$(CP) specs/* $(SYSDATADIR)/$(NAME)/specs
 
 clean:
 	@$(TEST) ! -x $(SYSBINDIR)/$(NAME)|| $(RM) $(SYSBINDIR)/$(NAME)

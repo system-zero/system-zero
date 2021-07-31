@@ -6,10 +6,11 @@ spec.set.home ("https://github.com/leahneukirchen/lr")
 spec.set.descr ("lr is a tool for generating file listings")
 spec.set.build_dirname (name)
 spec.set.sources (name)
+spec.set.license ("MIT")
 
 # database
 # allow null for first field and command if they are standard
-# probable a default const
+# probably a default const
 # license - database with licenses
 # roll back based on the information in database, marked "known good"
 # add a json dump lib

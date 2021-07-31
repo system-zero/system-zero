@@ -193,24 +193,24 @@ func semantics () {
   retval = fibo_recursive (12)
   assert_true ("testing recursive function", retval is 144)
 
-  retval = lambda ((x, y) {
-    if (x <= 100) {return x * 2} else {return y * 2}}) (100, 200)
+  retval = lambda (x, y) {
+    if (x <= 100) {return x * 2} else {return y * 2}} (100, 200)
 
   assert_true ("testing lambda", retval is 200)
 
-  retval = lambda ((x) {return x * 2}) (10) +
-           lambda ((y) {return y / 2}) (20) +
-           lambda ((z) {return z % 2}) (21) + 11
+  retval = lambda (x) {return x * 2} (10) +
+           lambda (y) {return y / 2} (20) +
+           lambda (z) {return z % 2} (21) + 11
 
   assert_true ("testing sequential lambdas", retval is 42)
 
-  retval = lambda ((x, y) {
+  retval = lambda (x, y) {
     var xl = x + y
-    return lambda ((k) { return k * 2 }) (x) +
-           lambda ((z) {
-             var i = lambda ((x) { return x + 100 }) (z)
-             return (z * 2) + i }) (xl)
-  }) (50, 100)
+    return lambda (k) { return k * 2 } (x) +
+           lambda (z) {
+             var i = lambda (x) { return x + 100 } (z)
+             return (z * 2) + i } (xl)
+  } (50, 100)
 
   assert_true ("testing complex nested lambdas", retval is 650)
 
@@ -357,14 +357,14 @@ func semantics () {
   retval = loop_test_continue (xi)
   assert_true ("testing continue statement", retval is 81)
 
-  var sum = lambda ({ var s = 0
+  var sum = lambda { var s = 0
     for (var i = 1; i < 100 ; s += i, i += 1) {}
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `for` loop", sum is 4950)
 
-  sum = lambda ({ var s = 0
+  sum = lambda { var s = 0
     for (var i = 1; i < 100 ; i += 1) {
       var ign = 0
       var ign_str = "a"
@@ -372,47 +372,47 @@ func semantics () {
       s += i
     }
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `for` loop continue statement", sum is 4940)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0
     for (var i = 1; i < 100 ; s += i, i += 1) {
       if (i is 10) { break }
     }
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `for` loop break statement", sum is 45)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0
     for (var i = 1; i < 100 ; s += i, i += 1) {
       if (i is 10) { return s }
     }
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `for` loop return statement", sum is 45)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0; var i = 0;
     loop (100) {s += i; i += 1}
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `loop` loop first form", sum is 4950)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0;
     loop (var i = 0; 100) {s += i; i += 1}
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `loop` loop second form", sum is 4950)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0; var i = 0;
     loop (100) {
       var ign = 0
@@ -426,43 +426,43 @@ func semantics () {
     }
 
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `loop` loop continue statement", sum is 4940)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0; var i = 0;
     loop (100) {if (i is 10) { break }; s += i; i += 1}
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `loop` loop break statement", sum is 45)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0; var i = 0;
     loop (100) { if (i is 10) { return s }; s += i; i += 1}
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `loop` loop return statement", sum is 45)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0; var i = 0;
     forever {s += i; i += 1; if (i is 100) { break }}
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `forever` loop first form", sum is 4950)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0;
     forever (var i = 0) {s += i; i += 1; if (i is 100) { break }}
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `forever` loop second form", sum is 4950)
 
-  sum = lambda ({
+  sum = lambda {
    var s = 0; var i = 0
     do {
       s += i
@@ -470,12 +470,12 @@ func semantics () {
     } while (i < 100)
 
     return s
-   }) ()
+   } ()
 
 
   assert_true ("testing `do/while` loop", sum is 4950)
 
-  sum = lambda ({ var s = 0; var i = 0;
+  sum = lambda { var s = 0; var i = 0;
     do {
       var ign = 0
       var ign_str = "a"
@@ -484,11 +484,11 @@ func semantics () {
       i += 1
     } while (i < 100)
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `do/while` loop continue statement", sum is 4940)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0; var i = 0
     do {
       if (i is 10) { break }
@@ -496,11 +496,11 @@ func semantics () {
       i += 1
     } while (i < 100)
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `do/while` loop break statement", sum is 45)
 
-  sum = lambda ({
+  sum = lambda {
     var s = 0; var i = 0;
     do {
       s += i
@@ -508,7 +508,7 @@ func semantics () {
       if (i is 10) { return s }
     } while (i < 100)
     return s
-   }) ()
+   } ()
 
   assert_true ("testing `do/while` loop return statement", sum is 45)
 
