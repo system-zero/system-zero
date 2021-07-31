@@ -4111,8 +4111,11 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         }
 
         sym = la_lookup_symbol (this, la_StringNew (method));
-        if (sym is NULL)
-          return la_syntax_error_fmt (this, "%s: unknown method", method);
+        if (sym is NULL) {
+          sym = la_lookup_symbol (this, this->curStrToken);
+          if (sym is NULL)
+            return la_syntax_error_fmt (this, "%s|%s: unknown method", method, key);
+        }
 
         int type;
         if (sym->type & FUNCPTR_TYPE)
