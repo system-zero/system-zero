@@ -1512,19 +1512,20 @@ assert_equal ("testing public array attribute", a_visible[0], 1)
 assert_equal ("testing public constant attribute", c_visible, "visible constant")
 
 func chains {
-  var sa = ("10":to_integer () * 12 + 52 - 24) : to_string (2)
+  var sa = ("10": to_integer () * 12 + 52 - 24): to_string (2)
   assert_true ("testing development of chained functions",
       sa is "10010100")
 
   var sd = "97"
-  var dd = sd:to_integer ()
-  var ii = 111:to_string (10)
-  var vv = "asdf":eq ("asdf")
-  var vx = "asdf":eq_n ("asdfg", 5)
-  var xx = format ("fa:fb:fc"):tokenize (":")
-  var xa = [1, 2, 3]:len ()
+  var dd = sd: to_integer ()
+  var ii = 111: to_string (10)
+  var vv = "asdf": eq ("asdf")
+  var vx = "asdf": eq_n ("asdfg", 5)
+  var xx = format ("fa:fb:fc"): tokenize (":")
+  var xa = [1, 2, 3]: len ()
   var xm = {"k" : 1, "l" : 2}
-  var xk = xm:keys ():len ()
+  var xk = xm:keys (): len ()
+  var ll = 12342 : lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
 
   assert_true ("testing chained functions",
       xk is 2 and
@@ -1533,7 +1534,8 @@ func chains {
       vx is false and
       vv is true  and
       ii is "111" and
-      dd is 'a')
+      dd is 'a' and
+      ll is 42)
 }
 
 chains ()

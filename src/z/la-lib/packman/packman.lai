@@ -82,11 +82,11 @@ public
     "extension" : func { return this.extension }
   }
 
-  "info" : func (pkman) {
+  "info" : func (sources_dir) {
     var msg =
       "SPEC NAME        : " + this.name + "\n" +
       "DESCRIPTION      : " + this.descr + "\n" +
-      "VERSION          : " + this.version + "\n" +
+      "VERSION          : " + this.version + "\n"  +
       "LICENSE          : " + lambda {
         if (null is this.license) { return "" }
         return this.license
@@ -101,10 +101,10 @@ public
       } () + "\n" +
       "ARCHIVE          : " + lambda {
         if (null is this.archive) { return "" }
-        if (File.exists (pkman.get ("sources_dir") + "/" + this.archive)) {
+        if (File.exists (sources_dir + "/" + this.archive)) {
           return this.archive + " exists in the filesystem"
         }
-       return this.archive + " doesn't exists in the filesystem"
+        return this.archive + " doesn't exists in the filesystem"
       } () + "\n"
 
      println (msg)
@@ -320,6 +320,10 @@ public
       "GROUP            : " + this.group + "\n"
 
     println (msg)
+
+    if (this.spec isnot null) {
+      this.spec:info (this.sources_dir)
+    } 
   }
 
   "update_repo" : func {

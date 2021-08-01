@@ -29,7 +29,7 @@ var force       = argparse.results.force
 
 var package = lambda {
   ifnot (argparse.argc) {
-    if (settings is false) {
+    if (settings is false or spec_info is true) {
       println (stderr, "No package has been specified")
       exit (1)
     }
@@ -61,11 +61,15 @@ var retval = notok
 
 if (spec_info is true) {
   var spec = p.new.spec (package)
-  spec.info (p)
+  spec.info (p.get.sources_dir ())
   exit (0)
 }
 
 if (settings is true) {
+  ifnot (null is package) {
+    p.new.spec (package)
+  }
+
   p.info ()
   exit (0)
 }

@@ -54,16 +54,36 @@ a lot by the S-Lang programming language, which is quite like C.
      return arg * 2
    }
 
-# a function can be used as an argument to a function
+# A function can be used as an argument to a function
 
-# a function without an argument list can be declared as:
+   func ref (y) { return y * 2 }
+   func fun (f, y) { return f (y) }
+
+   fun (ref, 11)  => 22
+
+# A function without an argument list can be declared as:
 
    func name { block }
 
-# code blocks are delimited with braces '{}', and are mandatory
+# Code blocks are delimited with braces '{}', and are mandatory.
 
 # statements are separated with a semicolon or with a new line character,
-  and they can spawn to multiply lines based on the context.
+  and they can spawn to multiply lines based on the context. Note that it
+  is allowed for multiply statements in a single line, and are separated
+  based on the context, though there might be unhandled cases, like, while
+  this is legal and it is parsed (four statements):
+
+    var a = 10 var b = "a" println (b) if (a) { b = "b" }
+
+  this, it isn't:
+
+    var a = 10 var b = "a" println (b) if (a) { b = "b" } println (b)
+
+  If in doubt, use a semicolon as a separator. This works now:
+
+    var a = 10 var b = "a" println (b) if (a) { b = "b" }; println (b)
+
+  In any case multiply statements in a single line, it is a bad practice.
 
 # Conditionals:
 
@@ -224,10 +244,14 @@ a lot by the S-Lang programming language, which is quite like C.
     var i = lambda (x, y) { return x * y } (10, 100)
 
 # A lambda function, it is like a function without a name, but it is called
-  immediately. It is illegal to omit an argument list after the declaration,
-  even if it is empty. If it is this case they could constructed like:
+  immediately.
 
-    lambda { return x * y } ()
+    lambda (x, y) { return x * y } (4, 22)
+
+  It is illegal to omit an argument list after the declaration,  even if it
+  is empty. If it is this case they could constructed like:
+
+    lambda { ... body ... } ()
 
   Lambdas like functions, can be nested in arbitrary level, though they
   can be complicated to parse, but legal:
@@ -513,7 +537,8 @@ a lot by the S-Lang programming language, which is quite like C.
     (this is at the early development)
 
     The language wants to support a mechanism, where the current value,
-    is the next first argument to a function, or the last result value.
+    becomes the first argument to the next function, or the last result
+    value.
 
     At this stage is capable to satisfy the following code:
 
@@ -537,6 +562,10 @@ a lot by the S-Lang programming language, which is quite like C.
 
       func x (y) { return (y * 2): to_string (16) }
       println (26: x())      => 0x34 (in base 16)
+
+    They can be also lambdas:
+
+      12342 : lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
 
     At this stage, we still have to understand and endup with the underlying
     semantics, so and to handle appropriate the memory resources. For now it

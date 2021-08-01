@@ -1391,7 +1391,7 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   return NULL;
 }
 
-static int la_parse_lambda (la_t *this, VALUE *vp) {
+static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
   Cstring.cp_fmt
     (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
@@ -1411,6 +1411,9 @@ static int la_parse_lambda (la_t *this, VALUE *vp) {
     return this->syntax_error (this, "lambda error, awaiting (");
 
   la_unget_char (this);
+
+  if (justFun)
+    return LA_OK;
 
   err = la_parse_func_call (this, vp, NULL, lambda, this->tokenValue);
 
@@ -3243,10 +3246,12 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 }
 
 static int la_parse_map_get (la_t *this, VALUE *vp) {
+
   int is_this = (la_StringGetLen (this->curStrToken) is 4 and
       Cstring.eq_n (la_StringGetPtr (this->curStrToken), "this", 4));
 
   int c = la_next_token (this);
+
   if (c isnot LA_TOKEN_DOT) {
     if (this->objectState & MAP_ASSIGNMENT)
       *vp = la_copy_map (this->tokenValue);
@@ -3257,8 +3262,8 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   int err = 0;
   VALUE map_par = this->tokenValue;
-
   int submap = 0;
+
   redo: {}
   this->objectState |= IDENT_LEAD_CHAR_CAN_BE_DIGIT;
   c = err = la_next_raw_token (this);
@@ -3298,7 +3303,6 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       submap = 1;
     else
       submap = 0;
-
     goto redo;
   }
 
@@ -3401,6 +3405,8 @@ static int la_parse_map_set (la_t *this) {
   if (c isnot LA_TOKEN_DOT)
     return this->syntax_error (this, "awaiting .");
 
+  int submap = 0;
+
   redo: {}
 
   int err;
@@ -3439,7 +3445,14 @@ static int la_parse_map_set (la_t *this) {
 
     if (type is FUNCPTR_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
-      VALUE th = map_par.sym->value;
+
+      VALUE th;
+
+      if (submap )
+        th = v->sym->value;
+      else
+        th = map_par.sym->value;
+
       la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
       this->funcState |= MAP_METHOD_STATE;
       VALUE vp;
@@ -3459,13 +3472,18 @@ static int la_parse_map_set (la_t *this) {
     ifnot (Vmap.key_exists (map, key))
       return la_syntax_error_fmt (this, "%s: map key couldn't been found", key);
 
-    if (c is LA_TOKEN_DOT) {
+    if (c is LA_TOKEN_DOT or c is LA_TOKEN_COLON) {
       v = Vmap.get (map, key);
       if (v->type isnot MAP_TYPE)
         return la_syntax_error_fmt (this, "%s, not a map", key);
 
       map = AS_MAP((*v));
       is_this = 0;
+      if (c is LA_TOKEN_COLON)
+        submap = 1;
+      else
+        submap = 0;
+
       goto redo;
     }
 
@@ -3665,6 +3683,7 @@ static int la_parse_string (la_t *this, la_string str) {
 
     if (c < 0) break;
 
+    do_token:
     if (c is UFUNC_TYPE) {
       c = la_next_char (this);
       if (c isnot LA_TOKEN_PAREN_OPEN)
@@ -3679,8 +3698,9 @@ static int la_parse_string (la_t *this, la_string str) {
 
     if (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON or c < 0)
       continue;
-    else
-      return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
+    //else
+    goto do_token; // this is experimental (allow multiply statements in a single line)
+    //return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
   }
 
   this->parsePtr = savepc;
@@ -4071,13 +4091,15 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       }
 
       if (this->curToken isnot LA_TOKEN_COLON or
-         (this->curState & INDEX_STATE))
+          (this->curState & INDEX_STATE))
         return err;
 
       sym_t *sym = NULL;
       char method[MAXLEN_MSG * 2];
+
       do {
         c = la_next_raw_token (this);
+
         if (c isnot LA_TOKEN_SYMBOL)
           return this->syntax_error (this, "awaiting a method");
 
@@ -4109,10 +4131,22 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         }
 
         sym = la_lookup_symbol (this, la_StringNew (method));
+
+        int fun_should_be_freed = 0;
+
         if (sym is NULL) {
           sym = la_lookup_symbol (this, this->curStrToken);
-          if (sym is NULL)
-            return la_syntax_error_fmt (this, "%s|%s: unknown method", method, key);
+          if (sym is NULL or sym->value.type is 0) {
+            ifnot (Cstring.eq (key, "lambda"))
+              return la_syntax_error_fmt (this, "%s|%s: unknown function", method, key);
+
+            err = la_parse_lambda (this, vp, 1);
+            if (err) return err;
+            sym = this->curSym;
+            sym->value = PTR(this->curFunDef);
+            sym->type |= FUNCPTR_TYPE;
+            fun_should_be_freed = 1;
+          }
         }
 
         int type;
@@ -4132,7 +4166,15 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         if (type is FUNCPTR_TYPE) {
           funT *uf = AS_FUNC_PTR(val);
           err = la_parse_func_call (this, vp, NULL, uf, *vp);
+
+          if (fun_should_be_freed) {
+            sym->value = NULL_VALUE;
+            fun_release (&uf);
+            fun_should_be_freed = 0;
+          }
+
           la_next_token (this);
+
         } else {
           CFunc op = (CFunc) AS_PTR(sym->value);
           this->tokenArgs = (sym->type >> 8) & 0xff;
@@ -4248,7 +4290,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     }
 
     case LA_TOKEN_LAMBDA:
-      return la_parse_lambda (this, vp);
+      return la_parse_lambda (this, vp, 0);
 
     case LA_TOKEN_STRING:
       err = la_string_get (this, vp);
@@ -4778,7 +4820,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
         ifnot (this->objectState & RHS_STRING_RELEASED) {
           if (0 is ns_is_malloced_string (this->curScope, AS_STRING(rhs)) and
               0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
-            String.release (AS_STRING(rhs));
+            string_release (rhs);
          }
        }
     }
@@ -6701,6 +6743,11 @@ static int la_parse_return (la_t *this) {
   this->funcState |= RETURN_STATE;
    err = la_parse_expr (this, &scope->result);
   this->funcState &= ~RETURN_STATE;
+
+  if (scope->result.type is STRING_TYPE or scope->result.type is ARRAY_TYPE) {
+    if (this->objectState & MAP_MEMBER)
+        scope->result.refcount++;
+  }
 
   la_StringSetLen (&this->parsePtr, 0);
   this->didReturn = 1;

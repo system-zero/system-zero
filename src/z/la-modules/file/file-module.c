@@ -354,7 +354,7 @@ static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
   string **ar = (string **) AS_ARRAY(array->value);
 
   for (size_t i = 0; i < array->len; i++) {
-    if (fprintf (fp, "%s\n", ar[i]->bytes) isnot ar[i]->num_bytes + 1) {
+    if (fprintf (fp, "%s\n", ar[i]->bytes) isnot (int) ar[i]->num_bytes + 1) {
       fclose (fp);
       return INT(LA_NOTOK);
     }
