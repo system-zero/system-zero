@@ -1,5 +1,6 @@
 ------------------------- [ zero point draft ] -------------------------------
 
+[0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](# ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS STATE_INSTALL_INSTRUCTIONS).
 [0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
 
 ## Intention
@@ -1006,15 +1007,16 @@ its own [documentation](data/docs/la.md).
 
 ## ZERO_POINT_ONE_STATE
 
-And so we did. We've added many features and convienences, during those last three
-months, and now we have a way to extend the system in a dynamical way.
+And so we did, with many added features and convienences, during those last
+three months, and now we have a way to extend the system in a dynamical way.
 
 But this development fulfiled one other purpose too. The idea for a Common Programming
 Language Specification. This is an implemetation of such a specification, which it is
 believed that can be used as a base, to define the semantics and its syntax.
 
-As a small synopsis of the development of this system, and as of now (20 July), we've
-implemented:
+As a small synopsis of the development of this system, and as of now (20 July),
+have been implemented:
+
   - an ala [vim](http://www.vim.org) [editor](data/docs/editor.md)
   - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
   - a very early draft of a [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility](data/docs/zs.md)
@@ -1023,16 +1025,16 @@ implemented:
   - a little bit more than a couple of commands that initialize the libraries and
     for first time the programming language
 
-Install Instructions.
+## ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS.
 
-Requirenments:
+Requirements:
 
-The make utility, a C compiler, a linker, a libc and libpam.
+The make utility, a C compiler, a linker, a libc and libpam (for the sudo replacement).
 
 ```sh
   cd src
 
-  # note that to clean up previous libraries, issue:
+  # note that to clean up previous libraries and utilities, issue:
     make REV=0 clean-shared
     make REV=0 clean-static
   # or/and
@@ -1130,7 +1132,7 @@ algorithm.
 And that was the main advantage of this first (made by a novice mind)  system.
 Since then, and in all the iterations, never really achieved again  this level
 of pure simplicity, to modify and mainly evolve a system at runtine, without a
-need of restarting. How it did it? Simply any code was re-evaluating again and
+need of restarting. How it did it? Simply any code was re-evaluated  again and
 again, reading from the disk. Obviously not a real economical way, but yet  an
 efficient and exciting way, as you could see the behavior that was changed, by
 modifying a function. Such code that was proved to make the right thing, ended

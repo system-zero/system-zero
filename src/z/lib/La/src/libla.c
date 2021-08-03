@@ -3916,6 +3916,108 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   return err;
 }
 
+static int la_parse_chain (la_t *this, VALUE *vp) {
+  int err, c;
+
+  sym_t *sym = NULL;
+  char method[MAXLEN_SYMBOL * 2];
+
+  do {
+    while ((c = la_next_raw_token (this)) is LA_TOKEN_NL);
+
+    if (c isnot LA_TOKEN_SYMBOL)
+      return this->syntax_error (this, "awaiting a method");
+
+    char *key = map_key (this, this->curStrToken);
+
+    switch (vp->type) {
+      case STRING_TYPE:
+        Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "string_%s", key);
+        break;
+
+      case INTEGER_TYPE:
+        Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "integer_%s", key);
+        break;
+
+      case NUMBER_TYPE:
+        Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "number_%s", key);
+        break;
+
+      case ARRAY_TYPE:
+        Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "array_%s", key);
+        break;
+
+      case MAP_TYPE:
+        Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "map_%s", key);
+        break;
+
+      default:
+        return this->syntax_error (this, "unsupported datatype");
+    }
+
+    sym = la_lookup_symbol (this, la_StringNew (method));
+
+    if (sym is NULL) {
+      sym = la_lookup_symbol (this, this->curStrToken);
+
+      if (sym is NULL or sym->value.type is 0) {
+        ifnot (Cstring.eq (key, "lambda"))
+          return la_syntax_error_fmt (this, "%s|%s: unknown function", method, key);
+
+        err = la_parse_lambda (this, vp, 1);
+        if (err) return err;
+
+        sym = this->curSym;
+        sym->value = PTR(this->curFunDef);
+        sym->type |= FUNCPTR_TYPE;
+      }
+    }
+
+    int type;
+    if (sym->type & FUNCPTR_TYPE)
+       type = FUNCPTR_TYPE;
+    else if ((sym->type & 0xff) is LA_TOKEN_BUILTIN)
+      type = CFUNCTION_TYPE;
+    else
+      return this->syntax_error (this, "not a function type");
+
+    VALUE val = sym->value;
+    VALUE save_v = *vp;
+    vp->refcount++;
+    stack_push (this, (*vp));
+    this->argCount = 1;
+
+    int fun_should_be_freed = 0;
+
+    if (type is FUNCPTR_TYPE) {
+      funT *uf = AS_FUNC_PTR(val);
+      err = la_parse_func_call (this, vp, NULL, uf, *vp);
+
+      if (fun_should_be_freed) {
+        sym->value = NULL_VALUE;
+        fun_release (&uf);
+        fun_should_be_freed = 0;
+      }
+
+      la_next_token (this);
+
+    } else {
+      CFunc op = (CFunc) AS_PTR(sym->value);
+      this->tokenArgs = (sym->type >> 8) & 0xff;
+      err = la_parse_func_call (this, vp, op, NULL, val);
+    }
+
+    if (save_v.refcount is LITERAL_OBJECT or save_v.refcount is 0) {
+      save_v.refcount = 0;
+      la_free (this, save_v);
+    }
+
+  } while (this->curToken is LA_TOKEN_COLON);
+
+  return err;
+}
+
+
 static int la_parse_primary (la_t *this, VALUE *vp) {
   int c, err;
 
@@ -4094,101 +4196,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
           (this->curState & INDEX_STATE))
         return err;
 
-      sym_t *sym = NULL;
-      char method[MAXLEN_MSG * 2];
-
-      do {
-        c = la_next_raw_token (this);
-
-        if (c isnot LA_TOKEN_SYMBOL)
-          return this->syntax_error (this, "awaiting a method");
-
-        char *key = map_key (this, this->curStrToken);
-
-        switch (vp->type) {
-          case STRING_TYPE:
-            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "string_%s", key);
-            break;
-
-          case INTEGER_TYPE:
-            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "integer_%s", key);
-            break;
-
-          case NUMBER_TYPE:
-            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "number_%s", key);
-            break;
-
-          case ARRAY_TYPE:
-            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "array_%s", key);
-            break;
-
-          case MAP_TYPE:
-            Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "map_%s", key);
-            break;
-
-          default:
-            return this->syntax_error (this, "unsupported datatype");
-        }
-
-        sym = la_lookup_symbol (this, la_StringNew (method));
-
-        int fun_should_be_freed = 0;
-
-        if (sym is NULL) {
-          sym = la_lookup_symbol (this, this->curStrToken);
-          if (sym is NULL or sym->value.type is 0) {
-            ifnot (Cstring.eq (key, "lambda"))
-              return la_syntax_error_fmt (this, "%s|%s: unknown function", method, key);
-
-            err = la_parse_lambda (this, vp, 1);
-            if (err) return err;
-            sym = this->curSym;
-            sym->value = PTR(this->curFunDef);
-            sym->type |= FUNCPTR_TYPE;
-            fun_should_be_freed = 1;
-          }
-        }
-
-        int type;
-        if (sym->type & FUNCPTR_TYPE)
-          type = FUNCPTR_TYPE;
-        else if ((sym->type & 0xff) is LA_TOKEN_BUILTIN)
-          type = CFUNCTION_TYPE;
-        else
-          return this->syntax_error (this, "not a function type");
-
-        VALUE val = sym->value;
-        VALUE save_v = *vp;
-        stack_push (this, (*vp));
-        vp->refcount++;
-        this->argCount = 1;
-
-        if (type is FUNCPTR_TYPE) {
-          funT *uf = AS_FUNC_PTR(val);
-          err = la_parse_func_call (this, vp, NULL, uf, *vp);
-
-          if (fun_should_be_freed) {
-            sym->value = NULL_VALUE;
-            fun_release (&uf);
-            fun_should_be_freed = 0;
-          }
-
-          la_next_token (this);
-
-        } else {
-          CFunc op = (CFunc) AS_PTR(sym->value);
-          this->tokenArgs = (sym->type >> 8) & 0xff;
-          err = la_parse_func_call (this, vp, op, NULL, val);
-        }
-
-        if (save_v.refcount is LITERAL_OBJECT) {
-          save_v.refcount = 0;
-          la_free (this, save_v);
-        }
-
-      } while (this->curToken is LA_TOKEN_COLON);
-
-      return err;
+      return la_parse_chain (this, vp);
 
     case LA_TOKEN_ARRAY:
       err = la_parse_array_get (this, vp);

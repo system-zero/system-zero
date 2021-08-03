@@ -1538,7 +1538,7 @@ func chains {
       ll is 42)
 }
 
-chains ()
+#chains ()
 
 func valgrind_tests () {
   func xx () {
