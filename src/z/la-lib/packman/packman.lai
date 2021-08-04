@@ -82,7 +82,7 @@ public
     "extension" : func { return this.extension }
   }
 
-  "info" : func (sources_dir) {
+  "info" : func (packman) {
     var msg =
       "SPEC NAME        : " + this.name + "\n" +
       "DESCRIPTION      : " + this.descr + "\n" +
@@ -101,13 +101,16 @@ public
       } () + "\n" +
       "ARCHIVE          : " + lambda {
         if (null is this.archive) { return "" }
-        if (File.exists (sources_dir + "/" + this.archive)) {
+
+        if ((packman.get.sources_dir () + "/" + this.name): file_exists ()) {
           return this.archive + " exists in the filesystem"
         }
+
         return this.archive + " doesn't exists in the filesystem"
       } () + "\n"
 
      println (msg)
+
    }
 }
 
@@ -322,7 +325,7 @@ public
     println (msg)
 
     if (this.spec isnot null) {
-      this.spec:info (this.sources_dir)
+      this.spec:info (this)
     } 
   }
 

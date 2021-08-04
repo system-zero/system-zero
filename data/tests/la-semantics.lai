@@ -1521,7 +1521,11 @@ func chains {
   var ii = 111: to_string (10)
   var vv = "asdf": eq ("asdf")
   var vx = "asdf": eq_n ("asdfg", 5)
-  var xx = format ("fa:fb:fc"): tokenize (":")
+  var fa = "fa"
+  var xx = "${%s, fa}:fb:fc": format (): tokenize (":")
+  var sb = "123"
+  var sc = "${%s, sb}"
+  var ff = "${%s, sc}": format (): format ()
   var xa = [1, 2, 3]: len ()
   var xm = {"k" : 1, "l" : 2}
   var xk = xm:keys (): len ()
@@ -1530,6 +1534,7 @@ func chains {
   assert_true ("testing chained functions",
       xk is 2 and
       xa is 3 and
+      ff is "123" and
       xx is ["fa", "fb", "fc"] and
       vx is false and
       vv is true  and
@@ -1538,7 +1543,7 @@ func chains {
       ll is 42)
 }
 
-#chains ()
+chains ()
 
 func valgrind_tests () {
   func xx () {

@@ -115,7 +115,10 @@
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
 
-#define LITERAL_OBJECT                -1000
+#define LITERAL_STRING                -2000
+#define LITERAL_ARRAY                 -3000
+#define LITERAL_MAP                   -4000
+#define MALLOCED_STRING               -5000
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -828,17 +831,6 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   return LA_OK;
 }
 
-static int ns_is_malloced_string (funT *this, string *str) {
-  malloced_string *item = this->head;
-  while (item isnot NULL) {
-    if (str is item->data)
-      return 1;
-
-    item = item->next;
-  }
-  return 0;
-}
-
 static void ns_release_malloced_strings (funT *this) {
   malloced_string *item = this->head;
   while (item isnot NULL) {
@@ -901,8 +893,8 @@ static VALUE la_typeofArray (la_t *this, VALUE value) {
 }
 
 static VALUE la_typeAsString (la_t *this, VALUE value) {
-  malloced_string *mbuf = new_malloced_string (16);
-  string *buf = mbuf->data;
+  (void) this;
+  string *buf = String.new (16);
 
   switch (value.type) {
     case INTEGER_TYPE: String.append_with_len (buf, "IntegerType", 11); break;
@@ -923,7 +915,6 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
       break;
   }
 
-  ListStackPush (this->curScope, mbuf);
   VALUE v = STRING (buf);
   return v;
 }
@@ -1017,7 +1008,6 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
   return v;
 }
 
-
 static int la_parse_format (la_t *, VALUE *);
 static int la_parse_format (la_t *this, VALUE *vp) {
   int err;
@@ -1061,7 +1051,7 @@ static int la_parse_format (la_t *this, VALUE *vp) {
       buf[len - 2] = '"'; buf[len - 1] = ')'; buf[len] = '\0';
 
       if (v.sym is NULL and
-          0 is ns_is_malloced_string (this->curScope, v_s) and
+          v.refcount isnot MALLOCED_STRING and
           0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
         String.release (v_s);
 
@@ -1103,7 +1093,7 @@ theend:
     this->fmtState |= FMT_LITERAL;
   else
     if (this->funcState & EXPR_LIST_STATE)
-      vp->refcount--;
+      vp->refcount = LITERAL_STRING;
 
   return LA_OK;
 }
@@ -1150,9 +1140,11 @@ static VALUE la_len (la_t *this, VALUE value) {
 static VALUE string_release (VALUE value) {
   VALUE result = INT(LA_OK);
 
-  if (value.refcount < 0) return result;
+  if (value.refcount > 0) goto theend;
 
-  if (value.refcount) goto theend;
+  if (value.refcount < 0)
+    if (value.refcount isnot LITERAL_STRING)
+      return result;
 
   String.release (AS_STRING(value));
 
@@ -1664,7 +1656,9 @@ static int la_do_next_token (la_t *this, int israw) {
           pc = c;
         }
         ListStackPush (this->curScope, mbuf);
-        this->tokenValue = STRING (mbuf->data);
+        VALUE v = STRING(mbuf->data);
+        v.refcount = MALLOCED_STRING;
+        this->tokenValue = v;
       }
 
       c = la_get_char (this);
@@ -1929,9 +1923,11 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
 static VALUE array_release (VALUE value) {
   VALUE result = INT(LA_OK);
 
-  if (value.refcount < 0) return result;
+  if (value.refcount > 0) goto theend;
 
-  if (value.refcount) goto theend;
+  if (value.refcount < 0)
+    if (value.refcount isnot LITERAL_ARRAY)
+      return result;
 
   ArrayType *array = (ArrayType *) AS_ARRAY(value);
   if (NULL is array) return result;
@@ -3122,11 +3118,15 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
 
 static VALUE map_release (VALUE value) {
   VALUE result = INT(LA_OK);
-  if (value.sym isnot NULL) {
-  if (value.refcount < 0) return result;
 
-  if (value.refcount) goto theend;
-}
+  if (value.sym isnot NULL) {
+    if (value.refcount > 0) goto theend;
+
+    if (value.refcount < 0)
+      if (value.refcount isnot LITERAL_MAP)
+        return result;
+  }
+
   Vmap.release ((Vmap_t *) AS_PTR(value));
 
 theend:
@@ -3238,7 +3238,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   v = MAP(map);
 
   if (this->funcState & EXPR_LIST_STATE)
-    v.refcount--;
+      v.refcount--;
 
   *vp = v;
   la_next_token (this);
@@ -3612,7 +3612,8 @@ static int la_parse_expr_list (la_t *this) {
 
     if (this->curState & FUNC_CALL_RESULT_IS_MMT)
       if (v.sym is NULL)
-        v.refcount--;
+        if (v.refcount > -1)
+          v.refcount--;
 
     stack_push (this, v);
 
@@ -3731,13 +3732,6 @@ static void la_fun_release_symbols (funT *uf, int clear, int is_method) {
 }
 
 static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE value) {
-  int expectargs;
-
-  if (uf)
-    expectargs = uf->nargs;
-  else
-    expectargs = this->tokenArgs;
-
   int c = la_next_token (this);
 
   if (c isnot LA_TOKEN_PAREN_OPEN) {
@@ -3754,6 +3748,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     *vp = v;
     return LA_OK;
   }
+
+  int expectargs = (uf ? uf->nargs : this->tokenArgs);
 
   int paramCount = 0;
 
@@ -3804,7 +3800,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
         funT *f = AS_FUNC_PTR(v);
         uf_argsymbols[i] = la_define_symbol (this, uf, uf->argName[i], (UFUNC_TYPE | (f->nargs << 8)), v, 0);
       } else {
-        v.refcount += (refcount < 2);
+        v.refcount += (v.refcount > -2 ? (refcount < 2) : 0);
         uf_argsymbols[i] = la_define_symbol (this, uf, uf->argName[i], v.type, v, 0);
       }
     }
@@ -3823,7 +3819,6 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     this->loopCount = 0;
 
     err = la_parse_string (this, uf->body);
-
     this->loopCount = loopcount;
     if (this->loopCount)
       this->curState |= LOOP_STATE;
@@ -3858,7 +3853,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
           uf_sym->value = non;
         } else {
           if (v.type is STRING_TYPE and
-              ns_is_malloced_string (this->curScope, AS_STRING(v))) {
+              v.refcount <= MALLOCED_STRING) {
             VALUE non = NULL_VALUE;
             uf_sym->value = non;
           }
@@ -3894,7 +3889,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   for (int i = 0; i < expectargs; i++) {
     VALUE v = this->funArgs[i];
     if (v.type is STRING_TYPE)
-      if (ns_is_malloced_string (this->curScope, AS_STRING(v)))
+      if (v.refcount <= MALLOCED_STRING)
         continue;
 
     if (v.sym is NULL)
@@ -3928,6 +3923,8 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
     if (c isnot LA_TOKEN_SYMBOL)
       return this->syntax_error (this, "awaiting a method");
 
+    VALUE save_v;
+
     char *key = map_key (this, this->curStrToken);
 
     switch (vp->type) {
@@ -3955,35 +3952,86 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         return this->syntax_error (this, "unsupported datatype");
     }
 
-    sym = la_lookup_symbol (this, la_StringNew (method));
+    sym = ns_lookup_symbol (this->std, method);
 
-    if (sym is NULL) {
+    if (sym is NULL)
+      sym = ns_lookup_symbol (this->std, key);
+
+    if (sym is NULL or sym->value.type is 0) {
       sym = la_lookup_symbol (this, this->curStrToken);
 
-      if (sym is NULL or sym->value.type is 0) {
-        ifnot (Cstring.eq (key, "lambda"))
+      if (sym->value.type is 0) {
+        if (Cstring.eq (key, "lambda")) {
+          err = la_parse_lambda (this, vp, 1);
+          if (err) return err;
+
+          sym = this->curSym;
+          sym->value = PTR(this->curFunDef);
+          sym->type |= FUNCPTR_TYPE;
+
+        } else if (Cstring.eq (key, "format")) {
+          if (vp->type isnot STRING_TYPE)
+            return this->syntax_error (this, "awaiting a string type");
+          string *s = AS_STRING ((*vp));
+          size_t len = s->num_bytes + 4;
+          char buf[len + 1];
+          int idx = 0;
+          buf[idx++] = '(';
+          char *ptr = s->bytes;
+          if (*ptr isnot '\"') {
+            char *evptr = Cstring.byte.in_str (ptr, '$');
+            if (NULL isnot evptr and (evptr is ptr or
+                *(evptr - 1) isnot '\\')) {
+              buf[idx++] = '"';
+              Cstring.cp (buf + idx, len, ptr, s->num_bytes);
+              idx += s->num_bytes;
+              buf[idx++] = '"';
+            } else {
+              Cstring.cp (buf + idx, len, ptr, s->num_bytes);
+              idx += s->num_bytes;
+            }
+          } else {
+            Cstring.cp (buf + idx, len, ptr, s->num_bytes);
+            idx += s->num_bytes;
+          }
+          buf[idx++] = ')';
+          buf[idx] = '\0';
+
+          la_string savepc = this->parsePtr;
+          this->parsePtr = la_StringNew (buf);
+
+          save_v = *vp;
+          if (save_v.refcount is LITERAL_STRING)
+            save_v.refcount = 0;
+
+          err = la_parse_format (this, vp);
+          this->parsePtr = savepc;
+          c = la_next_token (this);
+          if (c isnot LA_TOKEN_PAREN_OPEN)
+            return this->syntax_error (this, "awaiting (");
+          c = la_next_token (this);
+          if (c isnot LA_TOKEN_PAREN_CLOS)
+            return this->syntax_error (this, "awaiting )");
+          la_next_token (this);
+          goto release_value;
+
+        } else
           return la_syntax_error_fmt (this, "%s|%s: unknown function", method, key);
-
-        err = la_parse_lambda (this, vp, 1);
-        if (err) return err;
-
-        sym = this->curSym;
-        sym->value = PTR(this->curFunDef);
-        sym->type |= FUNCPTR_TYPE;
       }
     }
 
     int type;
     if (sym->type & FUNCPTR_TYPE)
-       type = FUNCPTR_TYPE;
+      type = FUNCPTR_TYPE;
     else if ((sym->type & 0xff) is LA_TOKEN_BUILTIN)
       type = CFUNCTION_TYPE;
     else
       return this->syntax_error (this, "not a function type");
 
     VALUE val = sym->value;
-    VALUE save_v = *vp;
-    vp->refcount++;
+    save_v = *vp;
+    if (vp->refcount > -1)
+      vp->refcount++;
     stack_push (this, (*vp));
     this->argCount = 1;
 
@@ -4007,10 +4055,11 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
       err = la_parse_func_call (this, vp, op, NULL, val);
     }
 
-    if (save_v.refcount is LITERAL_OBJECT or save_v.refcount is 0) {
-      save_v.refcount = 0;
-      la_free (this, save_v);
-    }
+   release_value:
+   if (save_v.sym is NULL) {
+     if (save_v.refcount > -1)
+       la_free (this, save_v);
+   }
 
   } while (this->curToken is LA_TOKEN_COLON);
 
@@ -4041,6 +4090,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
             this->tokenValue = *vp;
 
             err = la_parse_primary (this, vp);
+            if (err isnot LA_OK)
+              return err;
 
             if (vp->type is STRING_TYPE) {
               string *str = AS_STRING((*vp));
@@ -4055,7 +4106,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
           if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
             la_unget_char (this);
-            vp->refcount = LITERAL_OBJECT;
+            vp->refcount = LITERAL_ARRAY;
             this->tokenValue = *vp;
             this->curToken = LA_TOKEN_VAR;
             goto do_token;
@@ -4174,7 +4225,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       if (this->curToken is LA_TOKEN_COLON) {
         la_unget_char (this);
-        vp->refcount = LITERAL_OBJECT;
+        vp->refcount = LITERAL_STRING;
         this->tokenValue = *vp;
         this->curToken = LA_TOKEN_VAR;
         goto do_token;
@@ -4271,10 +4322,10 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       funT *uf = this->curFunDef;
       VALUE ufv = PTR(uf);
+      la_define_symbol (this, this->function, uf->funname, (UFUNC_TYPE | (uf->nargs << 8)), ufv, 0);
       la_string savepc = this->parsePtr;
       this->parsePtr = la_StringNew ("()");
       err = la_parse_func_call (this, vp, NULL, uf, ufv);
-      fun_release (&uf);
       this->parsePtr = savepc;
       return err;
     }
@@ -4308,9 +4359,9 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       if (this->curToken is  LA_TOKEN_COLON) {
         la_unget_char (this);
         if (vp->sym is NULL and
-            0 is (ns_is_malloced_string (this->curScope, AS_STRING((*vp)))) and
+            vp->refcount is MALLOCED_STRING and
             0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
-          vp->refcount = LITERAL_OBJECT;
+          vp->refcount = LITERAL_STRING;
 
         this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
         this->tokenValue = *vp;
@@ -4357,7 +4408,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       if (this->curToken is LA_TOKEN_COLON) {
         la_unget_char (this);
-        vp->refcount = LITERAL_OBJECT;
+        vp->refcount = LITERAL_MAP;
         this->tokenValue = *vp;
         this->curToken = LA_TOKEN_VAR;
         goto do_token;
@@ -4758,11 +4809,11 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
   string *x = NULL;
   if (lhs.type is STRING_TYPE and lhs.sym is NULL) {
     if (this->curState & LITERAL_STRING_STATE) {
-      ifnot (ns_is_malloced_string (this->curScope, AS_STRING(lhs)))
+      if (lhs.refcount isnot MALLOCED_STRING)
         x = AS_STRING(lhs);
     } else {
       if (0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
-          0 is (ns_is_malloced_string (this->curScope, AS_STRING(lhs))) and
+          lhs.refcount isnot MALLOCED_STRING and
           0 is lhs.refcount)
         x = AS_STRING(lhs);
     }
@@ -4826,7 +4877,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
         la_free (this, rhs);
       } else {
         ifnot (this->objectState & RHS_STRING_RELEASED) {
-          if (0 is ns_is_malloced_string (this->curScope, AS_STRING(rhs)) and
+          if (rhs.refcount isnot MALLOCED_STRING and
               0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
             string_release (rhs);
          }
@@ -6388,7 +6439,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
             case STRING_TYPE:
               String.append_with_fmt (str, "%s", AS_STRING_BYTES(value));
               if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
-                  0 is ns_is_malloced_string (this->curScope, AS_STRING(value)) and
+                  value.refcount isnot MALLOCED_STRING and
                   0 is (this->objectState & (MAP_MEMBER|ARRAY_MEMBER)))) {
                 la_free (this, value);
               }
@@ -6437,7 +6488,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           String.append_with_fmt (str, "%p", AS_PTR(value));
           if (value.type is STRING_TYPE) {
             if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
-               0 is ns_is_malloced_string (this->curScope, AS_STRING(value)) and
+                value.refcount isnot MALLOCED_STRING and
                0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))) {
                 la_free (this, value);
             }
@@ -6630,7 +6681,7 @@ static int la_parse_print (la_t *this) {
 
       ifnot (this->objectState & RHS_STRING_RELEASED)
         if (v.sym is NULL and
-            0 is ns_is_malloced_string (this->curScope, vs) and
+            v.refcount isnot MALLOCED_STRING and
             0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
           String.release (vs);
 
@@ -6687,10 +6738,12 @@ print_str:
         is_add_operation = 1;
         this->curToken = c;
         v = STRING(str);
-        v.refcount++;
+        if (v.refcount > -1)
+          v.refcount++;
         this->curState |= STRING_LITERAL_ARG_STATE;
         err = la_parse_expr_level (this, MAX_EXPR_LEVEL, &v);
-        v.refcount--;
+        if (v.refcount > -1)
+          v.refcount--;
         this->curState &= ~STRING_LITERAL_ARG_STATE;
         goto check_expr;
       }
@@ -6754,7 +6807,7 @@ static int la_parse_return (la_t *this) {
 
   if (scope->result.type is STRING_TYPE or scope->result.type is ARRAY_TYPE) {
     if (this->objectState & MAP_MEMBER)
-        scope->result.refcount++;
+      scope->result.refcount++;
   }
 
   la_StringSetLen (&this->parsePtr, 0);
@@ -7007,7 +7060,7 @@ static int la_parse_loadfile (la_t *this) {
   else {
     string *tmp = fname;
     fname = String.dup (tmp);
-    if (v.sym is NULL and 0 is ns_is_malloced_string (this->curScope, tmp) and
+    if (v.sym is NULL and v.refcount isnot MALLOCED_STRING and
         0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
       String.release (tmp);
   }
@@ -7425,7 +7478,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             String.append_with_len (new, y_str->bytes, y_str->num_bytes);
             result = STRING(new);
 
-            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str) and
+            if (x.sym is NULL and x.refcount isnot MALLOCED_STRING and
                 0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
                 0 is x.refcount) {
               String.release (x_str);
@@ -7433,7 +7486,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             }
           }
 
-          if (y.sym is NULL and 0 is ns_is_malloced_string (this->curScope, y_str) and
+          if (y.sym is NULL and y.refcount isnot MALLOCED_STRING and
               0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
             String.release (y_str);
             this->objectState |= RHS_STRING_RELEASED;
@@ -7442,7 +7495,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
           this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
           if (this->funcState & EXPR_LIST_STATE)
-            result.refcount--;
+            result.refcount = LITERAL_STRING;
 
           goto theend;
         }
@@ -7457,7 +7510,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
           } else {
             new = String.new_with_len (x_str->bytes, x_str->num_bytes);
 
-            if (x.sym is NULL and 0 is ns_is_malloced_string (this->curScope, x_str) and
+            if (x.sym is NULL and x.refcount isnot MALLOCED_STRING and
                 0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
               String.release (x_str);
               this->objectState |= LHS_STRING_RELEASED;

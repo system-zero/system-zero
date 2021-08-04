@@ -61,7 +61,7 @@ var retval = notok
 
 if (spec_info is true) {
   var spec = p.new.spec (package)
-  spec.info (p.get.sources_dir ())
+  spec.info (p)
   exit (0)
 }
 
