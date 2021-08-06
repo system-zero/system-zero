@@ -324,6 +324,14 @@ static VALUE integer_to_string (la_t *this, VALUE v_int, VALUE v_base) {
   return STRING(s);
 }
 
+static VALUE integer_eq (la_t *this, VALUE v_fint, VALUE v_sint) {
+  (void) this;
+  if (IS_INT(v_fint) is 0 or IS_INT(v_sint) is 0)
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  return INT(AS_INT(v_fint) is AS_INT(v_sint));
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_std_module__ (la_t *this) {
@@ -353,6 +361,7 @@ public int __init_std_module__ (la_t *this) {
     { "string_to_integer",  PTR(string_to_integer), 1 },
     { "string_byte_in_str", PTR(string_byte_in_str), 2 },
     { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
+    { "integer_eq",         PTR(integer_eq), 2},
     { "integer_to_string",  PTR(integer_to_string), 2},
     { NULL, NULL_VALUE, 0}
   };
@@ -393,6 +402,7 @@ public int __init_std_module__ (la_t *this) {
      };
 
      public var Integer = {
+       "eq"        : integer_eq,
        "to_string" : integer_to_string
      };
 

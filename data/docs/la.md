@@ -534,42 +534,101 @@ a lot by the S-Lang programming language, which is quite like C.
       width of the character
 
 # Chaining with a Sequence of Functions Calls and Continuational Expressions.
-    (this is at the early development)
+    (note that this is at early development)
 
-    The language wants to support a mechanism, where the current value,
-    becomes the first argument to the next function, or the last result
-    value.
+  The language wants to support a mechanism, where the current value,
+  becomes the first argument to the next function, or the last result
+  value.
 
-    At this stage is capable to satisfy the following code:
+  At this stage is capable to satisfy the following code:
 
-      import ("std")
-      var s = "97"
-      s: to_integer ()          => 97
-      'a' is s: to_integer ()   => true
-      "asdf": eq ("asdfg")      => false
-      "asdf": eq_n ("asdfg", 4) => true
-      111:to_string (16)        => 0x67
-      ("10": to_integer () * 12 + 52 - 24) : to_string (2) => 10010100
-      "fa:fb:fc": tokenize (":") => ["fa", "fb", "fc"]
-      [1, 2, 3]: len ()          => 3
-      var xm = {"k" : 1, "l" : 2}
-      var xk = xm:keys ()        => an array of the unordered xm keys ("k" and "l")
+    import ("std")
+    var s = "97"
+    s: to_integer ()          => 97
+    'a' is s: to_integer ()   => true
+    "asdf": eq ("asdfg")      => false
+    "asdf": eq_n ("asdfg", 4) => true
+    111:to_string (16)        => 0x67
+    ("10": to_integer () * 12 + 52 - 24) : to_string (2) => 10010100
+    "fa:fb:fc": tokenize (":") => ["fa", "fb", "fc"]
+    [1, 2, 3]: len ()          => 3
+    var xm = {"k" : 1, "l" : 2}
+    var xk = xm:keys ()        => an array of the unordered xm keys ("k" and "l")
+    (1 is 100): to_string (10) => 0 (note that the first expression is surrounded
+    with parentheses, otherwise without them, a binary operation would be performed,
+    between `1' and the result of (100: to_string (10))
 
-    Those functions correspond to the exposed by the `std' module function
-    names, that are concatenated based on the underlying type of the value.
-    For instance and if it is StringType, then a "string_" is prepended.
-    But they can be any function:
+  Those functions correspond to the exposed by the `std' module function
+  names, that are concatenated based on the underlying type of the value.
+  For instance and if it is StringType, then a "string_" is prepended.
+  But they can be any function:
 
-      func x (y) { return (y * 2): to_string (16) }
-      println (26: x())      => 0x34 (in base 16)
+    func x (y) { return (y * 2): to_string (16) }
+    println (26: x())      => 0x34 (in base 16)
 
-    They can be also lambdas:
+  They can be also lambdas:
 
-      12342 : lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
+    12342 : lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
 
-    At this stage, we still have to understand and endup with the underlying
-    semantics, so and to handle appropriate the memory resources. For now it
-    is not.
+  This mechanism supports a special (when/orelse) conditional expression, which
+  is like `if' with some differences described bellow.
+
+  A `when` expression, it awaits an input value.
+
+  A `when` expression, it returns a value.
+
+  Unlike `if`, it supports only an optional `orelse` clause, as this is more
+  like:
+
+    (condition) ? expression : expression
+
+  in C language.
+
+  Inside the body of a `when` expression, a return statement it pushes a
+  value in the stack of the chain and returns control to the outter scope,
+  but it does not try to exit of a function.
+
+  A `break` or a `continue` statement is not allowed in a when expression,
+  unless is inside a loop of a `when` expression.
+
+  Generrally, `when` expressions and the function sequences mechanism, they
+  are trying a bit hard, to minimize any influences with outter environments,
+  though obviously this is not possible, as anything can be written inside a
+  body of a `when` expression or a function call. But at least this is the
+  intention of the mechanism.
+
+  when/orelse syntax:
+
+    (expr): when |x| condition { body } [orelse { body }]
+
+  note that |x| is the symbol associated with the value of `expr', that can
+  be used in the condition or|and to the body.
+
+  Also note that `condition' is not obligated to be surrounded by parentheses.
+
+  Examples:
+
+    12: when |x| x < 12 { return x + 22 } orelse { return x + 32 } => 44
+    ("asdf" is "asdf"): when |v| v { return ok } orelse { return notok } => ok
+    "asdf" : when |x| x:eq ("asdf") { return ok } orelse { return notok } => same
+    var mp = {"k" : 1, "f" : func {return 1}}
+    mp: when |m| m: len () is 2 { m.k = 10 return m } orelse { m.k = 20 return m} => new map
+    var ar = [1, 2, 3, 4]
+    ar: when |x| x:len () is 4 { x[0] = 2 x[1] = 3 return x } orelse { x[0] = 22 x[1] = 23 return x } => new array
+    var s = null
+    s: when |x| x is null { return notok } orelse { return ok }  => notok
+      (note that, if in the above, we changed the condition and we ommited
+       the `orelse` clause, like:
+
+         s: when |x| x isnot null { return notok } => null
+
+       as in this case, the value of `s' would be returned)
+
+  At this stage, we still have to understand and endup with the underlying
+  semantics, so and to handle appropriate the memory resources. For now it
+  is not.
+  The sure thing is that it is quite expressive way to write code, without
+  overcomplications.
 
 ```
 
