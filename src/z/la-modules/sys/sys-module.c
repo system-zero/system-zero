@@ -53,9 +53,9 @@ public int __init_sys_module__ (la_t *this) {
   (void) vmapType;
 
   LaDefCFun lafuns[] = {
-    { "set",            PTR(sys_set), 3 },
-    { "get",            PTR(sys_get), 1 },
-    { "which",          PTR(sys_which), 1 },
+    { "sys_set",         PTR(sys_set), 3 },
+    { "sys_get",         PTR(sys_get), 1 },
+    { "sys_which",       PTR(sys_which), 1 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -67,9 +67,9 @@ public int __init_sys_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Sys = {
-      "set"   : set,
-      "get"   : get,
-      "which" : which,
+      "set"   : sys_set,
+      "get"   : sys_get,
+      "which" : sys_which,
      }
   );
 

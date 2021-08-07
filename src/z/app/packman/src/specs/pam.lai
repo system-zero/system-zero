@@ -1,0 +1,25 @@
+var name = "pam"
+var archive = "Linux-PAM"
+var version = "1.5.1"
+var spec = New PackmanSpec (name)
+spec.set.descr ("Pluggable Authentication Modules Library")
+spec.set.version ("1.5.1")
+spec.set.build_dirname (archive + "-" + version)
+spec.set.extension ("tar.xz")
+spec.set.archive (spec.get.build_dirname () + "." + spec.get.extension ())
+spec.set.license ("GPL2")
+
+var map[4] build = [
+  New PackmanBuild (null, PACKMAN_BUILD_EXTRACT, null),
+  New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE,
+     "./configure --prefix=${%s, this.get.sysdir ()} --disable-shared " +
+     "--enable-static --enable-db=no --disable-regenerate-docu"),
+  New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE,
+     "${%s, this.make_exec}"),
+  New PackmanBuild ("[install]", PACKMAN_BUILD_INSTALL,
+     "${%s, this.make_exec} install")
+]
+
+spec.set.build (build)
+
+return spec

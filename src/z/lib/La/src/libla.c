@@ -117,9 +117,9 @@
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
 
-#define LITERAL_STRING                -2000
-#define LITERAL_ARRAY                 -3000
-#define LITERAL_MAP                   -4000
+#define STRING_LITERAL                -2000
+#define ARRAY_LITERAL                 -3000
+#define MAP_LITERAL                   -4000
 #define MALLOCED_STRING               -5000
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
@@ -1098,7 +1098,7 @@ theend:
     this->fmtState |= FMT_LITERAL;
   else
     if (this->funcState & EXPR_LIST_STATE)
-      vp->refcount = LITERAL_STRING;
+      vp->refcount = STRING_LITERAL;
 
   return LA_OK;
 }
@@ -1148,7 +1148,7 @@ static VALUE string_release (VALUE value) {
   if (value.refcount > 0) goto theend;
 
   if (value.refcount < 0)
-    if (value.refcount isnot LITERAL_STRING)
+    if (value.refcount isnot STRING_LITERAL)
       return result;
 
   String.release (AS_STRING(value));
@@ -1932,7 +1932,7 @@ static VALUE array_release (VALUE value) {
   if (value.refcount > 0) goto theend;
 
   if (value.refcount < 0)
-    if (value.refcount isnot LITERAL_ARRAY)
+    if (value.refcount isnot ARRAY_LITERAL)
       return result;
 
   ArrayType *array = (ArrayType *) AS_ARRAY(value);
@@ -3129,7 +3129,7 @@ static VALUE map_release (VALUE value) {
     if (value.refcount > 0) goto theend;
 
     if (value.refcount < 0)
-      if (value.refcount isnot LITERAL_MAP)
+      if (value.refcount isnot MAP_LITERAL)
         return result;
   }
 
@@ -3300,8 +3300,29 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   c = la_next_token (this);
 
   if (c is LA_TOKEN_DOT or c is LA_TOKEN_COLON) {
-    if (v->type isnot MAP_TYPE)
-      return la_syntax_error_fmt (this, "%s, not a map", key);
+    if (v->type isnot MAP_TYPE) {
+      if (c is LA_TOKEN_COLON)
+        goto theend;
+      else
+        return la_syntax_error_fmt (this, "%s, not a map", key);
+    }
+
+    if (c is LA_TOKEN_COLON) {
+      const char *ptr = la_StringGetPtr (this->parsePtr);
+      while (is_space (*ptr)) ptr++;
+      char k[MAXLEN_SYMBOL + 1];
+      int idx = 0;
+      while (is_identifier (*ptr)) {
+        if (idx is MAXLEN_SYMBOL)
+          return this->syntax_error (this, "identifier exceeded maximum length");
+        k[idx++] = *ptr;
+        ptr++;
+      }
+      k[idx] = '\0';
+      Vmap_t *vmap = AS_MAP((*v));
+      ifnot (Vmap.key_exists (vmap, k))
+        goto theend;
+    }
 
     this->tokenValue = *v;
 
@@ -3375,6 +3396,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     }
   }
 
+theend:
   if (vp->type is STRING_TYPE or vp->type is ARRAY_TYPE)
     this->objectState |= MAP_MEMBER;
 
@@ -3985,7 +4007,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
         case LA_TOKEN_WHEN:
           save_v = *vp;
-          if (save_v.refcount is LITERAL_STRING)
+          if (save_v.refcount is STRING_LITERAL)
             save_v.refcount = 0;
 
           err = la_parse_when (this, vp);
@@ -3994,6 +4016,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         case LA_TOKEN_FORMAT: {
           if (vp->type isnot STRING_TYPE)
             return this->syntax_error (this, "awaiting a string type");
+
           string *s = AS_STRING ((*vp));
           size_t len = s->num_bytes + 4;
           char buf[len + 1];
@@ -4023,7 +4046,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
           this->parsePtr = la_StringNew (buf);
 
           save_v = *vp;
-          if (save_v.refcount is LITERAL_STRING)
+          if (save_v.refcount is STRING_LITERAL)
             save_v.refcount = 0;
 
           err = la_parse_format (this, vp);
@@ -4039,6 +4062,9 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         }
 
         default:
+          if (sym->value.type is POINTER_TYPE)
+            break;
+
           return la_syntax_error_fmt (this, "%s|%s: unknown function", method, key);
       }
     }
@@ -4076,6 +4102,8 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
       CFunc op = (CFunc) AS_PTR(sym->value);
       this->tokenArgs = (sym->type >> 8) & 0xff;
       err = la_parse_func_call (this, vp, op, NULL, val);
+      if (save_v.type is MAP_TYPE)
+        save_v.refcount--;
     }
 
    release_value:
@@ -4126,7 +4154,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
           c = la_next_token (this);
 
           if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
-            vp->refcount = LITERAL_ARRAY;
+            vp->refcount = ARRAY_LITERAL;
             this->tokenValue = *vp;
             return la_parse_chain (this, vp);
           }
@@ -4230,7 +4258,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       err = la_parse_format (this, vp);
 
       if (this->curToken is LA_TOKEN_COLON) {
-        vp->refcount = LITERAL_STRING;
+        vp->refcount = STRING_LITERAL;
         this->tokenValue = *vp;
         return la_parse_chain (this, vp);
       }
@@ -4358,9 +4386,9 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       if (this->curToken is LA_TOKEN_COLON) {
         if (vp->sym is NULL and
-            vp->refcount is MALLOCED_STRING and
+            vp->refcount isnot MALLOCED_STRING and
             0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
-          vp->refcount = LITERAL_STRING;
+          vp->refcount = STRING_LITERAL;
 
         this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
         this->tokenValue = *vp;
@@ -4405,7 +4433,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         return err;
 
       if (this->curToken is LA_TOKEN_COLON) {
-        vp->refcount = LITERAL_MAP;
+        vp->refcount = MAP_LITERAL;
         this->tokenValue = *vp;
         return la_parse_chain (this, vp);
       }
@@ -4598,18 +4626,6 @@ do_token:
       la_next_token (this);
 
       int token = this->curToken;
-
-      if (token is LA_TOKEN_COLON) {
-        do {
-          VALUE vp;
-          this->curToken = LA_TOKEN_VAR;
-          la_unget_char (this);
-          err = la_parse_primary (this, &vp);
-          this->tokenValue = vp;
-        } while (this->curToken is LA_TOKEN_COLON);
-
-        return err;
-      }
 
       if (token < LA_TOKEN_ASSIGN and
           token > LA_TOKEN_ASSIGN_LAST_VAL)
@@ -4807,6 +4823,8 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     if (this->curState & LITERAL_STRING_STATE) {
       if (lhs.refcount isnot MALLOCED_STRING)
         x = AS_STRING(lhs);
+    } else if (lhs.refcount is STRING_LITERAL) {
+      x = AS_STRING(lhs);
     } else {
       if (0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
           lhs.refcount isnot MALLOCED_STRING and
@@ -4825,10 +4843,9 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
 
     this->curState |= STRING_LITERAL_ARG_STATE;
-    la_next_token (this);
+    c = la_next_token (this);
 
     err = la_parse_primary (this, &rhs);
-
     if (err isnot LA_OK) return err;
 
     c = this->curToken;
@@ -4873,7 +4890,9 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
         la_free (this, rhs);
       } else {
         ifnot (this->objectState & RHS_STRING_RELEASED) {
-          if (rhs.refcount isnot MALLOCED_STRING and
+          if (rhs.refcount is STRING_LITERAL) {
+            string_release (rhs);
+          } else if (rhs.refcount isnot MALLOCED_STRING and
               0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
             string_release (rhs);
          }
@@ -4890,12 +4909,6 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 
   ifnot (lhs_released)
     String.release (x);
-
-  if (this->curToken is LA_TOKEN_COLON) {
-    this->tokenValue = *vp;
-    this->curToken = LA_TOKEN_VAR;
-    return la_parse_primary (this, vp);
-  }
 
   return err;
 }
@@ -5067,6 +5080,9 @@ static int la_parse_when (la_t *this, VALUE *vp) {
   ));
 
   VALUE stackval = la_copy_value ((*vp));
+  if (stackval.type is STRING_TYPE)
+    stackval.refcount = STRING_LITERAL;
+
   la_define_symbol (this, fun, ident, stackval.type, stackval, 0);
 
   funT *save_scope = this->curScope;
@@ -5086,6 +5102,7 @@ static int la_parse_when (la_t *this, VALUE *vp) {
   la_string whenpart = this->curStrToken;
 
   c = la_next_token (this);
+  VALUE save_tokenValue = this->tokenValue;
 
   la_string orelsepart;
   int haveorelse = 0;
@@ -5097,6 +5114,7 @@ static int la_parse_when (la_t *this, VALUE *vp) {
     orelsepart = this->curStrToken;
     haveorelse = 1;
     c = la_next_token (this);
+    save_tokenValue = this->tokenValue;
   }
 
   int condition = AS_INT(cond);
@@ -5115,15 +5133,24 @@ static int la_parse_when (la_t *this, VALUE *vp) {
   if (this->didReturn)
     this->didReturn = 0;
 
-  VALUE v = fun->result;
+  VALUE v;
+
+  ifnot (condition + haveorelse)
+    v = stackval;
+  else
+    v = fun->result;
+
+  if (AS_VOID_PTR(v) is AS_VOID_PTR(stackval)) {
+    sym_t *sym = Vmap.pop (fun->symbols, ident);
+    v.sym = NULL;
+    free (sym);
+  }
+
   *vp = v;
 
-   if (AS_VOID_PTR(v) is AS_VOID_PTR(stackval)) {
-     sym_t *sym = Vmap.pop (fun->symbols, ident);
-     free (sym);
-   }
-
   this->curToken = c;
+  this->tokenValue = save_tokenValue;
+
   this->curScope = save_scope;
   fun_release (&fun);
   return err;
@@ -7239,7 +7266,7 @@ theload:
     if (this->la_dir->num_bytes) {
       String.release (fn);
       fn = String.dup (fname);
-      String.prepend_with (fn, this->la_dir->bytes);
+      String.prepend_with_fmt (fn, "%s/", this->la_dir->bytes);
       this->curState |= LOADFILE_SILENT;
       err = la_eval_file (this, fn->bytes);
       this->curState &= ~LOADFILE_SILENT;
@@ -7572,21 +7599,21 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             if (x.sym is NULL and x.refcount isnot MALLOCED_STRING and
                 0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
                 0 is x.refcount) {
-              String.release (x_str);
+              string_release (x);
               this->objectState |= LHS_STRING_RELEASED;
             }
           }
 
           if (y.sym is NULL and y.refcount isnot MALLOCED_STRING and
               0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
-            String.release (y_str);
+            string_release (y);
             this->objectState |= RHS_STRING_RELEASED;
           }
 
           this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
           if (this->funcState & EXPR_LIST_STATE)
-            result.refcount = LITERAL_STRING;
+            result.refcount = STRING_LITERAL;
 
           goto theend;
         }

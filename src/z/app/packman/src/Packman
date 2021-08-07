@@ -1,4 +1,7 @@
 #!/usr/bin/env La
+# NOTE that such scripts can be loaded into the interpreter, since '# is a
+# comment it skips the first she-bang line, and so they can be checked by
+# valgrind and debugged with gdb.
 
 import ("sys")
 

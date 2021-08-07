@@ -4,8 +4,8 @@ import ("sys")
 import ("os")
 import ("sh")
 
-const PACKMAN_NO_VERBOSE = 0
-const PACKMAN_VERBOSE    = 1
+const PACKMAN_NO_VERBOSE      = 0
+const PACKMAN_VERBOSE         = 1
 
 const PACKMAN_SOURCE_ARCHIVE  = 0
 const PACKMAN_SOURCE_REPO     = 1
@@ -16,6 +16,7 @@ const PACKMAN_BUILD_PATCH     = 2
 const PACKMAN_BUILD_CONFIGURE = 3
 const PACKMAN_BUILD_MAKE      = 4
 const PACKMAN_BUILD_INSTALL   = 5
+
 var LAST_TYPE = PACKMAN_BUILD_INSTALL
 
 Type PackmanBuild {
@@ -86,28 +87,21 @@ public
     var msg =
       "SPEC NAME        : " + this.name + "\n" +
       "DESCRIPTION      : " + this.descr + "\n" +
-      "VERSION          : " + this.version + "\n"  +
-      "LICENSE          : " + lambda {
-        if (null is this.license) { return "" }
-        return this.license
-      } () + "\n" +
-      "HOME URL         : " + lambda {
-        if (null is this.home) { return "" }
-        return this.home
-      } () + "\n" +
-      "REPOSITORYY      : " + lambda {
-        if (null is this.repo) { return "" }
-        return this.repo
-      } () + "\n" +
-      "ARCHIVE          : " + lambda {
-        if (null is this.archive) { return "" }
-
-        if ((packman.get.sources_dir () + "/" + this.name): file_exists ()) {
-          return this.archive + " exists in the filesystem"
+      "VERSION          : " + this.version + "\n" +
+      "LICENSE          : " +
+        this.license: when |x| x is null { return "" } orelse { return x } +
+      "\n" + "HOME URL         : " +
+        this.home:    when |x| x is null { return "" } orelse { return x } +
+      "\n" + "REPOSITORY       : " +
+        this.repo:    when |x| x is null { return "" } orelse { return x } +
+      "\n" + "ARCHIVE          : " +
+        this.archive: when |x| x is null { return "" } orelse {
+          if ((packman.get.sources_dir () + "/" + this.archive): file_exists ()) {
+            return x + " exists in the filesystem"
+          } else {
+            return x + " doesn't exists in the filesystem"
+          }
         }
-
-        return this.archive + " doesn't exists in the filesystem"
-      } () + "\n"
 
      println (msg)
 
@@ -202,9 +196,12 @@ private
       }
     }
 
-    if (ok is this.sh:exec (this.tar_exec + " " + this.tar_args + " " +
-        archive)) { return notok }
-     return ok
+    var retval = this.sh:exec (this.tar_exec + " " + this.tar_args + " " + archive)
+    if (retval is notok or retval > ok) {
+      return notok
+    }
+
+    return ok
   }
 
   "fetch_sources" : func {
@@ -396,20 +393,20 @@ public
         }
 
         if (this.spec.build[i].type is PACKMAN_BUILD_EXTRACT) {
-          if (this.extract () isnot ok) {
+          if (notok is this.extract ()) {
             break 2
           }
 
-          if (notok is this.change_to_build_dirname () {
+          if (notok is this.change_to_build_dirname ()) {
             break 2
           }
 
         } else if (this.spec.build[i].type is PACKMAN_BUILD_COPY) {
-          if (this.copy_sources () is notok) {
+          if (notok is this.copy_sources ()) {
             break 2
           }
 
-          if (notok is this.change_to_build_dirname () {
+          if (notok is this.change_to_build_dirname ()) {
             break 2
           }
         }

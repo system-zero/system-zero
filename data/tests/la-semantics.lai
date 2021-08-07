@@ -1531,14 +1531,20 @@ func chains {
   var sc = "${%s, sb}"
   var ff = "${%s, sc}": format (): format ()
   var xa = [1, 2, 3]: len ()
-  var xm = {"k" : 1, "l" : 2}
+  var xm = {"k" : 1, "l" : 2, "sub" : {"ka" : 1, "ar" : [1, 1, 3] } }
   var xk = xm:keys (): len ()
   var mx = {"k" : 1, "l" : 2}: len ()
-  var ll = 12342 : lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
+  var ll = 12342: lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
+  var mm = xm.k: when |x| x is 1 { return 11 }
+  var ms = xm.sub: keys (): len ()
+  var mp = xm.sub.ar: where (1): len ()
 
   assert_true ("testing chained functions",
+      mp is 2 and
+      ms is 2 and
+      mm is 11 and
       mx is 2 and
-      xk is 2 and
+      xk is 3 and
       xa is 3 and
       ff is "123" and
       xx is ["fa", "fb", "fc"] and
@@ -1557,7 +1563,7 @@ func chains {
   var wu = ("asdf" is "asdf"): when |v| v { return "ok" } orelse { return "notok"} 
   var wn = null
   var wv =  wn: when |x| x is null { return 10 } orelse { return 100 }
-  var ws = "asdf" : when |x| x:eq ("asdfg") { return "ok" } orelse { return "notok"}
+  var ws = "asdf": when |x| x:eq ("asdfg") { return "ok" } orelse { return "notok"}
   var wm = {"k" : 1, "f" : func {return 1}}
   var wl = wm: when |m| m: len () is 2 { m.k = 10 return m } orelse { m.k = 20 return m}
   var wa = [1, 2, 3, 4]
