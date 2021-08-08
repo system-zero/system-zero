@@ -1157,7 +1157,7 @@ style. However it should be okey if practicing consistency.
     But we have yet to clarify the semantics. What to do in this instance:
 
       var s = "string"
-      s:to_integer ()
+      s: to_integer ()
 
     I'm inclined to say that `s' will not have to be modified. So maybe the prudent
     thing to do here, that such a chain of function call, it has to be used as
@@ -1183,31 +1183,33 @@ style. However it should be okey if practicing consistency.
     Our mechanism currently also allows binary operations at the end of the
     chain sequence:
 
-       "10":to_Integer () * 12 + 52 - 24
+       "10": to_Integer () * 12 + 52 - 24
 
     In this case, it can be seen as like arithmetic operations or other possible
     transformations, of the final object. Of course the result of the evaluation
     it can be later reused in a new chain (this works even today, the first 12
     hours of development):
 
-      ("10":to_integer () * 12 + 52 - 24) : to_string (2) => 10010100 (2 is for base 2)
+      ("10": to_integer () * 12 + 52 - 24): to_string (2) => 10010100 (2 is for base 2)
 
     This is the only way to sanity. If it wasn't for the parantheses around the
     expression, what would be the meaning without them:
 
-      "10":to_integer () * 12 + 52 - 24 : to_string (2)
+      "10": to_integer () * 12 + 52 - 24: to_string (2)
 
     To some of the very best of parsers, capable to parse every little everything,
     and at the best of the case would be to trasform `24' into a string, which is
     besides the side influence, it is also hard for the human mind to parse the
     intention, so yes at the end looks like an obvious nightmare.
 
+  And that is the end.
+
+
 And as the last note. This documentation written in a single unit, owes to be
 enough and should cover all the aspects of the language. If it is not enough,
 then it should be considered rather as an error of the language itself, as one
 of the main purposes of this is to be exceptional easy to start writting within
 minutes.
-
 
 Details about the implementation.
 (written in the first days of August of 2021)
@@ -1228,4 +1230,5 @@ looking from an interpreter. As it was the _implentation_ the main intention.
 Albeit it does it with a probably unorthodoxical way. And actually it is not
 that bad in performance, as it executes more than a thousand of lines of code,
 which much of it is complex and loops, in a fraction of a second, in a very
-old 32bit netbook computer. And this is enough.
+old 32bit netbook computer. And this is enough. Plus it runs on ridiculously
+low memory resources.

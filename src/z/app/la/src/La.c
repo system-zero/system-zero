@@ -49,6 +49,10 @@
 #include "../../../la-modules/sys/sys-module.c"
 #endif
 
+#ifdef REQUIRE_TIME_MODULE
+#include "../../../la-modules/time/time-module.c"
+#endif
+
 static void la_completion (const char *buf, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
 
@@ -282,6 +286,11 @@ eval:
   #ifdef REQUIRE_SYS_MODULE
     __init_sys_module__ (la);
   #endif
+
+  #ifdef REQUIRE_TIME_MODULE
+    __init_time_module__ (la);
+  #endif
+
 
   if (NULL is evalbuf) {
     ifnot (argc)

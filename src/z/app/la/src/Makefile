@@ -169,6 +169,15 @@ ifeq ($(SYS_MODULE), 1)
   endif
 endif
 
+TIME_MODULE := 1
+ifeq ($(TIME_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_TIME_MODULE
+  ifeq ($(STRING_DECLARED), 0)
+    LA_STATIC_FLAGS += -lstring-$(VERSION)
+    STRING_DECLARED = 1
+  endif
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(SYSBINDIR)/$(LA)-shared $(SYSBINDIR)/$(LA)

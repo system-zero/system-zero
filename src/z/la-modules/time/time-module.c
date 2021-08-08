@@ -1,8 +1,7 @@
 #define REQUIRE_STDIO
 #define REQUIRE_TIME
 
-#define REQUIRE_VMAP_TYPE     DECLARE
-#define REQUIRE_CSTRING_TYPE  DECLARE
+#define REQUIRE_VMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
@@ -122,9 +121,7 @@ static VALUE time_to_seconds (la_t *this, VALUE v_tm) {
 
 public int __init_time_module__ (la_t *this) {
   __INIT_MODULE__(this);
-  __INIT__(vmap);
   __INIT__(string);
-  __INIT__(cstring);
 
   LaDefCFun lafuns[] = {
     { "time_now",            PTR(time_now), 0 },
