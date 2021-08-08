@@ -757,6 +757,8 @@ concepts.
 #                      args: error number
 # errno_name         - returns a string represantation of a system error name
 #                      args: error number
+# set_errno          - sets errno and returns the error number
+#                      args: error number
 
 # Standard Integer Constants.
 # ok         -   0
@@ -764,12 +766,15 @@ concepts.
 # true       -   1
 # false      -   0
 # null       -   (void *) 0
-#
+
+# Standard variables
+# errno      - holds current errno number
+
 # FILE Pointers Of Standard Streams.
 # stdout
 # stderr
 # stdin
-#
+
 # Argument list variables
 # __argc     - holds the length of the list, zero if it hasn't been set
 # __argv     - string type array, that holds the items of the list if it

@@ -430,6 +430,7 @@ static int la_parse_map_get (la_t *, VALUE *);
 static int la_parse_map_set (la_t *);
 static int la_parse_loadfile (la_t *);
 static int la_parse_when (la_t *, VALUE *);
+static VALUE la_set_errno (la_t *, VALUE);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -8020,8 +8021,9 @@ LaDefCFun la_funs[] = {
   { "fflush",           PTR(la_fflush), 1},
   { "fclose",           PTR(la_fclose), 1},
   { "fileno",           PTR(la_fileno), 1},
-  { "errno_string",     PTR(la_errno_string), 1},
+  { "set_errno",        PTR(la_set_errno), 1},
   { "errno_name",       PTR(la_errno_name), 1},
+  { "errno_string",     PTR(la_errno_string), 1},
   { "typeof",           PTR(la_typeof), 1},
   { "typeAsString",     PTR(la_typeAsString), 1},
   { "typeofArray",      PTR(la_typeofArray), 1},
@@ -8143,6 +8145,10 @@ static int la_std_def (la_t *this, la_opts opts) {
 
   v = ARRAY(load_path);
   err = la_define (this, "__loadpath", ARRAY_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  v = INT(0);
+  err = la_define (this, "errno", INTEGER_TYPE, v);
 
   return err;
 }
@@ -8465,16 +8471,29 @@ static la_t *la_set_current (la_T *this, int idx) {
   return it;
 }
 
-static void la_set_Errno (la_t *this, int err) {
-  this->Errno = err;
-}
-
 static void la_set_CFuncError (la_t *this, int err) {
   this->CFuncError = err;
 }
 
 static void la_set_curMsg (la_t *this, char *msg) {
   Cstring.cp (this->curMsg, MAXLEN_MSG + 1, msg, bytelen (msg));
+}
+
+static void la_set_Errno (la_t *this, int err) {
+  this->Errno = err;
+  sym_t *sym = ns_lookup_symbol (this->std, "errno");
+  sym->value = INT (err);
+}
+
+static VALUE la_set_errno (la_t *this, VALUE v_err) {
+  ifnot (IS_INT(v_err)) {
+    la_set_CFuncError (this,  LA_ERR_TYPE_MISMATCH);
+    la_set_curMsg (this, "awaiting an integer");
+    return NULL_VALUE;
+  }
+
+  la_set_Errno (this, AS_INT(v_err));
+  return v_err;
 }
 
 static void la_set_la_dir (la_t *this, char *fn) {

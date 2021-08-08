@@ -112,7 +112,7 @@ static VALUE time_to_seconds (la_t *this, VALUE v_tm) {
   time_t t = mktime (&tm_p);
   if (t is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   }
 
   return INT(t);

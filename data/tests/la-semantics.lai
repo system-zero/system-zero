@@ -1067,6 +1067,12 @@ func semantics () {
   var nilstr = format ("${%s, null}")
   assert_true ("testing null string representation", nilstr is "(null)")
 
+  var errnum = set_errno (100)
+  assert_true ("testing errno functions",
+      errno is errnum and
+      errno_string (errno) is "Network is down" and
+      errno_name (errno) is "ENETDOWN")
+
   func comparisons () {
     assert_true ("testing null with other types",
        null is null and

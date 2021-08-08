@@ -187,7 +187,7 @@ static int la_interactive (la_t *this) {
     if (should_eval) {
       retval = La.eval_string (this, evalbuf->bytes + len);
       len = evalbuf->num_bytes;
-      if (retval < LA_OK or La.get.didExit (this)) {
+      if (La.get.didExit (this)) {
         Rline.history.add (rline, line);
         free (line);
         break;
