@@ -4219,7 +4219,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     case LA_TOKEN_OCTAL:
       *vp = la_OctalStringToNum (this->curStrToken);
       c = la_next_token (this);
-      if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+      if (c is LA_TOKEN_COLON) {
         this->tokenValue = *vp;
         return la_parse_chain (this, vp);
       }
@@ -4367,13 +4367,26 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       err = la_parse_func_call (this, vp, NULL, uf, symbol->value);
 
-      la_next_token (this);
+      c = la_next_token (this);
+
+      if (c is LA_TOKEN_COLON) {
+        this->tokenValue = *vp;
+        return la_parse_chain (this, vp);
+      }
+
       return err;
     }
 
     case LA_TOKEN_BUILTIN: {
       CFunc op = (CFunc) AS_PTR(this->tokenValue);
-      return la_parse_func_call (this, vp, op, NULL, this->tokenSymbol->value);
+      err = la_parse_func_call (this, vp, op, NULL, this->tokenSymbol->value);
+
+      if (this->curToken is LA_TOKEN_COLON) {
+        this->tokenValue = *vp;
+        return la_parse_chain (this, vp);
+      }
+
+      return err;
     }
 
     case LA_TOKEN_LAMBDA:

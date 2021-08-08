@@ -904,7 +904,7 @@ interpreter in between. For a small price at the expressivity and without any
 way to interfere with the system at runtime. So we need at least __One__.
 
 We are actually walking at the One! That is where we're going, and we want to
-be stable and end up on things with our API, when we reach a this point. If we
+be stable and end up on things with our API, when we reach at this point. If we
 don't do that, we have to be prepared to introduce incompatibilities,  during
 the logical evolution.  This is almost always a frustration for a developer to
 adapt, especially when even point releases introduce such incompatibilities.
@@ -1066,7 +1066,7 @@ licenses to make the right thing.
 
 But I respect a lot the GNU philosophy and I feel that we owe a lot to the GNU
 project. We  can be sure, that  we wouldn't be here  if it wasn't the  GPL and
-GNU.
+GNU. And Richard!
 
 That is the reason for the GPL2. However, our actual law should obey in common
 sense and an inner will, to do what we have to do by our own, and not  because

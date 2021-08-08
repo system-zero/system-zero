@@ -923,13 +923,6 @@ func semantics () {
           String.to_integer (si) is 1234 and
           String.to_number (sf) is 1234.1234)
 
-      var ii = 12345678
-      assert_true ("testing integer to string convertions",
-          Integer.to_string (ii, 2) is "00000000101111000110000101001110" and
-          Integer.to_string (ii, 8) is "057060516" and
-          Integer.to_string (ii, 10) is "12345678" and
-          Integer.to_string (ii, 16) is "0xbc614e")
-
       assert_true ("testing the bytelen method",
           String.bytelen ("asdf") is 4 and
           String.bytelen ("ασδφ") is 8)
@@ -938,6 +931,14 @@ func semantics () {
           String.numchars ("asdf") is 4 and
           String.numchars ("ασδφ") is 4)
 
+      var ii = 12345678
+      assert_true ("testing integer to string convertions",
+          Integer.to_string (ii, 2) is "00000000101111000110000101001110" and
+          Integer.to_string (ii, 8) is "057060516" and
+          Integer.to_string (ii, 10) is "12345678" and
+          Integer.to_string (ii, 16) is "0xbc614e")
+
+      assert_true ("testing the integer eq method", Integer.eq (1, 1))
     }
 
     std_module ()
@@ -992,6 +993,17 @@ func semantics () {
     }
 
     sys_module ()
+
+    func time_module () {
+      import ("time")
+      var inp = Time.now ()
+      var now = Time.now ()
+      if (now - inp is 1) { inp += 1 }
+      var res = inp:time_local (): time_to_seconds ();
+      assert_true ("testing the time module", res is now);
+    }
+
+    time_module ()
   }
 
   import_test ()

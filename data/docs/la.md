@@ -15,12 +15,14 @@ be good to have.
 There is a reference implementation, that should obey the syntax and semantics,
 that is owe to pass all the tests, except some expected to fail ones, notably
 operations on doubles, where an expertise is missing and neither exists the
-desirable will to gain this knowledge. This can wait, as and as an author, i
+desirable will to gain this knowledge. This can wait, as and as an author, I
 never had to use the type, except in some quite basic calculations and these
 few.
+
 The reference interpreter is being used in two cases internally in this system.
 This is to support saving and restore editor sessions and virtual window managment
-sessions, which by alone already is precious.
+sessions, which by alone already is precious. It is being used also to implement
+commands.
 
 The syntax and the semantics of the language, should feel familiar with already
 established programming languages consepts, and should obey the principle of the
@@ -28,7 +30,9 @@ least surpise and should not violate expectations. If it does not or if it does,
 this should be considered as a bug. It is important to note that this language,
 doesn't bring even the singlest new consept in the programming language universe.
 It is written for C and follows C where it makes sense, and had been influenced
-a lot by the S-Lang programming language, which is quite like C.
+a lot by the S-Lang programming language, which is quite like C. However, it
+provides mechanisms for object oriented techniques, and also some functional
+concepts.
 
 ## Syntax and Semantics
 ```js
@@ -70,11 +74,11 @@ a lot by the S-Lang programming language, which is quite like C.
 # statements are separated with a semicolon or with a new line character,
   and they can spawn to multiply lines based on the context. Note that it
   is allowed for multiply statements in a single line, and are separated
-  based on the context, though there might be unhandled cases, like, while
-  this is legal and it is parsed (four statements):
+  based on the context, though there might be unhandled cases, like:
 
     var a = 10 var b = "a" println (b) if (a) { b = "b" }
 
+  while the above is legal and it is being parsed correctly (four statements),
   this, it isn't:
 
     var a = 10 var b = "a" println (b) if (a) { b = "b" } println (b)
@@ -119,7 +123,7 @@ a lot by the S-Lang programming language, which is quite like C.
   for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
   Special forms of the `for` loop that work as an iterator, can be found to
-  the specific datatype section.
+  their specific datatype section.
 
 # `loop` loop (loop for nth times)
 
@@ -156,6 +160,9 @@ a lot by the S-Lang programming language, which is quite like C.
 
   const c = "constant"
   c = 1  # this should fail
+
+  if the value is not yet know, then it can be initialized with null,
+  and can be reassigned.
 
 # variables can not be redeclared at the current scope
 
@@ -243,7 +250,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
     var i = lambda (x, y) { return x * y } (10, 100)
 
-# A lambda function, it is like a function without a name, but it is called
+  A lambda function, it is like a function without a name, but it is called
   immediately.
 
     lambda (x, y) { return x * y } (4, 22)
@@ -296,6 +303,12 @@ a lot by the S-Lang programming language, which is quite like C.
 
   Such units should provide a return statement that return a value, like they
   were functions.
+
+  This is like Lua:
+
+    var m = {}
+    m.f = func (...) { ... }
+    return m
 
   Such units are always freed after evaluation, so they should return memory
   managment types that survive from the releasing.
@@ -363,9 +376,10 @@ a lot by the S-Lang programming language, which is quite like C.
 # the `println()` function is like `print`, but also emits a new line character.
 
 # Arrays
-  # Array declaration:
+  Array declaration:
 
-  # first form
+  first form:
+
     var ar = [1, 2, 3]
 
     this is an anonymous array that get assigned to the symbol `ar`. It takes
@@ -374,7 +388,8 @@ a lot by the S-Lang programming language, which is quite like C.
     Such "on the fly" arrays can be used elsewhere in expressions, and they should
     be freed automatically.
 
-  # second form
+  second form:
+
     Array declaration and assignment syntax with a predefined length and type:
     (note that with current code, this method should execute faster than the
     above, since the above requires first a "light" parsing, to determinate
@@ -382,7 +397,7 @@ a lot by the S-Lang programming language, which is quite like C.
 
     var string[3] ar = ["holidays", "in", "cambodia"]
 
-  - the declaration syntax is:
+  the declaration syntax is:
 
     var type[length] varname
 
@@ -393,9 +408,10 @@ a lot by the S-Lang programming language, which is quite like C.
       - map
       - array
 
-# Array assignment syntax:
+  Array assignment syntax:
 
-  # first form
+  First form:
+
     ar_symbol[first index : [last index]] = [first index, [...,...,] last_index]
 
       where assignment starts at `first index` and stops at `last index`.
@@ -404,24 +420,24 @@ a lot by the S-Lang programming language, which is quite like C.
       The number of expressions should match, or else it will result to an
       OUT_OF_BOUNDS error.
 
-  # second form
+  Second form:
 
     ar_symbol = [..., ...]
 
       in this case the mumber of expressions is considered the length of the
       array. If not, the interpreter will throw an OUT_OF_BOUNDS error.
 
-  # you can set _all_ the array items, with a specific value using:
+  You can set _all_ the array items, with a specific value using:
 
     ar[*] = value
 
     *Note* that this syntax should attributed to S-Lang programming language.
 
-  # you can get or set an item from or to an array, using indices that can
-    be negative.  Array indices are starting from zero, and -1 denotes the
-    last item in the array.
+  You can get or set an item from or to an array, using indices that can
+  be negative.  Array indices are starting from zero, and -1 denotes the
+  last item in the array.
 
-  # A special form of the `for` loop, can be used as an array iterator:
+  A special form of the `for` loop, can be used as an array iterator:
 
     for |i| in array { block }
 
@@ -434,63 +450,61 @@ a lot by the S-Lang programming language, which is quite like C.
   this is an unordered list, and there is no guarrantee that keys and values, will
   will have the order of the declaration, when looping over a map.
 
-  # Map Declaration
+  Map Declaration:
 
-  var m = {}  # empty container
+    var m = {}  # empty container
 
-  var mm = {
-    "one" : 1,
-    "two" : "string",
-    "1"   : 1,
-    "fn"  : func (x) { return this.one * x },
-    private "privatevar" : "accessible only by the members of the map"
-  }
+    var mm = {
+      "one" : 1,
+      "two" : "string",
+      "1"   : 1,
+      "fn"  : func (x) { return this.one * x },
+      private "privatevar" : "accessible only by the members of the map"
+    }
 
-  - the `this` keyword is being used _only_ from the members of a map, and it
-    provides access to the other fields, as it holds the value of the underlying
-    map
+  the `this` keyword is being used _only_ from the members of a map, and it
+  provides access to the other fields, as it holds the value of the underlying
+  map.
 
-  - on submaps methods, `this` is a reference to the parent map, unless they are
-    accessing using a colon (':'), thus on:
+  On submaps methods, `this` is a reference to the parent map, unless they are
+  accessing using a colon (':'), thus on:
 
     map.submap:method (...)
 
-    `this` is a reference to submap
+  `this` is a reference to submap
 
-  - keys are valid string identifiers and may start with a digit or an underscore
+  Keys are valid string identifiers and may start with a digit or an underscore
 
-  - by default it is not possible to override a method of a map, unless
-    the statement it is attributed explicitly with the `override` keyword:
+  By default it is not possible to override a method of a map, unless
+  the statement it is attributed explicitly with the `override` keyword:
 
-      var m = { "f" : func { return 1 } }
-      func c { return 11 }
-      override m.f = c
-      m.f () => 11
-      m.f = c # error
+    var m = { "f" : func { return 1 } }
+    func c { return 11 }
+    override m.f = c
+    m.f () => 11
+    m.f = c # error
 
-  # Accessing maps. This is done by using a dot ('.') after a symbol that refers
-    to a Map Type.
+  Accessing maps. This is done by using a dot ('.') after a symbol that refers
+  to a Map Type.
 
     mm.one
     mm.fn (10)
     mm.privatevar = "something" # this should fail
 
-  # extending maps
+  Extending maps:
 
     mm.new = 1
 
-  # in those cases those fields are accessible from their scope.
+    in those cases those fields are accessible from their scope.
     Members can be attributed as `private` only at the construction time,
     not even within the members at runtime.
 
-  # A special form of the `for` loop, can be used as an iterator that can
-    loop over Maps:
+  A special form of the `for` loop, can be used as an iterator that can
+  loop over Maps:
 
     for |k, v| in map { block }
 
-    In this case 'k' holds the key of the map, and 'v' its associated
-    value.
-
+    in this case 'k' holds the key of the map, and 'v' its associated value.
     Note, since a Map is an unordered list, there is no guarrantee of the order.
 
 # Types.
@@ -516,22 +530,22 @@ a lot by the S-Lang programming language, which is quite like C.
   time. In this case these properties are initialized as `null`.
 
 # Strings
-  # Two special forms of the `for` loop, can be used as an iterator that can
-    loop over strings:
+  Two special forms of the `for` loop, can be used as an iterator that can
+  loop over strings:
 
-    first form is iteration over the bytes:
+  First form is iteration over the bytes:
 
-      for |c| in str { block }
+    for |c| in str { block }
 
-      in this case 'c' holds the integer value of the underlying byte
+    in this case 'c' holds the integer value of the underlying byte.
 
-    second form is iteration over the characters:
+  Second form is iteration over the characters:
 
-      for |c, b, w| in str { block }
+    for |c, b, w| in str { block }
 
-      in this case 'c' holds the integer value of the underlying byte,
-      while 'b' holds the string representation and 'w' holds the cell
-      width of the character
+    in this case 'c' holds the integer value of the underlying byte,
+    while 'b' holds the string representation and 'w' holds the cell
+    width of the character.
 
 # Chaining with a Sequence of Functions Calls and Continuational Expressions.
     (note that this is at early development)
@@ -601,8 +615,8 @@ a lot by the S-Lang programming language, which is quite like C.
 
     (expr): when |x| condition { body } [orelse { body }]
 
-  note that |x| is the symbol associated with the value of `expr', that can
-  be used in the condition or|and to the body.
+    note that |x| is the symbol associated with the value of `expr', that can
+    be used in the condition or|and to the body.
 
   Also note that `condition' is not obligated to be surrounded by parentheses.
 
@@ -636,7 +650,7 @@ a lot by the S-Lang programming language, which is quite like C.
 ```sh
 # var         -  variable definition
 # const       -  constant definition
-#                a constant can not reassigned since initialization; an uninitialized
+#                a constant can not be reassigned since initialization; an uninitialized
 #                object is considered the one that has a value of `null`
 # func        -  function definition
 # lambda      -  lambda function
@@ -647,6 +661,7 @@ a lot by the S-Lang programming language, which is quite like C.
 # else        -  else clause
 # else if     -  else if clause
 # else ifnot  -  else ifnot clause
+# when/orelse -  when expression
 # while       -  while loop
 # for         -  for loop
 # loop        -  loop loop
@@ -723,7 +738,7 @@ a lot by the S-Lang programming language, which is quite like C.
 # typeAsString      -  type of a value as string represantation
 #                      args: object
 #                      The returned string can be any of the above but formated
-#                      as stings.
+#                      as strings.
 # typeofArray       -  type of an array value
 #                      args: array
 # typeArrayAsString -  type of an array value as string represantation
@@ -744,11 +759,11 @@ a lot by the S-Lang programming language, which is quite like C.
 #                      args: error number
 
 # Standard Integer Constants.
-# ok         -  0
+# ok         -   0
 # notok      -  -1
-# true       -  1
-# false      -  0
-# null       -  (void *) 0
+# true       -   1
+# false      -   0
+# null       -   (void *) 0
 #
 # FILE Pointers Of Standard Streams.
 # stdout
@@ -837,6 +852,7 @@ a lot by the S-Lang programming language, which is quite like C.
     # StringType    String.advance_on_byte (StringType str, IntegerType c)
 
     # StringType    Integer.to_string (IntegerType i, IntegerType base)
+    # IntegerType   Integer.eq (IntegerType a, IntegerType b)
 
   # Term Module Interface
     # ObjectType    Term.new ()
@@ -869,6 +885,13 @@ a lot by the S-Lang programming language, which is quite like C.
     # StringType    Sys.get (StringType sys_setting)
     # IntegerType   Sys.set (StringType asname, StringType sys_setting, IntegerType replaceanyold) 
     # StringType    Sys.which (StringType exec)
+
+  # Time Module Interface
+    # IntegerType   Time.now ()
+    # MapType       Time.gmt (null or IntegerType time)
+    # MapType       Time.local (null or IntegerType time)
+    # StringType    Time.to_string (null or IntegerType time)
+    # IntegerType   Time.to_seconds (MapType tm)
 
 # Library
   # Argparse Interface
@@ -1063,7 +1086,7 @@ style. However it should be okey if practicing consistency.
   where -1 is considered as a number and should be coded as (x - -1). It is
   actually the only known case that is not handled correctly (but they might be
   others). No matter the parser, it is believed that a space that it separates
-  tokens, it adds visually clarity.
+  tokens, it adds visual clarity.
 
 - recursive functions though they should work properly, can be easily overflow
   the stack, as the compiler doesn't perform any kind of tail call optimizations
@@ -1179,3 +1202,25 @@ enough and should cover all the aspects of the language. If it is not enough,
 then it should be considered rather as an error of the language itself, as one
 of the main purposes of this is to be exceptional easy to start writting within
 minutes.
+
+
+Details about the implementation.
+(written in the first days of August of 2021)
+
+This interpreter might be very slow, when it competes with others. I never did
+it (benchmark), and probably I never going to do it, but it has to be slow, or
+else something is strange.
+
+There isn't a proper lexer/parser/vm. It is just a bunch of (sometimes clever
+though) ways to handle the complexity of an interpreter. There is a weakness
+to understand things in theory, as I have to face with the facts, to realize
+the theory. Admittedly now, it is a way different than when this thing was
+started (at the beginning of the spring of 2021), and quite many things would
+be different, if I was started all over again. But the fact is that the code
+handles and implements quite satisfactory the syntax and the semantics of a
+Programming Language, and it does it without discounts to the exact way I was
+looking from an interpreter. As it was the _implentation_ the main intention.
+Albeit it does it with a probably unorthodoxical way. And actually it is not
+that bad in performance, as it executes more than a thousand of lines of code,
+which much of it is complex and loops, in a fraction of a second, in a very
+old 32bit netbook computer. And this is enough.

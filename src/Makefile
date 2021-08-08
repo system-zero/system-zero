@@ -1102,6 +1102,9 @@ dir-module-shared:
 sh-module-shared: libsh-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sh-module-shared
 
+time-module-shared:
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) time-module-shared
+
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 
