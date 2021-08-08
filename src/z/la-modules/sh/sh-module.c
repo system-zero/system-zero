@@ -10,10 +10,8 @@
 
 static VALUE sh_exec (la_t *this, VALUE v_sh, VALUE v_command) {
   (void) this;
-  ifnot (IS_OBJECT(v_sh))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
-  ifnot (IS_STRING(v_command))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_OBJECT(v_sh)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
+  ifnot (IS_STRING(v_command)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   object *o = AS_OBJECT(v_sh);
   sh_t *sh = (sh_t *) AS_PTR(o->value);
@@ -24,13 +22,12 @@ static VALUE sh_exec (la_t *this, VALUE v_sh, VALUE v_command) {
 
 static VALUE sh_release (la_t *this, VALUE v_sh) {
   (void) this;
-  ifnot (IS_OBJECT(v_sh))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
+  ifnot (IS_OBJECT(v_sh)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
 
   object *o = AS_OBJECT(v_sh);
   sh_t *sh = (sh_t *) AS_PTR(o->value);
   Sh.release (sh);
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE sh_new (la_t *this) {

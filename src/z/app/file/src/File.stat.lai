@@ -1,0 +1,69 @@
+var prog = "File.stat"
+
+import ("os")
+import ("std")
+import ("file")
+import ("time")
+
+if (__argc is 1) {
+  println (stderr, "${%s, prog}: missing operand")
+  exit (1)
+}
+
+var file = __argv[1]
+var st = file:file_stat ()
+
+if (null is st) {
+  println (stderr, "${%s, prog}: ${%s, errno:errno_string()}")
+  exit (1)
+}
+
+var oct = st.st_mode: file_mode_to_octal_string ()
+
+var type = st.st_mode: file_type_to_string ()
+var dev_x = format ("${%x, st.st_dev}")
+String.advance (dev_x, 2);
+
+println ("  File: ${%s, file}")
+println ("  Size: ${st.st_size}  Blocks: ${st.st_blocks}  I/O Block: ${st.st_blksize}  ${%s, type}")
+println ("Device: ${%s, dev_x}h/${st.st_dev}d    Inode: ${st.st_ino}     Links: ${st.st_nlink}")
+print ("Access: (${%s, oct}/${%s, st.st_mode:file_mode_to_string ()})")
+println ("  Uid: ( ${st.st_uid}/ ${%s, st.st_uid:getpwname())  Gid: ( ${st.st_gid}/ ${%s, st.st_gid: getgrname ()})")
+
+var ac = st.st_atime: time_local ()
+print ("Access: ${1900 + ac.tm_year}-${%s, ac.tm_mon: when |x| x < 9 {return "0" } orelse { return "" }}")
+print ("${ac.tm_mon + 1}")
+print ("-${%s, ac.tm_mday: when |x| x < 9 {return "0" } orelse { return "" }}")
+print ("${ac.tm_mday}")
+print (" ${%s, ac.tm_hour: when |x| x < 10 {return "0" } orelse { return "" }}")
+print ("${ac.tm_hour}")
+print (":${%s, ac.tm_min: when |x| x < 10 {return "0" } orelse { return "" }}")
+print ("${ac.tm_min}")
+print (":${%s, ac.tm_sec: when |x| x < 10 {return "0" } orelse { return "" }}")
+println ("${ac.tm_sec}")
+
+var mt = st.st_mtime: time_local ()
+print ("Modify: ${1900 + mt.tm_year}-${%s, mt.tm_mon: when |x| x < 9 {return "0" } orelse { return "" }}")
+print ("${mt.tm_mon + 1}")
+print ("-${%s, mt.tm_mday: when |x| x < 9 {return "0" } orelse { return "" }}")
+print ("${mt.tm_mday}")
+print (" ${%s, mt.tm_hour: when |x| x < 10 {return "0" } orelse { return "" }}")
+print ("${mt.tm_hour}")
+print (":${%s, mt.tm_min: when |x| x < 10 {return "0" } orelse { return "" }}")
+print ("${mt.tm_min}")
+print (":${%s, mt.tm_sec: when |x| x < 10 {return "0" } orelse { return "" }}")
+println ("${mt.tm_sec}")
+
+var ct = st.st_ctime: time_local ()
+print ("Change: ${1900 + ct.tm_year}-${%s, ct.tm_mon: when |x| x < 9 {return "0" } orelse { return "" }}")
+print ("${ct.tm_mon + 1}")
+print ("-${%s, ct.tm_mday: when |x| x < 9 {return "0" } orelse { return "" }}")
+print ("${ct.tm_mday}")
+print (" ${%s, ct.tm_hour: when |x| x < 10 {return "0" } orelse { return "" }}")
+print ("${ct.tm_hour}")
+print (":${%s, ct.tm_min: when |x| x < 10 {return "0" } orelse { return "" }}")
+print ("${ct.tm_min}")
+print (":${%s, ct.tm_sec: when |x| x < 10 {return "0" } orelse { return "" }}")
+println ("${ct.tm_sec}")
+
+exit (0)

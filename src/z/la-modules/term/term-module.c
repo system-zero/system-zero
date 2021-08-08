@@ -28,7 +28,7 @@ static VALUE term_release (la_t *this, VALUE v_term) {
   object *o = AS_OBJECT(v_term);
   term_t *term = (term_t *) AS_PTR(o->value);
   Term.release (&term);
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE term_new (la_t *this) {

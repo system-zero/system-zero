@@ -90,7 +90,7 @@ sh-module-shared:
 clean-sh-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/sh-module.so  || $(RM)  $(SYSMODULEDIR)/sh-module.so
 #-----------------------------------------------------------
-TIME_FLAGS = -lstring
+TIME_FLAGS = -lstring -lvmap
 time-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/time-module.so $(SHARED_FLAGS) $(TIME_FLAGS) time/time-module.c
 

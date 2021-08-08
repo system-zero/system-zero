@@ -155,6 +155,7 @@ typedef ObjectType object;
 #define IS_STRING(__v__) (__v__.type == STRING_TYPE)
 #define IS_NUMBER(__v__) (__v__.type == NUMBER_TYPE)
 #define IS_OBJECT(__v__) (__v__.type == OBJECT_TYPE)
+#define IS_FILEPTR IS_OBJECT
 
 #define THROW(__e__, __m__) do {    \
   La.set.CFuncError (this,  __e__); \

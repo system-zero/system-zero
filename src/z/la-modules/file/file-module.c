@@ -58,11 +58,11 @@ static VALUE file_hardlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   int retval = link (src_file, dest_file);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
@@ -77,11 +77,11 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   int retval = symlink (src_file, dest_file);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {
@@ -98,11 +98,11 @@ static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {
   int retval = chown (file, uid, gid);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
@@ -117,11 +117,11 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
   int retval = chmod (file, mode);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_mkfifo (la_t *this, VALUE v_file, VALUE v_mode) {
@@ -136,11 +136,11 @@ static VALUE file_mkfifo (la_t *this, VALUE v_file, VALUE v_mode) {
   int retval = mkfifo (file, mode);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_remove (la_t *this, VALUE v_file) {
@@ -153,11 +153,11 @@ static VALUE file_remove (la_t *this, VALUE v_file) {
   int retval = unlink (file);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_rename (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
@@ -172,11 +172,11 @@ static VALUE file_rename (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   int retval = rename (src_file, dest_file);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
@@ -190,11 +190,11 @@ static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
   int retval = access (file, mode);
   if (retval is -1) {
     La.set.Errno (this, errno);
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
   } else
-    return INT(LA_OK);
+    return OK_VALUE;
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE file_stat (la_t *this, VALUE v_file) {
@@ -252,6 +252,7 @@ static VALUE file_mode_to_octal_string (la_t *this, VALUE v_mode) {
   char oct_str[16];
   snprintf (oct_str, 16, "%o", mode);
   string *s = String.new_with (oct_str+2);
+  if ('0' isnot s->bytes[0])  String.prepend_byte (s, '0');
   return STRING(s);
 }
 
@@ -349,19 +350,41 @@ static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
 
   FILE *fp = fopen (file, "w");
   if (NULL is fp)
-    return INT(LA_NOTOK);
+    return NOTOK_VALUE;
 
   string **ar = (string **) AS_ARRAY(array->value);
 
   for (size_t i = 0; i < array->len; i++) {
     if (fprintf (fp, "%s\n", ar[i]->bytes) isnot (int) ar[i]->num_bytes + 1) {
       fclose (fp);
-      return INT(LA_NOTOK);
+      return NOTOK_VALUE;
     }
   }
 
   fclose (fp);
-  return INT(LA_OK);
+  return OK_VALUE;
+}
+
+static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  int mode = AS_INT(v_mode);
+  string *s = NULL;
+  if (S_ISSOCK (mode))
+    s = String.new_with_len ("socket", 6);
+  else if (S_ISFIFO (mode))
+    s = String.new_with_len ("fifo", 4);
+  else if (S_ISBLK (mode))
+    s = String.new_with_len ("block", 5);
+  else if (S_ISDIR (mode))
+    s = String.new_with_len ("directory", 9);
+  else if (S_ISREG (mode))
+    s = String.new_with_len ("regular file", 12);
+  else if (S_ISLNK (mode))
+    s = String.new_with_len ("link", 4);
+  else
+    s = String.new_with_len ("unknown type", 12);
+
+  return STRING(s);
 }
 
 #define EvalString(...) #__VA_ARGS__
@@ -398,6 +421,7 @@ public int __init_file_module__ (la_t *this) {
     { "file_is_executable", PTR(file_is_executable), 1 },
     { "file_readlines",  PTR(file_readlines), 1 },
     { "file_writelines", PTR(file_writelines), 2 },
+    { "file_type_to_string", PTR(file_type_to_string), 1 },
     { "file_mode_to_string", PTR(file_mode_to_string), 1 },
     { "file_mode_to_octal_string", PTR(file_mode_to_octal_string), 1 },
     { NULL, NULL_VALUE, 0}
@@ -442,7 +466,6 @@ public int __init_file_module__ (la_t *this) {
   if (La.def_std (this, "S_IXOTH", INTEGER_TYPE, INT(S_IXOTH), 1))
     return LA_NOTOK;
 
-
   const char evalString[] = EvalString (
     public var File = {
        "stat" : file_stat,
@@ -467,6 +490,7 @@ public int __init_file_module__ (la_t *this) {
        "is_executable" : file_is_executable,
        "readlines"     : file_readlines,
        "writelines"    : file_writelines,
+       "type_to_string" : file_type_to_string,
        "mode_to_string" : file_mode_to_string,
        "mode_to_octal_string" : file_mode_to_octal_string
      }

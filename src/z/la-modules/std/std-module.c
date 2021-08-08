@@ -38,7 +38,7 @@ static VALUE map_remove (la_t *this, VALUE v_map, VALUE v_key) {
   if (val isnot NULL)
     La.map.release_value (this, val);
 
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 static VALUE map_key_exists (la_t *this, VALUE v_map, VALUE v_key) {

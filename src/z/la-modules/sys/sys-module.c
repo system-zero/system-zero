@@ -40,7 +40,7 @@ static VALUE sys_set (la_t *this, VALUE v_key, VALUE v_val, VALUE v_replace) {
   char *val = AS_STRING_BYTES(v_val);
   int replace = AS_INT(v_replace);
   Sys.set.env_as (val, key, replace);
-  return INT(LA_OK);
+  return OK_VALUE;
 }
 
 #define EvalString(...) #__VA_ARGS__

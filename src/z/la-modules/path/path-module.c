@@ -10,9 +10,10 @@
 
 #include <z/cenv.h>
 
-static VALUE path_basename (la_t *this, VALUE v) {
+static VALUE path_basename (la_t *this, VALUE v_path) {
   (void) this;
-  string *p = AS_STRING(v);
+  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *p = AS_STRING(v_path);
   char *tmp = Cstring.dup (p->bytes, p->num_bytes);
   char *bn = Path.basename (tmp);
   string *s = String.new_with (bn);
@@ -21,9 +22,10 @@ static VALUE path_basename (la_t *this, VALUE v) {
   return r;
 }
 
-static VALUE path_basename_sans_extname (la_t *this, VALUE v) {
+static VALUE path_basename_sans_extname (la_t *this, VALUE v_path) {
   (void) this;
-  string *p = AS_STRING(v);
+  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *p = AS_STRING(v_path);
   char *tmp = Cstring.dup (p->bytes, p->num_bytes);
   char *bn = Path.basename_sans_extname (tmp);
   string *s = String.new_with (bn);
@@ -33,18 +35,20 @@ static VALUE path_basename_sans_extname (la_t *this, VALUE v) {
   return r;
 }
 
-static VALUE path_extname (la_t *this, VALUE v) {
+static VALUE path_extname (la_t *this, VALUE v_path) {
   (void) this;
-  string *p = AS_STRING(v);
+  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *p = AS_STRING(v_path);
   char *n = Path.extname (p->bytes);
   string *s = String.new_with (n);
   VALUE r = STRING(s);
   return r;
 }
 
-static VALUE path_dirname (la_t *this, VALUE v) {
+static VALUE path_dirname (la_t *this, VALUE v_path) {
   (void) this;
-  string *p = AS_STRING(v);
+  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *p = AS_STRING(v_path);
   char *n = Path.dirname (p->bytes);
   string *s = String.new_with (n);
   free (n);
@@ -52,16 +56,18 @@ static VALUE path_dirname (la_t *this, VALUE v) {
   return r;
 }
 
-static VALUE path_is_absolute (la_t *this, VALUE v) {
+static VALUE path_is_absolute (la_t *this, VALUE v_path) {
   (void) this;
-  string *p = AS_STRING(v);
+  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *p = AS_STRING(v_path);
   VALUE r = INT(Path.is_absolute (p->bytes));
   return r;
 }
 
-static VALUE path_real (la_t *this, VALUE v) {
+static VALUE path_real (la_t *this, VALUE v_path) {
+  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   La.set.Errno (this, 0);
-  string *p = AS_STRING(v);
+  string *p = AS_STRING(v_path);
   char buf[PATH_MAX];
   char *n = Path.real (p->bytes, buf);
   VALUE r;
@@ -75,9 +81,10 @@ static VALUE path_real (la_t *this, VALUE v) {
   return r;
 }
 
-static VALUE path_split (la_t *this, VALUE v) {
+static VALUE path_split (la_t *this, VALUE v_path) {
   (void) this;
-  string *p = AS_STRING(v);
+  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *p = AS_STRING(v_path);
   Vstring_t *a = Path.split (p->bytes);
   ArrayType *array = ARRAY_NEW(STRING_TYPE, a->num_items);
   string **ar = (string **) AS_ARRAY(array->value);

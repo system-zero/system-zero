@@ -211,6 +211,12 @@
 #define LA_TOKEN_ASSIGN_LAST_VAL LA_TOKEN_ASSIGN_AND
 #define LA_TOKEN_EOF        -1
 
+#define _THROW(__e__, __m__) do {  \
+  la_set_CFuncError (this,  __e__); \
+  la_set_curMsg (this, __m__);      \
+  return NULL_VALUE;                \
+} while (0)
+
 typedef struct la_string {
   uint len_;
   const char *ptr_;
@@ -431,6 +437,9 @@ static int la_parse_map_set (la_t *);
 static int la_parse_loadfile (la_t *);
 static int la_parse_when (la_t *, VALUE *);
 static VALUE la_set_errno (la_t *, VALUE);
+static void la_set_CFuncError (la_t *, int);
+static void la_set_curMsg (la_t *, char *);
+static void la_set_Errno (la_t *, int);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -954,13 +963,15 @@ static VALUE la_fclose (la_t *this, VALUE fp_val) {
 
   if (NULL is fp) return result;
 
-  ifnot (NULL is this) this->Errno = 0;
+  ifnot (NULL is this)
+    la_set_Errno (this, 0);
 
   if (0 isnot fclose (fp)) {
-    ifnot (NULL is this) this->Errno = errno;
-    result = INT(LA_NOTOK);
+    ifnot (NULL is this)
+      la_set_Errno (this, errno);
+    result = NOTOK_VALUE;
   } else
-    result = INT(LA_OK);
+    result = OK_VALUE;
 
   ifnot (NULL is this) {
     ifnot (this->funcState & OBJECT_RELEASE_STATE) {
@@ -980,38 +991,44 @@ static VALUE la_fclose (la_t *this, VALUE fp_val) {
 }
 
 static VALUE la_fflush (la_t *this, VALUE fp_val) {
-  VALUE result = INT(LA_NOTOK);
+  VALUE result = NOTOK_VALUE;
 
   if (fp_val.type is NULL_TYPE) return result;
+
+  ifnot (IS_FILEPTR(fp_val)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
 
   FILE *fp = AS_FILEPTR(fp_val);
   if (NULL is fp) return result;
 
-  this->Errno = 0;
+  la_set_Errno (this, 0);
+
   int retval = fflush (fp);
   if (retval) {
-    this->Errno = errno;
+    la_set_Errno (this, errno);
     return result;
   }
 
-  result = INT(LA_OK);
-  return result;
+  return OK_VALUE;
 }
 
 static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
+  ifnot (IS_STRING(fn_value))  _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(mod_value)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  la_set_Errno (this, 0);
+
   char *fn = AS_STRING_BYTES(fn_value);
   char *mode = AS_STRING_BYTES(mod_value);
   FILE *fp = fopen (fn, mode);
+
   if (NULL is fp) {
-    this->Errno = errno;
-    VALUE v = NULL_VALUE;
-    return v;
+    la_set_Errno (this, errno);
+    return NULL_VALUE;
   }
 
   VALUE v = OBJECT(fp);
   object *o = la_object_new (la_fclose, NULL, v);
-  v = OBJECT(o);
-  return v;
+  return OBJECT(o);
 }
 
 static int la_parse_format (la_t *, VALUE *);
@@ -1106,12 +1123,13 @@ theend:
 
 static VALUE la_fileno (la_t *this, VALUE fp_val) {
   (void) this;
+  ifnot (IS_FILEPTR(fp_val)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
   FILE *fp = AS_FILEPTR(fp_val);
-  this->Errno = 0;
+  la_set_Errno (this, 0);
   int fd = fileno (fp);
   VALUE v = INT(fd);
   if (fd is -1)
-    this->Errno = errno;
+    la_set_Errno (this, errno);
 
   return v;
 }
@@ -8486,11 +8504,7 @@ static void la_set_Errno (la_t *this, int err) {
 }
 
 static VALUE la_set_errno (la_t *this, VALUE v_err) {
-  ifnot (IS_INT(v_err)) {
-    la_set_CFuncError (this,  LA_ERR_TYPE_MISMATCH);
-    la_set_curMsg (this, "awaiting an integer");
-    return NULL_VALUE;
-  }
+  ifnot (IS_INT(v_err)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   la_set_Errno (this, AS_INT(v_err));
   return v_err;
