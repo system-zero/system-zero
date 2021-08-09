@@ -88,6 +88,20 @@ static VALUE time_gmt (la_t *this, VALUE v_tim) {
   return time_to_tm (this, tim, 1);
 }
 
+static struct tm map_to_tm (Vmap_t *map, struct tm stm) {
+  VALUE *v;
+  stm.tm_sec   = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_sec"))));
+  stm.tm_min   = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_min"))));
+  stm.tm_hour  = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_hour"))));
+  stm.tm_mday  = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_mday"))));
+  stm.tm_mon   = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_mon"))));
+  stm.tm_year  = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_year"))));
+  stm.tm_wday  = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_wday"))));
+  stm.tm_yday  = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_yday"))));
+  stm.tm_isdst = AS_INT((*(v = (VALUE *) Vmap.get (map, "tm_isdst"))));
+  return stm;
+}
+
 static VALUE time_to_seconds (la_t *this, VALUE v_tm) {
   ifnot (IS_MAP(v_tm))
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a tm map");
@@ -95,26 +109,86 @@ static VALUE time_to_seconds (la_t *this, VALUE v_tm) {
   struct tm tm_p;
   Vmap_t *_tm = AS_MAP (v_tm);
 
-  VALUE *v;
-  tm_p.tm_sec   = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_sec"))));
-  tm_p.tm_min   = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_min"))));
-  tm_p.tm_hour  = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_hour"))));
-  tm_p.tm_mday  = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_mday"))));
-  tm_p.tm_mon   = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_mon"))));
-  tm_p.tm_year  = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_year"))));
-  tm_p.tm_wday  = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_wday"))));
-  tm_p.tm_yday  = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_yday"))));
-  tm_p.tm_isdst = AS_INT((*(v = (VALUE *) Vmap.get (_tm, "tm_isdst"))));
+  tm_p = map_to_tm (_tm, tm_p);
 
   La.set.Errno (this, 0);
 
   time_t t = mktime (&tm_p);
+
   if (t is -1) {
     La.set.Errno (this, errno);
     return NOTOK_VALUE;
   }
 
   return INT(t);
+}
+
+/* some code is from a personal patch to Dictu */
+static VALUE time_format (la_t *this, VALUE v_fmt, VALUE v_tm) {
+  ifnot (IS_STRING(v_fmt)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  struct tm stm;
+
+  ifnot (IS_MAP(v_tm)) {
+    ifnot (IS_NULL(v_tm))
+      THROW(LA_ERR_TYPE_MISMATCH, "awaiting a tm map");
+    time_t t = time (NULL);
+    struct tm *tmp;
+
+    La.set.Errno (this, 0);
+    tmp = localtime (&t);
+
+    if (tmp is NULL) {
+      La.set.Errno (this, errno);
+      return NULL_VALUE;
+    }
+    stm = *tmp;
+
+  } else {
+    Vmap_t *map = AS_MAP (v_tm);
+    stm = map_to_tm (map, stm);
+  }
+
+  string *s_fmt = AS_STRING(v_fmt);
+  ifnot (s_fmt->num_bytes) {
+    string *res = String.new_with ("");
+    return STRING(res);
+  }
+
+  size_t len = (s_fmt->num_bytes > 128 ? s_fmt->num_bytes * 4 : 128);
+  char buffer[len], *ptr = buffer;
+
+  /*
+   * strtime returns 0 when it fails to write - this would be due to the buffer
+   * not being large enough. In that instance we double the buffer length until
+   * there is a big enough buffer.
+   */
+
+  /* however is not guaranteed that 0 indicates a failure (`man strftime' says so).
+   * So we might want to catch up the eternal loop, by using a maximum iterator.
+   */
+
+  int max_iterations = 8;  // maximum 65536 bytes with the default 128 len,
+                           // more if the given string is > 128
+  int iterator = 0;
+  string *res = NULL;
+
+  while (strftime (ptr, sizeof(char) * len, s_fmt->bytes, &stm) == 0) {
+    if (++iterator > max_iterations) {
+      res = String.new_with ("");
+      return STRING(res);
+    }
+
+    len *= 2;
+
+    if (buffer is ptr)
+       ptr = Alloc (len);
+     else
+       ptr = Realloc (ptr, len);
+  }
+
+  res = String.new_with (ptr);
+  return STRING(res);
 }
 
 #define EvalString(...) #__VA_ARGS__
@@ -128,6 +202,7 @@ public int __init_time_module__ (la_t *this) {
     { "time_now",            PTR(time_now), 0 },
     { "time_gmt",            PTR(time_gmt), 1 },
     { "time_local",          PTR(time_local), 1 },
+    { "time_format",         PTR(time_format), 2 },
     { "time_to_string",      PTR(time_to_string), 1 },
     { "time_to_seconds",     PTR(time_to_seconds), 1 },
     { NULL, NULL_VALUE, 0}
@@ -144,6 +219,7 @@ public int __init_time_module__ (la_t *this) {
       "now" : time_now,
       "gmt" : time_gmt,
       "local" : time_local,
+      "format" : time_format,
       "to_string" : time_to_string,
       "to_seconds" : time_to_seconds
     }

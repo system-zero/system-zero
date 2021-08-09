@@ -805,7 +805,9 @@ concepts.
     # StringType    Path.basename_sans_extname (StringTYpe path)
 
   # File Module Interface
+    # IntegerType   File.copy (StringType src, StringType dest)
     # MapType       File.stat (StringType file)
+    # MapType       File.lstat (StringType file)
     # IntegerType   File.size (StringType file)
     # IntegerType   File.chown (StringType file, IntegerType uid, IntegerType gid)
     # IntegerType   File.chmod (StringType file, IntegerType mode)
@@ -827,6 +829,7 @@ concepts.
     # IntegerType   File.symlink (StringType src, StringType dest)
     # IntegerType   File.hardlink (StringType src, StringType dest)
     # StringType    File.readlink (StringType file)
+    # StringType    File.type_to_string (IntegerType mode)
     # StringType    File.mode_to_string (IntegerType mode)
     # StringType    File.mode_to_octal_string (IntegerType mode)
 
@@ -892,11 +895,12 @@ concepts.
     # StringType    Sys.which (StringType exec)
 
   # Time Module Interface
-    # IntegerType   Time.now ()
-    # MapType       Time.gmt (null or IntegerType time)
-    # MapType       Time.local (null or IntegerType time)
-    # StringType    Time.to_string (null or IntegerType time)
-    # IntegerType   Time.to_seconds (MapType tm)
+    # IntegerType   Time.now ()                               # time(NULL)
+    # MapType       Time.gmt (null or IntegerType time)       # gmtime()
+    # MapType       Time.local (null or IntegerType time)     # localtime()
+    # StringType    Time.to_string (null or IntegerType time) # ctime()
+    # IntegerType   Time.to_seconds (MapType tm)              # mktime()
+    # StringType    Time.format (StringType fmt, null or MapType tm) # strftime()
 
 # Library
   # Argparse Interface

@@ -806,6 +806,10 @@ func semantics () {
       assert_true ("testing the is_lnk method",
           File.is_lnk (slink))
 
+      var ma = File.lstat (slink)
+      assert_true ("testing the lstat method",
+          ma.st_mode is 0xa1ff)
+
       var new = "/tmp/test_file_module_new"
       assert_true ("testing the rename method",
           File.rename (tmp_file, new) is ok)
@@ -826,11 +830,18 @@ func semantics () {
       assert_true ("testing the writelines and readlines methods",
           rv is ok and far is farb)
 
+      var cpfn = "/tmp/test_file_copy"
+      rv = File.copy (farfn, cpfn)
+      farb = File.readlines (cpfn)
+      assert_true ("testing the copy method",
+          rv is ok and far is farb)
+
       assert_true ("testing the remove method",
           File.remove (slink) is ok and
           File.remove (new) is ok and
           File.remove (fifname) is ok and
-          File.remove (farfn) is ok)
+          File.remove (farfn) is ok and
+          File.remove (cpfn) is ok)
     }
 
     file_module ()

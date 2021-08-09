@@ -3,7 +3,9 @@
 #define REQUIRE_SYS_TYPES
 #define REQUIRE_SYS_STAT
 #define REQUIRE_UNISTD
+#define REQUIRE_FCNTL
 
+#define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_VMAP_TYPE     DECLARE
 #define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
@@ -197,19 +199,9 @@ static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
   return OK_VALUE;
 }
 
-static VALUE file_stat (la_t *this, VALUE v_file) {
-  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  La.set.Errno (this, 0);
-
-  char *file = AS_STRING_BYTES(v_file);
-  ifnot (File.exists (file)) {
-    La.set.Errno (this, ENOENT);
-    return NULL_VALUE;
-  }
-
+static VALUE do_stat (la_t *this, char *file, int (*fun) (const char *, struct stat *)) {
   struct stat st;
-  int retval = stat (file, &st);
+  int retval = fun (file, &st);
   if (-1 is retval) {
     La.set.Errno (this, errno);
     return NULL_VALUE;
@@ -231,6 +223,34 @@ static VALUE file_stat (la_t *this, VALUE v_file) {
   La.map.set_value (this, m, "st_blksize", INT(st.st_blksize), 1);
 
   return MAP(m);
+}
+
+static VALUE file_stat (la_t *this, VALUE v_file) {
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  La.set.Errno (this, 0);
+
+  char *file = AS_STRING_BYTES(v_file);
+  ifnot (File.exists (file)) {
+    La.set.Errno (this, ENOENT);
+    return NULL_VALUE;
+  }
+
+  return do_stat (this, file, stat);
+}
+
+static VALUE file_lstat (la_t *this, VALUE v_file) {
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  La.set.Errno (this, 0);
+
+  char *file = AS_STRING_BYTES(v_file);
+  ifnot (File.exists (file)) {
+    La.set.Errno (this, ENOENT);
+    return NULL_VALUE;
+  }
+
+  return do_stat (this, file, lstat);
 }
 
 static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
@@ -365,6 +385,63 @@ static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
   return OK_VALUE;
 }
 
+static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
+  ifnot (IS_STRING(v_src)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_dest)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  char *src = AS_STRING_BYTES(v_src);
+  char *dest = AS_STRING_BYTES(v_dest);
+
+  La.set.Errno (this, errno);
+
+  int sfd = -1;
+  int dfd = -1;
+
+  idx_t len = 4096;
+  char buf[len + 1];
+
+  VALUE retval = NOTOK_VALUE;
+
+  struct stat st;
+  if (-1 is stat (src, &st)) {
+    La.set.Errno (this, errno);
+    goto theend;
+  }
+
+  sfd = open (src, O_RDONLY);
+  if (sfd is -1) {
+    La.set.Errno (this, errno);
+    goto theend;
+  }
+
+  dfd = creat (dest, st.st_mode);
+  if (-1 is dfd) {
+    La.set.Errno (this, errno);
+    goto theend;
+  }
+
+  idx_t n;
+
+  while ((n = IO.fd.read (sfd, buf, len + 1)) > 0) {
+    if (IO.fd.write (dfd, buf, n) < 0) {
+      La.set.Errno (this, errno);
+      goto theend;
+    }
+  }
+
+  if (n is -1) {
+    La.set.Errno (this, errno);
+    goto theend;
+  }
+
+  retval = OK_VALUE;
+
+theend:
+  if (-1 isnot sfd) close (sfd);
+  if (-1 isnot dfd) close (dfd);
+  return retval;
+}
+
 static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   int mode = AS_INT(v_mode);
@@ -374,13 +451,15 @@ static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
   else if (S_ISFIFO (mode))
     s = String.new_with_len ("fifo", 4);
   else if (S_ISBLK (mode))
-    s = String.new_with_len ("block", 5);
+    s = String.new_with_len ("block special file", 18);
   else if (S_ISDIR (mode))
     s = String.new_with_len ("directory", 9);
   else if (S_ISREG (mode))
     s = String.new_with_len ("regular file", 12);
   else if (S_ISLNK (mode))
-    s = String.new_with_len ("link", 4);
+    s = String.new_with_len ("symbolic link", 13);
+  else if (S_ISCHR (mode))
+    s = String.new_with_len ("character special", 17);
   else
     s = String.new_with_len ("unknown type", 12);
 
@@ -391,6 +470,7 @@ static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
 
 public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
+  __INIT__(io);
   __INIT__(file);
   __INIT__(vmap);
   __INIT__(string);
@@ -399,7 +479,9 @@ public int __init_file_module__ (la_t *this) {
   (void) vstringType;
 
   LaDefCFun lafuns[] = {
+    { "file_copy",       PTR(file_copy), 2 },
     { "file_stat",       PTR(file_stat), 1 },
+    { "file_lstat",      PTR(file_lstat), 1 },
     { "file_size",       PTR(file_size), 1 },
     { "file_chown",      PTR(file_chown), 3 },
     { "file_chmod",      PTR(file_chmod), 2 },
@@ -468,31 +550,33 @@ public int __init_file_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var File = {
-       "stat" : file_stat,
-       "size" : file_size,
-       "chown" : file_chown,
-       "chmod" : file_chmod,
-       "exists" : file_exists,
-       "access" : file_access,
-       "mkfifo" : file_mkfifo,
-       "remove" : file_remove,
-       "rename" : file_rename,
-       "symlink" : file_symlink,
-       "hardlink" : file_hardlink,
-       "readlink" : file_readlink,
-       "is_rwx" : file_is_rwx,
-       "is_reg" : file_is_reg,
-       "is_lnk" : file_is_lnk,
-       "is_fifo" : file_is_fifo,
-       "is_sock" : file_is_sock,
-       "is_readable" : file_is_readable,
-       "is_writable" : file_is_writable,
-       "is_executable" : file_is_executable,
-       "readlines"     : file_readlines,
-       "writelines"    : file_writelines,
-       "type_to_string" : file_type_to_string,
-       "mode_to_string" : file_mode_to_string,
-       "mode_to_octal_string" : file_mode_to_octal_string
+      "copy" : file_copy,
+      "stat" : file_stat,
+      "size" : file_size,
+      "lstat" : file_lstat,
+      "chown" : file_chown,
+      "chmod" : file_chmod,
+      "exists" : file_exists,
+      "access" : file_access,
+      "mkfifo" : file_mkfifo,
+      "remove" : file_remove,
+      "rename" : file_rename,
+      "symlink" : file_symlink,
+      "hardlink" : file_hardlink,
+      "readlink" : file_readlink,
+      "is_rwx" : file_is_rwx,
+      "is_reg" : file_is_reg,
+      "is_lnk" : file_is_lnk,
+      "is_fifo" : file_is_fifo,
+      "is_sock" : file_is_sock,
+      "is_readable" : file_is_readable,
+      "is_writable" : file_is_writable,
+      "is_executable" : file_is_executable,
+      "readlines"     : file_readlines,
+      "writelines"    : file_writelines,
+      "type_to_string" : file_type_to_string,
+      "mode_to_string" : file_mode_to_string,
+      "mode_to_octal_string" : file_mode_to_octal_string
      }
    );
 
