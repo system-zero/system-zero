@@ -1057,6 +1057,47 @@ func semantics () {
 
   integers ()
 
+  func test_qualifiers () {
+    func q (x) {
+      var av = qualifier ("key", 10)
+      return av * x
+    }
+
+    func qq (x) {
+      var m = qualifiers ()
+      return x * m.key
+    }
+
+    func qqq (x) {
+      var y = qualifier_exists ("key") + 9
+      return x * y
+    }
+
+    func qqqq (x) {
+      return qqq (x; qualifiers ())
+    }
+
+    var m = {"key" : 1000}
+    var qa = q (10)
+    var qb = q (10; {"key" : 100})
+    var qc = q (10; m)
+    var qd = qqq (10)
+    var qe = qqq (10; m)
+    var qf = qqqq (10)
+    var qg = qqqq (10; m)
+
+    assert_true ("testing qualifiers",
+        qa is 100 and
+        qb is 1000 and
+        qc is 10000 and
+        qd is 90 and
+        qe is 100 and
+        qf is 90 and
+        qg is 100)
+  }
+
+  test_qualifiers ()
+
   var sa = [{"l" : 1, "k" : [1, 2, 3, 4], "lk" : {"ka" : 1, "kka" : {"a" : 2,
       "b" : ["av", "sb", "fg"]}}}]
 
@@ -1535,6 +1576,7 @@ func semantics () {
 }
 
 semantics ()
+
 assert_equal ("testing public variable attribute", v_visible, "visible variable")
 assert_equal ("testing public function attribute", f_visible (22), 44)
 assert_equal ("testing public array attribute", a_visible[0], 1)

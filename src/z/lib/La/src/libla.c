@@ -334,6 +334,7 @@ struct la_t {
   Imap_t *funRefcount;
   Vmap_t *units;
   Vmap_t *types;
+  Vmap_t *qualifiers;
 
   char name[32];
   const char *script_buffer;
@@ -440,6 +441,7 @@ static VALUE la_set_errno (la_t *, VALUE);
 static void la_set_CFuncError (la_t *, int);
 static void la_set_curMsg (la_t *, char *);
 static void la_set_Errno (la_t *, int);
+static VALUE la_copy_value (VALUE v);
 
 static void la_set_message (la_t *this, int append, char *msg) {
   if (NULL is msg) return;
@@ -944,6 +946,68 @@ static VALUE la_typeArrayAsString (la_t *this, VALUE value) {
   }
 
   return la_typeAsString (this, v);
+}
+
+static void la_release_qualifiers (la_t *this) {
+  ifnot (NULL is this->qualifiers)
+    map_release (MAP(this->qualifiers));
+  this->qualifiers = NULL;
+}
+
+static void la_set_qualifiers (la_t *this, VALUE v_qual) {
+  la_release_qualifiers (this);
+  this->qualifiers = AS_MAP(v_qual);
+}
+
+static VALUE la_qualifiers (la_t *this) {
+  if (NULL is this->qualifiers)
+    return NULL_VALUE;
+
+  VALUE val = la_copy_map (MAP(this->qualifiers));
+  return val;
+}
+
+static Vmap_t *la_get_qualifiers (la_t *this) {
+  VALUE v = la_qualifiers (this);
+  if (IS_NULL(v)) return NULL;
+  return AS_MAP(v);
+}
+
+static VALUE la_qualifier_exists (la_t *this, VALUE v_key) {
+  if (NULL is this->qualifiers)
+    return FALSE_VALUE;
+
+  ifnot (IS_STRING(v_key)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  return INT(Vmap.key_exists (this->qualifiers, AS_STRING_BYTES(v_key)));
+}
+
+static int la_C_qualifier_exists (la_t *this, char *key) {
+  return Vmap.key_exists (this->qualifiers, key);
+}
+
+static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
+  if (NULL is this->qualifiers) {
+    VALUE val = la_copy_value (v_defval);
+    return val;
+  }
+
+  ifnot (IS_STRING(v_key)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  VALUE *v = (VALUE *) Vmap.get (this->qualifiers, AS_STRING_BYTES(v_key));
+
+  if (v is NULL) {
+    VALUE val = la_copy_value (v_defval);
+    return val;
+  }
+
+  VALUE val = la_copy_value ((*v));
+  return val;
+}
+
+static VALUE *la_get_qualifier (la_t *this, char *key) {
+  VALUE *v = (VALUE *) Vmap.get (this->qualifiers, key);
+  return v;
 }
 
 static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, VALUE value) {
@@ -3677,6 +3741,44 @@ static int la_parse_expr_list (la_t *this) {
   count += this->argCount;
   this->argCount = 0;
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
+
+  if (c is LA_TOKEN_SEMICOLON) {
+    c = la_next_token (this);
+
+    if (c is LA_TOKEN_BLOCK) {
+      err = la_parse_map (this, &v);
+      if (err isnot LA_OK)
+        return err;
+
+      la_set_qualifiers (this, v);
+
+    } else if (c is LA_TOKEN_MAP) {
+      this->funcState |= EXPR_LIST_STATE;
+      err = la_parse_map_get (this, &v);
+      this->funcState &= ~EXPR_LIST_STATE;
+
+      if (err isnot LA_OK)
+        return err;
+
+      VALUE val = la_copy_map (v);
+      v = val;
+
+      la_set_qualifiers (this, v);
+
+    } else {
+      this->funcState |= EXPR_LIST_STATE;
+      err = la_parse_primary (this, &v);
+      this->funcState &= ~EXPR_LIST_STATE;
+      if (err isnot LA_OK)
+        return err;
+
+      if (v.type is MAP_TYPE)
+        la_set_qualifiers (this, v);
+      else if (v.type isnot NULL_TYPE)
+        return this->syntax_error (this, "awaiting a map as qualifiers");
+    }
+  }
+
   return count;
 }
 
@@ -3876,6 +3978,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
     this->didReturn = 0;
 
+    la_release_qualifiers (this);
+
     this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
     if (uf->result.type >= FUNCPTR_TYPE) {
       sym_t *sym = uf->result.sym;
@@ -3942,6 +4046,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     if (v.sym is NULL)
       la_free (this, v);
   }
+
+  la_release_qualifiers (this);
 
   this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
   if (vp->type >= FUNCPTR_TYPE)
@@ -8046,6 +8152,9 @@ LaDefCFun la_funs[] = {
   { "typeAsString",     PTR(la_typeAsString), 1},
   { "typeofArray",      PTR(la_typeofArray), 1},
   { "typeArrayAsString",PTR(la_typeArrayAsString), 1},
+  { "qualifier",        PTR(la_qualifier), 2},
+  { "qualifiers",       PTR(la_qualifiers), 0},
+  { "qualifier_exists", PTR(la_qualifier_exists), 1},
   { NULL,               NULL_VALUE, NULL_TYPE},
 };
 
@@ -8401,6 +8510,7 @@ static void la_release (la_t **thisp) {
   fun_release (&this->function);
   fun_release (&this->std);
   fun_release (&this->datatypes);
+  la_release_qualifiers (this);
 
   free (this);
   *thisp = NULL;
@@ -8667,6 +8777,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->funRefcount = Imap.new (256);
   this->units = Vmap.new (32);
   this->types = Vmap.new (32);
+  this->qualifiers = NULL;
 
   la_append_instance (interp, this);
 
@@ -8777,6 +8888,7 @@ public la_T *__init_la__ (void) {
       .init_instance = la_init_instance,
       .remove_instance = la_remove_instance,
       .append_instance = la_append_instance,
+      .qualifier_exists = la_C_qualifier_exists,
       .get = (la_get_self) {
         .root = la_get_root,
         .message = la_get_message,
@@ -8784,6 +8896,8 @@ public la_T *__init_la__ (void) {
         .didExit = la_get_didExit,
         .eval_str = la_get_eval_str,
         .user_data = la_get_user_data,
+        .qualifier = la_get_qualifier,
+        .qualifiers = la_get_qualifiers,
         .current_idx = la_get_current_idx
       },
       .set = (la_set_self) {
@@ -8793,6 +8907,7 @@ public la_T *__init_la__ (void) {
         .current = la_set_current,
         .user_data = la_set_user_data,
         .CFuncError = la_set_CFuncError,
+        .qualifiers = la_set_qualifiers,
         .define_funs_cb = la_set_define_funs_cb
       },
       .map = (la_map_self) {

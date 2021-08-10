@@ -251,6 +251,10 @@ typedef struct la_get_self {
      (*didExit) (la_t *),
      (*current_idx) (la_T *);
 
+   VALUE *(*qualifier) (la_t *, char *);
+
+   Vmap_t *(*qualifiers) (la_t *);
+
    la_T *(*root) (la_t *);
 } la_get_self;
 
@@ -260,9 +264,10 @@ typedef struct la_set_self {
   void
     (*Errno) (la_t *, int),
     (*la_dir) (la_t *, char *),
+    (*curMsg) (la_t *, char *),
     (*user_data) (la_t *, void *),
     (*CFuncError) (la_t *, int),
-    (*curMsg) (la_t *, char *),
+    (*qualifiers) (la_t *, VALUE),
     (*define_funs_cb) (la_t *, LaDefineFuns_cb);
 
 } la_set_self;
@@ -302,7 +307,8 @@ typedef struct la_self {
     (*eval_file) (la_t *, const char *),
     (*eval_expr) (la_t *, const char *, VALUE *),
     (*load_file) (la_T *, la_t *, char *),
-    (*eval_string) (la_t *, const char *);
+    (*eval_string) (la_t *, const char *),
+    (*qualifier_exists) (la_t *, char *);
 
   VALUE
     (*print_byte) (la_t *, char),

@@ -507,6 +507,62 @@ concepts.
     in this case 'k' holds the key of the map, and 'v' its associated value.
     Note, since a Map is an unordered list, there is no guarrantee of the order.
 
+# Qualifiers
+  The language supports a mechanism to pass additional information to functions,
+  called `qualifiers`, which has been copied by the SLang Programming Language,
+  which works the same with user defined functions and with C functions.
+
+  This extra information gets passed with a map, within the expression list
+  on a function call, and when after the argument list follows a semicolon:
+
+    fun (...; {...})
+
+  There are three relative functions that can be used within a function:
+
+    qualifiers () # this returns a map or null if no qualifiers has been
+                    passed to the function.
+
+    qualifier_exists ("qual") # this returns a boolean value; `true` if
+                               `qual` exists or `false` otherwise
+
+    qualifier ("qual", default_val) # this returns the value of the key `qual`
+                                      if exists or `default_val` otherwise
+
+  Examples:
+
+    func q (x) {
+      var av = qualifier ("key", 10)
+      return av * x
+    }
+
+    func qq (x) {
+      var m = qualifiers ()
+      return x * m.key
+    }
+
+    func qqq (x) {
+      var y = qualifier_exists ("key") + 9
+      return x * y
+    }
+
+    func qqqq (x) {
+      return qqq (x; qualifiers ())
+    }
+
+    var m = {"key" : 1000}
+    var qa = q (10)                 => 100
+    var qb = q (10; {"key" : 100})  => 1000
+    var qc = q (10; m)              => 10000
+    var qd = qqq (10)               => 90
+    var qe = qqq (10; m)            => 100
+    var qf = qqqq (10)              => 90
+    var qg = qqqq (10; m)           => 100
+
+  Note that only one set of qualifiers can be active at the running instance.
+
+  Again, this mechanism should be attributed to the SLang Programming Language,
+  and it is exposed with the exact interface.
+
 # Types.
   These are user defined types, which are like Maps, with a couple of differences
   that are described below.
@@ -730,6 +786,12 @@ concepts.
 #                      as it deoes only returns control back to the caller. So
 #                      it actually doesn't exits to the system environment.
 #                      args: integer as an exit value
+# qualifiers           returns current set of qualifiers
+#                      args:
+# qualifier_exists     returns a boolean value
+#                      args: a key name
+# qualifier            returns the value of a qualifier
+#                      args: a key name and a default value
 # typeof            -  type of a value
 #                      args: object
 #                      The returned Type can be any of the followings intege type

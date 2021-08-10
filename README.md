@@ -1,6 +1,6 @@
 ------------------------- [ zero point draft ] -------------------------------
 
-[0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](# ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS STATE_INSTALL_INSTRUCTIONS).
+[0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](#ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS).
 [0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
 
 ## Intention
