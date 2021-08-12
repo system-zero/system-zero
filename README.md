@@ -1,5 +1,7 @@
 ------------------------- [ zero point draft ] -------------------------------
 
+[TRUNC](#TRUNC)
+
 [0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](#ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS).
 [0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
 
@@ -145,6 +147,7 @@ But it may be build by others.
 To build the zero basic system, issue:
 
 ```sh
+  cd src
   make zero-shared
 ```
 
@@ -192,6 +195,7 @@ on different machines. Not always this is an option, as we'll see below.
 
 To build the static versions, issue:
 ```sh
+  cd src
   make zero-static
 ```
 Note that the `zsu` utility, can not be built in my system, which lacks a static
@@ -1040,6 +1044,150 @@ The make utility, a C compiler, a linker, a libc and libpam (for the sudo replac
   # or/and
     make REV=1 clean-shared
     make REV=1 clean-static
+
+  # shared targets
+  make shared && make e-shared && make la-shared && make v-shared
+
+  # static targets
+  make static && make e-static && make la-static && make v-static
+
+  # Note, that the installation of the zsu utility requires the
+  # sudo utility, as it has to be installed as setuid root.
+
+```
+Tested with `gcc` but the targets they should compiled with clang also.
+The compilation should endup without a single warning, even with DEBUG enabled.
+To do that use:
+```
+  make DEBUG=1 shared
+  # or/and
+  make DEBUG=1 static
+```
+
+## TRUNC:
+
+ # Implemented:
+
+  - an ala [vim](http://www.vim.org) [editor](data/docs/editor.md) called as:
+
+     E or E-static [options] [filename[s]]
+     E --help  # for s short help
+
+   sources:
+   [E  library](src/z/lib/E/src/libe.c)
+   [executable](src/z/app/e/src/E.c)
+
+   state: rather stable
+
+   maybe_crashed:
+     - under circumstances with a series of undo/redos
+      reproducible: a bit hard, as it doesn not happens on continuously
+        undos/redos (without to change the cursor on different line between
+        the two calls, and without to insert new lines).
+
+      cause:  For certain it is the jump code that calculates wrong the line numbers.
+
+      state: good to fix, but this is not my style to work.
+
+     - under circumstances when writting with characters > ASCII_RANGE
+       reproducible: needs some time but possible. Write some greek and make
+       various moves like backspace/delete.
+
+      cause: easy (wrong calculation, when going [for|back]ward
+
+      state: very good to fix as it is annoying, but do not have time
+
+  - a [terminal multiplexer] (https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) calles as:
+
+     V or V-static [options] socketname
+     V --help  # for s short help
+
+   sources:
+   [V  library](src/z/lib/V/src/libv.c)
+   [WM library](src/z/lib/Vwm/src/libvwm.c)
+   [executable](src/z/app/v/src/v.c)
+
+   state: rather stable
+   crashes: not with current usage, but quite possible unhandled cases
+
+  - a [programming language](data/docs/la.md) called as:
+     (pronounced as in "hey")
+
+     La or La-static [options] [filename[s]]
+     La --help  # for options
+
+   sources:
+   [La library](src/z/lib/La/src/libla.c)
+   [executable](src/z/app/v/src/v.c)
+
+   state: on stabilization. Syntax and semantics are hard to change.
+   crashes: it is an ongoing work and it is quite fragile, but not
+     with current code
+
+  - many libraries
+    state:  most of them are mature, used for a couple of years. But
+      are unoptimized, and some of them written in the first days of
+      C kindergarden (still in the last grade). But no crashes if the
+      memory serves well
+
+    sources: (some of them)
+    [String   library](src/z/lib/String/src/libstring.c)
+    [C String library](src/z/lib/Cstring/src/libcstring.c)
+    [File     library](src/z/lib/File/src/libfile.c)
+   ....
+
+  - applications:
+    state: mostly basic unix utilities, and it is really an ongoing work)
+      (used mostly for testing the development). Many of the usual options
+      haven't been implemented.
+
+    sources: (some of them)
+    [Dir.make in C](src/z/app/dir/src/Dir.make.c)
+    [File.stat in La](src/z/app/file/src/File.stat.lai)
+    ...
+
+  - a shell
+    state: don't never tried to work with it, as there are other areas to
+      dedicate attention (it is not a priority, as might change direction)
+
+   sources:
+   [document](data/docs/zs.md)
+   [Sh   library](src/z/lib/Sh/src/libsh.c)
+   [Proc library](src/z/lib/Proc/src/libproc.c)
+
+  - an early draft of a sudo like utility
+    state: audit and careful review it is required. It works for my usage and
+    I used a lot. But should be unhandled cases. It is just a proof of concept
+    mostly and written in the very first days.
+
+   sources:
+   [Auth Library](src/z/lib/Auth/src/libauth.c)
+   [executable]   src/app/zsu/src/zsu.c)
+
+   notes:
+     - libpam is required
+     - likewise the sudo utility, as the executable is installed as setuid root
+
+  - a package manager
+    state: really early, but it seems to work with a couple of specs. It builds
+      the static libpam library though. Didn't try the network code!
+
+Requirements:
+  The make utility, a C compiler, a linker, a libc and libpam  as zsu dependemcy
+  (for now (as we  don't really need it at this stage), so it has to move from
+  the initialization system state).
+
+```sh
+  cd src
+
+  # note that to clean up previous libraries and utilities, issue:
+    make REV=0 clean-shared
+    make REV=0 clean-static
+  # or/and
+    make REV=1 clean-shared
+    make REV=1 clean-static
+
+  # Devel: the above should be one target. Possible a different Makefile.
 
   # shared targets
   make shared && make e-shared && make la-shared && make v-shared

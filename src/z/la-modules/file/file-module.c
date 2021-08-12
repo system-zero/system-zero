@@ -392,60 +392,69 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   char *src = AS_STRING_BYTES(v_src);
   char *dest = AS_STRING_BYTES(v_dest);
 
+  VALUE v_verbose = La.get.qualifier (this, "verbose", INT(0));
+  ifnot (IS_INT(v_verbose)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  VALUE v_force = La.get.qualifier (this, "force", INT(0));
+  ifnot (IS_INT(v_force)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  VALUE v_follow_lnk = La.get.qualifier (this, "follow_lnk", INT(0));
+  ifnot (IS_INT(v_follow_lnk)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  VALUE v_preserve = La.get.qualifier (this, "preserve", INT(0));
+  ifnot (IS_INT(v_preserve)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  VALUE v_backup = La.get.qualifier (this, "backup", INT(0));
+  ifnot (IS_INT(v_backup)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  VALUE v_recursive = La.get.qualifier (this, "recursive", INT(0));
+  ifnot (IS_INT(v_recursive)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  VALUE v_all = La.get.qualifier (this, "all", INT(0));
+  ifnot (IS_INT(v_all)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  VALUE v_update = La.get.qualifier (this, "update", INT(0));
+  ifnot (IS_INT(v_update)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
+  int verbose = AS_INT(v_verbose);
+  int force = AS_INT(v_force);
+  int follow_lnk = AS_INT(v_follow_lnk);
+  int preserve = AS_INT(v_preserve);
+  int backup = AS_INT(v_backup);
+  int recursive = AS_INT(v_recursive);
+  int update = AS_INT(v_update);
+  int all = AS_INT(v_all);
+
+  FILE *fp = NULL;
+  VALUE v_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);
+  if (IS_NULL(v_stream)) {
+    fp = stdout;
+  } else {
+    ifnot (IS_FILEPTR(v_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
+    object *o = AS_OBJECT(v_stream);
+    fp = (FILE *) AS_PTR(o->value);
+  }
+
   La.set.Errno (this, errno);
 
-  int sfd = -1;
-  int dfd = -1;
+  int retval = File.copy (src, dest, FileCopyOpts (
+      .verbose = verbose, .force = force,
+      .backup = backup, .follow_lnk = follow_lnk,
+      .preserve = preserve, .recursive = recursive,
+      .update = update, .all = all,
+      .out_stream = fp));
 
-  idx_t len = 4096;
-  char buf[len + 1];
-
-  VALUE retval = NOTOK_VALUE;
-
-  struct stat st;
-  if (-1 is stat (src, &st)) {
+  if (retval is NOTOK)
     La.set.Errno (this, errno);
-    goto theend;
-  }
 
-  sfd = open (src, O_RDONLY);
-  if (sfd is -1) {
-    La.set.Errno (this, errno);
-    goto theend;
-  }
-
-  dfd = creat (dest, st.st_mode);
-  if (-1 is dfd) {
-    La.set.Errno (this, errno);
-    goto theend;
-  }
-
-  idx_t n;
-
-  while ((n = IO.fd.read (sfd, buf, len + 1)) > 0) {
-    if (IO.fd.write (dfd, buf, n) < 0) {
-      La.set.Errno (this, errno);
-      goto theend;
-    }
-  }
-
-  if (n is -1) {
-    La.set.Errno (this, errno);
-    goto theend;
-  }
-
-  retval = OK_VALUE;
-
-theend:
-  if (-1 isnot sfd) close (sfd);
-  if (-1 isnot dfd) close (dfd);
-  return retval;
+  return INT(retval);
 }
 
 static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   int mode = AS_INT(v_mode);
   string *s = NULL;
+
   if (S_ISSOCK (mode))
     s = String.new_with_len ("socket", 6);
   else if (S_ISFIFO (mode))

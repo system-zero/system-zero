@@ -45,9 +45,9 @@ struct dir_opts {
 
 struct dirwalk_t {
   int
-    orig_depth,
     depth,
-    status;
+    status,
+    orig_depth;
 
   string_t *dir;
   Vstring_t *files;

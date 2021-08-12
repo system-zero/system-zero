@@ -451,11 +451,11 @@ clean-libos-static:
 	@cd $(Z_OS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libfile-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libdir-shared libpath-shared\
-                libos-shared
+                libos-shared libio-shared
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libfile-static: Env cenv libstring-static libcstring-static libvstring-static libdir-static libpath-static\
-                libos-static
+                libos-static libio-static
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libfile-shared:

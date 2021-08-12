@@ -66,10 +66,13 @@ static VALUE path_is_absolute (la_t *this, VALUE v_path) {
 
 static VALUE path_real (la_t *this, VALUE v_path) {
   ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
   La.set.Errno (this, 0);
+
   string *p = AS_STRING(v_path);
   char buf[PATH_MAX];
   char *n = Path.real (p->bytes, buf);
+
   VALUE r;
   if (n is NULL) {
     La.set.Errno (this, errno);
@@ -78,6 +81,7 @@ static VALUE path_real (la_t *this, VALUE v_path) {
     string *s = String.new_with (n);
     r = STRING(s);
   }
+
   return r;
 }
 

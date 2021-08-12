@@ -141,6 +141,7 @@ typedef ObjectType object;
 #define AS_OBJECT(__o__) (object *) AS_PTR(__o__)
 #define    OBJECT(__o__) (VALUE) {.type = OBJECT_TYPE, .asInteger = (pointer) __o__, .refcount = 0, .sym = NULL}
 
+#define FILEPTR OBJECT
 #define AS_FILEPTR(__o__) ({                \
   object *_o_ = AS_OBJECT(__o__);           \
   FILE *_fp_ = (FILE *) AS_PTR(_o_->value); \
@@ -251,7 +252,7 @@ typedef struct la_get_self {
      (*didExit) (la_t *),
      (*current_idx) (la_T *);
 
-   VALUE *(*qualifier) (la_t *, char *);
+   VALUE (*qualifier) (la_t *, char *, VALUE);
 
    Vmap_t *(*qualifiers) (la_t *);
 

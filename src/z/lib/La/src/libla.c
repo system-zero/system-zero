@@ -1005,9 +1005,11 @@ static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
   return val;
 }
 
-static VALUE *la_get_qualifier (la_t *this, char *key) {
+static VALUE la_get_qualifier (la_t *this, char *key, VALUE v_defval) {
   VALUE *v = (VALUE *) Vmap.get (this->qualifiers, key);
-  return v;
+  if (NULL is v)
+    return v_defval;
+  return *v;
 }
 
 static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, VALUE value) {
@@ -1090,9 +1092,9 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
     return NULL_VALUE;
   }
 
-  VALUE v = OBJECT(fp);
+  VALUE v = FILEPTR(fp);
   object *o = la_object_new (la_fclose, NULL, v);
-  return OBJECT(o);
+  return FILEPTR(o);
 }
 
 static int la_parse_format (la_t *, VALUE *);

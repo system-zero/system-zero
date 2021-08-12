@@ -10,8 +10,11 @@
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
+#define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_OS_TYPE      DECLARE
+#define REQUIRE_IO_TYPE      DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_FILE_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -329,9 +332,528 @@ theend:
   return this;
 }
 
+static int file_copy (const char *, const char *, file_copy_opts);
+static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) {
+  int retval = NOTOK;
+
+  char *dest = (char *) o_dest;
+
+  if (opts.all) {
+    opts.recursive = 1;
+    opts.preserve = 1;
+  }
+
+  int outToErrStream = (opts.verbose > FILE_CP_NO_VERBOSE and NULL isnot opts.err_stream);
+
+  if (NULL is src or NULL is dest) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to copy: either src or dest are NULL pointers\n");
+    return NOTOK;
+  }
+
+  idx_t len = 4096;
+  char buf[len];
+
+  string *backup_file = NULL;
+  string *dests = String.new_with (dest);
+  dest = dests->bytes;
+
+  size_t dest_len = dests->num_bytes;
+  size_t src_len = bytelen (src);
+
+  if (0 is src_len or 0 is dest_len) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to copy: either src or dest are zero length\n");
+    goto theerror;
+  }
+
+  int src_exists = file_exists (src);
+  ifnot (src_exists) {
+    errno = ENOENT;
+    if (outToErrStream)
+      fprintf (opts.err_stream, "`%s': %s\n", src, Error.errno_string (errno));
+    goto theerror;
+
+  } else {
+    ifnot (file_is_readable (src)) {
+      errno = EPERM;
+      if (outToErrStream)
+        fprintf (opts.err_stream, "'%s': %s\n", src, Error.errno_string (errno));
+      goto theerror;
+    }
+  }
+
+  struct stat src_st;
+  if (-1 is lstat (src, &src_st)) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "%s: %s\n", src, Error.errno_string (errno));
+    goto theerror;
+  }
+
+  int dest_exists = file_exists (dest);
+  struct stat dest_st;
+
+  if (dest_exists) {
+    if (-1 is lstat (dest, &dest_st)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s: %s\n", dest, Error.errno_string (errno));
+      goto theerror;
+    }
+  }
+
+  if (S_ISDIR(src_st.st_mode)) {
+    ifnot (opts.recursive) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s: is a directory\n", src);
+      goto theerror;
+    }
+
+    if (dest_exists) {
+      ifnot (S_ISDIR(dest_st.st_mode)) {
+        if (outToErrStream)
+          fprintf (opts.err_stream, "cannot overwrite non directory `%s' with directory `%s'",
+              dest, src);
+        goto theerror;
+      }
+    }
+
+    char *src_basename = Path.basename ((char *) src);
+    char *dest_basename = Path.basename ((char *) dest);
+    size_t sblen = bytelen (src_basename);
+    int idx = sblen;
+    while (idx > 1 and src_basename[--idx] is DIR_SEP) sblen--;
+
+    if (0 is Cstring.eq_n (src_basename, dest_basename, sblen) and
+        dest_exists) {
+      if (dests->bytes[dests->num_bytes - 1] is DIR_SEP)
+        String.append_with_len (dests, src_basename, sblen);
+      else
+        String.append_with_fmt (dests, "/%s", src_basename);
+
+      dest = dests->bytes;
+      dest_len = dests->num_bytes;
+      dest_exists = file_exists (dest);
+    } else if (dest_exists) {
+      ifnot (S_ISDIR(dest_st.st_mode)) {
+        if (outToErrStream)
+          fprintf (opts.err_stream, "%s: is not a directory\n", dest);
+        goto theerror;
+      }
+    }
+
+    ifnot (dest_exists) {
+      if (-1 is mkdir (dest, src_st.st_mode)) {
+        if (outToErrStream)
+          fprintf (opts.err_stream, "cannot make directory %s, %s\n",
+              dest, Error.errno_string (errno));
+        goto theerror;
+      }
+    }
+
+    if (opts.curdepth is opts.maxdepth) {
+      fprintf (opts.err_stream, "'%d' depth exceeded '%d' maxdepth\n",
+          opts.curdepth, opts.maxdepth);
+      goto theerror;
+    }
+
+    opts.curdepth++;
+
+    dirlist_t *dlist = Dir.list ((char *) src, 0);
+    ifnot (dlist->list->num_items)
+      retval = OK;
+
+    vstring_t *it = dlist->list->head;
+
+    while (it) {
+      String.trim_end (it->data, DIR_SEP);
+      size_t newlen = dest_len + 1 + it->data->num_bytes;
+      char newdest[newlen + 1];
+      Cstring.cp_fmt (newdest, newlen + 1, "%s/%s", dest, it->data->bytes);
+      size_t srclen = src_len + 1 + it->data->num_bytes;
+      char newsrc[srclen + 1];
+      Cstring.cp_fmt (newsrc, srclen + 1, "%s/%s", src, it->data->bytes);
+
+      retval = file_copy (newsrc, newdest, opts);
+      if (retval isnot OK)
+        break;
+
+      it = it->next;
+    }
+
+    dlist->release (dlist);
+    goto theerror;  // unconditionally, as it might be not an error
+
+  } else {
+    if (dest_exists) {
+      if (-1 is lstat (dest, &dest_st)) {
+        if (outToErrStream)
+          fprintf (opts.err_stream, "%s: %s\n", dest, Error.errno_string (errno));
+        goto theerror;
+      }
+
+      if (S_ISDIR(dest_st.st_mode)) {
+        String.trim_end (dests, DIR_SEP);
+        String.append_with_fmt (dests, "/%s", Path.basename ((char *)src));
+        dest = dests->bytes;
+        dest_len = dests->num_bytes;
+        dest_exists = file_exists (dest);
+      }
+    }
+  }
+
+  if (opts.update and dest_exists) {
+    if (src_st.st_mtime < dest_st.st_mtime) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "`%s' destination is newer than `%s' source\n",
+            dest, src);
+      goto theerror;
+    }
+
+    if (src_st.st_size is dest_st.st_size and
+        src_st.st_mtime is dest_st.st_mtime) {
+      retval = OK;   // its a duck
+      goto theerror; // just release sources
+    }
+  }
+
+  char src_orig[PATH_MAX];
+  if (S_ISLNK(src_st.st_mode)) {
+    int r;
+    if (-1 is (r = readlink (src, src_orig, PATH_MAX - 1))) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s: %s\n", src, Error.errno_string (errno));
+      goto theerror;
+    }
+
+    src_orig[r] = '\0';
+
+    if (opts.follow_lnk) {
+      retval = file_copy (src_orig, dest, opts);
+      goto theerror;
+    }
+  }
+
+  dest_exists = file_exists (dest);
+  if (dest_exists) {
+    ifnot (opts.force) {
+      errno = EEXIST;
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to copy '%s' to '%s': %s and `force` is not set\n",
+            src, dest, Error.errno_string (errno));
+      goto theerror;
+    }
+
+    if (src_st.st_dev is dest_st.st_dev and src_st.st_ino is dest_st.st_ino) {
+      if (opts.verbose > FILE_CP_NO_VERBOSE and NULL isnot opts.err_stream)
+        fprintf (opts.err_stream, "'%s' and '%s' are the same file\n", src, dest);
+      goto theerror;
+    }
+  }
+
+  if (opts.backup is FILE_CP_BACKUP and dest_exists) {
+    if (opts.backup_suffix is NULL) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to create backup: backup suffix is a NULL pointer\n");
+      goto theerror;
+    }
+
+    ifnot (S_ISREG(dest_st.st_mode)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s: can make backups only in regular files\n", dest);
+      goto theerror;
+    }
+
+    size_t blen = bytelen (opts.backup_suffix);
+    ifnot (blen) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to backup %s: empty backup suffix\n", dest);
+    }
+
+    blen += dest_len;
+    char dbuf[blen + 1];
+    Cstring.cp_fmt (dbuf, blen + 1, "%s%s", dest, opts.backup_suffix);
+    if (NOTOK is file_copy (dest, dbuf, FileCopyOpts
+        (.force = FILE_CP_FORCE, .verbose = opts.verbose)))
+      goto theerror;
+
+    backup_file = String.new_with (Path.basename (dbuf));
+  }
+
+  if (S_ISSOCK(src_st.st_mode) or
+      S_ISCHR(src_st.st_mode) or
+      S_ISBLK(src_st.st_mode)) {
+    if (dest_exists) {
+      if (-1 is unlink (dest)) {
+        if (outToErrStream)
+          fprintf (opts.err_stream, "failed to remove '%s': %s\n",
+              dest, Error.errno_string (errno));
+        goto theerror;
+      }
+    }
+
+    if (-1 is mknod (dest, src_st.st_mode, src_st.st_rdev)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "mknod failed '%s': %s\n",
+            dest, Error.errno_string (errno));
+      goto theerror;
+    }
+
+    if (opts.verbose is FILE_CP_VERBOSE and opts.out_stream isnot NULL) {
+      fprintf (opts.out_stream, "'%s' -> '%s'", src, dest);
+      if (NULL isnot backup_file)
+        fprintf (opts.out_stream, " (backup: %s)", backup_file->bytes);
+      fprintf (opts.out_stream, "\n");
+    }
+
+    retval = OK;
+    goto theend;
+
+  } else if (S_ISLNK(src_st.st_mode)) {
+    String.release (backup_file);
+    if (dest_exists) {
+      if (-1 is unlink (dest)) {
+        if (outToErrStream)
+          fprintf (opts.err_stream, "failed to remove '%s': %s\n",
+              dest, Error.errno_string (errno));
+        goto theerror;
+      }
+    }
+
+    if (-1 is symlink (src_orig, dest)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to create symlink '%s' to '%s': %s\n",
+            src_orig, dest, Error.errno_string (errno));
+      goto theerror;
+    }
+
+    if (opts.verbose is FILE_CP_VERBOSE and opts.out_stream isnot NULL) {
+      fprintf (opts.out_stream, "'%s' -> '%s'", src, dest);
+      if (NULL isnot backup_file)
+        fprintf (opts.out_stream, " (backup: %s)", backup_file->bytes);
+      fprintf (opts.out_stream, "\n");
+    }
+
+    retval = OK;
+    goto theend;
+  }
+
+  if (opts.verbose is FILE_CP_VERBOSE_EXTRA and opts.out_stream isnot NULL) {
+    FILE *dfp = NULL;
+    FILE *sfp = fopen (src, "r");
+    if (NULL is sfp) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s, failed to open source FP: %s\n",
+            src, Error.errno_string (errno));
+      goto exit_verbose;
+    }
+
+    int num = 1;
+    do {
+      dfp = fopen (dest, "w");
+      if (NULL is dfp) {
+        if (opts.force is FILE_CP_FORCE) {
+          if (errno is EACCES)
+            ifnot (unlink (dest))
+              continue;
+        }
+
+        if (outToErrStream)
+          fprintf (opts.err_stream, "%s, failed to open destination FP: %s\n",
+              dest, Error.errno_string (errno));
+        goto exit_verbose;
+      }
+
+      break;
+    } while (num--);
+
+    if (-1 is fseek (sfp, 0, SEEK_END)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s, fseek error to source FP: %s\n",
+            src, Error.errno_string (errno));
+      goto exit_verbose;
+    }
+
+    idx_t total = ftell (sfp);
+    if (-1 is total) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s, ftell error to source FP: %s\n",
+            src, Error.errno_string (errno));
+      goto exit_verbose;
+    }
+
+    if (-1 is fseek (sfp, 0, SEEK_SET)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s, fseek error to source FP: %s\n",
+            src, Error.errno_string (errno));
+      goto exit_verbose;
+    }
+
+    idx_t written = 0;
+    idx_t n;
+
+    errno = 0;
+
+    idx_t msglen = 0;
+    char msg[128];
+
+    fprintf (opts.out_stream, "'%s' -> '%s' ", src, dest);
+    while ((n = fread (&buf, 1, len, sfp)) > 0) {
+      written += n;
+
+      if ((idx_t) fwrite (buf, 1, n, dfp) isnot n)
+        goto exit_verbose;
+
+      if (feof (sfp))
+        break;
+
+      for (idx_t i = 0; i < msglen; i++) { msg[i] = '\b'; } msg[msglen] = '\0';
+      fprintf (opts.out_stream, "%s", msg);
+      msglen = fprintf (opts.out_stream, "(%.0f%%)", (double) written / total * 100);
+      fflush (opts.out_stream);
+    }
+
+    for (idx_t i = 0; i < msglen + 1; i++) { msg[i] = '\b'; } msg[msglen + 1] = '\0';
+    fprintf (opts.out_stream, "%s", msg);
+
+    ifnot (ferror (sfp)) {
+      if (written isnot total) {
+        ifnot (NULL is opts.err_stream)
+          fprintf (opts.err_stream, " copied %d bytes instead of %d", written, total);
+        else
+          fprintf (opts.out_stream, " copied %d bytes instead of %d", written, total);
+
+      } else {
+        fprintf (opts.out_stream, " (100%%)");
+        retval = OK;
+      }
+
+      if (NULL isnot backup_file)
+        fprintf (opts.out_stream, " (backup: %s)", backup_file->bytes);
+      fprintf (opts.out_stream, "\n");
+
+    } else {
+      if (NULL isnot opts.err_stream)
+        fprintf (opts.err_stream, "ferrailed to copy '%s' to '%s': %s\n",
+            src, dest, Error.errno_string (errno));
+    }
+
+    exit_verbose:
+    if (NULL isnot sfp) fclose (sfp);
+    if (NULL isnot dfp) fclose (dfp);
+    goto theend;
+  }
+
+  int sfd = -1;
+  int dfd = -1;
+
+  sfd = open (src, O_RDONLY);
+  if (sfd is -1) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "%s: failed to open source FD : %s\n",
+          src, Error.errno_string (errno));
+    goto theend_no_verbose;
+  }
+
+  int num = 1;
+  do {
+    dfd = creat (dest, src_st.st_mode);
+
+    if (-1 is dfd) {
+      if (opts.force is FILE_CP_FORCE) {
+        if (errno is EACCES)
+          ifnot (unlink (dest))
+            continue;
+      }
+
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s: failed to open destination FD : %s\n",
+            dest, Error.errno_string (errno));
+      goto theend_no_verbose;
+    }
+
+    break;
+  } while (num--);
+
+  idx_t n;
+
+  while ((n = IO.fd.read (sfd, buf, len + 1)) > 0)
+    if (IO.fd.write (dfd, buf, n) < 0) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to write '%s' to '%s': %s\n",
+            src, dest, Error.errno_string (errno));
+      goto theend_no_verbose;
+    }
+
+  if (n is -1) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "fsailed to copy '%s' to '%s': %s\n",
+          src, dest, Error.errno_string (errno));
+    goto theend_no_verbose;
+  }
+
+  if (opts.verbose is FILE_CP_VERBOSE and NULL isnot opts.out_stream) {
+    fprintf (opts.out_stream, "'%s' -> '%s'", src, dest);
+    if (NULL isnot backup_file)
+      fprintf (opts.out_stream, " (backup: %s)", backup_file->bytes);
+    fprintf (opts.out_stream, "\n");
+  }
+
+  retval = OK;
+
+theend_no_verbose:
+  if (-1 isnot sfd) close (sfd);
+  if (-1 isnot dfd) close (dfd);
+
+theend:
+  if (retval is OK and opts.preserve is FILE_CP_PRESERVE) {
+    struct timespec times[2];
+    times[0] = src_st.st_atim;
+    times[1] = src_st.st_mtim;
+
+    if (-1 is utimensat (AT_FDCWD, dest, times, AT_SYMLINK_NOFOLLOW)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to change utime and atime to '%s': %s\n",
+            dest, Error.errno_string (errno));
+
+      src_st.st_mode &= ~(S_ISUID | S_ISGID);
+      retval = NOTOK;
+    }
+
+    int retv_chown = 0;
+    int retv_chmod = 0;
+
+    if (S_ISLNK(src_st.st_mode)){
+      retv_chown = lchown (dest, src_st.st_uid, src_st.st_gid);
+    } else {
+      retv_chown = chown (dest, src_st.st_uid, src_st.st_gid);
+      retv_chmod = chmod (dest, src_st.st_mode);
+    }
+
+    retval = (retv_chown is -1 or retv_chmod is -1 ? NOTOK : OK);
+
+    if (retv_chown is -1)
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to change ownership to '%s': %s\n",
+            dest, Error.errno_string (errno));
+
+    if (retv_chmod is -1)
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to change mode to '%s': %s\n",
+            dest, Error.errno_string (errno));
+  }
+
+theerror:
+  String.release (dests);
+  String.release (backup_file);
+  return retval;
+}
+
 public file_T __init_file__ (void) {
+  __INIT__ (io);
   __INIT__ (os);
   __INIT__ (dir);
+  __INIT__ (path);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (vstring);
   __INIT__ (cstring);
@@ -339,6 +861,7 @@ public file_T __init_file__ (void) {
   return (file_T) {
     .self = (file_self) {
       .size = file_size,
+      .copy = file_copy,
       .write = file_write,
       .append = file_append,
       .exists = file_exists,
