@@ -867,7 +867,15 @@ concepts.
     # StringType    Path.basename_sans_extname (StringTYpe path)
 
   # File Module Interface
-    # IntegerType   File.copy (StringType src, StringType dest)
+    # IntegerType   File.copy (StringType src, StringType dest; [qualifiers])
+       qualifiers: (they are trying to mimic cp(1) options)
+         force: [0|1], update: [0|1], backup: [0|1], preserve: [0|1],
+         recursive: [0|1], follow_lnk: [0|1],
+         interactive: [0|1] when set turns off force,
+         verbose: [0|1|2|3] 1: errors 2: like cp(1) 3: with a percent indicator
+         all: same as preserve and recursive
+         (note that on the command implementation errors are on by default, and
+          so the other two is minus one (a small inconsistency here))
     # MapType       File.stat (StringType file)
     # MapType       File.lstat (StringType file)
     # IntegerType   File.size (StringType file)
@@ -963,6 +971,21 @@ concepts.
     # StringType    Time.to_string (null or IntegerType time) # ctime()
     # IntegerType   Time.to_seconds (MapType tm)              # mktime()
     # StringType    Time.format (StringType fmt, null or MapType tm) # strftime()
+
+  (notes:
+     - most of them are self explanatory, as they correspond to standard C functions
+
+     - almost all of them are wrappers around the underlying internal libraries
+       - all of them match the function name and most of them the function arguments
+         of their counterparts
+
+        - not all of them they call their equivalants
+
+        - with the same consistent way, they are being used in C which writes
+          this code
+
+     - those are all excuses to avoid writting extented documentation
+       (but yea should be self explanatory, or anyway at least there is consistency)
 
 # Library
   # Argparse Interface

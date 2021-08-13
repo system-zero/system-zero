@@ -416,6 +416,9 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   VALUE v_update = La.get.qualifier (this, "update", INT(0));
   ifnot (IS_INT(v_update)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
 
+  VALUE v_interactive = La.get.qualifier (this, "interactive", INT(0));
+  ifnot (IS_INT(v_interactive)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+
   int verbose = AS_INT(v_verbose);
   int force = AS_INT(v_force);
   int follow_lnk = AS_INT(v_follow_lnk);
@@ -424,6 +427,7 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   int recursive = AS_INT(v_recursive);
   int update = AS_INT(v_update);
   int all = AS_INT(v_all);
+  int interactive = AS_INT(v_interactive);
 
   FILE *fp = NULL;
   VALUE v_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);
@@ -441,7 +445,7 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
       .verbose = verbose, .force = force,
       .backup = backup, .follow_lnk = follow_lnk,
       .preserve = preserve, .recursive = recursive,
-      .update = update, .all = all,
+      .update = update, .all = all, .interactive = interactive,
       .out_stream = fp));
 
   if (retval is NOTOK)

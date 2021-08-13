@@ -15,7 +15,9 @@ SYSZLIBDIR     = $(SYSDIR)/lib/z
 SYSSCRIPTDIR   = $(SYSLIBDIR)/la-lib
 
 all: Env
+	@$(PRINTF) "installing argparse to $(SYSSCRIPTDIR)\n"
 	@$(CP) argparse/argparse.lai $(SYSSCRIPTDIR)
+	@$(PRINTF) "installing packman to $(SYSSCRIPTDIR)\n"
 	@$(CP) packman/packman.lai   $(SYSSCRIPTDIR)
 
 Env: makeenv checkenv
@@ -32,5 +34,6 @@ CP_R = $(CP) -r
 TEST = test
 LN = ln
 LN_S = $(LN) -s
+PRINTF = printf
 MKDIR = mkdir
 MKDIR_P = $(MKDIR) -p

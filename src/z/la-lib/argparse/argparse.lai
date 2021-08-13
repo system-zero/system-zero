@@ -53,7 +53,7 @@ private
   "parse_short_arg" : func (arg) {
     String.advance (arg, 1)
 
-    var found = false
+    var retval = false
 
     for |c| in arg {
       if (c is 'h') {
@@ -66,59 +66,66 @@ private
         }
       }
 
-      found = false
-
+      retval = false
       for |j| in this.shortopts {
         if (this.shortopts[j]) {
           var short = this.shortopts[j]
 
-          if (c is short) {
-            found = true
-            var type = this.types[j]
-            var as = this.as[j]
-            var flags = this.flags[j]
+          if (c isnot short) { continue }
 
-            if (type is BooleanType) {
-              Map.set (this.results, as, true)
-            } else {
-              if (this.curidx is this.input_argc - 1) {
+          retval = true
+          var type = this.types[j]
+          var as = this.as[j]
+          var flags = this.flags[j]
+
+          if (type is BooleanType) {
+            Map.set (this.results, as, true)
+          } else {
+            if (flags & (ARG_VALUE_REQUIRED|ARG_VALUE_OPTIONAL)) {
+              if (this.curidx is this.input_argc - 1 or
+                  this.input_argv[this.curidx + 1][0] is '-') {
                 if (flags & ARG_VALUE_REQUIRED) {
                   if (this.verbose is true) {
-                    println (stderr, "error ${%s, arg) argument awaits an integer")
+                    println (stderr, "error ${%s, arg) argument awaits a value")
                   } else {
-                    this.err_message = format ("error ${%s, arg) argument awaits an integer")
+                    this.err_message = format ("error ${%s, arg) argument awaits a value")
                   }
 
                   return notok
                 }
 
-                return true
-              }
-
-              this.curidx += 1
-              if (type is IntegerType) {
-                 Map.set (this.results, as, String.to_integer (this.input_argv[this.curidx]))
-              } else if (type is StringType) {
-                 Map.set (this.results, as, this.input_argv[this.curidx])
+                if (type is IntegerType or type is BooleanType) {
+                  Map.set (this.results, as, true)
+                } else if (type is StringType) {
+                  Map.set (this.results, as, "")
+                }
+                break
               }
             }
-            break 2
-          }
 
-          if (this.exit_on_unknown) {
-            if (this.verbose) {
-              println ("${%s, String.character (c)}: unknown argument")
-              this.print_description ()
+            this.curidx += 1
+            if (type is IntegerType) {
+               Map.set (this.results, as, String.to_integer (this.input_argv[this.curidx]))
+            } else if (type is StringType) {
+               Map.set (this.results, as, this.input_argv[this.curidx])
             }
-
-            return notok
           }
 
+          break
+        }
+
+        if (this.exit_on_unknown) {
+          if (this.verbose) {
+            println ("${%s, String.character (c)}: unknown argument")
+            this.print_description ()
+          }
+
+          return notok
         }
       }
     }
 
-    return found
+    return retval
   }
 
   "parse_long_arg" : func (arg) {
@@ -140,18 +147,55 @@ private
           var type = this.types[j]
           var as = this.as[j]
           var flags = this.flags[j]
-          if (long[-1] isnot '=') {
-            if (flags & ARG_VALUE_REQUIRED) {
-              if (this.verbose is true) {
-                println (stderr, "error ${%s, arg) argument requires a value")
-              } else {
-                this.err_message = format ("error ${%s, arg) requires a value")
-              }
 
-              return notok
-
-            } else if (type is BooleanType) {
+          ifnot (flags) {
+            if (type is IntegerType or type is BooleanType) {
               Map.set (this.results, as, true)
+            } else if (type is StringType) {
+              Map.set (this.results, as, "")
+            }
+
+            return true
+          }
+
+          if (long[-1] isnot '=') {
+            if (flags & ARG_VALUE_REQUIRED|ARG_VALUE_OPTIONAL) {
+              if (this.curidx is this.input_argc - 1 or
+                  this.input_argv[this.curidx + 1][0] is '-') {
+                if (flags & ARG_VALUE_REQUIRED) {
+                  if (this.verbose is true) {
+                    println (stderr, "error ${%s, arg) argument awaits a value")
+                  } else {
+                    this.err_message = format ("error ${%s, arg) argument awaits a value")
+                  }
+
+                  return notok
+                }
+
+                if (type is IntegerType or type is BooleanType) {
+                  Map.set (this.results, as, true)
+                } else if (type is StringType) {
+                  Map.set (this.results, as, "")
+                }
+
+                return true
+              } else {
+                this.curidx += 1
+                if (type is IntegerType) {
+                  Map.set (this.results, as, String.to_integer (this.input_argv[this.curidx]))
+                } else if (type is BooleanType) {
+                  var b = String.to_integer (this.input_argv[this.curidx])
+                  if (b < 0 or b > 1) {
+                    b = false
+                  }
+
+                  Map.set (this.results, as, b)
+                } else if (type is StringType) {
+                  Map.set (this.results, as, this.input_argv[this.curidx])
+                }
+
+                return true
+              }
             }
 
             return true
@@ -170,16 +214,19 @@ private
 
               return notok
 
-            } else if (type is BooleanType) {
+            } else if (type is BooleanType or type is IntegerType) {
               Map.set (this.results, as, true)
+            } else if (type is StringType) {
+              Map.set (this.results, as, "")
             }
-            continue
+
+            return true
           }
 
           if (type is BooleanType) {
             var val = String.to_integer (optval);
             if (val isnot false) {
-               val = true
+              val = true
             }
             Map.set (this.results, as, val)
           } else if (type is IntegerType) {
@@ -278,7 +325,7 @@ public
     this.input_argc = argc
     this.input_argv = argv
 
-    var found = false
+    var retval = false
 
     for (this.curidx = 0; this.curidx < argc; this.curidx += 1) {
       if (this.curidx < start) { continue }
@@ -299,10 +346,10 @@ public
         continue
       }
 
-      found = false
+      retval = false
       if (arg[1] isnot '-') {
-        found = this.parse_short_arg (arg)
-        if (found is notok) { return notok }
+        retval = this.parse_short_arg (arg)
+        if (retval is notok) { return notok }
 
         if (this.exit is true) {
           return ok
@@ -311,13 +358,13 @@ public
         continue
       }
 
-      found = this.parse_long_arg (arg)
+      retval = this.parse_long_arg (arg)
 
-      if (found is notok) {
+      if (retval is notok) {
         return notok
       }
 
-      if (found is false) {
+      if (retval is false) {
         if (this.exit_on_unknown) {
           if (this.verbose) {
             println ("${%s, arg}: unknown argument")

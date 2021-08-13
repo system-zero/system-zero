@@ -21,23 +21,24 @@ SYSDATADIR = $(SYSDIR)/../data
 SYSTMPDIR  = $(SYSDIR)/tmp
 
 packman: Env
+	@$(PRINTF) "installing $(NAME) to $(SYSBINDIR)\n"
 	@$(CP) $(NAME) $(SYSBINDIR)
 	@$(CHMOD) 755  $(SYSBINDIR)/$(NAME)
 	@$(CP) specs/* $(SYSDATADIR)/$(NAME)/specs
 
 clean:
-	@$(TEST) ! -x $(SYSBINDIR)/$(NAME)|| $(RM) $(SYSBINDIR)/$(NAME)
+	@$(TEST) ! -x $(SYSBINDIR)/$(NAME)        || $(RM) $(SYSBINDIR)/$(NAME)
 	@$(TEST) ! -d $(SYSDATADIR)/$(NAME)/specs || $(RM_R) $(SYSDATADIR)/${NAME)/specs
 
 #-----------------------------------------------------------
 Env: makeenv checkenv
 makeenv:
-	@$(TEST) -d $(SYSSCRIPTDIR)       || $(MKDIR) -p $(SYSSCRIPTDIR)
+	@$(TEST) -d $(SYSSCRIPTDIR)             || $(MKDIR) -p $(SYSSCRIPTDIR)
 	@$(TEST) -d $(SYSDATADIR)/$(NAME)/specs || $(MKDIR) -p $(SYSDATADIR)/$(NAME)/specs
 
 checkenv:
-	@$(TEST) -w $(SYSSCRIPTDIR)       || exit 1
-	@$(TEST) -w $(SYSDATADIR)/$(NAME) || exit 1
+	@$(TEST) -w $(SYSSCRIPTDIR)             || exit 1
+	@$(TEST) -w $(SYSDATADIR)/$(NAME)       || exit 1
 	@$(TEST) -w $(SYSDATADIR)/$(NAME)/specs || exit 1
 #-----------------------------------------------------------
 TEST = test
@@ -47,6 +48,7 @@ RM = rm
 RM_R = $(RM) -r
 LN = ln
 LN_S = $(LN) -s
+PRINTF = printf
 CHMOD = chmod
 MKDIR = mkdir
 MKDIR_P = $(MKDIR) -p

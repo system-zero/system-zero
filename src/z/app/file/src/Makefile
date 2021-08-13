@@ -16,25 +16,30 @@ shared: clean-shared\
     file-exists-shared\
     file-size-shared \
     file-readlink-shared\
-    file-stat-shared
+    file-stat-shared\
+    file-copy-shared
 
 static: clean-static\
     file-exists-static\
     file-size-static\
     file-readlink-static\
-    file-stat-static
+    file-stat-static\
+    file-copy-shared
 
 clean-shared:\
     clean-file-exists-shared\
     clean-file-size-shared\
     clean-file-readlink-shared\
-    clean-file-stat-shared
+    clean-file-stat-shared\
+    clean-file-copy-shared
 
 clean-static:\
     clean-file-exists-static\
     clean-file-size-static\
     clean-file-readlink-static\
-    clean-file-stat-static
+    clean-file-stat-static\
+    clean-file-copy-static
+
 #-----------------------------------------------#
 F_exists = File.exists
 file-exists-shared:
@@ -114,6 +119,26 @@ clean-file-stat-shared:
 
 clean-file-stat-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_stat)-static || $(RM) $(SYSBINDIR)/$(F_stat)-static
+
+#-----------------------------------------------#
+F_copy = File.copy
+file-copy-shared:
+	@$(PRINTF) "#!La-shared\n\n" > $(SYSBINDIR)/$(F_copy)
+	@$(CAT) $(F_copy).lai >> $(SYSBINDIR)/$(F_copy)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_copy)
+	@$(PRINTF) "installing File.copy to $(SYSBINDIR)\n"
+
+file-copy-static:
+	@$(PRINTF) "#!La-static\n\n" > $(SYSBINDIR)/$(F_copy)-static
+	@$(CAT) $(F_copy).lai >> $(SYSBINDIR)/$(F_copy)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_copy)-static
+	@$(PRINTF) "installing File.copy-static to $(SYSBINDIR)\n"
+
+clean-file-copy-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_copy) || $(RM) $(SYSBINDIR)/$(F_copy)
+
+clean-file-copy-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_copy)-static || $(RM) $(SYSBINDIR)/$(F_copy)-static
 
 #-----------------------------------------------#
 

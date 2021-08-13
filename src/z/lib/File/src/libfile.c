@@ -332,6 +332,20 @@ theend:
   return this;
 }
 
+static int file_copy_on_interactive (char *file) {
+  fprintf (stdout, "copy: overwrite `%s'? y[es]/n[o]/q[uit]\n", file);
+  fflush (stdout);
+
+  while (1) {
+    int c = IO.input.getkey (STDIN_FILENO);
+    if (c is 'y') return  1;
+    if (c is 'n') return  0;
+    if (c is 'q') return -1;
+  }
+
+  return 0;
+}
+
 static int file_copy (const char *, const char *, file_copy_opts);
 static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) {
   int retval = NOTOK;
@@ -341,7 +355,10 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
   if (opts.all) {
     opts.recursive = 1;
     opts.preserve = 1;
+    opts.follow_lnk = 0;
   }
+
+  if (opts.interactive) opts.force = 0;
 
   int outToErrStream = (opts.verbose > FILE_CP_NO_VERBOSE and NULL isnot opts.err_stream);
 
@@ -502,15 +519,8 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
   }
 
   if (opts.update and dest_exists) {
-    if (src_st.st_mtime < dest_st.st_mtime) {
-      if (outToErrStream)
-        fprintf (opts.err_stream, "`%s' destination is newer than `%s' source\n",
-            dest, src);
-      goto theerror;
-    }
-
     if (src_st.st_size is dest_st.st_size and
-        src_st.st_mtime is dest_st.st_mtime) {
+        src_st.st_mtime <= dest_st.st_mtime) {
       retval = OK;   // its a duck
       goto theerror; // just release sources
     }
@@ -536,6 +546,20 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
   dest_exists = file_exists (dest);
   if (dest_exists) {
     ifnot (opts.force) {
+      if (opts.interactive) {
+        int what = 0;
+        if (NULL is opts.on_interactive)
+          what = file_copy_on_interactive (dest);
+        else
+          what = opts.on_interactive (dest);
+
+        switch (what) {
+          case  1: goto are_same;
+          case  0: retval = OK; goto theerror;
+          case -1: goto theerror;
+        }
+      }
+
       errno = EEXIST;
       if (outToErrStream)
         fprintf (opts.err_stream, "failed to copy '%s' to '%s': %s and `force` is not set\n",
@@ -543,6 +567,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
       goto theerror;
     }
 
+    are_same:
     if (src_st.st_dev is dest_st.st_dev and src_st.st_ino is dest_st.st_ino) {
       if (opts.verbose > FILE_CP_NO_VERBOSE and NULL isnot opts.err_stream)
         fprintf (opts.err_stream, "'%s' and '%s' are the same file\n", src, dest);

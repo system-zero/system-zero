@@ -436,6 +436,7 @@ static VALUE map_release (VALUE);
 static int la_parse_map_get (la_t *, VALUE *);
 static int la_parse_map_set (la_t *);
 static int la_parse_loadfile (la_t *);
+static int la_parse_chain (la_t *, VALUE *);
 static int la_parse_when (la_t *, VALUE *);
 static VALUE la_set_errno (la_t *, VALUE);
 static void la_set_CFuncError (la_t *, int);
@@ -954,9 +955,11 @@ static void la_release_qualifiers (la_t *this) {
   this->qualifiers = NULL;
 }
 
-static void la_set_qualifiers (la_t *this, VALUE v_qual) {
+static VALUE la_set_qualifiers (la_t *this, VALUE v_qual) {
+  ifnot (IS_MAP(v_qual)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map as qualifiers");
   la_release_qualifiers (this);
   this->qualifiers = AS_MAP(v_qual);
+  return OK_VALUE;
 }
 
 static VALUE la_qualifiers (la_t *this) {
@@ -1006,6 +1009,9 @@ static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
 }
 
 static VALUE la_get_qualifier (la_t *this, char *key, VALUE v_defval) {
+  if (NULL is this->qualifiers)
+    return v_defval;
+
   VALUE *v = (VALUE *) Vmap.get (this->qualifiers, key);
   if (NULL is v)
     return v_defval;
@@ -3541,7 +3547,7 @@ static int la_parse_map_set (la_t *this) {
   if (c is LA_TOKEN_PAREN_OPEN) {
     v = Vmap.get (map, key);
     if (NULL is v)
-      return la_syntax_error_fmt (this, "%s, method doesn't exists", key);
+      return la_syntax_error_fmt (this, "error while seting map: %s, method doesn't exists", key);
 
     if (v->sym->scope is NULL and 0 is is_this)
       return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
@@ -3591,6 +3597,7 @@ static int la_parse_map_set (la_t *this) {
         return la_syntax_error_fmt (this, "%s, not a map", key);
 
       map = AS_MAP((*v));
+
       is_this = 0;
       if (c is LA_TOKEN_COLON)
         submap = 1;

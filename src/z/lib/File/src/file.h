@@ -21,8 +21,11 @@ typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
 #define FILE_CP_UPDATE         1
 #define FILE_CP_NO_ALL         0
 #define FILE_CP_ALL            1
-
+#define FILE_CP_NO_INTERACTIVE 0
+#define FILE_CP_INTERACTIVE    1
 #define FILE_CP_MAXDEPTH      1024
+
+typedef int (*FileCopyInteractive) (char *);
 
 typedef struct file_copy_opts {
   int
@@ -35,13 +38,17 @@ typedef struct file_copy_opts {
     maxdepth,
     curdepth,
     recursive,
-    follow_lnk;
+    follow_lnk,
+    interactive;
 
   char *backup_suffix;
 
   FILE
     *out_stream,
     *err_stream;
+
+  FileCopyInteractive on_interactive;
+
 } file_copy_opts;
 
 #define FileCopyOpts(...) (file_copy_opts) { \
@@ -54,10 +61,12 @@ typedef struct file_copy_opts {
   .maxdepth = FILE_CP_MAXDEPTH,              \
   .curdepth = 0,                             \
   .recursive = FILE_CP_NO_RECURSIVE,         \
-  .follow_lnk =  FILE_CP_NO_FOLLOW_LNK,      \
+  .follow_lnk = FILE_CP_NO_FOLLOW_LNK,       \
+  .interactive = FILE_CP_NO_INTERACTIVE,     \
   .backup_suffix = "~",                      \
   .out_stream = stdout,                      \
   .err_stream = stderr,                      \
+  .on_interactive = NULL,                    \
   __VA_ARGS__}
 
 #define FILE_TMPFNAME_UNLINK_FILE (1 << 0)

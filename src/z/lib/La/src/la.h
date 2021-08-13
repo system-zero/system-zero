@@ -268,9 +268,9 @@ typedef struct la_set_self {
     (*curMsg) (la_t *, char *),
     (*user_data) (la_t *, void *),
     (*CFuncError) (la_t *, int),
-    (*qualifiers) (la_t *, VALUE),
     (*define_funs_cb) (la_t *, LaDefineFuns_cb);
 
+  VALUE (*qualifiers) (la_t *, VALUE);
 } la_set_self;
 
 typedef struct la_object_self {
