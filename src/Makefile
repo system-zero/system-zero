@@ -748,7 +748,6 @@ libself-shared: Env cenv libstring-shared libcstring-shared \
 libself-static: Env cenv libstring-static libcstring-static \
                 libvstring-static libdir-static libfile-static \
                 libpath-static libre-static
-
 	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libself-shared:

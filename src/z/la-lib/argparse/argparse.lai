@@ -67,11 +67,9 @@ private
       }
 
       retval = false
-      for |j| in this.shortopts {
-        if (this.shortopts[j]) {
-          var short = this.shortopts[j]
-
-          if (c isnot short) { continue }
+      for |j, opt| in this.shortopts {
+        if (opt) {
+          if (c isnot opt) { continue }
 
           retval = true
           var type = this.types[j]
@@ -133,14 +131,14 @@ private
       if (this.print_and_exit_on_help) {
         this.print_description ()
         this.exit = true
-        return ok
+        return 1
       }
     }
 
     var found = false
-    for |j| in this.longopts {
-      if (null isnot this.longopts[j] and len (this.longopts[j])) {
-        var long = "--" + this.longopts[j]
+    for |j, opt| in this.longopts {
+      if (null isnot opt and len (opt)) {
+        var long = "--" + opt
         var long_len = len (long)
         if (String.eq_n (long, arg, long_len)) {
           found = true

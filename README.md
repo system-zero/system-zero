@@ -1,9 +1,9 @@
 ------------------------- [ zero point draft ] -------------------------------
 
-[TRUNC](#TRUNC)
-
 [0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](#ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS).
 [0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
+
+[Trunc DeveLopment](#TRUNC)
 
 ## Intention
 
@@ -43,6 +43,9 @@ and dimensions, that they can be used in a practical systematic way.
 Again: the only ambition is to be honest to itself.
 
 ## Zero Point Description.
+
+ (and the very beginning to implementation ... (estimated time to completion
+  eighteen months (started at the very last days of 2020))
 
 The  first  stage  is of  course  to  be  able  to get  control  after  kernel
 initialization, so at some  point we'll have to be ready to  be pid 1. Usually
@@ -122,7 +125,7 @@ Another C  property, is that the  language do not  do anything by its  own, so
 every little thing, like memory management,  should be done by the programmer.
 So at  the same  time C  obeys truly the  spirit and  basic intention  of this
 project, as we  have to implement ourselves at least  the basic functionality.
-It is s system zero point anyway.
+It is system zero point anyway.
 
 Our only requirements at this stage is a standard C library (`libc`), plus `libpam`
 as our authentication mechanism, and our building tool, which will be the `make`
@@ -1207,6 +1210,13 @@ To do that use:
   # or/and
   make DEBUG=1 static
 ```
+
+By default libraries and applications are installed in sys/`uname -m`.
+You may want to prepend LD_LIBRARY_PATH=sys/`uname -m`/lib/z path/to/exec when
+calling an executable, or the other options is through ldconfig for libraries,
+and to set the binary path `cwd`/sys/`uname -m`/bin to your shell env file.
+
+There is no support for installation to the `/` namespace.
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

@@ -3547,7 +3547,7 @@ static int la_parse_map_set (la_t *this) {
   if (c is LA_TOKEN_PAREN_OPEN) {
     v = Vmap.get (map, key);
     if (NULL is v)
-      return la_syntax_error_fmt (this, "error while seting map: %s, method doesn't exists", key);
+      return la_syntax_error_fmt (this, "error while seting map: %s method doesn't exists", key);
 
     if (v->sym->scope is NULL and 0 is is_this)
       return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
@@ -5173,28 +5173,23 @@ static int la_parse_if (la_t *this) {
   return err;
 }
 
-static char *find_end_bar_ident (const char *str) {
-  int in_str = 0;
-
+static char *find_end_bar_ident (la_t *this, const char *str) {
   char *ptr = (char *) str;
-  char prev_c = *ptr;
 
   for (;;) {
     if (*ptr is LA_TOKEN_EOF)
       return NULL;
 
-    if (*ptr is LA_TOKEN_BAR) {
-      ifnot (in_str) return ptr;
+    if (*ptr is LA_TOKEN_BAR)
+      return ptr;
+
+    ifnot (is_identifier (*ptr)) {
+      if (*ptr isnot LA_TOKEN_COMMA and 0 is is_space (*ptr)) {
+        this->syntax_error (this, "awaiting a valid identifier");
+        return NULL;
+      }
     }
 
-    if (*ptr is LA_TOKEN_DQUOTE and prev_c isnot LA_TOKEN_ESCAPE_CHR) {
-      if (in_str)
-        in_str--;
-      else
-        in_str++;
-    }
-
-    prev_c = *ptr;
     ptr++;
   }
 
@@ -5210,9 +5205,9 @@ static int la_parse_when (la_t *this, VALUE *vp) {
   size_t p_len = la_StringGetLen (this->parsePtr);
   const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
 
-  char *ptr = find_end_bar_ident (tmp_ptr);
+  char *ptr = find_end_bar_ident (this, tmp_ptr);
   if (NULL is ptr)
-    return this->syntax_error (this, "error while parsing for loop, awaiting |");
+    return this->syntax_error (this, "error while parsing when, awaiting |");
 
   integer ident_len = ptr - tmp_ptr;
   char ident[ident_len + 1];
@@ -5610,9 +5605,9 @@ static int la_parse_foreach (la_t *this) {
   size_t p_len = la_StringGetLen (this->parsePtr);
   const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
 
-  char *ptr = find_end_bar_ident (tmp_ptr);
+  char *ptr = find_end_bar_ident (this, tmp_ptr);
   if (NULL is ptr)
-    return this->syntax_error (this, "error while parsing for loop, awaiting |");
+    return this->syntax_error (this, "error while parsing for[each] loop, awaiting |");
   integer ident_len = ptr - tmp_ptr;
   char ident[ident_len + 1];
   Cstring.cp (ident, ident_len + 1, tmp_ptr, ident_len);
@@ -5621,7 +5616,7 @@ static int la_parse_foreach (la_t *this) {
   while (is_space (*ptr)) ptr++;
 
   ifnot (Cstring.eq_n (ptr, "in ", 3))
-    return this->syntax_error (this, "error parsing for, awaiting in");
+    return this->syntax_error (this, "error parsing for[each], awaiting in");
 
   ptr += 3;
   while (is_space (*ptr)) ptr++;
@@ -5637,7 +5632,7 @@ static int la_parse_foreach (la_t *this) {
 
   while (*ptr) {
     if (*ptr is LA_TOKEN_EOF)
-      return this->syntax_error (this, "error while parsing for, unended expresion");
+      return this->syntax_error (this, "error while parsing for[each], unended expresion");
 
     ifnot (is_identifier (*ptr)) break;
     if (idx is MAXLEN_SYMBOL)
@@ -5726,6 +5721,7 @@ static int la_parse_foreach (la_t *this) {
     int is_this = Cstring.eq (sym, "this");
     ptr = ident;
     while (*ptr and *ptr isnot LA_TOKEN_COMMA) ptr++;
+
     if (*ptr is LA_TOKEN_EOF)
       return this->syntax_error (this, "awaiting comma");
 
@@ -5734,6 +5730,9 @@ static int la_parse_foreach (la_t *this) {
     size_t orig_len = len;
     while (is_space (ident[len-1])) len--;
     ifnot (len) return this->syntax_error (this, "empty key identifier");
+
+    if (len >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
 
     char key[len + 1];
     Cstring.cp (key, len + 1, ident, len);
@@ -5744,8 +5743,15 @@ static int la_parse_foreach (la_t *this) {
       return this->syntax_error (this, "awaiting a value identifier");
 
     len = 0;
-    while (*ptr) { ptr++; len++; }
+    while (*ptr) {
+      ptr++; len++;
+    }
+
     ifnot (len) return this->syntax_error (this, "empty value identifier");
+
+    if (len >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
+
     char val[len + 1];
     Cstring.cp (val, len + 1, ident + orig_len + len, len);
     if (*ptr isnot '\0')
@@ -5813,25 +5819,110 @@ static int la_parse_foreach (la_t *this) {
 
   } else if (type is ARRAY_TYPE) {
     ptr = ident;
+    int is_comma = 0;
+
     while (*ptr) {
-      if (*ptr is LA_TOKEN_COMMA)
-        return this->syntax_error (this, "trailing comma");
+      if (*ptr is LA_TOKEN_COMMA) {
+        is_comma = 1;
+        break;
+      }
+
       ptr++;
     }
 
     len = ptr - ident;
 
-    while (is_space (ident[len-1])) len--;
-    ifnot (len) return this->syntax_error (this, "empty index identifier");
+    if (len >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
 
-    char index[len + 1];
-    Cstring.cp (index, len + 1, ident, len);
+    size_t orig_len = len + 1;
+
+    while (is_space (ident[len-1])) len--;
+    ifnot (len) return this->syntax_error (this, "empty for[each] identifier");
+
+    char a_ident[len + 1];
+    Cstring.cp (a_ident, len + 1, ident, len);
+
+    char *index = NULL;
+    char *elem = NULL;
+
+    len = 0;
+    if (is_comma) {
+      index = a_ident;
+      ptr++;
+      while (*ptr and is_space (*ptr)) { ptr++; orig_len++;}
+
+      if (*ptr is LA_TOKEN_EOF)
+        return this->syntax_error (this, "awaiting an array element identifier");
+
+      while (*ptr) {
+        ptr++; len++;
+      }
+
+      ifnot (len) return this->syntax_error (this, "empty array element identifier");
+    } else {
+      elem = a_ident;
+      len++;
+    }
+
+    if (len >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
+
+    char b_ident[len + 1];
+    if (elem is NULL) {
+      Cstring.cp (b_ident, len + 1, ident + orig_len, len);
+      elem = b_ident;
+    } else {
+      b_ident[0] = '_'; b_ident[1] = '\0';
+      index = b_ident;
+    }
+
     if (*ptr isnot '\0')
       return this->syntax_error (this, "trailing identifiers");
 
     ArrayType *array = (ArrayType *) AS_ARRAY(v);
+    string **s_ar = NULL;
+    integer *i_ar = NULL;
+    number *n_ar = NULL;
+    Vmap_t **m_ar = NULL;
+    ArrayType **a_ar = NULL;
+
     v = INT(-1);
     sym_t *index_sym = la_define_block_symbol (this, fun, index, INTEGER_TYPE, v, 0);
+
+    sym_t *elem_sym = NULL;
+
+    switch (array->type) {
+      case INTEGER_TYPE:
+        i_ar = (integer *) AS_ARRAY(array->value);
+        v = INT(0);
+        elem_sym = la_define_block_symbol (this, fun, elem, INTEGER_TYPE, v, 0);
+        break;
+
+      case NUMBER_TYPE:
+        n_ar = (number *) AS_ARRAY(array->value);
+        v = NUMBER(0);
+        elem_sym = la_define_block_symbol (this, fun, elem, NUMBER_TYPE, v, 0);
+        break;
+
+      case STRING_TYPE:
+        s_ar = (string **) AS_ARRAY(array->value);
+        v = NULL_VALUE;
+        elem_sym = la_define_block_symbol (this, fun, elem, STRING_TYPE, v, 0);
+        break;
+
+      case MAP_TYPE:
+        m_ar = (Vmap_t **) AS_ARRAY(array->value);
+        v = NULL_VALUE;
+        elem_sym = la_define_block_symbol (this, fun, elem, MAP_TYPE, v, 0);
+        break;
+
+      case ARRAY_TYPE:
+        a_ar = (ArrayType **) AS_ARRAY(array->value);
+        v = NULL_VALUE;
+        elem_sym = la_define_block_symbol (this, fun, elem, ARRAY_TYPE, v, 0);
+        break;
+    }
 
     int num = array->len;
 
@@ -5843,9 +5934,36 @@ static int la_parse_foreach (la_t *this) {
       if (v_idx >= num) break;
       index_sym->value = INT(v_idx);
 
+      switch (array->type) {
+        case INTEGER_TYPE:
+          elem_sym->value = INT(i_ar[v_idx]);
+          break;
+
+        case NUMBER_TYPE:
+          elem_sym->value = NUMBER(n_ar[v_idx]);
+          break;
+
+        case STRING_TYPE:
+          elem_sym->value = STRING(s_ar[v_idx]);
+          elem_sym->value.refcount++;
+          break;
+
+        case MAP_TYPE:
+          elem_sym->value = MAP(m_ar[v_idx]);
+          elem_sym->value.refcount++;
+          break;
+
+        case ARRAY_TYPE:
+          elem_sym->value = ARRAY(a_ar[v_idx]);
+          elem_sym->value.refcount++;
+          break;
+      }
+
       this->curState |= LOOP_STATE;
       err = la_parse_string (this, body_str);
       this->curState &= ~LOOP_STATE;
+
+      elem_sym->value = NULL_VALUE;
 
       if (err is LA_ERR_BREAK) {
         goto theend;
@@ -5872,7 +5990,10 @@ static int la_parse_foreach (la_t *this) {
   } else {
     int args = 1;
     ptr = ident;
-    while (*ptr and *ptr isnot LA_TOKEN_COMMA) ptr++;
+    while (*ptr and *ptr isnot LA_TOKEN_COMMA) {
+      ptr++;
+    }
+
     if (*ptr is LA_TOKEN_COMMA)
       args = 3;
 
@@ -5881,6 +6002,9 @@ static int la_parse_foreach (la_t *this) {
     size_t orig_len = len;
     while (is_space (ident[len-1])) len--;
     ifnot (len) return this->syntax_error (this, "empty identifier");
+
+    if (len >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
 
     char ci[len + 1];
     Cstring.cp (ci, len + 1, ident, len);
@@ -5899,6 +6023,9 @@ static int la_parse_foreach (la_t *this) {
 
       ifnot (len) return this->syntax_error (this, "empty identifier");
 
+      if (len >= MAXLEN_SYMBOL)
+        return this->syntax_error (this, "identifier exceeded maximum length");
+
       char s[len + 1];
       Cstring.cp (s, len + 1, ident + orig_len, len);
 
@@ -5906,8 +6033,13 @@ static int la_parse_foreach (la_t *this) {
       ptr++; orig_len++;
       while (*ptr and is_space (*ptr)) { ptr++, orig_len++; }
       len = 0;
-      while (*ptr) { ptr++; len++; }
+      while (*ptr) {
+        ptr++; len++;
+       }
       ifnot (len) return this->syntax_error (this, "empty identifier");
+
+      if (len >= MAXLEN_SYMBOL)
+        return this->syntax_error (this, "identifier exceeded maximum length");
 
       char w[len + 1];
       Cstring.cp (w, len + 1, ident + orig_len, len);
@@ -7738,6 +7870,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             this->objectState &= ~OBJECT_APPEND;
             String.append_with_len (x_str, y_str->bytes, y_str->num_bytes);
             result = STRING(x_str);
+            result.refcount = x.refcount;
           } else {
             string *new = String.new_with_len (x_str->bytes, x_str->num_bytes);
             String.append_with_len (new, y_str->bytes, y_str->num_bytes);
@@ -7795,6 +7928,8 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
           }
 
           result = STRING(new);
+          if (new is x_str)
+            result.refcount = x.refcount;
           goto theend;
         }
         goto theend;

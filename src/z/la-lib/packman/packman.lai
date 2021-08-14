@@ -378,21 +378,21 @@ public
     }
 
     loop (1) {
-      for |i| in this.spec.build {
+      for |action| in this.spec.build {
         if (this.verbose is true) {
-          ifnot (null is this.spec.build[i].msg) {
-            println (this.spec.build[i].msg)
+          ifnot (null is action.msg) {
+            println (action.msg)
           }
         }
 
-        if (this.spec.build[i].type is null or
-            this.spec.build[i].type < 0 or
-            this.spec.build[i].type > LAST_TYPE) {
+        if (action.type is null or
+            action.type < 0 or
+            action.type > LAST_TYPE) {
           println (stderr, "the spec build type, hasn't been set properly")
           break 2
         }
 
-        if (this.spec.build[i].type is PACKMAN_BUILD_EXTRACT) {
+        if (action.type is PACKMAN_BUILD_EXTRACT) {
           if (notok is this.extract ()) {
             break 2
           }
@@ -401,7 +401,7 @@ public
             break 2
           }
 
-        } else if (this.spec.build[i].type is PACKMAN_BUILD_COPY) {
+        } else if (action.type is PACKMAN_BUILD_COPY) {
           if (notok is this.copy_sources ()) {
             break 2
           }
@@ -411,11 +411,11 @@ public
           }
         }
 
-        if (this.spec.build[i].command is null) {
+        if (action.command is null) {
           continue
         }
 
-        var com = format ("${%s, format (this.spec.build[i].command)}")
+        var com = format ("${%s, format (action.command)}")
         if (this.sh:exec (com) isnot ok) {
           println (stderr, "error while executing command: ${%s, com}")
           break 2

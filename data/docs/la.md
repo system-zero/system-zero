@@ -437,12 +437,22 @@ concepts.
   be negative.  Array indices are starting from zero, and -1 denotes the
   last item in the array.
 
-  A special form of the `for` loop, can be used as an array iterator:
+  Two special forms of the `for` loop, can be used as array iterators:
 
-    for |i| in array { block }
+    first form:
 
-    In this case 'i' holds the index of the array, and which initially starts
-    from zero.
+      for |elem| in array { block }
+
+      In this case 'elem' holds the value of each array elememt.
+
+    second form:
+
+      for |i, elem| in array { block }
+
+      In this case 'i' holds the index of the array, and which initially starts
+      from zero.
+      This form is being used when both the index and the corresponded element
+      are needed inside the block.
 
 # Maps. This is the only container type in the language, and which associates (maps)
   a "key" with a "value". This is a hybrid type, similar to associative arrays

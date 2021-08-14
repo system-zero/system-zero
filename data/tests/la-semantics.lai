@@ -262,18 +262,18 @@ func semantics () {
   var bar = [4, 5, 6]
   var car = [7, 8, 9]
 
-  for |i| in aar {
-    for |j| in bar {
-      for |k| in car {
-        tsum += car[k]
-        if (k is 1) { break 1 }
+  for |v| in aar {
+    for |i, va| in bar {
+      for |ii, vaa| in car {
+        tsum += vaa
+        if (ii is 1) { break 1 }
       }
 
-      tsum += bar[j]
-      if (j is 1) { break 1 }
+      tsum += va
+      if (i is 1) { break 1 }
     }
 
-    tsum += aar[i]
+    tsum += v
   }
 
   var first_sum = tsum
@@ -281,53 +281,53 @@ func semantics () {
 
   tsum = 0
 
-  for |i| in aar {
-    for |j| in bar {
-      for |k| in car {
-        tsum += car[k]
-        if (k is 2) { break 3 }
+  for |v| in aar {
+    for |i, j| in bar {
+      for |ii, k| in car {
+        tsum += k
+        if (ii is 2) { break 3 }
       }
 
-      tsum += bar[j]
-      if (j is 1) { break 2 }
+      tsum += j
+      if (i is 1) { break 2 }
     }
 
-    tsum += aar[i]
+    tsum += v
   }
 
   var second_sum = tsum
   var second_sum_should_be = 24
 
-  for |i| in aar {
-    for |j| in bar {
-      for |k| in car {
-        tsum += car[k]
-        if (k is 1) { break 1 }
+  for |v| in aar {
+    for |i, j| in bar {
+      for |ii, k| in car {
+        tsum += k
+        if (ii is 1) { break 1 }
       }
 
-      tsum += bar[j]
-      if (j is 1) { break 2 }
+      tsum += j
+      if (i is 1) { break 2 }
     }
 
-    tsum += aar[i]
+    tsum += v
   }
 
   var third_sum = tsum
   var third_sum_should_be = 63
 
   tsum = 0
-  for |i| in aar {
-    for |j| in bar {
-      for |k| in car {
-        tsum += car[k]
-        if (k is 1) { break 2 }
+  for |v| in aar {
+    for |i, j| in bar {
+      for |ii, k| in car {
+        tsum += k
+        if (ii is 1) { break 2 }
       }
 
-      tsum += bar[j]
-      if (j is 1) { break 2 }
+      tsum += j
+      if (i is 1) { break 2 }
     }
 
-    tsum += aar[i]
+    tsum += v
   }
 
   var fourth_sum = tsum
@@ -522,12 +522,12 @@ func semantics () {
       for |i| in this.ara {
         for |j| in this.arb {
           for |k| in this.arc {
-            if (this.ara[i] is 3 or
-                this.arb[j] is 3 or
-                this.arc[k] is 3) {
+            if (i is 3 or
+                j is 3 or
+                k is 3) {
               continue
             }
-            this.res += (this.ara[i] + this.arb[j] + this.arc[k])
+            this.res += (i + j + k)
           }
         }
       }
@@ -1295,36 +1295,36 @@ func semantics () {
     var ara = [1, 2, 3, 4, 5, 6]
 
     var sum_a = 0
-    for |i| in ara {
-      sum_a += ara[i]
+    for |v| in ara {
+      sum_a += v
     }
 
     var sum_b = 0
-    for |i| in ara {
-      sum_b += ara[i]
+    for |i, v| in ara {
+      sum_b += v
       i += 1
     }
 
     var str_ar = ["1", "2", "3", "4", "5", "6"]
     var str_a = ""
 
-    for |i| in str_ar {
-      str_a += str_ar[i]
+    for |v| in str_ar {
+      str_a += v
     }
 
     var array[1] x
     x[0] = [1, 2, 3]
     var sum_c = 0
-    for |i| in x[0] {
-      sum_c += x[0][i]
+    for |v| in x[0] {
+      sum_c += v
     }
 
     var mm = {
       "ar" : [1, 2, 3]
     }
     var sum_d = 0
-    for |i| in mm.ar {
-      sum_d += mm.ar[i]
+    for |v| in mm.ar {
+      sum_d += v
     }
 
     assert_true ("testing array iteration",
@@ -1454,12 +1454,12 @@ func semantics () {
     mmm.ar[0:] = [1, 2, 3]
     var sum_a = 0
 
-    for |i| in mmm.ar {
-      sum_a += mmm.ar[i]
+    for |v| in mmm.ar {
+      sum_a += v
     }
 
-    for |i| in mmm.ara {
-      sum_a += mmm.ara[i]
+    for |v| in mmm.ara {
+      sum_a += v
     }
 
     assert_true ("testing map iteration", sum is 33 and sum_a is 21)
