@@ -509,6 +509,17 @@ concepts.
     Members can be attributed as `private` only at the construction time,
     not even within the members at runtime.
 
+  When the name of the key is not known and it is constructed at runtime,
+  a dollar ('$') expression can be used:
+
+    var v = mm.$("new")
+    var keyname = "new"
+    mm.$(keyname) += 1
+
+    If it wasn't for that, a standard function had to be used and in the
+    last statement two C function calls, one to get the variable value and
+    one to set the value. Plus it would be much more verbose.
+
   A special form of the `for` loop, can be used as an iterator that can
   loop over Maps:
 

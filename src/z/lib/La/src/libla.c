@@ -85,7 +85,7 @@
 #define LA_EXTENSION       "lai"
 #define LA_STRING_NS       "__string__"
 
-#define STRING_LITERAL_ARG_STATE      (1 << 0)
+#define MALLOCED_STRING_STATE      (1 << 0)
 #define LOOP_STATE                    (1 << 1)
 #define LITERAL_STRING_STATE          (1 << 2)
 #define FUNC_CALL_RESULT_IS_MMT       (1 << 3)
@@ -192,6 +192,7 @@
 #define LA_TOKEN_COMMA      ','
 #define LA_TOKEN_BAR        '|'
 #define LA_TOKEN_COMMENT    '#'
+#define LA_TOKEN_DOLLAR     '$'
 #define LA_TOKEN_UNARY      '~'
 #define LA_TOKEN_DQUOTE     '"'
 #define LA_TOKEN_SQUOTE     '\''
@@ -1124,9 +1125,9 @@ static int la_parse_format (la_t *this, VALUE *vp) {
     la_unget_char (this);
     c = la_next_token (this);
     VALUE v;
-    this->curState |= STRING_LITERAL_ARG_STATE;
+    this->curState |= MALLOCED_STRING_STATE;
     err = la_parse_expr (this, &v);
-    this->curState &= ~STRING_LITERAL_ARG_STATE;
+    this->curState &= ~MALLOCED_STRING_STATE;
     if (err isnot LA_OK)
       return err;
 
@@ -1533,8 +1534,8 @@ static int la_do_next_token (la_t *this, int israw) {
     token = LA_TOKEN_INTEGER;
   else if (is_operator (c))
     token = LA_TOKEN_OPERATOR;
-  else if (c is LA_TOKEN_COLON) {
-    this->curToken = LA_TOKEN_COLON;
+  else if (c is LA_TOKEN_COLON or c is LA_TOKEN_DOLLAR) {
+    this->curToken = c;
     return c;
   }
 
@@ -1724,7 +1725,7 @@ static int la_do_next_token (la_t *this, int israw) {
       if (cc is LA_TOKEN_EOF)
         return this->syntax_error (this, "unended string, a '\"' is missing");
 
-      ifnot (this->curState & STRING_LITERAL_ARG_STATE) {
+      ifnot (this->curState & MALLOCED_STRING_STATE) {
         string *str = String.new (len + 1);
         pc = 0;
         for (size_t i = 0; i < len; i++) {
@@ -2155,10 +2156,10 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   }
 
   VALUE v;
-  this->curState |= STRING_LITERAL_ARG_STATE;
+  this->curState |= MALLOCED_STRING_STATE;
   la_next_token (this);
   err = la_parse_primary (this, &v);
-  this->curState &= ~STRING_LITERAL_ARG_STATE;
+  this->curState &= ~MALLOCED_STRING_STATE;
 
   if (err isnot LA_OK)
     return err;
@@ -2346,12 +2347,12 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
     if (idx < 0 or idx >= len or idx > last_idx)
       return la_out_of_bounds (this);
 
-    this->curState |= STRING_LITERAL_ARG_STATE;
+    this->curState |= MALLOCED_STRING_STATE;
     la_next_token (this);
 
     err = la_parse_expr (this, &val);
 
-    this->curState &= ~STRING_LITERAL_ARG_STATE;
+    this->curState &= ~MALLOCED_STRING_STATE;
 
     if (err isnot LA_OK) return err;
 
@@ -3279,9 +3280,9 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
   for (;;) {
 
-    this->curState |= STRING_LITERAL_ARG_STATE;
+    this->curState |= MALLOCED_STRING_STATE;
     c = err = la_next_token (this);
-    this->curState &= ~STRING_LITERAL_ARG_STATE;
+    this->curState &= ~MALLOCED_STRING_STATE;
 
     if (c is LA_TOKEN_EOF) break;
 
@@ -3365,13 +3366,38 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   this->objectState |= IDENT_LEAD_CHAR_CAN_BE_DIGIT;
   c = err = la_next_raw_token (this);
   this->objectState &= ~IDENT_LEAD_CHAR_CAN_BE_DIGIT;
-  if (err < LA_OK)
-    return err;
+  if (err < LA_OK) return err;
 
-  if (c isnot LA_TOKEN_SYMBOL)
-    return this->syntax_error (this, "not a symbol");
+  char key[MAXLEN_SYMBOL + 1];
 
-  char *key = map_key (this, this->curStrToken);
+  if (c is LA_TOKEN_DOLLAR) {
+    VALUE save_map = this->tokenValue;
+    VALUE v_key;
+
+    this->curState |= MALLOCED_STRING_STATE;
+    la_next_token (this);
+    err = la_parse_expr (this, &v_key);
+    this->curState &= ~MALLOCED_STRING_STATE;
+    if (err isnot LA_OK) return err;
+
+    if (v_key.type isnot STRING_TYPE)
+      return this->syntax_error (this, "map set, awaiting a string as a key");
+
+    string *s_key = AS_STRING(v_key);
+    if (s_key->num_bytes >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
+
+    Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
+
+    this->tokenValue = save_map;
+    la_unget_char (this);
+
+  } else if (c is LA_TOKEN_SYMBOL) {
+    Cstring.cp (key, MAXLEN_SYMBOL + 1,
+        la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
+
+  } else
+    return this->syntax_error (this, "map get, awaiting a symbol");
 
   VALUE mapv = this->tokenValue;
   Vmap_t *map = AS_MAP(mapv);
@@ -3533,14 +3559,34 @@ static int la_parse_map_set (la_t *this) {
   if (err < LA_OK)
     return err;
 
-  if (c isnot LA_TOKEN_SYMBOL)
-    return err;
-
   char key[MAXLEN_SYMBOL + 1];
-  Cstring.cp (key, MAXLEN_SYMBOL + 1,
-      la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
 
-  c = la_next_token (this);
+  if (c is LA_TOKEN_DOLLAR) {
+    VALUE v_key;
+    this->curState |= MALLOCED_STRING_STATE;
+    la_next_token (this);
+    err = la_parse_expr (this, &v_key);
+    this->curState &= ~MALLOCED_STRING_STATE;
+    if (err isnot LA_OK) return err;
+
+    if (v_key.type isnot STRING_TYPE)
+      return this->syntax_error (this, "map set, awaiting a string as a key");
+
+    string *s_key = AS_STRING(v_key);
+    if (s_key->num_bytes >= MAXLEN_SYMBOL)
+      return this->syntax_error (this, "identifier exceeded maximum length");
+
+    Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
+
+    c = this->curToken;
+
+  } else if (c is LA_TOKEN_SYMBOL) {
+    Cstring.cp (key, MAXLEN_SYMBOL + 1,
+        la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
+    c = la_next_token (this);
+
+  } else
+    return this->syntax_error (this, "map set, awaiting a symbol");
 
   VALUE *v;
 
@@ -3723,7 +3769,7 @@ static int la_parse_expr_list (la_t *this) {
   VALUE v;
 
   do {
-    this->curState |= STRING_LITERAL_ARG_STATE;
+    this->curState |= MALLOCED_STRING_STATE;
     this->funcState |= EXPR_LIST_STATE;
     err = la_parse_expr (this, &v);
     this->funcState &= ~EXPR_LIST_STATE;
@@ -3742,7 +3788,7 @@ static int la_parse_expr_list (la_t *this) {
     c = this->curToken;
 
     if (c is LA_TOKEN_COMMA) {
-      this->curState |= STRING_LITERAL_ARG_STATE;
+      this->curState |= MALLOCED_STRING_STATE;
       la_next_token (this);
     }
   } while (c is LA_TOKEN_COMMA);
@@ -3914,7 +3960,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   int is_method = this->funcState & MAP_METHOD_STATE;
   this->funcState &= ~MAP_METHOD_STATE;
 
-  this->curState |= STRING_LITERAL_ARG_STATE;
+  this->curState |= MALLOCED_STRING_STATE;
   c = la_next_token (this);
 
   if (c isnot LA_TOKEN_PAREN_CLOS) {
@@ -3928,7 +3974,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     this->argCount = 0;
   }
 
-  this->curState &= ~(STRING_LITERAL_ARG_STATE);
+  this->curState &= ~(MALLOCED_STRING_STATE);
 
   if (c isnot LA_TOKEN_PAREN_CLOS)
     return this->syntax_error (this, "expected closed parentheses");
@@ -4989,7 +5035,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 
     OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
 
-    this->curState |= STRING_LITERAL_ARG_STATE;
+    this->curState |= MALLOCED_STRING_STATE;
     c = la_next_token (this);
 
     err = la_parse_primary (this, &rhs);
@@ -5049,7 +5095,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     this->curState &= ~LITERAL_STRING_STATE;
   } while ((c & 0xff) is LA_TOKEN_BINOP);
 
-  this->curState &= ~(STRING_LITERAL_ARG_STATE|LITERAL_STRING_STATE);
+  this->curState &= ~(MALLOCED_STRING_STATE|LITERAL_STRING_STATE);
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|OBJECT_APPEND|LHS_STRING_RELEASED|RHS_STRING_RELEASED);
 
   *vp = lhs;
@@ -5097,13 +5143,13 @@ static int la_consume_ifelse (la_t *this) {
 static int la_parse_if (la_t *this) {
   int token = this->curToken;
 
-  this->curState |= STRING_LITERAL_ARG_STATE;
+  this->curState |= MALLOCED_STRING_STATE;
   int c = la_next_token (this);
 
   VALUE cond;
 
   int err = la_parse_expr (this, &cond);
-  this->curState &= ~STRING_LITERAL_ARG_STATE;
+  this->curState &= ~MALLOCED_STRING_STATE;
 
   if (err isnot LA_OK) return err;
 
@@ -7050,9 +7096,9 @@ static int la_parse_print (la_t *this) {
     la_unget_char (this);
     c = la_next_token (this);
 
-    this->curState |= STRING_LITERAL_ARG_STATE;
+    this->curState |= MALLOCED_STRING_STATE;
     err = la_parse_expr (this, &v);
-    this->curState &= ~STRING_LITERAL_ARG_STATE;
+    this->curState &= ~MALLOCED_STRING_STATE;
 
     check_expr:
     if (err isnot LA_OK) {
@@ -7061,23 +7107,37 @@ static int la_parse_print (la_t *this) {
       goto theend;
     }
 
-    if (v.type is STRING_TYPE) {
-      string *vs = AS_STRING(v);
+    switch (v.type) {
+      case STRING_TYPE: {
+          string *vs = AS_STRING(v);
 
-      ifnot (is_add_operation)
-        String.append_with_len (str, vs->bytes, vs->num_bytes);
-      else
-        String.replace_with_len (str, vs->bytes, vs->num_bytes);
+          ifnot (is_add_operation)
+            String.append_with_len (str, vs->bytes, vs->num_bytes);
+          else
+            String.replace_with_len (str, vs->bytes, vs->num_bytes);
 
-      ifnot (this->objectState & RHS_STRING_RELEASED)
-        if (v.sym is NULL and
-            v.refcount isnot MALLOCED_STRING and
-            0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
-          String.release (vs);
+          ifnot (this->objectState & RHS_STRING_RELEASED)
+            if (v.sym is NULL and
+                v.refcount isnot MALLOCED_STRING and
+                0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
+              String.release (vs);
 
-      c =this->curToken;
+          this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
-      goto print_str;
+          c =this->curToken;
+        }
+
+        goto print_str;
+
+      case INTEGER_TYPE:
+        String.append_with_fmt (str, "%d", AS_INT(v));
+        c = this->curToken;
+        goto print_str;
+
+      case NUMBER_TYPE:
+        String.append_with_fmt (str, "%f", AS_NUMBER(v));
+        c = this->curToken;
+        goto print_str;
     }
 
     if (v.type isnot OBJECT_TYPE) {
@@ -7095,16 +7155,9 @@ static int la_parse_print (la_t *this) {
       la_unget_char (this);
       c = la_next_token (this);
       err = la_parse_expr (this, &v);
-      if (err isnot LA_OK or v.type isnot STRING_TYPE) {
-        this->print_bytes (this->err_fp, "print string error, awaiting a string value\n");
-        la_err_ptr (this, LA_NOTOK);
-        goto theend;
-      }
-
-      string *vs = AS_STRING(v);
-      String.append_with_len (str, vs->bytes, vs->num_bytes);
-      c = this->curToken;
-      goto print_str;
+      if (err isnot LA_OK)
+        return err;
+      goto check_expr;
     }
   }
 
@@ -7130,16 +7183,16 @@ print_str:
         v = STRING(str);
         if (v.refcount > -1)
           v.refcount++;
-        this->curState |= STRING_LITERAL_ARG_STATE;
+        this->curState |= MALLOCED_STRING_STATE;
         err = la_parse_expr_level (this, MAX_EXPR_LEVEL, &v);
         if (v.refcount > -1)
           v.refcount--;
-        this->curState &= ~STRING_LITERAL_ARG_STATE;
+        this->curState &= ~MALLOCED_STRING_STATE;
         goto check_expr;
       }
     }
 
-    this->print_bytes (this->err_fp, "string fmt error, awaiting )\n");
+    this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting ) found %c\n", c);
     la_err_ptr (this, LA_NOTOK);
     err = LA_ERR_SYNTAX;
     goto theend;

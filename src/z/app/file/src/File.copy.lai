@@ -12,7 +12,7 @@ argparse.add ("preserve", 'p', "preserve", "preserve mode, ownership and timesta
 argparse.add ("recursive", 'R', "recursive", "copy recursively", BooleanType, 0)
 argparse.add ("follow_lnk", 'L', "dereference", "follow symbolic links in source", BooleanType, 0)
 argparse.add ("interactive", 'i', "interactive", "prompt before overwrite", BooleanType, 0)
-argparse.add ("verbose", 'v', "verbose=", "be verbose", IntegerType, ARG_VALUE_OPTIONAL)
+argparse.add ("verbose", 'v', "verbose=", "be verbose", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 ifnot (ok is argparse.process (__argv, 1)) {

@@ -8,6 +8,7 @@ const ARGPARSE_SHORT_H_ISNOT_HELP           = 1 << 3
 const ARG_VALUE_REQUIRED  = 1 << 0
 const ARG_VALUE_OPTIONAL  = 1 << 1
 const ARG_VALUE_NO_DASH   = 1 << 2
+const ARG_VALUE_APPEND    = 1 << 3
 
 Type Argparse {
 private
@@ -76,8 +77,15 @@ private
           var as = this.as[j]
           var flags = this.flags[j]
 
+          if (type is IntegerType and flags & ARG_VALUE_APPEND) {
+            this.results.$(as) += 1
+            # or more verbose
+            # Map.set (this.results, as, this.results: get (as) + 1);
+            break
+          }
+
           if (type is BooleanType) {
-            Map.set (this.results, as, true)
+            this.results.$(as) = true
           } else {
             if (flags & (ARG_VALUE_REQUIRED|ARG_VALUE_OPTIONAL)) {
               if (this.curidx is this.input_argc - 1 or
@@ -93,9 +101,9 @@ private
                 }
 
                 if (type is IntegerType or type is BooleanType) {
-                  Map.set (this.results, as, true)
+                  this.results.$(as) = true
                 } else if (type is StringType) {
-                  Map.set (this.results, as, "")
+                  this.results.$(as) = ""
                 }
                 break
               }
@@ -103,18 +111,20 @@ private
 
             this.curidx += 1
             if (type is IntegerType) {
-               Map.set (this.results, as, String.to_integer (this.input_argv[this.curidx]))
+              this.results.$(as) = this.input_argv[this.curidx]: to_integer ()
             } else if (type is StringType) {
-               Map.set (this.results, as, this.input_argv[this.curidx])
+              this.results.$(as) = this.input_argv[this.curidx]
             }
           }
 
           break
         }
+      }
 
+      if (retval is false) {
         if (this.exit_on_unknown) {
           if (this.verbose) {
-            println ("${%s, String.character (c)}: unknown argument")
+            println ("-${%s, c: string_character ()}: unknown argument")
             this.print_description ()
           }
 
@@ -137,10 +147,10 @@ private
 
     var found = false
     for |j, opt| in this.longopts {
-      if (null isnot opt and len (opt)) {
+      if (null isnot opt and opt: len ()) {
         var long = "--" + opt
-        var long_len = len (long)
-        if (String.eq_n (long, arg, long_len)) {
+        var long_len = long: len ()
+        if (long: eq_n (arg, long_len)) {
           found = true
           var type = this.types[j]
           var as = this.as[j]
@@ -148,9 +158,9 @@ private
 
           ifnot (flags) {
             if (type is IntegerType or type is BooleanType) {
-              Map.set (this.results, as, true)
+              this.results.$(as) = true
             } else if (type is StringType) {
-              Map.set (this.results, as, "")
+              this.results.$(as) = ""
             }
 
             return true
@@ -171,25 +181,25 @@ private
                 }
 
                 if (type is IntegerType or type is BooleanType) {
-                  Map.set (this.results, as, true)
+                  this.results.$(as) = true
                 } else if (type is StringType) {
-                  Map.set (this.results, as, "")
+                  this.results.$(as) = ""
                 }
 
                 return true
               } else {
                 this.curidx += 1
                 if (type is IntegerType) {
-                  Map.set (this.results, as, String.to_integer (this.input_argv[this.curidx]))
+                  this.results.$(as) = this.input_argv[this.curidx]: to_integer ()
                 } else if (type is BooleanType) {
-                  var b = String.to_integer (this.input_argv[this.curidx])
+                  var b = this.input_argv[this.curidx]: to_integer ()
                   if (b < 0 or b > 1) {
                     b = false
                   }
 
-                  Map.set (this.results, as, b)
+                  this.results.$(as) = b
                 } else if (type is StringType) {
-                  Map.set (this.results, as, this.input_argv[this.curidx])
+                  this.results.$(as) = this.input_argv[this.curidx]
                 }
 
                 return true
@@ -199,10 +209,11 @@ private
             return true
           }
 
-          var optval = String.byte_in_str (arg, '=')
-          var vallen = len (optval)
+          var optval = arg: byte_in_str ('=')
+          var vallen = optval: len ()
+
           String.advance (optval, 1);
-          if (vallen is len (optval)) {
+          if (vallen is optval: len ()) {
             if (flags & ARG_VALUE_REQUIRED) {
               if (this.verbose is true) {
                 println (stderr, "error ${%s, arg) argument requires a value")
@@ -213,25 +224,27 @@ private
               return notok
 
             } else if (type is BooleanType or type is IntegerType) {
-              Map.set (this.results, as, true)
+              this.results.$(as) = true
             } else if (type is StringType) {
-              Map.set (this.results, as, "")
+              this.results.$(as) = ""
             }
 
             return true
           }
 
           if (type is BooleanType) {
-            var val = String.to_integer (optval);
+            var val = optval: to_integer ();
             if (val isnot false) {
               val = true
             }
-            Map.set (this.results, as, val)
+            this.results.$(as) = val
+
           } else if (type is IntegerType) {
-            Map.set (this.results, as, String.to_integer (optval))
+            this.results.$(as) = opts: to_integer ()
           } else if (type is StringType) {
-            Map.set (this.results, as, optval)
+            this.results.$(as) = optval
           }
+
           break
         }
       }
@@ -257,13 +270,13 @@ public
     this.descr[this.idx]     = descr
 
     if (type is IntegerType or type is BooleanType) {
-      Map.set (this.results, as, false)
+      this.results.$(as) = false
     } else {
-      Map.set (this.results, as, null)
+      this.results.$(as) = null
     }
 
     ifnot (null is long) {
-      var llen = len (long)
+      var llen = long: len ()
       if (llen > this.maxlen) {
         this.maxlen = llen
       }
@@ -272,7 +285,7 @@ public
 
   "print_description" : func {
     var msg = format ("Usage: ${%s, this.message} \n\n")
-    var arlen = len (this.shortopts)
+    var arlen = this.shortopts: len ()
 
     for (var i = 0; i < arlen; i += 1) {
       var slen = 0
@@ -286,7 +299,7 @@ public
       var is_long = 0
       var llen = 0
       if (null isnot this.longopts[i]) {
-        llen = len (this.longopts[i])
+        llen = this.longopts[i]: len ()
         if (llen) {
           is_long = 1
           if (is_short) {
@@ -313,7 +326,7 @@ public
       msg += "  " + this.descr[i] + "\n"
     }
 
-    println ("${%s, msg}")
+    println (msg)
   }
 
   "process" : func (argv, start) {

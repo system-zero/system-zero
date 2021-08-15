@@ -1526,6 +1526,28 @@ func semantics () {
     override mmma.f = t
 
     assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
+
+    var dmap = {"key" : 1, "submap" : {"skey" : 2}}
+    var new = "new"
+    var submp = "submap"
+    dmap.$("new") = 10
+    var fval = dmap.$(new)
+    dmap.$(new) += 10
+    var sval = dmap.$("new")
+    var tval = dmap.$("key")
+    var eval = dmap.$(submp).$("skey")
+    dmap.$("submap").$("skey") += 20
+    var nval = dmap.$("submap").$("skey")
+    dmap.$("submap").$("new") = 48
+    var lval = dmap.$(submp).$(new)
+
+    assert_true ("testind map operations [set/get] with dollar expressions",
+        fval is 10 and
+        sval is 20 and
+        tval is 1 and
+        eval is 2 and
+        nval is 22 and
+        lval is 48)
   }
 
   test_maps ()
