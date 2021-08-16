@@ -70,7 +70,7 @@ private
       retval = false
       for |j, opt| in this.shortopts {
         if (opt) {
-          if (c isnot opt) { continue }
+          continue if (c isnot opt)
 
           retval = true
           var type = this.types[j]
@@ -312,9 +312,7 @@ public
         }
       }
 
-      ifnot (is_short + is_long) {
-        continue
-      }
+      continue ifnot (is_short + is_long)
 
       var first = this.maxlen + 5
       var num_spaces = first - (llen + slen)
@@ -339,7 +337,7 @@ public
     var retval = false
 
     for (this.curidx = 0; this.curidx < argc; this.curidx += 1) {
-      if (this.curidx < start) { continue }
+      continue if (this.curidx < start)
 
       var arg = argv[this.curidx]
 

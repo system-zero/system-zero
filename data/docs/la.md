@@ -8,10 +8,6 @@ incorporate the very minimum significant datatypes (strings, arrays, maps
 (dictionaries which can be used to implement object oriented techniques),
 with an obvious syntax and easy to get it in minutes.
 
-The following is an early draft, but looks quite close to the final reference,
-but with a couple of exceptions, restrictions and unhandled cases that would
-be good to have.
-
 There is a reference implementation, that should obey the syntax and semantics,
 that is owe to pass all the tests, except some expected to fail ones, notably
 operations on doubles, where an expertise is missing and neither exists the
@@ -19,7 +15,7 @@ desirable will to gain this knowledge. This can wait, as and as an author, I
 never had to use the type, except in some quite basic calculations and these
 few.
 
-The reference interpreter is being used in two cases internally in this system.
+The referent interpreter is being used in two cases internally in this system.
 This is to support saving and restore editor sessions and virtual window managment
 sessions, which by alone already is precious. It is being used also to implement
 commands.
@@ -33,6 +29,11 @@ It is written for C and follows C where it makes sense, and had been influenced
 a lot by the S-Lang programming language, which is quite like C. However, it
 provides mechanisms for object oriented techniques, and also some functional
 concepts.
+
+It aims to readability and expressiveness, while follows established syntax
+and semantics.
+
+The following is an early draft, but looks quite close to the final reference.
 
 ## Syntax and Semantics
 ```js
@@ -71,7 +72,7 @@ concepts.
 
 # Code blocks are delimited with braces '{}', and are mandatory.
 
-# statements are separated with a semicolon or with a new line character,
+# Statements are separated with a semicolon or with a new line character,
   and they can spawn to multiply lines based on the context. Note that it
   is allowed for multiply statements in a single line, and are separated
   based on the context, though there might be unhandled cases, like:
@@ -99,62 +100,131 @@ concepts.
 
   ifnot (condition) { ... }
 
-# both can get an `else` clause, that is evaluated when the prior conditional
-  block hasn't been executed
+  Both can get an `else` clause, that is evaluated when the prior conditional
+  block hasn't been executed.
 
-# both can be extended with an `else if[not]` conditional block:
+  Both can be extended with an `else if[not]` conditional block:
 
-   } else if (condition) { block }
+    } else if (condition) { block }
 
- or
+  or
 
-   } else ifnot (condition) { block }
+    } else ifnot (condition) { block }
 
- if the prior conditional expression evaluated to zero
+  if the prior conditional expression evaluated to zero.
 
 # Loops:
 
-# `while` loop
+  while loop (same semantics with C):
 
-  while (condition) { block }
+    while (condition) { block }
 
-# `for` loop (same semantics with C)
+  for loop (same semantics with C):
 
-  for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
+    for (init_statement[[s], ...]; cond ; ctrl_statement[[s], ...]) { block }
 
   Special forms of the `for` loop that work as an iterator, can be found to
   their specific datatype section.
 
-# `loop` loop (loop for nth times)
+  loop loop (loop for nth times):
 
-  loop (num iterations) { block }
+    loop (num iterations) { block }
 
-# alternatively
+  alternatively
 
-  loop (init_statement[[s], ...]; num iterations) { block }
+    loop (init_statement[[s], ...]; num iterations) { block }
 
-# `forever` loop (like a for (;;) or while (true) in C)
+  forever loop (like a for (;;) or while (true) in C):
 
-  forever { block }
+    forever { block }
 
-# alternatively
+  alternatively
 
-  forever (init_statement[[s], ...]) { block }
+    forever (init_statement[[s], ...]) { block }
 
-# `do/while` loop (same semantics with C)
+  do/while loop (same semantics with C):
 
-  do { block } while (condition)
+    do { block } while (condition)
 
-# a `continue` statement continues with the next iteration
+  A continue statement into a body of a loop, continues with the next iteration.
 
-# a `break` statement returns control to an outter scope, of the current loop
+    for (var i = 1; i < 10; i += 1) {
+      if (i is 5) {
+        continue
+      }
+      ...
+    }
+
+  A break statement returns control to an outter scope, of the current loop
   state. This by default is one (the current one) loop level. However it can be
   set explicitly (with a given `count` that follows the statement), to break to
-  `count` outer loop levels. If the given `count` is greater than the existing
-  loop level, a syntax error is raised.
+  `count` outer loop levels.
 
-  Likewise if a `continue` or a `break` is a statement that is not into a loop
-  state, a syntax error is raised.
+    for (var i = 1; i < 10; i += 1) {
+      if (i is 5) {
+        break
+      }
+      ...
+    }
+
+  or
+    for (var i = 1; i < 10; i += 1) {
+      for (var j = 0; j < 100; j += 1) {
+        if (j is 5) {
+          break 2
+        }
+      }
+    }
+
+    this will pass control to the first loop level. In other words "break"
+    and "break 1" is synonymous.
+
+    If the given `count` is greater than the existing loop level, a syntax error
+    is raised. Maximum `count` is 9.
+
+  If a `continue` or a `break`, is a statement that is not into a loop state,
+  then a syntax error is raised.
+
+  However both can be expressed in a boolean context. That means that they get
+  executed only if the condition is true:
+
+    for (var i = 1; i < 10; i += 1) {
+      break if (i is 5)
+    }
+
+  or
+
+    for (var i = 1; i < 10; i += 1) {
+      continue ifnot (i is 5)
+    }
+
+  In absence of a known term, as this is unique (from what I know), we can
+  describe this concept as a "Boolean single statement" or something like this.
+
+  It accepts only a single expression to evaluate, and it doesn't accepts clauses.
+  It works both for `if` and `ifnot`.
+
+  Finally, it has to be seen the same way as an `else if`, so an `if` or an
+  `ifnot`, should follow `break` or `continue` to the same line.
+
+  (notes: that this should execute faster, than with an equivalent traditional
+     way and order. That is because the inner implementation, as an `if[not]`
+     conditional, creates a function state everytime it is called, as it has
+     to manage symbols scope, so it has to allocate and deallocate memory,
+     plus it has to parse the code with a way that can interpret correctly
+     `else if` and|or `else` clauses, and this is costly. In contrast only
+     a single evaluation taking place, as there is no expectation for other
+     options to look forward.
+
+     Also note that it is believed that this is a more natural mind flow,
+     as you might feel it (albeit with some bits of attention), when you
+     will try to spell it, either loudly or in your mind.
+     Here I'm feeling that I'm pulling something (air), or is like pushing
+     back a thought, that seems that it is holding back than to continue
+     with the flow, even for a negligible fraction of time) when I say:
+
+       "if condition then break" in contrast with "break if condition"
+  )
 
 # Constant types (those types can not be reassigned)
 
@@ -1000,7 +1070,7 @@ concepts.
        - all of them match the function name and most of them the function arguments
          of their counterparts
 
-        - not all of them they call their equivalants
+        - not all of them they call their equivalents
 
         - with the same consistent way, they are being used in C which writes
           this code

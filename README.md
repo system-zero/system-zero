@@ -1074,17 +1074,17 @@ To do that use:
   - an ala [vim](http://www.vim.org) [editor](data/docs/editor.md) called as:
 
      E or E-static [options] [filename[s]]
-     E --help  # for s short help
+     E --help  # for a short help
 
    sources:
-   [E  library](src/z/lib/E/src/libe.c)
-   [executable](src/z/app/e/src/E.c)
+     [E  library](src/z/lib/E/src/libe.c)
+     [executable](src/z/app/e/src/E.c)
 
    state: rather stable
 
    maybe_crashed:
      - under circumstances with a series of undo/redos
-      reproducible: a bit hard, as it doesn not happens on continuously
+      reproducible: a bit hard, as it does not happens on continuously
         undos/redos (without to change the cursor on different line between
         the two calls, and without to insert new lines).
 
@@ -1096,7 +1096,7 @@ To do that use:
        reproducible: needs some time but possible. Write some greek and make
        various moves like backspace/delete.
 
-      cause: easy (wrong calculation, when going [for|back]ward
+      cause: easy (wrong calculation, when going [for|back]ward)
 
       state: very good to fix as it is annoying, but do not have time
 
@@ -1124,7 +1124,7 @@ To do that use:
    [executable](src/z/app/v/src/v.c)
 
    state: on stabilization. Syntax and semantics are hard to change.
-   crashes: it is an ongoing work and it is quite fragile, but not
+   crashes: it is an ongoing work and it is quite fragile, but its not
      with current code
 
   - many libraries
@@ -1140,7 +1140,7 @@ To do that use:
    ....
 
   - applications:
-    state: mostly basic unix utilities, and it is really an ongoing work)
+    state: mostly basic unix utilities, and it is really an ongoing work,
       (used mostly for testing the development). Many of the usual options
       haven't been implemented.
 
@@ -1160,12 +1160,12 @@ To do that use:
 
   - an early draft of a sudo like utility
     state: audit and careful review it is required. It works for my usage and
-    I used a lot. But should be unhandled cases. It is just a proof of concept
+    I use it a lot. But should be unhandled cases. It is just a proof of concept
     mostly and written in the very first days.
 
    sources:
    [Auth Library](src/z/lib/Auth/src/libauth.c)
-   [executable]   src/app/zsu/src/zsu.c)
+   [executable](src/app/zsu/src/zsu.c)
 
    notes:
      - libpam is required
@@ -1244,6 +1244,7 @@ gained consience. Hopefully one day.
 * [Build Your Own Lisp.](https://github.com/orangeduck/BuildYourOwnLisp)
 * [A Programming Language in Javascript.](http://lisperator.net/pltut/)
 * [Linux From Scratch.](https://linuxfromscratch.org)
+* [SLang.](https://jedsoft.org/slang)
 * [Nan Boxing.](https://piotrduperas.com/posts/nan-boxing)
 * [Nan Boxing.](https://leonardschuetz.ch/blog/nan-boxing/)
 * [Simple Shell.](https://notabug.org/rain1/s/)

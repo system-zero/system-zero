@@ -4,6 +4,7 @@
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_STAT
 #define REQUIRE_SYS_TYPES
+#define REQUIRE_TERMIOS
 #define REQUIRE_FCNTL
 #define REQUIRE_TIME
 
@@ -14,6 +15,7 @@
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_OS_TYPE      DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
+#define REQUIRE_TERM_TYPE    DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_FILE_TYPE    DONOT_DECLARE
 
@@ -333,17 +335,26 @@ theend:
 }
 
 static int file_copy_on_interactive (char *file) {
-  fprintf (stdout, "copy: overwrite `%s'? y[es]/n[o]/q[uit]\n", file);
+  term_t *term = Term.new ();
+  Term.raw_mode (term);
+
+  fprintf (stdout, "copy: overwrite `%s'? y[es]/n[o]/q[uit]", file);
   fflush (stdout);
+
+  int retval = 0;
 
   while (1) {
     int c = IO.input.getkey (STDIN_FILENO);
-    if (c is 'y') return  1;
-    if (c is 'n') return  0;
-    if (c is 'q') return -1;
+    if (c is 'y') { retval =  1; break; }
+    if (c is 'n') { retval =  0; break; }
+    if (c is 'q') { retval = -1; break; }
   }
 
-  return 0;
+  Term.orig_mode (term);
+  Term.release (&term);
+  fprintf (stdout, "\n");
+  fflush (stdout);
+  return retval;
 }
 
 static int file_copy (const char *, const char *, file_copy_opts);
@@ -879,6 +890,7 @@ public file_T __init_file__ (void) {
   __INIT__ (dir);
   __INIT__ (path);
   __INIT__ (error);
+  __INIT__ (term);
   __INIT__ (string);
   __INIT__ (vstring);
   __INIT__ (cstring);

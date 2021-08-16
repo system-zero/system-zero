@@ -368,6 +368,7 @@ struct la_t {
     didExit,
     loopCount,
     breakCount,
+    continueCount,
     argCount;
 
   size_t anon_id;
@@ -4681,6 +4682,67 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
   return LA_OK;
 }
 
+static int la_parse_boolean_stmt (la_t *this, int tok) {
+  size_t len = la_StringGetLen (this->parsePtr);
+  const char *Ptr = la_StringGetPtr (this->parsePtr);
+  const char *ptr = Ptr;
+
+  while (*ptr and is_space (*ptr)) ptr++;
+
+  if (len - (ptr - Ptr) < 6) return tok;
+
+  if ('i' is *ptr and 'f' is *(++ptr)) {
+    ptr++;
+    int isspace = 0;
+    int isif = -1;
+
+    if ('(' is *ptr or (isspace = is_space (*ptr))) {
+      isif = 1;
+    } else if (len - (ptr - Ptr) > 5 and (
+      'n' is *ptr and 'o' is *(++ptr) and 't' is *(++ptr))) {
+      ptr++;
+      if ('(' is *ptr or (isspace = is_space (*ptr)))
+        isif = 0;
+    }
+
+    if (-1 is isif) return tok;
+
+    if (isspace) {
+      ptr++;
+      while (*ptr and (is_space (*ptr) or *ptr is LA_TOKEN_NL)) ptr++;
+      if (*ptr isnot LA_TOKEN_PAREN_OPEN)
+        return this->syntax_error (this, "awaiting (");
+    }
+
+    len -= ptr - Ptr;
+    this->parsePtr = la_StringNew (ptr);
+    la_StringSetLen (&this->parsePtr, len);
+    this->curState |= MALLOCED_STRING_STATE;
+    la_next_token (this);
+    VALUE v;
+
+    int err = la_parse_expr (this, &v);
+    this->curState &= ~MALLOCED_STRING_STATE;
+    if (err isnot LA_OK) return err;
+
+    if (v.type isnot INTEGER_TYPE)
+      return this->syntax_error (this, "conditional expression awaits an integer expression");
+
+    if (isif) {
+      if (AS_INT(v))
+        return tok;
+      return LA_OK;
+
+    } else {
+      ifnot (AS_INT(v))
+        return tok;
+      return LA_OK;
+    }
+  }
+
+  return tok;
+}
+
 static int la_parse_stmt (la_t *this) {
   int c;
   int prev_token = 0;
@@ -4707,36 +4769,40 @@ do_token:
 
   switch (c) {
     case LA_TOKEN_BREAK:
-      if (this->curState & LOOP_STATE) {
-        uint n = 0;
-        int num = la_peek_char_nows (this, &n);
-        if ('1' <= num and num <= '9') {
-          n++;
-          c = la_peek_nows_char_inline (this, &n);
+      ifnot (this->curState & LOOP_STATE)
+        return this->syntax_error (this, "break is not in a loop");
 
-          if (c isnot LA_TOKEN_SEMICOLON and c isnot LA_TOKEN_NL and
-              c isnot LA_TOKEN_BLOCK_CLOS and c isnot LA_TOKEN_EOF)
-            return this->syntax_error (this, "unexpected token after a break statement");
-          num -= ('0' + 1);
+      uint nth = 0;
+      int level = 0;
+      int num = la_peek_char_nows (this, &nth);
+      if ('1' <= num and num <= '9') {
+        nth++;
+        c = la_peek_nows_char_inline (this, &nth);
 
-          if (num >= this->loopCount)
-            return this->syntax_error (this, "break statement: too many loop count levels");
+        if (c isnot LA_TOKEN_SEMICOLON and c isnot LA_TOKEN_NL and
+            c isnot LA_TOKEN_BLOCK_CLOS and c isnot LA_TOKEN_EOF and
+            c isnot 'i')
+          return this->syntax_error (this, "unexpected token after a break statement");
+        num -= ('0' + 1);
 
-          this->breakCount = num;
-        } else
-          this->breakCount = 0;
+        if (num >= this->loopCount)
+          return this->syntax_error (this, "break statement: too many loop count levels");
 
-        return LA_ERR_BREAK;
+        const char *ptr = la_StringGetPtr (this->parsePtr) + 2;
+        uint len = la_StringGetLen (this->parsePtr) - 2;
+        la_StringSetPtr (&this->parsePtr, ptr);
+        la_StringSetLen (&this->parsePtr, len);
+        level = num;
       }
 
-      return this->syntax_error (this, "break is not in a loop");
+      err = la_parse_boolean_stmt (this, LA_ERR_BREAK);
+      if (err is LA_ERR_BREAK) this->breakCount = level;
+      return err;
 
     case LA_TOKEN_CONTINUE:
-      if (this->curState & LOOP_STATE) {
-        return LA_ERR_CONTINUE;
-      }
-
-      return this->syntax_error (this, "continue is not in a loop");
+      ifnot (this->curState & LOOP_STATE)
+        return this->syntax_error (this, "continue is not in a loop");
+      return la_parse_boolean_stmt (this, LA_ERR_CONTINUE);
 
     case LA_TOKEN_VARDEF:
     case LA_TOKEN_CONSTDEF: {
@@ -5405,14 +5471,12 @@ static int la_parse_while (la_t *this) {
   la_string cond_str = la_StringNewLen (cond, cond_len + 2);
 
   la_StringSetPtr (&this->parsePtr, ptr + 1);
-  la_StringSetLen (&this->parsePtr, orig_len - cond_len);
+  la_StringSetLen (&this->parsePtr, orig_len - cond_len - 1);
 
   c = la_next_token (this);
 
   if (c isnot LA_TOKEN_BLOCK)
     return this->syntax_error (this, "parsing while, not a block string");
-
-  la_get_char (this);
 
   tmp_ptr = la_StringGetPtr (this->curStrToken);
 
@@ -5442,10 +5506,7 @@ static int la_parse_while (la_t *this) {
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK) {
-      la_next_token (this);
-      goto theend;
-    }
+    if (err is LA_ERR_BREAK) goto theend;
 
     if (this->didReturn) {
       this->curState &= ~LOOP_STATE;
@@ -5477,6 +5538,8 @@ theend:
     this->curState |= LOOP_STATE;
 
   this->parsePtr = savepc;
+
+  this->curToken = LA_TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -5568,7 +5631,7 @@ static int la_parse_do (la_t *this) {
   this->curScope = fun;
 
   la_StringSetPtr (&this->parsePtr, ptr + 1);
-  la_StringSetLen (&this->parsePtr, orig_len - cond_len);
+  la_StringSetLen (&this->parsePtr, orig_len - cond_len - 1);
 
   c = la_next_token (this);
 
@@ -5580,10 +5643,7 @@ static int la_parse_do (la_t *this) {
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK) {
-      la_next_token (this);
-      goto theend;
-    }
+    if (err is LA_ERR_BREAK) goto theend;
 
     if (this->didReturn) {
       this->curState &= ~LOOP_STATE;
@@ -5624,6 +5684,8 @@ theend:
     this->curState |= LOOP_STATE;
 
   this->parsePtr = savepc;
+
+  this->curToken = LA_TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6011,9 +6073,7 @@ static int la_parse_foreach (la_t *this) {
 
       elem_sym->value = NULL_VALUE;
 
-      if (err is LA_ERR_BREAK) {
-        goto theend;
-      }
+      if (err is LA_ERR_BREAK) goto theend;
 
       if (this->didReturn) {
         this->curState &= ~LOOP_STATE;
@@ -6162,9 +6222,7 @@ static int la_parse_foreach (la_t *this) {
         err = la_parse_string (this, body_str);
         this->curState &= ~LOOP_STATE;
 
-        if (err is LA_ERR_BREAK) {
-          goto theend;
-        }
+        if (err is LA_ERR_BREAK) goto theend;
 
         if (this->didReturn) {
           this->curState &= ~LOOP_STATE;
@@ -6190,7 +6248,6 @@ theend:
   this->curScope = save_scope;
   Vmap.release (fun->block_symbols);
   fun_release (&fun);
-  this->parsePtr = savepc;
 
   this->loopCount--;
   ifnot (this->loopCount)
@@ -6198,7 +6255,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  la_next_token (this);
+  this->parsePtr = savepc;
+
+  this->curToken = LA_TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6351,10 +6410,7 @@ static int la_parse_for (la_t *this) {
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK) {
-      la_next_token (this);
-      goto theend;
-    }
+    if (err is LA_ERR_BREAK) goto theend;
 
     if (this->didReturn) {
       this->curState &= ~LOOP_STATE;
@@ -6396,6 +6452,8 @@ theend:
     this->curState |= LOOP_STATE;
 
   this->parsePtr = savepc;
+
+  this->curToken = LA_TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6504,9 +6562,7 @@ static int la_parse_loop (la_t *this) {
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK) {
-      goto theend;
-    }
+    if (err is LA_ERR_BREAK) goto theend;
 
     if (this->didReturn) {
       this->curState &= ~LOOP_STATE;
@@ -6537,8 +6593,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  this->curToken = LA_TOKEN_SEMICOLON;
   this->parsePtr = savepc;
+
+  this->curToken = LA_TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6601,10 +6658,7 @@ static int la_parse_forever (la_t *this) {
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
 
-    if (err is LA_ERR_BREAK) {
-      la_next_token (this);
-      goto theend;
-    }
+    if (err is LA_ERR_BREAK) goto theend;
 
     if (this->didReturn) {
       this->curState &= ~LOOP_STATE;
@@ -6636,6 +6690,8 @@ theend:
     this->curState |= LOOP_STATE;
 
   this->parsePtr = savepc;
+
+  this->curToken = LA_TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;

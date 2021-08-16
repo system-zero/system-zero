@@ -35,7 +35,6 @@ var qualif = {
   "verbose"     : argparse.results.verbose: when |x| x is 0 { return 1 } orelse { return x + 1 }
 }
 
-println ("${argparse.results.verbose}")
 if (argparse.argc < 2) {
   println (stderr, "${%s, prog}: missing operands")
   exit (1)
