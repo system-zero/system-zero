@@ -747,9 +747,10 @@ char *lai_shebangs[] = {"#!/bin/env La", "#!/usr/bin/env La",
 char lai_operators[] = "+-%*^><=/|& .(){}![]:$";
 
 char *lai_keywords[] = {
-  "var V", "if I", "ifnot I", "else I", "func I",  "is I", "isnot I",
-  "and I", "or I", "in I", "this V", "return I",  "for I", "while I",
-  "break I", "continue I", "when I", "orelse I",
+  "var V", "if I", "ifnot I", "else I", "func I", "is I", "isnot I",
+  "then I", "and I", "or I", "in I", "this V", "return I",
+  "for I", "while I", "break I", "continue I",
+  "when I", "orelse I",
   "println F", "format F",
   "null T", "ok T", "notok T", "true T", "false T",
   "array V", "map V", "string T", "integer T", "number T",

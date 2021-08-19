@@ -91,11 +91,10 @@ private
               if (this.curidx is this.input_argc - 1 or
                   this.input_argv[this.curidx + 1][0] is '-') {
                 if (flags & ARG_VALUE_REQUIRED) {
-                  if (this.verbose is true) {
+                  if this.verbose is true then
                     println (stderr, "error ${%s, arg) argument awaits a value")
-                  } else {
+                  orelse
                     this.err_message = format ("error ${%s, arg) argument awaits a value")
-                  }
 
                   return notok
                 }
@@ -171,18 +170,17 @@ private
               if (this.curidx is this.input_argc - 1 or
                   this.input_argv[this.curidx + 1][0] is '-') {
                 if (flags & ARG_VALUE_REQUIRED) {
-                  if (this.verbose is true) {
+                  if this.verbose is true then
                     println (stderr, "error ${%s, arg) argument awaits a value")
-                  } else {
+                  orelse
                     this.err_message = format ("error ${%s, arg) argument awaits a value")
-                  }
 
                   return notok
                 }
 
-                if (type is IntegerType or type is BooleanType) {
+                if type is IntegerType or type is BooleanType {
                   this.results.$(as) = true
-                } else if (type is StringType) {
+                } else if type is StringType {
                   this.results.$(as) = ""
                 }
 
@@ -215,11 +213,10 @@ private
           String.advance (optval, 1);
           if (vallen is optval: len ()) {
             if (flags & ARG_VALUE_REQUIRED) {
-              if (this.verbose is true) {
+              if this.verbose is true then
                 println (stderr, "error ${%s, arg) argument requires a value")
-              } else {
+              orelse
                 this.err_message = format ("error ${%s, arg) requires a value")
-              }
 
               return notok
 
@@ -234,9 +231,8 @@ private
 
           if (type is BooleanType) {
             var val = optval: to_integer ();
-            if (val isnot false) {
-              val = true
-            }
+            if val isnot false then val = true
+
             this.results.$(as) = val
 
           } else if (type is IntegerType) {
@@ -269,17 +265,14 @@ public
     this.flags[this.idx]     = flags
     this.descr[this.idx]     = descr
 
-    if (type is IntegerType or type is BooleanType) {
+    if type is IntegerType or type is BooleanType then
       this.results.$(as) = false
-    } else {
+    orelse
       this.results.$(as) = null
-    }
 
     ifnot (null is long) {
       var llen = long: len ()
-      if (llen > this.maxlen) {
-        this.maxlen = llen
-      }
+      if llen > this.maxlen then this.maxlen = llen
     }
   }
 
@@ -316,7 +309,9 @@ public
 
       var first = this.maxlen + 5
       var num_spaces = first - (llen + slen)
-      if (llen) { num_spaces -= 2 }
+
+      if llen then num_spaces -= 2
+
       loop (num_spaces) {
         msg += ' '
       }
@@ -355,23 +350,21 @@ public
         continue
       }
 
-      retval = false
-      if (arg[1] isnot '-') {
-        retval = this.parse_short_arg (arg)
-        if (retval is notok) { return notok }
 
-        if (this.exit is true) {
-          return ok
-        }
+      retval = false
+      if arg[1] isnot '-' {
+        retval = this.parse_short_arg (arg)
+
+        if retval is notok then return notok
+
+        if this.exit is true then return ok
 
         continue
       }
 
       retval = this.parse_long_arg (arg)
 
-      if (retval is notok) {
-        return notok
-      }
+      if retval is notok then  return notok
 
       if (retval is false) {
         if (this.exit_on_unknown) {
@@ -384,10 +377,7 @@ public
         }
       }
 
-      if (this.exit is true) {
-        return ok
-      }
-
+      if this.exit is true then return ok
     }
 
     return ok

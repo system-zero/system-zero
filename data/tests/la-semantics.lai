@@ -8,13 +8,9 @@ argparse.add ("run_valgrind_tests", 0, "run-valgrind-tests", "run valgrind tests
 argparse.add ("run_development_tests", 0, "run-development-tests", "run development tests", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
-ifnot (ok is argparse.process (__argv, 0)) {
-  exit (1)
-}
+if notok is argparse.process (__argv, 0) then  exit (1)
 
-if (argparse.exit is true) {
-  exit (0)
-}
+if argparse.exit then exit (0)
 
 var run_invalid_memory_read_tests = argparse.results.run_invalid_memory_read_tests
 var run_fileptr_tests = argparse.results.run_fileptr_tests
@@ -168,13 +164,9 @@ func semantics () {
       2 < 2 || 1 > 2 || 1 > 2 || 2 < 1)
 
   func fibo_tail (n, a, b) {
-    ifnot (n) {
-      return a
-    }
+    ifnot n then return a
 
-    if (n is 1) {
-      return b
-    }
+    if n is 1 then return b
 
     return fibo_tail (n - 1, b, a + b)
   }
@@ -183,10 +175,7 @@ func semantics () {
   assert_true ("testing recursive function", retval is 7540113804746346429)
 
   func fibo_recursive (n) {
-    if (n < 2) {
-      return n
-    }
-
+    if n < 2 then return n
     return fibo_recursive (n - 1) + fibo_recursive (n - 2)
    }
 
@@ -194,13 +183,13 @@ func semantics () {
   assert_true ("testing recursive function", retval is 144)
 
   retval = lambda (x, y) {
-    if (x <= 100) {return x * 2} else {return y * 2}} (100, 200)
+    if (x <= 100) { return x * 2 } else { return y * 2 }} (100, 200)
 
   assert_true ("testing lambda", retval is 200)
 
-  retval = lambda (x) {return x * 2} (10) +
-           lambda (y) {return y / 2} (20) +
-           lambda (z) {return z % 2} (21) + 11
+  retval = lambda (x) { return x * 2 } (10) +
+           lambda (y) { return y / 2 } (20) +
+           lambda (z) { return z % 2 } (21) + 11
 
   assert_true ("testing sequential lambdas", retval is 42)
 
@@ -448,7 +437,7 @@ func semantics () {
   sum = lambda {
     var s = 0
     for (var i = 1; i < 100 ; s += i, i += 1) {
-      if (i is 10) { return s }
+      if i is 10 then return s
     }
     return s
    } ()
@@ -502,7 +491,9 @@ func semantics () {
 
   sum = lambda {
     var s = 0; var i = 0;
-    loop (100) { if (i is 10) { return s }; s += i; i += 1}
+    loop (100) {
+      if i is 10 then return s; s += i; i += 1
+    }
     return s
    } ()
 
@@ -567,7 +558,7 @@ func semantics () {
     do {
       s += i
       i += 1
-      if (i is 10) { return s }
+      if i is 10 then return s
     } while (i < 100)
     return s
    } ()
@@ -595,8 +586,6 @@ func semantics () {
   map_sum.calc (0)
   assert_true ("testing nested loops", map_sum.res is 36)
 
-  var n = 10
-
   var nifelse = func (n) {
     if (n isnot 10) {
       return false
@@ -621,8 +610,9 @@ func semantics () {
     }
   }
 
-  assert_true ("testing nested if/else",  nifelse (n))
-  assert_false("testing nested if/else",  nifelse (n - 1))
+  assert_true ("testing nested if/else",
+     nifelse (10) is true and
+     nifelse (11) is false)
 
   var felseifnot = func (n) {
     if (n isnot 10) {
@@ -638,8 +628,36 @@ func semantics () {
     }
   }
 
-  assert_true ("testing else if[not]", felseifnot (n))
-  assert_false ("testing else if[not]", felseifnot (n + 1))
+  assert_true ("testing else if[not]",
+      felseifnot (10) is true and
+      felseifnot (11) is false)
+
+  var if_short = func (n) {
+    if n is 10 or n is 11 then
+      if n isnot 20 then
+        ifnot n is 20 then
+          if n is 100 then
+            return -1
+          orelse
+            if n < 10 or n > 11 then
+              return -1
+            orelse
+              if n is 10 then
+                return n
+              orelse
+                ifnot n is 1000 then
+                  if n isnot 2000 then
+                    ifnot n isnot 11 then
+                      return n
+                    orelse
+                      return -11111
+
+    return -100
+  }
+
+  assert_true ("testing if/then/orelse",
+      if_short (10) is 10 and
+      if_short (11) is 11)
 
   var r = (-12 + -30)
   assert_true ("testing signed addition", r is -42)
@@ -1068,7 +1086,7 @@ func semantics () {
       import ("time")
       var inp = Time.now ()
       var now = Time.now ()
-      if (now - inp is 1) { inp += 1 }
+      if now - inp is 1 then inp += 1
       var res = inp:time_local (): time_to_seconds ();
       assert_true ("testing the time module", res is now);
     }
@@ -1534,7 +1552,7 @@ func semantics () {
       "kb" : 11,
       "f"  : func {
         for |k, v| in this {
-          ifnot (String.eq (k, "f") { sum_p += v }
+          ifnot String.eq (k, "f") then sum_p += v
         }
       }
     }    
@@ -1542,7 +1560,7 @@ func semantics () {
     mmmm.f ()
 
     for |k, v| in mmmm {
-      ifnot (String.eq (k, "f") { sum_pa += v }
+      ifnot String.eq (k, "f") then sum_pa += v
     }
 
     assert_true ("testing map iteration with members with private scope",
@@ -1903,25 +1921,19 @@ func term_tests () {
 
   var term = term_new ()
   println ("press q to exit")
-  if (notok is Term.raw_mode (term)) {
+  if notok is Term.raw_mode (term) then
     return notok
-  }
 
   var fd = fileno (stdin)
   var key = 0
   while (key isnot 'q') {
-    if (key is notok) {
-      return notok
-    }
-
+    if key is notok then return notok
     key = Term.getkey (fd)
   }
 
   return Term.sane_mode (term)
 }
 
-if (term_tests () is notok) {
-  println ("terminal error")
-}
+if term_tests () is notok then println ("terminal error")
 
 exit (0)

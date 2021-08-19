@@ -1342,7 +1342,7 @@ style. However it should be okey if practicing consistency.
     I'm inclined to say that `s' will not have to be modified. So maybe the prudent
     thing to do here, that such a chain of function call, it has to be used as
     a closure, without the ability to modify the participated objects directly,
-    so and with no direct side affects. However, I think that it will never can be
+    so and with no direct side effects. However, I think that it will never can be
     possible to guarrante that the called methods, don't have code that influence
     the outter environment. So probably the objects that enter in such a closed
     state, should be copies of the originals.

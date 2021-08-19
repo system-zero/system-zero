@@ -412,7 +412,7 @@ Quite convenient mechanisms.
 
 And some fragile too.
 We've also introduced pipelines and also commands that use them. Its not easy to
-make them work reliabe, as there are many side affects:
+make them work reliabe, as there are many side effects:
 ```sh
   $ printf newdir/another/andanother | Dir.make --parents --verbose
   created directory: newdir, with mode 0755 (drwxr-xr-x)

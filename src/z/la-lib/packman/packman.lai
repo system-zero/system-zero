@@ -25,7 +25,7 @@ private
   "type"
   "command"
 
-  "init" : func (msg, type com) {
+  "init" : func (msg, type, com) {
     this.msg = msg
     this.type = type
     this.command = com
@@ -63,8 +63,8 @@ public
     "version"   : func (vers)  { this.version = vers }
     "archive"   : func (arch)  { this.archive = arch }
     "sources"   : func (src)   { this.sources = src }
-    "build_dirname"   : func (dir)   { this.build_dirname = dir }
     "extension" : func (ext)   { this.extension = ext }
+    "build_dirname" : func (dir) { this.build_dirname = dir }
   }
 
   "get" : {
@@ -79,8 +79,8 @@ public
     "version"   : func { return this.version }
     "archive"   : func { return this.archive }
     "sources"   : func { return this.sources }
-    "build_dirname"  : func { return this.build_dirname }
     "extension" : func { return this.extension }
+    "build_dirname" : func { return this.build_dirname }
   }
 
   "info" : func (packman) {
@@ -88,20 +88,19 @@ public
       "SPEC NAME        : " + this.name + "\n" +
       "DESCRIPTION      : " + this.descr + "\n" +
       "VERSION          : " + this.version + "\n" +
-      "LICENSE          : " +
-        this.license: when |x| x is null { return "" } orelse { return x } +
-      "\n" + "HOME URL         : " +
-        this.home:    when |x| x is null { return "" } orelse { return x } +
-      "\n" + "REPOSITORY       : " +
-        this.repo:    when |x| x is null { return "" } orelse { return x } +
-      "\n" + "ARCHIVE          : " +
-        this.archive: when |x| x is null { return "" } orelse {
-          if ((packman.get.sources_dir () + "/" + this.archive): file_exists ()) {
+      "LICENSE          : " + this.license:
+        when |x| x isnot null { return x } orelse { return "" } + "\n" +
+     "HOME URL         : " + this.home:
+        when |x| x isnot null { return x } orelse { return "" } + "\n" +
+      "REPOSITORY       : " + this.repo:
+        when |x| x isnot null { return x } orelse { return "" } + "\n" +
+      "ARCHIVE          : " + this.archive:
+        when |x| x isnot null {
+          if (packman.get.sources_dir () + "/" + this.archive): file_exists () then
             return x + " exists in the filesystem"
-          } else {
+          orelse
             return x + " doesn't exists in the filesystem"
-          }
-        }
+        } orelse { return "" }
 
      println (msg)
 
@@ -313,11 +312,11 @@ public
   "info" : func {
     var msg =
       "PLATFORM         : " + this.platform + "\n" +
-      "SYSTEM DIRECTORY : " + this.sysdir + "\n" +
-      "BIN    DIRECTORY : " + this.bindir + "\n" +
-      "LIB    DIRECTORY : " + this.libdir + "\n" +
-      "USER             : " + this.user + "\n" +
-      "GROUP            : " + this.group + "\n"
+      "SYSTEM DIRECTORY : " + this.sysdir   + "\n" +
+      "BIN    DIRECTORY : " + this.bindir   + "\n" +
+      "LIB    DIRECTORY : " + this.libdir   + "\n" +
+      "USER             : " + this.user     + "\n" +
+      "GROUP            : " + this.group    + "\n"
 
     println (msg)
 
