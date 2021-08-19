@@ -8,7 +8,7 @@ argparse.add ("run_valgrind_tests", 0, "run-valgrind-tests", "run valgrind tests
 argparse.add ("run_development_tests", 0, "run-development-tests", "run development tests", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
-if notok is argparse.process (__argv, 0) then  exit (1)
+if notok is argparse.process (__argv, 0) then exit (1)
 
 if argparse.exit then exit (0)
 
@@ -650,9 +650,9 @@ func semantics () {
                     ifnot n isnot 11 then
                       return n
                     orelse
-                      return -11111
+                      return -1
 
-    return -100
+    return -1
   }
 
   assert_true ("testing if/then/orelse",

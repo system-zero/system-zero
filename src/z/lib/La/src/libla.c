@@ -94,6 +94,7 @@
 #define MAP_STATE                     (1 << 6)
 #define BLOCK_STATE                   (1 << 7)
 #define VAR_IS_NOT_ALLOWED            (1 << 8)
+#define CONSUME                       (1 << 9)
 
 #define EXPR_LIST_STATE               (1 << 0)
 #define MAP_METHOD_STATE              (1 << 1)
@@ -1517,6 +1518,49 @@ static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
   return err;
 }
 
+static int la_get_string (la_t *this, string *str) {
+  int pc;
+  int c = 0;
+
+  if (str isnot NULL) {
+    while (1) {
+      pc = c;
+      c = la_get_char (this);
+
+      if (c is LA_TOKEN_EOF)
+        return this->syntax_error (this, "error while getting literal string, awaiting double quote");
+
+      if (c is LA_TOKEN_DQUOTE) {
+        if (pc is LA_TOKEN_ESCAPE_CHR) {
+          String.clear_at (str, -1);
+          String.append_byte (str, c);
+          continue;
+        }
+
+        break;
+      }
+
+      String.append_byte (str, c);
+    }
+
+  } else {
+    while (1) {
+      pc = c;
+      c = la_get_char (this);
+
+      if (c is LA_TOKEN_EOF)
+        return this->syntax_error (this, "error while getting literal string, awaiting double quote, found a newline character");
+
+      if (c is LA_TOKEN_DQUOTE) {
+        if (pc is LA_TOKEN_ESCAPE_CHR) continue;
+        break;
+      }
+    }
+  }
+
+  return LA_OK;
+}
+
 static int la_do_next_token (la_t *this, int israw) {
   int r = LA_NOTOK;
 
@@ -1529,9 +1573,13 @@ static int la_do_next_token (la_t *this, int israw) {
 
   char token = c;
 
-  if (c is '#')
-    token = LA_TOKEN_COMMENT;
-  else if (is_alpha (c) or c is '_' or (
+  if (c is '#') {
+    do c = la_get_char (this); while (c >= 0 and c isnot LA_TOKEN_NL);
+    this->curToken = c;
+    return c;
+  }
+
+  if (is_alpha (c) or c is '_' or (
       (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c)))
     token = LA_TOKEN_SYMBOL;
   else if (is_digit (c) or (c is '-' and is_digit (la_peek_char (this, 0))))
@@ -1544,14 +1592,6 @@ static int la_do_next_token (la_t *this, int israw) {
   }
 
   switch (token) {
-    case LA_TOKEN_COMMENT:
-      do
-        c = la_get_char (this);
-      while (c >= 0 and c isnot LA_TOKEN_NL);
-
-      r = c;
-      break;
-
     case LA_TOKEN_INTEGER:
       if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", la_peek_char (this, 0))
           and is_hexchar (la_peek_char(this, 1))) {
@@ -1616,56 +1656,17 @@ static int la_do_next_token (la_t *this, int israw) {
         return la_syntax_error_fmt (this, "%s: exceeds maximum length (%d) of an identifier",
             cur_msg_str (this, this->curStrToken), MAXLEN_SYMBOL);
 
-      char ident[MAXLEN_SYMBOL + 1];
-      Cstring.cp (ident, MAXLEN_SYMBOL + 1, la_StringGetPtr (this->curStrToken), toklen);
-
-      if (*ident isnot 'i' and *ident isnot 'o' and *ident isnot 'a')
-        goto raw_block;
-
-      switch (toklen) {
-        case 2:
-          if (Cstring.eq (ident, "is")) {
-            this->tokenSymbol = ns_lookup_symbol (this->std, "is");
-            break;
-          } else if (Cstring.eq (ident, "or")) {
-            this->tokenSymbol = ns_lookup_symbol (this->std, "or");
-            break;
-          }
-
-          goto raw_block;
-
-        case 3:
-          if (Cstring.eq (ident, "and")) {
-            this->tokenSymbol = ns_lookup_symbol (this->std, "and");
-            break;
-          }
-
-          goto raw_block;
-
-        case 5:
-          if (Cstring.eq (ident, "isnot")) {
-            this->tokenSymbol = ns_lookup_symbol (this->std, "isnot");
-            break;
-          }
-
-        default:
-          goto raw_block;
-      }
-
-      r = this->tokenSymbol->type;
-      this->tokenValue = this->tokenSymbol->value;
-      goto theend;
-
-      raw_block:
       ifnot (israw) {
         this->tokenSymbol = symbol = la_lookup_symbol (this, this->curStrToken);
-        if (symbol) {
-          if (IS_INT(symbol->value) and AS_VOID_PTR(symbol->value) is la_parse_array_def) {
-            r = LA_TOKEN_ARYDEF;
-            goto theend;
-          }
 
+        if (symbol) {
           r = symbol->type & 0xff;
+
+          if (r is LA_TOKEN_BINOP) { /* is, isnot, and, or */
+            this->curToken = this->tokenSymbol->type;
+            this->tokenValue = this->tokenSymbol->value;
+            return this->curToken;
+          }
 
           this->tokenArgs = (symbol->type >> 8) & 0xff;
           symbol->value.sym = symbol;
@@ -1681,6 +1682,8 @@ static int la_do_next_token (la_t *this, int israw) {
               r = LA_TOKEN_VAR;
 
           this->tokenValue = symbol->value;
+          this->curToken = r;
+          return r;
         }
       }
 
@@ -1693,89 +1696,54 @@ static int la_do_next_token (la_t *this, int israw) {
       this->tokenSymbol = ns_lookup_symbol (this->std, key);
 
       if (this->tokenSymbol) {
-        r = this->tokenSymbol->type;
+        this->curToken = this->tokenSymbol->type;
         this->tokenValue = this->tokenSymbol->value;
       } else
-        r = LA_TOKEN_SYNTAX_ERR;
+        this->curToken = LA_TOKEN_SYNTAX_ERR;
 
-      break;
+      return this->curToken;
     }
 
     case LA_TOKEN_BLOCK_OPEN: {
       la_reset_token (this);
       int err = la_get_opened_block (this, "unended block");
-      if (err isnot LA_OK)
-        return err;
+      if (err isnot LA_OK) return err;
 
       la_ignore_last_token (this);
-      r = LA_TOKEN_BLOCK;
-
-      break;
+      this->curToken = LA_TOKEN_BLOCK;
+      return this->curToken;
     }
 
-    case LA_TOKEN_DQUOTE: {
-      size_t len = 0;
-      int pc = 0;
-      int cc = 0;
-
-      while (pc = cc, (cc = la_peek_char (this, len)) isnot LA_TOKEN_EOF) {
-        if (LA_TOKEN_DQUOTE is cc and pc isnot LA_TOKEN_ESCAPE_CHR) break;
-        if (LA_TOKEN_NL     is cc and pc isnot LA_TOKEN_ESCAPE_CHR)
-          return this->syntax_error (this, "error while getting literal string, awaiting double quote, found a newline character");
-
-        len++;
-      }
-
-      if (cc is LA_TOKEN_EOF)
-        return this->syntax_error (this, "unended string, a '\"' is missing");
-
-      ifnot (this->curState & MALLOCED_STRING_STATE) {
-        string *str = String.new (len + 1);
-        pc = 0;
-        for (size_t i = 0; i < len; i++) {
-          c = la_get_char (this);
-          if ((c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR) or
-              (c is LA_TOKEN_NL and pc is LA_TOKEN_ESCAPE_CHR))
-            String.clear_at (str, -1);
-
-          String.append_byte (str, c);
-          pc = c;
-        }
-
-        VALUE v = STRING(str);
-        this->tokenValue = v;
-        this->curState |= LITERAL_STRING_STATE;
-
-      } else {
-        malloced_string *mbuf = new_malloced_string (len + 1);
-        pc = 0;
-        for (size_t i = 0; i < len; i++) {
-          c = la_get_char (this);
-          if ((c is LA_TOKEN_DQUOTE and pc is LA_TOKEN_ESCAPE_CHR) or
-              (c is LA_TOKEN_NL and pc is LA_TOKEN_ESCAPE_CHR) )
-            String.clear_at (mbuf->data, -1);
-          String.append_byte (mbuf->data, c);
-          pc = c;
-        }
+    case LA_TOKEN_DQUOTE:
+      if (this->curState & MALLOCED_STRING_STATE) {
+        malloced_string *mbuf = new_malloced_string (8);
+        int err = la_get_string (this, mbuf->data);
+        if (err isnot LA_OK) return err;
         ListStackPush (this->curScope, mbuf);
         VALUE v = STRING(mbuf->data);
         v.refcount = MALLOCED_STRING;
         this->tokenValue = v;
+
+      } else if (0 is (this->curState & CONSUME)) {
+        string *str = String.new (8);
+        int err = la_get_string (this, str);
+        if (err isnot LA_OK) return err;
+        this->curState |= LITERAL_STRING_STATE;
+        VALUE v = STRING(str);
+        this->tokenValue = v;
+
+      } else {
+        int err = la_get_string (this, NULL);
+        if (err isnot LA_OK) return err;
       }
 
-      c = la_get_char (this);
-      la_reset_token (this);
-
-      r = LA_TOKEN_STRING;
-
-      break;
-    }
+      this->curToken = LA_TOKEN_STRING;
+      return this->curToken;
 
     default:
       r = c;
   }
 
-theend:
   this->curToken = r;
   return r;
 }
@@ -3189,7 +3157,17 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
     goto assign;
   }
 
-  if (c is LA_TOKEN_ARYDEF) {
+
+  if (NULL isnot this->tokenSymbol and
+      IS_INT(this->tokenSymbol->value) and
+      AS_VOID_PTR(this->tokenSymbol->value) is la_parse_array_def) {
+  /* moved from do_next_token (),
+   * first commit after 8ed84cdc92c074e4dba4c1d38e72cae6b8236178
+   * if (IS_INT(symbol->value) and AS_VOID_PTR(symbol->value) is la_parse_array_def) {
+   *   r = LA_TOKEN_ARYDEF;
+   *   goto theend;
+   * }
+   */
     this->curState |= MAP_STATE;
     err = la_parse_array_def (this);
     if (err isnot LA_OK)
@@ -5216,10 +5194,10 @@ static int la_consume_short_if (la_t *this) {
   int c;
   int levels = 1;
   while (1) {
-    // temporarly
-    this->curState |= MALLOCED_STRING_STATE;
+    this->curState |= CONSUME;
     c = la_next_token (this);
-    this->curState &= ~MALLOCED_STRING_STATE;
+    this->curState &= ~CONSUME;
+
     check:
     if (c is LA_TOKEN_EOF)
       return this->syntax_error (this, "awaiting end of if");
@@ -5253,7 +5231,7 @@ static int la_parse_short_if (la_t *this, int cond) {
 
     if (la_next_token (this) is LA_TOKEN_ORELSE) {
       if (err > 1)
-        goto consume_all;
+        goto consume;
       else
       return la_parse_short_if (this, 1);
     }
@@ -5263,9 +5241,9 @@ static int la_parse_short_if (la_t *this, int cond) {
     return LA_OK;
   }
 
-  this->curState |= VAR_IS_NOT_ALLOWED|MALLOCED_STRING_STATE;
+  this->curState |= VAR_IS_NOT_ALLOWED;
   err = la_parse_stmt (this);
-  this->curState &= ~(VAR_IS_NOT_ALLOWED|MALLOCED_STRING_STATE);
+  this->curState &= ~VAR_IS_NOT_ALLOWED;
   if (err isnot LA_OK) return err;
 
   if (this->curToken isnot LA_TOKEN_NL and
@@ -5277,8 +5255,10 @@ static int la_parse_short_if (la_t *this, int cond) {
 
   check_orelse:
   if (la_next_token (this) is LA_TOKEN_ORELSE) {
-    consume_all:
+
+    consume:
     while (la_next_token (this) is LA_TOKEN_NL);
+
     err = la_consume_short_if (this);
     if (err is LA_NOTOK) return err;
 

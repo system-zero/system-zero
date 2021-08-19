@@ -30,9 +30,6 @@ a lot by the S-Lang programming language, which is quite like C. However, it
 provides mechanisms for object oriented techniques, and also some functional
 concepts.
 
-It aims to readability and expressiveness, while follows established syntax
-and semantics.
-
 The following is an early draft, but looks quite close to the final reference.
 
 ## Syntax and Semantics

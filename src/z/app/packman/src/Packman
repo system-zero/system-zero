@@ -44,11 +44,11 @@ var package = lambda {
 } ()
 
 ifnot (install + update_repo + spec_info + settings) {
-  ifnot (null is package) {
-    println ("no action specified in the command line for " + package)
-  } else {
-    println ("no action specified in the command line for " + package)
-  }
+  ifnot null is package then
+    println ("no action has been specified in the command line for " + package)
+  orelse
+    println ("no action has been specified in the command line"
+
 
   exit (0)
 }
