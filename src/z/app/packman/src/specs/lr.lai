@@ -1,5 +1,6 @@
 var name = "lr"
 var spec = New PackmanSpec (name)
+
 spec.set.version ("c3f0e7052453fed04a696535145d40dfd2a3b6a3")
 spec.set.repo ("https://github.com/leahneukirchen/lr")
 spec.set.home ("https://github.com/leahneukirchen/lr")

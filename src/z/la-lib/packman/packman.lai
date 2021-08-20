@@ -96,10 +96,9 @@ public
         when |x| x isnot null { return x } orelse { return "" } + "\n" +
       "ARCHIVE          : " + this.archive:
         when |x| x isnot null {
-          if (packman.get.sources_dir () + "/" + this.archive): file_exists () then
-            return x + " exists in the filesystem"
-          orelse
-            return x + " doesn't exists in the filesystem"
+          return x + if (packman.get.sources_dir () + "/" + this.archive): file_exists ()
+             then " exists in the filesystem"
+             orelse + " doesn't exists in the filesystem"
         } orelse { return "" }
 
      println (msg)
@@ -190,17 +189,12 @@ private
     var archive = this.sources_dir + "/" + this.spec.archive
 
     ifnot (File.exists (archive)) {
-      if (notok is this.fetch_archive ()) {
-        return notok
-      }
-    }
-
-    var retval = this.sh:exec (this.tar_exec + " " + this.tar_args + " " + archive)
-    if (retval is notok or retval > ok) {
+      println ("fetching sources: hasn't been implemented")
       return notok
     }
 
-    return ok
+    var retval = this.sh:exec (this.tar_exec + " " + this.tar_args + " " + archive)
+    return if retval is notok or retval > ok then notok orelse ok
   }
 
   "fetch_sources" : func {
@@ -220,15 +214,16 @@ private
     }
 
     var curdir = Dir.current ()
-    if (notok is Dir.change (this.sources_dir)) { return notok }
+    if notok is Dir.change (this.sources_dir) then
+      return notok
 
     var retval = this.sh:exec (this.git_exec + " " + this.clone_args + " " +
       this->spec->repo)
 
-    if (notok is Dir.change (curdir)) { return notok }
+    if notok is Dir.change (curdir) then
+      return notok
 
-    if (retval) { return notok }
-    return ok
+    return if retval then notok orelse ok
   }
 
   "copy_sources" : func () {
@@ -248,7 +243,7 @@ private
         return notok
       }
 
-      if (notok is this.fetch_sources ()) { return notok }
+      if notok is this.fetch_sources () then return notok
     }
 
     if (ok is this.sh:exec (this.cp_exec + " -r -u " +
@@ -320,12 +315,15 @@ public
 
     println (msg)
 
-    if (this.spec isnot null) {
-      this.spec:info (this)
-    } 
+    if this.spec isnot null then this.spec:info (this)
   }
 
   "update_repo" : func {
+    if (this.spec is null) {
+      println (stderr, "spec hasn't been set")
+      return notok
+    }
+
     if (this.spec.sources is null) {
       println (stderr, "sources property hasn't been set")
       return notok
@@ -348,9 +346,8 @@ public
 
     var retval = this.sh:exec (this.git_exec + " " + this.pull_args)
 
-    if (notok is Dir.change (curdir)) { return notok }
-    if (retval) { return notok }
-    return ok
+    if notok is Dir.change (curdir) then return notok
+    return if retval then notok orelse ok
   }
 
   "build" : func {
@@ -378,11 +375,8 @@ public
 
     loop (1) {
       for |action| in this.spec.build {
-        if (this.verbose is true) {
-          ifnot (null is action.msg) {
-            println (action.msg)
-          }
-        }
+        if this.verbose is true then
+          ifnot null is action.msg then println (action.msg)
 
         if (action.type is null or
             action.type < 0 or
@@ -392,27 +386,15 @@ public
         }
 
         if (action.type is PACKMAN_BUILD_EXTRACT) {
-          if (notok is this.extract ()) {
-            break 2
-          }
-
-          if (notok is this.change_to_build_dirname ()) {
-            break 2
-          }
+          break 2 if notok is this.extract ()
+          break 2 if notok is this.change_to_build_dirname ()
 
         } else if (action.type is PACKMAN_BUILD_COPY) {
-          if (notok is this.copy_sources ()) {
-            break 2
-          }
-
-          if (notok is this.change_to_build_dirname ()) {
-            break 2
-          }
+          break 2 if notok is this.copy_sources ()
+          break 2 if notok is this.change_to_build_dirname ()
         }
 
-        if (action.command is null) {
-          continue
-        }
+        continue if action.command is null
 
         var com = format ("${%s, format (action.command)}")
         if (this.sh:exec (com) isnot ok) {

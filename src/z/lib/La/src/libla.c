@@ -356,6 +356,8 @@ struct la_t {
     *func;
 
   int
+    c,
+    err,
     Errno,
     CFuncError,
     curToken,
@@ -386,6 +388,7 @@ struct la_t {
     parsePtr;
 
   VALUE
+    condValue,
     tokenValue,
     funArgs[MAX_BUILTIN_PARAMS];
 
@@ -417,6 +420,16 @@ struct la_t {
 
 #define MAX_EXPR_LEVEL 5
 
+#define TOKEN this->curToken
+#define COND  this->condValue
+#define C     this->c
+#define ERR   this->err
+#define THROW_ERR_IF_ERR do { if (ERR < 0) return ERR; } while (0)
+#define THROW_SYNTAX_ERR(__msg__) return this->syntax_error (this, __msg__)
+
+static int la_do_next_token (la_t *, int);
+static int la_parse_iforelse (la_t *, int, VALUE *);
+static int la_parse_cond (la_t *, int);
 static int la_parse_stmt (la_t *);
 static int la_parse_expr (la_t *, VALUE *);
 static int la_parse_primary (la_t *, VALUE *);
@@ -640,6 +653,21 @@ static void la_ignore_next_char (la_t *this) {
   la_StringSetLen (&this->parsePtr, la_StringGetLen (this->parsePtr) - 1);
 }
 
+static int la_peek_token (la_t *this, uint n) {
+  la_string savepc = this->parsePtr;
+  int token = TOKEN;
+
+  do {
+    int err = la_do_next_token (this, 0);
+    if (err < LA_TOKEN_EOF) return err;
+  } while (n--);
+
+  int retval = TOKEN;
+  TOKEN = token;
+  this->parsePtr = savepc;
+  return retval;
+}
+
 static int la_peek_char (la_t *this, uint n) {
   if (la_StringGetLen (this->parsePtr) <= n) return LA_TOKEN_EOF;
   return *(la_StringGetPtr (this->parsePtr) + n);
@@ -857,7 +885,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
 
 static void ns_release_malloced_strings (funT *this) {
   malloced_string *item = this->head;
-  while (item isnot NULL) {
+  while (item) {
     malloced_string *tmp = item->next;
     String.release (item->data);
     free (item);
@@ -865,12 +893,6 @@ static void ns_release_malloced_strings (funT *this) {
   }
 
   this->head = NULL;
-}
-
-static malloced_string *new_malloced_string (size_t len) {
-  malloced_string *mbuf = Alloc (sizeof (malloced_string));
-  mbuf->data = String.new (len + 1);
-  return mbuf;
 }
 
 static VALUE la_errno_string (la_t *this, VALUE v_err) {
@@ -1518,7 +1540,7 @@ static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
   return err;
 }
 
-static int la_get_string (la_t *this, string *str) {
+static int la_consume_string (la_t *this, string *str) {
   int pc;
   int c = 0;
 
@@ -1706,7 +1728,7 @@ static int la_do_next_token (la_t *this, int israw) {
 
     case LA_TOKEN_BLOCK_OPEN: {
       la_reset_token (this);
-      int err = la_get_opened_block (this, "unended block");
+      int err = la_get_opened_block (this, "unended opened block");
       if (err isnot LA_OK) return err;
 
       la_ignore_last_token (this);
@@ -1715,25 +1737,52 @@ static int la_do_next_token (la_t *this, int israw) {
     }
 
     case LA_TOKEN_DQUOTE:
-      if (this->curState & MALLOCED_STRING_STATE) {
-        malloced_string *mbuf = new_malloced_string (8);
-        int err = la_get_string (this, mbuf->data);
-        if (err isnot LA_OK) return err;
-        ListStackPush (this->curScope, mbuf);
-        VALUE v = STRING(mbuf->data);
-        v.refcount = MALLOCED_STRING;
-        this->tokenValue = v;
-
-      } else if (0 is (this->curState & CONSUME)) {
+      if (this->curState & MALLOCED_STRING_STATE or
+          (this->curState & CONSUME) is 0) {
         string *str = String.new (8);
-        int err = la_get_string (this, str);
-        if (err isnot LA_OK) return err;
-        this->curState |= LITERAL_STRING_STATE;
-        VALUE v = STRING(str);
-        this->tokenValue = v;
 
+        const char *ptr = la_StringGetPtr (this->parsePtr);
+        const char *tmp = ptr;
+
+        int pc;
+        c = 0;
+
+        while (1) {
+          pc = c;
+          c = *ptr++;
+
+          if (c is LA_TOKEN_EOF)
+            return this->syntax_error (this, "error while getting literal string, awaiting double quote");
+
+          if (c is LA_TOKEN_DQUOTE) {
+            if (pc is LA_TOKEN_ESCAPE_CHR) {
+              String.clear_at (str, -1);
+              String.append_byte (str, c);
+              continue;
+            }
+
+            break;
+          }
+
+          String.append_byte (str, c);
+        }
+
+        size_t len = la_StringGetLen (this->parsePtr);
+        la_StringSetPtr (&this->parsePtr, ptr);
+        la_StringSetLen (&this->parsePtr, len - (ptr - tmp));
+
+        VALUE v = STRING(str);
+        if (this->curState & MALLOCED_STRING_STATE) {
+          malloced_string *mbuf = Alloc (sizeof (malloced_string));
+          v.refcount = MALLOCED_STRING;
+          mbuf->data = str;
+          ListStackPush (this->curScope, mbuf);
+        } else
+          this->curState |= LITERAL_STRING_STATE;
+
+        this->tokenValue = v;
       } else {
-        int err = la_get_string (this, NULL);
+        int err = la_consume_string (this, NULL);
         if (err isnot LA_OK) return err;
       }
 
@@ -4001,6 +4050,9 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     string *func = AS_STRING(this->func->value);
     String.replace_with (func, uf->funname);
 
+    int varisnotallowed = this->curState & VAR_IS_NOT_ALLOWED;
+    this->curState &= ~VAR_IS_NOT_ALLOWED;
+
     int loopcount = this->loopCount;
     this->loopCount = 0;
 
@@ -4008,6 +4060,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     this->loopCount = loopcount;
     if (this->loopCount)
       this->curState |= LOOP_STATE;
+
+    if (varisnotallowed) this->curState |= VAR_IS_NOT_ALLOWED;
 
     this->curScope = la_fun_stack_pop (this);
 
@@ -4352,6 +4406,31 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       return err;
     }
+
+    case LA_TOKEN_IFNOT:
+    case LA_TOKEN_IF:
+      ERR = la_parse_cond (this, c is LA_TOKEN_IFNOT);
+      THROW_ERR_IF_ERR;
+
+      if (TOKEN isnot LA_TOKEN_THEN) {
+        if (TOKEN is LA_TOKEN_NL or TOKEN is LA_TOKEN_SEMICOLON) {
+          if (la_peek_token (this, 0) isnot LA_TOKEN_THEN) {
+            if (this->funcState & RETURN_STATE) {
+              this->didReturn = AS_INT(COND);
+              *vp = NULL_VALUE;
+              return LA_OK;
+            }
+            else
+              return this->syntax_error (this, "awaiting then");
+          } else
+            la_next_token (this);
+        } else
+          return this->syntax_error (this, "awaiting then");
+      }
+
+      ERR = la_parse_iforelse (this, AS_INT(COND), vp);
+      THROW_ERR_IF_ERR;
+      return ERR;
 
     case LA_TOKEN_INTEGER: {
       VALUE val = la_string_to_dec (this->curStrToken);
@@ -5190,129 +5269,197 @@ static int la_consume_ifelse (la_t *this) {
   return LA_OK;
 }
 
-static int la_consume_short_if (la_t *this) {
-  int c;
+static int la_consume_iforelse (la_t *this, int break_at_orelse) {
   int levels = 1;
+  this->curState |= CONSUME;
+
+  int paren_open = 0;
+  int index_open = 0;
+
   while (1) {
-    this->curState |= CONSUME;
-    c = la_next_token (this);
-    this->curState &= ~CONSUME;
+    la_next_token (this);
 
     check:
-    if (c is LA_TOKEN_EOF)
-      return this->syntax_error (this, "awaiting end of if");
 
-    if (c is LA_TOKEN_THEN) {
-      levels++;
-      while ((c = la_next_token (this)) is LA_TOKEN_NL);
-      goto check;
+    switch (TOKEN) {
+      case LA_TOKEN_NL:
+      case LA_TOKEN_SEMICOLON:
+      case LA_TOKEN_COLON:
+      case LA_TOKEN_EOF:
+        goto theend;
+
+      case LA_TOKEN_ORELSE:
+        if (break_at_orelse)
+          if (levels is 1) goto theend;
+        break;
+
+      case LA_TOKEN_THEN:
+        levels++;
+        while (la_next_token (this) is LA_TOKEN_NL);
+        goto check;
+
+      case LA_TOKEN_PAREN_OPEN:
+        paren_open++;
+        break;
+
+      case LA_TOKEN_PAREN_CLOS:
+        ifnot (paren_open) goto theend;
+        paren_open--;
+        break;
+
+      case LA_TOKEN_COMMA:
+        ifnot (paren_open) goto theend;
+        break;
+
+      case LA_TOKEN_INDEX_OPEN:
+        index_open++;
+        break;
+
+      case LA_TOKEN_INDEX_CLOS:
+        ifnot (index_open) goto theend;
+        index_open--;
+        break;
     }
-
-    if (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON)
-      return levels;
   }
 
+theend:
+  this->curState &= ~CONSUME;
   return levels;
 }
 
-static int la_parse_short_if (la_t *, int);
-static int la_parse_short_if (la_t *this, int cond) {
-  int err, c;
+static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   la_string savepc;
 
   while (la_next_token (this) is LA_TOKEN_NL);
 
   ifnot (cond) {
-    err = la_consume_short_if (this);
-    if (err is LA_NOTOK) return err;
+    if (TOKEN is LA_TOKEN_ORELSE)
+      return la_parse_iforelse (this, 1, vp);
+
+    ERR = la_consume_iforelse (this, 1);
+    THROW_ERR_IF_ERR;
+
+    if (TOKEN is LA_TOKEN_ORELSE)
+      return la_parse_iforelse (this, 1, vp);
 
     savepc = this->parsePtr;
-    c = this->curToken;
+    C = TOKEN;
 
+    this->curState |= CONSUME;
     if (la_next_token (this) is LA_TOKEN_ORELSE) {
-      if (err > 1)
+      this->curState &= ~CONSUME;
+      if (ERR > 1)
         goto consume;
       else
-      return la_parse_short_if (this, 1);
+        return la_parse_iforelse (this, 1, vp);
     }
 
+    this->curState &= ~CONSUME;
+
     this->parsePtr = savepc;
-    this->curToken = c;
+    TOKEN = C;
     return LA_OK;
   }
 
-  this->curState |= VAR_IS_NOT_ALLOWED;
-  err = la_parse_stmt (this);
-  this->curState &= ~VAR_IS_NOT_ALLOWED;
-  if (err isnot LA_OK) return err;
+  ifnot (NULL is vp) {
+    ERR = la_parse_expr (this, vp);
+  } else {
+    this->curState |= VAR_IS_NOT_ALLOWED;
+    ERR = la_parse_stmt (this);
+    this->curState &= ~VAR_IS_NOT_ALLOWED;
+  }
 
-  if (this->curToken isnot LA_TOKEN_NL and
-      this->curToken isnot LA_TOKEN_SEMICOLON)
-    return this->syntax_error (this, "awaiting a new line or ;");
+  THROW_ERR_IF_ERR;
+
+  if (TOKEN isnot LA_TOKEN_NL and
+      TOKEN isnot LA_TOKEN_SEMICOLON) {
+    if (TOKEN is LA_TOKEN_ORELSE)
+      goto consume;
+    else if (TOKEN is LA_TOKEN_PAREN_CLOS or
+             TOKEN is LA_TOKEN_INDEX_CLOS or
+             TOKEN is LA_TOKEN_COMMA or
+             TOKEN is LA_TOKEN_COLON)
+      goto theend;
+    else
+      return this->syntax_error (this, "awaiting a new line or ;");
+  }
 
   savepc = this->parsePtr;
-  c = this->curToken;
+  C = TOKEN;
 
-  check_orelse:
+  consume_orelse:
+  this->curState |= CONSUME;
+  int c = la_peek_token (this, 0);
+  if (c is LA_TOKEN_PAREN_CLOS or c is LA_TOKEN_INDEX_CLOS) {
+    this->parsePtr = savepc;
+    TOKEN = C;
+    goto theend;
+  }
+
   if (la_next_token (this) is LA_TOKEN_ORELSE) {
 
     consume:
+    this->curState |= CONSUME;
     while (la_next_token (this) is LA_TOKEN_NL);
 
-    err = la_consume_short_if (this);
-    if (err is LA_NOTOK) return err;
+    ERR = la_consume_iforelse (this, 0);
+    THROW_ERR_IF_ERR;
 
-    c = this->curToken;
+    C = TOKEN;
     savepc = this->parsePtr;
-    goto check_orelse;
+    goto consume_orelse;
   } else {
     this->parsePtr = savepc;
-    this->curToken = c;
+    TOKEN = C;
   }
+
+theend:
+  this->curState &= ~CONSUME;
+  return LA_OK;
+}
+
+static int la_parse_cond (la_t *this, int nottrue) {
+  la_next_token (this);
+  this->curState |= MALLOCED_STRING_STATE;
+  ERR = la_parse_expr (this, &COND);
+  this->curState &= ~MALLOCED_STRING_STATE;
+  THROW_ERR_IF_ERR;
+
+  if (IS_INT(COND))
+    COND = INT((AS_INT(COND) ? 0 is nottrue : nottrue));
+  else if (IS_NULL(COND))
+    COND = INT((nottrue ? 0 : 1));
+  else if (IS_NUMBER(COND))
+    COND = INT((AS_NUMBER(COND) is 0.0 ? nottrue: 0 is nottrue));
 
   return LA_OK;
 }
 
 static int la_parse_if (la_t *this) {
-  int token = this->curToken;
+  ERR = la_parse_cond (this, TOKEN is LA_TOKEN_IFNOT);
+  THROW_ERR_IF_ERR;
 
-  VALUE cond;
+  int is_true = AS_INT(COND);
 
-  int c = la_next_token (this);
-  this->curState |= MALLOCED_STRING_STATE;
-  int err = la_parse_expr (this, &cond);
-  this->curState &= ~MALLOCED_STRING_STATE;
-
-  int is_true = 1;
-
-  if (IS_INT(cond))
-    is_true = (AS_INT(cond) ? LA_TOKEN_IF is token : LA_TOKEN_IFNOT is token);
-  else if (IS_NULL(cond))
-    is_true = LA_TOKEN_IFNOT is token;
-  else if (IS_NUMBER(cond))
-    is_true = (AS_NUMBER(cond) is 0.0 ? LA_TOKEN_IFNOT is token : LA_TOKEN_IF is token);
-
-  c = this->curToken;
-
-  if (c is LA_TOKEN_THEN)
-    return la_parse_short_if (this, is_true);
+  if (TOKEN is LA_TOKEN_THEN)
+    return la_parse_iforelse (this, is_true, NULL);
   else
-    if (c isnot LA_TOKEN_BLOCK)
+    if (TOKEN isnot LA_TOKEN_BLOCK)
       return this->syntax_error (this, "parsing if, not a block string");
 
   la_string elsepart;
   la_string ifpart = this->curStrToken;
 
-  c = la_next_token (this);
+  la_next_token (this);
 
   int haveelse = 0;
   int haveelif = 0;
 
-  if (c is LA_TOKEN_ELSE) {
-    c = la_next_token (this);
+  if (TOKEN is LA_TOKEN_ELSE) {
+    la_next_token (this);
 
-    if (c isnot LA_TOKEN_IF and c isnot LA_TOKEN_IFNOT) {
-      if (c isnot LA_TOKEN_BLOCK)
+    if (TOKEN isnot LA_TOKEN_IF and TOKEN isnot LA_TOKEN_IFNOT) {
+      if (TOKEN isnot LA_TOKEN_BLOCK)
         return this->syntax_error (this, "parsing else, not a block string");
 
       elsepart = this->curStrToken;
@@ -5320,7 +5467,7 @@ static int la_parse_if (la_t *this) {
 
       la_next_token (this);
     } else {
-      haveelif = c;
+      haveelif = TOKEN;
       la_ignore_last_token (this);
     }
   }
@@ -5334,18 +5481,18 @@ static int la_parse_if (la_t *this) {
   this->curScope = fun;
 
   if (is_true) {
-    err = la_parse_string (this, ifpart);
+    ERR = la_parse_string (this, ifpart);
     if (haveelif) {
       int e = la_consume_ifelse (this);
-      if (e isnot LA_OK) err = e;
+      if (e isnot LA_OK) ERR = e;
     }
 
   } else if (haveelse) {
-    err = la_parse_string (this, elsepart);
+    ERR = la_parse_string (this, elsepart);
 
   } else if (haveelif) {
     this->curToken = haveelif;
-    err = la_parse_if (this);
+    ERR = la_parse_if (this);
   }
 
   if (this->didReturn)
@@ -5353,7 +5500,7 @@ static int la_parse_if (la_t *this) {
 
   this->curScope = save_scope;
   fun_release (&fun);
-  return err;
+  return ERR;
 }
 
 static char *find_end_bar_ident (la_t *this, const char *str) {
@@ -7367,26 +7514,35 @@ static int la_parse_exit (la_t *this) {
 }
 
 static int la_parse_return (la_t *this) {
-  int err;
+  ERR = LA_OK;
+  funT *scope = this->curScope;
+
   la_next_token (this);
 
-  funT *scope = this->curScope;
+  if (TOKEN is LA_TOKEN_SEMICOLON or TOKEN is LA_TOKEN_NL
+     or TOKEN is LA_TOKEN_EOF)
+    goto theend;
+
   if (Cstring.eq_n (scope->funname, NS_WHEN_BLOCK, NS_WHEN_BLOCK_LEN)) {
-    err = la_parse_expr (this, &scope->result);
+    ERR = la_parse_expr (this, &scope->result);
     la_StringSetLen (&this->parsePtr, 0);
     this->didReturn = 1;
-    return err;
+    return ERR;
   }
 
   while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
     scope = scope->prev;
 
   if (NULL is scope)
-    return this->syntax_error (this, "error while parsing return, unknown scope");
+    THROW_SYNTAX_ERR ("error while parsing return, unknown scope");
 
+  this->didReturn = 1;
   this->funcState |= RETURN_STATE;
-   err = la_parse_expr (this, &scope->result);
+  ERR = la_parse_expr (this, &scope->result);
   this->funcState &= ~RETURN_STATE;
+  THROW_ERR_IF_ERR;
+
+  ifnot (this->didReturn) return LA_OK;
 
   if (scope->result.type is STRING_TYPE or scope->result.type is ARRAY_TYPE) {
     if (this->objectState & MAP_MEMBER) {
@@ -7395,10 +7551,9 @@ static int la_parse_return (la_t *this) {
     }
   }
 
+theend:
   la_StringSetLen (&this->parsePtr, 0);
-  this->didReturn = 1;
-
-  return err;
+  return ERR;
 }
 
 static int la_import_file (la_t *this, const char *module, const char *err_msg) {

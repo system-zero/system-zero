@@ -1240,7 +1240,7 @@ static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str
       return OK;
 
     default:
-      snprintf (buf, 256, "%d", AS_INT(v));
+      snprintf (buf, 256, "%ld", AS_INT(v));
   }
 
   Ed.reg.set (ed, '$', CHARWISE, buf, NORMAL_ORDER);

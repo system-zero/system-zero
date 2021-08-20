@@ -265,10 +265,9 @@ public
     this.flags[this.idx]     = flags
     this.descr[this.idx]     = descr
 
-    if type is IntegerType or type is BooleanType then
-      this.results.$(as) = false
-    orelse
-      this.results.$(as) = null
+    this.results.$(as) =
+      if type is IntegerType or type is BooleanType
+        then false orelse null
 
     ifnot (null is long) {
       var llen = long: len ()
@@ -364,7 +363,7 @@ public
 
       retval = this.parse_long_arg (arg)
 
-      if retval is notok then  return notok
+      if retval is notok then return notok
 
       if (retval is false) {
         if (this.exit_on_unknown) {

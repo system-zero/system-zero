@@ -72,7 +72,7 @@ endif
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -ldir-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION)
 FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
-FLAGS += -lerror-$(VERSION)
+FLAGS += -lerror-$(VERSION) -lterm-$(VERSION)
 
 dir: shared static
 

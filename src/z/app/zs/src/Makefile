@@ -75,7 +75,7 @@ FLAGS += -lio-$(VERSION) -lstring-$(VERSION) -lsys-$(VERSION) -lsmap-$(VERSION)
 FLAGS += -lerror-$(VERSION)
 
 Z_ZS_STATIC_FLAGS := -lpath-$(VERSION) -lustring-$(VERSION) -lfile-$(VERSION)
-Z_ZS_STATIC_FLAGS += -los-$(VERSION)
+Z_ZS_STATIC_FLAGS += -los-$(VERSION) -lterm-$(VERSION)
 
 zs: zs-shared zs-static
 

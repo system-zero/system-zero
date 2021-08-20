@@ -70,7 +70,7 @@ endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -lio-$(VERSION) -largparse-$(VERSION) -lstring-$(VERSION) -lsys-$(VERSION)
-FLAGS += -lfile-$(VERSION) -lsmap-$(VERSION) -lerror-$(VERSION)
+FLAGS += -lfile-$(VERSION) -lsmap-$(VERSION) -lerror-$(VERSION)  -lterm-$(VERSION)
 
 sys: shared static
 

@@ -16,13 +16,9 @@ argparse.add ("settings", 0, "settings", "general settings", BooleanType, 0)
 argparse.add ("force", 'f', "force", "force", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
-ifnot (ok is argparse.process (__argv, 1)) {
-  exit (1)
-}
+ifnot ok is argparse.process (__argv, 1) then exit (1)
 
-if (argparse.exit is true) {
-  exit (0)
-}
+if argparse.exit is true then exit (0)
 
 var update_repo = argparse.results.update_repo
 var install     = argparse.results.install
@@ -44,19 +40,20 @@ var package = lambda {
 } ()
 
 ifnot (install + update_repo + spec_info + settings) {
-  ifnot null is package then
-    println ("no action has been specified in the command line for " + package)
-  orelse
-    println ("no action has been specified in the command line"
-
-
-  exit (0)
+  println ("no action has been specified in the command line" +
+    ifnot null is package then " for " + package orelse "")
+  # it doesn't really need this, i leave it here for historical reasons
+  # as it has been used during the if as expressions development and as
+  # a demonstration, but to exhibit future bugs. In fact while writting
+  # this comment, it will throw an error if you put the closed paren in
+  # the next line 
+  exit (1)
 }
 
 var p = New Packman ()
 
 var tmpdir = Sys.get ("TMPDIR")
-if (null is tmpdir) { tmpdir = "/tmp" }
+if null is tmpdir then tmpdir = "/tmp"
 
 p.set.build_dir (tmpdir)
 
@@ -69,9 +66,7 @@ if (spec_info is true) {
 }
 
 if (settings is true) {
-  ifnot (null is package) {
-    p.new.spec (package)
-  }
+  ifnot null is package then p.new.spec (package)
 
   p.info ()
   exit (0)
@@ -81,20 +76,16 @@ if (install is true) {
   p.new.spec (package)
   if (update_repo is true) {
     retval = p.update_repo ()
-    if (retval is notok) {
-      ifnot (argparse.results.force) {
-         exit (retval)
-      }
-    }
+    if retval is notok then
+      if argparse.results.force then exit (retval)
   }
 
-  retval = p.build ()
-  exit (retval)
+  exit (p.build ())
 }
 
-if (update_repo is true) {
-  retval = p.update_repo ()
-  exit (retval)
+if update_repo is true {
+  p.new.spec (package)
+  exit (p.update_repo ())
 }
 
 exit (retval)

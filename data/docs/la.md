@@ -30,6 +30,14 @@ a lot by the S-Lang programming language, which is quite like C. However, it
 provides mechanisms for object oriented techniques, and also some functional
 concepts.
 
+However, besides the quite common and almost established syntax and semantics,
+it aims to find syntactical ways to imitate the human's mind flow with symbols
+that match the underlying word, and to set the semantics for a code flow that
+follows the underlying programmer thought and exhibits finally the underlying
+intention. As such the language probaly can be described in a sentence, as an
+intentional and expressional language, that imitates the human mind and using
+human expressions. And this is a main focus.
+
 The following is an early draft, but looks quite close to the final reference.
 
 ## Syntax and Semantics
@@ -109,6 +117,52 @@ The following is an early draft, but looks quite close to the final reference.
     } else ifnot (condition) { block }
 
   if the prior conditional expression evaluated to zero.
+
+# if[not]/then/orelse conditional:
+
+  full form:
+
+    if cond then do_something orelse do_something else
+
+  orelse can be ommited:
+
+    if cond then do_something
+
+  They can be followed by other if/then/orelse:
+
+    if cond then
+      if cond then
+        ifnot cond ...
+
+  so this is linear.
+
+  The mechanism doesn't create a new scope, as it happens with all the
+  loops and block delimited conditionals which they have to do (because
+  they have to manage their local symbols and to resolve them properly,
+  and release them at exit).
+
+  So it doesn't accept variable declarations, as it doesn't make sence
+  to create a variable in a block with a single statement. Furthermore
+  and because there is no new scope, then a variable declaration quite
+  probably will have unexpected side effects to the rest of the code.
+
+  Such conditionals they have to end up with a semicolon ':' or with
+  a new line character.
+
+  For parsing reasons, as they have to consume extra clauses when they
+  will not evaluate, they don't accept loops and block conditionals.
+  Otherwise a clear defined end, had to be used to handle them, like:
+
+    if cond then do_something orelse do_something else end
+
+    or like sh does:
+
+    if cond then do_something orelse do_something else fi
+
+    or other keywords like endif, e.t.c.
+
+  This exact syntax can be used as an expression, which is explained
+  in the [If As Expression](# If As expression) section below.
 
 # Loops:
 
@@ -691,8 +745,43 @@ The following is an early draft, but looks quite close to the final reference.
     while 'b' holds the string representation and 'w' holds the cell
     width of the character.
 
+# If As Expression
+
+  The exact if[not]/then/orelse syntax and semantics for statements, can be
+  used to get a value of a single expression, thus it evaluates expressions
+  instead of statements.
+
+  An if[not[ can be used in any expression. All the bellow are valid code:
+
+  variable assignment:
+
+    var v = if null then null orelse "notnull"  => null
+
+  in a function call argument list:
+
+    fun (if true then 1 orelse 0)  => an argument of value 1
+
+  to get an array index:
+
+    ar[if true then 3 orelse 0]  =>  the third index
+
+  to access a map key with an expression:
+
+    m.$(if false then "kkk" orelse "key")  => the key key
+
+  as an operand to binary operations:
+
+    "Βρεκεκεκὲξ" + (if true then " κοὰξ" orelse "") +  " κοάξ"
+          => "Βρεκεκεκὲξ κοὰξ κοάξ"
+
+  note here that the expression is surrounded with parentheses, otherwise
+  without them, the `orelse` would continue with the add operation and the
+  result would be different (without the last κοάξ).
+
 # Chaining with a Sequence of Functions Calls and Continuational Expressions.
     (note that this is at early development)
+      (note+ that with the introduction of if as expressions, when expressions
+        they might looze the meaning of their existance)
 
   The language wants to support a mechanism, where the current value,
   becomes the first argument to the next function, or the last result
@@ -805,7 +894,7 @@ The following is an early draft, but looks quite close to the final reference.
 # else        -  else clause
 # else if     -  else if clause
 # else ifnot  -  else ifnot clause
-# when/orelse -  when expression
+# then/orelse -  control single conditional statements and expressions
 # while       -  while loop
 # for         -  for loop
 # loop        -  loop loop

@@ -405,7 +405,27 @@ func semantics () {
       ifnotsum is 23 and
       ifsum1 is 21)
 
-  var sum = lambda { var s = 0
+  var dada = 1
+  func dalida (x) {
+    return if x is 0
+    dada *= x
+    return dada
+  }
+
+  dalida (1000)
+  var df = dada
+  dalida (0)
+  var ds = dada
+  dalida (100000)
+  var dt = dada
+
+  assert_true ("testing boolean return",
+    df is 1000 and
+    ds is 1000 and
+    dt is 100000000)
+
+  var sum = lambda {
+    var s = 0
     for (var i = 1; i < 100 ; s += i, i += 1) {}
     return s
    } ()
@@ -658,6 +678,51 @@ func semantics () {
   assert_true ("testing if/then/orelse",
       if_short (10) is 10 and
       if_short (11) is 11)
+
+  var fvar = if null then null orelse "notnull"
+  var svar = ifnot fvar is null then "notnull" orelse fvar
+  var tvar = if svar is fvar then if svar is null then ok orelse notok
+  var evar = if tvar is ok then ifnot fvar is null then notok orelse ok
+
+  func xxx (y) {
+    return if y < 10 then -1 orelse if y is 10 then ok orelse 1
+  }
+
+  assert_true ("testing if/then/else expressions",
+      fvar is null and
+      svar is null and
+      tvar is ok and
+      evar is ok and
+      xxx (9) is -1 and
+      xxx (10) is 0 and
+      xxx (11) is 1)
+
+  var integer[2] xar
+  xar[if true then 0 orelse 1 : ifnot false then 1 orelse 100] = [31, 41]
+
+  func xa (xa) {
+    return if xa > 22 then xa * 2 orelse xa / 2
+  }
+
+  var xif = "asdfg" + if true then "hjklm" orelse ""
+  var xifb = "asdfg" + (if true then "hjklm" orelse "") + "12345"
+
+  var m = {"k" : "mapkey"}
+  var xifc = m.$(if false then "ka" orelse "k")
+
+  func x_y (x, y) {
+    return x + y
+  }
+
+  assert_true ("testing complex if/then/orelse expressions",
+      xif is "asdfghjklm" and
+      xifb is "asdfghjklm12345" and
+      xifc is "mapkey" and
+      xa (24) is 48 and
+      xa (18) is 9 and
+      xar[ifnot false then 0 orelse 1] is 31 and
+      xar[if true then 1 orelse 0] is 41 and
+      x_y (if true then 10 orelse 0, 21) is 31)
 
   var r = (-12 + -30)
   assert_true ("testing signed addition", r is -42)
