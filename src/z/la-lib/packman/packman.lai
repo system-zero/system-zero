@@ -140,11 +140,11 @@ private
     this.curdir = Dir.current ()
     if (this.fetch_exec is null) {
       this.fetch_exec = Sys.which ("curl")
-      ifnot (null is this.fetch_exec) {
+
+      ifnot null is this.fetch_exec then
         this.fetch_args = "-L"
-      } else {
+      orelse
         println (stderr, "neither wget nor curl has been found")
-      }
     }
   }
 
@@ -214,14 +214,13 @@ private
     }
 
     var curdir = Dir.current ()
-    if notok is Dir.change (this.sources_dir) then
-      return notok
+
+    return notok if Dir.change (this.sources_dir) is notok
 
     var retval = this.sh:exec (this.git_exec + " " + this.clone_args + " " +
       this->spec->repo)
 
-    if notok is Dir.change (curdir) then
-      return notok
+    return notok if Dir.change (curdir) is notok
 
     return if retval then notok orelse ok
   }
@@ -243,15 +242,13 @@ private
         return notok
       }
 
-      if notok is this.fetch_sources () then return notok
+      return notok if this.fetch_sources () is notok
     }
 
-    if (ok is this.sh:exec (this.cp_exec + " -r -u " +
-        this.sources_dir +  "/" + this.spec.sources + " .")) {
-      return ok
-    }
+    var retval = this.sh:exec (this.cp_exec + " -r -u " +
+        this.sources_dir +  "/" + this.spec.sources + " .")
 
-    return notok
+    return if retval is 0 then ok orelse notok
   }
 
   "change_to_build_dirname" : func {
@@ -340,14 +337,14 @@ public
     }
 
     var curdir = Dir.current ()
-    if (notok is Dir.change (this.sources_dir + "/" + this.spec.sources)) {
-      return notok
-    }
+
+    return notok if notok is Dir.change (this.sources_dir + "/" + this.spec.sources)
 
     var retval = this.sh:exec (this.git_exec + " " + this.pull_args)
 
-    if notok is Dir.change (curdir) then return notok
-    return if retval then notok orelse ok
+    return notok if Dir.change (curdir) is notok
+
+    return if retval is 0 then ok orelse notok
   }
 
   "build" : func {
@@ -397,7 +394,7 @@ public
         continue if action.command is null
 
         var com = format ("${%s, format (action.command)}")
-        if (this.sh:exec (com) isnot ok) {
+        if (this.sh:exec (com) isnot 0) {
           println (stderr, "error while executing command: ${%s, com}")
           break 2
         }

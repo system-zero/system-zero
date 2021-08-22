@@ -149,6 +149,7 @@ private
       if (null isnot opt and opt: len ()) {
         var long = "--" + opt
         var long_len = long: len ()
+
         if (long: eq_n (arg, long_len)) {
           found = true
           var type = this.types[j]
@@ -282,6 +283,7 @@ public
     for (var i = 0; i < arlen; i += 1) {
       var slen = 0
       var is_short = 0
+
       if (this.shortopts[i]) {
         msg += "  -" + this.shortopts[i]
         slen += 2
@@ -340,6 +342,7 @@ public
           this.argv[this.argc] = this.input_argv[j]
           this.argc += 1
         }
+
         return ok
       }
 
@@ -349,21 +352,20 @@ public
         continue
       }
 
-
       retval = false
       if arg[1] isnot '-' {
         retval = this.parse_short_arg (arg)
 
-        if retval is notok then return notok
+        return notok if retval is notok
 
-        if this.exit is true then return ok
+        return ok if this.exit is true
 
         continue
       }
 
       retval = this.parse_long_arg (arg)
 
-      if retval is notok then return notok
+      return notok if retval is notok
 
       if (retval is false) {
         if (this.exit_on_unknown) {

@@ -131,99 +131,93 @@
 #define UFUNC_TYPE          'f'
 #define BINOP_TYPE          'o'
 
-#define LA_TOKEN_SYMBOL     'A'
-#define LA_TOKEN_BUILTIN    'B'
-#define LA_TOKEN_CHAR       'C'
-#define LA_TOKEN_DO         'D'
-#define LA_TOKEN_ELSEIF     'E'
-#define LA_TOKEN_FUNCDEF    'F'
-#define LA_TOKEN_LAMBDA     'G'
-#define LA_TOKEN_FORMAT     'H'
-#define LA_TOKEN_IFNOT      'I'
-#define LA_TOKEN_ORELSE     'J'
-#define LA_TOKEN_THEN       'K'
-#define LA_TOKEN_LOOP       'L'
-#define LA_TOKEN_MAP        'M'
-#define LA_TOKEN_CONTINUE   'N'
-#define LA_TOKEN_OPERATOR   'O'
-#define LA_TOKEN_PRINT      'P'
-#define LA_TOKEN_EVALFILE   'Q'
-#define LA_TOKEN_RETURN     'R'
-#define LA_TOKEN_STRING     'S'
-#define LA_TOKEN_TYPE       'T'
-#define LA_TOKEN_NEW        'U'
-#define LA_TOKEN_VARDEF     'V'
-#define LA_TOKEN_WHEN       'W'
-#define LA_TOKEN_EXIT       'X'
-#define LA_TOKEN_ARYDEF     'Y'
-#define LA_TOKEN_SYNTAX_ERR 'Z'
-#define LA_TOKEN_BREAK      'b'
-#define LA_TOKEN_CONSTDEF   'c'
-#define LA_TOKEN_NUMBER     'd'
-#define LA_TOKEN_ELSE       'e'
-#define LA_TOKEN_USRFUNC    'f'
-#define LA_TOKEN_PUBLIC     'g'
-#define LA_TOKEN_PRIVATE    'h'
-#define LA_TOKEN_IF         'i'
-#define LA_TOKEN_OVERRIDE   'j'
-#define LA_TOKEN_FOR        'l'
-#define LA_TOKEN_FOREVER    'm'
-#define LA_TOKEN_INTEGER    'n'
-#define LA_TOKEN_BINOP      'o'
-#define LA_TOKEN_PRINTLN    'p'
-#define LA_TOKEN_HEX_CHAR   'q'
-#define LA_TOKEN_LOADFILE   'r'
-#define LA_TOKEN_IMPORT     's'
-#define LA_TOKEN_OCTAL      't'
-#define LA_TOKEN_BINARY     'u'
-#define LA_TOKEN_VAR        'v'
-#define LA_TOKEN_WHILE      'w'
-#define LA_TOKEN_HEX_NUMBER 'x'
-#define LA_TOKEN_ARRAY      'y'
-#define LA_TOKEN_BLOCK      'z'
-#define LA_TOKEN_INDEX_OPEN '['
-#define LA_TOKEN_INDEX_CLOS ']'
-#define LA_TOKEN_PAREN_OPEN '('
-#define LA_TOKEN_PAREN_CLOS ')'
-#define LA_TOKEN_BLOCK_OPEN '{'
-#define LA_TOKEN_MAP_OPEN   LA_TOKEN_BLOCK_OPEN
-#define LA_TOKEN_BLOCK_CLOS '}'
-#define LA_TOKEN_MAP_CLOS   LA_TOKEN_BLOCK_CLOS
-#define LA_TOKEN_SEMICOLON  ';'
-#define LA_TOKEN_COLON      ':'
-#define LA_TOKEN_DOT        '.'
-#define LA_TOKEN_COMMA      ','
-#define LA_TOKEN_BAR        '|'
-#define LA_TOKEN_COMMENT    '#'
-#define LA_TOKEN_DOLLAR     '$'
-#define LA_TOKEN_UNARY      '~'
-#define LA_TOKEN_DQUOTE     '"'
-#define LA_TOKEN_SQUOTE     '\''
-#define LA_TOKEN_STAR       '*'
-#define LA_TOKEN_NL         '\n'
-#define LA_TOKEN_SLASH      '\\'
-#define LA_TOKEN_ESCAPE_CHR LA_TOKEN_SLASH
-//#define LA_TOKEN_NULL       '0'
-#define LA_TOKEN_ASSIGN      1000
-#define LA_TOKEN_ASSIGN_APP  1001
-#define LA_TOKEN_ASSIGN_SUB  1002
-#define LA_TOKEN_ASSIGN_DIV  1003
-#define LA_TOKEN_ASSIGN_MUL  1004
-#define LA_TOKEN_ASSIGN_MOD  1005
-#define LA_TOKEN_ASSIGN_BAR  1006
-#define LA_TOKEN_ASSIGN_AND  1007
-#define LA_TOKEN_ASSIGN_LAST_VAL LA_TOKEN_ASSIGN_AND
-#define LA_TOKEN_EOF        -1
-
-#define _THROW(__e__, __m__) do {  \
-  la_set_CFuncError (this,  __e__); \
-  la_set_curMsg (this, __m__);      \
-  return NULL_VALUE;                \
-} while (0)
+#define TOKEN_SYMBOL     'A'
+#define TOKEN_BUILTIN    'B'
+#define TOKEN_CHAR       'C'
+#define TOKEN_DO         'D'
+#define TOKEN_ELSEIF     'E'
+#define TOKEN_FUNCDEF    'F'
+#define TOKEN_LAMBDA     'G'
+#define TOKEN_FORMAT     'H'
+#define TOKEN_IFNOT      'I'
+#define TOKEN_ORELSE     'J'
+#define TOKEN_THEN       'K'
+#define TOKEN_LOOP       'L'
+#define TOKEN_MAP        'M'
+#define TOKEN_CONTINUE   'N'
+#define TOKEN_OPERATOR   'O'
+#define TOKEN_PRINT      'P'
+#define TOKEN_EVALFILE   'Q'
+#define TOKEN_RETURN     'R'
+#define TOKEN_STRING     'S'
+#define TOKEN_TYPE       'T'
+#define TOKEN_NEW        'U'
+#define TOKEN_VARDEF     'V'
+#define TOKEN_WHEN       'W'
+#define TOKEN_EXIT       'X'
+#define TOKEN_ARYDEF     'Y'
+#define TOKEN_SYNTAX_ERR 'Z'
+#define TOKEN_BREAK      'b'
+#define TOKEN_CONSTDEF   'c'
+#define TOKEN_NUMBER     'd'
+#define TOKEN_ELSE       'e'
+#define TOKEN_USRFUNC    'f'
+#define TOKEN_PUBLIC     'g'
+#define TOKEN_PRIVATE    'h'
+#define TOKEN_IF         'i'
+#define TOKEN_OVERRIDE   'j'
+#define TOKEN_FOR        'l'
+#define TOKEN_FOREVER    'm'
+#define TOKEN_INTEGER    'n'
+#define TOKEN_BINOP      'o'
+#define TOKEN_PRINTLN    'p'
+#define TOKEN_HEX_CHAR   'q'
+#define TOKEN_LOADFILE   'r'
+#define TOKEN_IMPORT     's'
+#define TOKEN_OCTAL      't'
+#define TOKEN_BINARY     'u'
+#define TOKEN_VAR        'v'
+#define TOKEN_WHILE      'w'
+#define TOKEN_HEX_NUMBER 'x'
+#define TOKEN_ARRAY      'y'
+#define TOKEN_BLOCK      'z'
+#define TOKEN_INDEX_OPEN '['
+#define TOKEN_INDEX_CLOS ']'
+#define TOKEN_PAREN_OPEN '('
+#define TOKEN_PAREN_CLOS ')'
+#define TOKEN_BLOCK_OPEN '{'
+#define TOKEN_MAP_OPEN   TOKEN_BLOCK_OPEN
+#define TOKEN_BLOCK_CLOS '}'
+#define TOKEN_MAP_CLOS   TOKEN_BLOCK_CLOS
+#define TOKEN_SEMICOLON  ';'
+#define TOKEN_COLON      ':'
+#define TOKEN_DOT        '.'
+#define TOKEN_COMMA      ','
+#define TOKEN_BAR        '|'
+#define TOKEN_COMMENT    '#'
+#define TOKEN_DOLLAR     '$'
+#define TOKEN_UNARY      '~'
+#define TOKEN_DQUOTE     '"'
+#define TOKEN_SQUOTE     '\''
+#define TOKEN_STAR       '*'
+#define TOKEN_NL         '\n'
+#define TOKEN_SLASH      '\\'
+#define TOKEN_ESCAPE_CHR TOKEN_SLASH
+//#define TOKEN_NULL       '0'
+#define TOKEN_ASSIGN      1000
+#define TOKEN_ASSIGN_APP  1001
+#define TOKEN_ASSIGN_SUB  1002
+#define TOKEN_ASSIGN_DIV  1003
+#define TOKEN_ASSIGN_MUL  1004
+#define TOKEN_ASSIGN_MOD  1005
+#define TOKEN_ASSIGN_BAR  1006
+#define TOKEN_ASSIGN_AND  1007
+#define TOKEN_ASSIGN_LAST_VAL TOKEN_ASSIGN_AND
+#define TOKEN_EOF        -1
 
 typedef struct la_string {
-  uint len_;
-  const char *ptr_;
+  uint len;
+  const char *ptr;
 } la_string;
 
 typedef struct malloced_string malloced_string;
@@ -356,11 +350,10 @@ struct la_t {
     *func;
 
   int
-    c,
-    err,
     Errno,
     CFuncError,
     curToken,
+    prevToken,
     curState,
     funcState,
     objectState,
@@ -369,7 +362,7 @@ struct la_t {
     fmtRefcount,
     exitValue,
     tokenArgs,
-    didReturn,
+    hasToReturn,
     didExit,
     loopCount,
     breakCount,
@@ -384,19 +377,19 @@ struct la_t {
     *tmpString;
 
   la_string
-    curStrToken,
+    tokenStr,
     parsePtr;
 
   VALUE
     condValue,
-    tokenValue,
+    tokenVal,
     funArgs[MAX_BUILTIN_PARAMS];
 
   integer stackValIdx;
   VALUE stackVal[MAX_BUILTIN_PARAMS];
 
   sym_t
-    *tokenSymbol;
+    *tokenSym;
 
   FILE
     *print_fp,
@@ -418,14 +411,61 @@ struct la_t {
   la_T *root;
 };
 
+typedef struct tokenState {
+  int curToken;
+  int prevToken;
+  int tokenArgs;
+  la_string tokenStr;
+  la_string parsePtr;
+  VALUE tokenVal;
+  sym_t *tokenSym;
+} tokenState;
+
 #define MAX_EXPR_LEVEL 5
 
-#define TOKEN this->curToken
-#define COND  this->condValue
-#define C     this->c
-#define ERR   this->err
-#define THROW_ERR_IF_ERR do { if (ERR < 0) return ERR; } while (0)
-#define THROW_SYNTAX_ERR(__msg__) return this->syntax_error (this, __msg__)
+#define TOKEN       this->curToken
+#define TOKENVAL    this->tokenVal
+#define TOKENSYM    this->tokenSym
+#define TOKENARGS   this->tokenArgs
+#define TOKENSTR    this->tokenStr
+#define CONDVAL     this->condValue
+#define PARSEPTR    this->parsePtr
+#define PREVTOKEN   this->prevToken
+#define HASTORETURN this->hasToReturn
+
+#define THROW_ERR_IF_ERR(_e_) do { if (_e_ < 0) return _e_; } while (0)
+#define THROW_SYNTAX_ERR(__msg__) do { return this->syntax_error (this, __msg__); } while (0)
+#define THROW_SYNTAX_ERR_IF_ERR(_e_, _msg_) \
+  do { if (_e_ < 0) THROW_SYNTAX_ERR(_msg_); } while (0)
+#define THROW_SYNTAX_ERR_IF(_cond_, _msg_) \
+  do { if (_cond_) THROW_SYNTAX_ERR(_msg_); } while (0)
+#define THROW_SYNTAX_ERR_FMT(_fmt_, ...) \
+  do { return la_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
+
+#define SAVE_TOKENSTATE() la_save_token_state (this)
+#define RESTORE_TOKENSTATE(_s_) do {la_restore_token_state (this, _s_);} while (0)
+
+#define NEXT_TOKEN()  do { \
+  this->prevToken = TOKEN; \
+  if (la_do_next_token (this, 0) < TOKEN_EOF) return LA_ERR_SYNTAX; \
+} while (0)
+
+#define NEXT_RAW_TOKEN()  do { \
+  if (la_do_next_token (this, 1) < TOKEN_EOF) return LA_ERR_SYNTAX; \
+} while (0)
+
+#define RESET_PARSEPTR do { PARSEPTR.len = 0; } while (0)
+
+#define C_THROW(__e__, __m__) do {  \
+  la_set_CFuncError (this,  __e__); \
+  la_set_curMsg (this, __m__);      \
+  return NULL_VALUE;                \
+} while (0)
+
+#define GETSTRLEN(_s_) _s_.len
+#define GETSTRPTR(_s_) _s_.ptr
+#define SETSTRLEN(_s_, _l_) _s_.len = _l_
+#define SETSTRPTR(_s_, _p_) _s_.ptr = _p_
 
 static int la_do_next_token (la_t *, int);
 static int la_parse_iforelse (la_t *, int, VALUE *);
@@ -478,39 +518,24 @@ static void la_set_message_fmt (la_t *this, int append, char *fmt, ...) {
   la_set_message (this, append, bytes);
 }
 
-static inline uint la_StringGetLen (la_string s) {
-  return (uint)s.len_;
-}
 
-static inline const char *la_StringGetPtr (la_string s) {
-  return (const char *)s.ptr_;
-}
-
-static inline void la_StringSetLen (la_string *s, uint len) {
-  s->len_ = len;
-}
-
-static inline void la_StringSetPtr (la_string *s, const char *ptr) {
-  s->ptr_ = ptr;
-}
-
-static inline la_string la_StringNewLen (const char *str, integer len) {
+static inline la_string StringNewLen (const char *str, integer len) {
   la_string x;
-  la_StringSetLen (&x, len);
-  la_StringSetPtr (&x, str);
+  SETSTRLEN(x, len);
+  SETSTRPTR(x, str);
   return x;
 }
 
-static inline la_string la_StringNew (const char *str) {
+static inline la_string StringNew (const char *str) {
   la_string x;
-  la_StringSetLen (&x, bytelen (str));
-  la_StringSetPtr (&x, str);
+  SETSTRLEN(x, bytelen (str));
+  SETSTRPTR(x, str);
   return x;
 }
 
 static void la_print_lastring (la_t *this, FILE *fp, la_string s) {
-  uint len = la_StringGetLen (s);
-  const char *ptr = (const char *) la_StringGetPtr (s);
+  uint len = GETSTRLEN(s);
+  const char *ptr = (const char *) GETSTRPTR(s);
   while (len > 0) {
     this->print_byte (fp, *ptr);
     ptr++;
@@ -519,8 +544,8 @@ static void la_print_lastring (la_t *this, FILE *fp, la_string s) {
 }
 
 static int la_err_ptr (la_t *this, int err) {
-  const char *keep = la_StringGetPtr (this->parsePtr);
-  size_t len = la_StringGetLen (this->parsePtr);
+  const char *keep = GETSTRPTR(PARSEPTR);
+  size_t len = GETSTRLEN(PARSEPTR);
 
   char *sp = (char *) keep;
   while (sp > this->script_buffer and 0 is Cstring.byte.in_str (";\n", *(sp - 1)))
@@ -528,22 +553,22 @@ static int la_err_ptr (la_t *this, int err) {
 
   size_t n_len = (keep - sp);
 
-  la_StringSetPtr (&this->parsePtr, sp);
-  la_StringSetLen (&this->parsePtr, n_len);
+  SETSTRPTR(PARSEPTR, sp);
+  SETSTRLEN(PARSEPTR, n_len);
 
   sp = (char *) keep;
   int linenum = 0;
   while (*sp++)
-    if (*sp is LA_TOKEN_NL)
+    if (*sp is TOKEN_NL)
       if (++linenum > 9) break;
 
   n_len += (sp - keep);
-  la_StringSetLen (&this->parsePtr, n_len);
+  SETSTRLEN(PARSEPTR, n_len);
 
-  la_print_lastring (this, this->err_fp, this->parsePtr);
+  la_print_lastring (this, this->err_fp, PARSEPTR);
 
-  la_StringSetPtr (&this->parsePtr, keep);
-  la_StringSetLen (&this->parsePtr, len);
+  SETSTRPTR(PARSEPTR, keep);
+  SETSTRLEN(PARSEPTR, len);
 
   this->print_bytes (this->err_fp, "\n");
 
@@ -635,63 +660,83 @@ static inline int is_operator_span (int c) {
 }
 
 static void la_reset_token (la_t *this) {
-  la_StringSetLen (&this->curStrToken, 0);
-  la_StringSetPtr (&this->curStrToken, la_StringGetPtr (this->parsePtr));
+  SETSTRLEN(TOKENSTR, 0);
+  SETSTRPTR(TOKENSTR, GETSTRPTR(PARSEPTR));
 }
 
 static void la_ignore_last_token (la_t *this) {
-  la_StringSetLen (&this->curStrToken, la_StringGetLen (this->curStrToken) - 1);
+  SETSTRLEN(TOKENSTR, GETSTRLEN(TOKENSTR) - 1);
 }
 
 static void la_ignore_first_token (la_t *this) {
-  la_StringSetPtr (&this->curStrToken, la_StringGetPtr (this->curStrToken) + 1);
-  la_StringSetLen (&this->curStrToken, la_StringGetLen (this->curStrToken) - 1);
+  SETSTRPTR(TOKENSTR, GETSTRPTR(TOKENSTR) + 1);
+  SETSTRLEN(TOKENSTR, GETSTRLEN(TOKENSTR) - 1);
 }
 
 static void la_ignore_next_char (la_t *this) {
-  la_StringSetPtr (&this->parsePtr, la_StringGetPtr (this->parsePtr) + 1);
-  la_StringSetLen (&this->parsePtr, la_StringGetLen (this->parsePtr) - 1);
+  SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + 1);
+  SETSTRLEN(PARSEPTR, GETSTRLEN(PARSEPTR) - 1);
+}
+
+static tokenState la_save_token_state (la_t *this) {
+  return (tokenState) {
+    .curToken  = TOKEN,
+    .prevToken = PREVTOKEN,
+    .tokenArgs = TOKENARGS,
+    .tokenStr  = TOKENSTR,
+    .tokenVal  = TOKENVAL,
+    .tokenSym  = TOKENSYM,
+    .parsePtr  = PARSEPTR
+  };
+}
+
+static void la_restore_token_state (la_t *this, tokenState tokenstate) {
+  TOKEN     = tokenstate.curToken;
+  PREVTOKEN = tokenstate.prevToken;
+  TOKENARGS = tokenstate.tokenArgs;
+  TOKENVAL  = tokenstate.tokenVal;
+  TOKENSYM  = tokenstate.tokenSym;
+  TOKENSTR  = tokenstate.tokenStr;
+  PARSEPTR  = tokenstate.parsePtr;
 }
 
 static int la_peek_token (la_t *this, uint n) {
-  la_string savepc = this->parsePtr;
-  int token = TOKEN;
+  tokenState save = SAVE_TOKENSTATE();
 
   do {
     int err = la_do_next_token (this, 0);
-    if (err < LA_TOKEN_EOF) return err;
+    if (err < TOKEN_EOF) return err;
   } while (n--);
 
   int retval = TOKEN;
-  TOKEN = token;
-  this->parsePtr = savepc;
+  RESTORE_TOKENSTATE(save);
   return retval;
 }
 
 static int la_peek_char (la_t *this, uint n) {
-  if (la_StringGetLen (this->parsePtr) <= n) return LA_TOKEN_EOF;
-  return *(la_StringGetPtr (this->parsePtr) + n);
+  if (GETSTRLEN(PARSEPTR) <= n) return TOKEN_EOF;
+  return *(GETSTRPTR(PARSEPTR) + n);
 }
 
 static int la_get_char (la_t *this) {
-  uint len = la_StringGetLen (this->parsePtr);
+  uint len = GETSTRLEN(PARSEPTR);
 
-  ifnot (len) return LA_TOKEN_EOF;
+  ifnot (len) return TOKEN_EOF;
 
-  const char *ptr = la_StringGetPtr (this->parsePtr);
+  const char *ptr = GETSTRPTR(PARSEPTR);
   int c = *ptr++;
 
   --len;
 
-  la_StringSetPtr (&this->parsePtr, ptr);
-  la_StringSetLen (&this->parsePtr, len);
-  la_StringSetLen (&this->curStrToken, la_StringGetLen (this->curStrToken) + 1);
+  SETSTRPTR(PARSEPTR, ptr);
+  SETSTRLEN(PARSEPTR, len);
+  SETSTRLEN(TOKENSTR, GETSTRLEN(TOKENSTR) + 1);
   return c;
 }
 
 static void la_unget_char (la_t *this) {
-  la_StringSetLen (&this->parsePtr, la_StringGetLen (this->parsePtr) + 1);
-  la_StringSetPtr (&this->parsePtr, la_StringGetPtr (this->parsePtr) - 1);
+  SETSTRLEN(PARSEPTR, GETSTRLEN(PARSEPTR) + 1);
+  SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) - 1);
   la_ignore_last_token (this);
 }
 
@@ -721,7 +766,7 @@ static int la_peek_char_nows (la_t *this, uint *n) {
     *n += 1;
   }
 
-  return LA_TOKEN_EOF;
+  return TOKEN_EOF;
 }
 
 static int la_next_char (la_t *this) {
@@ -737,7 +782,7 @@ static int la_peek_nows_char_inline (la_t *this, uint *n) {
     *n += 1;
   }
 
-  return LA_TOKEN_EOF;
+  return TOKEN_EOF;
 }
 
 static void la_get_span (la_t *this, int (*testfn) (int)) {
@@ -746,7 +791,7 @@ static void la_get_span (la_t *this, int (*testfn) (int)) {
     c = la_get_char (this);
   while (testfn (c));
 
-  if (c isnot LA_TOKEN_EOF) la_unget_char (this);
+  if (c isnot TOKEN_EOF) la_unget_char (this);
 }
 
 static int la_get_opened_block (la_t *this, char *msg) {
@@ -759,17 +804,17 @@ static int la_get_opened_block (la_t *this, char *msg) {
   while (bracket > 0) {
     c = la_get_char (this);
 
-    if (c is LA_NOTOK or c is LA_TOKEN_EOF)
-      return this->syntax_error (this, msg);
+    if (c is LA_NOTOK or c is TOKEN_EOF)
+      THROW_SYNTAX_ERR(msg);
 
-    if (c is LA_TOKEN_COMMENT) {
+    if (c is TOKEN_COMMENT) {
       ifnot (in_str) {
         in_com = 1;
         continue;
       }
     }
 
-    if (c is LA_TOKEN_NL) {
+    if (c is TOKEN_NL) {
       if (in_com) {
         ifnot (in_str) {
           in_com = 0;
@@ -781,7 +826,7 @@ static int la_get_opened_block (la_t *this, char *msg) {
     if (in_com)
       continue;
 
-    if (c is LA_TOKEN_DQUOTE and prev_c isnot LA_TOKEN_ESCAPE_CHR) {
+    if (c is TOKEN_DQUOTE and prev_c isnot TOKEN_ESCAPE_CHR) {
       if (in_str)
         in_str--;
       else
@@ -794,8 +839,8 @@ static int la_get_opened_block (la_t *this, char *msg) {
     if (in_str) continue;
 
     switch (c) {
-      case LA_TOKEN_BLOCK_CLOS: --bracket; break;
-      case LA_TOKEN_BLOCK_OPEN: ++bracket; break;
+      case TOKEN_BLOCK_CLOS: --bracket; break;
+      case TOKEN_BLOCK_OPEN: ++bracket; break;
     }
   }
 
@@ -803,7 +848,7 @@ static int la_get_opened_block (la_t *this, char *msg) {
 }
 
 static inline int parse_number (la_t *this, int c, int *token_type) {
-  *token_type = LA_TOKEN_INTEGER;
+  *token_type = TOKEN_INTEGER;
 
   int dot_found = 0;
   int plus_found = 0;
@@ -816,12 +861,12 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   if (is_octOrbin) {
     ifnot (is_digit (c)) {
       if (c is 'b') {
-        *token_type = LA_TOKEN_BINARY;
+        *token_type = TOKEN_BINARY;
         la_reset_token (this);
         c = la_get_char (this);
       }
     } else
-      *token_type = LA_TOKEN_OCTAL;
+      *token_type = TOKEN_OCTAL;
   }
 
   if (c is '-' or c is '+')
@@ -834,7 +879,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
 
     parse:
     if (c is '-' or '+' is c) {
-      if (*token_type isnot LA_TOKEN_NUMBER) return LA_NOTOK;
+      if (*token_type isnot TOKEN_NUMBER) return LA_NOTOK;
       if (c is '-') {
         if (minus_found++) return LA_NOTOK;
         else if (plus_found++) return LA_NOTOK;
@@ -846,7 +891,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
     }
 
     if (c is '.') {
-      *token_type = LA_TOKEN_NUMBER;
+      *token_type = TOKEN_NUMBER;
 
       if (dot_found++) return LA_NOTOK;
       ifnot (is_digit (la_peek_char (this, 0))) return LA_NOTOK;
@@ -854,7 +899,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
     }
 
     if (c is 'e' or c is 'E') {
-      *token_type = LA_TOKEN_NUMBER;
+      *token_type = TOKEN_NUMBER;
 
       int cc = la_peek_char (this, 0);
       if (0 is is_digit (cc) or
@@ -869,16 +914,16 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
 
     ifnot (is_digit (c)) break;
 
-    if (*token_type is LA_TOKEN_OCTAL)
+    if (*token_type is TOKEN_OCTAL)
       if (c > '7')
-        return this->syntax_error (this, "not an octal number");
+        THROW_SYNTAX_ERR("not an octal number");
 
-    if (*token_type is LA_TOKEN_BINARY)
+    if (*token_type is TOKEN_BINARY)
       if (c > '1')
-        return this->syntax_error (this, "not a binary number");
+        THROW_SYNTAX_ERR("not a binary number");
   }
 
-  if (c isnot LA_TOKEN_EOF) la_unget_char (this);
+  if (c isnot TOKEN_EOF) la_unget_char (this);
 
   return LA_OK;
 }
@@ -918,7 +963,7 @@ static VALUE la_typeof (la_t *this, VALUE value) {
   VALUE v;
   if ((value.type & 0xff) is UFUNC_TYPE)
     v = INT(FUNCPTR_TYPE);
-  else if ((value.type & 0x77) is LA_TOKEN_BUILTIN)
+  else if ((value.type & 0x77) is TOKEN_BUILTIN)
     v = INT(CFUNCTION_TYPE);
   else
     v = INT(value.type);
@@ -954,7 +999,7 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
     default:
       if (value.type & FUNCPTR_TYPE)
         String.append_with_len (buf, "FunctionType", 12);
-      else if ((value.type & 0xff) is LA_TOKEN_BUILTIN)
+      else if ((value.type & 0xff) is TOKEN_BUILTIN)
         String.append_with_len (buf, "CFunctionType", 13);
       else
         String.append_with_len (buf, "UnknownType", 11);
@@ -984,7 +1029,7 @@ static void la_release_qualifiers (la_t *this) {
 }
 
 static VALUE la_set_qualifiers (la_t *this, VALUE v_qual) {
-  ifnot (IS_MAP(v_qual)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map as qualifiers");
+  ifnot (IS_MAP(v_qual)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map as qualifiers");
   la_release_qualifiers (this);
   this->qualifiers = AS_MAP(v_qual);
   return OK_VALUE;
@@ -1008,7 +1053,7 @@ static VALUE la_qualifier_exists (la_t *this, VALUE v_key) {
   if (NULL is this->qualifiers)
     return FALSE_VALUE;
 
-  ifnot (IS_STRING(v_key)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_key)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   return INT(Vmap.key_exists (this->qualifiers, AS_STRING_BYTES(v_key)));
 }
@@ -1023,7 +1068,7 @@ static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
     return val;
   }
 
-  ifnot (IS_STRING(v_key)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_key)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   VALUE *v = (VALUE *) Vmap.get (this->qualifiers, AS_STRING_BYTES(v_key));
 
@@ -1095,7 +1140,7 @@ static VALUE la_fflush (la_t *this, VALUE fp_val) {
 
   if (fp_val.type is NULL_TYPE) return result;
 
-  ifnot (IS_FILEPTR(fp_val)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
+  ifnot (IS_FILEPTR(fp_val)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
 
   FILE *fp = AS_FILEPTR(fp_val);
   if (NULL is fp) return result;
@@ -1112,8 +1157,8 @@ static VALUE la_fflush (la_t *this, VALUE fp_val) {
 }
 
 static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
-  ifnot (IS_STRING(fn_value))  _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-  ifnot (IS_STRING(mod_value)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(fn_value))  C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(mod_value)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   la_set_Errno (this, 0);
 
@@ -1138,7 +1183,7 @@ static int la_parse_format (la_t *this, VALUE *vp) {
 
   int c = la_ignore_ws (this);
 
-  if (c isnot LA_TOKEN_PAREN_OPEN) {
+  if (c isnot TOKEN_PAREN_OPEN) {
     this->print_bytes (this->err_fp, "format error, awaiting (\n");
     la_err_ptr (this, LA_NOTOK);
     return LA_NOTOK;
@@ -1148,19 +1193,19 @@ static int la_parse_format (la_t *this, VALUE *vp) {
 
   c= la_ignore_ws (this);
 
-  if (c isnot LA_TOKEN_DQUOTE) {
+  if (c isnot TOKEN_DQUOTE) {
     la_unget_char (this);
-    c = la_next_token (this);
+    NEXT_TOKEN();
+    c = TOKEN;
     VALUE v;
     this->curState |= MALLOCED_STRING_STATE;
     err = la_parse_expr (this, &v);
     this->curState &= ~MALLOCED_STRING_STATE;
-    if (err isnot LA_OK)
-      return err;
+    THROW_ERR_IF_ERR(err);
 
     if (v.type is STRING_TYPE) {
-      c = this->curToken;
-      la_string savepc = this->parsePtr;
+      c = TOKEN;
+      la_string savepc = PARSEPTR;
       string *v_s = AS_STRING(v);
       /* very crude algorithm (buf for a minor case (evaluation of a string
        * that might include embedded interpolation syntax)) */
@@ -1178,11 +1223,11 @@ static int la_parse_format (la_t *this, VALUE *vp) {
           0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
         String.release (v_s);
 
-      this->parsePtr = la_StringNew (buf);
+      PARSEPTR = StringNew (buf);
       err = la_parse_format (this, &v);
-      if (err isnot LA_OK)
-        return err;
-      this->parsePtr = savepc;
+      THROW_ERR_IF_ERR(err);
+
+      PARSEPTR = savepc;
 
       string *vs = AS_STRING(v);
 
@@ -1194,23 +1239,25 @@ static int la_parse_format (la_t *this, VALUE *vp) {
     }
   }
 
-  if (c isnot LA_TOKEN_DQUOTE)
-    return this->syntax_error (this, "format error, awaiting \"");
+  if (c isnot TOKEN_DQUOTE)
+    THROW_SYNTAX_ERR("format error, awaiting \"");
 
   err = la_parse_fmt (this, str, 0);
-  if (err isnot LA_OK)
-    return err;
+  THROW_ERR_IF_ERR(err);
 
 theend:
   *vp = STRING(str);
 
-  ifnot (is_expr)
-    c = la_next_token (this);
+  ifnot (is_expr) {
+    NEXT_TOKEN();
+    c = TOKEN;
+  }
 
-  if (c isnot LA_TOKEN_PAREN_CLOS)
-    return this->syntax_error (this, "format error, awaiting )");
+  if (c isnot TOKEN_PAREN_CLOS)
+    THROW_SYNTAX_ERR("format error, awaiting )");
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
   if (this->fmtRefcount)
     this->fmtState |= FMT_LITERAL;
@@ -1223,7 +1270,7 @@ theend:
 
 static VALUE la_fileno (la_t *this, VALUE fp_val) {
   (void) this;
-  ifnot (IS_FILEPTR(fp_val)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
+  ifnot (IS_FILEPTR(fp_val)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
   FILE *fp = AS_FILEPTR(fp_val);
   la_set_Errno (this, 0);
   int fd = fileno (fp);
@@ -1410,19 +1457,19 @@ static funT *Fun_new (la_t *this, funNewArgs options) {
 
 static inline char *sym_key (la_t *this, la_string x) {
   Cstring.cp (this->symKey, MAXLEN_SYMBOL + 1,
-      la_StringGetPtr (x), la_StringGetLen (x));
+      GETSTRPTR(x), GETSTRLEN(x));
   return this->symKey;
 }
 
 static inline char *map_key (la_t *this, la_string x) {
   Cstring.cp (this->curMapKey, MAXLEN_SYMBOL + 1,
-      la_StringGetPtr (x), la_StringGetLen (x));
+      GETSTRPTR(x), GETSTRLEN(x));
   return this->curMapKey;
 }
 
 static inline char *cur_msg_str (la_t *this, la_string x) {
   Cstring.cp (this->curMsg, MAXLEN_MSG + 1,
-      la_StringGetPtr (x), la_StringGetLen (x));
+      GETSTRPTR(x), GETSTRLEN(x));
   return this->curMsg;
 }
 
@@ -1508,34 +1555,36 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
 }
 
 static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
+  int err;
+
   Cstring.cp_fmt
     (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
   this->curFunDef = NULL;
 
-  int err = la_parse_func_def (this);
-  if (err isnot LA_OK)
-    return err;
+  err = la_parse_func_def (this);
+  THROW_ERR_IF_ERR(err);
+
   this->curFunName[0] = '\0';
 
   sym_t *sym = this->curSym;
   sym->value = NULL_VALUE;
   funT *lambda = this->curFunDef;
-  this->tokenArgs = lambda->nargs;
+  TOKENARGS = lambda->nargs;
 
-  if (this->curToken isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "lambda error, awaiting (");
+  if (TOKEN isnot TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("lambda error, awaiting (");
 
   la_unget_char (this);
 
   if (justFun)
     return LA_OK;
 
-  err = la_parse_func_call (this, vp, NULL, lambda, this->tokenValue);
+  err = la_parse_func_call (this, vp, NULL, lambda, TOKENVAL);
 
   fun_release (&lambda);
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   return err;
 }
@@ -1549,11 +1598,11 @@ static int la_consume_string (la_t *this, string *str) {
       pc = c;
       c = la_get_char (this);
 
-      if (c is LA_TOKEN_EOF)
-        return this->syntax_error (this, "error while getting literal string, awaiting double quote");
+      if (c is TOKEN_EOF)
+        THROW_SYNTAX_ERR("error while getting literal string, awaiting double quote");
 
-      if (c is LA_TOKEN_DQUOTE) {
-        if (pc is LA_TOKEN_ESCAPE_CHR) {
+      if (c is TOKEN_DQUOTE) {
+        if (pc is TOKEN_ESCAPE_CHR) {
           String.clear_at (str, -1);
           String.append_byte (str, c);
           continue;
@@ -1570,11 +1619,11 @@ static int la_consume_string (la_t *this, string *str) {
       pc = c;
       c = la_get_char (this);
 
-      if (c is LA_TOKEN_EOF)
-        return this->syntax_error (this, "error while getting literal string, awaiting double quote, found a newline character");
+      if (c is TOKEN_EOF)
+        THROW_SYNTAX_ERR("error while getting literal string, awaiting double quote, found a newline character");
 
-      if (c is LA_TOKEN_DQUOTE) {
-        if (pc is LA_TOKEN_ESCAPE_CHR) continue;
+      if (c is TOKEN_DQUOTE) {
+        if (pc is TOKEN_ESCAPE_CHR) continue;
         break;
       }
     }
@@ -1584,10 +1633,11 @@ static int la_consume_string (la_t *this, string *str) {
 }
 
 static int la_do_next_token (la_t *this, int israw) {
+  int err;
   int r = LA_NOTOK;
 
   sym_t *symbol = NULL;
-  this->tokenSymbol = NULL;
+  TOKENSYM = NULL;
 
   la_reset_token (this);
 
@@ -1596,72 +1646,72 @@ static int la_do_next_token (la_t *this, int israw) {
   char token = c;
 
   if (c is '#') {
-    do c = la_get_char (this); while (c >= 0 and c isnot LA_TOKEN_NL);
-    this->curToken = c;
+    do c = la_get_char (this); while (c >= 0 and c isnot TOKEN_NL);
+    TOKEN = c;
     return c;
   }
 
   if (is_alpha (c) or c is '_' or (
       (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c)))
-    token = LA_TOKEN_SYMBOL;
+    token = TOKEN_SYMBOL;
   else if (is_digit (c) or (c is '-' and is_digit (la_peek_char (this, 0))))
-    token = LA_TOKEN_INTEGER;
+    token = TOKEN_INTEGER;
   else if (is_operator (c))
-    token = LA_TOKEN_OPERATOR;
-  else if (c is LA_TOKEN_COLON or c is LA_TOKEN_DOLLAR) {
-    this->curToken = c;
+    token = TOKEN_OPERATOR;
+  else if (c is TOKEN_COLON or c is TOKEN_DOLLAR) {
+    TOKEN = c;
     return c;
   }
 
   switch (token) {
-    case LA_TOKEN_INTEGER:
+    case TOKEN_INTEGER:
       if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", la_peek_char (this, 0))
           and is_hexchar (la_peek_char(this, 1))) {
         la_get_char (this);
         la_ignore_first_token (this);
         la_ignore_first_token (this);
         la_get_span (this, is_hexchar);
-        r = LA_TOKEN_HEX_NUMBER;
+        r = TOKEN_HEX_NUMBER;
       } else
         if (LA_NOTOK is parse_number (this, c, &r))
-          return this->syntax_error (this, "error while tokenizing a number");
+          THROW_SYNTAX_ERR("error while tokenizing a number");
 
       break;
 
-    case LA_TOKEN_SQUOTE: {
+    case TOKEN_SQUOTE: {
         c = la_get_char (this); // get first
-        if (c is LA_TOKEN_ESCAPE_CHR) {
+        if (c is TOKEN_ESCAPE_CHR) {
           if (la_peek_char (this, 0) is 'x') {
             la_get_char (this);
             if (la_peek_char (this, 0) isnot '{')
-              return this->syntax_error (this, "error while parsing char, awaiting {");
+              THROW_SYNTAX_ERR("error while parsing char, awaiting {");
             la_get_char (this);
             la_reset_token (this);
             la_get_span (this, is_hexchar);
             c = la_get_char (this);
             if (c isnot '}')
-              return this->syntax_error (this, "error while parsing char, awaiting }");
+              THROW_SYNTAX_ERR("error while parsing char, awaiting }");
             la_ignore_last_token (this);
             c = la_get_char (this);
-            if (c isnot LA_TOKEN_SQUOTE)
-              return this->syntax_error (this, "error while parsing char, awaiting '");
+            if (c isnot TOKEN_SQUOTE)
+              THROW_SYNTAX_ERR("error while parsing char, awaiting '");
             la_ignore_last_token (this);
-            r = LA_TOKEN_HEX_CHAR;
+            r = TOKEN_HEX_CHAR;
             break;
           } else
             la_get_char (this);
         }
 
         int max = 4;
-        r = LA_TOKEN_SYNTAX_ERR;
+        r = TOKEN_SYNTAX_ERR;
 
         /* multibyte support */
         do {
           c = la_get_char (this);
-          if (c is LA_TOKEN_SQUOTE) {
+          if (c is TOKEN_SQUOTE) {
             la_ignore_first_token (this);
             la_ignore_last_token (this);
-            r = LA_TOKEN_CHAR;
+            r = TOKEN_CHAR;
             break;
           }
         } while (--max isnot 0);
@@ -1669,79 +1719,79 @@ static int la_do_next_token (la_t *this, int israw) {
       break;
     }
 
-    case LA_TOKEN_SYMBOL:
+    case TOKEN_SYMBOL:
       la_get_span (this, is_identifier);
-      r = LA_TOKEN_SYMBOL;
+      r = TOKEN_SYMBOL;
 
-      uint toklen = la_StringGetLen (this->curStrToken);
+      uint toklen = GETSTRLEN(TOKENSTR);
       if (toklen > MAXLEN_SYMBOL)
-        return la_syntax_error_fmt (this, "%s: exceeds maximum length (%d) of an identifier",
-            cur_msg_str (this, this->curStrToken), MAXLEN_SYMBOL);
+        THROW_SYNTAX_ERR_FMT("%s: exceeds maximum length (%d) of an identifier",
+            cur_msg_str (this, TOKENSTR), MAXLEN_SYMBOL);
 
       ifnot (israw) {
-        this->tokenSymbol = symbol = la_lookup_symbol (this, this->curStrToken);
+        TOKENSYM = symbol = la_lookup_symbol (this, TOKENSTR);
 
         if (symbol) {
           r = symbol->type & 0xff;
 
-          if (r is LA_TOKEN_BINOP) { /* is, isnot, and, or */
-            this->curToken = this->tokenSymbol->type;
-            this->tokenValue = this->tokenSymbol->value;
-            return this->curToken;
+          if (r is TOKEN_BINOP) { /* is, isnot, and, or */
+            TOKEN = TOKENSYM->type;
+            TOKENVAL = TOKENSYM->value;
+            return TOKEN;
           }
 
-          this->tokenArgs = (symbol->type >> 8) & 0xff;
+          TOKENARGS = (symbol->type >> 8) & 0xff;
           symbol->value.sym = symbol;
 
           if (r is ARRAY_TYPE) {
-            r = LA_TOKEN_ARRAY;
+            r = TOKEN_ARRAY;
             symbol->value.type = ARRAY_TYPE;
           } else if (r is MAP_TYPE) {
-            r = LA_TOKEN_MAP;
+            r = TOKEN_MAP;
             symbol->value.type = MAP_TYPE;
           } else
             if (r < '@')
-              r = LA_TOKEN_VAR;
+              r = TOKEN_VAR;
 
-          this->tokenValue = symbol->value;
-          this->curToken = r;
+          TOKENVAL = symbol->value;
+          TOKEN = r;
           return r;
         }
       }
 
       break;
 
-    case LA_TOKEN_OPERATOR: {
+    case TOKEN_OPERATOR: {
       la_get_span (this, is_operator_span);
 
-      char *key = sym_key (this, this->curStrToken);
-      this->tokenSymbol = ns_lookup_symbol (this->std, key);
+      char *key = sym_key (this, TOKENSTR);
+      TOKENSYM = ns_lookup_symbol (this->std, key);
 
-      if (this->tokenSymbol) {
-        this->curToken = this->tokenSymbol->type;
-        this->tokenValue = this->tokenSymbol->value;
+      if (TOKENSYM) {
+        TOKEN = TOKENSYM->type;
+        TOKENVAL = TOKENSYM->value;
       } else
-        this->curToken = LA_TOKEN_SYNTAX_ERR;
+        TOKEN = TOKEN_SYNTAX_ERR;
 
-      return this->curToken;
+      return TOKEN;
     }
 
-    case LA_TOKEN_BLOCK_OPEN: {
+    case TOKEN_BLOCK_OPEN: {
       la_reset_token (this);
-      int err = la_get_opened_block (this, "unended opened block");
-      if (err isnot LA_OK) return err;
+      err = la_get_opened_block (this, "unended opened block");
+      THROW_ERR_IF_ERR(err);
 
       la_ignore_last_token (this);
-      this->curToken = LA_TOKEN_BLOCK;
-      return this->curToken;
+      TOKEN = TOKEN_BLOCK;
+      return TOKEN;
     }
 
-    case LA_TOKEN_DQUOTE:
+    case TOKEN_DQUOTE:
       if (this->curState & MALLOCED_STRING_STATE or
           (this->curState & CONSUME) is 0) {
         string *str = String.new (8);
 
-        const char *ptr = la_StringGetPtr (this->parsePtr);
+        const char *ptr = GETSTRPTR(PARSEPTR);
         const char *tmp = ptr;
 
         int pc;
@@ -1751,11 +1801,11 @@ static int la_do_next_token (la_t *this, int israw) {
           pc = c;
           c = *ptr++;
 
-          if (c is LA_TOKEN_EOF)
-            return this->syntax_error (this, "error while getting literal string, awaiting double quote");
+          if (c is TOKEN_EOF)
+            THROW_SYNTAX_ERR("error while getting literal string, awaiting double quote");
 
-          if (c is LA_TOKEN_DQUOTE) {
-            if (pc is LA_TOKEN_ESCAPE_CHR) {
+          if (c is TOKEN_DQUOTE) {
+            if (pc is TOKEN_ESCAPE_CHR) {
               String.clear_at (str, -1);
               String.append_byte (str, c);
               continue;
@@ -1767,9 +1817,9 @@ static int la_do_next_token (la_t *this, int israw) {
           String.append_byte (str, c);
         }
 
-        size_t len = la_StringGetLen (this->parsePtr);
-        la_StringSetPtr (&this->parsePtr, ptr);
-        la_StringSetLen (&this->parsePtr, len - (ptr - tmp));
+        size_t len = GETSTRLEN(PARSEPTR);
+        SETSTRPTR(PARSEPTR, ptr);
+        SETSTRLEN(PARSEPTR, len - (ptr - tmp));
 
         VALUE v = STRING(str);
         if (this->curState & MALLOCED_STRING_STATE) {
@@ -1780,20 +1830,20 @@ static int la_do_next_token (la_t *this, int israw) {
         } else
           this->curState |= LITERAL_STRING_STATE;
 
-        this->tokenValue = v;
+        TOKENVAL = v;
       } else {
-        int err = la_consume_string (this, NULL);
-        if (err isnot LA_OK) return err;
+        err = la_consume_string (this, NULL);
+        THROW_ERR_IF_ERR(err);
       }
 
-      this->curToken = LA_TOKEN_STRING;
-      return this->curToken;
+      TOKEN = TOKEN_STRING;
+      return TOKEN;
 
     default:
       r = c;
   }
 
-  this->curToken = r;
+  TOKEN = r;
   return r;
 }
 
@@ -1891,8 +1941,8 @@ static Vmap_t *la_symbol_stack_pop (la_t *this) {
 static VALUE la_string_to_dec (la_string s) {
   integer r = 0;
   int c;
-  const char *ptr = la_StringGetPtr (s);
-  int len = la_StringGetLen (s);
+  const char *ptr = GETSTRPTR(s);
+  int len = GETSTRLEN(s);
   int is_sign = *ptr is '-';
   if (is_sign) ptr++;
 
@@ -1911,8 +1961,8 @@ static VALUE la_string_to_dec (la_string s) {
 static VALUE la_HexStringToNum (la_string s) {
   integer r = 0;
   int c;
-  const char *ptr = la_StringGetPtr (s);
-  int len = la_StringGetLen (s);
+  const char *ptr = GETSTRPTR(s);
+  int len = GETSTRLEN(s);
   while (len-- > 0) {
     c = *ptr++;
     ifnot (is_hexchar (c)) break;
@@ -1931,8 +1981,8 @@ static VALUE la_HexStringToNum (la_string s) {
 static VALUE la_OctalStringToNum (la_string s) {
   integer r = 0;
   int c;
-  const char *ptr = la_StringGetPtr (s);
-  int len = la_StringGetLen (s);
+  const char *ptr = GETSTRPTR(s);
+  int len = GETSTRLEN(s);
   while (len-- > 0) {
     c = *ptr++;
     r = 8 * r + (c - '0');
@@ -1945,8 +1995,8 @@ static VALUE la_OctalStringToNum (la_string s) {
 static VALUE la_BinaryStringToNum (la_string s) {
   integer r = 0;
   int c;
-  const char *ptr = la_StringGetPtr (s);
-  int len = la_StringGetLen (s);
+  const char *ptr = GETSTRPTR(s);
+  int len = GETSTRLEN(s);
 
   while (len-- > 0) {
     c = *ptr++;
@@ -1958,21 +2008,22 @@ static VALUE la_BinaryStringToNum (la_string s) {
 }
 
 static int  la_string_get (la_t *this, VALUE *vp) {
+  int err;
   int c = la_peek_char (this, 0);
 
-  if (c is LA_TOKEN_INDEX_OPEN) {
-    string *str = AS_STRING(this->tokenValue);
+  if (c is TOKEN_INDEX_OPEN) {
+    string *str = AS_STRING(TOKENVAL);
 
-    la_next_token (this);
+    NEXT_TOKEN();
 
     VALUE v;
     this->curState |= INDEX_STATE;
-    int err = la_parse_primary (this, &v);
+    err = la_parse_primary (this, &v);
     this->curState &= ~INDEX_STATE;
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     if (v.type isnot INTEGER_TYPE)
-      return this->syntax_error (this, "awaiting an integer expression, when getting string index");
+      THROW_SYNTAX_ERR("awaiting an integer expression, when getting string index");
 
     integer idx = AS_INT(v);
 
@@ -1989,44 +2040,47 @@ static int  la_string_get (la_t *this, VALUE *vp) {
     }
 
   } else {
-    *vp = this->tokenValue;
-    la_next_token (this);
+    *vp = TOKENVAL;
+    NEXT_TOKEN();
   }
 
   return LA_OK;
 }
 
 static int la_string_set_char (la_t *this, VALUE value, int is_const) {
+  int err;
+
   if (is_const)
-    return this->syntax_error (this, "can not modify constant string");
+    THROW_SYNTAX_ERR("can not modify constant string");
 
   string *str = AS_STRING(value);
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   VALUE v;
 
   this->curState |= INDEX_STATE;
-  int err = la_parse_primary (this, &v);
+  err = la_parse_primary (this, &v);
   this->curState &= ~INDEX_STATE;
-  if (err isnot LA_OK) return err;
+  THROW_ERR_IF_ERR(err);
 
-  if (v.type isnot INTEGER_TYPE)
-    return this->syntax_error (this, "awaiting an integer expression, when setting string index");
+    THROW_SYNTAX_ERR_IF(v.type isnot INTEGER_TYPE,
+      "awaiting an integer expression, when setting string index");
 
   integer idx = AS_INT(v);
 
   if (0 > idx) idx += str->num_bytes;
   if (idx < 0 or (size_t) idx >= str->num_bytes) return la_out_of_bounds (this);
 
-  if (this->curToken isnot LA_TOKEN_ASSIGN)
-    return this->syntax_error (this, "syntax error while setting string, awaiting =");
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_ASSIGN,
+    "syntax error while setting string, awaiting =");
 
-  la_next_token (this);
+  NEXT_TOKEN();
   err = la_parse_expr (this, &v);
+  THROW_ERR_IF_ERR(err);
 
-  if (v.type isnot INTEGER_TYPE)
-    return this->syntax_error (this, "awaiting an integer expression, when setting string index");
+  THROW_SYNTAX_ERR_IF(v.type isnot INTEGER_TYPE,
+    "awaiting an integer expression, when setting string index");
 
   integer chr = AS_INT(v);
 
@@ -2093,10 +2147,11 @@ theend:
 }
 
 static int la_get_anon_array (la_t *this, VALUE *vp) {
-  if (la_next_char (this) is LA_TOKEN_INDEX_CLOS)
-    return this->syntax_error (this, "inline empty array is not supported");
-
   int err;
+
+  THROW_SYNTAX_ERR_IF(la_next_char (this) is TOKEN_INDEX_CLOS,
+    "inline empty array is not supported");
+
   int pc;
   int c = 0;
   int instr = 0;
@@ -2108,7 +2163,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   int num_elem = 1;
 
   uint n = 0;
-  if (la_peek_char_nows (this, &n) is LA_TOKEN_INDEX_OPEN)
+  if (la_peek_char_nows (this, &n) is TOKEN_INDEX_OPEN)
     is_array_of_array = 1;
 
   n = 0;
@@ -2117,10 +2172,9 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
     pc = c;
     c = la_peek_char (this, n++);
 
-    if (c is LA_TOKEN_EOF)
-      return this->syntax_error (this, "unended array");
+    THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "unended array");
 
-    if (c is LA_TOKEN_INDEX_CLOS and 0 is instr) {
+    if (c is TOKEN_INDEX_CLOS and 0 is instr) {
       if (inmap)
         continue;
 
@@ -2135,7 +2189,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       continue;
     }
 
-    if (c is LA_TOKEN_INDEX_OPEN and 0 is instr) {
+    if (c is TOKEN_INDEX_OPEN and 0 is instr) {
       if (inmap)
         continue;
 
@@ -2147,22 +2201,22 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
      continue;
     }
 
-    if (c is LA_TOKEN_DQUOTE and pc isnot LA_TOKEN_ESCAPE_CHR) {
+    if (c is TOKEN_DQUOTE and pc isnot TOKEN_ESCAPE_CHR) {
       if (instr) instr = 0; else instr = 1;
       continue;
     }
 
-    if (c is LA_TOKEN_MAP_OPEN and 0 is instr) {
+    if (c is TOKEN_MAP_OPEN and 0 is instr) {
       inmap++;
       continue;
     }
 
-    if (c is LA_TOKEN_MAP_CLOS and 0 is instr) {
+    if (c is TOKEN_MAP_CLOS and 0 is instr) {
       inmap--;
       continue;
     }
 
-    if (c is LA_TOKEN_COMMA and 0 is instr and 0 is inmap and 0 is inar)
+    if (c is TOKEN_COMMA and 0 is instr and 0 is inmap and 0 is inar)
       num_elem++;
   }
 
@@ -2178,12 +2232,10 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
 
   VALUE v;
   this->curState |= MALLOCED_STRING_STATE;
-  la_next_token (this);
+  NEXT_TOKEN();
   err = la_parse_primary (this, &v);
   this->curState &= ~MALLOCED_STRING_STATE;
-
-  if (err isnot LA_OK)
-    return err;
+  THROW_ERR_IF_ERR(err);
 
   int type = v.type;
 
@@ -2222,7 +2274,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
     }
 
     default:
-      return this->syntax_error (this, "unsupported array type");
+      THROW_SYNTAX_ERR("unsupported array type");
   }
 
   *vp = ary;
@@ -2299,20 +2351,20 @@ static ArrayType *array_copy (ArrayType *array) {
 static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
   int err;
   VALUE val;
+
   ArrayType **a_ar = (ArrayType **) AS_ARRAY(ar);
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
       return la_out_of_bounds (this);
 
-    la_next_token (this);
+    NEXT_TOKEN();
 
     err = la_parse_expr (this, &val);
-
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     if (val.type isnot ARRAY_TYPE and val.type isnot NULL_TYPE)
-      return this->syntax_error (this, "error while setting Array of an array, awaiting an array or null");
+      THROW_SYNTAX_ERR("error while setting Array of an array, awaiting an array or null");
 
     if (a_ar[idx] isnot NULL)
       array_release (val);
@@ -2323,7 +2375,7 @@ static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx
       a_ar[idx] = (ArrayType *) AS_ARRAY(val);
 
     idx++;
-  } while (this->curToken is LA_TOKEN_COMMA);
+  } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
     return la_out_of_bounds (this);
@@ -2334,24 +2386,24 @@ static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx
 static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
   int err;
   VALUE val;
+
   Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ar);
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
       return la_out_of_bounds (this);
 
-    la_next_token (this);
+    NEXT_TOKEN();
 
     err = la_parse_expr (this, &val);
-
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     if (val.type isnot MAP_TYPE and val.type isnot NULL_TYPE)
-      return this->syntax_error (this, "error while setting Map array, awaiting a map or null");
+      THROW_SYNTAX_ERR("error while setting Map array, awaiting a map or null");
 
     m_ar[idx] = (val.type is MAP_TYPE) ? AS_MAP(val) : NULL;
     idx++;
-  } while (this->curToken is LA_TOKEN_COMMA);
+  } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
     return la_out_of_bounds (this);
@@ -2362,6 +2414,7 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
 static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
   int err;
   VALUE val;
+
   string **s_ar = (string **) AS_ARRAY(ar);
 
   do {
@@ -2369,13 +2422,11 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
       return la_out_of_bounds (this);
 
     this->curState |= MALLOCED_STRING_STATE;
-    la_next_token (this);
+    NEXT_TOKEN();
 
     err = la_parse_expr (this, &val);
-
     this->curState &= ~MALLOCED_STRING_STATE;
-
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     switch (val.type) {
       case STRING_TYPE: {
@@ -2401,11 +2452,11 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
         break;
 
       default:
-        return this->syntax_error (this, "error while setting string array, awaiting a string or null");
+        THROW_SYNTAX_ERR("error while setting string array, awaiting a string or null");
     }
 
     idx++;
-  } while (this->curToken is LA_TOKEN_COMMA);
+  } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
     return la_out_of_bounds (this);
@@ -2416,19 +2467,22 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
 static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
   int err;
   VALUE val;
+
   number *n_ar = (number *) AS_ARRAY(ar);
+
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
       return la_out_of_bounds (this);
 
-    la_next_token (this);
+    NEXT_TOKEN();
 
     err = la_parse_expr (this, &val);
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
+
     n_ar[idx] = AS_NUMBER(val);
 
     idx++;
-  } while (this->curToken is LA_TOKEN_COMMA);
+  } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
     return la_out_of_bounds (this);
@@ -2439,20 +2493,22 @@ static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer id
 static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
   int err;
   VALUE val;
+
   integer *s_ar = (integer *) AS_ARRAY(ar);
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
       return la_out_of_bounds (this);
 
-    la_next_token (this);
+    NEXT_TOKEN();
 
     err = la_parse_expr (this, &val);
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
+
     s_ar[idx] = AS_INT(val);
 
     idx++;
-  } while (this->curToken is LA_TOKEN_COMMA);
+  } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
     return la_out_of_bounds (this);
@@ -2480,9 +2536,11 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
 
   VALUE ary = array->value;
 
-  ifnot (is_single)
-    if (la_next_token (this) isnot LA_TOKEN_INDEX_OPEN)
-      return this->syntax_error (this, "array assignment: awaiting [");
+  ifnot (is_single) {
+    NEXT_TOKEN();
+    if (TOKEN isnot TOKEN_INDEX_OPEN)
+      THROW_SYNTAX_ERR("array assignment: awaiting [");
+  }
 
   if (array->type is INTEGER_TYPE) {
     err = la_array_set_as_int (this, ary, len, idx, last_idx);
@@ -2495,68 +2553,70 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
   } else
     err = la_array_set_as_number (this, ary, len, idx, last_idx);
 
-  if (err isnot LA_OK)
-    return err;
+  THROW_ERR_IF_ERR(err);
 
   ifnot (is_single) {
-    if (this->curToken is LA_TOKEN_NL)
-      la_next_token (this);
+    if (TOKEN is TOKEN_NL)
+      NEXT_TOKEN();
 
-    if (this->curToken isnot LA_TOKEN_INDEX_CLOS)
-      return this->syntax_error (this, "array assignment: awaiting ]");
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS,
+      "array assignment: awaiting ]");
 
-    la_next_token (this);
+    NEXT_TOKEN();
   }
 
   return LA_OK;
 }
 
 static int la_parse_array_def (la_t *this) {
-  int type = this->tokenSymbol->type;
+  int err;
+  int type = TOKENSYM->type;
 
-  int c = la_next_token (this);
+  NEXT_TOKEN();
 
-  if (c isnot LA_TOKEN_INDEX_OPEN)
-    return this->syntax_error (this, "syntax error, awaiting [");
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_OPEN,
+    "array assignment: awaiting [");
+
+  int c = TOKEN;
 
   VALUE len;
   this->curState |= INDEX_STATE;
-  int err = la_parse_primary (this, &len);
+  err = la_parse_primary (this, &len);
   this->curState &= ~INDEX_STATE;
+  THROW_ERR_IF_ERR(err);
 
-  if (err isnot LA_OK)
-    return err;
-
-  if (len.type isnot INTEGER_TYPE)
-    return this->syntax_error (this, "awaiting an integer expression, when getting array length");
+  THROW_SYNTAX_ERR_IF(len.type isnot INTEGER_TYPE,
+    "awaiting an integer expression, when getting array length");
 
   VALUE ar;
   if (this->curState & MAP_STATE) {
-    c = this->curToken;
+    c = TOKEN;
     integer nlen = AS_INT(len);
     ar = ARRAY(ARRAY_NEW(type, nlen));
-    this->tokenValue = ar;
+    TOKENVAL = ar;
     goto assign;
   }
 
-  if (this->curToken isnot LA_TOKEN_SYMBOL and
-      this->curToken isnot LA_TOKEN_ARRAY)
-    return this->syntax_error (this, "syntax error, awaiting an identifier for the array declaration");
+  if (TOKEN isnot TOKEN_SYMBOL and
+      TOKEN isnot TOKEN_ARRAY)
+    THROW_SYNTAX_ERR("syntax error, awaiting an identifier for the array declaration");
 
-  la_string name = this->curStrToken;
+  la_string name = TOKENSTR;
 
   integer nlen = AS_INT(len);
 
   ar = ARRAY(ARRAY_NEW(type, nlen));
 
   funT *scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
-  this->tokenSymbol = la_define_symbol (this, scope, sym_key (this, name), ARRAY_TYPE,
+  TOKENSYM = la_define_symbol (this, scope, sym_key (this, name), ARRAY_TYPE,
       ar, 0);
   this->scopeState = 0;
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
+
 assign:
-  if (c is LA_TOKEN_ASSIGN) {
+  if (c is TOKEN_ASSIGN) {
     VALUE at_idx = INT(0);
     VALUE last_idx = INT(-1);
     return la_array_assign (this, &ar, at_idx, last_idx, 0);
@@ -2569,7 +2629,7 @@ static int la_parse_array_set (la_t *this) {
   int c = la_next_char (this);
 
   if (c is '=') {
-    VALUE v = this->tokenValue;
+    VALUE v = TOKENVAL;
     sym_t *sym = v.sym;
     if (sym isnot NULL) {
       sym->type = NULL_TYPE;
@@ -2584,36 +2644,37 @@ static int la_parse_array_set (la_t *this) {
 
   VALUE ix = INT(0);
 
-  VALUE ary = this->tokenValue;
+  VALUE ary = TOKENVAL;
 
   int err;
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
   VALUE last_ix = INT(-1);
 
-  int is_index = c is LA_TOKEN_INDEX_OPEN;
+  int is_index = c is TOKEN_INDEX_OPEN;
 
   if (is_index) {
     uint n = 0;
     c = la_peek_char_nows (this, &n);
-    if (c is LA_TOKEN_STAR) {
+    if (c is TOKEN_STAR) {
       for (uint i = 0; i <= n; i++)
         la_ignore_next_char (this);
 
-      c = la_next_token (this);
-      if (c isnot LA_TOKEN_INDEX_CLOS)
-        return this->syntax_error (this, "array set: awaiting ]");
+      NEXT_TOKEN();
 
-      c = la_next_token (this);
+      if (TOKEN isnot TOKEN_INDEX_CLOS)
+        THROW_SYNTAX_ERR("array set: awaiting ]");
 
-      if (this->curToken < LA_TOKEN_ASSIGN)
-        return this->syntax_error (this, "syntax error while setting array, awaiting =");
+      NEXT_TOKEN();
+
+      if (TOKEN < TOKEN_ASSIGN)
+        THROW_SYNTAX_ERR("syntax error while setting array, awaiting =");
 
       VALUE ar_val;
-      la_next_token (this);
+      NEXT_TOKEN();
       err = la_parse_expr (this, &ar_val);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
       ArrayType *array = (ArrayType *) AS_ARRAY(ary);
       if (array->type isnot ar_val.type)
@@ -2670,25 +2731,24 @@ static int la_parse_array_set (la_t *this) {
     this->curState |= INDEX_STATE;
     err = la_parse_primary (this, &ix);
     this->curState &= ~INDEX_STATE;
-    if (err isnot LA_OK)
-      return err;
+    THROW_ERR_IF_ERR(err);
 
-    if (this->curToken is LA_TOKEN_COLON) {
-      c = la_next_token (this);
-      if (c and c isnot LA_TOKEN_INDEX_CLOS) {
+    if (TOKEN is TOKEN_COLON) {
+      NEXT_TOKEN();
+      c = TOKEN;
+      if (c and c isnot TOKEN_INDEX_CLOS) {
         err = la_parse_expr (this, &last_ix);
-        if (err isnot LA_OK)
-          return err;
+        THROW_ERR_IF_ERR(err);
       }
 
-      la_next_token (this);
+      NEXT_TOKEN();
       is_index = 0;
     }
   }
 
-  c = this->curToken;
+  c = TOKEN;
 
-  if (c is LA_TOKEN_INDEX_OPEN) {
+  if (c is TOKEN_INDEX_OPEN) {
     ArrayType *array = (ArrayType *) AS_ARRAY(ary);
     VALUE ar = array->value;
 
@@ -2702,11 +2762,11 @@ static int la_parse_array_set (la_t *this) {
       }
 
       default:
-        return this->syntax_error (this, "Arrays of arrays haven't been implemented");
+        THROW_SYNTAX_ERR("Arrays of arrays haven't been implemented");
     }
   }
 
-  if (c is LA_TOKEN_DOT) {
+  if (c is TOKEN_DOT) {
     ArrayType *array = (ArrayType *) AS_ARRAY(ary);
     VALUE ar = array->value;
 
@@ -2714,34 +2774,34 @@ static int la_parse_array_set (la_t *this) {
       case MAP_TYPE: {
         Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ar);
         VALUE v = MAP(m_ar[AS_INT(ix)]);
-        this->tokenValue = v;
+        TOKENVAL = v;
         la_unget_char (this);
         err = la_parse_map_set (this);
         return err;
       }
 
       default:
-        return this->syntax_error (this, "not a map");
+        THROW_SYNTAX_ERR("not a map");
     }
   }
 
-  if (c is LA_TOKEN_MAP) {
+  if (c is TOKEN_MAP) {
     err = la_parse_map_get (this, &ix);
-    if (err isnot LA_OK)
-      return err;
-    if (this->curToken is LA_TOKEN_INDEX_CLOS) {
-      la_next_token (this);
+    THROW_ERR_IF_ERR(err);
+
+    if (TOKEN is TOKEN_INDEX_CLOS) {
+      NEXT_TOKEN();
       is_index = 1;
     }
   }
 
-  int token = this->curToken;
+  int token = TOKEN;
 
-  if (token > LA_TOKEN_ASSIGN) {
-    la_next_token (this);
+  if (token > TOKEN_ASSIGN) {
+    NEXT_TOKEN();
     VALUE v;
     err = la_parse_expr (this, &v);
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     ArrayType *array = (ArrayType *) AS_ARRAY(ary);
     int idx = AS_INT(ix);
@@ -2771,28 +2831,28 @@ static int la_parse_array_set (la_t *this) {
 
     VALUE result;
     switch (token) {
-      case LA_TOKEN_ASSIGN_APP:
+      case TOKEN_ASSIGN_APP:
         this->objectState |= OBJECT_APPEND;
         result = la_add (this, val, v);
         this->objectState &= ~OBJECT_APPEND;
         break;
 
-      case LA_TOKEN_ASSIGN_SUB:
+      case TOKEN_ASSIGN_SUB:
         result = la_sub (this, val, v); break;
-      case LA_TOKEN_ASSIGN_DIV:
+      case TOKEN_ASSIGN_DIV:
         result = la_div (this, val, v); break;
-      case LA_TOKEN_ASSIGN_MUL:
+      case TOKEN_ASSIGN_MUL:
         result = la_mul (this, val, v); break;
-      case LA_TOKEN_ASSIGN_MOD:
+      case TOKEN_ASSIGN_MOD:
         result = la_mod (this, val, v); break;
-      case LA_TOKEN_ASSIGN_BAR:
+      case TOKEN_ASSIGN_BAR:
         result = la_bset (this, val, v); break;
-      case LA_TOKEN_ASSIGN_AND:
+      case TOKEN_ASSIGN_AND:
         result = la_bnot (this, val, v); break;
     }
 
     if (result.type is NULL_TYPE)
-       return this->syntax_error (this, "unxpected operation");
+       THROW_SYNTAX_ERR("unxpected operation");
 
     switch (array->type) {
       case STRING_TYPE: {
@@ -2817,8 +2877,8 @@ static int la_parse_array_set (la_t *this) {
     return LA_OK;
   }
 
-  if (this->curToken < LA_TOKEN_ASSIGN)
-    return this->syntax_error (this, "syntax error while setting array, awaiting =");
+  if (TOKEN < TOKEN_ASSIGN)
+    THROW_SYNTAX_ERR("syntax error while setting array, awaiting =");
 
   ifnot (is_index)
     return la_array_assign (this, &ary, ix, last_ix, is_index);
@@ -2832,7 +2892,7 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
   ArrayType *ary = (ArrayType *) AS_ARRAY(v_iar);
 
   if (ary->type isnot INTEGER_TYPE)
-    return this->syntax_error (this, "awaiting an integer type array");
+    THROW_SYNTAX_ERR("awaiting an integer type array");
 
   ArrayType *array = ARRAY_NEW(src_ar->type, (integer) ary->len);
 
@@ -2884,33 +2944,35 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
 }
 
 static int la_parse_array_get (la_t *this, VALUE *vp) {
-  VALUE ar = this->tokenValue;
+  VALUE ar = TOKENVAL;
   ArrayType *array = (ArrayType *) AS_ARRAY(ar);
 
-  int c = la_next_token (this);
+  NEXT_TOKEN();
+  int c = TOKEN;
 
-  if (c isnot LA_TOKEN_INDEX_OPEN) {
+  if (c isnot TOKEN_INDEX_OPEN) {
     *vp = ar;
     return LA_OK;
   }
 
   int err;
-  if (la_next_char (this) is LA_TOKEN_INDEX_OPEN) {
-     la_next_token (this);
+  if (la_next_char (this) is TOKEN_INDEX_OPEN) {
+     NEXT_TOKEN();
      VALUE v;
      err = la_get_anon_array (this, &v);
-     if (err isnot LA_OK) return err;
+     THROW_ERR_IF_ERR(err);
 
-     c = la_next_token (this);
-     if (c isnot LA_TOKEN_INDEX_CLOS)
-       return this->syntax_error (this, "array get, awaiting ]");
+     NEXT_TOKEN();
+
+     if (TOKEN isnot TOKEN_INDEX_CLOS)
+       THROW_SYNTAX_ERR("array get, awaiting ]");
 
      err = la_array_from_array (this, array, v, vp);
 
-     if (this->curToken isnot LA_TOKEN_INDEX_CLOS)
-       return this->syntax_error (this, "array get, awaiting ]");
+     if (TOKEN isnot TOKEN_INDEX_CLOS)
+       THROW_SYNTAX_ERR("array get, awaiting ]");
 
-     la_next_token (this);
+     NEXT_TOKEN();
 
      return err;
   }
@@ -2919,14 +2981,13 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   this->curState |= INDEX_STATE;
   err = la_parse_primary (this, &ix);
   this->curState &= ~INDEX_STATE;
-  if (err isnot LA_OK)
-    return err;
+  THROW_ERR_IF_ERR(err);
 
   if (ix.type is ARRAY_TYPE)
     return la_array_from_array (this, array, ix, vp);
 
   if (ix.type isnot INTEGER_TYPE)
-    return this->syntax_error (this, "array get, awaiting an integer expression");
+    THROW_SYNTAX_ERR("array get, awaiting an integer expression");
 
   integer len = array->len;
   integer idx = AS_INT(ix);
@@ -2985,38 +3046,38 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
   }
 
-  c = this->curToken;
+  c = TOKEN;
 
-  if (c is LA_TOKEN_DOT) {
+  if (c is TOKEN_DOT) {
     VALUE v = *vp;
     if (v.type isnot MAP_TYPE)
-      return this->syntax_error (this, "not a map");
+      THROW_SYNTAX_ERR("not a map");
 
-    this->tokenValue = v;
+    TOKENVAL = v;
     la_unget_char (this);
     return la_parse_map_get (this, vp);
   }
 
-  if (c is LA_TOKEN_INDEX_OPEN) {
+  if (c is TOKEN_INDEX_OPEN) {
     VALUE v = *vp;
     switch (v.type) {
       case STRING_TYPE:
-        this->tokenValue = v;
+        TOKENVAL = v;
         this->objectState |= ARRAY_MEMBER;
         la_unget_char (this);
         err = la_string_get (this, vp);
-        if (this->curToken is LA_TOKEN_INDEX_OPEN)
-          return this->syntax_error (this, "unsupported indexing");
+        if (TOKEN is TOKEN_INDEX_OPEN)
+          THROW_SYNTAX_ERR("unsupported indexing");
 
         return err;
 
       case ARRAY_TYPE:
-        this->tokenValue = v;
+        TOKENVAL = v;
         la_unget_char (this);
         return la_parse_array_get (this, vp);
 
       default:
-        return this->syntax_error (this, "Arrays of arrays haven't been implemented");
+        THROW_SYNTAX_ERR("Arrays of arrays haven't been implemented");
     }
   }
 
@@ -3138,43 +3199,44 @@ static int la_map_reset_value (la_t *this, Vmap_t *map, char *key, VALUE v) {
 }
 
 static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
+  int err;
   VALUE *val = Vmap.get (map, key);
+
   if (NULL is val)
-    return la_syntax_error_fmt (this, "%s key doesn't exists", key);
+    THROW_SYNTAX_ERR_FMT("%s key doesn't exists", key);
 
   if (val->type > STRING_TYPE or val->type is FUNCPTR_TYPE)
     return la_type_mismatch (this);
 
   VALUE v;
-  la_next_token (this);
-  int err = la_parse_expr (this, &v);
-  if (err isnot LA_OK)
-    return err;
+  NEXT_TOKEN();
+  err = la_parse_expr (this, &v);
+  THROW_ERR_IF_ERR(err);
 
   VALUE result;
   switch (token) {
-    case LA_TOKEN_ASSIGN_APP:
+    case TOKEN_ASSIGN_APP:
       this->objectState |= OBJECT_APPEND;
       result = la_add (this, *val, v);
       this->objectState &= ~OBJECT_APPEND;
       break;
 
-    case LA_TOKEN_ASSIGN_SUB:
+    case TOKEN_ASSIGN_SUB:
       result = la_sub (this, *val, v); break;
-    case LA_TOKEN_ASSIGN_DIV:
+    case TOKEN_ASSIGN_DIV:
       result = la_div (this, *val, v); break;
-    case LA_TOKEN_ASSIGN_MUL:
+    case TOKEN_ASSIGN_MUL:
       result = la_mul (this, *val, v); break;
-    case LA_TOKEN_ASSIGN_MOD:
+    case TOKEN_ASSIGN_MOD:
       result = la_mod (this, *val, v); break;
-    case LA_TOKEN_ASSIGN_BAR:
+    case TOKEN_ASSIGN_BAR:
       result = la_bset (this, *val, v); break;
-    case LA_TOKEN_ASSIGN_AND:
+    case TOKEN_ASSIGN_AND:
       result = la_bnot (this, *val, v); break;
   }
 
   if (result.type is NULL_TYPE)
-     return this->syntax_error (this, "unxpected operation");
+     THROW_SYNTAX_ERR("unxpected operation");
 
   sym_t *sym = val->sym;
   *val = result;
@@ -3187,19 +3249,19 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   int err;
   VALUE v;
 
-  int c = la_next_token (this);
-  while (c is LA_TOKEN_NL)
-    c = la_next_token (this);
+  NEXT_TOKEN();
 
-  if (c is LA_TOKEN_FUNCDEF) {
+  while (TOKEN is TOKEN_NL)
+    NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_FUNCDEF) {
     Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
     this->scopeState = PUBLIC_SCOPE; // this is for map.f = func ... cases
 
     err = la_parse_func_def (this);
     this->curFunName[0] = '\0';
-    if (err isnot LA_OK)
-      return err;
+    THROW_ERR_IF_ERR(err);
 
     v = PTR(this->curFunDef);
     v.type = FUNCPTR_TYPE;
@@ -3207,38 +3269,36 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   }
 
 
-  if (NULL isnot this->tokenSymbol and
-      IS_INT(this->tokenSymbol->value) and
-      AS_VOID_PTR(this->tokenSymbol->value) is la_parse_array_def) {
+  if (NULL isnot TOKENSYM and
+      IS_INT(TOKENSYM->value) and
+      AS_VOID_PTR(TOKENSYM->value) is la_parse_array_def) {
   /* moved from do_next_token (),
    * first commit after 8ed84cdc92c074e4dba4c1d38e72cae6b8236178
    * if (IS_INT(symbol->value) and AS_VOID_PTR(symbol->value) is la_parse_array_def) {
-   *   r = LA_TOKEN_ARYDEF;
+   *   r = TOKEN_ARYDEF;
    *   goto theend;
    * }
    */
     this->curState |= MAP_STATE;
     err = la_parse_array_def (this);
-    if (err isnot LA_OK)
-      return err;
     this->curState &= ~MAP_STATE;
-    v = this->tokenValue;
+    THROW_ERR_IF_ERR(err);
+
+    v = TOKENVAL;
     goto assign;
   }
 
-  if (c is LA_TOKEN_ARRAY) {
-    sym_t *sym = this->tokenSymbol;
+  if (TOKEN is TOKEN_ARRAY) {
+    sym_t *sym = TOKENSYM;
     v =  ARRAY(array_copy ((ArrayType *) AS_ARRAY(sym->value)));
-    la_next_token (this);
+    NEXT_TOKEN();
     goto assign;
   }
 
   this->objectState |= MAP_ASSIGNMENT;
   err = la_parse_expr (this, &v);
   this->objectState &= ~MAP_ASSIGNMENT;
-
-  if (err isnot LA_OK)
-    return err;
+  THROW_ERR_IF_ERR(err);
 
   assign:
 
@@ -3296,14 +3356,13 @@ static VALUE la_copy_map (VALUE mapval) {
 }
 
 static int la_parse_map (la_t *this, VALUE *vp) {
+  int err;
   Vmap_t *map = Vmap.new (32);
 
-  la_string saved_ptr = this->parsePtr;
-  this->parsePtr = this->curStrToken;
+  la_string saved_ptr = PARSEPTR;
+  PARSEPTR = TOKENSTR;
 
   VALUE v;
-  int c;
-  int err = LA_OK;
 
   this->curState |= MAP_STATE;
   this->scopeState = PUBLIC_SCOPE;
@@ -3312,38 +3371,35 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   for (;;) {
 
     this->curState |= MALLOCED_STRING_STATE;
-    c = err = la_next_token (this);
+     NEXT_TOKEN();
     this->curState &= ~MALLOCED_STRING_STATE;
 
-    if (c is LA_TOKEN_EOF) break;
+    if (TOKEN is TOKEN_EOF) break;
 
-    if (err < LA_OK)
-      return err;
+    if (TOKEN is TOKEN_COMMA or TOKEN is TOKEN_NL) continue;
 
-    if (c is LA_TOKEN_COMMA or c is LA_TOKEN_NL) continue;
-
-    switch (c) {
-      case LA_TOKEN_PRIVATE:
+    switch (TOKEN) {
+      case TOKEN_PRIVATE:
         scope = this->scopeState = PRIVATE_SCOPE;
         continue;
 
-      case LA_TOKEN_PUBLIC:
+      case TOKEN_PUBLIC:
         scope = this->scopeState = PUBLIC_SCOPE;
         continue;
     }
 
-    v = this->tokenValue;
+    v = TOKENVAL;
 
     if (v.type isnot STRING_TYPE)
-      return this->syntax_error (this, "awaiting a string as a key");
+      THROW_SYNTAX_ERR("awaiting a string as a key");
 
     char *key = AS_STRING_BYTES(v);
 
-    c = la_next_token (this);
+    NEXT_TOKEN();
 
-    if (c isnot LA_TOKEN_COLON) {
+    if (TOKEN isnot TOKEN_COLON) {
       ifnot (this->funcState & TYPE_NEW_STATE) {
-        return this->syntax_error (this, "error while setting map field, awaiting :");
+        THROW_SYNTAX_ERR("error while setting map field, awaiting :");
       } else {
         la_map_set_value (this, map, key, NULL_VALUE, scope);
         la_unget_char (this);
@@ -3353,16 +3409,14 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
     err = map_set_rout (this, map, key, this->scopeState is PUBLIC_SCOPE);
     this->scopeState = scope;
+    THROW_ERR_IF_ERR(err);
 
-    if (err isnot LA_OK)
-      return err;
-
-    if (this->curToken is LA_TOKEN_EOF) break;
+    if (TOKEN is TOKEN_EOF) break;
   }
 
   this->curState &= ~MAP_STATE;
   this->scopeState = PRIVATE_SCOPE;
-  this->parsePtr = saved_ptr;
+  PARSEPTR = saved_ptr;
 
   v = MAP(map);
 
@@ -3370,99 +3424,102 @@ static int la_parse_map (la_t *this, VALUE *vp) {
       v.refcount--;
 
   *vp = v;
-  la_next_token (this);
+  NEXT_TOKEN();
   return LA_OK;
 }
 
 static int la_parse_map_get (la_t *this, VALUE *vp) {
+  int err;
 
-  int is_this = (la_StringGetLen (this->curStrToken) is 4 and
-      Cstring.eq_n (la_StringGetPtr (this->curStrToken), "this", 4));
+  int is_this = (GETSTRLEN(TOKENSTR) is 4 and
+      Cstring.eq_n (GETSTRPTR(TOKENSTR), "this", 4));
 
-  int c = la_next_token (this);
+  NEXT_TOKEN();
 
-  if (c isnot LA_TOKEN_DOT) {
+  if (TOKEN isnot TOKEN_DOT) {
     if (this->objectState & MAP_ASSIGNMENT)
-      *vp = la_copy_map (this->tokenValue);
+      *vp = la_copy_map (TOKENVAL);
     else
-      *vp = this->tokenValue;
+      *vp = TOKENVAL;
     return LA_OK;
   }
 
-  int err = 0;
-  VALUE map_par = this->tokenValue;
+  err = 0;
+  VALUE map_par = TOKENVAL;
   int submap = 0;
 
   redo: {}
   this->objectState |= IDENT_LEAD_CHAR_CAN_BE_DIGIT;
-  c = err = la_next_raw_token (this);
+
+  NEXT_RAW_TOKEN();
+
   this->objectState &= ~IDENT_LEAD_CHAR_CAN_BE_DIGIT;
-  if (err < LA_OK) return err;
 
   char key[MAXLEN_SYMBOL + 1];
 
-  if (c is LA_TOKEN_DOLLAR) {
-    VALUE save_map = this->tokenValue;
+  if (TOKEN is TOKEN_DOLLAR) {
+    VALUE save_map = TOKENVAL;
     VALUE v_key;
 
     this->curState |= MALLOCED_STRING_STATE;
-    la_next_token (this);
+    NEXT_TOKEN();
+
     err = la_parse_expr (this, &v_key);
     this->curState &= ~MALLOCED_STRING_STATE;
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     if (v_key.type isnot STRING_TYPE)
-      return this->syntax_error (this, "map set, awaiting a string as a key");
+      THROW_SYNTAX_ERR("map set, awaiting a string as a key");
 
     string *s_key = AS_STRING(v_key);
     if (s_key->num_bytes >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
 
-    this->tokenValue = save_map;
+    TOKENVAL = save_map;
     la_unget_char (this);
 
-  } else if (c is LA_TOKEN_SYMBOL) {
+  } else if (TOKEN is TOKEN_SYMBOL) {
     Cstring.cp (key, MAXLEN_SYMBOL + 1,
-        la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
+        GETSTRPTR(TOKENSTR), GETSTRLEN(TOKENSTR));
 
   } else
-    return this->syntax_error (this, "map get, awaiting a symbol");
+    THROW_SYNTAX_ERR("map get, awaiting a symbol");
 
-  VALUE mapv = this->tokenValue;
+  VALUE mapv = TOKENVAL;
   Vmap_t *map = AS_MAP(mapv);
 
   VALUE *v = Vmap.get (map, key);
 
   if (v is NULL)
-    return la_syntax_error_fmt (this, "%s, not a key", key);
+    THROW_SYNTAX_ERR_FMT("%s, not a key", key);
 
   if (v->sym->scope is NULL) {
     ifnot (is_this)
-      return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+      THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
   }
 
   *vp = *v;
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
 
-  if (c is LA_TOKEN_DOT or c is LA_TOKEN_COLON) {
+  if (TOKEN is TOKEN_DOT or TOKEN is TOKEN_COLON) {
     if (v->type isnot MAP_TYPE) {
-      if (c is LA_TOKEN_COLON)
+      if (TOKEN is TOKEN_COLON)
         goto theend;
       else
-        return la_syntax_error_fmt (this, "%s, not a map", key);
+        THROW_SYNTAX_ERR_FMT("%s, not a map", key);
     }
 
-    if (c is LA_TOKEN_COLON) {
-      const char *ptr = la_StringGetPtr (this->parsePtr);
+    if (TOKEN is TOKEN_COLON) {
+      const char *ptr = GETSTRPTR(PARSEPTR);
       while (is_space (*ptr)) ptr++;
       char k[MAXLEN_SYMBOL + 1];
       int idx = 0;
       while (is_identifier (*ptr)) {
         if (idx is MAXLEN_SYMBOL)
-          return this->syntax_error (this, "identifier exceeded maximum length");
+          THROW_SYNTAX_ERR("identifier exceeded maximum length");
         k[idx++] = *ptr;
         ptr++;
       }
@@ -3472,38 +3529,38 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
         goto theend;
     }
 
-    this->tokenValue = *v;
+    TOKENVAL = *v;
 
-    if (c is LA_TOKEN_COLON)
+    if (TOKEN is TOKEN_COLON)
       submap = 1;
     else
       submap = 0;
     goto redo;
   }
 
-  if (c is LA_TOKEN_INDEX_OPEN) {
+  if (TOKEN is TOKEN_INDEX_OPEN) {
     if (v->type isnot ARRAY_TYPE)
-      return this->syntax_error (this, "not an array");
+      THROW_SYNTAX_ERR("not an array");
 
-    this->tokenValue = *v;
+    TOKENVAL = *v;
     la_unget_char (this);
     return la_parse_array_get (this, vp);
   }
 
-  if (c is LA_TOKEN_PAREN_OPEN) {
+  if (TOKEN is TOKEN_PAREN_OPEN) {
     if (NULL is v)
-      return la_syntax_error_fmt (this, "%s, method doesn't exists", key);
+      THROW_SYNTAX_ERR_FMT("%s, method doesn't exists", key);
 
     if (v->sym->scope is NULL and 0 is is_this)
-      return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+      THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
 
     int type;
     if (v->type & FUNCPTR_TYPE)
       type = FUNCPTR_TYPE;
-    else if ((v->type & 0x77) is LA_TOKEN_BUILTIN)
+    else if ((v->type & 0x77) is TOKEN_BUILTIN)
       type = CFUNCTION_TYPE;
     else
-      return la_syntax_error_fmt (this, "%s, not a method", key);
+      THROW_SYNTAX_ERR_FMT("%s, not a method", key);
 
     la_unget_char (this);
 
@@ -3521,10 +3578,10 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       this->funcState |= MAP_METHOD_STATE;
       err = la_parse_func_call (this, vp, NULL, uf, *v);
 
-      la_next_token (this);
+      NEXT_TOKEN();
     } else {
       CFunc op = (CFunc) AS_PTR((*v));
-      this->tokenArgs = ((*v).type >> 8) & 0xff;
+      TOKENARGS = ((*v).type >> 8) & 0xff;
       err = la_parse_func_call (this, vp, op, NULL, *v);
     }
 
@@ -3552,10 +3609,10 @@ theend:
 }
 
 static int la_parse_map_set (la_t *this) {
-  int is_this = (la_StringGetLen (this->curStrToken) is 4 and
-      Cstring.eq_n (la_StringGetPtr (this->curStrToken), "this", 4));
+  int is_this = (GETSTRLEN(TOKENSTR) is 4 and
+      Cstring.eq_n (GETSTRPTR(TOKENSTR), "this", 4));
 
-  VALUE map_par = this->tokenValue;
+  VALUE map_par = TOKENVAL;
   Vmap_t *map = AS_MAP(map_par);
   int override = this->objectState & FUNC_OVERRIDE;
   this->objectState &= ~FUNC_OVERRIDE;
@@ -3563,7 +3620,7 @@ static int la_parse_map_set (la_t *this) {
   int c = la_next_char (this);
 
   if (c is '=') {
-    VALUE v = this->tokenValue;
+    VALUE v = TOKENVAL;
     sym_t *sym = v.sym;
     if (sym isnot NULL) {
       sym->type = NULL_TYPE;
@@ -3576,66 +3633,67 @@ static int la_parse_map_set (la_t *this) {
     return LA_OK;
   }
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
-  if (c isnot LA_TOKEN_DOT)
-    return this->syntax_error (this, "awaiting .");
+  if (c isnot TOKEN_DOT)
+    THROW_SYNTAX_ERR("awaiting .");
 
   int submap = 0;
 
   redo: {}
 
   int err;
-  c = err = la_next_raw_token (this);
-  if (err < LA_OK)
-    return err;
+  NEXT_RAW_TOKEN();
+  c = TOKEN;
 
   char key[MAXLEN_SYMBOL + 1];
 
-  if (c is LA_TOKEN_DOLLAR) {
+  if (c is TOKEN_DOLLAR) {
     VALUE v_key;
     this->curState |= MALLOCED_STRING_STATE;
-    la_next_token (this);
+    NEXT_TOKEN();
     err = la_parse_expr (this, &v_key);
     this->curState &= ~MALLOCED_STRING_STATE;
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     if (v_key.type isnot STRING_TYPE)
-      return this->syntax_error (this, "map set, awaiting a string as a key");
+      THROW_SYNTAX_ERR("map set, awaiting a string as a key");
 
     string *s_key = AS_STRING(v_key);
     if (s_key->num_bytes >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
 
-    c = this->curToken;
+    c = TOKEN;
 
-  } else if (c is LA_TOKEN_SYMBOL) {
+  } else if (c is TOKEN_SYMBOL) {
     Cstring.cp (key, MAXLEN_SYMBOL + 1,
-        la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
-    c = la_next_token (this);
+        GETSTRPTR(TOKENSTR), GETSTRLEN(TOKENSTR));
+    NEXT_TOKEN();
+    c = TOKEN;
 
   } else
-    return this->syntax_error (this, "map set, awaiting a symbol");
+    THROW_SYNTAX_ERR("map set, awaiting a symbol");
 
   VALUE *v;
 
-  if (c is LA_TOKEN_PAREN_OPEN) {
+  if (c is TOKEN_PAREN_OPEN) {
     v = Vmap.get (map, key);
     if (NULL is v)
-      return la_syntax_error_fmt (this, "error while seting map: %s method doesn't exists", key);
+      THROW_SYNTAX_ERR_FMT("error while seting map: %s method doesn't exists", key);
 
     if (v->sym->scope is NULL and 0 is is_this)
-      return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+      THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
 
     int type;
     if (v->type & FUNCPTR_TYPE)
       type = FUNCPTR_TYPE;
-    else if ((v->type & 0x77) is LA_TOKEN_BUILTIN)
+    else if ((v->type & 0x77) is TOKEN_BUILTIN)
       type = CFUNCTION_TYPE;
     else
-      return la_syntax_error_fmt (this, "%s, not a method", key);
+      THROW_SYNTAX_ERR_FMT("%s, not a method", key);
 
     la_unget_char (this);
 
@@ -3653,10 +3711,10 @@ static int la_parse_map_set (la_t *this) {
       this->funcState |= MAP_METHOD_STATE;
       VALUE vp;
       err = la_parse_func_call (this, &vp, NULL, uf, *v);
-      la_next_token (this);
+      NEXT_TOKEN();
     } else {
       CFunc op = (CFunc) AS_PTR((*v));
-      this->tokenArgs = ((*v).type >> 8) & 0xff;
+      TOKENARGS = ((*v).type >> 8) & 0xff;
       VALUE vp;
       err = la_parse_func_call (this, &vp, op, NULL, *v);
     }
@@ -3664,19 +3722,19 @@ static int la_parse_map_set (la_t *this) {
     return err;
   }
 
-  if (c < LA_TOKEN_ASSIGN) {
+  if (c < TOKEN_ASSIGN) {
     ifnot (Vmap.key_exists (map, key))
-      return la_syntax_error_fmt (this, "%s: map key couldn't been found", key);
+      THROW_SYNTAX_ERR_FMT("%s: map key couldn't been found", key);
 
-    if (c is LA_TOKEN_DOT or c is LA_TOKEN_COLON) {
+    if (c is TOKEN_DOT or c is TOKEN_COLON) {
       v = Vmap.get (map, key);
       if (v->type isnot MAP_TYPE)
-        return la_syntax_error_fmt (this, "%s, not a map", key);
+        THROW_SYNTAX_ERR_FMT("%s, not a map", key);
 
       map = AS_MAP((*v));
 
       is_this = 0;
-      if (c is LA_TOKEN_COLON)
+      if (c is TOKEN_COLON)
         submap = 1;
       else
         submap = 0;
@@ -3684,12 +3742,12 @@ static int la_parse_map_set (la_t *this) {
       goto redo;
     }
 
-    if (c is LA_TOKEN_INDEX_OPEN) {
+    if (c is TOKEN_INDEX_OPEN) {
       v = Vmap.get (map, key);
       if (v->type isnot ARRAY_TYPE)
-        return la_syntax_error_fmt (this, "%s, not an array", key);
+        THROW_SYNTAX_ERR_FMT("%s, not an array", key);
 
-      this->tokenValue = *v;
+      TOKENVAL = *v;
       la_unget_char (this);
       return la_parse_array_set (this);
     }
@@ -3698,16 +3756,16 @@ static int la_parse_map_set (la_t *this) {
   v = Vmap.get (map, key);
   if (v isnot NULL) {
     if (v->sym->scope is NULL and 0 is is_this)
-      return la_syntax_error_fmt (this, "%s, symbol has private scope", key);
+      THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
 
     if (v->type & FUNCPTR_TYPE or
-       (v->type & 0x77) is LA_TOKEN_BUILTIN) {
-      if (c is LA_TOKEN_ASSIGN and 0 is override)
-        return this->syntax_error (this, "you can not override a method");
+       (v->type & 0x77) is TOKEN_BUILTIN) {
+      if (c is TOKEN_ASSIGN and 0 is override)
+        THROW_SYNTAX_ERR("you can not override a method");
     }
   }
 
-  if (c <= LA_TOKEN_ASSIGN) {
+  if (c <= TOKEN_ASSIGN) {
     if (v isnot NULL)
       la_release_map_val (Vmap.pop (map, key));
   } else
@@ -3716,44 +3774,44 @@ static int la_parse_map_set (la_t *this) {
   return map_set_rout (this, map, key, 1);
 }
 
+
 static int la_parse_new (la_t *this, VALUE *vp) {
-  int c = la_next_raw_token (this);
-  if (c isnot LA_TOKEN_SYMBOL)
-    return this->syntax_error (this, "awaiting a type name");
+  int err;
+
+  NEXT_RAW_TOKEN();
+  int c = TOKEN;
+
+  THROW_SYNTAX_ERR_IF(c isnot TOKEN_SYMBOL, "awaiting a type name");
 
   char type[MAXLEN_SYMBOL + 1];
-  Cstring.cp (type, MAXLEN_SYMBOL + 1, la_StringGetPtr (this->curStrToken),
-      la_StringGetLen (this->curStrToken));
+  Cstring.cp (type, MAXLEN_SYMBOL + 1, GETSTRPTR(TOKENSTR),
+      GETSTRLEN(TOKENSTR));
 
   ifnot (Vmap.key_exists (this->types, type))
-    return la_syntax_error_fmt (this, "%s, not such type", type);
+    THROW_SYNTAX_ERR_FMT("%s, not such type", type);
 
   string *block = (string *) Vmap.get (this->types, type);
 
-  this->curStrToken = la_StringNew (block->bytes);
+  TOKENSTR = StringNew (block->bytes);
 
   int state = this->funcState;
   this->funcState |= TYPE_NEW_STATE;
-  int err = la_parse_map (this, vp);
-  ifnot (state & TYPE_NEW_STATE)
-    this->funcState &= ~TYPE_NEW_STATE;
+  err = la_parse_map (this, vp);
+  ifnot (state & TYPE_NEW_STATE) this->funcState &= ~TYPE_NEW_STATE;
+  THROW_ERR_IF_ERR(err);
 
-  if (err) return err;
-
-  if (vp->type isnot MAP_TYPE)
-    return this->syntax_error (this, "not a type");
+  THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE, "not a type");
 
   Vmap_t *map = AS_MAP((*vp));
 
-  if (this->curToken isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "awaiting (");
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_OPEN, "awaiting (");
 
   VALUE *val = Vmap.get (map, "init");
-  if (NULL is val)
-    return this->syntax_error (this, "init method doesn't exists");
+
+  THROW_SYNTAX_ERR_IF(NULL is val, "init method doesn't exists");
 
   ifnot (val->type & FUNCPTR_TYPE)
-    return this->syntax_error (this, "init, not a function method");
+   THROW_SYNTAX_ERR("init, not a function method");
 
   la_unget_char (this);
 
@@ -3763,39 +3821,40 @@ static int la_parse_new (la_t *this, VALUE *vp) {
   this->funcState |= MAP_METHOD_STATE;
   VALUE v;
   err = la_parse_func_call (this, &v, NULL, uf, *val);
-
-  la_next_token (this);
+  THROW_ERR_IF_ERR(err);
+  NEXT_TOKEN();
   return err;
 }
 
 static int la_parse_type (la_t *this) {
-  int c = la_next_raw_token (this);
-  if (c isnot LA_TOKEN_SYMBOL)
-    return this->syntax_error (this, "awaiting a type name");
+  NEXT_RAW_TOKEN();
+
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_SYMBOL, "awaiting a type name");
 
   char type[MAXLEN_SYMBOL + 1];
-  Cstring.cp (type, MAXLEN_SYMBOL + 1, la_StringGetPtr (this->curStrToken),
-      la_StringGetLen (this->curStrToken));
+  Cstring.cp (type, MAXLEN_SYMBOL + 1, GETSTRPTR(TOKENSTR),
+      GETSTRLEN(TOKENSTR));
 
-  if ('Z' < type[0] or type[0] < 'A')
-    return this->syntax_error (this, "type names begin with a capital");
+  THROW_SYNTAX_ERR_IF('Z' < type[0] or type[0] < 'A',
+    "type names begin with a capital");
 
-  c = la_next_token (this);
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "awaiting block");
+  NEXT_TOKEN();
 
-  string *block = String.new_with_len (la_StringGetPtr (this->curStrToken),
-      la_StringGetLen (this->curStrToken));
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_BLOCK, "awaiting block");
+
+  string *block = String.new_with_len (GETSTRPTR(TOKENSTR),
+      GETSTRLEN(TOKENSTR));
 
   Vmap.set (this->types, type, block, la_release_unit, 0);
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   return LA_OK;
 }
 
 static int la_parse_expr_list (la_t *this) {
-  int err, c;
+  int err;
+  int c;
   int count = 0;
   VALUE v;
 
@@ -3804,8 +3863,7 @@ static int la_parse_expr_list (la_t *this) {
     this->funcState |= EXPR_LIST_STATE;
     err = la_parse_expr (this, &v);
     this->funcState &= ~EXPR_LIST_STATE;
-
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     if (this->curState & FUNC_CALL_RESULT_IS_MMT)
       if (v.sym is NULL)
@@ -3816,35 +3874,33 @@ static int la_parse_expr_list (la_t *this) {
 
     count++;
 
-    c = this->curToken;
+    c = TOKEN;
 
-    if (c is LA_TOKEN_COMMA) {
+    if (c is TOKEN_COMMA) {
       this->curState |= MALLOCED_STRING_STATE;
-      la_next_token (this);
+      NEXT_TOKEN();
     }
-  } while (c is LA_TOKEN_COMMA);
+  } while (c is TOKEN_COMMA);
 
   count += this->argCount;
   this->argCount = 0;
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
-  if (c is LA_TOKEN_SEMICOLON) {
-    c = la_next_token (this);
+  if (c is TOKEN_SEMICOLON) {
+    NEXT_TOKEN();
+    c = TOKEN;
 
-    if (c is LA_TOKEN_BLOCK) {
+    if (c is TOKEN_BLOCK) {
       err = la_parse_map (this, &v);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
       la_set_qualifiers (this, v);
 
-    } else if (c is LA_TOKEN_MAP) {
+    } else if (c is TOKEN_MAP) {
       this->funcState |= EXPR_LIST_STATE;
       err = la_parse_map_get (this, &v);
       this->funcState &= ~EXPR_LIST_STATE;
-
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
       VALUE val = la_copy_map (v);
       v = val;
@@ -3855,13 +3911,12 @@ static int la_parse_expr_list (la_t *this) {
       this->funcState |= EXPR_LIST_STATE;
       err = la_parse_primary (this, &v);
       this->funcState &= ~EXPR_LIST_STATE;
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
       if (v.type is MAP_TYPE)
         la_set_qualifiers (this, v);
       else if (v.type isnot NULL_TYPE)
-        return this->syntax_error (this, "awaiting a map as qualifiers");
+        THROW_SYNTAX_ERR("awaiting a map as qualifiers");
     }
   }
 
@@ -3870,33 +3925,33 @@ static int la_parse_expr_list (la_t *this) {
 
 static int la_parse_char (la_t *this, VALUE *vp, la_string token) {
   VALUE v = INT(0);
-  const char *ptr = la_StringGetPtr (token);
+  const char *ptr = GETSTRPTR(token);
 
-  if (ptr[0] is LA_TOKEN_SQUOTE) return this->syntax_error (this, "error while getting a char token ");
+  if (ptr[0] is TOKEN_SQUOTE) THROW_SYNTAX_ERR("error while getting a char token ");
 
-  if (ptr[0] is LA_TOKEN_ESCAPE_CHR) {
+  if (ptr[0] is TOKEN_ESCAPE_CHR) {
     if (ptr[1] is 'n')  { v = INT('\n'); goto theend; }
     if (ptr[1] is 't')  { v = INT('\t'); goto theend; }
     if (ptr[1] is 'r')  { v = INT('\r'); goto theend; }
     if (ptr[1] is '\\') { v = INT('\\'); goto theend; }
-    if (ptr[1] is LA_TOKEN_SQUOTE) { v = INT(LA_TOKEN_SQUOTE); goto theend; }
-    return this->syntax_error (this, "unknown escape sequence");
+    if (ptr[1] is TOKEN_SQUOTE) { v = INT(TOKEN_SQUOTE); goto theend; }
+    THROW_SYNTAX_ERR("unknown escape sequence");
   }
 
   if (ptr[0] >= ' ' and ptr[0] <= '~') {
-    if (ptr[1] is LA_TOKEN_SQUOTE) {
+    if (ptr[1] is TOKEN_SQUOTE) {
       v = INT (ptr[0]);
       goto theend;
     } else {
-      return this->syntax_error (this, "error while taking character literal");
+      THROW_SYNTAX_ERR("error while taking character literal");
     }
   }
 
   int len = 0;
   utf8 c = Ustring.get.code_at ((char *) ptr, 4, 0, &len);
 
-  if (LA_TOKEN_SQUOTE isnot ptr[len])
-    return this->syntax_error (this, "error while taking character literal");
+  if (TOKEN_SQUOTE isnot ptr[len])
+    THROW_SYNTAX_ERR("error while taking character literal");
 
   v = INT(c);
 
@@ -3907,39 +3962,42 @@ theend:
 
 static int la_parse_string (la_t *this, la_string str) {
   int c,  r;
-  la_string savepc = this->parsePtr;
+  la_string savepc = PARSEPTR;
 
-  this->parsePtr = str;
+  PARSEPTR = str;
 
   for (;;) {
-    c = la_next_token (this);
+    NEXT_TOKEN();
+    c = TOKEN;
 
-    while (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON)
-      c = la_next_token (this);
+    while (c is TOKEN_NL or c is TOKEN_SEMICOLON) {
+      NEXT_TOKEN();
+      c = TOKEN;
+    }
 
     if (c < 0) break;
 
     do_token:
     if (c is UFUNC_TYPE) {
       c = la_next_char (this);
-      if (c isnot LA_TOKEN_PAREN_OPEN)
-        this->curToken = LA_TOKEN_VAR;
+      if (c isnot TOKEN_PAREN_OPEN)
+        TOKEN = TOKEN_VAR;
     }
 
     r = la_parse_stmt (this);
 
     if (r isnot LA_OK) return r;
 
-    c = this->curToken;
+    c = TOKEN;
 
-    if (c is LA_TOKEN_NL or c is LA_TOKEN_SEMICOLON or c < 0)
+    if (c is TOKEN_NL or c is TOKEN_SEMICOLON or c < 0)
       continue;
     //else
     goto do_token; // this is experimental (allow multiply statements in a single line)
     //return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
   }
 
-  this->parsePtr = savepc;
+  PARSEPTR = savepc;
 
   return LA_OK;
 }
@@ -3967,9 +4025,10 @@ static void la_fun_release_symbols (funT *uf, int clear, int is_method) {
 }
 
 static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE value) {
-  int c = la_next_token (this);
+  NEXT_TOKEN();
+  int c = TOKEN;
 
-  if (c isnot LA_TOKEN_PAREN_OPEN) {
+  if (c isnot TOKEN_PAREN_OPEN) {
     la_unget_char (this);
     VALUE v;
     if (uf isnot NULL) {
@@ -3984,7 +4043,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     return LA_OK;
   }
 
-  int expectargs = (uf ? uf->nargs : this->tokenArgs);
+  int expectargs = (uf ? uf->nargs : TOKENARGS);
 
   int paramCount = 0;
 
@@ -3992,12 +4051,14 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   this->funcState &= ~MAP_METHOD_STATE;
 
   this->curState |= MALLOCED_STRING_STATE;
-  c = la_next_token (this);
 
-  if (c isnot LA_TOKEN_PAREN_CLOS) {
+  NEXT_TOKEN();
+  c = TOKEN;
+
+  if (c isnot TOKEN_PAREN_CLOS) {
     paramCount = la_parse_expr_list (this);
 
-    c = this->curToken;
+    c = TOKEN;
     if (paramCount < 0)
       return paramCount;
   } else {
@@ -4007,8 +4068,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
   this->curState &= ~(MALLOCED_STRING_STATE);
 
-  if (c isnot LA_TOKEN_PAREN_CLOS)
-    return this->syntax_error (this, "expected closed parentheses");
+  if (c isnot TOKEN_PAREN_CLOS)
+    THROW_SYNTAX_ERR("expected closed parentheses");
 
   if (expectargs isnot paramCount)
     return la_arg_mismatch (this);
@@ -4040,7 +4101,8 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
       }
     }
 
-    this->didReturn = 0;
+    HASTORETURN = 0;
+
     uf->result = NULL_VALUE;
 
     la_fun_stack_push (this, this->curScope);
@@ -4067,7 +4129,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
     String.replace_with (func, this->curScope->funname);
 
-    this->didReturn = 0;
+    HASTORETURN = 0;
 
     la_release_qualifiers (this);
 
@@ -4150,7 +4212,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     if (*this->curMsg)
       this-> print_fmt_bytes (this->err_fp, "C function error: %s\n", this->curMsg);
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   return err;
 }
@@ -4162,14 +4224,14 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
   char method[MAXLEN_SYMBOL * 2];
 
   do {
-    while ((c = la_next_raw_token (this)) is LA_TOKEN_NL);
+    while ((c = la_next_raw_token (this)) is TOKEN_NL);
 
-    if (c isnot LA_TOKEN_SYMBOL)
-      return this->syntax_error (this, "awaiting a method");
+    if (c isnot TOKEN_SYMBOL)
+      THROW_SYNTAX_ERR("awaiting a method");
 
     VALUE save_v;
 
-    char *key = map_key (this, this->curStrToken);
+    char *key = map_key (this, TOKENSTR);
 
     switch (vp->type) {
       case STRING_TYPE:
@@ -4197,7 +4259,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         break;
 
       default:
-        return this->syntax_error (this, "unsupported datatype");
+        THROW_SYNTAX_ERR("unsupported datatype");
     }
 
     sym = ns_lookup_symbol (this->std, method);
@@ -4206,22 +4268,22 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
       sym = ns_lookup_symbol (this->std, key);
 
     if (sym is NULL or sym->value.type is 0) {
-      sym = la_lookup_symbol (this, this->curStrToken);
+      sym = la_lookup_symbol (this, TOKENSTR);
 
       if (sym is NULL)
-        return la_syntax_error_fmt (this, "%s|%s: unknown function", method, key);
+        THROW_SYNTAX_ERR_FMT("%s|%s: unknown function", method, key);
 
       switch (sym->type) {
-        case LA_TOKEN_LAMBDA:
+        case TOKEN_LAMBDA:
           err = la_parse_lambda (this, vp, 1);
-          if (err) return err;
+          THROW_ERR_IF_ERR(err);
 
           sym = this->curSym;
           sym->value = PTR(this->curFunDef);
           sym->type |= FUNCPTR_TYPE;
           break;
 
-        case LA_TOKEN_WHEN:
+        case TOKEN_WHEN:
           save_v = *vp;
           if (save_v.refcount is STRING_LITERAL)
             save_v.refcount = 0;
@@ -4229,9 +4291,9 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
           err = la_parse_when (this, vp);
           goto release_value;
 
-        case LA_TOKEN_FORMAT: {
+        case TOKEN_FORMAT: {
           if (vp->type isnot STRING_TYPE)
-            return this->syntax_error (this, "awaiting a string type");
+            THROW_SYNTAX_ERR("awaiting a string type");
 
           string *s = AS_STRING ((*vp));
           size_t len = s->num_bytes + 4;
@@ -4258,22 +4320,27 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
           buf[idx++] = ')';
           buf[idx] = '\0';
 
-          la_string savepc = this->parsePtr;
-          this->parsePtr = la_StringNew (buf);
+          la_string savepc = PARSEPTR;
+          PARSEPTR = StringNew (buf);
 
           save_v = *vp;
           if (save_v.refcount is STRING_LITERAL)
             save_v.refcount = 0;
 
           err = la_parse_format (this, vp);
-          this->parsePtr = savepc;
-          c = la_next_token (this);
-          if (c isnot LA_TOKEN_PAREN_OPEN)
-            return this->syntax_error (this, "awaiting (");
-          c = la_next_token (this);
-          if (c isnot LA_TOKEN_PAREN_CLOS)
-            return this->syntax_error (this, "awaiting )");
-          la_next_token (this);
+          PARSEPTR = savepc;
+
+          NEXT_TOKEN();
+          c = TOKEN;
+
+          if (c isnot TOKEN_PAREN_OPEN)
+            THROW_SYNTAX_ERR("awaiting (");
+
+          NEXT_TOKEN();
+          c = TOKEN;
+          if (c isnot TOKEN_PAREN_CLOS)
+            THROW_SYNTAX_ERR("awaiting )");
+          NEXT_TOKEN();
           goto release_value;
         }
 
@@ -4281,17 +4348,17 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
           if (sym->value.type is POINTER_TYPE)
             break;
 
-          return la_syntax_error_fmt (this, "%s|%s: unknown function", method, key);
+          THROW_SYNTAX_ERR_FMT("%s|%s: unknown function", method, key);
       }
     }
 
     int type;
     if (sym->type & FUNCPTR_TYPE)
       type = FUNCPTR_TYPE;
-    else if ((sym->type & 0xff) is LA_TOKEN_BUILTIN)
+    else if ((sym->type & 0xff) is TOKEN_BUILTIN)
       type = CFUNCTION_TYPE;
     else
-      return this->syntax_error (this, "not a function type");
+      THROW_SYNTAX_ERR("not a function type");
 
     VALUE val = sym->value;
     save_v = *vp;
@@ -4312,11 +4379,11 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         fun_should_be_freed = 0;
       }
 
-      la_next_token (this);
+      NEXT_TOKEN();
 
     } else {
       CFunc op = (CFunc) AS_PTR(sym->value);
-      this->tokenArgs = (sym->type >> 8) & 0xff;
+      TOKENARGS = (sym->type >> 8) & 0xff;
       err = la_parse_func_call (this, vp, op, NULL, val);
       if (save_v.type is MAP_TYPE)
         save_v.refcount--;
@@ -4328,35 +4395,33 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
        la_free (this, save_v);
    }
 
-  } while (this->curToken is LA_TOKEN_COLON);
+  } while (TOKEN is TOKEN_COLON);
 
   return err;
 }
 
 static int la_parse_primary (la_t *this, VALUE *vp) {
-  int c, err;
-
-  c = this->curToken;
+  int err = LA_OK;
+  int c = TOKEN;
 
   switch (c) {
-    case LA_TOKEN_INDEX_OPEN:
+    case TOKEN_INDEX_OPEN:
       ifnot (this->curState & INDEX_STATE) {
         err = la_get_anon_array (this, vp);
         if (err is LA_OK) {
-          c = this->curToken;
-          if (c isnot LA_TOKEN_INDEX_CLOS)
-            return this->syntax_error (this, "array expression, awaiting ]");
+          c = TOKEN;
+          if (c isnot TOKEN_INDEX_CLOS)
+            THROW_SYNTAX_ERR("array expression, awaiting ]");
 
           c = la_next_char (this);
 
-          if (c is LA_TOKEN_INDEX_OPEN) {
+          if (c is TOKEN_INDEX_OPEN) {
             VALUE saved_val = *vp;
-            this->curToken = LA_TOKEN_ARRAY;
-            this->tokenValue = *vp;
+            TOKEN = TOKEN_ARRAY;
+            TOKENVAL = *vp;
 
             err = la_parse_primary (this, vp);
-            if (err isnot LA_OK)
-              return err;
+            THROW_ERR_IF_ERR(err);
 
             if (vp->type is STRING_TYPE) {
               string *str = AS_STRING((*vp));
@@ -4367,11 +4432,12 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
             return err;
           }
 
-          c = la_next_token (this);
+          NEXT_TOKEN();
+          c = TOKEN;
 
-          if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+          if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
             vp->refcount = ARRAY_LITERAL;
-            this->tokenValue = *vp;
+            TOKENVAL = *vp;
             return la_parse_chain (this, vp);
           }
 
@@ -4382,154 +4448,175 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       }
       /* fall through */
 
-    case LA_TOKEN_PAREN_OPEN: {
-      int close_token = (c is LA_TOKEN_PAREN_OPEN
-         ? LA_TOKEN_PAREN_CLOS : LA_TOKEN_INDEX_CLOS);
+    case TOKEN_PAREN_OPEN: {
+      int close_token = (c is TOKEN_PAREN_OPEN
+         ? TOKEN_PAREN_CLOS : TOKEN_INDEX_CLOS);
 
-      c = la_next_token (this);
+      NEXT_TOKEN();
+      c = TOKEN;
 
       err = la_parse_expr (this, vp);
+      THROW_ERR_IF_ERR(err);
 
-      if (err is LA_OK) {
-        c = this->curToken;
+      c = TOKEN;
 
-        if (c is close_token) {
-          c = la_next_token (this);
-          if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
-            this->tokenValue = *vp;
-            return la_parse_chain (this, vp);
-          }
+      if (c is close_token) {
+        NEXT_TOKEN();
+        c = TOKEN;
 
-          return LA_OK;
+        if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+          TOKENVAL = *vp;
+          return la_parse_chain (this, vp);
         }
+
+        return LA_OK;
       }
 
       return err;
     }
 
-    case LA_TOKEN_IFNOT:
-    case LA_TOKEN_IF:
-      ERR = la_parse_cond (this, c is LA_TOKEN_IFNOT);
-      THROW_ERR_IF_ERR;
+    case TOKEN_IFNOT:
+    case TOKEN_IF:
+      err = la_parse_cond (this, c is TOKEN_IFNOT);
+      THROW_ERR_IF_ERR(err);
 
-      if (TOKEN isnot LA_TOKEN_THEN) {
-        if (TOKEN is LA_TOKEN_NL or TOKEN is LA_TOKEN_SEMICOLON) {
-          if (la_peek_token (this, 0) isnot LA_TOKEN_THEN) {
+      if (TOKEN isnot TOKEN_THEN) {
+        if (TOKEN is TOKEN_NL or TOKEN is TOKEN_SEMICOLON) {
+          if (la_peek_token (this, 0) isnot TOKEN_THEN) {
             if (this->funcState & RETURN_STATE) {
-              this->didReturn = AS_INT(COND);
+              HASTORETURN = AS_INT(CONDVAL);
               *vp = NULL_VALUE;
               return LA_OK;
             }
             else
-              return this->syntax_error (this, "awaiting then");
+              THROW_SYNTAX_ERR("awaiting then");
           } else
-            la_next_token (this);
+            NEXT_TOKEN();
         } else
-          return this->syntax_error (this, "awaiting then");
+          THROW_SYNTAX_ERR("awaiting then");
       }
 
-      ERR = la_parse_iforelse (this, AS_INT(COND), vp);
-      THROW_ERR_IF_ERR;
-      return ERR;
+      err = la_parse_iforelse (this, AS_INT(CONDVAL), vp);
+      THROW_ERR_IF_ERR(err);
+      return err;
 
-    case LA_TOKEN_INTEGER: {
-      VALUE val = la_string_to_dec (this->curStrToken);
+    case TOKEN_INTEGER: {
+      VALUE val = la_string_to_dec (TOKENSTR);
       *vp = val;
-      c = la_next_token (this);
-      if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
-        this->tokenValue = *vp;
+
+      NEXT_TOKEN();
+      c = TOKEN;
+
+      if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
 
       return LA_OK;
     }
 
-    case LA_TOKEN_NUMBER: {
+    case TOKEN_NUMBER: {
       char *endptr; char str[32];
-      Cstring.cp (str, 32, la_StringGetPtr (this->curStrToken), la_StringGetLen (this->curStrToken));
+      Cstring.cp (str, 32, GETSTRPTR(TOKENSTR), GETSTRLEN(TOKENSTR));
       double val = strtod (str, &endptr);
       *vp = NUMBER(val);
-      c = la_next_token (this);
-      if (c is LA_TOKEN_COLON) {
-        this->tokenValue = *vp;
+
+      NEXT_TOKEN();
+      c = TOKEN;
+
+      if (c is TOKEN_COLON) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
       return LA_OK;
     }
 
-    case LA_TOKEN_OCTAL:
-      *vp = la_OctalStringToNum (this->curStrToken);
-      c = la_next_token (this);
-      if (c is LA_TOKEN_COLON) {
-        this->tokenValue = *vp;
+    case TOKEN_OCTAL:
+      *vp = la_OctalStringToNum (TOKENSTR);
+
+      NEXT_TOKEN();
+      c = TOKEN;
+
+      if (c is TOKEN_COLON) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
 
       return LA_OK;
 
-    case LA_TOKEN_BINARY:
-      *vp = la_BinaryStringToNum (this->curStrToken);
-      c = la_next_token (this);
-      if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
-        this->tokenValue = *vp;
+    case TOKEN_BINARY:
+      *vp = la_BinaryStringToNum (TOKENSTR);
+
+      NEXT_TOKEN();
+      c = TOKEN;
+
+      if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
       return LA_OK;
 
-    case LA_TOKEN_HEX_CHAR:
-    case LA_TOKEN_HEX_NUMBER:
-      *vp = la_HexStringToNum (this->curStrToken);
-      c = la_next_token (this);
-      if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
-        this->tokenValue = *vp;
+    case TOKEN_HEX_CHAR:
+    case TOKEN_HEX_NUMBER:
+      *vp = la_HexStringToNum (TOKENSTR);
+
+      NEXT_TOKEN();
+      c = TOKEN;
+
+      if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
       return LA_OK;
 
-    case LA_TOKEN_CHAR:
-      err = la_parse_char (this, vp, this->curStrToken);
-      c = la_next_token (this);
-      if (c is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
-        this->tokenValue = *vp;
+    case TOKEN_CHAR:
+      err = la_parse_char (this, vp, TOKENSTR);
+      THROW_ERR_IF_ERR(err);
+
+      NEXT_TOKEN();
+      c = TOKEN;
+
+      if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
+
       return err;
 
-    case LA_TOKEN_FORMAT:
+    case TOKEN_FORMAT:
       err = la_parse_format (this, vp);
 
-      if (this->curToken is LA_TOKEN_COLON) {
+      if (TOKEN is TOKEN_COLON) {
         vp->refcount = STRING_LITERAL;
-        this->tokenValue = *vp;
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
       return err;
 
-    case LA_TOKEN_VAR:
-      if (this->tokenValue.type is STRING_TYPE) {
+    case TOKEN_VAR:
+      if (TOKENVAL.type is STRING_TYPE) {
         err = la_string_get (this, vp);
-        if (err isnot LA_OK)
-          return err;
+        THROW_ERR_IF_ERR(err);
+
       } else {
-        *vp = this->tokenValue;
-        la_next_token (this);
+        *vp = TOKENVAL;
+        NEXT_TOKEN();
         err = LA_OK;
       }
 
-      if (this->curToken isnot LA_TOKEN_COLON or
+      if (TOKEN isnot TOKEN_COLON or
           (this->curState & INDEX_STATE))
         return err;
 
       return la_parse_chain (this, vp);
 
-    case LA_TOKEN_ARRAY:
+    case TOKEN_ARRAY:
       err = la_parse_array_get (this, vp);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
-      if (this->curToken isnot LA_TOKEN_DOT) {
-        if (this->curToken is LA_TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
-          this->tokenValue = *vp;
+      if (TOKEN isnot TOKEN_DOT) {
+        if (TOKEN is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+          TOKENVAL = *vp;
           return la_parse_chain (this, vp);
         }
 
@@ -4537,32 +4624,31 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       }
 
       if (vp->type isnot MAP_TYPE)
-        return this->syntax_error (this, "not a map");
+        THROW_SYNTAX_ERR("not a map");
 
       la_unget_char (this);
-      this->tokenValue = *vp;
+      TOKENVAL = *vp;
       /* fall through */
 
-    case LA_TOKEN_MAP: {
+    case TOKEN_MAP: {
       err = la_parse_map_get (this, vp);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
       int type;
       if (vp->type & FUNCPTR_TYPE)
         type = FUNCPTR_TYPE;
-      else if ((vp->type & 0xff) is LA_TOKEN_BUILTIN)
+      else if ((vp->type & 0xff) is TOKEN_BUILTIN)
         type = CFUNCTION_TYPE;
       else {
-        if (this->curToken is LA_TOKEN_COLON) {
-          this->tokenValue = *vp;
+        if (TOKEN is TOKEN_COLON) {
+          TOKENVAL = *vp;
           return la_parse_chain (this, vp);
         }
 
         break;
       }
 
-      ifnot (this->curToken is LA_TOKEN_PAREN_OPEN)
+      ifnot (TOKEN is TOKEN_PAREN_OPEN)
         break;
 
       la_unget_char (this);
@@ -4573,99 +4659,98 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
         this->funcState |= MAP_METHOD_STATE;
         err = la_parse_func_call (this, vp, NULL, uf, *vp);
-        la_next_token (this);
+        NEXT_TOKEN();
         return err;
       } else {
         CFunc op = (CFunc) AS_PTR((*vp));
-        this->tokenArgs = ((*vp).type >> 8) & 0xff;
+        TOKENARGS = ((*vp).type >> 8) & 0xff;
         return la_parse_func_call (this, vp, op, NULL, *vp);
       }
     }
 
-    case LA_TOKEN_EVALFILE: {
+    case TOKEN_EVALFILE: {
       this->funcState |= EVAL_UNIT_STATE;
       err = la_parse_loadfile (this);
-      if (err isnot LA_OK)
-        return err;
       this->funcState &= ~EVAL_UNIT_STATE;
+      THROW_ERR_IF_ERR(err);
 
       funT *uf = this->curFunDef;
       VALUE ufv = PTR(uf);
       la_define_symbol (this, this->function, uf->funname, (UFUNC_TYPE | (uf->nargs << 8)), ufv, 0);
-      la_string savepc = this->parsePtr;
-      this->parsePtr = la_StringNew ("()");
+      la_string savepc = PARSEPTR;
+      PARSEPTR = StringNew ("()");
       err = la_parse_func_call (this, vp, NULL, uf, ufv);
-      this->parsePtr = savepc;
+      PARSEPTR = savepc;
       return err;
     }
 
-    case LA_TOKEN_USRFUNC: {
-      sym_t *symbol = this->tokenSymbol;
+    case TOKEN_USRFUNC: {
+      sym_t *symbol = TOKENSYM;
       ifnot (symbol)
-        return this->syntax_error (this, "user defined function, not declared");
+        THROW_SYNTAX_ERR("user defined function, not declared");
 
       funT *uf = AS_FUNC_PTR(symbol->value);
 
       err = la_parse_func_call (this, vp, NULL, uf, symbol->value);
+      THROW_ERR_IF_ERR(err);
 
-      c = la_next_token (this);
+      NEXT_TOKEN();
+      c = TOKEN;
 
-      if (c is LA_TOKEN_COLON) {
-        this->tokenValue = *vp;
+      if (c is TOKEN_COLON) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
 
       return err;
     }
 
-    case LA_TOKEN_BUILTIN: {
-      CFunc op = (CFunc) AS_PTR(this->tokenValue);
-      err = la_parse_func_call (this, vp, op, NULL, this->tokenSymbol->value);
+    case TOKEN_BUILTIN: {
+      CFunc op = (CFunc) AS_PTR(TOKENVAL);
+      err = la_parse_func_call (this, vp, op, NULL, TOKENSYM->value);
+      THROW_ERR_IF_ERR(err);
 
-      if (this->curToken is LA_TOKEN_COLON) {
-        this->tokenValue = *vp;
+      if (TOKEN is TOKEN_COLON) {
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
 
       return err;
     }
 
-    case LA_TOKEN_LAMBDA:
+    case TOKEN_LAMBDA:
       return la_parse_lambda (this, vp, 0);
 
-    case LA_TOKEN_STRING:
+    case TOKEN_STRING:
       err = la_string_get (this, vp);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
-      if (this->curToken is LA_TOKEN_COLON) {
+      if (TOKEN is TOKEN_COLON) {
         if (vp->sym is NULL and
             vp->refcount isnot MALLOCED_STRING and
             0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
           vp->refcount = STRING_LITERAL;
 
         this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
-        this->tokenValue = *vp;
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
 
       return err;
 
-    case LA_TOKEN_NEW:
+    case TOKEN_NEW:
       err = la_parse_new (this, vp);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
-      while (this->curToken is LA_TOKEN_DOT) {
+      while (TOKEN is TOKEN_DOT) {
         la_unget_char (this);
 
-        this->tokenValue = *vp;
-        VALUE mapval = this->tokenValue;
+        TOKENVAL = *vp;
+        VALUE mapval = TOKENVAL;
 
-        this->curToken = LA_TOKEN_MAP;
+        TOKEN = TOKEN_MAP;
         err = la_parse_primary (this, vp);
-        if (err isnot LA_OK)
-          return err;
+        THROW_ERR_IF_ERR(err);
 
         if (mapval.sym is NULL) {
           VALUE v = *vp;
@@ -4681,27 +4766,25 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       return err;
 
-    case LA_TOKEN_BLOCK:
+    case TOKEN_BLOCK:
       err = la_parse_map (this, vp);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
-      if (this->curToken is LA_TOKEN_COLON) {
+      if (TOKEN is TOKEN_COLON) {
         vp->refcount = MAP_LITERAL;
-        this->tokenValue = *vp;
+        TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
 
-      while (this->curToken is LA_TOKEN_DOT) {
+      while (TOKEN is TOKEN_DOT) {
         la_unget_char (this);
 
-        this->tokenValue = *vp;
-        VALUE mapval = this->tokenValue;
+        TOKENVAL = *vp;
+        VALUE mapval = TOKENVAL;
 
-        this->curToken = LA_TOKEN_MAP;
+        TOKEN = TOKEN_MAP;
         err = la_parse_primary (this, vp);
-        if (err isnot LA_OK)
-          return err;
+        THROW_ERR_IF_ERR(err);
 
         if (mapval.sym is NULL) {
           VALUE v = *vp;
@@ -4718,23 +4801,23 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return err;
 
     default:
-      if ((c & 0xff) is LA_TOKEN_BINOP) {
-        OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
-        la_next_token (this);
+      if ((c & 0xff) is TOKEN_BINOP) {
+        OpFunc op = (OpFunc) AS_PTR(TOKENVAL);
+        NEXT_TOKEN();
         VALUE v;
         err = la_parse_expr (this, &v);
-        if (err is LA_OK)
-          *vp = op (this, INT(0), v);
+        THROW_ERR_IF_ERR(err);
 
+        *vp = op (this, INT(0), v);
         return err;
       }
 
-      if (c is LA_TOKEN_NL) {
-        la_next_token (this);
+      if (c is TOKEN_NL) {
+        NEXT_TOKEN();
         return la_parse_primary (this, vp);
       }
 
-      if (c isnot LA_TOKEN_EOF)
+      if (c isnot TOKEN_EOF)
         return this->syntax_error (this, STR_FMT(
             "%s(), syntax error, unknown token |%c| |%d|", __func__, c, c));
   }
@@ -4743,13 +4826,14 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 }
 
 static int la_parse_boolean_stmt (la_t *this, int tok) {
-  size_t len = la_StringGetLen (this->parsePtr);
-  const char *Ptr = la_StringGetPtr (this->parsePtr);
+  int err;
+  size_t len = GETSTRLEN(PARSEPTR);
+  const char *Ptr = GETSTRPTR(PARSEPTR);
   const char *ptr = Ptr;
 
   while (*ptr and is_space (*ptr)) ptr++;
 
-  if (len - (ptr - Ptr) < 6) return tok;
+  if (len - (ptr - Ptr) < 5) return tok;
 
   if ('i' is *ptr and 'f' is *(++ptr)) {
     ptr++;
@@ -4769,68 +4853,54 @@ static int la_parse_boolean_stmt (la_t *this, int tok) {
 
     if (isspace) {
       ptr++;
-      while (*ptr and (is_space (*ptr) or *ptr is LA_TOKEN_NL)) ptr++;
-      if (*ptr isnot LA_TOKEN_PAREN_OPEN)
-        return this->syntax_error (this, "awaiting (");
+      while (*ptr and (is_space (*ptr) or *ptr is TOKEN_NL)) ptr++;
     }
 
     len -= ptr - Ptr;
-    this->parsePtr = la_StringNew (ptr);
-    la_StringSetLen (&this->parsePtr, len);
-    this->curState |= MALLOCED_STRING_STATE;
-    la_next_token (this);
-    VALUE v;
+    PARSEPTR = StringNew (ptr);
+    SETSTRLEN(PARSEPTR, len);
 
-    int err = la_parse_expr (this, &v);
-    this->curState &= ~MALLOCED_STRING_STATE;
-    if (err isnot LA_OK) return err;
+    err = la_parse_cond (this, isif is 0);
+    THROW_ERR_IF_ERR(err);
 
-    if (v.type isnot INTEGER_TYPE)
-      return this->syntax_error (this, "conditional expression awaits an integer expression");
-
-    if (isif) {
-      if (AS_INT(v))
-        return tok;
-      return LA_OK;
-
-    } else {
-      ifnot (AS_INT(v))
-        return tok;
-      return LA_OK;
-    }
+    if (AS_INT(CONDVAL))
+      return tok;
+    return LA_OK;
   }
 
   return tok;
 }
 
 static int la_parse_stmt (la_t *this) {
+  int err = LA_OK;
   int c;
   int prev_token = 0;
   la_string name;
   funT *scope = this->curScope;
   VALUE val;
-  int err = LA_OK;
 
-  if (this->didReturn) {
+  if (HASTORETURN) {
     do {
       c = la_get_char (this);
+    } while (c >= 0 and c isnot TOKEN_NL and c isnot TOKEN_SEMICOLON and
+       c isnot TOKEN_BLOCK_CLOS);
 
-    } while (c >= 0 and c isnot LA_TOKEN_NL and c isnot LA_TOKEN_SEMICOLON and
-       c isnot LA_TOKEN_BLOCK_CLOS);
+    if (TOKEN is TOKEN_EOF) return LA_OK;
 
     la_unget_char (this);
-    c = la_next_token (this);
+
+    NEXT_TOKEN();
 
     return LA_OK;
   }
 
 do_token:
-  c = this->curToken;
+  c = TOKEN;
 
   switch (c) {
-    case LA_TOKEN_BREAK:
+    case TOKEN_BREAK:
       ifnot (this->curState & LOOP_STATE)
-        return this->syntax_error (this, "break is not in a loop");
+        THROW_SYNTAX_ERR("break is not in a loop");
 
       uint nth = 0;
       int level = 0;
@@ -4839,74 +4909,79 @@ do_token:
         nth++;
         c = la_peek_nows_char_inline (this, &nth);
 
-        if (c isnot LA_TOKEN_SEMICOLON and c isnot LA_TOKEN_NL and
-            c isnot LA_TOKEN_BLOCK_CLOS and c isnot LA_TOKEN_EOF and
+        if (c isnot TOKEN_SEMICOLON and c isnot TOKEN_NL and
+            c isnot TOKEN_BLOCK_CLOS and c isnot TOKEN_EOF and
             c isnot 'i')
-          return this->syntax_error (this, "unexpected token after a break statement");
+          THROW_SYNTAX_ERR("unexpected token after a break statement");
         num -= ('0' + 1);
 
         if (num >= this->loopCount)
-          return this->syntax_error (this, "break statement: too many loop count levels");
+          THROW_SYNTAX_ERR("break statement: too many loop count levels");
 
-        const char *ptr = la_StringGetPtr (this->parsePtr) + 2;
-        uint len = la_StringGetLen (this->parsePtr) - 2;
-        la_StringSetPtr (&this->parsePtr, ptr);
-        la_StringSetLen (&this->parsePtr, len);
+        const char *ptr = GETSTRPTR(PARSEPTR) + 2;
+        uint len = GETSTRLEN(PARSEPTR) - 2;
+        SETSTRPTR(PARSEPTR, ptr);
+        SETSTRLEN(PARSEPTR, len);
         level = num;
       }
 
       err = la_parse_boolean_stmt (this, LA_ERR_BREAK);
+      THROW_ERR_IF_ERR(err);
       if (err is LA_ERR_BREAK) this->breakCount = level;
       return err;
 
-    case LA_TOKEN_CONTINUE:
+    case TOKEN_CONTINUE:
       ifnot (this->curState & LOOP_STATE)
-        return this->syntax_error (this, "continue is not in a loop");
+        THROW_SYNTAX_ERR("continue is not in a loop");
       return la_parse_boolean_stmt (this, LA_ERR_CONTINUE);
 
-    case LA_TOKEN_VARDEF:
-    case LA_TOKEN_CONSTDEF: {
+    case TOKEN_VARDEF:
+    case TOKEN_CONSTDEF: {
       if (this->curState & VAR_IS_NOT_ALLOWED)
-        return this->syntax_error (this, "var declaration is not allowed");
+        THROW_SYNTAX_ERR("var declaration is not allowed");
 
       prev_token = c;
-      int is_const = c is LA_TOKEN_CONSTDEF;
+      int is_const = c is TOKEN_CONSTDEF;
 
-      c = la_next_raw_token (this);
-      if (c is LA_TOKEN_NL)
-        c = la_next_token (this);
 
-      if (c isnot LA_TOKEN_SYMBOL)
-        return this->syntax_error (this, "expected a symbol");
+      NEXT_RAW_TOKEN();
+      c = TOKEN;
 
-      name = this->curStrToken;
+      if (c is TOKEN_NL) {
+        NEXT_TOKEN();
+        c = TOKEN;
+      }
 
-      ifnot (la_StringGetLen (name))
-        return this->syntax_error (this, "unknown symbol");
+      if (c isnot TOKEN_SYMBOL)
+        THROW_SYNTAX_ERR("expected a symbol");
+
+      name = TOKENSTR;
+
+      ifnot (GETSTRLEN(name))
+        THROW_SYNTAX_ERR("unknown symbol");
 
       char *key = sym_key (this, name);
 
       sym_t *sym = ns_lookup_symbol (this->std, key);
       ifnot (NULL is sym)
-        return this->syntax_error (this, "can not redefine a standard symbol");
+        THROW_SYNTAX_ERR("can not redefine a standard symbol");
 
       sym = ns_lookup_symbol (this->datatypes, key);
       ifnot (NULL is sym) {
-        this->tokenSymbol = sym;
+        TOKENSYM = sym;
         int (*func) (la_t *) = AS_VOID_PTR(sym->value);
         err = (*func) (this);
-        if (err isnot LA_OK)
-          return err;
+        THROW_ERR_IF_ERR(err);
 
-        if (this->curToken is LA_TOKEN_COMMA) {
+        if (TOKEN is TOKEN_COMMA) {
           uint n = 0;
           c = la_peek_nows_char_inline (this, &n);
-          if (c  is LA_TOKEN_NL) {
+          if (c  is TOKEN_NL) {
             for (uint i = 0; i <= n; i++)
               la_ignore_next_char (this);
           }
 
-          this->curToken = LA_TOKEN_VARDEF;
+          TOKEN = TOKEN_VARDEF;
           goto do_token;
         }
 
@@ -4921,37 +4996,37 @@ do_token:
       int type = INTEGER_TYPE;
 
       ifnot (NULL is sym)
-        return this->syntax_error (this, "can not redeclare a symbol in this scope");
+        THROW_SYNTAX_ERR("can not redeclare a symbol in this scope");
       else if (is_const) {
         type = NULL_TYPE;
         v = NULL_VALUE;
       }
 
-      this->tokenSymbol = la_define_symbol (this, scope, key, type, v, is_const);
+      TOKENSYM = la_define_symbol (this, scope, key, type, v, is_const);
       this->scopeState = 0;
 
-      if (NULL is this->tokenSymbol)
-        return this->syntax_error (this, "unknown error on declaration");
+      if (NULL is TOKENSYM)
+        THROW_SYNTAX_ERR("unknown error on declaration");
 
-      c = LA_TOKEN_VAR;
+      c = TOKEN_VAR;
       /* fall through */
     }
 
-    case LA_TOKEN_VAR: {
-      name = this->curStrToken;
-      sym_t *symbol = this->tokenSymbol;
+    case TOKEN_VAR: {
+      name = TOKENSTR;
+      sym_t *symbol = TOKENSYM;
 
       if (symbol->value.type is STRING_TYPE)
-        if (la_peek_char (this, 0) is LA_TOKEN_INDEX_OPEN)
+        if (la_peek_char (this, 0) is TOKEN_INDEX_OPEN)
           return la_string_set_char (this, symbol->value, symbol->is_const);
 
-      la_next_token (this);
+      NEXT_TOKEN();
 
-      int token = this->curToken;
+      int token = TOKEN;
 
-      if (token < LA_TOKEN_ASSIGN and
-          token > LA_TOKEN_ASSIGN_LAST_VAL)
-        return this->syntax_error (this, "expected assignment operator");
+      if (token < TOKEN_ASSIGN and
+          token > TOKEN_ASSIGN_LAST_VAL)
+        THROW_SYNTAX_ERR("expected assignment operator");
 
       ifnot (symbol) {
         la_print_lastring (this, this->err_fp, name);
@@ -4960,27 +5035,28 @@ do_token:
 
       if (symbol->is_const)
         if (symbol->value.type isnot NULL_TYPE)
-          return this->syntax_error (this, "can not reassign to a constant");
+          THROW_SYNTAX_ERR("can not reassign to a constant");
 
-      c = la_next_token (this);
+      NEXT_TOKEN();
+      c = TOKEN;
 
-      if (c is LA_TOKEN_FUNCDEF) {
+      if (c is TOKEN_FUNCDEF) {
         char *key = sym_key (this, name);
         la_release_sym (Vmap.pop (scope->symbols, key));
-        Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, key, la_StringGetLen(name));
+        Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, key, GETSTRLEN(name));
         err = la_parse_func_def (this);
         this->curFunName[0] = '\0';
         return err;
       }
 
-      int is_un = c is LA_TOKEN_UNARY;
+      int is_un = c is TOKEN_UNARY;
       if (is_un)
-        la_next_token (this);
+        NEXT_TOKEN();
 
       this->objectState |= ASSIGNMENT_STATE;
       err = la_parse_expr (this, &val);
       this->objectState &= ~ASSIGNMENT_STATE;
-      if (err isnot LA_OK) return err;
+      THROW_ERR_IF_ERR(err);
 
       if (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) {
         switch (val.type) {
@@ -4999,13 +5075,13 @@ do_token:
       if (val.type & FUNCPTR_TYPE) {
         funT *f = AS_FUNC_PTR(val);
         symbol->type = (UFUNC_TYPE | (f->nargs << 8));
-        Cstring.cp (f->funname, MAXLEN_SYMBOL, la_StringGetPtr(name),
-            la_StringGetLen(name));
+        Cstring.cp (f->funname, MAXLEN_SYMBOL, GETSTRPTR(name),
+            GETSTRLEN(name));
         f->prev = scope->prev;
       } else
         symbol->type = val.type;
 
-      if (token is LA_TOKEN_ASSIGN) {
+      if (token is TOKEN_ASSIGN) {
         switch (symbol->value.type) {
           case STRING_TYPE:
             if (Cstring.eq (symbol->scope->funname, scope->funname))
@@ -5026,99 +5102,99 @@ do_token:
       VALUE result;
 
       switch (token) {
-        case LA_TOKEN_ASSIGN:
+        case TOKEN_ASSIGN:
           val.sym = symbol;
           result = val;
           goto assign_and_return;
 
-        case LA_TOKEN_ASSIGN_APP:
+        case TOKEN_ASSIGN_APP:
           this->objectState |= OBJECT_APPEND;
           result = la_add (this, symbol->value, val);
           this->objectState &= ~OBJECT_APPEND;
           break;
 
-        case LA_TOKEN_ASSIGN_SUB: result = la_sub  (this, symbol->value, val); break;
-        case LA_TOKEN_ASSIGN_DIV: result = la_div  (this, symbol->value, val); break;
-        case LA_TOKEN_ASSIGN_MUL: result = la_mul  (this, symbol->value, val); break;
-        case LA_TOKEN_ASSIGN_MOD: result = la_mod  (this, symbol->value, val); break;
-        case LA_TOKEN_ASSIGN_BAR: result = la_bset (this, symbol->value, val); break;
-        case LA_TOKEN_ASSIGN_AND: result = la_bnot (this, symbol->value, val); break;
-        default: return this->syntax_error (this, "unknown operator");
+        case TOKEN_ASSIGN_SUB: result = la_sub  (this, symbol->value, val); break;
+        case TOKEN_ASSIGN_DIV: result = la_div  (this, symbol->value, val); break;
+        case TOKEN_ASSIGN_MUL: result = la_mul  (this, symbol->value, val); break;
+        case TOKEN_ASSIGN_MOD: result = la_mod  (this, symbol->value, val); break;
+        case TOKEN_ASSIGN_BAR: result = la_bset (this, symbol->value, val); break;
+        case TOKEN_ASSIGN_AND: result = la_bnot (this, symbol->value, val); break;
+        default: THROW_SYNTAX_ERR("unknown operator");
       }
 
       if (result.type is NULL_TYPE)
-        return this->syntax_error (this, "unxpected operation");
+        THROW_SYNTAX_ERR("unxpected operation");
 
       assign_and_return:
       symbol->value = result;
 
       this->curState &= ~LITERAL_STRING_STATE;
 
-      if (prev_token isnot LA_TOKEN_VARDEF)
+      if (prev_token isnot TOKEN_VARDEF)
         return LA_OK;
 
-      if (this->curToken is LA_TOKEN_COMMA) {
+      if (TOKEN is TOKEN_COMMA) {
         uint n = 0;
         c = la_peek_nows_char_inline (this, &n);
-        if (c  is LA_TOKEN_NL) {
+        if (c  is TOKEN_NL) {
           for (uint i = 0; i <= n; i++)
             la_ignore_next_char (this);
         }
 
-        this->curToken = LA_TOKEN_VARDEF;
+        TOKEN = TOKEN_VARDEF;
         goto do_token;
       }
 
       return LA_OK;
     }
 
-    case LA_TOKEN_ARRAY:
+    case TOKEN_ARRAY:
       this->objectState &= ~OBJECT_MMT_REASSIGN;
       err = la_parse_array_set (this);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
       if (this->objectState & OBJECT_MMT_REASSIGN) {
-        this->curToken = LA_TOKEN_VAR;
+        TOKEN = TOKEN_VAR;
         goto do_token;
       }
 
       return err;
 
-    case LA_TOKEN_MAP:
+    case TOKEN_MAP:
       this->objectState &= ~OBJECT_MMT_REASSIGN;
       err = la_parse_map_set (this);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
 
       if (this->objectState & OBJECT_MMT_REASSIGN) {
-        this->curToken = LA_TOKEN_VAR;
+        TOKEN = TOKEN_VAR;
         goto do_token;
       }
 
       return err;
 
-    case LA_TOKEN_OVERRIDE:
-      c = la_next_token (this);
-      if (c isnot LA_TOKEN_MAP)
-        return this->syntax_error (this, "override works only for maps");
+    case TOKEN_OVERRIDE:
+      NEXT_TOKEN();
+      c = TOKEN;
+
+      if (c isnot TOKEN_MAP)
+        THROW_SYNTAX_ERR("override works only for maps");
       this->objectState |= FUNC_OVERRIDE;
-      this->curToken = LA_TOKEN_MAP;
+      TOKEN = TOKEN_MAP;
       goto do_token;
 
-    case LA_TOKEN_BUILTIN:
+    case TOKEN_BUILTIN:
     case UFUNC_TYPE:
       return la_parse_primary (this, &val);
 
-    case LA_TOKEN_COMMA:
-      la_next_token (this);
+    case TOKEN_COMMA:
+      NEXT_TOKEN();
       return la_parse_stmt (this);
 
     default:
-      if (this->tokenSymbol and AS_INT(this->tokenValue)) {
-        int (*func) (la_t *) = AS_VOID_PTR(this->tokenValue);
+      if (TOKENSYM and AS_INT(TOKENVAL)) {
+        int (*func) (la_t *) = AS_VOID_PTR(TOKENVAL);
         err = (*func) (this);
-        if (err is LA_TOKEN_PUBLIC)
+        if (err is TOKEN_PUBLIC)
           goto do_token;
         return err;
       }
@@ -5132,11 +5208,13 @@ do_token:
 // parse a level n expression
 // level 0 is the lowest level (highest precedence)
 static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
-  int c = this->curToken;
-  ifnot ((c & 0xff) is LA_TOKEN_BINOP)
+  int err;
+  int c = TOKEN;
+
+  ifnot ((c & 0xff) is TOKEN_BINOP)
     return LA_OK;
 
-  int err = LA_OK;
+  err = LA_OK;
   VALUE lhs = *vp;
   VALUE rhs;
 
@@ -5162,26 +5240,26 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     int level = (c >> 8) & 0xff;
     if (level > max_level) break;
 
-    OpFunc op = (OpFunc) AS_PTR(this->tokenValue);
+    OpFunc op = (OpFunc) AS_PTR(TOKENVAL);
 
     this->curState |= MALLOCED_STRING_STATE;
-    c = la_next_token (this);
+    NEXT_TOKEN();
+    c = TOKEN;
 
     err = la_parse_primary (this, &rhs);
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
-    c = this->curToken;
+    c = TOKEN;
 
-    while ((c & 0xff) is LA_TOKEN_BINOP) {
+    while ((c & 0xff) is TOKEN_BINOP) {
       int nextlevel = (c >> 8) & 0xff;
       if (level <= nextlevel) break;
 
       this->objectState &= ~(LHS_STRING_RELEASED|RHS_STRING_RELEASED);
       err = la_parse_expr_level (this, nextlevel, &rhs);
+      THROW_ERR_IF_ERR(err);
 
-      if (err isnot LA_OK) return err;
-
-      c = this->curToken;
+      c = TOKEN;
     }
 
     this->CFuncError = LA_OK;
@@ -5222,7 +5300,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     }
 
     this->curState &= ~LITERAL_STRING_STATE;
-  } while ((c & 0xff) is LA_TOKEN_BINOP);
+  } while ((c & 0xff) is TOKEN_BINOP);
 
   this->curState &= ~(MALLOCED_STRING_STATE|LITERAL_STRING_STATE);
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|OBJECT_APPEND|LHS_STRING_RELEASED|RHS_STRING_RELEASED);
@@ -5237,30 +5315,36 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 
 static int la_parse_expr (la_t *this, VALUE *vp) {
   int err = la_parse_primary (this, vp);
+  THROW_ERR_IF_ERR(err);
 
-  if (err is LA_OK)
-    err = la_parse_expr_level (this, MAX_EXPR_LEVEL, vp);
+  err = la_parse_expr_level (this, MAX_EXPR_LEVEL, vp);
 
   return err;
 }
 
 static int la_consume_ifelse (la_t *this) {
-  while (1) {
-    int c = la_next_token (this);
+  int err;
+  int c;
 
-    if (c is LA_TOKEN_EOF)
-      return this->syntax_error (this, "unended conditional");
+  while (1) {
+    NEXT_TOKEN();
+    c = TOKEN;
+
+    if (c is TOKEN_EOF)
+      THROW_SYNTAX_ERR("unended conditional");
 
     while ((c = la_get_char (this))) {
-      if (c is LA_TOKEN_EOF)
-        return this->syntax_error (this, "unended conditional");
+      if (c is TOKEN_EOF)
+        THROW_SYNTAX_ERR("unended conditional");
 
-      if (c is LA_TOKEN_BLOCK_OPEN) {
-        int err = la_get_opened_block (this, "unended conditional");
-        if (err isnot LA_OK) return err;
+      if (c is TOKEN_BLOCK_OPEN) {
+        err = la_get_opened_block (this, "unended conditional");
+        THROW_ERR_IF_ERR(err);
 
-        c = la_next_token (this);
-        if (c isnot LA_TOKEN_ELSE)
+        NEXT_TOKEN();
+        c = TOKEN;
+
+        if (c isnot TOKEN_ELSE)
           return LA_OK;
       }
     }
@@ -5277,45 +5361,45 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
   int index_open = 0;
 
   while (1) {
-    la_next_token (this);
+    NEXT_TOKEN();
 
     check:
 
     switch (TOKEN) {
-      case LA_TOKEN_NL:
-      case LA_TOKEN_SEMICOLON:
-      case LA_TOKEN_COLON:
-      case LA_TOKEN_EOF:
+      case TOKEN_NL:
+      case TOKEN_SEMICOLON:
+      case TOKEN_COLON:
+      case TOKEN_EOF:
         goto theend;
 
-      case LA_TOKEN_ORELSE:
+      case TOKEN_ORELSE:
         if (break_at_orelse)
           if (levels is 1) goto theend;
         break;
 
-      case LA_TOKEN_THEN:
+      case TOKEN_THEN:
         levels++;
-        while (la_next_token (this) is LA_TOKEN_NL);
+        while (la_next_token (this) is TOKEN_NL);
         goto check;
 
-      case LA_TOKEN_PAREN_OPEN:
+      case TOKEN_PAREN_OPEN:
         paren_open++;
         break;
 
-      case LA_TOKEN_PAREN_CLOS:
+      case TOKEN_PAREN_CLOS:
         ifnot (paren_open) goto theend;
         paren_open--;
         break;
 
-      case LA_TOKEN_COMMA:
+      case TOKEN_COMMA:
         ifnot (paren_open) goto theend;
         break;
 
-      case LA_TOKEN_INDEX_OPEN:
+      case TOKEN_INDEX_OPEN:
         index_open++;
         break;
 
-      case LA_TOKEN_INDEX_CLOS:
+      case TOKEN_INDEX_CLOS:
         ifnot (index_open) goto theend;
         index_open--;
         break;
@@ -5328,27 +5412,34 @@ theend:
 }
 
 static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
-  la_string savepc;
+  int err;
+  tokenState save;
 
-  while (la_next_token (this) is LA_TOKEN_NL);
+  this->curState |= MALLOCED_STRING_STATE;
+  while (la_next_token (this) is TOKEN_NL);
+  this->curState &= ~MALLOCED_STRING_STATE;
+
+  THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_EOF, "unended if/orelse");
 
   ifnot (cond) {
-    if (TOKEN is LA_TOKEN_ORELSE)
+    if (TOKEN is TOKEN_ORELSE)
       return la_parse_iforelse (this, 1, vp);
 
-    ERR = la_consume_iforelse (this, 1);
-    THROW_ERR_IF_ERR;
+    err = la_consume_iforelse (this, 1);
+    THROW_ERR_IF_ERR(err);
 
-    if (TOKEN is LA_TOKEN_ORELSE)
+    if (TOKEN is TOKEN_ORELSE)
       return la_parse_iforelse (this, 1, vp);
 
-    savepc = this->parsePtr;
-    C = TOKEN;
+    save = SAVE_TOKENSTATE();
 
     this->curState |= CONSUME;
-    if (la_next_token (this) is LA_TOKEN_ORELSE) {
+
+    NEXT_TOKEN();
+
+    if (TOKEN is TOKEN_ORELSE) {
       this->curState &= ~CONSUME;
-      if (ERR > 1)
+      if (err > 1)
         goto consume;
       else
         return la_parse_iforelse (this, 1, vp);
@@ -5356,61 +5447,59 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
 
     this->curState &= ~CONSUME;
 
-    this->parsePtr = savepc;
-    TOKEN = C;
+    RESTORE_TOKENSTATE(save);
     return LA_OK;
   }
 
   ifnot (NULL is vp) {
-    ERR = la_parse_expr (this, vp);
+    err = la_parse_expr (this, vp);
   } else {
     this->curState |= VAR_IS_NOT_ALLOWED;
-    ERR = la_parse_stmt (this);
+    err = la_parse_stmt (this);
     this->curState &= ~VAR_IS_NOT_ALLOWED;
   }
 
-  THROW_ERR_IF_ERR;
+  THROW_ERR_IF_ERR(err);
 
-  if (TOKEN isnot LA_TOKEN_NL and
-      TOKEN isnot LA_TOKEN_SEMICOLON) {
-    if (TOKEN is LA_TOKEN_ORELSE)
+  if (TOKEN isnot TOKEN_NL and
+      TOKEN isnot TOKEN_SEMICOLON) {
+    if (TOKEN is TOKEN_ORELSE)
       goto consume;
-    else if (TOKEN is LA_TOKEN_PAREN_CLOS or
-             TOKEN is LA_TOKEN_INDEX_CLOS or
-             TOKEN is LA_TOKEN_COMMA or
-             TOKEN is LA_TOKEN_COLON)
+    else if (TOKEN is TOKEN_PAREN_CLOS or
+             TOKEN is TOKEN_INDEX_CLOS or
+             TOKEN is TOKEN_COMMA or
+             TOKEN is TOKEN_COLON)
       goto theend;
     else
-      return this->syntax_error (this, "awaiting a new line or ;");
+      THROW_SYNTAX_ERR("awaiting a new line or ;");
   }
 
-  savepc = this->parsePtr;
-  C = TOKEN;
+  save = SAVE_TOKENSTATE();
 
   consume_orelse:
   this->curState |= CONSUME;
-  int c = la_peek_token (this, 0);
-  if (c is LA_TOKEN_PAREN_CLOS or c is LA_TOKEN_INDEX_CLOS) {
-    this->parsePtr = savepc;
-    TOKEN = C;
+  int nc = la_peek_token (this, 0);
+  if (nc is TOKEN_PAREN_CLOS or nc is TOKEN_INDEX_CLOS) {
+    RESTORE_TOKENSTATE(save);
     goto theend;
   }
 
-  if (la_next_token (this) is LA_TOKEN_ORELSE) {
+  NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_ORELSE) {
 
     consume:
     this->curState |= CONSUME;
-    while (la_next_token (this) is LA_TOKEN_NL);
+    while (la_next_token (this) is TOKEN_NL);
 
-    ERR = la_consume_iforelse (this, 0);
-    THROW_ERR_IF_ERR;
+    err = la_consume_iforelse (this, 0);
+    THROW_ERR_IF_ERR(err);
 
-    C = TOKEN;
-    savepc = this->parsePtr;
+    save = SAVE_TOKENSTATE();
+
     goto consume_orelse;
   } else {
-    this->parsePtr = savepc;
-    TOKEN = C;
+    RESTORE_TOKENSTATE(save);
   }
 
 theend:
@@ -5419,53 +5508,58 @@ theend:
 }
 
 static int la_parse_cond (la_t *this, int nottrue) {
-  la_next_token (this);
-  this->curState |= MALLOCED_STRING_STATE;
-  ERR = la_parse_expr (this, &COND);
-  this->curState &= ~MALLOCED_STRING_STATE;
-  THROW_ERR_IF_ERR;
+  int err;
 
-  if (IS_INT(COND))
-    COND = INT((AS_INT(COND) ? 0 is nottrue : nottrue));
-  else if (IS_NULL(COND))
-    COND = INT((nottrue ? 0 : 1));
-  else if (IS_NUMBER(COND))
-    COND = INT((AS_NUMBER(COND) is 0.0 ? nottrue: 0 is nottrue));
+  NEXT_TOKEN();
+
+  THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_EOF, "unended conditional expression");
+
+  this->curState |= MALLOCED_STRING_STATE;
+  err = la_parse_expr (this, &CONDVAL);
+  this->curState &= ~MALLOCED_STRING_STATE;
+  THROW_ERR_IF_ERR(err);
+
+  if (IS_INT(CONDVAL))
+    CONDVAL = INT((AS_INT(CONDVAL) ? 0 is nottrue : nottrue));
+  else if (IS_NULL(CONDVAL))
+    CONDVAL = INT((nottrue ? 0 : 1));
+  else if (IS_NUMBER(CONDVAL))
+    CONDVAL = INT((AS_NUMBER(CONDVAL) is 0.0 ? nottrue: 0 is nottrue));
 
   return LA_OK;
 }
 
 static int la_parse_if (la_t *this) {
-  ERR = la_parse_cond (this, TOKEN is LA_TOKEN_IFNOT);
-  THROW_ERR_IF_ERR;
+  int err = la_parse_cond (this, TOKEN is TOKEN_IFNOT);
+  THROW_ERR_IF_ERR(err);
 
-  int is_true = AS_INT(COND);
+  int is_true = AS_INT(CONDVAL);
 
-  if (TOKEN is LA_TOKEN_THEN)
+  if (TOKEN is TOKEN_THEN)
     return la_parse_iforelse (this, is_true, NULL);
   else
-    if (TOKEN isnot LA_TOKEN_BLOCK)
-      return this->syntax_error (this, "parsing if, not a block string");
+    if (TOKEN isnot TOKEN_BLOCK)
+      THROW_SYNTAX_ERR("parsing if, not a block string");
 
   la_string elsepart;
-  la_string ifpart = this->curStrToken;
+  la_string ifpart = TOKENSTR;
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   int haveelse = 0;
   int haveelif = 0;
 
-  if (TOKEN is LA_TOKEN_ELSE) {
-    la_next_token (this);
+  if (TOKEN is TOKEN_ELSE) {
+    NEXT_TOKEN();
 
-    if (TOKEN isnot LA_TOKEN_IF and TOKEN isnot LA_TOKEN_IFNOT) {
-      if (TOKEN isnot LA_TOKEN_BLOCK)
-        return this->syntax_error (this, "parsing else, not a block string");
+    if (TOKEN isnot TOKEN_IF and TOKEN isnot TOKEN_IFNOT) {
+      if (TOKEN isnot TOKEN_BLOCK)
+        THROW_SYNTAX_ERR("parsing else, not a block string");
 
-      elsepart = this->curStrToken;
+      elsepart = TOKENSTR;
       haveelse = 1;
 
-      la_next_token (this);
+      NEXT_TOKEN();
     } else {
       haveelif = TOKEN;
       la_ignore_last_token (this);
@@ -5481,40 +5575,39 @@ static int la_parse_if (la_t *this) {
   this->curScope = fun;
 
   if (is_true) {
-    ERR = la_parse_string (this, ifpart);
+    err = la_parse_string (this, ifpart);
     if (haveelif) {
       int e = la_consume_ifelse (this);
-      if (e isnot LA_OK) ERR = e;
+      if (e isnot LA_OK) err = e;
     }
 
   } else if (haveelse) {
-    ERR = la_parse_string (this, elsepart);
+    err = la_parse_string (this, elsepart);
 
   } else if (haveelif) {
-    this->curToken = haveelif;
-    ERR = la_parse_if (this);
+    TOKEN = haveelif;
+    err = la_parse_if (this);
   }
 
-  if (this->didReturn)
-    la_StringSetLen (&this->parsePtr, 0);
+  if (HASTORETURN) RESET_PARSEPTR;
 
   this->curScope = save_scope;
   fun_release (&fun);
-  return ERR;
+  return err;
 }
 
 static char *find_end_bar_ident (la_t *this, const char *str) {
   char *ptr = (char *) str;
 
   for (;;) {
-    if (*ptr is LA_TOKEN_EOF)
+    if (*ptr is TOKEN_EOF)
       return NULL;
 
-    if (*ptr is LA_TOKEN_BAR)
+    if (*ptr is TOKEN_BAR)
       return ptr;
 
     ifnot (is_identifier (*ptr)) {
-      if (*ptr isnot LA_TOKEN_COMMA and 0 is is_space (*ptr)) {
+      if (*ptr isnot TOKEN_COMMA and 0 is is_space (*ptr)) {
         this->syntax_error (this, "awaiting a valid identifier");
         return NULL;
       }
@@ -5527,26 +5620,29 @@ static char *find_end_bar_ident (la_t *this, const char *str) {
 }
 
 static int la_parse_when (la_t *this, VALUE *vp) {
+  int err;
+
+  NEXT_TOKEN();
+  int c = TOKEN;
   VALUE v;
-  int c = la_next_token (this);
 
-  ifnot (la_StringGetPtr(this->curStrToken)[0] is LA_TOKEN_BAR)
-    return this->syntax_error (this, "awaiting |");
+  ifnot (GETSTRPTR(TOKENSTR)[0] is TOKEN_BAR)
+    THROW_SYNTAX_ERR("awaiting |");
 
-  size_t p_len = la_StringGetLen (this->parsePtr);
-  const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
+  size_t p_len = GETSTRLEN(PARSEPTR);
+  const char *tmp_ptr = GETSTRPTR(PARSEPTR);
 
   char *ptr = find_end_bar_ident (this, tmp_ptr);
   if (NULL is ptr)
-    return this->syntax_error (this, "error while parsing when, awaiting |");
+    THROW_SYNTAX_ERR("error while parsing when, awaiting |");
 
   integer ident_len = ptr - tmp_ptr;
   char ident[ident_len + 1];
   Cstring.cp (ident, ident_len + 1, tmp_ptr, ident_len);
 
   ptr++;
-  la_StringSetPtr (&this->parsePtr, ptr);
-  la_StringSetLen (&this->parsePtr, p_len - (ptr - tmp_ptr));
+  SETSTRPTR(PARSEPTR, ptr);
+  SETSTRLEN(PARSEPTR, p_len - (ptr - tmp_ptr));
 
   funT *fun = Fun_new (this, funNew (
     .name = NS_WHEN_BLOCK, .namelen = NS_WHEN_BLOCK_LEN, .parent = this->curScope
@@ -5561,36 +5657,43 @@ static int la_parse_when (la_t *this, VALUE *vp) {
   funT *save_scope = this->curScope;
   this->curScope = fun;
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
   VALUE cond;
-  int err = la_parse_expr (this, &cond);
-  if (err isnot LA_OK) return err;
+  err = la_parse_expr (this, &cond);
+  THROW_ERR_IF_ERR(err);
 
-  c = this->curToken;
+  c = TOKEN;
 
   la_string whenpart;
 
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "parsing when, not a block string");
+  if (c isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("parsing when, not a block string");
 
-  whenpart = this->curStrToken;
+  whenpart = TOKENSTR;
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
-  VALUE save_tokenValue = this->tokenValue;
+  VALUE save_tokenValue = TOKENVAL;
 
   la_string orelsepart;
   int haveorelse = 0;
 
-  if (c is LA_TOKEN_ORELSE) {
-    c = la_next_token (this);
-    if (c isnot LA_TOKEN_BLOCK)
-      return this->syntax_error (this, "parsing orelse, not a block string");
-    orelsepart = this->curStrToken;
+  if (c is TOKEN_ORELSE) {
+    NEXT_TOKEN();
+    c = TOKEN;
+
+    if (c isnot TOKEN_BLOCK)
+      THROW_SYNTAX_ERR("parsing orelse, not a block string");
+    orelsepart = TOKENSTR;
     haveorelse = 1;
-    c = la_next_token (this);
-    save_tokenValue = this->tokenValue;
+
+    NEXT_TOKEN();
+    c = TOKEN;
+
+    save_tokenValue = TOKENVAL;
   }
 
   err = LA_OK;
@@ -5604,11 +5707,11 @@ static int la_parse_when (la_t *this, VALUE *vp) {
     goto assign;
 
   if (err >= LA_ERR_BREAK)
-    return la_syntax_error_fmt (this, "%s is not allowed inside a when expression",
+    THROW_SYNTAX_ERR_FMT("%s is not allowed inside a when expression",
        (err is LA_ERR_BREAK ? "break" : "continue"));
 
-  if (this->didReturn)
-    this->didReturn = 0;
+  if (HASTORETURN)
+    HASTORETURN = 0;
 
 assign:
   ifnot (condition + haveorelse)
@@ -5624,8 +5727,8 @@ assign:
 
   *vp = v;
 
-  this->curToken = c;
-  this->tokenValue = save_tokenValue;
+  TOKEN = c;
+  TOKENVAL = save_tokenValue;
   this->curScope = save_scope;
 
   fun_release (&fun);
@@ -5634,12 +5737,13 @@ assign:
 }
 
 static int la_parse_while (la_t *this) {
-  this->loopCount++;
   int err;
+  this->loopCount++;
 
-  int c = la_next_token (this);
-  if (c isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "error while parsing while loop, awaiting (");
+  NEXT_TOKEN();
+  int c = TOKEN;
+  if (c isnot TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("error while parsing while loop, awaiting (");
 
   funT *save_scope = this->curScope;
 
@@ -5651,23 +5755,23 @@ static int la_parse_while (la_t *this) {
 
   this->curScope = fun;
 
-  const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
+  const char *tmp_ptr = GETSTRPTR(PARSEPTR);
   const char *ptr = tmp_ptr;
 
   int parenopen = 1;
   while (*ptr) {
-    if (*ptr is LA_TOKEN_NL) {
+    if (*ptr is TOKEN_NL) {
       ptr++;
       continue;
     }
 
-    if (*ptr is LA_TOKEN_PAREN_OPEN) {
+    if (*ptr is TOKEN_PAREN_OPEN) {
       parenopen++;
       ptr++;
       continue;
     }
 
-    if (*ptr is LA_TOKEN_PAREN_CLOS) {
+    if (*ptr is TOKEN_PAREN_CLOS) {
       parenopen--;
       ifnot (parenopen)
         break;
@@ -5677,63 +5781,65 @@ static int la_parse_while (la_t *this) {
   }
 
   ifnot (*ptr)
-    return this->syntax_error (this, "unended while loop");
+    THROW_SYNTAX_ERR("unended while loop");
 
-  this->curToken = LA_TOKEN_PAREN_OPEN;
+  TOKEN = TOKEN_PAREN_OPEN;
 
-  integer orig_len = la_StringGetLen (this->parsePtr);
+  integer orig_len = GETSTRLEN(PARSEPTR);
   integer cond_len = ptr - tmp_ptr;
 
   char cond[cond_len + 3];
-  cond[0] = LA_TOKEN_PAREN_OPEN;
+  cond[0] = TOKEN_PAREN_OPEN;
   for (integer i = 0; i < cond_len; i++)
     cond[i + 1] = tmp_ptr[i];
-  cond[cond_len + 1] = LA_TOKEN_PAREN_CLOS;
+  cond[cond_len + 1] = TOKEN_PAREN_CLOS;
   cond[cond_len + 2] = '\0';
 
-  la_string cond_str = la_StringNewLen (cond, cond_len + 2);
+  la_string cond_str = StringNewLen (cond, cond_len + 2);
 
-  la_StringSetPtr (&this->parsePtr, ptr + 1);
-  la_StringSetLen (&this->parsePtr, orig_len - cond_len - 1);
+  SETSTRPTR(PARSEPTR, ptr + 1);
+  SETSTRLEN(PARSEPTR, orig_len - cond_len - 1);
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "parsing while, not a block string");
+  if (c isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("parsing while, not a block string");
 
-  tmp_ptr = la_StringGetPtr (this->curStrToken);
+  tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = la_StringGetLen (this->curStrToken) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
   body[bodylen] = '\0';
 
-  la_string body_str = la_StringNewLen (body, bodylen);
+  la_string body_str = StringNewLen (body, bodylen);
 
-  la_string savepc = this->parsePtr;
+  la_string savepc = PARSEPTR;
 
   VALUE v;
   for (;;) {
-    this->parsePtr = cond_str;
+    PARSEPTR = cond_str;
 
-    this->curToken = LA_TOKEN_PAREN_OPEN;
+    TOKEN = TOKEN_PAREN_OPEN;
     this->curState |= BLOCK_STATE;
     err = la_parse_expr (this, &v);
     this->curState &= ~BLOCK_STATE;
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     ifnot (AS_INT(v)) goto theend;
 
     this->curState |= LOOP_STATE;
     err= la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
+    THROW_ERR_IF_ERR(err);
 
     if (err is LA_ERR_BREAK) goto theend;
 
-    if (this->didReturn) {
+    if (HASTORETURN) {
       this->curState &= ~LOOP_STATE;
-      la_StringSetLen (&this->parsePtr, 0);
+      RESET_PARSEPTR;
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
@@ -5746,7 +5852,7 @@ static int la_parse_while (la_t *this) {
 
     la_fun_release_symbols (fun, 1, 0);
 
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
   }
 
 theend:
@@ -5760,9 +5866,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  this->parsePtr = savepc;
+  PARSEPTR = savepc;
 
-  this->curToken = LA_TOKEN_SEMICOLON;
+  TOKEN = TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -5774,50 +5880,53 @@ theend:
 
 static int la_parse_do (la_t *this) {
   int err;
-
   this->loopCount++;
-  int c = la_next_token (this);
 
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "parsing do/while loop, not a block string");
+  NEXT_TOKEN();
+  int c = TOKEN;
 
-  integer bodylen = la_StringGetLen (this->curStrToken) - 1;
-  const char *tmp_ptr = la_StringGetPtr (this->curStrToken);
+  if (c isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("parsing do/while loop, not a block string");
+
+  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
+  const char *tmp_ptr = GETSTRPTR(TOKENSTR);
 
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
   body[bodylen] = '\0';
 
-  la_string body_str = la_StringNewLen (body, bodylen);
+  la_string body_str = StringNewLen (body, bodylen);
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
-  if (c isnot LA_TOKEN_WHILE)
-    return this->syntax_error (this, "error while parsing do/while loop, awaiting while");
+  if (c isnot TOKEN_WHILE)
+    THROW_SYNTAX_ERR("error while parsing do/while loop, awaiting while");
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
-  if (c isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "error while parsing do/while loop, awaiting (");
+  if (c isnot TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("error while parsing do/while loop, awaiting (");
 
-  tmp_ptr = la_StringGetPtr (this->parsePtr);
+  tmp_ptr = GETSTRPTR(PARSEPTR);
   const char *ptr = tmp_ptr;
 
   int parenopen = 1;
   while (*ptr) {
-    if (*ptr is LA_TOKEN_NL) {
+    if (*ptr is TOKEN_NL) {
       ptr++;
       continue;
     }
 
-    if (*ptr is LA_TOKEN_PAREN_OPEN) {
+    if (*ptr is TOKEN_PAREN_OPEN) {
       parenopen++;
       ptr++;
       continue;
     }
 
-    if (*ptr is LA_TOKEN_PAREN_CLOS) {
+    if (*ptr is TOKEN_PAREN_CLOS) {
       parenopen--;
       ifnot (parenopen)
         break;
@@ -5827,21 +5936,21 @@ static int la_parse_do (la_t *this) {
   }
 
   ifnot (*ptr)
-    return this->syntax_error (this, "unended do/while loop");
+    THROW_SYNTAX_ERR("unended do/while loop");
 
-  this->curToken = LA_TOKEN_PAREN_OPEN;
+  TOKEN = TOKEN_PAREN_OPEN;
 
-  integer orig_len = la_StringGetLen (this->parsePtr);
+  integer orig_len = GETSTRLEN(PARSEPTR);
   integer cond_len = ptr - tmp_ptr;
 
   char cond[cond_len + 3];
-  cond[0] = LA_TOKEN_PAREN_OPEN;
+  cond[0] = TOKEN_PAREN_OPEN;
   for (integer i = 0; i < cond_len; i++)
     cond[i + 1] = tmp_ptr[i];
-  cond[cond_len + 1] = LA_TOKEN_PAREN_CLOS;
+  cond[cond_len + 1] = TOKEN_PAREN_CLOS;
   cond[cond_len + 2] = '\0';
 
-  la_string cond_str = la_StringNewLen (cond, cond_len + 2);
+  la_string cond_str = StringNewLen (cond, cond_len + 2);
 
   funT *save_scope = this->curScope;
 
@@ -5853,24 +5962,26 @@ static int la_parse_do (la_t *this) {
 
   this->curScope = fun;
 
-  la_StringSetPtr (&this->parsePtr, ptr + 1);
-  la_StringSetLen (&this->parsePtr, orig_len - cond_len - 1);
+  SETSTRPTR(PARSEPTR, ptr + 1);
+  SETSTRLEN(PARSEPTR, orig_len - cond_len - 1);
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
-  la_string savepc = this->parsePtr;
+  la_string savepc = PARSEPTR;
 
   VALUE v;
   for (;;) {
     this->curState |= LOOP_STATE;
-    err= la_parse_string (this, body_str);
+    err = la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
+    THROW_ERR_IF_ERR(err);
 
     if (err is LA_ERR_BREAK) goto theend;
 
-    if (this->didReturn) {
+    if (HASTORETURN) {
       this->curState &= ~LOOP_STATE;
-      la_StringSetLen (&this->parsePtr, 0);
+      RESET_PARSEPTR;
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
@@ -5881,15 +5992,15 @@ static int la_parse_do (la_t *this) {
       continue;
     }
 
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
-    this->parsePtr = cond_str;
+    PARSEPTR = cond_str;
 
-    this->curToken = LA_TOKEN_PAREN_OPEN;
+    TOKEN = TOKEN_PAREN_OPEN;
     this->curState |= BLOCK_STATE;
     err = la_parse_expr (this, &v);
     this->curState &= ~BLOCK_STATE;
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     ifnot (AS_INT(v)) goto theend;
     la_fun_release_symbols (fun, 1, 0);
@@ -5906,9 +6017,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  this->parsePtr = savepc;
+  PARSEPTR = savepc;
 
-  this->curToken = LA_TOKEN_SEMICOLON;
+  TOKEN = TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -5919,8 +6030,7 @@ theend:
 }
 
 static int la_parse_foreach (la_t *this) {
-  int err;
-
+  int err = LA_OK;
   this->loopCount++;
 
   funT *save_scope = this->curScope;
@@ -5933,12 +6043,12 @@ static int la_parse_foreach (la_t *this) {
 
   this->curScope = fun;
 
-  size_t p_len = la_StringGetLen (this->parsePtr);
-  const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
+  size_t p_len = GETSTRLEN(PARSEPTR);
+  const char *tmp_ptr = GETSTRPTR(PARSEPTR);
 
   char *ptr = find_end_bar_ident (this, tmp_ptr);
   if (NULL is ptr)
-    return this->syntax_error (this, "error while parsing for[each] loop, awaiting |");
+    THROW_SYNTAX_ERR("error while parsing for[each] loop, awaiting |");
   integer ident_len = ptr - tmp_ptr;
   char ident[ident_len + 1];
   Cstring.cp (ident, ident_len + 1, tmp_ptr, ident_len);
@@ -5947,7 +6057,7 @@ static int la_parse_foreach (la_t *this) {
   while (is_space (*ptr)) ptr++;
 
   ifnot (Cstring.eq_n (ptr, "in ", 3))
-    return this->syntax_error (this, "error parsing for[each], awaiting in");
+    THROW_SYNTAX_ERR("error parsing for[each], awaiting in");
 
   ptr += 3;
   while (is_space (*ptr)) ptr++;
@@ -5956,18 +6066,18 @@ static int la_parse_foreach (la_t *this) {
   int idx = 0;
   while (*ptr is '_') {
     if (idx is MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
     sym[idx++] = '_';
     ptr++;
   }
 
   while (*ptr) {
-    if (*ptr is LA_TOKEN_EOF)
-      return this->syntax_error (this, "error while parsing for[each], unended expresion");
+    if (*ptr is TOKEN_EOF)
+      THROW_SYNTAX_ERR("error while parsing for[each], unended expresion");
 
     ifnot (is_identifier (*ptr)) break;
     if (idx is MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     sym[idx++] = *ptr;
     ptr++;
@@ -5978,62 +6088,63 @@ static int la_parse_foreach (la_t *this) {
   VALUE v;
   la_string x;
 
-  if (*ptr is LA_TOKEN_DOT) {
-    x = la_StringNew (sym);
+  if (*ptr is TOKEN_DOT) {
+    x = StringNew (sym);
     symbol = la_lookup_symbol (this, x);
     ifnot (symbol)
-      return this->syntax_error (this, "unknown symbol");
+      THROW_SYNTAX_ERR("unknown symbol");
 
     if (symbol->type isnot MAP_TYPE)
-       return this->syntax_error (this, "awaiting a MapType");
+       THROW_SYNTAX_ERR("awaiting a MapType");
 
-    this->tokenValue = symbol->value;
-    this->curStrToken = la_StringNew (sym);
-    this->parsePtr = la_StringNew (ptr);
+    TOKENVAL = symbol->value;
+    TOKENSTR = StringNew (sym);
+    PARSEPTR = StringNew (ptr);
     err = la_parse_map_get (this, &v);
-    if (err isnot LA_OK)
-      return err;
+    THROW_ERR_IF_ERR(err);
+
     while (0 is is_space (*ptr)) ptr++;
     ptr++;
   }
 
-  if (*ptr is LA_TOKEN_INDEX_OPEN) {
-    x = la_StringNew (sym);
+  if (*ptr is TOKEN_INDEX_OPEN) {
+    x = StringNew (sym);
     symbol = la_lookup_symbol (this, x);
     ifnot (symbol)
-      return this->syntax_error (this, "unknown symbol");
+      THROW_SYNTAX_ERR("unknown symbol");
 
     if (symbol->type isnot ARRAY_TYPE)
-       return this->syntax_error (this, "awaiting a ArrayType");
+       THROW_SYNTAX_ERR("awaiting a ArrayType");
 
-    this->tokenValue = symbol->value;
-    this->parsePtr = la_StringNew (ptr);
+    TOKENVAL = symbol->value;
+    PARSEPTR = StringNew (ptr);
     err = la_parse_array_get (this, &v);
-    if (err isnot LA_OK)
-      return err;
+    THROW_ERR_IF_ERR(err);
 
     while (0 is is_space (*ptr)) ptr++;
     ptr++;
   }
 
-  la_StringSetPtr (&this->parsePtr, ptr);
-  la_StringSetLen (&this->parsePtr, p_len - (ptr - tmp_ptr));
+  SETSTRPTR(PARSEPTR, ptr);
+  SETSTRLEN(PARSEPTR, p_len - (ptr - tmp_ptr));
 
-  int c = la_next_token (this);
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "awaiting {");
+  NEXT_TOKEN();
+  int c = TOKEN;
 
-  size_t len = la_StringGetLen (this->curStrToken);
+  if (c isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("awaiting {");
+
+  size_t len = GETSTRLEN(TOKENSTR);
   char body[len+1];
-  Cstring.cp (body, len + 1, la_StringGetPtr (this->curStrToken), len);
+  Cstring.cp (body, len + 1, GETSTRPTR(TOKENSTR), len);
 
-  la_string savepc = this->parsePtr;
+  la_string savepc = PARSEPTR;
 
   if (symbol is NULL) {
-    x = la_StringNew (sym);
+    x = StringNew (sym);
     symbol = la_lookup_symbol (this, x);
     if (NULL is symbol)
-      return la_syntax_error_fmt (this, "%s: unknown symbol", sym);
+      THROW_SYNTAX_ERR_FMT("%s: unknown symbol", sym);
     v = symbol->value;
   }
 
@@ -6051,42 +6162,42 @@ static int la_parse_foreach (la_t *this) {
   if (type is MAP_TYPE) {
     int is_this = Cstring.eq (sym, "this");
     ptr = ident;
-    while (*ptr and *ptr isnot LA_TOKEN_COMMA) ptr++;
+    while (*ptr and *ptr isnot TOKEN_COMMA) ptr++;
 
-    if (*ptr is LA_TOKEN_EOF)
-      return this->syntax_error (this, "awaiting comma");
+    if (*ptr is TOKEN_EOF)
+      THROW_SYNTAX_ERR("awaiting comma");
 
     len = ptr - ident;
 
     size_t orig_len = len;
     while (is_space (ident[len-1])) len--;
-    ifnot (len) return this->syntax_error (this, "empty key identifier");
+    ifnot (len) THROW_SYNTAX_ERR("empty key identifier");
 
     if (len >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     char key[len + 1];
     Cstring.cp (key, len + 1, ident, len);
 
     ptr++;
     while (*ptr and is_space (*ptr)) { ptr++; orig_len++;}
-    if (*ptr is LA_TOKEN_EOF)
-      return this->syntax_error (this, "awaiting a value identifier");
+    if (*ptr is TOKEN_EOF)
+      THROW_SYNTAX_ERR("awaiting a value identifier");
 
     len = 0;
     while (*ptr) {
       ptr++; len++;
     }
 
-    ifnot (len) return this->syntax_error (this, "empty value identifier");
+    ifnot (len) THROW_SYNTAX_ERR("empty value identifier");
 
     if (len >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     char val[len + 1];
     Cstring.cp (val, len + 1, ident + orig_len + len, len);
     if (*ptr isnot '\0')
-      return this->syntax_error (this, "trailing identifiers");
+      THROW_SYNTAX_ERR("trailing identifiers");
 
     Vmap_t *map = AS_MAP(v);
 
@@ -6098,7 +6209,7 @@ static int la_parse_foreach (la_t *this) {
     int num = Vmap.num_keys (map);
     string **keys = Vmap.keys (map);
 
-    la_string body_str = la_StringNew (body);
+    la_string body_str = StringNew (body);
 
     for (int i = 0; i < num; i++) {
       VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
@@ -6123,9 +6234,9 @@ static int la_parse_foreach (la_t *this) {
         goto theend;
       }
 
-      if (this->didReturn) {
+      if (HASTORETURN) {
         this->curState &= ~LOOP_STATE;
-        la_StringSetLen (&this->parsePtr, 0);
+        RESET_PARSEPTR;
         Vmap.release (fun->block_symbols);
         fun_release (&fun);
         for (int j = 0; j < num; j++)
@@ -6139,7 +6250,7 @@ static int la_parse_foreach (la_t *this) {
         continue;
       }
 
-      if (err isnot LA_OK) return err;
+      THROW_ERR_IF_ERR(err);
 
       la_fun_release_symbols (fun, 1, 0);
     }
@@ -6153,7 +6264,7 @@ static int la_parse_foreach (la_t *this) {
     int is_comma = 0;
 
     while (*ptr) {
-      if (*ptr is LA_TOKEN_COMMA) {
+      if (*ptr is TOKEN_COMMA) {
         is_comma = 1;
         break;
       }
@@ -6164,12 +6275,12 @@ static int la_parse_foreach (la_t *this) {
     len = ptr - ident;
 
     if (len >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     size_t orig_len = len + 1;
 
     while (is_space (ident[len-1])) len--;
-    ifnot (len) return this->syntax_error (this, "empty for[each] identifier");
+    ifnot (len) THROW_SYNTAX_ERR("empty for[each] identifier");
 
     char a_ident[len + 1];
     Cstring.cp (a_ident, len + 1, ident, len);
@@ -6183,21 +6294,21 @@ static int la_parse_foreach (la_t *this) {
       ptr++;
       while (*ptr and is_space (*ptr)) { ptr++; orig_len++;}
 
-      if (*ptr is LA_TOKEN_EOF)
-        return this->syntax_error (this, "awaiting an array element identifier");
+      if (*ptr is TOKEN_EOF)
+        THROW_SYNTAX_ERR("awaiting an array element identifier");
 
       while (*ptr) {
         ptr++; len++;
       }
 
-      ifnot (len) return this->syntax_error (this, "empty array element identifier");
+      ifnot (len) THROW_SYNTAX_ERR("empty array element identifier");
     } else {
       elem = a_ident;
       len++;
     }
 
     if (len >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     char b_ident[len + 1];
     if (elem is NULL) {
@@ -6209,7 +6320,7 @@ static int la_parse_foreach (la_t *this) {
     }
 
     if (*ptr isnot '\0')
-      return this->syntax_error (this, "trailing identifiers");
+      THROW_SYNTAX_ERR("trailing identifiers");
 
     ArrayType *array = (ArrayType *) AS_ARRAY(v);
     string **s_ar = NULL;
@@ -6257,7 +6368,7 @@ static int la_parse_foreach (la_t *this) {
 
     int num = array->len;
 
-    la_string body_str = la_StringNew (body);
+    la_string body_str = StringNew (body);
 
     for (int i = 0; i < num; i++) {
       integer v_idx = AS_INT(index_sym->value);
@@ -6293,14 +6404,15 @@ static int la_parse_foreach (la_t *this) {
       this->curState |= LOOP_STATE;
       err = la_parse_string (this, body_str);
       this->curState &= ~LOOP_STATE;
+      THROW_ERR_IF_ERR(err);
 
       elem_sym->value = NULL_VALUE;
 
       if (err is LA_ERR_BREAK) goto theend;
 
-      if (this->didReturn) {
+      if (HASTORETURN) {
         this->curState &= ~LOOP_STATE;
-        la_StringSetLen (&this->parsePtr, 0);
+        RESET_PARSEPTR;
         Vmap.release (fun->block_symbols);
         fun_release (&fun);
         return LA_OK;
@@ -6311,7 +6423,7 @@ static int la_parse_foreach (la_t *this) {
         continue;
       }
 
-      if (err isnot LA_OK) return err;
+      THROW_ERR_IF_ERR(err);
 
       la_fun_release_symbols (fun, 1, 0);
     }
@@ -6319,21 +6431,21 @@ static int la_parse_foreach (la_t *this) {
   } else {
     int args = 1;
     ptr = ident;
-    while (*ptr and *ptr isnot LA_TOKEN_COMMA) {
+    while (*ptr and *ptr isnot TOKEN_COMMA) {
       ptr++;
     }
 
-    if (*ptr is LA_TOKEN_COMMA)
+    if (*ptr is TOKEN_COMMA)
       args = 3;
 
     len = ptr - ident;
 
     size_t orig_len = len;
     while (is_space (ident[len-1])) len--;
-    ifnot (len) return this->syntax_error (this, "empty identifier");
+    ifnot (len) THROW_SYNTAX_ERR("empty identifier");
 
     if (len >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "identifier exceeded maximum length");
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     char ci[len + 1];
     Cstring.cp (ci, len + 1, ident, len);
@@ -6343,17 +6455,17 @@ static int la_parse_foreach (la_t *this) {
       ptr++; orig_len++;
       while (*ptr and is_space (*ptr)) { ptr++, orig_len++; }
       len = 0;
-      while (*ptr and *ptr isnot LA_TOKEN_COMMA) {
+      while (*ptr and *ptr isnot TOKEN_COMMA) {
         ptr++; len++;
       }
 
-      if (*ptr is LA_TOKEN_EOF)
-        return this->syntax_error (this, "awaiting comma");
+      if (*ptr is TOKEN_EOF)
+        THROW_SYNTAX_ERR("awaiting comma");
 
-      ifnot (len) return this->syntax_error (this, "empty identifier");
+      ifnot (len) THROW_SYNTAX_ERR("empty identifier");
 
       if (len >= MAXLEN_SYMBOL)
-        return this->syntax_error (this, "identifier exceeded maximum length");
+        THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
       char s[len + 1];
       Cstring.cp (s, len + 1, ident + orig_len, len);
@@ -6365,16 +6477,16 @@ static int la_parse_foreach (la_t *this) {
       while (*ptr) {
         ptr++; len++;
        }
-      ifnot (len) return this->syntax_error (this, "empty identifier");
+      ifnot (len) THROW_SYNTAX_ERR("empty identifier");
 
       if (len >= MAXLEN_SYMBOL)
-        return this->syntax_error (this, "identifier exceeded maximum length");
+        THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
       char w[len + 1];
       Cstring.cp (w, len + 1, ident + orig_len, len);
 
       if (*ptr isnot '\0')
-        return this->syntax_error (this, "trailing identifiers");
+        THROW_SYNTAX_ERR("trailing identifiers");
 
       string *str = AS_STRING(v);
       v = INT(0);
@@ -6388,7 +6500,7 @@ static int la_parse_foreach (la_t *this) {
       ustring_t *u = Ustring.encode (U, str->bytes, str->num_bytes, 0, 8, 0);
       int num = U->num_items;
 
-      la_string body_str = la_StringNew (body);
+      la_string body_str = StringNew (body);
 
       for (int i = 0; i < num; i++) {
         c_sym->value = INT(u->code);
@@ -6400,15 +6512,16 @@ static int la_parse_foreach (la_t *this) {
         this->curState |= LOOP_STATE;
         err = la_parse_string (this, body_str);
         this->curState &= ~LOOP_STATE;
+        THROW_ERR_IF_ERR(err);
 
         if (err is LA_ERR_BREAK) {
           Ustring.release (U);
           goto theend;
         }
 
-        if (this->didReturn) {
+        if (HASTORETURN) {
           this->curState &= ~LOOP_STATE;
-          la_StringSetLen (&this->parsePtr, 0);
+          RESET_PARSEPTR;
           Vmap.release (fun->block_symbols);
           fun_release (&fun);
           Ustring.release (U);
@@ -6420,7 +6533,7 @@ static int la_parse_foreach (la_t *this) {
           continue;
         }
 
-        if (err isnot LA_OK) return err;
+        THROW_ERR_IF_ERR(err);
 
         la_fun_release_symbols (fun, 1, 0);
       }
@@ -6428,15 +6541,15 @@ static int la_parse_foreach (la_t *this) {
       Ustring.release (U);
 
     } else {
-      if (*ptr is LA_TOKEN_EOF)
-        return this->syntax_error (this, "awaiting comma");
+      if (*ptr is TOKEN_EOF)
+        THROW_SYNTAX_ERR("awaiting comma");
 
       string *str = AS_STRING(v);
       v = INT(0);
       sym_t *c_sym = la_define_block_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
       int num = str->num_bytes;
 
-      la_string body_str = la_StringNew (body);
+      la_string body_str = StringNew (body);
 
       for (int i = 0; i < num; i++) {
         c_sym->value = INT(str->bytes[i]);
@@ -6444,12 +6557,13 @@ static int la_parse_foreach (la_t *this) {
         this->curState |= LOOP_STATE;
         err = la_parse_string (this, body_str);
         this->curState &= ~LOOP_STATE;
+        THROW_ERR_IF_ERR(err);
 
         if (err is LA_ERR_BREAK) goto theend;
 
-        if (this->didReturn) {
+        if (HASTORETURN) {
           this->curState &= ~LOOP_STATE;
-          la_StringSetLen (&this->parsePtr, 0);
+          RESET_PARSEPTR;
           Vmap.release (fun->block_symbols);
           fun_release (&fun);
           return LA_OK;
@@ -6460,7 +6574,7 @@ static int la_parse_foreach (la_t *this) {
           continue;
         }
 
-        if (err isnot LA_OK) return err;
+        THROW_ERR_IF_ERR(err);
 
         la_fun_release_symbols (fun, 1, 0);
       }
@@ -6478,9 +6592,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  this->parsePtr = savepc;
+  PARSEPTR = savepc;
 
-  this->curToken = LA_TOKEN_SEMICOLON;
+  TOKEN = TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6499,20 +6613,20 @@ static char *find_end_for_stmt (const char *str) {
   char prev_c = *ptr;
 
   while (cl_par <= op_par) {
-    if (*ptr is LA_TOKEN_EOF)
+    if (*ptr is TOKEN_EOF)
       return NULL;
 
-    if (*ptr is LA_TOKEN_PAREN_CLOS) {
+    if (*ptr is TOKEN_PAREN_CLOS) {
       ifnot (in_str) cl_par++;
       goto next;
     }
 
-    if (*ptr is LA_TOKEN_PAREN_OPEN) {
+    if (*ptr is TOKEN_PAREN_OPEN) {
       ifnot (in_str) op_par++;
       goto next;
     }
 
-    if (*ptr is LA_TOKEN_DQUOTE and prev_c isnot LA_TOKEN_ESCAPE_CHR) {
+    if (*ptr is TOKEN_DQUOTE and prev_c isnot TOKEN_ESCAPE_CHR) {
       if (in_str)
         in_str--;
       else
@@ -6527,17 +6641,17 @@ static char *find_end_for_stmt (const char *str) {
 }
 
 static int la_parse_for (la_t *this) {
+  NEXT_TOKEN();
+  int c = TOKEN;
   int err;
 
-  int c = la_next_token (this);
-
-  if (la_StringGetPtr(this->curStrToken)[0] is LA_TOKEN_BAR)
+  if (GETSTRPTR(TOKENSTR)[0] is TOKEN_BAR)
     return la_parse_foreach (this);
 
   this->loopCount++;
 
-  if (c isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "error while parsing for loop, awaiting (");
+  if (c isnot TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("error while parsing for loop, awaiting (");
 
   funT *save_scope = this->curScope;
 
@@ -6548,39 +6662,39 @@ static int la_parse_for (la_t *this) {
 
   this->curScope = fun;
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   this->curState |= BLOCK_STATE;
   do {
     err = la_parse_stmt (this);
-    if (err isnot LA_OK) return err;
-  } while (this->curToken is LA_TOKEN_COMMA);
+    THROW_ERR_IF_ERR(err);
+  } while (TOKEN is TOKEN_COMMA);
   this->curState &= ~BLOCK_STATE;
 
-  const char *tmp_ptr = la_StringGetPtr (this->parsePtr);
-  char *ptr = Cstring.byte.in_str (tmp_ptr, LA_TOKEN_SEMICOLON);
+  const char *tmp_ptr = GETSTRPTR(PARSEPTR);
+  char *ptr = Cstring.byte.in_str (tmp_ptr, TOKEN_SEMICOLON);
   if (NULL is ptr)
-    return this->syntax_error (this, "error while parsing for loop, awaiting ;");
+    THROW_SYNTAX_ERR("error while parsing for loop, awaiting ;");
 
-  integer orig_len = la_StringGetLen (this->parsePtr);
+  integer orig_len = GETSTRLEN(PARSEPTR);
   integer cond_len = ptr - tmp_ptr;
   integer advanced_len = cond_len;
 
   char cond[cond_len + 3];
-  cond[0] = LA_TOKEN_PAREN_OPEN;
+  cond[0] = TOKEN_PAREN_OPEN;
   for (integer i = 0; i < cond_len; i++)
     cond[i + 1] = tmp_ptr[i];
-  cond[cond_len + 1] = LA_TOKEN_PAREN_CLOS;
+  cond[cond_len + 1] = TOKEN_PAREN_CLOS;
   cond[cond_len + 2] = '\0';
 
-  la_string cond_str = la_StringNewLen (cond, cond_len + 2);
+  la_string cond_str = StringNewLen (cond, cond_len + 2);
 
   advanced_len++;
 
   tmp_ptr = ptr + 1;
   ptr = find_end_for_stmt (tmp_ptr);
   if (NULL is ptr)
-    return this->syntax_error (this, "error while parsing for loop, awaiting )");
+    THROW_SYNTAX_ERR("error while parsing for loop, awaiting )");
 
   integer stmt_len = ptr - tmp_ptr;
   advanced_len += stmt_len;
@@ -6588,58 +6702,60 @@ static int la_parse_for (la_t *this) {
   char stmt[stmt_len + 2];
   for (integer i = 0; i < stmt_len; i++)
     stmt[i] = tmp_ptr[i];
-  stmt[stmt_len] = LA_TOKEN_SEMICOLON;
+  stmt[stmt_len] = TOKEN_SEMICOLON;
   stmt[stmt_len + 1] = '\0';
 
-  la_string stmt_str = la_StringNewLen (stmt, stmt_len + 1);
+  la_string stmt_str = StringNewLen (stmt, stmt_len + 1);
 
   advanced_len++;
 
-  la_StringSetPtr (&this->parsePtr, ptr + 1);
-  la_StringSetLen (&this->parsePtr, orig_len - advanced_len);
+  SETSTRPTR(PARSEPTR, ptr + 1);
+  SETSTRLEN(PARSEPTR, orig_len - advanced_len);
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "parsing for, not a block string");
+  if (c isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("parsing for, not a block string");
 
   la_get_char (this);
 
-  tmp_ptr = la_StringGetPtr (this->curStrToken);
+  tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = la_StringGetLen (this->curStrToken) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
   body[bodylen] = '\0';
 
-  la_string body_str = la_StringNewLen (body, bodylen);
+  la_string body_str = StringNewLen (body, bodylen);
 
-  la_string savepc = this->parsePtr;
+  la_string savepc = PARSEPTR;
 
   VALUE v;
   for (;;) {
-    this->parsePtr = cond_str;
+    PARSEPTR = cond_str;
 
-    this->curToken = LA_TOKEN_PAREN_OPEN;
+    TOKEN = TOKEN_PAREN_OPEN;
     this->curState |= BLOCK_STATE;
     err = la_parse_expr (this, &v);
     this->curState &= ~BLOCK_STATE;
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     ifnot (AS_INT(v)) goto theend;
 
     this->curState |= LOOP_STATE;
-    err= la_parse_string (this, body_str);
+    err = la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
+    THROW_ERR_IF_ERR(err);
 
     if (err is LA_ERR_BREAK) goto theend;
 
-    if (this->didReturn) {
+    if (HASTORETURN) {
       this->curState &= ~LOOP_STATE;
-      this->curToken = LA_TOKEN_SEMICOLON;
-      la_StringSetLen (&this->parsePtr, 0);
-      //this->parsePtr = savepc;
+      TOKEN = TOKEN_SEMICOLON;
+      RESET_PARSEPTR;
+      //PARSEPTR = savepc;
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
@@ -6648,16 +6764,16 @@ static int la_parse_for (la_t *this) {
     if (err is LA_ERR_CONTINUE)
       goto ctl_stmt;
 
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
 
     ctl_stmt:
-      this->parsePtr = stmt_str;
+      PARSEPTR = stmt_str;
       this->curState |= BLOCK_STATE;
       do {
-        la_next_token (this);
+        NEXT_TOKEN();
         err = la_parse_stmt (this);
-        if (err isnot LA_OK) return err;
-      } while (this->curToken is LA_TOKEN_COMMA);
+        THROW_ERR_IF_ERR(err);
+      } while (TOKEN is TOKEN_COMMA);
       this->curState &= ~BLOCK_STATE;
 
       la_fun_release_symbols (fun, 1, 0);
@@ -6674,9 +6790,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  this->parsePtr = savepc;
+  PARSEPTR = savepc;
 
-  this->curToken = LA_TOKEN_SEMICOLON;
+  TOKEN = TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6688,12 +6804,13 @@ theend:
 
 static int la_parse_loop (la_t *this) {
   int err;
-
   this->loopCount++;
 
-  int c = la_next_token (this);
-  if (c isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "error while parsing loop, awaiting (");
+  NEXT_TOKEN();
+  int c = TOKEN;
+
+  if (c isnot TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("error while parsing loop, awaiting (");
 
   funT *save_scope = this->curScope;
 
@@ -6705,18 +6822,18 @@ static int la_parse_loop (la_t *this) {
 
   this->curScope = fun;
 
-  const char *ptr = la_StringGetPtr (this->parsePtr);
+  const char *ptr = GETSTRPTR(PARSEPTR);
   int parenopen = 1;
   int stmt_found = 0;
 
   while (*ptr) {
-    if (*ptr is LA_TOKEN_PAREN_OPEN) {
+    if (*ptr is TOKEN_PAREN_OPEN) {
       parenopen++;
       ptr++;
       continue;
     }
 
-    if (*ptr is LA_TOKEN_PAREN_CLOS) {
+    if (*ptr is TOKEN_PAREN_CLOS) {
       parenopen--;
       if (parenopen) {
         ptr++;
@@ -6725,71 +6842,72 @@ static int la_parse_loop (la_t *this) {
         break;
     }
 
-    if (*ptr is LA_TOKEN_SEMICOLON) {
+    if (*ptr is TOKEN_SEMICOLON) {
       stmt_found = 1;
       break;
     }
 
-    if (*ptr is LA_TOKEN_NL) ptr++;
+    if (*ptr is TOKEN_NL) ptr++;
 
     ptr++;
   }
 
   if (stmt_found) {
-    la_next_token (this);
+    NEXT_TOKEN();
     this->curState |= BLOCK_STATE;
     do {
       err = la_parse_stmt (this);
-      if (err isnot LA_OK) return err;
-    } while (this->curToken is LA_TOKEN_COMMA);
+      THROW_ERR_IF_ERR(err);
+    } while (TOKEN is TOKEN_COMMA);
     this->curState &= ~BLOCK_STATE;
 
-    if (this->curToken isnot LA_TOKEN_SEMICOLON)
-      return this->syntax_error (this, "awaiting ;");
+    if (TOKEN isnot TOKEN_SEMICOLON)
+      THROW_SYNTAX_ERR("awaiting ;");
 
-    this->curToken = LA_TOKEN_PAREN_OPEN;
+    TOKEN = TOKEN_PAREN_OPEN;
   }
 
   VALUE v;
   this->curState |= BLOCK_STATE;
   err = la_parse_expr (this, &v);
   this->curState &= ~BLOCK_STATE;
-  if (err isnot LA_OK) return err;
+  THROW_ERR_IF_ERR(err);
 
   if (v.type isnot INTEGER_TYPE)
-    return this->syntax_error (this, "error while parsing loop, awaiting an integer expression");
+    THROW_SYNTAX_ERR("error while parsing loop, awaiting an integer expression");
 
   integer num = AS_INT(v);
 
-  c = this->curToken;
+  c = TOKEN;
 
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "parsing loop, not a block string");
+  if (c isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("parsing loop, not a block string");
 
   la_get_char (this);
 
-  const char *tmp_ptr = la_StringGetPtr (this->curStrToken);
+  const char *tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = la_StringGetLen (this->curStrToken) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
   body[bodylen] = '\0';
 
-  la_string body_str = la_StringNewLen (body, bodylen);
+  la_string body_str = StringNewLen (body, bodylen);
 
-  la_string savepc = this->parsePtr;
+  la_string savepc = PARSEPTR;
 
   for (integer i = 0; i < num; i++) {
     this->curState |= LOOP_STATE;
-    err= la_parse_string (this, body_str);
+    err = la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
+    THROW_ERR_IF_ERR(err);
 
     if (err is LA_ERR_BREAK) goto theend;
 
-    if (this->didReturn) {
+    if (HASTORETURN) {
       this->curState &= ~LOOP_STATE;
-      la_StringSetLen (&this->parsePtr, 0);
+      RESET_PARSEPTR;
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
@@ -6802,7 +6920,7 @@ static int la_parse_loop (la_t *this) {
 
     la_fun_release_symbols (fun, 1, 0);
 
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
   }
 
 theend:
@@ -6816,9 +6934,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  this->parsePtr = savepc;
+  PARSEPTR = savepc;
 
-  this->curToken = LA_TOKEN_SEMICOLON;
+  TOKEN = TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6830,7 +6948,6 @@ theend:
 
 static int la_parse_forever (la_t *this) {
   int err;
-
   this->loopCount++;
 
   funT *save_scope = this->curScope;
@@ -6843,49 +6960,54 @@ static int la_parse_forever (la_t *this) {
 
   this->curScope = fun;
 
-  int c = la_next_token (this);
+  NEXT_TOKEN();
+  int c = TOKEN;
 
-  if (c is LA_TOKEN_PAREN_OPEN) {
-    la_next_token (this);
+  if (c is TOKEN_PAREN_OPEN) {
+    NEXT_TOKEN();
     this->curState |= BLOCK_STATE;
     do {
       err = la_parse_stmt (this);
-      if (err isnot LA_OK) return err;
-    } while (this->curToken is LA_TOKEN_COMMA);
+      THROW_ERR_IF_ERR(err);
+    } while (TOKEN is TOKEN_COMMA);
+
     this->curState &= ~BLOCK_STATE;
 
-    if (this->curToken isnot LA_TOKEN_PAREN_CLOS)
-      return this->syntax_error (this, "awaiting (");
-    c = la_next_token (this);
+    if (TOKEN isnot TOKEN_PAREN_CLOS)
+      THROW_SYNTAX_ERR("awaiting (");
+
+    NEXT_TOKEN();
+    c = TOKEN;
   }
 
-  if (c isnot LA_TOKEN_BLOCK)
-    return this->syntax_error (this, "parsing forever, not a block string");
+  if (c isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("parsing forever, not a block string");
 
   la_get_char (this);
 
-  const char *tmp_ptr = la_StringGetPtr (this->curStrToken);
+  const char *tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = la_StringGetLen (this->curStrToken) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
   body[bodylen] = '\0';
 
-  la_string body_str = la_StringNewLen (body, bodylen);
+  la_string body_str = StringNewLen (body, bodylen);
 
-  la_string savepc = this->parsePtr;
+  la_string savepc = PARSEPTR;
 
   for (;;) {
     this->curState |= LOOP_STATE;
-    err= la_parse_string (this, body_str);
+    err = la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
+    THROW_ERR_IF_ERR(err);
 
     if (err is LA_ERR_BREAK) goto theend;
 
-    if (this->didReturn) {
+    if (HASTORETURN) {
       this->curState &= ~LOOP_STATE;
-      la_StringSetLen (&this->parsePtr, 0);
+      RESET_PARSEPTR;
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
@@ -6898,7 +7020,7 @@ static int la_parse_forever (la_t *this) {
 
     la_fun_release_symbols (fun, 1, 0);
 
-    if (err isnot LA_OK) return err;
+    THROW_ERR_IF_ERR(err);
   }
 
 theend:
@@ -6912,9 +7034,9 @@ theend:
   else
     this->curState |= LOOP_STATE;
 
-  this->parsePtr = savepc;
+  PARSEPTR = savepc;
 
-  this->curToken = LA_TOKEN_SEMICOLON;
+  TOKEN = TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
     this->breakCount--;
@@ -6926,17 +7048,18 @@ theend:
 
 static int la_parse_visibility (la_t *this) {
   this->scopeState = 0;
-  int token = Cstring.eq_n (la_StringGetPtr (this->curStrToken), "public", 6)
-      ? LA_TOKEN_PUBLIC : LA_TOKEN_PRIVATE;
-  int scope = (token is LA_TOKEN_PUBLIC ? PUBLIC_SCOPE : PRIVATE_SCOPE);
+  int token = Cstring.eq_n (GETSTRPTR(TOKENSTR), "public", 6)
+      ? TOKEN_PUBLIC : TOKEN_PRIVATE;
+  int scope = (token is TOKEN_PUBLIC ? PUBLIC_SCOPE : PRIVATE_SCOPE);
 
-  int c = la_next_token (this);
+  NEXT_TOKEN();
+  int c = TOKEN;
 
   switch (c) {
-    case LA_TOKEN_ARYDEF:
-    case LA_TOKEN_VARDEF:
-    case LA_TOKEN_CONSTDEF:
-    case LA_TOKEN_FUNCDEF:
+    case TOKEN_ARYDEF:
+    case TOKEN_VARDEF:
+    case TOKEN_CONSTDEF:
+    case TOKEN_FUNCDEF:
       this->scopeState = scope;
       break;
 
@@ -6946,9 +7069,9 @@ static int la_parse_visibility (la_t *this) {
         break;
       }
 
-      if (c is LA_TOKEN_EOF)
-        return this->syntax_error (this, "unended statement");
-      return this->syntax_error (this, "unsupported visibility/scope attribute");
+      if (c is TOKEN_EOF)
+        THROW_SYNTAX_ERR("unended statement");
+      THROW_SYNTAX_ERR("unsupported visibility/scope attribute");
   }
 
   return token;
@@ -6961,32 +7084,33 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
   c = la_next_raw_token (this);
 
   for (;;) {
-    if (c is LA_TOKEN_SYMBOL) {
-      la_string name = this->curStrToken;
+    if (c is TOKEN_SYMBOL) {
+      la_string name = TOKENSTR;
 
       if (nargs >= MAX_BUILTIN_PARAMS)
         return la_too_many_args (this);
 
-      size_t len = la_StringGetLen (name);
+      size_t len = GETSTRLEN(name);
       if (len >= MAXLEN_SYMBOL)
-        return this->syntax_error (this, "argument name exceeded maximum length (64)");
+        THROW_SYNTAX_ERR("argument name exceeded maximum length (64)");
 
-      const char *ptr = la_StringGetPtr (name);
+      const char *ptr = GETSTRPTR(name);
       Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL, ptr, len);
 
       nargs++;
 
-      c = la_next_token (this);
+      NEXT_TOKEN();
+      c = TOKEN;
 
-      if (c is LA_TOKEN_PAREN_CLOS) break;
+      if (c is TOKEN_PAREN_CLOS) break;
 
-      if (c is LA_TOKEN_COMMA)
+      if (c is TOKEN_COMMA)
         c = la_next_raw_token (this);
 
-    } else if (c is LA_TOKEN_PAREN_CLOS)
+    } else if (c is TOKEN_PAREN_CLOS)
       break;
     else
-      return this->syntax_error (this, "argument list definition, awaiting a symbol name");
+      THROW_SYNTAX_ERR("argument list definition, awaiting a symbol name");
   }
 
   uf->nargs = nargs;
@@ -6994,35 +7118,34 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
 }
 
 static int la_parse_func_def (la_t *this) {
-  la_string name;
-  int c;
   int err;
+  la_string name;
   int nargs = 0;
   size_t len = 0;
 
   char *fn = NULL;
 
   ifnot (this->curFunName[0]) {
-    c = err = la_next_raw_token (this);
-    if (c isnot LA_TOKEN_SYMBOL) {
+    err = la_next_raw_token (this);
+    if (TOKEN isnot TOKEN_SYMBOL) {
       if (err is LA_ERR_SYNTAX)
         return err;
       else
-        return this->syntax_error (this, "function definition, not a symbol");
+        THROW_SYNTAX_ERR("function definition, not a symbol");
     }
 
-    name = this->curStrToken;
-    len = la_StringGetLen (name);
+    name = TOKENSTR;
+    len = GETSTRLEN(name);
     fn = sym_key (this, name);
     sym_t *sym = ns_lookup_symbol (this->std, fn);
     ifnot (NULL is sym)
-      return this->syntax_error (this, "can not redefine a standard function");
+      THROW_SYNTAX_ERR("can not redefine a standard function");
 
   } else {
-    name = la_StringNew (this->curFunName);
+    name = StringNew (this->curFunName);
     len = bytelen (this->curFunName);
     if (len >= MAXLEN_SYMBOL)
-      return this->syntax_error (this, "function name exceeded maximum length (64)");
+      THROW_SYNTAX_ERR("function name exceeded maximum length (64)");
     fn = this->curFunName;
   }
 
@@ -7030,9 +7153,9 @@ static int la_parse_func_def (la_t *this) {
     .name = fn, .namelen = len, .parent = this->curScope
   ));
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
 
-  if (c is LA_TOKEN_PAREN_OPEN) {
+  if (TOKEN is TOKEN_PAREN_OPEN) {
     la_fun_stack_push (this, this->curScope);
 
     this->curScope = uf;
@@ -7043,12 +7166,13 @@ static int la_parse_func_def (la_t *this) {
 
     if (nargs < 0) return nargs;
 
-    c = la_next_token (this);
+    NEXT_TOKEN();
   }
 
-  if (c isnot LA_TOKEN_BLOCK) return this->syntax_error (this, "function definition, not a string");
+  if (TOKEN isnot TOKEN_BLOCK)
+    THROW_SYNTAX_ERR("function definition, not a string");
 
-  uf->body = this->curStrToken;
+  uf->body = TOKENSTR;
 
   VALUE v = PTR(uf);
 
@@ -7058,7 +7182,7 @@ static int la_parse_func_def (la_t *this) {
 
   this->curFunDef = uf;
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   return LA_OK;
 }
@@ -7074,38 +7198,38 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
 
   for (;;) {
     c = la_get_char (this);
-    if (c is LA_TOKEN_EOF and break_at_eof)
+    if (c is TOKEN_EOF and break_at_eof)
       break;
 
-    if (c is LA_TOKEN_DQUOTE) {
-      if (prev isnot LA_TOKEN_ESCAPE_CHR)
+    if (c is TOKEN_DQUOTE) {
+      if (prev isnot TOKEN_ESCAPE_CHR)
         break;
 
       String.append_byte (str, '\\');
-      String.append_byte (str, LA_TOKEN_DQUOTE);
-      prev = LA_TOKEN_DQUOTE;
+      String.append_byte (str, TOKEN_DQUOTE);
+      prev = TOKEN_DQUOTE;
       c = la_get_char (this);
     }
 
-    if (c is LA_TOKEN_ESCAPE_CHR) {
-      if (prev is LA_TOKEN_ESCAPE_CHR or la_peek_char (this, 0) isnot '$') {
+    if (c is TOKEN_ESCAPE_CHR) {
+      if (prev is TOKEN_ESCAPE_CHR or la_peek_char (this, 0) isnot '$') {
         prev = str->bytes[str->num_bytes - 1];
-        String.append_byte (str, LA_TOKEN_ESCAPE_CHR);
+        String.append_byte (str, TOKEN_ESCAPE_CHR);
       } else
-        prev = LA_TOKEN_ESCAPE_CHR;
+        prev = TOKEN_ESCAPE_CHR;
 
       c = la_get_char (this);
     }
 
     if (c is '$') {
-      if (prev is LA_TOKEN_ESCAPE_CHR) {
+      if (prev is TOKEN_ESCAPE_CHR) {
         String.append_byte (str, '$');
         prev = '$';
         continue;
       }
 
       c = la_get_char (this);
-      if (c isnot LA_TOKEN_BLOCK_OPEN) {
+      if (c isnot TOKEN_BLOCK_OPEN) {
         this->print_bytes (this->err_fp, "string fmt error, awaiting {\n");
         la_err_ptr (this, LA_NOTOK);
         err = LA_ERR_SYNTAX;
@@ -7113,10 +7237,11 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
       }
 
       prev = c;
-      c = la_next_token (this);
+      NEXT_TOKEN();
+      c = TOKEN;
 
-      if (*(la_StringGetPtr (this->curStrToken)) is '%' and
-            la_StringGetLen (this->curStrToken) is 1) {
+      if (*(GETSTRPTR(TOKENSTR)) is '%' and
+            GETSTRLEN(TOKENSTR) is 1) {
         c = la_get_char (this);
         if (c isnot 's' and c isnot 'p' and c isnot 'd' and
             c isnot 'o' and c isnot 'x' and c isnot 'f') {
@@ -7127,26 +7252,26 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
         } else
           directive = c;
 
-        c = la_next_token (this);
+        NEXT_TOKEN();
+        c = TOKEN;
 
-        if (c isnot LA_TOKEN_COMMA) {
+        if (c isnot TOKEN_COMMA) {
           this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting a comma\n");
           la_err_ptr (this, LA_NOTOK);
           err = LA_ERR_SYNTAX;
           goto theend;
         }
 
-        prev = LA_TOKEN_COMMA;
-        c = la_next_token (this);
+        prev = TOKEN_COMMA;
+        NEXT_TOKEN();
+        c = TOKEN;
       }
 
       int funcState = this->funcState;
       this->funcState |= EXPR_LIST_STATE;
       err = la_parse_expr (this, &value);
       this->funcState = funcState;
-
-      if (err isnot LA_OK)
-        goto theend;
+      if (err isnot LA_OK) goto theend;
 
       switch (directive) {
         case 's':
@@ -7169,7 +7294,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
 
             case ARRAY_TYPE: {
               VALUE v;
-              this->tokenValue = value;
+              TOKENVAL = value;
               err = la_parse_array_get (this, &v);
               if (err isnot LA_OK) {
                 this->print_bytes (this->err_fp, "string fmt error, awaiting an array\n");
@@ -7243,7 +7368,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           switch (value.type) {
             case ARRAY_TYPE: {
               VALUE v;
-              this->tokenValue = value;
+              TOKENVAL = value;
               err = la_parse_array_get (this, &v);
               if (err isnot LA_OK) {
                 this->print_bytes (this->err_fp, "string fmt error, awaiting an array\n");
@@ -7281,7 +7406,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           switch (value.type) {
             case ARRAY_TYPE: {
               VALUE v;
-              this->tokenValue = value;
+              TOKENVAL = value;
               err = la_parse_array_get (this, &v);
               if (err isnot LA_OK) {
                 this->print_bytes (this->err_fp, "string fmt error, awaiting array\n");
@@ -7305,7 +7430,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
 
             case STRING_TYPE: {
               VALUE v;
-              this->tokenValue = value;
+              TOKENVAL = value;
               err = la_string_get (this, &v);
               if (err isnot LA_OK) {
                 this->print_bytes (this->err_fp, "string fmt error, awaiting a string\n");
@@ -7359,7 +7484,7 @@ static int la_parse_print (la_t *this) {
 
   int c = la_ignore_ws (this);
 
-  if (c isnot LA_TOKEN_PAREN_OPEN) {
+  if (c isnot TOKEN_PAREN_OPEN) {
     this->print_bytes (this->err_fp, "print string error, awaiting (\n");
     la_err_ptr (this, LA_NOTOK);
     goto theend;
@@ -7373,19 +7498,22 @@ static int la_parse_print (la_t *this) {
 
   VALUE v;
 
-  if (c isnot LA_TOKEN_DQUOTE) {
+  if (c isnot TOKEN_DQUOTE) {
     la_unget_char (this);
-    c = la_next_token (this);
+
+    NEXT_TOKEN();
+    c = TOKEN;
 
     this->curState |= MALLOCED_STRING_STATE;
     err = la_parse_expr (this, &v);
     this->curState &= ~MALLOCED_STRING_STATE;
+    THROW_ERR_IF_ERR(err);
 
     check_expr:
     if (err isnot LA_OK) goto theend;
     num_iterations++;
 
-    c = this->curToken;
+    c = TOKEN;
     switch (v.type) {
       case STRING_TYPE: {
           string *vs = AS_STRING(v);
@@ -7431,40 +7559,45 @@ static int la_parse_print (la_t *this) {
     la_ignore_next_char (this);
     c = la_ignore_ws (this);
 
-    if (c isnot LA_TOKEN_DQUOTE) {
+    if (c isnot TOKEN_DQUOTE) {
       la_unget_char (this);
-      c = la_next_token (this);
+
+      NEXT_TOKEN();
+      c = TOKEN;
+
       err = la_parse_expr (this, &v);
-      if (err isnot LA_OK)
-        return err;
+      THROW_ERR_IF_ERR(err);
       goto check_expr;
     }
   }
 
-  if (c isnot LA_TOKEN_DQUOTE) {
+  if (c isnot TOKEN_DQUOTE) {
     this->print_bytes (this->err_fp, "print string error, awaiting double quote\n");
     la_err_ptr (this, LA_NOTOK);
     goto theend;
   }
 
   err = la_parse_fmt (this, str, 0);
-  if (err isnot LA_OK) goto theend;
+  THROW_ERR_IF_ERR(err);
 
-  c = la_next_token (this);
+  NEXT_TOKEN();
+  c = TOKEN;
 
 print_str:
   this->print_fp = fp;
 
-  if (c isnot LA_TOKEN_PAREN_CLOS) {
-    if ((c & 0xff) is LA_TOKEN_BINOP) {
-      if (AS_VOID_PTR(this->tokenValue) is la_add) {
+  if (c isnot TOKEN_PAREN_CLOS) {
+    if ((c & 0xff) is TOKEN_BINOP) {
+      if (AS_VOID_PTR(TOKENVAL) is la_add) {
         is_add_operation = 1;
-        this->curToken = c;
+        TOKEN = c;
         v = STRING(str);
         if (v.refcount > -1)
           v.refcount++;
         this->curState |= MALLOCED_STRING_STATE;
         err = la_parse_expr_level (this, MAX_EXPR_LEVEL, &v);
+        THROW_ERR_IF_ERR(err);
+
         if (v.refcount > -1)
           v.refcount--;
         this->curState &= ~MALLOCED_STRING_STATE;
@@ -7484,7 +7617,7 @@ print_str:
     goto theend;
   }
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
   err = LA_OK;
 
@@ -7501,49 +7634,80 @@ static int la_parse_println (la_t *this) {
 }
 
 static int la_parse_exit (la_t *this) {
-  la_next_token (this);
+  NEXT_TOKEN();
 
   VALUE v;
   la_parse_expr (this, &v);
   this->exitValue = AS_INT(v);
 
-  la_StringSetLen (&this->parsePtr, 0);
-  this->didReturn = 1;
+  RESET_PARSEPTR;
+  HASTORETURN = 1;
 
   return LA_ERR_EXIT;
 }
 
 static int la_parse_return (la_t *this) {
-  ERR = LA_OK;
+  int err = LA_OK;
   funT *scope = this->curScope;
 
-  la_next_token (this);
+  NEXT_TOKEN();
 
-  if (TOKEN is LA_TOKEN_SEMICOLON or TOKEN is LA_TOKEN_NL
-     or TOKEN is LA_TOKEN_EOF)
-    goto theend;
+  if (TOKEN is TOKEN_SEMICOLON or
+      TOKEN is TOKEN_NL or
+      TOKEN is TOKEN_EOF) {
+    HASTORETURN = 1;
+    RESET_PARSEPTR;
+    return LA_OK;
+  }
 
   if (Cstring.eq_n (scope->funname, NS_WHEN_BLOCK, NS_WHEN_BLOCK_LEN)) {
-    ERR = la_parse_expr (this, &scope->result);
-    la_StringSetLen (&this->parsePtr, 0);
-    this->didReturn = 1;
-    return ERR;
+    err = la_parse_expr (this, &scope->result);
+    THROW_ERR_IF_ERR(err);
+    HASTORETURN = 1;
+    goto theend;
   }
 
   while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
     scope = scope->prev;
 
   if (NULL is scope)
-    THROW_SYNTAX_ERR ("error while parsing return, unknown scope");
+    THROW_SYNTAX_ERR("error while parsing return, unknown scope");
 
-  this->didReturn = 1;
+  int token = la_peek_token (this, 0);
+
+  if (token is TOKEN_IF or token is TOKEN_IFNOT ) {
+    tokenState save = SAVE_TOKENSTATE();
+
+    NEXT_TOKEN();
+
+    err = la_parse_cond (this, token is TOKEN_IFNOT);
+    THROW_ERR_IF_ERR(err);
+
+    ifnot (AS_INT(CONDVAL)) return LA_OK;
+
+    tokenState save_again = SAVE_TOKENSTATE();
+
+    RESTORE_TOKENSTATE(save);
+    SETSTRLEN(PARSEPTR, GETSTRLEN(TOKENSTR));
+
+    err = la_parse_primary (this, &scope->result);
+    THROW_ERR_IF_ERR(err);
+
+    RESTORE_TOKENSTATE(save_again);
+
+    HASTORETURN = 1;
+    goto check_value;
+  }
+
+  HASTORETURN = 1;
   this->funcState |= RETURN_STATE;
-  ERR = la_parse_expr (this, &scope->result);
+  err = la_parse_expr (this, &scope->result);
   this->funcState &= ~RETURN_STATE;
-  THROW_ERR_IF_ERR;
+  THROW_ERR_IF_ERR(err);
 
-  ifnot (this->didReturn) return LA_OK;
+  ifnot (HASTORETURN) return LA_OK;
 
+  check_value:
   if (scope->result.type is STRING_TYPE or scope->result.type is ARRAY_TYPE) {
     if (this->objectState & MAP_MEMBER) {
       scope->result.refcount++;
@@ -7552,8 +7716,16 @@ static int la_parse_return (la_t *this) {
   }
 
 theend:
-  la_StringSetLen (&this->parsePtr, 0);
-  return ERR;
+  if (TOKEN isnot TOKEN_SEMICOLON and
+      TOKEN isnot TOKEN_NL and
+      TOKEN isnot TOKEN_EOF)
+    if (PREVTOKEN isnot TOKEN_EOF or
+        PREVTOKEN isnot TOKEN_NL or
+        PREVTOKEN isnot TOKEN_SEMICOLON)
+      THROW_SYNTAX_ERR("awaiting a semicolon or a new line after return");
+
+  RESET_PARSEPTR;
+  return err;
 }
 
 static int la_import_file (la_t *this, const char *module, const char *err_msg) {
@@ -7632,20 +7804,21 @@ theend:
 }
 
 static int la_parse_import (la_t *this) {
-  char *err_msg = "";
   int err;
-  int c = la_next_token (this);
-  ifnot (c is LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "error while parsing import(), awaiting (");
+  char *err_msg = "";
+
+  NEXT_TOKEN();
+  int c = TOKEN;
+
+  ifnot (c is TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("error while parsing import(), awaiting (");
 
   VALUE v;
   err = la_parse_expr (this, &v);
+  THROW_SYNTAX_ERR_IF_ERR(err, "error while parsing import()");
 
-  if (err isnot LA_OK)
-    return this->syntax_error (this, "error while parsing import()");
-
-  ifnot (v.type is STRING_TYPE)
-    return this->syntax_error (this, "error while parsing import(), awaiting a string");
+  THROW_SYNTAX_ERR_IF (v.type isnot STRING_TYPE,
+    "error while parsing import(), awaiting a string");
 
   string *fname = AS_STRING(v);
   string *fn = NULL;
@@ -7670,7 +7843,7 @@ static int la_parse_import (la_t *this) {
 
   sym_t *sym = ns_lookup_symbol (this->function, tmp);
   if (NULL is sym)
-    return la_syntax_error_fmt (this, "%s module hasn't been initialized", tmp);
+    THROW_SYNTAX_ERR_FMT("%s module hasn't been initialized", tmp);
 
   return LA_OK;
 #endif
@@ -7679,11 +7852,13 @@ static int la_parse_import (la_t *this) {
   funT *load_ns = this->curScope;
   funT *prev_ns = load_ns;
 
-  if (this->curToken is LA_TOKEN_COMMA) {
-    la_next_token (this);
+  if (TOKEN is TOKEN_COMMA) {
+    NEXT_TOKEN();
     err = la_parse_expr (this, &v);
+    THROW_ERR_IF_ERR(err);
+
     ifnot (v.type is STRING_TYPE)
-      return this->syntax_error (this, "error while parsing import() ns, awaiting a string");
+      THROW_SYNTAX_ERR("error while parsing import() ns, awaiting a string");
 
     ns = AS_STRING(v);
 
@@ -7695,7 +7870,7 @@ static int la_parse_import (la_t *this) {
     ifnot (ns->num_bytes)
       goto theload;
 
-    la_string x = la_StringNew (ns->bytes);
+    la_string x = StringNew (ns->bytes);
     sym_t *symbol = la_lookup_symbol (this, x);
     if (symbol isnot NULL) {
       v = symbol->value;
@@ -7740,7 +7915,7 @@ theload:
     if (err is LA_OK or err is LA_ERR_DYNLINK)
       goto theend;
 
-    sym_t *symbol = la_lookup_symbol (this, la_StringNew ("__importpath"));
+    sym_t *symbol = la_lookup_symbol (this, StringNew ("__importpath"));
     ArrayType *p_ar = (ArrayType *) AS_ARRAY(symbol->value);
     string **s_ar = (string **) AS_ARRAY(p_ar->value);
     for (size_t i = 0; i < p_ar->len; i++) {
@@ -7778,19 +7953,19 @@ theend:
 }
 
 static int la_parse_loadfile (la_t *this) {
+  NEXT_TOKEN();
+  int c = TOKEN;
   int err;
-  int c = la_next_token (this);
-  ifnot (c is LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "error while parsing loadfile(), awaiting (");
+
+  ifnot (c is TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("error while parsing loadfile(), awaiting (");
 
   VALUE v;
   err = la_parse_expr (this, &v);
+  THROW_SYNTAX_ERR_IF_ERR(err, "error while parsing loadfile()");
 
-  if (err isnot LA_OK)
-    return this->syntax_error (this, "error while parsing loadfile()");
-
-  ifnot (v.type is STRING_TYPE)
-    return this->syntax_error (this, "error while parsing loadfile(), awaiting a string");
+  THROW_SYNTAX_ERR_IF (v.type isnot STRING_TYPE,
+    "error while parsing loadfile(), awaiting a string");
 
   string *fname = AS_STRING(v);
   string *fn = NULL;
@@ -7826,11 +8001,13 @@ static int la_parse_loadfile (la_t *this) {
   funT *load_ns = this->curScope;
   funT *prev_ns = load_ns;
 
-  if (this->curToken is LA_TOKEN_COMMA) {
-    la_next_token (this);
+  if (TOKEN is TOKEN_COMMA) {
+    NEXT_TOKEN();
     err = la_parse_expr (this, &v);
+    THROW_ERR_IF_ERR(err);
+
     ifnot (v.type is STRING_TYPE)
-      return this->syntax_error (this, "error while parsing loadfile() ns, awaiting a string");
+      THROW_SYNTAX_ERR("error while parsing loadfile() ns, awaiting a string");
 
     ns = AS_STRING(v);
 
@@ -7842,7 +8019,7 @@ static int la_parse_loadfile (la_t *this) {
     ifnot (ns->num_bytes)
       goto theload;
 
-    la_string x = la_StringNew (ns->bytes);
+    la_string x = StringNew (ns->bytes);
     sym_t *symbol = la_lookup_symbol (this, x);
     if (symbol isnot NULL) {
       v = symbol->value;
@@ -7903,7 +8080,7 @@ theload:
       if (err isnot LA_ERR_LOAD) goto theend;
     }
 
-    sym_t *symbol = la_lookup_symbol (this, la_StringNew ("__loadpath"));
+    sym_t *symbol = la_lookup_symbol (this, StringNew ("__loadpath"));
     ArrayType *p_ar = (ArrayType *) AS_ARRAY(symbol->value);
     string **s_ar = (string **) AS_ARRAY(p_ar->value);
     for (size_t i = 0; i < p_ar->len; i++) {
@@ -8536,37 +8713,37 @@ static struct def {
   int toktype;
   VALUE val;
 } la_defs[] = {
-  { "var",     LA_TOKEN_VARDEF,   NULL_VALUE },
-  { "const",   LA_TOKEN_CONSTDEF, NULL_VALUE },
-  { "else",    LA_TOKEN_ELSE,     NULL_VALUE },
-  { "elseif",  LA_TOKEN_ELSEIF,   NULL_VALUE },
-  { "break",   LA_TOKEN_BREAK,    NULL_VALUE },
-  { "continue",LA_TOKEN_CONTINUE, NULL_VALUE },
-  { "when",    LA_TOKEN_WHEN,     NULL_VALUE },
-  { "orelse",  LA_TOKEN_ORELSE,   NULL_VALUE },
-  { "then",    LA_TOKEN_THEN,     NULL_VALUE },
-  { "lambda",  LA_TOKEN_LAMBDA,   NULL_VALUE },
-  { "override",LA_TOKEN_OVERRIDE, NULL_VALUE },
-  { "evalfile",LA_TOKEN_EVALFILE, NULL_VALUE },
-  { "New",     LA_TOKEN_NEW,      NULL_VALUE },
-  { "format",  LA_TOKEN_FORMAT,   NULL_VALUE },
-  { "if",      LA_TOKEN_IF,       PTR(la_parse_if) },
-  { "ifnot",   LA_TOKEN_IFNOT,    PTR(la_parse_if) },
-  { "while",   LA_TOKEN_WHILE,    PTR(la_parse_while) },
-  { "do",      LA_TOKEN_DO,       PTR(la_parse_do) },
-  { "for",     LA_TOKEN_FOR,      PTR(la_parse_for) },
-  { "forever", LA_TOKEN_FOREVER,  PTR(la_parse_forever) },
-  { "loop",    LA_TOKEN_LOOP,     PTR(la_parse_loop) },
-  { "print",   LA_TOKEN_PRINT,    PTR(la_parse_print) },
-  { "println", LA_TOKEN_PRINTLN,  PTR(la_parse_println) },
-  { "func",    LA_TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
-  { "return",  LA_TOKEN_RETURN,   PTR(la_parse_return) },
-  { "exit",    LA_TOKEN_EXIT,     PTR(la_parse_exit) },
-  { "loadfile",LA_TOKEN_LOADFILE, PTR(la_parse_loadfile) },
-  { "import",  LA_TOKEN_IMPORT,   PTR(la_parse_import) },
-  { "public",  LA_TOKEN_PUBLIC,   PTR(la_parse_visibility) },
-  { "private", LA_TOKEN_PRIVATE,  PTR(la_parse_visibility) },
-  { "Type",    LA_TOKEN_TYPE,     PTR(la_parse_type) },
+  { "var",     TOKEN_VARDEF,   NULL_VALUE },
+  { "const",   TOKEN_CONSTDEF, NULL_VALUE },
+  { "else",    TOKEN_ELSE,     NULL_VALUE },
+  { "elseif",  TOKEN_ELSEIF,   NULL_VALUE },
+  { "break",   TOKEN_BREAK,    NULL_VALUE },
+  { "continue",TOKEN_CONTINUE, NULL_VALUE },
+  { "when",    TOKEN_WHEN,     NULL_VALUE },
+  { "orelse",  TOKEN_ORELSE,   NULL_VALUE },
+  { "then",    TOKEN_THEN,     NULL_VALUE },
+  { "lambda",  TOKEN_LAMBDA,   NULL_VALUE },
+  { "override",TOKEN_OVERRIDE, NULL_VALUE },
+  { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
+  { "New",     TOKEN_NEW,      NULL_VALUE },
+  { "format",  TOKEN_FORMAT,   NULL_VALUE },
+  { "if",      TOKEN_IF,       PTR(la_parse_if) },
+  { "ifnot",   TOKEN_IFNOT,    PTR(la_parse_if) },
+  { "while",   TOKEN_WHILE,    PTR(la_parse_while) },
+  { "do",      TOKEN_DO,       PTR(la_parse_do) },
+  { "for",     TOKEN_FOR,      PTR(la_parse_for) },
+  { "forever", TOKEN_FOREVER,  PTR(la_parse_forever) },
+  { "loop",    TOKEN_LOOP,     PTR(la_parse_loop) },
+  { "print",   TOKEN_PRINT,    PTR(la_parse_print) },
+  { "println", TOKEN_PRINTLN,  PTR(la_parse_println) },
+  { "func",    TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
+  { "return",  TOKEN_RETURN,   PTR(la_parse_return) },
+  { "exit",    TOKEN_EXIT,     PTR(la_parse_exit) },
+  { "loadfile",TOKEN_LOADFILE, PTR(la_parse_loadfile) },
+  { "import",  TOKEN_IMPORT,   PTR(la_parse_import) },
+  { "public",  TOKEN_PUBLIC,   PTR(la_parse_visibility) },
+  { "private", TOKEN_PRIVATE,  PTR(la_parse_visibility) },
+  { "Type",    TOKEN_TYPE,     PTR(la_parse_type) },
   { "*",       BINOP(1),          PTR(la_mul) },
   { "/",       BINOP(1),          PTR(la_div) },
   { "%",       BINOP(1),          PTR(la_mod) },
@@ -8589,13 +8766,13 @@ static struct def {
   { "and",     BINOP(5),          PTR(la_logical_and) },
   { "||",      BINOP(5),          PTR(la_logical_or) },
   { "or",      BINOP(5),          PTR(la_logical_or) },
-  { "=",     LA_TOKEN_ASSIGN,     NULL_VALUE },
-  { "+=",    LA_TOKEN_ASSIGN_APP, NULL_VALUE },
-  { "-=",    LA_TOKEN_ASSIGN_SUB, NULL_VALUE },
-  { "/=",    LA_TOKEN_ASSIGN_DIV, NULL_VALUE },
-  { "*=",    LA_TOKEN_ASSIGN_MUL, NULL_VALUE },
-  { "&=",    LA_TOKEN_ASSIGN_AND, NULL_VALUE },
-  { "|=",    LA_TOKEN_ASSIGN_BAR, NULL_VALUE },
+  { "=",     TOKEN_ASSIGN,     NULL_VALUE },
+  { "+=",    TOKEN_ASSIGN_APP, NULL_VALUE },
+  { "-=",    TOKEN_ASSIGN_SUB, NULL_VALUE },
+  { "/=",    TOKEN_ASSIGN_DIV, NULL_VALUE },
+  { "*=",    TOKEN_ASSIGN_MUL, NULL_VALUE },
+  { "&=",    TOKEN_ASSIGN_AND, NULL_VALUE },
+  { "|=",    TOKEN_ASSIGN_BAR, NULL_VALUE },
   { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
   { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
@@ -8805,7 +8982,7 @@ static int la_eval_string (la_t *this, const char *buf) {
   const char *prev_buffer = this->script_buffer;
   this->script_buffer = buf;
 
-  la_string x = la_StringNew (buf);
+  la_string x = StringNew (buf);
 
   string *file = AS_STRING(this->file->value);
   integer len =  file->num_bytes;
@@ -8828,18 +9005,16 @@ static int la_eval_string (la_t *this, const char *buf) {
 }
 
 static int la_eval_expr (la_t *this, const char *buf, VALUE *v) {
-  if (*buf isnot LA_TOKEN_PAREN_OPEN)
-    return this->syntax_error (this, "awaiting (");
+  if (*buf isnot TOKEN_PAREN_OPEN)
+    THROW_SYNTAX_ERR("awaiting (");
 
   this->script_buffer = buf;
-  la_string x = la_StringNew (buf);
+  la_string x = StringNew (buf);
 
-  this->parsePtr = x;
-  this->curToken = LA_TOKEN_PAREN_OPEN;
+  PARSEPTR = x;
+  TOKEN = TOKEN_PAREN_OPEN;
 
-  int retval = la_parse_expr (this, v);
-
-  return retval;
+  return la_parse_expr (this, v);
 }
 
 static int la_eval_file (la_t *this, const char *filename) {
@@ -8919,7 +9094,7 @@ static int la_eval_file (la_t *this, const char *filename) {
       Vmap.set (this->units, fn, script_buf, la_release_unit, 0);
     }
 
-    uf->body = la_StringNew (script_buf->bytes);
+    uf->body = StringNew (script_buf->bytes);
     uf->nargs = 0;
     this->curFunDef = uf;
     return LA_OK;
@@ -8937,7 +9112,7 @@ static int la_eval_file (la_t *this, const char *filename) {
   Cstring.cp (prev_file, len + 1, file->bytes, len);
   String.replace_with (file, fn);
 
-  la_string x = la_StringNew (script_buf->bytes);
+  la_string x = StringNew (script_buf->bytes);
 
   int retval = la_parse_string (this, x);
 
@@ -9103,7 +9278,7 @@ static void la_set_Errno (la_t *this, int err) {
 }
 
 static VALUE la_set_errno (la_t *this, VALUE v_err) {
-  ifnot (IS_INT(v_err)) _THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_INT(v_err)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   la_set_Errno (this, AS_INT(v_err));
   return v_err;
@@ -9140,7 +9315,7 @@ public la_T *la_get_root (la_t *this) {
 }
 
 static char *la_get_eval_str (la_t *this) {
-  return (char *) la_StringGetPtr (this->parsePtr);
+  return (char *) GETSTRPTR(PARSEPTR);
 }
 
 static la_t *la_get_current (la_T *this) {
@@ -9176,7 +9351,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->define_funs_cb = opts.define_funs_cb;
 
   this->didExit = 0;
-  this->didReturn = 0;
+  this->hasToReturn = 0;
   this->exitValue = LA_OK;
   this->curState = 0;
   this->funcState = 0;

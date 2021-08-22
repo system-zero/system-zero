@@ -329,16 +329,16 @@ func semantics () {
 
   var bifnotsum = 0
   var aa = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-  for |i| in aa {
-    break ifnot (i < 7)
-    bifnotsum += i
+  for |v| in aa {
+    break ifnot v < 7
+    bifnotsum += v
   }
 
   var ifnotsum1 = 0
   var i = -1
   while (i < 10) {
     i += 1
-    break ifnot (i < 7)
+    break ifnot i < 7
     ifnotsum1 += i
   }
 
@@ -346,13 +346,13 @@ func semantics () {
   var ifnotsum2 = 0
   do {
     i += 1
-    break ifnot (i < 7)
+    break ifnot i < 7
     ifnotsum2 += i
   } while (i < 10)
 
   var ifnotsum3 = 0
   for (var i = 0; i < 10; i += 1) {
-    break ifnot (i < 7)
+    break ifnot i < 7
     ifnotsum3 += i
   }
 
@@ -1986,13 +1986,12 @@ func term_tests () {
 
   var term = term_new ()
   println ("press q to exit")
-  if notok is Term.raw_mode (term) then
-    return notok
+  return notok if Term.raw_mode (term) is notok
 
   var fd = fileno (stdin)
   var key = 0
   while (key isnot 'q') {
-    if key is notok then return notok
+    return notok if key is notok
     key = Term.getkey (fd)
   }
 
