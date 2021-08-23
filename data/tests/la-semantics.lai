@@ -1677,7 +1677,7 @@ func semantics () {
     dmap.$(new) += 10
     var sval = dmap.$("new")
     var tval = dmap.$("key")
-    var eval = dmap.$(submp).$("skey")
+    var zval = dmap.$(submp).$("skey")
     dmap.$("submap").$("skey") += 20
     var nval = dmap.$("submap").$("skey")
     dmap.$("submap").$("new") = 48
@@ -1687,7 +1687,7 @@ func semantics () {
         fval is 10 and
         sval is 20 and
         tval is 1 and
-        eval is 2 and
+        zval is 2 and
         nval is 22 and
         lval is 48)
   }

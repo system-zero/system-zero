@@ -1,3 +1,5 @@
+import ("file")
+
 var name = "lr"
 var spec = New PackmanSpec (name)
 
@@ -18,10 +20,9 @@ spec.set.license ("MIT")
 
 var map[3] build = [
   New PackmanBuild (null, PACKMAN_BUILD_COPY, null),
-  New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE,
-     "${%s, this.make_exec}"),
-  New PackmanBuild ("[install]", PACKMAN_BUILD_INSTALL,
-     "${%s, this.cp_exec} " + name + " ${%s, this.bindir}")
+  New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null),
+  New PackmanBuild ("[install]", PACKMAN_BUILD_EVAL,
+     `File.copy (this.spec.name, this.bindir; {"verbose": 2, "force" : 1})`)
 ]
 
 spec.set.build (build)

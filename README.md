@@ -1244,14 +1244,15 @@ gained consience. Hopefully one day.
 * [Build Your Own Lisp.](https://github.com/orangeduck/BuildYourOwnLisp)
 * [A Programming Language in Javascript.](http://lisperator.net/pltut/)
 * [Linux From Scratch.](https://linuxfromscratch.org)
-* [SLang.](https://jedsoft.org/slang)
+* [SLang Programming Language.](https://jedsoft.org/slang)
 * [Nan Boxing.](https://piotrduperas.com/posts/nan-boxing)
 * [Nan Boxing.](https://leonardschuetz.ch/blog/nan-boxing/)
 * [Simple Shell.](https://notabug.org/rain1/s/)
 * [Argument Parser.](https://github.com/cofyc/argparse)
 * [Super Light Regular Expression Library.](https://github.com/cesanta/slre)
 * [Terminal [de|at]tach.](https://github.com/crigler/dtach.git)
-* [splitvt by Sam Lantiga.](...)
+* [Splitvt by Sam Lantiga.](https://slouken.libsdl.org/projects/splitvt/index.html)
+* [Suckless sbase.](https://core.suckless.org/sbase/)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

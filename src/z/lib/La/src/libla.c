@@ -199,6 +199,7 @@
 #define TOKEN_UNARY      '~'
 #define TOKEN_DQUOTE     '"'
 #define TOKEN_SQUOTE     '\''
+#define TOKEN_BQUOTE     '`'
 #define TOKEN_STAR       '*'
 #define TOKEN_NL         '\n'
 #define TOKEN_SLASH      '\\'
@@ -469,6 +470,7 @@ typedef struct tokenState {
 
 static int la_do_next_token (la_t *, int);
 static int la_parse_iforelse (la_t *, int, VALUE *);
+static int la_eval_string (la_t *, const char *);
 static int la_parse_cond (la_t *, int);
 static int la_parse_stmt (la_t *);
 static int la_parse_expr (la_t *, VALUE *);
@@ -1589,43 +1591,21 @@ static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
   return err;
 }
 
-static int la_consume_string (la_t *this, string *str) {
+static int la_consume_string (la_t *this, char chr) {
   int pc;
   int c = 0;
 
-  if (str isnot NULL) {
-    while (1) {
-      pc = c;
-      c = la_get_char (this);
+  while (1) {
+    pc = c;
+    c = la_get_char (this);
 
-      if (c is TOKEN_EOF)
-        THROW_SYNTAX_ERR("error while getting literal string, awaiting double quote");
+    if (c is TOKEN_EOF)
+      THROW_SYNTAX_ERR_FMT("error while getting literal string, awaiting %s quote, found EOF",
+          (chr is '`' ? "back" : "double"));
 
-      if (c is TOKEN_DQUOTE) {
-        if (pc is TOKEN_ESCAPE_CHR) {
-          String.clear_at (str, -1);
-          String.append_byte (str, c);
-          continue;
-        }
-
-        break;
-      }
-
-      String.append_byte (str, c);
-    }
-
-  } else {
-    while (1) {
-      pc = c;
-      c = la_get_char (this);
-
-      if (c is TOKEN_EOF)
-        THROW_SYNTAX_ERR("error while getting literal string, awaiting double quote, found a newline character");
-
-      if (c is TOKEN_DQUOTE) {
-        if (pc is TOKEN_ESCAPE_CHR) continue;
-        break;
-      }
+    if (c is chr) {
+      if (pc is TOKEN_ESCAPE_CHR) continue;
+      break;
     }
   }
 
@@ -1786,9 +1766,11 @@ static int la_do_next_token (la_t *this, int israw) {
       return TOKEN;
     }
 
+    case TOKEN_BQUOTE:
     case TOKEN_DQUOTE:
       if (this->curState & MALLOCED_STRING_STATE or
           (this->curState & CONSUME) is 0) {
+        char chr = c;
         string *str = String.new (8);
 
         const char *ptr = GETSTRPTR(PARSEPTR);
@@ -1804,7 +1786,7 @@ static int la_do_next_token (la_t *this, int israw) {
           if (c is TOKEN_EOF)
             THROW_SYNTAX_ERR("error while getting literal string, awaiting double quote");
 
-          if (c is TOKEN_DQUOTE) {
+          if (c is chr) {
             if (pc is TOKEN_ESCAPE_CHR) {
               String.clear_at (str, -1);
               String.append_byte (str, c);
@@ -1832,7 +1814,7 @@ static int la_do_next_token (la_t *this, int israw) {
 
         TOKENVAL = v;
       } else {
-        err = la_consume_string (this, NULL);
+        err = la_consume_string (this, c);
         THROW_ERR_IF_ERR(err);
       }
 
@@ -3968,17 +3950,14 @@ static int la_parse_string (la_t *this, la_string str) {
 
   for (;;) {
     NEXT_TOKEN();
-    c = TOKEN;
 
-    while (c is TOKEN_NL or c is TOKEN_SEMICOLON) {
+    while (TOKEN is TOKEN_NL or TOKEN is TOKEN_SEMICOLON)
       NEXT_TOKEN();
-      c = TOKEN;
-    }
 
-    if (c < 0) break;
+    if (TOKEN < 0) break;
 
     do_token:
-    if (c is UFUNC_TYPE) {
+    if (TOKEN is UFUNC_TYPE) {
       c = la_next_char (this);
       if (c isnot TOKEN_PAREN_OPEN)
         TOKEN = TOKEN_VAR;
@@ -3988,9 +3967,7 @@ static int la_parse_string (la_t *this, la_string str) {
 
     if (r isnot LA_OK) return r;
 
-    c = TOKEN;
-
-    if (c is TOKEN_NL or c is TOKEN_SEMICOLON or c < 0)
+    if (TOKEN is TOKEN_NL or TOKEN is TOKEN_SEMICOLON or TOKEN < 0)
       continue;
     //else
     goto do_token; // this is experimental (allow multiply statements in a single line)
@@ -4827,6 +4804,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
 static int la_parse_boolean_stmt (la_t *this, int tok) {
   int err;
+
   size_t len = GETSTRLEN(PARSEPTR);
   const char *Ptr = GETSTRPTR(PARSEPTR);
   const char *ptr = Ptr;
@@ -5096,6 +5074,11 @@ do_token:
             }
 
             la_free (this, symbol->value);
+        }
+
+        if (val.type is STRING_TYPE and val.sym isnot NULL) {
+          VALUE v = val;
+          val = la_copy_value (v);
         }
       }
 
@@ -5549,7 +5532,11 @@ static int la_parse_if (la_t *this) {
   int haveelse = 0;
   int haveelif = 0;
 
+  la_string savepc;
+
   if (TOKEN is TOKEN_ELSE) {
+    savepc = PARSEPTR;
+
     NEXT_TOKEN();
 
     if (TOKEN isnot TOKEN_IF and TOKEN isnot TOKEN_IFNOT) {
@@ -5577,6 +5564,7 @@ static int la_parse_if (la_t *this) {
   if (is_true) {
     err = la_parse_string (this, ifpart);
     if (haveelif) {
+      PARSEPTR = savepc;
       int e = la_consume_ifelse (this);
       if (e isnot LA_OK) err = e;
     }
@@ -8708,6 +8696,12 @@ theend:
   return result;
 }
 
+static VALUE la_eval (la_t *this, VALUE v_str) {
+  ifnot (IS_STRING(v_str))  C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *str = AS_STRING_BYTES (v_str);
+  return INT(la_eval_string (this, str));
+}
+
 static struct def {
   const char *name;
   int toktype;
@@ -8806,6 +8800,7 @@ static struct deftype {
 
 LaDefCFun la_funs[] = {
   { "len",              PTR(la_len), 1},
+  { "eval",             PTR(la_eval), 1},
   { "fopen",            PTR(la_fopen), 2},
   { "fflush",           PTR(la_fflush), 1},
   { "fclose",           PTR(la_fclose), 1},

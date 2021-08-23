@@ -87,7 +87,7 @@ static VALUE dir_list (la_t *this, VALUE v_dir) {
     return ARRAY(array);
   }
 
-  dirlist_t *dlist = Dir.list (dir, DIRLIST_LONG_FORMAT);
+  dirlist_t *dlist = Dir.list (dir, 0);
   if (NULL is dlist)
     return NULL_VALUE;
 

@@ -4,20 +4,22 @@ import ("sys")
 import ("os")
 import ("sh")
 
-const PACKMAN_NO_VERBOSE      = 0
-const PACKMAN_VERBOSE         = 1
+const PACKMAN_NO_VERBOSE         = 0
+const PACKMAN_VERBOSE            = 1
 
-const PACKMAN_SOURCE_ARCHIVE  = 0
-const PACKMAN_SOURCE_REPO     = 1
+const PACKMAN_SOURCE_ARCHIVE     = 0
+const PACKMAN_SOURCE_REPO        = 1
 
-const PACKMAN_BUILD_EXTRACT   = 0
-const PACKMAN_BUILD_COPY      = 1
-const PACKMAN_BUILD_PATCH     = 2
-const PACKMAN_BUILD_CONFIGURE = 3
-const PACKMAN_BUILD_MAKE      = 4
-const PACKMAN_BUILD_INSTALL   = 5
+const PACKMAN_BUILD_EXTRACT      = 0
+const PACKMAN_BUILD_COPY         = 1
+const PACKMAN_BUILD_PATCH        = 2
+const PACKMAN_BUILD_CONFIGURE    = 3
+const PACKMAN_BUILD_MAKE         = 4
+const PACKMAN_BUILD_MAKE_INSTALL = 5
+const PACKMAN_BUILD_USER_COM     = 6
+const PACKMAN_BUILD_EVAL         = 7
 
-var LAST_TYPE = PACKMAN_BUILD_INSTALL
+var LAST_TYPE = PACKMAN_BUILD_EVAL
 
 Type PackmanBuild {
 private
@@ -122,7 +124,6 @@ private
   "git_exec"    : Sys.which ("git")
   "clone_args"  : "clone"
   "pull_args"   : "pull"
-  "cp_exec"     : Sys.which ("cp")
   "verbose"     : PACKMAN_VERBOSE
   "spec_dir"    : Sys.get ("DATADIR") + "/Packman/specs"
   "sources_dir" : Sys.get ("DATADIR") + "/Packman/sources"
@@ -226,11 +227,6 @@ private
   }
 
   "copy_sources" : func () {
-    if (null is this.cp_exec) {
-      println (stderr, "the cp executable couln't been found")
-      return notok
-    }
-
     if (null is this.spec.sources) {
       println (stderr, "sources property hasn't been set")
       return notok
@@ -245,10 +241,9 @@ private
       return notok if this.fetch_sources () is notok
     }
 
-    var retval = this.sh:exec (this.cp_exec + " -r -u " +
-        this.sources_dir +  "/" + this.spec.sources + " .")
+    return (this.sources_dir + "/" + this.spec.sources): file_copy (
+       "."; { "force" : 1, "recursive" : 1, "update" : 1, "verbose" : 1})
 
-    return if retval is 0 then ok orelse notok
   }
 
   "change_to_build_dirname" : func {
@@ -367,7 +362,7 @@ public
 
     if (this.verbose is true) {
       println ("Building " + this.spec.name)
-      if (this.spec.descr isnot null) { println (this.spec.descr) }
+      if this.spec.descr isnot null then println (this.spec.descr)
     }
 
     loop (1) {
@@ -391,14 +386,57 @@ public
           break 2 if notok is this.change_to_build_dirname ()
         }
 
+        if (action.type is PACKMAN_BUILD_CONFIGURE) {
+          var com = "./configure"
+          ifnot (null is action.command) then
+            com += format (" ${%s, format (action.command)}")
+
+          if (this.sh:exec (com) isnot 0) {
+            println (stderr, "error while executing command: ${%s, com}")
+            break 2
+          }
+
+          continue
+        }
+
+        if (action.type is PACKMAN_BUILD_MAKE) {
+          var com = this.make_exec;
+          ifnot (null is action.command) then
+            com += format (" ${%s, format (action.command)}")
+
+          if (this.sh:exec (com) isnot 0) {
+            println (stderr, "error while executing command: ${%s, com}")
+            break 2
+          }
+
+          continue
+        }
+
+        if (action.type is PACKMAN_BUILD_MAKE_INSTALL) {
+          var com = this.make_exec + " install";
+          ifnot (null is action.command) then
+            com += format (" ${%s, format (action.command)}")
+
+          if (this.sh:exec (com) isnot 0) {
+            println (stderr, "error while executing command: ${%s, com}")
+            break 2
+          }
+
+          continue
+        }
+
         continue if action.command is null
+
+        if (action.type is PACKMAN_BUILD_EVAL) {
+          break 2 ifnot 0 is (eval (action.command));
+          continue
+        }
 
         var com = format ("${%s, format (action.command)}")
         if (this.sh:exec (com) isnot 0) {
           println (stderr, "error while executing command: ${%s, com}")
           break 2
         }
-
       }
 
       retval = ok
