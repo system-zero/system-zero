@@ -378,6 +378,7 @@ func semantics () {
 
   var xi = [1, 10, 20, 30, 40]
   retval = loop_test_continue (xi)
+
   assert_true ("testing continue statement", retval is 81)
 
   var ifsum = 0
@@ -419,10 +420,40 @@ func semantics () {
   dalida (100000)
   var dt = dada
 
-  assert_true ("testing boolean return",
-    df is 1000 and
-    ds is 1000 and
-    dt is 100000000)
+  var rval = 20
+  func rfunc (x) {
+    return if x is 10
+    rval += x
+  }
+
+  rfunc (100)
+  rfunc (10)
+  var rval1 = rval
+
+  func rfunc1 (x) {
+    return x if x is 10
+    return rval if x is 100
+    var r = x * 20
+    return r if x is 200
+    return r
+  }
+
+  func rfunc2 (x) {
+    return if x is 10 then x * 100 orelse x * 10
+  }
+
+  assert_true ("testing return statement",
+      rval is 120 and
+      rval1 is 120 and
+      rfunc1 (10) is 10 and
+      rfunc1 (100) is 120 and
+      rfunc1 (200) is 4000 and
+      rfunc1 (20) is 400 and
+      rfunc2 (10) is 1000 and
+      rfunc2 (1000) is 10000 and
+      df is 1000 and
+      ds is 1000 and
+      dt is 100000000)
 
   var sum = lambda {
     var s = 0
@@ -1936,10 +1967,22 @@ func invalid_memory_read_tests {
     p (f)
   }
 
+  func invalid_memory_read_tests5 {
+    var sb = "asd"
+    var sa = sb
+    sb = "bbb"
+    func s (x) {
+      return "xa" if x isnot null
+    }
+
+    var x = s (sb)
+  }
+
   invalid_memory_read_tests1 ()
   invalid_memory_read_tests2 ()
   invalid_memory_read_tests3 ()
   invalid_memory_read_tests4 ()
+  invalid_memory_read_tests5 ()
 }
 
 if (run_invalid_memory_read_tests and run_fileptr_tests) {

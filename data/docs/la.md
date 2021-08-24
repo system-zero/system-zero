@@ -137,7 +137,7 @@ The following is an early draft, but looks quite close to the final reference.
   so this is linear.
 
   The mechanism doesn't create a new scope, as it happens with all the
-  loops and block delimited conditionals which they have to do (because
+  loops and block delimited conditionals, which they have to do (because
   they have to manage their local symbols and to resolve them properly,
   and release them at exit).
 
@@ -471,31 +471,6 @@ The following is an early draft, but looks quite close to the final reference.
   the first character capitalized. This Map should expose the functions as its
   methods.
 
-# print functions syntax:
-
-  print[ln] ([file pointer object], "string ${expression} ...")
-
-  file pointer can be either `stdout` or `stderr`, or any file pointer object
-  that has been created with the fopen() function:
-
-    var fp = fopen (filename, mode)  # same semantics with C
-
-  Without a file pointer argument, default is to redirect to the standard output.
-
-  interpolation expression syntax:
-
-    ${[%directive], symbol or expression}
-
-    - a directive can be optional and can be any of the followings:
-      - %d as a decimal (this is the default, so it can be omited)
-      - %s as a string
-      - %p as a pointer address
-      - %o as an octal (0 (zero) is prefixed in the output)
-      - %x as a hexadecimal (0x is prefixed in the output)
-      - %f as a double
-
-# the `println()` function is like `print`, but also emits a new line character.
-
 # Arrays
   Array declaration:
 
@@ -649,6 +624,73 @@ The following is an early draft, but looks quite close to the final reference.
     in this case 'k' holds the key of the map, and 'v' its associated value.
     Note, since a Map is an unordered list, there is no guarrantee of the order.
 
+# Strings
+
+  String literal are delimeted by double quotes ('"') or back quotes ('`').
+
+  Both are multi-line strings but the difference is that double qouted strings
+  are subject for backslash substitution.
+
+  In that case the characters are interpeted like:
+
+    \a  bell character
+    \b  backspace character
+    \t  tab character
+    \n  new line character
+    \r  carriage return
+    \e  escape character
+    \f  linefeed character
+    \v  vertical tab
+    \\  backslash itself
+    \"  to appear a double quote in double quoted strings
+    \`  to appear a back quote in back quoted strings
+
+  Loop over strings.
+    Two special forms of the `for` loop, can be used as an iterator that can
+    loop over strings:
+
+    First form is iteration over the bytes:
+
+      for |c| in str { block }
+
+      in this case 'c' holds the integer value of the underlying byte.
+
+    Second form is iteration over the characters:
+
+      for |c, b, w| in str { block }
+
+      in this case 'c' holds the integer value of the underlying byte,
+      while 'b' holds the string representation and 'w' holds the cell
+      width of the character.
+
+  Print functions syntax:
+
+    print[ln] ([file pointer object], "string ${expression} ...")
+
+    file pointer can be either `stdout` or `stderr`, or any file pointer object
+    that has been created with the fopen() function:
+
+      var fp = fopen (filename, mode)  # same semantics with C
+
+    Without a file pointer argument, default is to redirect to the standard output.
+
+    interpolation expression syntax:
+
+      ${[%directive,] symbol or expression}
+
+      A directive can be optional and can be any of the followings:
+        - %d as a decimal
+        - %s as a string
+        - %p as a pointer address
+        - %o as an octal (0 (zero) is prefixed in the output)
+        - %x as a hexadecimal (0x is prefixed in the output)
+        - %f as a double
+
+    Without a given directive, then it is determinated by the underlying type
+    of the value.
+
+    The `println()` function is like `print`, but also emits a new line character.
+
 # Qualifiers
   The language supports a mechanism to pass additional information to functions,
   called `qualifiers`, which has been copied by the SLang Programming Language,
@@ -726,24 +768,6 @@ The following is an early draft, but looks quite close to the final reference.
 
   Declared fields are not obligated to provide a value on declaration
   time. In this case these properties are initialized as `null`.
-
-# Strings
-  Two special forms of the `for` loop, can be used as an iterator that can
-  loop over strings:
-
-  First form is iteration over the bytes:
-
-    for |c| in str { block }
-
-    in this case 'c' holds the integer value of the underlying byte.
-
-  Second form is iteration over the characters:
-
-    for |c, b, w| in str { block }
-
-    in this case 'c' holds the integer value of the underlying byte,
-    while 'b' holds the string representation and 'w' holds the cell
-    width of the character.
 
 # If As Expression
 
@@ -877,6 +901,54 @@ The following is an early draft, but looks quite close to the final reference.
   The sure thing is that it is quite expressive way to write code, without
   overcomplications.
 
+The return statement
+
+  A return may appear in a function to return control to the caller of the function.
+
+  A single return that is followed by a semicolon or a new line it breaks execution
+  but returns no value. In that case the returned value of the function call is null.
+
+  The second form:
+
+    return expression
+
+    in this case returns the value of expression
+
+  The third form:
+
+    return if[not] expression
+
+    in this case it returns only if the expression is evaluated to true, again
+    without a specific value
+
+  The fourth form:
+
+    return single-token-value if[not] expression
+
+    in this case returns the value of single-token-value only if the expression
+    is evaluated to true. Note that a map property or method, or an array item
+    it is not a single token value. These are not valid:
+
+      return map.prop if true
+      return array[0] if true
+
+    also note that that an `if expression` is a valid value for return:
+
+      return if true then 1 orelse 2
+
+    or to get a map property:
+
+      return map.$(if true then "thisprop" orelse "thatprop")
+
+    or to get an array element:
+
+      return array[ifnot true then 0 orelse 1]
+
+    and those are the reasons for the requirenment for the last form, to be
+    followed by a single token. Otherwise there is no way to determinate
+    where the expression could stop, other than to evaluate the expression.
+    But the expression should be evaluated only if the condition is true,
+    and not beforehand.
 ```
 
 ## keywords and Operators (reserved keywords):
