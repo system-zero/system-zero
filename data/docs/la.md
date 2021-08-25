@@ -49,8 +49,7 @@ The following is an early draft, but looks quite close to the final reference.
   var i = 0
   var double = 1.1
 
-  - a variable should be initialized at declaration time (in absence of a useful
-    value, it can be initialized as `null`).
+  If a variable is not initialized at declaration time, it is initialized as null.
 
 # Function declaration
 
@@ -58,11 +57,11 @@ The following is an early draft, but looks quite close to the final reference.
     return arg * 2
   }
 
- # this is synonymous with the above
+  the following is synonymous
 
-   var name = func (arg) {
-     return arg * 2
-   }
+  var name = func (arg) {
+    return arg * 2
+  }
 
 # A function can be used as an argument to a function
 
@@ -85,7 +84,7 @@ The following is an early draft, but looks quite close to the final reference.
     var a = 10 var b = "a" println (b) if (a) { b = "b" }
 
   while the above is legal and it is being parsed correctly (four statements),
-  this, it isn't:
+  this it isn't:
 
     var a = 10 var b = "a" println (b) if (a) { b = "b" } println (b)
 
@@ -403,73 +402,6 @@ The following is an early draft, but looks quite close to the final reference.
     } (50, 100)
 
     println ("${r}") => 650
-
-# loadfile syntax and semantics:
-
-  loadfile ("fname")
-
-  If `fname` is not an absolute path, then it is relative to the current
-  evaluated unit. If that fails, then it is relative to the current directory,
-  else it is relative to the `__loadpath` intrinsic string array variable. If
-  the unit couldn't be found, then an error terminates execution.
-
-# evalfile syntax and semantics:
-
-  var val = evalfile ("fname")
-
-  evalfile is like loadfile, with some differences described below.
-
-  Files that are loaded with `evalfile` always reevaluated, thus they can
-  provide different code.
-
-  Such units should provide a return statement that return a value, like they
-  were functions.
-
-  This is like Lua:
-
-    var m = {}
-    m.f = func (...) { ... }
-    return m
-
-  Such units are always freed after evaluation, so they should return memory
-  managment types that survive from the releasing.
-
-# import syntax and semantics:
-
-  import ("modulename")
-
-  If `modulename` is not an absolute path, then it is relative to the current
-  evaluated unit. If that fails, then it is relative to the current directory,
-  else it composed in turn with the members of the `__importpath` intrinsic
-  string array variable.
-  If after the search, it couldn't be found then an import error terminates execution.
-
-  The imported compiled module name is composed as `modulename`-module.so.
-  A compatible unit should provide two functions with the following signatures:
-
-    1. public int __init_modulename_module__ (la_t *);
-    2. public void __deinit_modulename_module__ (la_t *);
-
-  For convienence and at the top of the compilation unit, could be used the
-  following:
-
-    #define REQUIRE_LA_TYPE DECLARE
-    #include <z/cenv.h>
-
-  And then to the __init_modulename_module__(la_t *this) public function, the
-  following macro:
-
-    __INIT_MODULE(this);
-
-  Note that for static builds the `import` function is still available, but it
-  only checks if the desired interface has been exposed to the interpreter, thus
-  it should include any desirable module on build time, and the initialization 
-  for the module, should be done at runtime after any new instance. The `__importpath`
-  intrinsic variable is still available but has no effect on static builds.
-
-  Modules should expose a MapType with the same name with the module name, with
-  the first character capitalized. This Map should expose the functions as its
-  methods.
 
 # Arrays
   Array declaration:
@@ -949,6 +881,74 @@ The return statement
     where the expression could stop, other than to evaluate the expression.
     But the expression should be evaluated only if the condition is true,
     and not beforehand.
+
+# loadfile syntax and semantics:
+
+  loadfile ("fname")
+
+  If `fname` is not an absolute path, then it is relative to the current
+  evaluated unit. If that fails, then it is relative to the current directory,
+  else it is relative to the `__loadpath` intrinsic string array variable. If
+  the unit couldn't be found, then an error terminates execution.
+
+# evalfile syntax and semantics:
+
+  var val = evalfile ("fname")
+
+  evalfile is like loadfile, with some differences described below.
+
+  Files that are loaded with `evalfile` always reevaluated, thus they can
+  provide different code.
+
+  Such units should provide a return statement that return a value, like they
+  were functions.
+
+  This is like Lua:
+
+    var m = {}
+    m.f = func (...) { ... }
+    return m
+
+  Such units are always freed after evaluation, so they should return memory
+  managment types that survive from the releasing.
+
+# import syntax and semantics:
+
+  import ("modulename")
+
+  If `modulename` is not an absolute path, then it is relative to the current
+  evaluated unit. If that fails, then it is relative to the current directory,
+  else it composed in turn with the members of the `__importpath` intrinsic
+  string array variable.
+  If after the search, it couldn't be found then an import error terminates execution.
+
+  The imported compiled module name is composed as `modulename`-module.so.
+  A compatible unit should provide two functions with the following signatures:
+
+    1. public int __init_modulename_module__ (la_t *);
+    2. public void __deinit_modulename_module__ (la_t *);
+
+  For convienence and at the top of the compilation unit, could be used the
+  following:
+
+    #define REQUIRE_LA_TYPE DECLARE
+    #include <z/cenv.h>
+
+  And then to the __init_modulename_module__(la_t *this) public function, the
+  following macro:
+
+    __INIT_MODULE(this);
+
+  Note that for static builds the `import` function is still available, but it
+  only checks if the desired interface has been exposed to the interpreter, thus
+  it should include any desirable module on build time, and the initialization 
+  for the module, should be done at runtime after any new instance. The `__importpath`
+  intrinsic variable is still available but has no effect on static builds.
+
+  Modules should expose a MapType with the same name with the module name, with
+  the first character capitalized. This Map should expose the functions as its
+  methods.
+
 ```
 
 ## keywords and Operators (reserved keywords):

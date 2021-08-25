@@ -471,6 +471,7 @@ typedef struct tokenState {
 } while (0)
 
 #define PEEK_NTH_BYTE(_n_) la_peek_byte (this, _n_)
+#define PEEK_NTH_TOKEN(_n_) la_peek_token (this, _n_)
 #define NEXT_BYTE_NOWS_INLINE_N(_n_) la_next_byte_nows_inline_n (this, _n_)
 #define NEXT_BYTE_NOWS_NONL() la_next_byte_nows_nonl (this)
 #define NEXT_BYTE_NOWS_NONL_N(_n_) la_peek_byte_nows_nonl_n (this, _n_)
@@ -3629,9 +3630,8 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     if (0 is is_this or this->objectState & MAP_ASSIGNMENT) {
       *vp = la_copy_map (*v);
     } else {
-      if (v->sym isnot NULL and
-          is_this and this->funcState & RETURN_STATE and
-          0 is (this->funcState & EXPR_LIST_STATE)) {
+      if (v->sym isnot NULL and is_this and this->funcState & RETURN_STATE
+           and 0 is (this->funcState & EXPR_LIST_STATE)) {
         vp->refcount++;
         this->objectState |= MAP_MEMBER;
       }
@@ -4515,7 +4515,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       if (TOKEN isnot TOKEN_THEN) {
         if (TOKEN is TOKEN_NL or TOKEN is TOKEN_SEMICOLON) {
-          if (la_peek_token (this, 0) isnot TOKEN_THEN) {
+          if (PEEK_NTH_TOKEN(0) isnot TOKEN_THEN) {
             if (this->funcState & RETURN_STATE) {
               HASTORETURN = AS_INT(CONDVAL);
               *vp = NULL_VALUE;
@@ -5001,6 +5001,7 @@ do_token:
         THROW_SYNTAX_ERR("can not redefine a standard symbol");
 
       sym = ns_lookup_symbol (this->datatypes, key);
+
       ifnot (NULL is sym) {
         TOKENSYM = sym;
         int (*func) (la_t *) = AS_VOID_PTR(sym->value);
@@ -5010,12 +5011,12 @@ do_token:
         if (TOKEN is TOKEN_COMMA) {
           uint n = 0;
           c = NEXT_BYTE_NOWS_INLINE_N(&n);
-          if (c  is TOKEN_NL) {
+          if (c is TOKEN_NL) {
             for (uint i = 0; i <= n; i++)
               IGNORE_NEXT_BYTE;
           }
 
-          TOKEN = TOKEN_VARDEF;
+          TOKEN = prev_token;
           goto do_token;
         }
 
@@ -5026,22 +5027,31 @@ do_token:
 
       sym = ns_lookup_symbol (scope, key);
 
-      VALUE v = INT(0);
-      int type = INTEGER_TYPE;
-
       ifnot (NULL is sym)
         THROW_SYNTAX_ERR("can not redeclare a symbol in this scope");
-      else if (is_const) {
-        type = NULL_TYPE;
-        v = NULL_VALUE;
-      }
 
-      TOKENSYM = la_define_symbol (this, scope, key, type, v, is_const);
-      this->scopeState = 0;
+      VALUE v = NULL_VALUE;
+
+      TOKENSYM = la_define_symbol (this, scope, key, v.type, v, is_const);
 
       if (NULL is TOKENSYM)
         THROW_SYNTAX_ERR("unknown error on declaration");
 
+      int token = PEEK_NTH_TOKEN(0);
+      if (token isnot TOKEN_ASSIGN) {
+        if (token is TOKEN_COMMA) {
+          NEXT_TOKEN();
+          TOKEN = prev_token;
+          goto do_token;
+        }
+
+        if (token is TOKEN_NL) {
+          NEXT_TOKEN();
+          return LA_OK;
+        }
+      }
+
+      this->scopeState = 0;
       c = TOKEN_VAR;
       /* fall through */
     }
@@ -5227,7 +5237,13 @@ do_token:
 
     case TOKEN_BUILTIN:
     case UFUNC_TYPE:
-      return la_parse_primary (this, &val);
+      err = la_parse_primary (this, &val);
+      THROW_ERR_IF_ERR(err);
+
+      if (val.sym is NULL) // plain function call without reason
+        la_release_val (this, val);
+
+      return err;
 
     case TOKEN_COMMA:
       NEXT_TOKEN();
@@ -5521,7 +5537,7 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
 
   consume_orelse:
   this->curState |= CONSUME;
-  int nc = la_peek_token (this, 0);
+  int nc = PEEK_NTH_TOKEN(0);
   if (nc is TOKEN_PAREN_CLOS or nc is TOKEN_INDEX_CLOS) {
     RESTORE_TOKENSTATE(save);
     goto theend;
@@ -7735,7 +7751,7 @@ static int la_parse_return (la_t *this) {
   if (NULL is scope)
     THROW_SYNTAX_ERR("error while parsing return, unknown scope");
 
-  int token = la_peek_token (this, 0);
+  int token = PEEK_NTH_TOKEN(0);
 
   if (token is TOKEN_IF or token is TOKEN_IFNOT ) {
     tokenState save = SAVE_TOKENSTATE();
@@ -7774,12 +7790,7 @@ static int la_parse_return (la_t *this) {
     if (this->objectState & MAP_MEMBER) {
       scope->result.refcount++;
       this->objectState &= ~MAP_MEMBER;
-    } else {
-      fprintf (stdout, "refcount sym null %d %d %d\n",
-         scope->result.sym is NULL,
-         scope->result.type,
-         scope->result.refcount);
-    } 
+    }
   }
 
 theend:

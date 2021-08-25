@@ -1971,11 +1971,23 @@ func invalid_memory_read_tests {
     var sb = "asd"
     var sa = sb
     sb = "bbb"
+
     func s (x) {
       return "xa" if x isnot null
     }
 
-    var x = s (sb)
+    s (sb)
+
+    func sm () {
+      return {"g" : 1}
+    }
+
+    sm ()
+    func sa () {
+      return [1, 2]
+    }
+
+    sa ()
   }
 
   invalid_memory_read_tests1 ()
