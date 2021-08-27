@@ -3,7 +3,7 @@ var archive = "Linux-PAM"
 var version = "1.5.1"
 var spec = New PackmanSpec (name)
 spec.set.descr ("Pluggable Authentication Modules Library")
-spec.set.version ("1.5.1")
+spec.set.version (version)
 spec.set.build_dirname (archive + "-" + version)
 spec.set.extension ("tar.xz")
 spec.set.archive (spec.get.build_dirname () + "." + spec.get.extension ())

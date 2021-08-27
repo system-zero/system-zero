@@ -91,17 +91,17 @@ public
       "DESCRIPTION      : " + this.descr + "\n" +
       "VERSION          : " + this.version + "\n" +
       "LICENSE          : " + this.license:
-        when |x| x isnot null { return x } orelse { return "" } + "\n" +
-     "HOME URL         : " + this.home:
-        when |x| x isnot null { return x } orelse { return "" } + "\n" +
+        if x isnot null then x orelse "" end + "\n" +
+      "HOME URL         : " + this.home:
+        if x isnot null then x orelse "" end + "\n" +
       "REPOSITORY       : " + this.repo:
-        when |x| x isnot null { return x } orelse { return "" } + "\n" +
+        if x isnot null then x orelse "" end + "\n" +
       "ARCHIVE          : " + this.archive:
-        when |x| x isnot null {
-          return x + if (packman.get.sources_dir () + "/" + this.archive): file_exists ()
-             then " exists in the filesystem"
-             orelse + " doesn't exists in the filesystem"
-        } orelse { return "" }
+          if x is null then ""
+          orelse x +
+            if (packman.get.sources_dir () + "/" + this.archive): file_exists ()
+              then " exists in the filesystem"
+              orelse " doesn't exists in the filesystem" end
 
      println (msg)
 

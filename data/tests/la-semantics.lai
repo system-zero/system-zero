@@ -1117,7 +1117,7 @@ func semantics () {
 
       var ii = 12345678
       assert_true ("testing integer to string convertions",
-          Integer.to_string (ii, 2) is "00000000101111000110000101001110" and
+          Integer.to_string (ii, 2) is "0b00000000101111000110000101001110" and
           Integer.to_string (ii, 8) is "057060516" and
           Integer.to_string (ii, 10) is "12345678" and
           Integer.to_string (ii, 16) is "0xbc614e")
@@ -1819,7 +1819,7 @@ func chains {
       ii is "111" and
       dd is 'a' and
       cc is "040" and
-      bb is "00100000" and
+      bb is "0b00100000" and
       hh is "0x20" and
       oo is "040" and
       ll is 42)
@@ -1906,6 +1906,18 @@ func valgrind_tests () {
   var assa = aras[0] + "x"
   var masa = {"k" : "masa"}
   var asma = masa.k + " tsagga"
+
+  func c () {
+    return "ok" if "asdf" is "asdf"
+  }
+
+  c ()
+
+  func d () {
+    return if "notok" is "notok" then "ok" orelse "notok"
+  }
+
+  d ()
 }
 
 if (run_valgrind_tests) {

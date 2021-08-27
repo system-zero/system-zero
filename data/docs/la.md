@@ -18,7 +18,7 @@ few.
 The referent interpreter is being used in two cases internally in this system.
 This is to support saving and restore editor sessions and virtual window managment
 sessions, which by alone already is precious. It is being used also to implement
-commands.
+commands and to write libraries for itself.
 
 The syntax and the semantics of the language, should feel familiar with already
 established programming languages consepts, and should obey the principle of the
@@ -39,6 +39,264 @@ intentional and expressional language, that imitates the human mind and using
 human expressions. And this is a main focus.
 
 The following is an early draft, but looks quite close to the final reference.
+
+## Basic
+
+DataTypes:
+  - StringType (with UTF8 support)
+  - IntegerType (as wide as ptrdiff_t)
+  - NumberType (double)
+  - ArrayType
+  - MapType
+  - ObjectType (C objects)
+  - User Defined Functions
+  - C Functions
+
+Comment.
+  Single line comments that start with ('#') and end up to the end of the line.
+
+## Syntax and Semantics
+
+  First the established C way, with some differences explained inline:
+
+```js
+
+  var v;
+  # or
+  var c
+  # both are valid. A new line denotes the end of a statement, based on the
+  # context, thus they can spawn into multiply lines. A semicolon explicitly
+  # ends a statement. Multiline statements in one line without a semicolon
+  # at the end, may work most of the time, but there are a couple of obvious
+  # ambiquities, thus are not guarranteed. However this is valid:
+
+  var a = 10 var b = "a" println (b) if (a) { b = "b" }
+
+  # are four statements, that parsed correctly, but if in doubt you may use
+  # a semicolon as a separator.
+
+  # If a variable is not initialized with some value at the declaration time,
+  # it is initialized with the `null` value, thus `v' and `c' right now they
+  # have the value of `null`
+
+  v = 1
+
+  # thus a variable can be reassigned with a new value, unless it is declared
+  # as `const`. Symbols are associated with a value but do not have types, just
+  # the type of the associated value.
+
+  const vv = 1
+
+  # this should not change value from now on.
+  # As you may not know the value of a constant, it may leave it uninitialized,
+  # untill the first time that will be initialized with value other than `null`.
+
+  # You can assign multiply variables, with a single `var`.
+  var xxx,
+      yyy,
+      ccc;
+
+  func name (arg) {
+    return arg * 2
+  }
+
+  # this is a function declaration. Functions do not have types, arguments are
+  # typeless.
+
+  # Note:
+  # All the blocks are delimited with a pair of braces '{}' and are mandatory,
+  # for this basic interface at least.
+
+  # You can associate a function with a symbol.
+  var funname = func (arg) {
+    return arg * 2
+  }
+
+  # A function can be used as an argument to a function
+  func ref (y) { return y * 2 }
+  func fun (f, y) { return f (y) }
+
+  fun (ref, 11)  # => 22
+
+  # A function without an argument list can be declared as:
+  func fu { println (fun (ref, 22)) }
+  fu () # it will print 42 and a new line at the end, unlike the `print`
+        # function that do not, otherwise behaves like `println`.
+
+  # functions can be nested in arbritary level:
+  func fuc (a, b, c) {
+    func fud (a, b, c) {
+      return a + b + c
+    }
+
+    return fud (a, b, c)
+  }
+
+  # functions can call themeselves:
+
+  func fibo_tail (n, a, b) {
+    ifnot (n) { return a }
+    # the language supports an `ifnot` conditional, which evaluates to true
+    # when the expression is zero
+
+    if (n == 1) { return b }
+
+    return fibo_tail (n - 1, b, a + b)
+  }
+
+  println (fibo_tail (92, 0, 1)) # => 7540113804746346429
+
+  # or
+
+  func fibo_recursive (n) {
+    if (n < 2) { return n }
+    return fibo_recursive (n - 1) + fibo_recursive (n - 2)
+  }
+
+  println (fibo_recursive (12)) # => 144
+  # however the stack can easily exhausted with some thousands calls.
+
+  # classic C
+
+  # if/else if/else
+  func ifelseif (x) {
+    if (x == "x") {
+      return "x"
+    } else if (x == "y") {
+      return "y"
+    } else {
+      return "xy"
+    }
+  }
+
+  println (ifelseif ("")) # => xy
+
+  # for
+  var sum = 1
+  func forfun (x) {
+    for (var i = 0; i < x; i += 1) {
+      sum += i
+    }
+  }
+
+  println (forfun (10)) # this it will print (null) as the function it
+  # didn't return a value, and in those cases the default value is `null`.
+  # now print the sum
+  println (sum) # => 46
+
+  # likewise the while:
+
+  sum = 1
+  func forwhile (x) {
+    var i = 0
+    while (i < x) {
+      sum += i
+      i += 1
+    }
+  }
+
+  println (sum) # => 46
+
+  # or the do/while
+  func forwhiledo (x) {
+    var i = 0
+    do {
+      sum += i
+      i += 1
+    }  while (i < x)
+  }
+
+  print ("all the results should be ${sum}\n")
+  # here we saw that the print functions can use interpolation syntax
+  # for formated strings, By default it determinate the convertion based
+  # on the type of the value. But directives can be used for specific requests.
+
+  var damap = {"key" : 1, "second" : "two" }
+  println ("${%p, damap}") # it will print a hexadecimal address of the value
+  # of damap
+
+  # A map can have private fields and other properties, which belong thought
+  # to the extended interface.
+
+  # Arrays however are straight forward
+
+  var ar = ["a", "b"] # StringType array with two members
+
+  # there is another way and it is being used when you want to initialize the
+  # array later. In that case though the size should be known beforehand to C,
+  # because it needs to allocate resources.
+  var integer[4] intar
+  # simply creates an integer array with four elements. By default the value
+  # of an integer array element is initialized to 0, 0.0 for double arrays,
+  # an empty string for strings and null for other datatypes.
+
+  # now it can be fullfiled
+  for (var i = 0; i < len (intar); i += 1) {
+    intar[i] = i
+  }
+
+  # here we've used the `len` C native function, that returns the length
+  # of the datatypes. In that case it is the number of elements of the array,
+  # for strings is the number of bytes, for maps is the number of keys.
+
+  for (var i = 0; i < len (intar); i += 1) {
+    println (intar[i])
+    # here we see that for single values the print functions do not require
+    # double quotes around the argument, neither a special syntax.
+
+    # Also we saw how to access array elements, which is the exact C way.
+  }
+
+  # the same can be written more compactly like:
+  for |v| in intar { println (v) }
+  # but this kind of loop belong to the extended interface
+
+  # The same exact C way to access structures is being used for accessing maps:
+
+  var dumkey = damap.key
+
+  # and since a map member can be a function, it can be called like a function
+  # pointer:
+
+  var m = { "double_it" : func (x) { return x * 2 }, "sum" : 1}
+  println (m.double_it (20))
+
+  # But how can you access the other map members through those methods, when
+  # there isn't a function argument that points to self map?
+  # Most interpreted Languages unlike C, that it is a requirenment to declare
+  # the structure (usually as the first argument), they push this structure
+  # as the first argument. Some they refer to this object as self, some as
+  # this. We use this. Here how it is being used:
+
+  m.sumfun = func (x) { this.sum += x }
+  m.sumfun (10); println (m.sum) # => 11
+
+  # the `this` keyword has only sence for map methods.
+
+  ## this is the end of the first draft. Left to do:
+
+  # Logical operations (briefly the same exact C way)
+  # Bitwise operations (briefly the same exact C way)
+  # Import C code (briefly the same way as other Interpreted Languages)
+  # LoadFile with code (basically the same way)
+```
+And that is the first draft about the first basic interface that resembles the
+C way, with the obvious differences, basically the absent of type declarations.
+
+The other section that needs to be written it is more `functional` kind of operations.
+Again this is quite basic, and should be common concepts to everyone, with
+maybe a couple of new or refined ideas.
+
+Untill then, the following (which was the first document that has been produced
+during the phase of development in research to settle to syntax and semantics),
+it is still almost relevant, except the "when as expession section".
+This mechanism will (already implemented but not thoroughly tested) be replaced
+with the "if as expression".
+And the concepts are mixed.
+
+Finally and for the intention of this basic syntax and semantics.
+The idea is to be used as minimum code, that can be translated and
+executed by any language. And there are much more few than many, that cannot.
 
 ## Syntax and Semantics
 ```js
@@ -95,7 +353,6 @@ The following is an early draft, but looks quite close to the final reference.
   In any case multiply statements in a single line, it is a bad practice.
 
 # Conditionals:
-
 # `if` conditional: the block is executed if the condition is true
 
   if (condition) { statement[s]... }

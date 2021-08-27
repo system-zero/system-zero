@@ -32,7 +32,7 @@ var qualif = {
   "recursive"   : argparse.results.recursive
   "follow_lnk"  : argparse.results.follow_lnk
   "interactive" : argparse.results.interactive
-  "verbose"     : argparse.results.verbose: when |x| x is 0 { return 1 } orelse { return x + 1 }
+  "verbose"     : argparse.results.verbose: ifnot x then 1 orelse x + 1
 }
 
 if (argparse.argc < 2) {
@@ -48,7 +48,7 @@ var retval = ok
 
 for (var i = 0; i < argparse.argc - 1; i += 1) {
   retval = argparse.argv[i]: file_copy (destination; qualif)
-  exitval = retval: when |x| x is notok { return 1 } orelse { return exitval }
+  exitval = retval: if is notok then 1 orelse exitval
 }
 
 exit (exitval)

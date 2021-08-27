@@ -261,7 +261,17 @@ static VALUE string_character (la_t *this, VALUE v_c) {
 static VALUE string_to_integer (la_t *this, VALUE v_str) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-  return INT(atoi (AS_STRING_BYTES(v_str)));
+  char *str = AS_STRING_BYTES(v_str);
+  if (str[0] is '0') {
+    if (str[1] is 'b')
+      return INT(strtol (&str[2], NULL, 2));
+    else if (str[1] is 'x' or str[1] is 'X')
+      return INT(strtol(&str[2], NULL, 16));
+    else if (str[1] isnot '\0')
+      return INT(strtol(&str[1], NULL, 8));
+  }
+
+  return INT(atoi (str));
 }
 
 static VALUE string_to_number (la_t *this, VALUE v_str) {
@@ -317,6 +327,7 @@ static VALUE integer_to_string (la_t *this, VALUE v_int, VALUE v_base) {
         for (int i = 0; i < (64 - num); i++)
           String.prepend_byte (s, '0');
       }
+      String.prepend_with (s, "0b");
       break;
     }
   }
