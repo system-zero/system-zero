@@ -155,8 +155,47 @@ Comment.
 
   println (fibo_recursive (12)) # => 144
   # however the stack can easily exhausted with some thousands calls.
+  # Note also that in this case, it isn't a requirenment to declare first the
+  # function to use it. But normally it is an error to use a symbol, that hasn't
+  # been declared. The parsing order is the classic top to bottom. But functions
+  # are not doing any kind of parsing first, other than the time of the evaluation,
+  # and that it is the reason why this works for recursive functions.
+  # This is dangerous, since code that hasn't been used it doesn't checked at
+  # all for correctness.
 
-  # classic C
+  # Functions can be anonymous.
+
+  var v = lambda (x, y) { return x * y } (10, 100) # => 1000
+
+  # A lambda function, it is like a function without a name, but it is called
+  # immediately. After the call release the resources. It is illegal to store
+  # a lambda in a variable. It is also illegal to omit the argument list after
+  # the body, even if it is an empty list, so a pair of parentheses is obligatory.
+
+  # Lambdas like functions, can be nested in arbitrary level, though they
+  # can be complicated to parse, but legal:
+
+  var r = lambda (x, y) {
+    var xl = x + y
+
+    return lambda (k) {
+      return k * 2
+    } (x) +
+
+    lambda (z) {
+      var i =
+        lambda (x) {
+          return x + 100
+        } (z)
+
+      return (z * 2) + i
+    } (xl)
+
+  } (50, 100)
+
+  println ("${r}") # => 650
+
+  # Below statements and loops, is some classic C.
 
   # if/else if/else
   func ifelseif (x) {
@@ -180,11 +219,14 @@ Comment.
   }
 
   println (forfun (10)) # this it will print (null) as the function it
-  # didn't return a value, and in those cases the default value is `null`.
+  # didn't return a value. But functions always return a value and functions
+  # that didn't return a value, this value is `null` by default. For C functions
+  # this is guarranteed by the function signature, which is always a VALUE type.
+
   # now print the sum
   println (sum) # => 46
 
-  # likewise the while:
+  # likewise a while:
 
   sum = 1
   func forwhile (x) {
@@ -197,12 +239,16 @@ Comment.
 
   println (sum) # => 46
 
-  # or the do/while
+  # and the do/while loop
   func forwhiledo (x) {
     var i = 0
     do {
       sum += i
-      i += 1
+      i += 1  # there is no support for ++,-- assignment operators because of
+              # side effects to support both prefix and postfix with a mix of
+              # functions calls. The easier is the prefix semantics. The usefull
+              # though it is with the postfix semantics, which may need to track
+              # unexpected "vibrations". 
     }  while (i < x)
   }
 
@@ -212,9 +258,9 @@ Comment.
   # on the type of the value. But directives can be used for specific requests.
 
   var damap = {"key" : 1, "second" : "two" }
-  println ("${%p, damap}") # it will print a hexadecimal address of the value
+  println ("${%p, damap}") # this will print a hexadecimal address of the value
   # of damap
-  # The set of directives:
+  # The set of directives, it is the same set with C:
   #  - %d as a decimal
   #  - %s as a string
   #  - %p as a pointer address
@@ -222,24 +268,35 @@ Comment.
   #  - %x as a hexadecimal (0x is prefixed in the output)
   #  - %f as a double
 
-  # A map can have private fields and other properties, which belong though
-  # to the extended interface.
+  # A map can have private fields and other properties, but to avoid complication
+  # those belong to the next level of the exposed interface.
 
-  # Arrays however are straight forward.
+  # Arrays are straight forward and with established semantics.
 
   var ar = ["a", "b"] # StringType array with two members
 
-  # there is another way and it is being used when you want to initialize the
-  # array later. In that case though the size should be known beforehand to C,
-  # because it needs to allocate resources.
+  # But arrays have a fixed size and type. In the above code those have been
+  # determinated by the parsing. The first element gives the type. It is an
+  # error to mix types in an array, except that memory managment types, like
+  # strings or maps can have null elements.
+
+  # Here is how you can declare an array with a fixed size, and associate it
+  # with a type:
 
   var integer[4] intar
 
   # simply creates an integer array with four elements. By default the value
-  # of an integer array element is initialized to 0, 0.0 for double arrays,
-  # an empty string for strings and null for other datatypes.
+  # of an integer array element is initialized to 0, while 0.0 for double arrays,
+  # an empty string for strings and null for other datatypes. The following
+  # types are supported:
 
-  # now it can be fullfiled
+  # - integer
+  # - number
+  # - map
+  # - string
+  # - array  (arrays of arrays can be nested in an arbitrary depth)
+
+  # now it can be filed
   for (var i = 0; i < len (intar); i += 1) {
     intar[i] = i
   }
@@ -250,10 +307,13 @@ Comment.
 
   for (var i = 0; i < len (intar); i += 1) {
     println (intar[i])
-    # here we see that for single values the print functions do not require
+    # here we see that for single values, the print functions do not require
     # double quotes around the argument, neither a special syntax.
 
     # Also we saw how to access array elements, which is the exact C way.
+    # Indices start from zero and can be negative, where -1 points to the
+    # last element. The interpreter will throw an out of bounds error when
+    # the index is equal or greater than the length of the elements.
   }
 
   # the same can be written more compactly like:
@@ -278,16 +338,44 @@ Comment.
   # this. We use this. Here how it is being used:
 
   m.sumfun = func (x) { this.sum += x }
+  # also notice here how we can extent a map with a new method, but it is the
+  # same for properties.
+
+  # call it:
   m.sumfun (10); println (m.sum) # => 11
 
-  # the `this` keyword has only sence for map methods.
+  # the `this` keyword has only sence for map methods and it is not accessible
+  # outside the scope of the self method.
 
-  ## this is the end of the first draft. Left to do:
+  ## this is the end of the first draft.
+  # Left to do:
 
   # Logical operations (briefly the same exact C way)
   # Bitwise operations (briefly the same exact C way)
   # Import C code (briefly the same way as other Interpreted Languages)
   # LoadFile with code (basically the same way)
+
+  # finally:
+
+  non_existing_function ()
+
+  # this will throw an error, and it will terminate execution of the current
+  # interpreter instance, with an error cobstant less than zero (a zero value
+  # indicates success).
+  # The interpreter in that case, it will print (to the standard error by default),
+  # a message that with explain the error, and then it will try to print the
+  # error line and with some lines offset, that raised the error.
+  # All errors should propagated internally, from the current error point, back
+  # to the very first function that started the evaluation. There is no kind of
+  # exception handling. There are some thoughts, that the only thing that can
+  # be supported probably and has some sence and it has imo, it is a mechanism
+  # that could pause execution to the try breaking point and then to provide
+  # an interactive session. At any that try point, the state has to be saved
+  # first. The mechanism will have to expose internal information, about values
+  # or for evaluation parsing points or function bodies. And finally it has to
+  # support an interactive session, with options to abort, debug or even to...
+  # reevaluate, by providing even the failed function with a new body.
+  # This for sure worths some invenstment.
 ```
 
 And that is the first draft about the first basic interface that resembles the
@@ -1798,3 +1886,9 @@ that bad in performance, as it executes more than a thousand of lines of code,
 which much of it is complex and loops, in a fraction of a second, in a very
 old 32bit netbook computer. And this is enough. Plus it runs on ridiculously
 low memory resources.
+
+## DEVELOPMENT DOC SECTION
+First draft of the extented interface (and our way) and quite empty for now
+```js
+
+```

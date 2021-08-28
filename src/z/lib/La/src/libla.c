@@ -370,6 +370,7 @@ struct la_t {
     breakCount,
     continueCount,
     argCount,
+    byteCount,
     conditionState;
 
   size_t anon_id;
@@ -505,6 +506,8 @@ typedef struct tokenState {
 
 static int la_do_next_token (la_t *, int);
 static int la_parse_iforelse (la_t *, int, VALUE *);
+static int la_parse_print (la_t *);
+static int la_parse_println (la_t *);
 static int la_eval_string (la_t *, const char *);
 static int la_parse_cond (la_t *, int);
 static int la_parse_stmt (la_t *);
@@ -4633,6 +4636,17 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       return err;
 
+    case TOKEN_PRINTLN:
+    case TOKEN_PRINT:
+      if (c is TOKEN_PRINT)
+        err = la_parse_print (this);
+      else
+        err = la_parse_println (this);
+      THROW_ERR_IF_ERR (err);
+
+      *vp = INT(this->byteCount);
+      return LA_OK;
+
     case TOKEN_FORMAT:
       err = la_parse_format (this, vp);
 
@@ -7529,6 +7543,8 @@ theend:
 static int la_parse_print (la_t *this) {
   int err = LA_NOTOK;
 
+  this->byteCount = 0;
+
   string *str = String.new (32);
 
   int c = la_ignore_ws (this);
@@ -7660,7 +7676,8 @@ print_str:
     goto theend;
   }
 
-  if (LA_NOTOK is this->print_bytes (fp, str->bytes)) {
+  int num_bts = this->print_bytes (fp, str->bytes);
+  if (num_bts < 0) {
     this->print_bytes (this->err_fp, "error while printing string\n");
     fprintf (this->err_fp, "%s\n", str->bytes);
     goto theend;
@@ -7668,6 +7685,7 @@ print_str:
 
   NEXT_TOKEN();
 
+  this->byteCount = num_bts;
   err = LA_OK;
 
 theend:
@@ -7677,8 +7695,11 @@ theend:
 
 static int la_parse_println (la_t *this) {
   int err = la_parse_print (this);
-  if (err is LA_OK)
+  ifnot (err is LA_NOTOK) {
     fprintf (this->print_fp, "\n");
+    this->byteCount++;
+  }
+
   return err;
 }
 
