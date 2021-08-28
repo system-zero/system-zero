@@ -1432,8 +1432,8 @@ func semantics () {
         marnil[1] is null and typeof (marnil[1]) is NullType)
 
     var string[3] anil = ["a", null, "b"]
-    assert_true ("testing string array with a null element", anil[1] is null)
 
+    assert_true ("testing string array with a null element", anil[1] is null)
 
     var a = [[1,2,3], [3, 5, 6], ["a", "ab"], [1,2], [3, 4]]
     assert_true ("testing array of arrays", a[2][1] is "ab")
@@ -1516,7 +1516,6 @@ func semantics () {
   }
 
   test_array (10)
-
   func test_maps {
     var m = {}
 
@@ -1779,9 +1778,6 @@ assert_equal ("testing public constant attribute", c_visible, "visible constant"
 
 func chains {
   var sa = ("10": to_integer () * 12 + 52 - 24): to_string (2)
-  assert_true ("testing development of chained functions",
-      sa is "10010100")
-
   var sd = "97"
   var dd = sd: to_integer ()
   var ii = 111: to_string (10)
@@ -1801,11 +1797,21 @@ func chains {
   var xk = xm:keys (): len ()
   var mx = {"k" : 1, "l" : 2}: len ()
   var ll = 12342: lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
-  var mm = xm.k: when |x| x is 1 { return 11 }
   var ms = xm.sub: keys (): len ()
   var mp = xm.sub.ar: where (1): len ()
+  var mm = xm.k: if x is 1 then 11 end
+  var wi = 12: if x < 12 then x + 22 orelse x + 32 end: to_string (10)
+  var wu = ("asdf" is "asdf"): if v then "ok" orelse "notok" end
+  var wn = null
+  var wv =  wn: if x is null then 10 orelse 100 end
+  var ws = "asdf": if x:eq ("asdfg") then "ok" orelse "notok" end
+  var we = "asdf": if x:eq ("asdfg") then "ok" end
+  var wa = ["a", "b", "c"]: if x[2] is "c" then "ok" end
+  var wc = ["a", "b", "c"]: ifnot x[2] is "c" then "ok" end
 
   assert_true ("testing chained functions",
+      wa is "ok" and
+      sa is "10010100" and
       mp is 2 and
       ms is 2 and
       mm is 11 and
@@ -1822,26 +1828,12 @@ func chains {
       bb is "0b00100000" and
       hh is "0x20" and
       oo is "040" and
-      ll is 42)
-
-  var wi = 12: when |x| x < 12 { return x + 22 } orelse { return x + 32 }:
-    to_string (10)
-  var wu = ("asdf" is "asdf"): when |v| v { return "ok" } orelse { return "notok"} 
-  var wn = null
-  var wv =  wn: when |x| x is null { return 10 } orelse { return 100 }
-  var ws = "asdf": when |x| x:eq ("asdfg") { return "ok" } orelse { return "notok"}
-  var wm = {"k" : 1, "f" : func {return 1}}
-  var wl = wm: when |m| m: len () is 2 { m.k = 10 return m } orelse { m.k = 20 return m}
-  var wa = [1, 2, 3, 4]
-  var wb = wa: when |x| x:len () is 4 { x[0] = 2 x[1] = 3 return x } orelse { x[0] = 22 x[1] = 23 return x }
-
-  assert_true ("testing when/orelse",
+      ll is 42 and
       wi is "44" and
       wu is "ok" and
       wv is 10 and
       ws is "notok" and
-      wl.k is 10 and wm.k is 1 and
-      wb[0] is 2 and wa[0] is 1)
+      we is "asdf")
 }
 
 chains ()
@@ -1918,6 +1910,14 @@ func valgrind_tests () {
   }
 
   d ()
+
+  func xx (a) {
+    return a:len ()
+  }
+
+  var x = ["11", "22", "33"]: xx ()
+  var xa = xx (["111", "222", "333"])
+
 }
 
 if (run_valgrind_tests) {

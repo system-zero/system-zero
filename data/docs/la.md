@@ -214,18 +214,27 @@ Comment.
   var damap = {"key" : 1, "second" : "two" }
   println ("${%p, damap}") # it will print a hexadecimal address of the value
   # of damap
+  # The set of directives:
+  #  - %d as a decimal
+  #  - %s as a string
+  #  - %p as a pointer address
+  #  - %o as an octal (0 (zero) is prefixed in the output)
+  #  - %x as a hexadecimal (0x is prefixed in the output)
+  #  - %f as a double
 
-  # A map can have private fields and other properties, which belong thought
+  # A map can have private fields and other properties, which belong though
   # to the extended interface.
 
-  # Arrays however are straight forward
+  # Arrays however are straight forward.
 
   var ar = ["a", "b"] # StringType array with two members
 
   # there is another way and it is being used when you want to initialize the
   # array later. In that case though the size should be known beforehand to C,
   # because it needs to allocate resources.
+
   var integer[4] intar
+
   # simply creates an integer array with four elements. By default the value
   # of an integer array element is initialized to 0, 0.0 for double arrays,
   # an empty string for strings and null for other datatypes.
@@ -263,7 +272,7 @@ Comment.
 
   # But how can you access the other map members through those methods, when
   # there isn't a function argument that points to self map?
-  # Most interpreted Languages unlike C, that it is a requirenment to declare
+  # Most interpreted Languages unlike C, where is a requirenment to declare
   # the structure (usually as the first argument), they push this structure
   # as the first argument. Some they refer to this object as self, some as
   # this. We use this. Here how it is being used:
@@ -280,6 +289,7 @@ Comment.
   # Import C code (briefly the same way as other Interpreted Languages)
   # LoadFile with code (basically the same way)
 ```
+
 And that is the first draft about the first basic interface that resembles the
 C way, with the obvious differences, basically the absent of type declarations.
 
@@ -378,7 +388,7 @@ executed by any language. And there are much more few than many, that cannot.
 
   full form:
 
-    if cond then do_something orelse do_something else
+    if cond then do_something orelse do_something [end]
 
   orelse can be ommited:
 
@@ -1030,65 +1040,26 @@ executed by any language. And there are much more few than many, that cannot.
 
     12342 : lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
 
-  This mechanism supports a special (when/orelse) conditional expression, which
-  is like `if' with some differences described bellow.
+  This mechanism supports a conditional expression, which is an `if/then/orelse/end'
+  construct. Here the `end` key keyword is obligatory to avoid ambiguities.
 
-  A `when` expression, it awaits an input value.
+    (expr): if identifier condition then expr [orelse expr] end
 
-  A `when` expression, it returns a value.
-
-  Unlike `if`, it supports only an optional `orelse` clause, as this is more
-  like:
-
-    (condition) ? expression : expression
-
-  in C language.
-
-  Inside the body of a `when` expression, a return statement it pushes a
-  value in the stack of the chain and returns control to the outter scope,
-  but it does not try to exit of a function.
-
-  A `break` or a `continue` statement is not allowed in a when expression,
-  unless is inside a loop of a `when` expression.
-
-  Generrally, `when` expressions and the function sequences mechanism, they
-  are trying a bit hard, to minimize any influences with outter environments,
-  though obviously this is not possible, as anything can be written inside a
-  body of a `when` expression or a function call. But at least this is the
-  intention of the mechanism.
-
-  when/orelse syntax:
-
-    (expr): when |x| condition { body } [orelse { body }]
-
-    note that |x| is the symbol associated with the value of `expr', that can
-    be used in the condition or|and to the body.
-
-  Also note that `condition' is not obligated to be surrounded by parentheses.
+    note that `identifier` is the symbol associated with the value of `expr',
+    and it is the value that is being evaluated in the condition.
 
   Examples:
 
-    12: when |x| x < 12 { return x + 22 } orelse { return x + 32 } => 44
-    ("asdf" is "asdf"): when |v| v { return ok } orelse { return notok } => ok
-    "asdf" : when |x| x:eq ("asdf") { return ok } orelse { return notok } => same
-    var mp = {"k" : 1, "f" : func {return 1}}
-    mp: when |m| m: len () is 2 { m.k = 10 return m } orelse { m.k = 20 return m} => new map
-    var ar = [1, 2, 3, 4]
-    ar: when |x| x:len () is 4 { x[0] = 2 x[1] = 3 return x } orelse { x[0] = 22 x[1] = 23 return x } => new array
+    12: if x < 12 then x + 22 orelse x + 32 end => 44
+    ("asdf" is "asdf"): if v then ok orelse notok end => ok
+    "asdf" : if x:eq ("asdf") then ok orelse notok end } => ok
     var s = null
-    s: when |x| x is null { return notok } orelse { return ok }  => notok
-      (note that, if in the above, we changed the condition and we ommited
-       the `orelse` clause, like:
+    s: if x is null then notok orelse ok end  => notok
+    s = 10
+    s: if x is 20 then x * 2 end
 
-         s: when |x| x isnot null { return notok } => null
-
-       as in this case, the value of `s' would be returned)
-
-  At this stage, we still have to understand and endup with the underlying
-  semantics, so and to handle appropriate the memory resources. For now it
-  is not.
-  The sure thing is that it is quite expressive way to write code, without
-  overcomplications.
+    note that, if in the last expression, and since the condition hasn't been
+    met, and there wasn't an orelse, the result is the input value itself.
 
 The return statement
 
@@ -1377,7 +1348,7 @@ The return statement
        qualifiers: (they are trying to mimic cp(1) options)
          force: [0|1], update: [0|1], backup: [0|1], preserve: [0|1],
          recursive: [0|1], follow_lnk: [0|1],
-         interactive: [0|1] when set turns off force,
+         interactive: [0|1] if it is set, it turns off `force',
          verbose: [0|1|2|3] 1: errors 2: like cp(1) 3: with a percent indicator
          all: same as preserve and recursive
          (note that on the command implementation errors are on by default, and
