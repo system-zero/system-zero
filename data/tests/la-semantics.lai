@@ -618,9 +618,9 @@ func semantics () {
 
   var map_sum = {
     "res" : 0
-    "ara" : [1, 2, 3],
-    "arb" : [1, 2, 3],
-    "arc" : [1, 2, 3],
+    "ara" : [1, 2, 3]
+    "arb" : [1, 2, 3]
+    "arc" : [1, 2, 3]
     "calc" : func (v) {
       this.res = v
       for |i| in this.ara {
@@ -1530,10 +1530,10 @@ func semantics () {
 
     var mapa = {
       private
-      "one" : 1,
-      "three" : "three",
-      "fun" : func { return (this.one + this.two) * 10000 },
-      "threefun" : func { return this.three },
+      "one" : 1
+      "three" : "three"
+      "fun" : func { return (this.one + this.two) * 10000 }
+      "threefun" : func { return this.three }
 
       public
       "two" : 2,

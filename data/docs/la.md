@@ -51,8 +51,9 @@ DataTypes:
   - ObjectType (C objects)
   - User Defined Functions
   - C Functions
+  - NullType
 
-Comment.
+Comments.
   Single line comments that start with ('#') and end up to the end of the line.
 
 ## Syntax and Semantics
@@ -66,30 +67,32 @@ Comment.
   var c
   # both are valid. A new line denotes the end of a statement, based on the
   # context, thus they can spawn into multiply lines. A semicolon explicitly
-  # ends a statement. Multiline statements in one line without a semicolon
+  # ends a statement. Multiply statements in one line without a semicolon
   # at the end, may work most of the time, but there are a couple of obvious
-  # ambiquities, thus are not guarranteed. However this is valid:
+  # ambiquities, so can not be guarranteed. However this is valid:
 
   var a = 10 var b = "a" println (b) if (a) { b = "b" }
 
-  # are four statements, that parsed correctly, but if in doubt you may use
-  # a semicolon as a separator.
+  # are four statements, that are being parsed correctly currently. If in doubt
+  # you may use a semicolon as a separator.
 
   # If a variable is not initialized with some value at the declaration time,
-  # it is initialized with the `null` value, thus `v' and `c' right now they
+  # it is initialized with the `null` value, so `v' and `c' right now they
   # have the value of `null`
 
   v = 1
 
-  # thus a variable can be reassigned with a new value, unless it is declared
-  # as `const`. Symbols are associated with a value but do not have types, just
+  # Any variable can be reassigned with a new value, unless it is declared as
+  # `const`. Symbols are associated with a value but do not have types, just
   # the type of the associated value.
 
   const vv = 1
 
-  # this should not change value from now on.
-  # As you may not know the value of a constant, it may leave it uninitialized,
-  # untill the first time that will be initialized with value other than `null`.
+  # In any attempt to change value, the interpreter should raise an error.
+
+  # As you may not know the value of a constant untill the runtime, it may left
+  # uninitialized, untill the first time that will be initialized with a value
+  # other than `null`.
 
   # You can assign multiply variables, with a single `var`.
   var xxx,
@@ -100,14 +103,16 @@ Comment.
     return arg * 2
   }
 
-  # this is a function declaration. Functions do not have types, arguments are
-  # typeless.
+  # This is a function declaration. Functions and arguments do not have types,.
 
   # Note:
   # All the blocks are delimited with a pair of braces '{}' and are mandatory,
-  # for this basic interface at least.
+  # for this basic interface at least. Every block creates a new scope, which
+  # is invisible to the outer scope, and accessible only to nested blocks.
 
-  # You can associate a function with a symbol.
+  # You can associate a function with a symbol and use it with the same way
+  # you use a function.
+
   var funname = func (arg) {
     return arg * 2
   }
@@ -118,12 +123,13 @@ Comment.
 
   fun (ref, 11)  # => 22
 
-  # A function without an argument list can be declared as:
+  # A function without an argument list can be declared without the leading
+  # parentheses, as:
   func fu { println (fun (ref, 22)) }
-  fu () # it will print 42 and a new line at the end, unlike the `print`
-        # function that do not, otherwise behaves like `println`.
+  fu () # this it will print 42 and a new line at the end, unlike the `print`
+        # function that do not, and which otherwise behaves like `println`.
 
-  # functions can be nested in arbritary level:
+  # Functions can be nested in arbritary level:
   func fuc (a, b, c) {
     func fud (a, b, c) {
       return a + b + c
@@ -132,7 +138,7 @@ Comment.
     return fud (a, b, c)
   }
 
-  # functions can call themeselves:
+  # Functions can call themeselves:
 
   func fibo_tail (n, a, b) {
     ifnot (n) { return a }
@@ -154,7 +160,7 @@ Comment.
   }
 
   println (fibo_recursive (12)) # => 144
-  # however the stack can easily exhausted with some thousands calls.
+  # however the stack can easily exhausted with some thousands of calls.
   # Note also that in this case, it isn't a requirenment to declare first the
   # function to use it. But normally it is an error to use a symbol, that hasn't
   # been declared. The parsing order is the classic top to bottom. But functions
@@ -170,7 +176,8 @@ Comment.
   # A lambda function, it is like a function without a name, but it is called
   # immediately. After the call release the resources. It is illegal to store
   # a lambda in a variable. It is also illegal to omit the argument list after
-  # the body, even if it is an empty list, so a pair of parentheses is obligatory.
+  # the body, even if it is an empty list, so a pair of parentheses is obligatory
+  # after the body.
 
   # Lambdas like functions, can be nested in arbitrary level, though they
   # can be complicated to parse, but legal:
@@ -253,60 +260,213 @@ Comment.
   }
 
   print ("all the results should be ${sum}\n")
-  # here we saw that the print functions can use interpolation syntax
-  # for formated strings, By default it determinate the convertion based
-  # on the type of the value. But directives can be used for specific requests.
+  # Here we saw that the print functions can use interpolation syntax
+  # for formated strings, By default it determinates the convertion based
+  # on the type of the value. But directives can be used also:
 
-  var damap = {"key" : 1, "second" : "two" }
-  println ("${%p, damap}") # this will print a hexadecimal address of the value
-  # of damap
-  # The set of directives, it is the same set with C:
-  #  - %d as a decimal
-  #  - %s as a string
-  #  - %p as a pointer address
-  #  - %o as an octal (0 (zero) is prefixed in the output)
-  #  - %x as a hexadecimal (0x is prefixed in the output)
-  #  - %f as a double
+  # This is a map declaration which it is a memory managment type, so it is
+  # associated with a memory address:
 
-  # A map can have private fields and other properties, but to avoid complication
-  # those belong to the next level of the exposed interface.
+  var damap = { "key" : 1, "second" : "two" }
+  println ("${%p, damap}") # this it will print the hexadecimal address of
+    # the value.
+    # The supported set of directives:
+    #  - %d as a decimal
+    #  - %s as a string
+    #  - %p as a pointer address
+    #  - %o as an octal (0 (zero) is prefixed in the output)
+    #  - %x as a hexadecimal (0x is prefixed in the output)
+    #  - %f as a double
 
-  # Arrays are straight forward and with established semantics.
+  # We saw that a map declaration, consists of a series of sequences of a key
+  # and a value association, separated with a comma. The comma can be left out
+  # if the declaration continues to the next line, like in the next code, which
+  # it also saws some more map properties.
+
+  var dadamap = {
+    private
+    "private_prop" : "I'm invisible to the outer scope"
+    "metoo" : "and visible only to the map methods."
+
+    public
+    "visible" : "Now I'm visible again until the next private attribute."
+    "again_visible" : "Visibility it is public by default."
+
+    private
+    "back_to_privacy" : "So and the next properties until a public attribute."
+    "summary" : 0
+
+    public
+    "exposed_fun" : func {
+      println ("I am a function method, and I can saw you them all.")
+      return this.private_prop + " " + this.metoo
+      # Some Interpreted Languages they refer to this self object as self,
+      # some as this. We use this, and which has sence only inside map methods.
+    }
+  }
+
+  # Testing for string equality a public property.
+  println (dadamap.again_visible == "Visibility it is public by default.") # => 1
+
+  # But this will raises an error:
+    # println (dadamap.back_to_privacy)
+  # SYNTAX ERROR: back_to_privacy, symbol has private scope
+
+  # Accessing map properties is through a dot ('.'), the same way C access its
+  # structures.
+
+  # You can append a property or a method to a map at runtime:
+
+  dadamap.sumfun = func (x) {
+    this.summary += x
+    return this.summary
+  }
+
+  println (dadamap.sumfun (10)) # => 10
+
+  # But it is not possible to override a method. This it will raises an error:
+    # dadamap.sumfun = 100
+  # SYNTAX ERROR: you can not override a method
+
+  # Unless doing it explicitly:
+  override dadamap.sumfun = 100
+  println (dadamap.sumfun) # => 100
+
+  # But how can you access map members, when the key is constructed at runtime?
+
+  var x = "newkey"
+  dadamap.$(x) = "does has a value?"
+  dadamap.$("answer") = "Dubious. But nothing is lost forever."
+
+  println (dadamap.$("question"))
+  println (dadamap.$("ans" + "wer")) # string concatenation
+
+  # If it wasn't for that, we had to use 2 C map functions (setter/getter) from
+  # the "std" module, for any of those expressions/statements. To that same
+  # C module, there are specific to maps functions that may assist.
+
+  # That is pretty much all about basic map operations.
+
+  # As the last.
+  # There is a convienent way to loop over a map, but it is outside of this
+  # basic interface for now:
+
+  for |key, value| in dadamap { println ("${key} : ${value}") }
+  # The private fields, would not printed in this case.
+
+  # Untill now we saw many uses of strings, like string concatenation, or that
+  # strings can be checked for equality.
+
+  # String literals are enclosed within double quotes. A double quote can be
+  # included in the string, but it needs to be escaped by a backslash.
+  var iamastring = "I start with a double quote ('\") and end up with a double
+                    quote ('\"). I can interpret backslash escapes, such as
+new lines \n, tabs \t, backspace \b, to ring a bell \a, linefeed \n,
+vertical tab \v, carriage return \r, to escape \e or the backslash itself \\\\.
+Probably will be a very messy output."
+
+  # You can access a string by using indices, like in C and has byte semantics
+  # again like C.
+
+  var la = "la"
+  println (la[0] == 'l') # => 1
+  # Here also we see that individual characters can be enclosed in single quotes,
+  # and they will point to the associated integer value, again like C does.
+  # But unlike C, this is not limited to the ascii range. This works the same:
+
+  println ('α') # => 945
+
+  # There are also backquoted strings, with different semantics, but they are
+  # out of scope for now. Those strings are interpreted litterally, and they
+  # have attributes, that change the interpretation, like:
+
+  var code_string_for_evaluation = `
+    var v = "asdf"
+    func f (x) {
+      v += x
+      return v
+    }
+
+    println (f ('g'))
+
+  `S4
+
+  eval (code_string_for_evaluation)
+
+  # That string will be stripped by maximum 4 leading spaces, so the string
+  # can be declared without to loose the current indentation, but also and
+  # the end result can be indented properly. In this case it started at the
+  # fourth index of the line.
+
+  println (code_string_for_evaluation)
+
+  # Other attributes may added in future, but for# those cases there is a
+  # more expressive way. This is also out of scope of this basic interface,
+  # but this is a valid expression:
+
+  var length = code_string_for_evaluation: len ()
+
+  # Though len() in this case is not that usefull, but it could be:
+    # var mdoc_string = code_string_for_evaluation: to_markdown ()
+    # var code_string_for_evaluation = `var ....`: trim_leading_ws (4)
+  # There aren't such functions yet, but this is the mechanism, which
+  # is quite more expressive, without cryptic Capital letters, that may
+  # take an option, and are separated by a bar (to resemble pipes). But
+  # for this use is okey. SLang has such strings, with a couple of attributes
+  # that tune the behavior at the parsing time, without to have to call a
+  # filter later to transform the string. 
+
+  # Finally the "std" modules includes functions that deal with strings, and:
+  # there are also two special forms of the for loop, that can be used to loop
+  # over strings, one with byte semantics and one with character semantics.
+
+  var byte_semantics = "byte samntics"
+  for |c| in byte_semantics {
+    println (c)
+  }
+
+  var aristofanis = "Βρεκεκεκὲξ κοὰξ κοάξ"
+
+  for |c, v, w| in aristofanis {
+    println ("character integer represantion |${c}|, as string |${v}|, cell width ${w}")
+  }
+
+  # Arrays are pretty straight forward and with established semantics.
 
   var ar = ["a", "b"] # StringType array with two members
 
   # But arrays have a fixed size and type. In the above code those have been
   # determinated by the parsing. The first element gives the type. It is an
-  # error to mix types in an array, except that memory managment types, like
+  # error to mix types in an array, except for memory managment types, like
   # strings or maps can have null elements.
 
   # Here is how you can declare an array with a fixed size, and associate it
   # with a type:
 
-  var integer[4] intar
+  var integer[4] int_ar
 
-  # simply creates an integer array with four elements. By default the value
-  # of an integer array element is initialized to 0, while 0.0 for double arrays,
-  # an empty string for strings and null for other datatypes. The following
-  # types are supported:
+  # Simply creates an integer array with four elements. By default the value
+  # of an integer array element is initialized to 0, while 0.0 is for double
+  # arrays, an empty string for strings and null for other datatypes.
+  # The following types are supported:
 
-  # - integer
-  # - number
-  # - map
-  # - string
-  # - array  (arrays of arrays can be nested in an arbitrary depth)
+  #  integer
+  #  number
+  #  map
+  #  string
+  #  array  (arrays of arrays can be nested in an arbitrary depth)
 
-  # now it can be filed
-  for (var i = 0; i < len (intar); i += 1) {
-    intar[i] = i
+  # Now it can be initialized with an algorithm:
+  for (var i = 0; i < len (int_ar); i += 1) {
+    int_ar[i] = i
   }
 
-  # here we've used the `len` C native function, that returns the length
+  # Here we've used the `len` C native function, that returns the length
   # of the datatypes. In that case it is the number of elements of the array,
   # for strings is the number of bytes, for maps is the number of keys.
 
-  for (var i = 0; i < len (intar); i += 1) {
-    println (intar[i])
+  for (var i = 0; i < len (int_ar); i += 1) {
+    println (int_ar[i])
     # here we see that for single values, the print functions do not require
     # double quotes around the argument, neither a special syntax.
 
@@ -316,38 +476,30 @@ Comment.
     # the index is equal or greater than the length of the elements.
   }
 
-  # the same can be written more compactly like:
-  for |v| in intar { println (v) }
-  # but this kind of loop belong to the extended interface
+  # The same can be written more compactly like:
+  for |v| in int_ar { println (v) }
+  # But this kind of loop belongs to the extended interface.
 
-  # The same exact C way to access structures is being used for accessing maps:
+  # The above forms can be mixed:
 
-  var dumkey = damap.key
+  var string[3] ar = ["holidays", "in", "cambodia"]
+  # This is an array declaration and assignment syntax with a predefined length
+  # and type at the same time. This should execute faster, as the parser do not
+  # have to determinate the type and the size.
 
-  # and since a map member can be a function, it can be called like a function
-  # pointer:
+  # An array can be assigned to a range of indices:
+  int_ar[0:3] = [1, 1, 1, 1] # explicit range [from first_idx to the last_idx] 
+  # or
+  int_ar[0:] = [1, 1, 1, 1]  # if the second idx is ommited, then assumed array length - 1
 
-  var m = { "double_it" : func (x) { return x * 2 }, "sum" : 1}
-  println (m.double_it (20))
+  # In any case if the number of expressions doesn't match or any idx is >= length
+  # the arraym, the interpreter will raises an OUT_OF_BOUNDS error.
 
-  # But how can you access the other map members through those methods, when
-  # there isn't a function argument that points to self map?
-  # Most interpreted Languages unlike C, where is a requirenment to declare
-  # the structure (usually as the first argument), they push this structure
-  # as the first argument. Some they refer to this object as self, some as
-  # this. We use this. Here how it is being used:
+  # For such cases a more short form exists:
+  int_ar[*] = 1
+  # This syntax should be attributed at SLang Programming Language,
 
-  m.sumfun = func (x) { this.sum += x }
-  # also notice here how we can extent a map with a new method, but it is the
-  # same for properties.
-
-  # call it:
-  m.sumfun (10); println (m.sum) # => 11
-
-  # the `this` keyword has only sence for map methods and it is not accessible
-  # outside the scope of the self method.
-
-  ## this is the end of the first draft.
+  ## This is the end of the first draft.
   # Left to do:
 
   # Logical operations (briefly the same exact C way)
@@ -374,7 +526,7 @@ Comment.
   # first. The mechanism will have to expose internal information, about values
   # or for evaluation parsing points or function bodies. And finally it has to
   # support an interactive session, with options to abort, debug or even to...
-  # reevaluate, by providing even the failed function with a new body.
+  # re-evaluate, by providing even the failed function with a new body.
   # This for sure worths some invenstment.
 ```
 
@@ -1888,7 +2040,7 @@ old 32bit netbook computer. And this is enough. Plus it runs on ridiculously
 low memory resources.
 
 ## DEVELOPMENT DOC SECTION
-First draft of the extented interface (and our way) and quite empty for now
+First draft of the extented interface (and our way) and quite empty for now.
 ```js
 
 ```

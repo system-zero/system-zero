@@ -1627,6 +1627,7 @@ static int la_consume_string (la_t *this, char chr) {
 static int la_get_string (la_t *this, char chr) {
   string *str = String.new (8);
 
+  size_t ptrlen = GETSTRLEN(PARSEPTR);
   const char *ptr = GETSTRPTR(PARSEPTR);
   const char *tmp = ptr;
 
@@ -1641,7 +1642,7 @@ static int la_get_string (la_t *this, char chr) {
       if (c is TOKEN_EOF)
         THROW_SYNTAX_ERR("error while getting literal string, awaiting back quote");
 
-      if (c is chr) {
+      if (c is TOKEN_BQUOTE) {
         if (pc is TOKEN_ESCAPE_CHR) {
           String.clear_at (str, -1);
           String.append_byte (str, c);
@@ -1658,6 +1659,67 @@ static int la_get_string (la_t *this, char chr) {
 
       String.append_byte (str, c);
     }
+
+    c = *ptr;
+
+    if (c is 'S') {
+      ptr++;
+
+      if (*ptr is '0') {
+        ptr++;
+        goto theend;
+      }
+
+      int num_ws = 1024;
+
+      if ('1' <= *ptr and *ptr <= '9') {
+        c = *ptr++;
+
+        num_ws = c - '0';
+
+        while ((c = *ptr)) {
+          if ('0' <= c and c <= '9') {
+            num_ws = 10 * num_ws + (c - '0');
+            ptr++;
+            continue;
+          }
+          break;
+        }
+      }
+
+      size_t len = str->num_bytes;
+      char sptr[len + 1];
+      Cstring.cp (sptr, len + 1, str->bytes, len);
+      String.clear (str);
+      char *p = sptr;
+
+      while ((c = *p++)) {
+
+        if (c isnot TOKEN_NL) {
+          String.append_byte (str, c);
+          continue;
+        }
+
+        String.append_byte (str, c);
+        int num_stripped = 0;
+
+        while (num_stripped < num_ws and (c = *p++)) {
+          if (is_space (c)) {
+            num_stripped++;
+            continue;
+          }
+
+          String.append_byte (str, c);
+          if (c is TOKEN_NL) {
+            num_stripped = 0;
+            continue;
+          }
+
+          break;
+        }
+      }
+    }
+
   } else {
     while (1) {
       pc = c;
@@ -1692,9 +1754,9 @@ static int la_get_string (la_t *this, char chr) {
     }
   }
 
-  size_t len = GETSTRLEN(PARSEPTR);
+theend:
   SETSTRPTR(PARSEPTR, ptr);
-  SETSTRLEN(PARSEPTR, len - (ptr - tmp));
+  SETSTRLEN(PARSEPTR, ptrlen - (ptr - tmp));
 
   VALUE v = STRING(str);
   if (this->curState & MALLOCED_STRING_STATE) {
@@ -6231,7 +6293,7 @@ static int la_parse_foreach (la_t *this) {
     char key[len + 1];
     Cstring.cp (key, len + 1, ident, len);
 
-    ptr++;
+    ptr++; orig_len++;
     while (*ptr and is_space (*ptr)) { ptr++; orig_len++;}
     if (*ptr is TOKEN_EOF)
       THROW_SYNTAX_ERR("awaiting a value identifier");
@@ -6247,7 +6309,8 @@ static int la_parse_foreach (la_t *this) {
       THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
     char val[len + 1];
-    Cstring.cp (val, len + 1, ident + orig_len + len, len);
+    Cstring.cp (val, len + 1, ident + orig_len, len);
+
     if (*ptr isnot '\0')
       THROW_SYNTAX_ERR("trailing identifiers");
 
@@ -7579,6 +7642,7 @@ static int la_parse_print (la_t *this) {
     num_iterations++;
 
     c = TOKEN;
+
     switch (v.type) {
       case STRING_TYPE: {
           string *vs = AS_STRING(v);
@@ -7592,7 +7656,7 @@ static int la_parse_print (la_t *this) {
             if (v.sym is NULL and
                 v.refcount isnot MALLOCED_STRING and
                 0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
-              String.release (vs);
+              la_release_val (this, v);
 
           this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
         }
