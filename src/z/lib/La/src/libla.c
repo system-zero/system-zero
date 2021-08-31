@@ -445,7 +445,51 @@ typedef struct tokenState {
   do { if (_cond_) THROW_SYNTAX_ERR(_msg_); } while (0)
 #define THROW_SYNTAX_ERR_FMT(_fmt_, ...) \
   do { return la_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
+#define THROW_OUT_OF_BOUNDS(_fmt_, ...) do {                \
+  this->print_fmt_bytes (this->err_fp, _fmt_, __VA_ARGS__); \
+  this->print_bytes (this->err_fp, "\n");                   \
+  return la_err_ptr (this, LA_ERR_OUTOFBOUNDS);             \
+} while (0)
+#define THROW_UNKNOWN_SYMBOL(_sym_) do {                    \
+  this->print_fmt_bytes (this->err_fp,                      \
+    "unknown symbol: %s\n", cur_msg_str (this, _sym_));     \
+  return la_err_ptr (this, LA_ERR_UNKNOWN_SYM);             \
+} while (0)
+#define THROW_INV_ARRAY_TYPE(_tp_) do {                     \
+  this->print_fmt_bytes (this->err_fp,                      \
+    "invalid array type: %d\n", _tp_);                      \
+  return la_err_ptr (this, LA_ERR_INV_ARRAY_TYPE);          \
+} while (0)
+#define THROW_TOOMANY_FUNCTION_ARGS() do {                  \
+  this->print_fmt_bytes (this->err_fp,                      \
+    "too many function arguments\n");                       \
+  return la_err_ptr (this, LA_ERR_TOOMANY_FUNCTION_ARGS);   \
+} while (0)
+#define THROW_NUM_FUNCTION_ARGS_MISMATCH(_n_, _p_) do {         \
+  this->print_fmt_bytes (this->err_fp,                          \
+    "number argument mismatch, awaiting %d got %d\n", _n_, _p_);\
+  return la_err_ptr (this, LA_ERR_NUM_FUNCTION_ARGS_MISMATCH);  \
+} while (0)
+#define THROW_TYPE_MISMATCH(_g_, _a_) do {                  \
+  this->print_fmt_bytes (this->err_fp,                      \
+    "type mismatch, awaiting %d got %d\n", _a_, _g_);       \
+  return la_err_ptr (this, LA_ERR_TYPE_MISMATCH);           \
+} while (0)
+#define THROW_A_TYPE_MISMATCH(_g_, _m_) do {                \
+  this->print_fmt_bytes (this->err_fp,                      \
+    "type mismatch, got %d, awaiting %s\n", _g_, _m_);      \
+  return la_err_ptr (this, LA_ERR_TYPE_MISMATCH);           \
+} while (0)
 
+#define PRINT_ERR_CONSTANT(_e_) do {                                     \
+  char *err_msg_const[] = {                                              \
+      "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",                     \
+      "UNKNOWN TYPE", "TOOMANY FUNCTION ARGUMENTS",                      \
+      "NUM FUNCTION ARGUMENTS MISMATCH", "OUT OF BOUNDS",                \
+      "TYPE MISMATCH", "INVALID ARRAY TYPE", "LOAD ERROR",               \
+      "IMPORT ERROR", "DYNAMIC LINKING ERROR"};                          \
+  this->print_fmt_bytes (this->err_fp, "%s\n", err_msg_const[-_e_ - 2]); \
+} while (0)
 #define SAVE_TOKENSTATE() la_save_token_state (this)
 #define RESTORE_TOKENSTATE(_s_) do {la_restore_token_state (this, _s_);} while (0)
 
@@ -556,7 +600,6 @@ static void la_set_message_fmt (la_t *this, int append, char *fmt, ...) {
   la_set_message (this, append, bytes);
 }
 
-
 static inline la_string StringNewLen (const char *str, integer len) {
   la_string x;
   SETSTRLEN(x, len);
@@ -614,7 +657,7 @@ static int la_err_ptr (la_t *this, int err) {
 }
 
 static int la_syntax_error (la_t *this, const char *msg) {
-  this->print_fmt_bytes (this->err_fp, "\nSYNTAX ERROR: %s\n", msg);
+  this->print_fmt_bytes (this->err_fp, "%s\n", msg);
   return la_err_ptr (this, LA_ERR_SYNTAX);
 }
 
@@ -623,36 +666,6 @@ static int la_syntax_error_fmt (la_t *this, const char *fmt, ...) {
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
   return this->syntax_error (this, bytes);
-}
-
-static int la_arg_mismatch (la_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\nargument mismatch:");
-  return la_err_ptr (this, LA_ERR_BADARGS);
-}
-
-static int la_too_many_args (la_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\ntoo many arguments:");
-  return la_err_ptr (this, LA_ERR_TOOMANYARGS);
-}
-
-static int la_unknown_symbol (la_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\nunknown symbol:");
-  return la_err_ptr (this, LA_ERR_UNKNOWN_SYM);
-}
-
-static int la_unknown_type (la_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\nunknown type:");
-  return la_err_ptr (this, LA_ERR_UNKNOWN_TYPE);
-}
-
-static int la_out_of_bounds (la_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\nout of bounds:");
-  return la_err_ptr (this, LA_ERR_OUTOFBOUNDS);
-}
-
-static int la_type_mismatch (la_t *this) {
-  this->print_fmt_bytes (this->err_fp, "\ntype mismatch:");
-  return la_err_ptr (this, LA_ERR_UNKNOWN_TYPE);
 }
 
 static inline int is_space (int c) {
@@ -2125,7 +2138,7 @@ static int  la_string_get (la_t *this, VALUE *vp) {
     if (0 > idx) idx += str->num_bytes;
 
     if (idx < 0 or (size_t) idx >= str->num_bytes)
-      return la_out_of_bounds (this);
+      THROW_OUT_OF_BOUNDS("index %d >= than %d length, or less than zero", idx, str->num_bytes);
 
     *vp = INT(str->bytes[idx]);
 
@@ -2159,13 +2172,14 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
   this->curState &= ~INDEX_STATE;
   THROW_ERR_IF_ERR(err);
 
-    THROW_SYNTAX_ERR_IF(v.type isnot INTEGER_TYPE,
-      "awaiting an integer expression, when setting string index");
+  THROW_SYNTAX_ERR_IF(v.type isnot INTEGER_TYPE,
+    "awaiting an integer expression, when setting string index");
 
   integer idx = AS_INT(v);
 
   if (0 > idx) idx += str->num_bytes;
-  if (idx < 0 or (size_t) idx >= str->num_bytes) return la_out_of_bounds (this);
+  if (idx < 0 or (size_t) idx >= str->num_bytes)
+    THROW_OUT_OF_BOUNDS("index %d >= than %d length, or less than zero", idx, str->num_bytes);
 
   THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_ASSIGN,
     "syntax error while setting string, awaiting =");
@@ -2453,7 +2467,8 @@ static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      return la_out_of_bounds (this);
+      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+        idx, len, idx, last_idx);
 
     NEXT_TOKEN();
 
@@ -2475,7 +2490,7 @@ static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    return la_out_of_bounds (this);
+    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -2488,7 +2503,8 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      return la_out_of_bounds (this);
+      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+         idx, len, idx, last_idx);
 
     NEXT_TOKEN();
 
@@ -2503,7 +2519,7 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    return la_out_of_bounds (this);
+    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -2516,7 +2532,8 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      return la_out_of_bounds (this);
+      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+        idx, len, idx, last_idx);
 
     this->curState |= MALLOCED_STRING_STATE;
     NEXT_TOKEN();
@@ -2556,7 +2573,7 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    return la_out_of_bounds (this);
+    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -2569,7 +2586,8 @@ static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer id
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      return la_out_of_bounds (this);
+      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+        idx, len, idx, last_idx);
 
     NEXT_TOKEN();
 
@@ -2582,7 +2600,7 @@ static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer id
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    return la_out_of_bounds (this);
+    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -2595,7 +2613,8 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx, 
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      return la_out_of_bounds (this);
+      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+        idx, len, idx, last_idx);
 
     NEXT_TOKEN();
 
@@ -2608,7 +2627,7 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx, 
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    return la_out_of_bounds (this);
+    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -2629,7 +2648,7 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
     last_idx += len;
 
   if (last_idx < 0 or last_idx >= len)
-    return la_out_of_bounds (this);
+    THROW_OUT_OF_BOUNDS("index %d >= %d len, or less than zero", last_idx, len);
 
   VALUE ary = array->value;
 
@@ -2775,7 +2794,7 @@ static int la_parse_array_set (la_t *this) {
 
       ArrayType *array = (ArrayType *) AS_ARRAY(ary);
       if (array->type isnot ar_val.type)
-        return la_type_mismatch (this);
+        THROW_TYPE_MISMATCH(array->type, ar_val.type);
 
       switch (array->type) {
         case STRING_TYPE: {
@@ -2821,7 +2840,7 @@ static int la_parse_array_set (la_t *this) {
         }
 
         default:
-          return la_unknown_type (this);
+          THROW_INV_ARRAY_TYPE(array->type);
       }
     }
 
@@ -2923,7 +2942,7 @@ static int la_parse_array_set (la_t *this) {
       }
 
       default:
-        return la_type_mismatch (this);
+        THROW_A_TYPE_MISMATCH(array->type, "is not allowd for a binaty operation");
     }
 
     VALUE result;
@@ -3002,7 +3021,8 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
       for (size_t i = 0; i < ary->len; i++) {
         size_t idx = x_ar[i];
         if (idx >= src_ar->len)
-          return la_out_of_bounds (this);
+          THROW_OUT_OF_BOUNDS("index %d >= than %d length", idx, src_ar->len);
+
         String.replace_with_len (s_ar[i], s_ar_src[idx]->bytes, s_ar_src[idx]->num_bytes);
       }
       break;
@@ -3014,7 +3034,8 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
       for (size_t i = 0; i < ary->len; i++) {
         size_t idx = x_ar[i];
         if (idx >= src_ar->len)
-          return la_out_of_bounds (this);
+          THROW_OUT_OF_BOUNDS("index %d >= than %d length", idx, src_ar->len);
+
         i_ar[i] = i_ar_src[idx];
       }
       break;
@@ -3026,7 +3047,8 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
       for (size_t i = 0; i < ary->len; i++) {
         size_t idx = x_ar[i];
         if (idx >= src_ar->len)
-          return la_out_of_bounds (this);
+          THROW_OUT_OF_BOUNDS("index %d >= than %d length", idx, src_ar->len);
+
         d_ar[i] = d_ar_src[idx];
       }
       break;
@@ -3093,7 +3115,8 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     idx += len;
 
   if (idx <= -1 or idx >= len)
-    return la_out_of_bounds (this);
+    THROW_OUT_OF_BOUNDS("index %d >= than %d length, or less or equal than -1",
+        idx, len);
 
   switch (array->type) {
     case INTEGER_TYPE: {
@@ -3139,7 +3162,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     }
 
     default:
-      return la_unknown_type (this);
+      THROW_INV_ARRAY_TYPE(array->type);
 
   }
 
@@ -3303,7 +3326,7 @@ static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
     THROW_SYNTAX_ERR_FMT("%s key doesn't exists", key);
 
   if (val->type > STRING_TYPE or val->type is FUNCPTR_TYPE)
-    return la_type_mismatch (this);
+    THROW_A_TYPE_MISMATCH(val->type, "illegal map type");
 
   VALUE v;
   NEXT_TOKEN();
@@ -4164,7 +4187,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     THROW_SYNTAX_ERR("expected closed parentheses");
 
   if (expectargs isnot paramCount)
-    return la_arg_mismatch (this);
+    THROW_NUM_FUNCTION_ARGS_MISMATCH(expectargs, paramCount);
 
   while (paramCount > 0) {
     --paramCount;
@@ -5165,10 +5188,8 @@ do_token:
           token > TOKEN_ASSIGN_LAST_VAL)
         THROW_SYNTAX_ERR("expected assignment operator");
 
-      ifnot (symbol) {
-        la_print_lastring (this, this->err_fp, name);
-        return la_unknown_symbol (this);
-      }
+      ifnot (symbol)
+        THROW_UNKNOWN_SYMBOL(name);
 
       if (symbol->is_const)
         if (symbol->value.type isnot NULL_TYPE)
@@ -6270,7 +6291,8 @@ static int la_parse_foreach (la_t *this) {
     case STRING_TYPE:
       break;
 
-    default: return la_type_mismatch (this);
+    default:
+      THROW_A_TYPE_MISMATCH(type, "illegal foreach type");
   }
 
   if (type is MAP_TYPE) {
@@ -7204,7 +7226,7 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
       la_string name = TOKENSTR;
 
       if (nargs >= MAX_BUILTIN_PARAMS)
-        return la_too_many_args (this);
+        THROW_TOOMANY_FUNCTION_ARGS();
 
       size_t len = GETSTRLEN(name);
       if (len >= MAXLEN_SYMBOL)
@@ -8837,9 +8859,13 @@ theend:
 }
 
 static VALUE la_eval (la_t *this, VALUE v_str) {
-  ifnot (IS_STRING(v_str))  C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_str)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *str = AS_STRING_BYTES (v_str);
-  return INT(la_eval_string (this, str));
+  int retval = la_eval_string (this, str);
+  if (retval < LA_NOTOK)
+    C_THROW(retval, "eval() error");
+
+  return INT(retval);
 }
 
 static struct def {
@@ -9136,6 +9162,9 @@ static int la_eval_string (la_t *this, const char *buf) {
     return this->exitValue;
   }
 
+  if (retval < LA_NOTOK)
+    PRINT_ERR_CONSTANT(retval);
+
   return retval;
 }
 
@@ -9258,13 +9287,8 @@ static int la_eval_file (la_t *this, const char *filename) {
   if (retval is LA_ERR_EXIT or retval >= LA_NOTOK)
     return retval;
 
-  char *err_msg[] = {
-      "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",
-      "UNKNOWN TYPE", "BAD ARGUMENTS", "TOO MANY ARGUMENTS",
-      "OUT OF BOUNDS", "TYPE MISMATCH", "LOAD ERROR", "IMPORT ERROR",
-      "DYNAMIC LINKING ERROR"
-  };
-  this->print_fmt_bytes (this->err_fp, "%s\n", err_msg[-retval - 2]);
+  PRINT_ERR_CONSTANT(retval);
+
   return retval;
 }
 

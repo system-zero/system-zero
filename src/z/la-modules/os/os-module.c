@@ -2,6 +2,7 @@
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_TYPES
 #define REQUIRE_SYS_SELECT
+#define REQUIRE_SYS_UNAME
 
 #define REQUIRE_VMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
@@ -149,6 +150,30 @@ static VALUE os_sleep (la_t *this, VALUE v_nsecs) {
   return INT(select (0, NULL, NULL, NULL, &tv));
 }
 
+static VALUE os_platform (la_t *this) {
+  (void) this;
+  struct utsname u;
+  string *s = String.new_with ("unknown");
+
+  if (-1 is uname (&u))
+    return STRING(s);
+
+  String.replace_with (s, u.sysname);
+  return STRING(s);
+}
+
+static VALUE os_arch (la_t *this) {
+  (void) this;
+  struct utsname u;
+  string *s = String.new_with ("unknown");
+
+  if (-1 is uname (&u))
+    return STRING(s);
+
+  String.replace_with (s, u.machine);
+  return STRING(s);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_os_module__ (la_t *this) {
@@ -170,6 +195,8 @@ public int __init_os_module__ (la_t *this) {
     { "getpwdir",       PTR(os_getpwdir), 1 },
     { "getgrname",      PTR(os_getgrname), 1 },
     { "getpwname",      PTR(os_getpwname), 1 },
+    { "os_arch",        PTR(os_arch), 0 },
+    { "os_platform",    PTR(os_platform), 0 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -190,7 +217,9 @@ public int __init_os_module__ (la_t *this) {
       "environ": environ,
       "getpwdir" : getpwdir,
       "getgrname" : getgrname,
-      "getpwname" : getpwname
+      "getpwname" : getpwname,
+      "arch"      : os_arch,
+      "platform"  : os_platform
      }
   );
 

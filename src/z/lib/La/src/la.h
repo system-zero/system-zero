@@ -171,23 +171,24 @@ typedef int  (*ModuleInit) (la_t *);
 typedef void (*ModuleDeinit) (la_t *);
 
 enum {
-  LA_ERR_DYNLINK       = -12,
-  LA_ERR_IMPORT        = -11,
-  LA_ERR_LOAD          = -10,
-  LA_ERR_TYPE_MISMATCH = -9,
-  LA_ERR_OUTOFBOUNDS   = -8,
-  LA_ERR_TOOMANYARGS   = -7,
-  LA_ERR_BADARGS       = -6,
-  LA_ERR_UNKNOWN_TYPE  = -5,
-  LA_ERR_UNKNOWN_SYM   = -4,
-  LA_ERR_SYNTAX        = -3,
-  LA_ERR_NOMEM         = -2,
-  LA_NOTOK             = -1,
-  LA_OK                = 0,
-  LA_ERR_OK_ELSE       = 1,
-  LA_ERR_BREAK         = 2,
-  LA_ERR_CONTINUE      = 3,
-  LA_ERR_EXIT          = 4
+  LA_ERR_DYNLINK = -13,
+  LA_ERR_IMPORT,
+  LA_ERR_LOAD,
+  LA_ERR_INV_ARRAY_TYPE,
+  LA_ERR_TYPE_MISMATCH,
+  LA_ERR_OUTOFBOUNDS,
+  LA_ERR_NUM_FUNCTION_ARGS_MISMATCH,
+  LA_ERR_TOOMANY_FUNCTION_ARGS,
+  LA_ERR_UNKNOWN_TYPE,
+  LA_ERR_UNKNOWN_SYM,
+  LA_ERR_SYNTAX,
+  LA_ERR_NOMEM,
+  LA_NOTOK = -1,
+  LA_OK = 0,
+  LA_ERR_OK_ELSE,
+  LA_ERR_BREAK,
+  LA_ERR_CONTINUE,
+  LA_ERR_EXIT = 4
 };
 
 typedef struct LaDefCFun {

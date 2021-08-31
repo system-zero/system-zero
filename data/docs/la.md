@@ -1,48 +1,41 @@
-A very small yet another programming language that compiles in C.
+This a dynamic Programming Language, that has been implement to supply
+this system, with an extension Language that can be used at runtime.
 
-The main purpose of this project is to describe the semantics and syntax
-of a Programming Language, composed with some of most common and very well
-established and easy to recognize (as they exposed similarly to almost all
-(or at least to those derived from C)), programming consepts. It tries to
-incorporate the very minimum significant datatypes (strings, arrays, maps
-(dictionaries which can be used to implement object oriented techniques),
-with an obvious syntax and easy to get it in minutes.
+The second purpose and a tiny ambition, is through research to understand
+and finally design, a basic Programming Language Interface, that could be
+interpreted by [m]any Programming Language[s].
 
-There is a reference implementation, that should obey the syntax and semantics,
-that is owe to pass all the tests, except some expected to fail ones, notably
-operations on doubles, where an expertise is missing and neither exists the
-desirable will to gain this knowledge. This can wait, as and as an author, I
-never had to use the type, except in some quite basic calculations and these
-few.
+That means that it should be composed with established concepts, such as a
+familiar syntax, and very well defined semantics, instantly understood by
+any programmer, and easy to interpreted by many Languages, sometimes even
+without the need of an interpretation.
 
-The referent interpreter is being used in two cases internally in this system.
-This is to support saving and restore editor sessions and virtual window managment
-sessions, which by alone already is precious. It is being used also to implement
-commands and to write libraries for itself.
+The idea is that you could write once one thing, that could be interpreted
+by many, the exact same code, having the same well defined results.Something
+like a Portable Syntax across Programming Languages.
 
-The syntax and the semantics of the language, should feel familiar with already
-established programming languages consepts, and should obey the principle of the
-least surpise and should not violate expectations. If it does not or if it does,
-this should be considered as a bug. It is important to note that this language,
-doesn't bring even the singlest new consept in the programming language universe.
-It is written for C and follows C where it makes sense, and had been influenced
-a lot by the S-Lang programming language, which is quite like C. However, it
-provides mechanisms for object oriented techniques, and also some functional
-concepts.
+There is a reference implementation, that should obey this basic abstraction.
 
-However, besides the quite common and almost established syntax and semantics,
-it aims to find syntactical ways to imitate the human's mind flow with symbols
-that match the underlying word, and to set the semantics for a code flow that
-follows the underlying programmer thought and exhibits finally the underlying
-intention. As such the language probaly can be described in a sentence, as an
-intentional and expressional language, that imitates the human mind and using
-human expressions. And this is a main focus.
+However, it still remains a language with an opinion, and its own prefered way
+to express, but this is out of scope.
 
 The following is an early draft, but looks quite close to the final reference.
 
-## Basic
+## Syntax and Semantics
 
-DataTypes:
+Note:
+This for now, it is written as an early description, and it is based on valid
+code, and with some inline comments for the purpose of development of a final
+reference.
+
+This a mix of established C and well defined concepts by Interpreted Languages.
+
+The basic aim here is to find a balance, between simplicity and capability.
+So, we have to define this, with the absolutelly minimum set of features is
+possible, but at the same time those features should be enough to make this
+useful and practical, otherwise it doesn't really make a sence.
+
+Basic DataTypes:
   - StringType (with UTF8 support)
   - IntegerType (as wide as ptrdiff_t)
   - NumberType (double)
@@ -56,12 +49,7 @@ DataTypes:
 Comments.
   Single line comments that start with ('#') and end up to the end of the line.
 
-## Syntax and Semantics
-
-  First the established C way, with some differences explained inline:
-
 ```js
-
   var v;
   # or
   var c
@@ -74,21 +62,23 @@ Comments.
   var a = 10 var b = "a" println (b) if (a) { b = "b" }
 
   # are four statements, that are being parsed correctly currently. If in doubt
-  # you may use a semicolon as a separator.
+  # you may use a semicolon as a separator. Again, this is not ought to be
+  # guarranteed.
 
   # If a variable is not initialized with some value at the declaration time,
   # it is initialized with the `null` value, so `v' and `c' right now they
-  # have the value of `null`
+  # have the value of `null`.
 
+  # Give it a value:
   v = 1
-
   # Any variable can be reassigned with a new value, unless it is declared as
   # `const`. Symbols are associated with a value but do not have types, just
   # the type of the associated value.
 
   const vv = 1
 
-  # In any attempt to change value, the interpreter should raise an error.
+  # In any attempt to change value to constant types, the interpreter should
+  # raise an error.
 
   # As you may not know the value of a constant untill the runtime, it may left
   # uninitialized, untill the first time that will be initialized with a value
@@ -99,11 +89,11 @@ Comments.
       yyy,
       ccc;
 
+
+  # This is a function declaration. Functions and arguments do not have types,.
   func name (arg) {
     return arg * 2
   }
-
-  # This is a function declaration. Functions and arguments do not have types,.
 
   # Note:
   # All the blocks are delimited with a pair of braces '{}' and are mandatory,
@@ -143,7 +133,8 @@ Comments.
   func fibo_tail (n, a, b) {
     ifnot (n) { return a }
     # the language supports an `ifnot` conditional, which evaluates to true
-    # when the expression is zero
+    # when the expression is zero. SLang has it too, others have something
+    # similar. Very useful for explicitly expressions.
 
     if (n == 1) { return b }
 
@@ -360,13 +351,13 @@ Comments.
   # String literals are enclosed within double quotes. A double quote can be
   # included in the string, but it needs to be escaped by a backslash.
   var iamastring = "I start with a double quote ('\") and end up with a double
-                    quote ('\"). I can interpret backslash escapes, such as
-new lines \n, tabs \t, backspace \b, to ring a bell \a, linefeed \n,
-vertical tab \v, carriage return \r, to escape \e or the backslash itself \\\\.
-Probably will be a very messy output."
+quote ('\"). I can interpret backslash escapes, such as new line \n
+tab\t back feed \b ring a bell \a, form feed \n, vertical tab \v,
+carriage return \r, escape \e or the backslash itself \\\\.
+Probably this will be a very messy output."
 
-  # You can access a string by using indices, like in C and has byte semantics
-  # again like C.
+  # You can access a string by using indices like in. And again like C it has
+  # byte semantics, that means it points to the the underlying byte.
 
   var la = "la"
   println (la[0] == 'l') # => 1
@@ -1072,13 +1063,13 @@ executed by any language. And there are much more few than many, that cannot.
 
   In that case the characters are interpeted like:
 
-    \a  bell character
-    \b  backspace character
-    \t  tab character
-    \n  new line character
+    \a  audible bell
+    \b  back feed
+    \e  escaper
+    \f  form feed
+    \n  new line
     \r  carriage return
-    \e  escape character
-    \f  linefeed character
+    \t  tab
     \v  vertical tab
     \\  backslash itself
     \"  to appear a double quote in double quoted strings
@@ -2039,7 +2030,25 @@ which much of it is complex and loops, in a fraction of a second, in a very
 old 32bit netbook computer. And this is enough. Plus it runs on ridiculously
 low memory resources.
 
-## DEVELOPMENT DOC SECTION
+## DEVELOPMENT DOC SECTION (IGNORE)
+
+Th
+least surpise and should not violate expectations. If it does not or if it does,
+this should be considered as a bug. It is important to note that this language,
+doesn't bring even the singlest new consept in the programming language universe.
+It is written for C and follows C where it makes sense, and had been influenced
+a lot by the S-Lang programming language, which is quite like C. However, it
+provides mechanisms for object oriented techniques, and also some functional
+concepts.
+
+However, besides the quite common and almost established syntax and semantics,
+it aims to find syntactical ways to imitate the human's mind flow with symbols
+that match the underlying word, and to set the semantics for a code flow that
+follows the underlying programmer thought and exhibits finally the underlying
+intention. As such the language probaly can be described in a sentence, as an
+intentional and expressional language, that imitates the human mind and using
+human expressions. And this is a main focus.
+
 First draft of the extented interface (and our way) and quite empty for now.
 ```js
 
