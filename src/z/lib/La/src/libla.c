@@ -1642,18 +1642,54 @@ static int la_get_string (la_t *this, char chr) {
 
   size_t ptrlen = GETSTRLEN(PARSEPTR);
   const char *ptr = GETSTRPTR(PARSEPTR);
-  const char *tmp = ptr;
+  const char *save_ptr = ptr;
 
   int c = 0;
   int pc;
 
   if (chr is TOKEN_BQUOTE) {
+    if (*ptr is '[') {
+      ptr++;
+      int depth = 1;
+
+      while (1) {
+        THROW_SYNTAX_ERR_IF(*ptr is '\0',
+          "error while getting literal string, awaiting ]`");
+
+        c = *ptr++;
+
+        if (c is ']') {
+          if (*ptr and *ptr is TOKEN_BQUOTE) {
+            depth--;
+            ptr++;
+
+            ifnot (depth) break;
+
+            String.append_with_len (str, "]`", 2);
+            continue;
+          }
+        }
+
+        if (c is '`') {
+          if (*ptr and *ptr is '[') {
+            depth++;
+            ptr++;
+            String.append_with_len (str, "`[", 2);
+            continue;
+          }
+        }
+
+        String.append_byte (str, c);
+      }
+
+      goto attributes;
+    }
+
     while (1) {
       pc = c;
       c = *ptr++;
 
-      if (c is TOKEN_EOF)
-        THROW_SYNTAX_ERR("error while getting literal string, awaiting back quote");
+      THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "error while getting literal string, awaiting back quote");
 
       if (c is TOKEN_BQUOTE) {
         if (pc is TOKEN_ESCAPE_CHR) {
@@ -1665,14 +1701,10 @@ static int la_get_string (la_t *this, char chr) {
         break;
       }
 
-      if (c is TOKEN_ESCAPE_CHR) {
-        String.append_byte (str, '\\');
-        continue;
-      }
-
       String.append_byte (str, c);
     }
 
+    attributes:
     c = *ptr;
 
     if (c is 'S') {
@@ -1703,11 +1735,12 @@ static int la_get_string (la_t *this, char chr) {
       size_t len = str->num_bytes;
       char sptr[len + 1];
       Cstring.cp (sptr, len + 1, str->bytes, len);
+
       String.clear (str);
+
       char *p = sptr;
 
       while ((c = *p++)) {
-
         if (c isnot TOKEN_NL) {
           String.append_byte (str, c);
           continue;
@@ -1716,7 +1749,9 @@ static int la_get_string (la_t *this, char chr) {
         String.append_byte (str, c);
         int num_stripped = 0;
 
-        while (num_stripped < num_ws and (c = *p++)) {
+        while (*p and num_stripped < num_ws) {
+          c = *p++;
+
           if (is_space (c)) {
             num_stripped++;
             continue;
@@ -1769,7 +1804,7 @@ static int la_get_string (la_t *this, char chr) {
 
 theend:
   SETSTRPTR(PARSEPTR, ptr);
-  SETSTRLEN(PARSEPTR, ptrlen - (ptr - tmp));
+  SETSTRLEN(PARSEPTR, ptrlen - (ptr - save_ptr));
 
   VALUE v = STRING(str);
   if (this->curState & MALLOCED_STRING_STATE) {

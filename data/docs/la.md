@@ -1656,6 +1656,8 @@ The return statement
     # IntegerType   Dir.remove_parents (StringType dir)
 
   # Os Module Interface
+    # StringType    Os.arch ()
+    # StringType    Os.platform ()
     # IntegerType   Os.sleep (NumberType secs)
     # IntegerType   Os.getuid ()
     # IntegerType   Os.getgid ()
