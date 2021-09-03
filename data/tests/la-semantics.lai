@@ -1724,6 +1724,35 @@ func semantics () {
 
   test_maps ()
 
+  func test_lists () {
+    var l = list_new ()
+    list_append (l, 21)
+    list_append (l, "12")
+    list_prepend(l, 1);
+
+    var v = l:get_at (2)
+    list_set_at (l, 1, "one")
+    list_insert_at (l, 0, "two")
+    list_insert_at (l, 1, ["11", "131", "24"])
+
+    var sum = 0
+    var sun = ""
+    for |v| in l {
+      if typeof (v) is StringType then sun += v end
+      if typeof (v) is IntegerType then sum += v end
+    }
+
+    var sa = l:pop_at (1)
+
+   assert_true ("testing lists",
+       sum is 1 and
+       sun is "twoone12" and
+       v is "12" and
+       typeof (sa) is ArrayType) 
+  }
+
+  test_lists ()
+
   func types () {
     var
       stra = "string",

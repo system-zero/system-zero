@@ -434,7 +434,7 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   if (IS_NULL(v_stream)) {
     fp = stdout;
   } else {
-    ifnot (IS_FILEPTR(v_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
+    ifnot (IS_OBJECT(v_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
     object *o = AS_OBJECT(v_stream);
     fp = (FILE *) AS_PTR(o->value);
   }

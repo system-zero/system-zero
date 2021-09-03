@@ -156,7 +156,30 @@ typedef ObjectType object;
 #define IS_STRING(__v__) (__v__.type == STRING_TYPE)
 #define IS_NUMBER(__v__) (__v__.type == NUMBER_TYPE)
 #define IS_OBJECT(__v__) (__v__.type == OBJECT_TYPE)
-#define IS_FILEPTR IS_OBJECT
+#define IS_FILEPTR(__v__) ({                             \
+  int _r_ = 0;                                           \
+  if (IS_OBJECT(__v__)) {                                \
+    object *_o_ = AS_OBJECT(__v__);                      \
+    if (_o_->release == la_fclose)                       \
+      _r_ = 1;                                           \
+    else {                                               \
+      sym_t *_s_;                                        \
+      _s_ = Vmap.get (this->std->symbols, "stdin");      \
+      if (AS_PTR(_s_->value) == AS_PTR(__v__)) {         \
+        _r_ = 1;                                         \
+      } else {                                           \
+        _s_ = Vmap.get (this->std->symbols, "stdout");   \
+        if (AS_PTR(_s_->value) ==  AS_PTR(__v__)) {      \
+          _r_ = 1;                                       \
+        } else {                                         \
+          _s_ = Vmap.get (this->std->symbols, "stderr"); \
+          _r_ = AS_PTR(_s_->value) == AS_PTR(__v__);     \
+        }                                                \
+      }                                                  \
+    }                                                    \
+  }                                                      \
+  _r_;                                                   \
+})
 
 #define THROW(__e__, __m__) do {    \
   La.set.CFuncError (this,  __e__); \

@@ -548,11 +548,40 @@ typedef struct tokenState {
   return NULL_VALUE;                \
 } while (0)
 
+typedef struct listType listType;
+typedef struct listNode listNode;
+
+struct listNode {
+  VALUE *value;
+  listNode *next;
+  listNode *prev;
+};
+
+struct listType {
+  listNode *head;
+  listNode *tail;
+  listNode *current;
+
+  int num_items;
+  int cur_idx;
+};
+
+#define IS_LIST(__v__) ({             \
+  int _r_ = 0;                        \
+  if (IS_OBJECT(__v__)) {             \
+    object *_o_ = AS_OBJECT(__v__);   \
+    if (_o_->release == list_release) \
+      _r_ = 1;                        \
+  }                                   \
+  _r_;                                \
+})
+
 static int la_do_next_token (la_t *, int);
 static int la_parse_iforelse (la_t *, int, VALUE *);
 static int la_parse_print (la_t *);
 static int la_parse_println (la_t *);
 static int la_eval_string (la_t *, const char *);
+static VALUE la_release_val (la_t *, VALUE);
 static int la_parse_cond (la_t *, int);
 static int la_parse_stmt (la_t *);
 static int la_parse_expr (la_t *, VALUE *);
@@ -1200,6 +1229,204 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
   VALUE v = FILEPTR(fp);
   object *o = la_object_new (la_fclose, NULL, v);
   return FILEPTR(o);
+}
+
+static VALUE list_release (la_t *this, VALUE v_list) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+  object *o = AS_OBJECT(v_list);
+  listType *list = (listType *) AS_PTR(o->value);
+  listNode *it = list->head;
+
+  while (it) {
+    listNode *tmp = it->next;
+    la_release_val (this, *(it->value));
+    free (it->value);
+    free (it);
+    it = tmp;
+  }
+
+  free (list);
+  return OK_VALUE;
+}
+
+static VALUE list_new (la_t *this) {
+  (void) this;
+  listType *list = Alloc (sizeof (listType));
+  list->cur_idx = -1;
+  list->num_items = 0;
+  list->head = list->tail = list->current = NULL;
+  VALUE v = OBJECT(list);
+  object *o = la_object_new (list_release, NULL, v);
+  return OBJECT(o);
+}
+
+static VALUE list_set (la_t *this, VALUE v_list, VALUE v_item, int what) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+  object *o = AS_OBJECT(v_list);
+  listType *list = (listType *) AS_PTR(o->value);
+  listNode *node = Alloc(sizeof (listNode));
+  VALUE v = la_copy_value (v_item);
+  VALUE *vp = Alloc (sizeof (VALUE));
+  *vp = v;
+  node->value = vp;
+  if (what)
+    DListAppend(list, node);
+  else
+    DListPrepend(list, node);
+
+  return OK_VALUE;
+}
+
+static VALUE list_prepend (la_t *this, VALUE v_list, VALUE v_item) {
+  return list_set (this, v_list, v_item, 0);
+}
+
+static VALUE list_append (la_t *this, VALUE v_list, VALUE v_item) {
+  return list_set (this, v_list, v_item, 1);
+}
+
+static VALUE list_set_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+  ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  object *o = AS_OBJECT(v_list);
+  listType *list = (listType *) AS_PTR(o->value);
+
+  int idx = AS_INT(v_idx);
+  if (0 > idx)
+    idx += list->num_items;
+
+  if (idx <= -1 or idx >= list->num_items) {
+    // compiler complains:
+    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
+    //    idx, list->num_items));
+    char msg[256]; Cstring.cp_fmt (msg, 256,
+      "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
+    C_THROW(LA_ERR_OUTOFBOUNDS, msg);
+  }
+
+  listNode *node = DListGetAt(list, listNode, idx);
+  la_release_val (this, *node->value);
+  VALUE v = la_copy_value (v_v);
+  *node->value = v;
+  return OK_VALUE;
+}
+
+static VALUE list_insert_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+  ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  object *o = AS_OBJECT(v_list);
+  listType *list = (listType *) AS_PTR(o->value);
+
+  int idx = AS_INT(v_idx);
+  if (0 > idx)
+    idx += list->num_items;
+
+  if (idx <= -1 or idx > list->num_items) {
+    // compiler complains:
+    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
+    //    idx, list->num_items));
+    char msg[256]; Cstring.cp_fmt (msg, 256,
+      "index %d > than %d length, or less or equal than -1", idx, list->num_items);
+    C_THROW(LA_ERR_OUTOFBOUNDS, msg);
+  }
+
+  if (idx is 0)
+    return list_set (this, v_list, v_v, 0);
+  if (idx is list->num_items)
+    return list_set (this, v_list, v_v, 1);
+
+  idx--;
+
+  listNode *node = Alloc (sizeof (listNode));
+  VALUE v = la_copy_value (v_v);
+  VALUE *vp = Alloc (sizeof (VALUE));
+  *vp = v;
+  node->value = vp;
+  DListInsertAt(list, node, idx);
+  return OK_VALUE;
+}
+
+static VALUE list_get_at (la_t *this, VALUE v_list, VALUE v_idx) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+  ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  object *o = AS_OBJECT(v_list);
+  listType *list = (listType *) AS_PTR(o->value);
+
+  int idx = AS_INT(v_idx);
+  if (0 > idx)
+    idx += list->num_items;
+
+  if (idx <= -1 or idx >= list->num_items) {
+    // compiler complains:
+    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
+    //    idx, list->num_items));
+    char msg[256]; Cstring.cp_fmt (msg, 256,
+      "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
+    C_THROW(LA_ERR_OUTOFBOUNDS, msg);
+  }
+
+  listNode *node = DListGetAt(list, listNode, idx);
+  if (NULL is node)
+    return NULL_VALUE;
+
+  VALUE v = la_copy_value (*node->value);
+  return v;
+}
+
+static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+  ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  object *o = AS_OBJECT(v_list);
+  listType *list = (listType *) AS_PTR(o->value);
+
+  int idx = AS_INT(v_idx);
+  if (0 > idx)
+    idx += list->num_items;
+
+  if (idx <= -1 or idx >= list->num_items) {
+    // compiler complains:
+    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
+    //    idx, list->num_items));
+    char msg[256]; Cstring.cp_fmt (msg, 256,
+      "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
+    C_THROW(LA_ERR_OUTOFBOUNDS, msg);
+  }
+
+  listNode *node = DListPopAt(list, listNode, idx);
+  la_release_val (this, *node->value);
+  free (node->value);
+  free (node);
+  return OK_VALUE;
+}
+
+static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+  ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  object *o = AS_OBJECT(v_list);
+  listType *list = (listType *) AS_PTR(o->value);
+
+  int idx = AS_INT(v_idx);
+  if (0 > idx)
+    idx += list->num_items;
+
+  if (idx <= -1 or idx >= list->num_items) {
+    // compiler complains:
+    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
+    //    idx, list->num_items));
+    char msg[256]; Cstring.cp_fmt (msg, 256,
+      "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
+    C_THROW(LA_ERR_OUTOFBOUNDS, msg);
+  }
+
+  listNode *node = DListPopAt(list, listNode, idx);
+  VALUE v = la_copy_value (*node->value);
+  la_release_val (this, *node->value);
+  free (node->value);
+  free (node);
+  return v;
 }
 
 static int la_parse_format (la_t *, VALUE *);
@@ -4416,7 +4643,10 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
       case NULL_TYPE:
       default:
-        method[0] = '\0';
+        if (IS_LIST((*vp)))
+          Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "list_%s", key);
+        else
+          method[0] = '\0';
         break;
 
       // default: allow
@@ -6327,6 +6557,9 @@ static int la_parse_foreach (la_t *this) {
       break;
 
     default:
+      if (IS_LIST(v))
+        break;
+
       THROW_A_TYPE_MISMATCH(type, "illegal foreach type");
   }
 
@@ -6578,6 +6811,58 @@ static int la_parse_foreach (la_t *this) {
       this->curState &= ~LOOP_STATE;
       THROW_ERR_IF_ERR(err);
 
+      elem_sym->value = NULL_VALUE;
+
+      if (err is LA_ERR_BREAK) goto theend;
+
+      if (HASTORETURN) {
+        this->curState &= ~LOOP_STATE;
+        RESET_PARSEPTR;
+        Vmap.release (fun->block_symbols);
+        fun_release (&fun);
+        return LA_OK;
+      }
+
+      if (err is LA_ERR_CONTINUE) {
+        la_fun_release_symbols (fun, 1, 0);
+        continue;
+      }
+
+      THROW_ERR_IF_ERR(err);
+
+      la_fun_release_symbols (fun, 1, 0);
+    }
+
+  } else if (IS_LIST(v)) {
+    ptr = ident;
+    while (*ptr) ptr++;
+    len = ptr - ident;
+    while (is_space (ident[len-1])) len--;
+    ifnot (len) THROW_SYNTAX_ERR("empty for[each] identifier");
+    if (len >= MAXLEN_SYMBOL)
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
+
+    char elem[len + 1];
+    Cstring.cp (elem, len + 1, ident, len);
+    VALUE elem_value = NULL_VALUE;
+    object *o = AS_OBJECT(v);
+    listType *list = (listType *) AS_PTR(o->value);
+
+    sym_t *elem_sym = la_define_block_symbol (this, fun, elem, NULL_TYPE, elem_value, 0);
+    int num = list->num_items;
+
+    la_string body_str = StringNew (body);
+
+    for (int i = 0; i < num; i++) {
+      listNode *node = DListGetAt(list, listNode, i);
+      elem_value = *node->value;
+      elem_sym->value = elem_value;
+      elem_value.refcount++;
+      this->curState |= LOOP_STATE;
+      err = la_parse_string (this, body_str);
+      this->curState &= ~LOOP_STATE;
+      THROW_ERR_IF_ERR(err);
+      elem_value.refcount--;
       elem_sym->value = NULL_VALUE;
 
       if (err is LA_ERR_BREAK) goto theend;
@@ -9016,6 +9301,14 @@ LaDefCFun la_funs[] = {
   { "qualifier",        PTR(la_qualifier), 2},
   { "qualifiers",       PTR(la_qualifiers), 0},
   { "qualifier_exists", PTR(la_qualifier_exists), 1},
+  { "list_new",         PTR(list_new), 0},
+  { "list_set_at",      PTR(list_set_at), 3},
+  { "list_get_at",      PTR(list_get_at), 2},
+  { "list_pop_at",      PTR(list_pop_at), 2},
+  { "list_append",      PTR(list_append), 2},
+  { "list_prepend",     PTR(list_prepend), 2},
+  { "list_delete_at",   PTR(list_delete_at), 2},
+  { "list_insert_at",   PTR(list_insert_at), 3},
   { NULL,               NULL_VALUE, NULL_TYPE},
 };
 
