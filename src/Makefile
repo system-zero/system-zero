@@ -991,6 +991,16 @@ clean-packman:
 	@cd $(ZA_PACKMAN_SRCDIR) && $(MAKE) $(MARGS) clean
 
 #----------------------------------------------------------#
+# Development (ignore)
+
+clone-libc:
+	$(SYSBINDIR)/Packman --install clone_libc
+libpam:
+	$(SYSBINDIR)/Packman --install pam
+
+bootstrap: clean-libla-shared la-shared clone-libc libpam clean-libauth-shared zsu-shared
+
+#----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv list\
               libstring-shared libustring-shared libcstring-shared\

@@ -841,7 +841,7 @@ theend_no_verbose:
   if (-1 isnot dfd) close (dfd);
 
 theend:
-  if (retval is OK and opts.preserve is FILE_CP_PRESERVE) {
+  if (retval is OK and opts.preserve >= FILE_CP_PRESERVE) {
     struct timespec times[2];
     times[0] = src_st.st_atim;
     times[1] = src_st.st_mtim;
@@ -855,27 +855,31 @@ theend:
       retval = NOTOK;
     }
 
-    int retv_chown = 0;
-    int retv_chmod = 0;
+    if (retval is OK) {
+      int retv_chown = 0;
+      int retv_chmod = 0;
 
-    if (S_ISLNK(src_st.st_mode)){
-      retv_chown = lchown (dest, src_st.st_uid, src_st.st_gid);
-    } else {
-      retv_chown = chown (dest, src_st.st_uid, src_st.st_gid);
-      retv_chmod = chmod (dest, src_st.st_mode);
+      if (S_ISLNK(src_st.st_mode)) {
+        if (opts.preserve is FILE_CP_PRESERVE_OWNER)
+          retv_chown = lchown (dest, src_st.st_uid, src_st.st_gid);
+      } else {
+        if (opts.preserve is FILE_CP_PRESERVE_OWNER)
+          retv_chown = chown (dest, src_st.st_uid, src_st.st_gid);
+        retv_chmod = chmod (dest, src_st.st_mode);
+      }
+
+      retval = (retv_chown is -1 or retv_chmod is -1 ? NOTOK : OK);
+
+      if (retv_chown is -1)
+        if (outToErrStream)
+          fprintf (opts.err_stream, "failed to change ownership to '%s': %s\n",
+              dest, Error.errno_string (errno));
+
+      if (retv_chmod is -1)
+        if (outToErrStream)
+          fprintf (opts.err_stream, "failed to change mode to '%s': %s\n",
+              dest, Error.errno_string (errno));
     }
-
-    retval = (retv_chown is -1 or retv_chmod is -1 ? NOTOK : OK);
-
-    if (retv_chown is -1)
-      if (outToErrStream)
-        fprintf (opts.err_stream, "failed to change ownership to '%s': %s\n",
-            dest, Error.errno_string (errno));
-
-    if (retv_chmod is -1)
-      if (outToErrStream)
-        fprintf (opts.err_stream, "failed to change mode to '%s': %s\n",
-            dest, Error.errno_string (errno));
   }
 
 theerror:

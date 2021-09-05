@@ -46,7 +46,7 @@ endif
 
 STATIC_CFLAGS :=  -L$(SYSLIBDIR)/.. -static
 
-FLAGS         := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(BASE_FLAGS)
+FLAGS         := -I$(SYSINCDIR) -L$(SYSLIBDIR)/.. $(BASE_FLAGS)
 
 CHECK_PTR_BOUNDS_FLAGS := -mmpx -fcheck-pointer-bounds
 

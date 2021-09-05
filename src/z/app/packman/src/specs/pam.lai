@@ -12,8 +12,9 @@ spec.set.license ("GPL2")
 var map[4] build = [
   New PackmanBuild (null, PACKMAN_BUILD_EXTRACT, null),
   New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE,
-     `--prefix=${%s, this.get.sysdir ()} --disable-shared
-      --enable-static --enable-db=no --disable-regenerate-docu`S4),
+     `--prefix=${%s, this.get.sysdir ()} --enable-shared
+      --enable-static --enable-db=no --disable-regenerate-docu
+      --disable-nis --disable-selinux --disable-audit`S4),
   New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null),
   New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, null)
 ]

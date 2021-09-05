@@ -2815,6 +2815,13 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
           s_ar[idx] = String.new_with_len (s_val->bytes, s_val->num_bytes);
         }
 
+        if (val.sym is NULL and
+            val.refcount isnot MALLOCED_STRING and
+            0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
+          la_release_val (this, val);
+          this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
+        }
+
         break;
       }
 
@@ -6791,17 +6798,26 @@ static int la_parse_foreach (la_t *this) {
           break;
 
         case STRING_TYPE:
-          elem_sym->value = STRING(s_ar[v_idx]);
+          if (NULL is s_ar[v_idx])
+            elem_sym->value = NULL_VALUE;
+          else
+            elem_sym->value = STRING(s_ar[v_idx]);
           elem_sym->value.refcount++;
           break;
 
         case MAP_TYPE:
-          elem_sym->value = MAP(m_ar[v_idx]);
+          if (NULL is m_ar[v_idx])
+            elem_sym->value = NULL_VALUE;
+          else
+            elem_sym->value = MAP(m_ar[v_idx]);
           elem_sym->value.refcount++;
           break;
 
         case ARRAY_TYPE:
-          elem_sym->value = ARRAY(a_ar[v_idx]);
+          if (NULL is a_ar[v_idx])
+            elem_sym->value = NULL_VALUE;
+          else
+            elem_sym->value = ARRAY(a_ar[v_idx]);
           elem_sym->value.refcount++;
           break;
       }
@@ -8069,7 +8085,7 @@ print_str:
         err = la_parse_expr_level (this, MAX_EXPR_LEVEL, &v);
         THROW_ERR_IF_ERR(err);
 
-        if (v.refcount > -1)
+        if (v.refcount > 0)
           v.refcount--;
         this->curState &= ~MALLOCED_STRING_STATE;
         goto check_expr;

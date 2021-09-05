@@ -541,6 +541,14 @@ executed by any language. And there are much more few than many, that cannot.
 
 ## Syntax and Semantics
 ```js
+# Note that this is the document that had been produced during the scratch
+# days and nights of the development. As such it doesn't attempt to sepatate
+# concepts (though it repeats some info, we'll leave it around, untill at least
+# a time that will not have any reference. Tagged as LAnguageInterpreterDoc-0.0.
+# Hopefully will fulfil this aid promise, at least a bit.
+
+# LAID-0.0 (started at the dawn (ended at 04/09/21 late afterno.n))
+
 # A `#' denotes the begining of a comment that ends up to the end of line.
 
 # Variable assignment
@@ -1589,6 +1597,7 @@ The return statement
     # IntegerType   File.size (StringType file)
     # IntegerType   File.chown (StringType file, IntegerType uid, IntegerType gid)
     # IntegerType   File.chmod (StringType file, IntegerType mode)
+    # IntegerType   File.write (StringType file, StringType str)
     # IntegerType   File.exists (StringType file)
     # IntegerType   File.is_rwx (StringType file)
     # IntegerType   File.is_reg (StringType file)

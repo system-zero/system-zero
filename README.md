@@ -1111,10 +1111,9 @@ To do that use:
    [executable](src/z/app/v/src/v.c)
 
    state: rather stable
-   crashes: not with current usage, but quite possible unhandled cases
+   crashes: not with current usage, but quite possible there are unhandled cases
 
   - a [programming language](data/docs/la.md) called as:
-     (pronounced as in "hey")
 
      La or La-static [options] [filename[s]]
      La --help  # for options
@@ -1214,9 +1213,16 @@ To do that use:
 By default libraries and applications are installed in sys/`uname -m`.
 You may want to prepend LD_LIBRARY_PATH=sys/`uname -m`/lib/z path/to/exec when
 calling an executable, or the other options is through ldconfig for libraries,
-and to set the binary path `cwd`/sys/`uname -m`/bin to your shell env file.
+and to set the binary path `pwd`/sys/`uname -m`/bin to your shell env file.
 
 There is no support for installation to the `/` namespace.
+
+# Development (ongoing work, ignore this section)
+
+```sh
+  make bootstrap
+  # now we should be able to use shared libraries/applications within chroot
+```
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

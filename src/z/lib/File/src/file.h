@@ -15,6 +15,7 @@ typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
 #define FILE_CP_FOLLOW_LNK     1
 #define FILE_CP_NO_PRESERVE    0
 #define FILE_CP_PRESERVE       1
+#define FILE_CP_PRESERVE_OWNER 2
 #define FILE_CP_NO_RECURSIVE   0
 #define FILE_CP_RECURSIVE      1
 #define FILE_CP_NO_UPDATE      0

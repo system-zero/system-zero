@@ -10,6 +10,7 @@
 #define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
+#define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
@@ -74,14 +75,63 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
 
+  VALUE v_verbose = La.get.qualifier (this, "verbose", INT(1));
+  ifnot (IS_INT(v_verbose)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+  int verbose = AS_INT(v_verbose);
+
+  VALUE v_force = La.get.qualifier (this, "force", INT(0));
+  ifnot (IS_INT(v_force)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+  int force = AS_INT(v_force);
+
+  FILE *out_fp = NULL;
+  VALUE v_out_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);
+  if (IS_NULL(v_out_stream)) {
+    out_fp = stdout;
+  } else {
+    ifnot (IS_OBJECT(v_out_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
+    object *o = AS_OBJECT(v_out_stream);
+    out_fp = (FILE *) AS_PTR(o->value);
+  }
+
+  FILE *err_fp = NULL;
+  VALUE v_err_stream = La.get.qualifier (this, "err_stream", NULL_VALUE);
+  if (IS_NULL(v_err_stream)) {
+    err_fp = stderr;
+  } else {
+    ifnot (IS_OBJECT(v_err_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
+    object *o = AS_OBJECT(v_err_stream);
+    err_fp = (FILE *) AS_PTR(o->value);
+  }
+
   La.set.Errno (this, 0);
 
-  int retval = symlink (src_file, dest_file);
+  int retval = OK;
+  retry:
+  retval = symlink (src_file, dest_file);
   if (retval is -1) {
+    if (errno is EEXIST) {
+      if (force > 0) {
+        if (File.is_lnk (dest_file)) {
+          retval = unlink (dest_file);
+          ifnot (retval)
+            goto retry;
+        }
+      }
+    }
+
     La.set.Errno (this, errno);
+    if (verbose > 0) { // change it with a generic macro in cenv or libfile
+      fprintf (err_fp, "failed to create symlink: %s -> %s\n", src_file, dest_file);
+      fprintf (err_fp, "%s\n", Error.errno_string (errno));
+    }
+
     return NOTOK_VALUE;
-  } else
+  } else {
+    if (verbose is 2) // change it with a generic macro in cenv or libfile
+      fprintf (out_fp, "%s -> %s\n", src_file, dest_file);
+
     return OK_VALUE;
+  }
 
   return OK_VALUE;
 }
@@ -385,6 +435,51 @@ static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
   return OK_VALUE;
 }
 
+static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  char *file = AS_STRING_BYTES(v_file);
+  string *str = AS_STRING(v_str);
+
+  VALUE v_verbose = La.get.qualifier (this, "verbose", INT(0));
+  ifnot (IS_INT(v_verbose)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+  int verbose = AS_INT(v_verbose);
+
+  FILE *out_fp = NULL;
+  VALUE v_out_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);
+  if (IS_NULL(v_out_stream)) {
+    out_fp = stdout;
+  } else {
+    ifnot (IS_OBJECT(v_out_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
+    object *o = AS_OBJECT(v_out_stream);
+    out_fp = (FILE *) AS_PTR(o->value);
+  }
+
+  VALUE retval = NOTOK_VALUE;
+
+  La.set.Errno (this, 0);
+
+  FILE *fp = fopen (file, "w");
+  if (NULL is fp) {
+    La.set.Errno (this, errno);
+    return retval;
+  }
+
+  int num_written = fprintf (fp, "%s\n", str->bytes);
+  if (num_written isnot (int) str->num_bytes + 1) {
+    La.set.Errno (this, errno);
+  } else {
+    if (verbose is 2 and out_fp isnot NULL)
+      fprintf (out_fp, "%s: %d bytes written\n", file, num_written);
+    retval = OK_VALUE;
+  }
+
+  fclose (fp);
+  return retval;
+}
+
 static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   ifnot (IS_STRING(v_src)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_dest)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -486,6 +581,7 @@ public int __init_file_module__ (la_t *this) {
   __INIT__(io);
   __INIT__(file);
   __INIT__(vmap);
+  __INIT__(error);
   __INIT__(string);
   __INIT__(vstring);
 
@@ -494,8 +590,9 @@ public int __init_file_module__ (la_t *this) {
   LaDefCFun lafuns[] = {
     { "file_copy",       PTR(file_copy), 2 },
     { "file_stat",       PTR(file_stat), 1 },
-    { "file_lstat",      PTR(file_lstat), 1 },
     { "file_size",       PTR(file_size), 1 },
+    { "file_write",      PTR(file_write), 2 },
+    { "file_lstat",      PTR(file_lstat), 1 },
     { "file_chown",      PTR(file_chown), 3 },
     { "file_chmod",      PTR(file_chmod), 2 },
     { "file_exists",     PTR(file_exists), 1 },
@@ -566,6 +663,7 @@ public int __init_file_module__ (la_t *this) {
       "copy" : file_copy,
       "stat" : file_stat,
       "size" : file_size,
+      "write" : file_write,
       "lstat" : file_lstat,
       "chown" : file_chown,
       "chmod" : file_chmod,

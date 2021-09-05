@@ -1,0 +1,77 @@
+import ("file")
+import ("dir")
+
+var name = "clone_libc"
+var spec = New PackmanSpec (name)
+
+spec.set.version ("0.1")
+spec.set.descr ("Copy necessary libraries from the host")
+spec.set.license ("GPL2")
+
+var map[1] build = [
+  New PackmanBuild (null, PACKMAN_BUILD_EVAL, `
+    var cwd = Dir.current ()
+
+    var string[9] libs = [
+      "/lib/ld-linux.so.2": file_readlink (),
+      "/lib/libc.so.6": file_readlink (),
+      "libc.so",
+      "libc.a",
+      "libc_nonshared.a",
+      "/lib/libm.so.6": file_readlink (),
+      "libm.a",
+      "/lib/libdl.so.2": file_readlink (),
+      "libdl.a"
+    ]
+
+    var string[12] links = [
+      libs[0],
+      "ld-linux.so.2",
+      libs[1],
+      "libc.so.6",
+      libs[5],
+      "libm.so.6",
+      "libm.so.6",
+      "libm.so",
+      libs[7],
+      "libdl.so.2",
+      "libdl.so.2",
+      "libdl.so"
+    ]
+
+    func install_libs () {
+      for |v| in libs {
+        return notok if notok is File.copy ("/lib/" + v, this.libdir;
+          { "verbose": 2, "force" : 1, "preserve" : 1 })
+      }
+
+      return ok
+    }
+
+    func install_links () {
+      return notok if notok is Dir.change (this.libdir)
+
+      for |i, v| in links {
+        i += 1
+        return notok if notok is File.symlink (v, links[i];
+            { "verbose" : 2, "force" : 1 })
+      }
+
+      return ok
+    }
+
+    var r = ok
+    loop (1) {
+      r = install_libs ()
+      break if r is notok
+      r = install_links ()
+    }
+
+    Dir.change (cwd)
+    return r
+  `S4)
+]
+
+spec.set.build (build)
+
+return spec
