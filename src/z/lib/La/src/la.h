@@ -193,6 +193,97 @@ typedef VALUE (*OpFunc) (la_t *, VALUE, VALUE);
 typedef int  (*ModuleInit) (la_t *);
 typedef void (*ModuleDeinit) (la_t *);
 
+#define GET_OPT_ERR_STREAM() ({                                           \
+  FILE *_err_fp = NULL;                                                   \
+  VALUE _v_err_stream = La.get.qualifier (this, "err_stream", NULL_VALUE);\
+  if (IS_NULL(_v_err_stream)) {                                           \
+    _err_fp = stderr;                                                     \
+  } else {                                                                \
+    ifnot (IS_OBJECT(_v_err_stream))                                      \
+      THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");             \
+    object *o = AS_OBJECT(_v_err_stream);                                 \
+    _err_fp = (FILE *) AS_PTR(o->value);                                  \
+  }                                                                       \
+  _err_fp;                                                                \
+})
+
+#define GET_OPT_OUT_STREAM() ({                                           \
+  FILE *_out_fp = NULL;                                                   \
+  VALUE _v_out_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);\
+  if (IS_NULL(_v_out_stream)) {                                           \
+    _out_fp = stdout;                                                     \
+  } else {                                                                \
+    ifnot (IS_OBJECT(_v_out_stream))                                      \
+      THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");             \
+    object *o = AS_OBJECT(_v_out_stream);                                 \
+    _out_fp = (FILE *) AS_PTR(o->value);                                  \
+  }                                                                       \
+  _out_fp;                                                                \
+})
+
+#define GET_OPT_VERBOSE() ({                                              \
+  VALUE _v_verbose = La.get.qualifier (this, "verbose", INT(OPT_VERBOSE_ON_ERROR)); \
+  ifnot (IS_INT(_v_verbose))                                              \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_verbose);                                                     \
+})
+
+#define GET_OPT_FORCE() ({                                                \
+  VALUE _v_force = La.get.qualifier (this, "force", INT(OPT_NO_FORCE));   \
+  ifnot (IS_INT(_v_force))                                                \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_force);                                                       \
+})
+
+#define GET_OPT_RECURSIVE() ({                                            \
+  VALUE _v_recursive = La.get.qualifier (this, "recursive", INT(OPT_NO_RECURSIVE));  \
+  ifnot (IS_INT(_v_recursive))                                            \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_recursive);                                                   \
+})
+
+#define GET_OPT_INTERACTIVE() ({                                          \
+  VALUE _v_interactive = La.get.qualifier (this, "interactive", INT(OPT_NO_INTERACTIVE));  \
+  ifnot (IS_INT(_v_interactive))                                          \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_interactive);                                                 \
+})
+
+#define GET_OPT_BACKUP() ({                                               \
+  VALUE _v_backup = La.get.qualifier (this, "backup", INT(OPT_NO_BACKUP));\
+  ifnot (IS_INT(_v_backup))                                               \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_backup);                                                      \
+})
+
+#define GET_OPT_FOLLOW_LNK() ({                                           \
+  VALUE _v_follow_lnk = La.get.qualifier (this, "follow_lnk", INT(OPT_NO_FOLLOW_LNK));\
+  ifnot (IS_INT(_v_follow_lnk))                                           \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_follow_lnk);                                                  \
+})
+
+#define GET_OPT_PRESERVE() ({                                             \
+  VALUE _v_preserve = La.get.qualifier (this, "preserve", INT(OPT_NO_PRESERVE));\
+  ifnot (IS_INT(_v_preserve))                                             \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_preserve);                                                    \
+})
+
+#define GET_OPT_UPDATE() ({                                               \
+  VALUE _v_update = La.get.qualifier (this, "update", INT(OPT_NO_UPDATE));\
+  ifnot (IS_INT(_v_update))                                               \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_update);                                                      \
+})
+
+#define GET_OPT_ALL() ({                                                  \
+  VALUE _v_all = La.get.qualifier (this, "all", INT(OPT_NO_ALL));         \
+  ifnot (IS_INT(_v_all))                                                  \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_all);                                                         \
+})
+
 enum {
   LA_ERR_DYNLINK = -13,
   LA_ERR_IMPORT,

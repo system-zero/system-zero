@@ -371,7 +371,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
 
   if (opts.interactive) opts.force = 0;
 
-  int outToErrStream = (opts.verbose > FILE_CP_NO_VERBOSE and NULL isnot opts.err_stream);
+  int outToErrStream = (opts.verbose > OPT_NO_VERBOSE and NULL isnot opts.err_stream);
 
   if (NULL is src or NULL is dest) {
     if (outToErrStream)
@@ -580,13 +580,13 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
 
     are_same:
     if (src_st.st_dev is dest_st.st_dev and src_st.st_ino is dest_st.st_ino) {
-      if (opts.verbose > FILE_CP_NO_VERBOSE and NULL isnot opts.err_stream)
+      if (opts.verbose > OPT_NO_VERBOSE and NULL isnot opts.err_stream)
         fprintf (opts.err_stream, "'%s' and '%s' are the same file\n", src, dest);
       goto theerror;
     }
   }
 
-  if (opts.backup is FILE_CP_BACKUP and dest_exists) {
+  if (opts.backup is OPT_BACKUP and dest_exists) {
     if (opts.backup_suffix is NULL) {
       if (outToErrStream)
         fprintf (opts.err_stream, "failed to create backup: backup suffix is a NULL pointer\n");
@@ -609,7 +609,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     char dbuf[blen + 1];
     Cstring.cp_fmt (dbuf, blen + 1, "%s%s", dest, opts.backup_suffix);
     if (NOTOK is file_copy (dest, dbuf, FileCopyOpts
-        (.force = FILE_CP_FORCE, .verbose = opts.verbose)))
+        (.force = OPT_FORCE, .verbose = opts.verbose)))
       goto theerror;
 
     backup_file = String.new_with (Path.basename (dbuf));
@@ -634,7 +634,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
       goto theerror;
     }
 
-    if (opts.verbose is FILE_CP_VERBOSE and opts.out_stream isnot NULL) {
+    if (opts.verbose >= OPT_VERBOSE and opts.out_stream isnot NULL) {
       fprintf (opts.out_stream, "'%s' -> '%s'", src, dest);
       if (NULL isnot backup_file)
         fprintf (opts.out_stream, " (backup: %s)", backup_file->bytes);
@@ -662,7 +662,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
       goto theerror;
     }
 
-    if (opts.verbose is FILE_CP_VERBOSE and opts.out_stream isnot NULL) {
+    if (opts.verbose >= OPT_VERBOSE and opts.out_stream isnot NULL) {
       fprintf (opts.out_stream, "'%s' -> '%s'", src, dest);
       if (NULL isnot backup_file)
         fprintf (opts.out_stream, " (backup: %s)", backup_file->bytes);
@@ -673,7 +673,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     goto theend;
   }
 
-  if (opts.verbose is FILE_CP_VERBOSE_EXTRA and opts.out_stream isnot NULL) {
+  if (opts.verbose is OPT_VERBOSE_EXTRA and opts.out_stream isnot NULL) {
     FILE *dfp = NULL;
     FILE *sfp = fopen (src, "r");
     if (NULL is sfp) {
@@ -687,7 +687,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     do {
       dfp = fopen (dest, "w");
       if (NULL is dfp) {
-        if (opts.force is FILE_CP_FORCE) {
+        if (opts.force is OPT_FORCE) {
           if (errno is EACCES)
             ifnot (unlink (dest))
               continue;
@@ -795,7 +795,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     dfd = creat (dest, src_st.st_mode);
 
     if (-1 is dfd) {
-      if (opts.force is FILE_CP_FORCE) {
+      if (opts.force is OPT_FORCE) {
         if (errno is EACCES)
           ifnot (unlink (dest))
             continue;
@@ -827,7 +827,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     goto theend_no_verbose;
   }
 
-  if (opts.verbose is FILE_CP_VERBOSE and NULL isnot opts.out_stream) {
+  if (opts.verbose >= OPT_VERBOSE and NULL isnot opts.out_stream) {
     fprintf (opts.out_stream, "'%s' -> '%s'", src, dest);
     if (NULL isnot backup_file)
       fprintf (opts.out_stream, " (backup: %s)", backup_file->bytes);
@@ -841,7 +841,7 @@ theend_no_verbose:
   if (-1 isnot dfd) close (dfd);
 
 theend:
-  if (retval is OK and opts.preserve >= FILE_CP_PRESERVE) {
+  if (retval is OK and opts.preserve >= OPT_PRESERVE) {
     struct timespec times[2];
     times[0] = src_st.st_atim;
     times[1] = src_st.st_mtim;
@@ -860,10 +860,10 @@ theend:
       int retv_chmod = 0;
 
       if (S_ISLNK(src_st.st_mode)) {
-        if (opts.preserve is FILE_CP_PRESERVE_OWNER)
+        if (opts.preserve is OPT_PRESERVE_OWNER)
           retv_chown = lchown (dest, src_st.st_uid, src_st.st_gid);
       } else {
-        if (opts.preserve is FILE_CP_PRESERVE_OWNER)
+        if (opts.preserve is OPT_PRESERVE_OWNER)
           retv_chown = chown (dest, src_st.st_uid, src_st.st_gid);
         retv_chmod = chmod (dest, src_st.st_mode);
       }

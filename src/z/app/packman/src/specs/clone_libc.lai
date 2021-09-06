@@ -12,7 +12,7 @@ var map[1] build = [
   New PackmanBuild (null, PACKMAN_BUILD_EVAL, `
     var cwd = Dir.current ()
 
-    var string[9] libs = [
+    var string[11] libs = [
       "/lib/ld-linux.so.2": file_readlink (),
       "/lib/libc.so.6": file_readlink (),
       "libc.so",
@@ -21,10 +21,12 @@ var map[1] build = [
       "/lib/libm.so.6": file_readlink (),
       "libm.a",
       "/lib/libdl.so.2": file_readlink (),
-      "libdl.a"
+      "libdl.a",
+      "/lib/libutil.so.1": file_readlink (),
+      "libutil.a"
     ]
 
-    var string[12] links = [
+    var string[16] links = [
       libs[0],
       "ld-linux.so.2",
       libs[1],
@@ -36,7 +38,11 @@ var map[1] build = [
       libs[7],
       "libdl.so.2",
       "libdl.so.2",
-      "libdl.so"
+      "libdl.so",
+      libs[9],
+      "libutil.so.1",
+      "libutil.so.1",
+      "libutil.so"
     ]
 
     func install_libs () {

@@ -237,7 +237,7 @@ private
             this.results.$(as) = val
 
           } else if (type is IntegerType) {
-            this.results.$(as) = opts: to_integer ()
+            this.results.$(as) = optval: to_integer ()
           } else if (type is StringType) {
             this.results.$(as) = optval
           }

@@ -1,0 +1,32 @@
+var prog = "File.symlink"
+
+import ("file")
+
+loadfile ("argparse")
+
+var argparse = New Argparse (3, 0, prog + " [option[s]] source destination")
+argparse.add ("force", 'f', "force", "if a destination file exists and it is a symbolic link, remove it and try again", BooleanType, 0)
+argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot (ok is argparse.process (__argv, 1)) {
+  exit (1)
+}
+
+if (argparse.exit is true) {
+  exit (0)
+}
+
+var qualif = {
+  "force"       : argparse.results.force
+  "verbose"     : argparse.results.verbose: ifnot x then 1 orelse 2 end
+}
+
+if (argparse.argc isnot 2) {
+  println (stderr, "${%s, prog}: missing operand")
+  exit (1)
+}
+
+var retval = File.symlink (argparse.argv[0], argparse.argv[1]; qualif);
+
+exit (retval: if notok then 1 orelse 0 end)

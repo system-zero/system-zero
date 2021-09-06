@@ -1579,6 +1579,94 @@ typedef ptrdiff_t idx_t;
 #undef LIBRARY
 #endif /* LIBRARY */
 
+#ifndef OPT_NO_VERBOSE
+#define OPT_NO_VERBOSE 0
+#endif
+
+#ifndef OPT_VERBOSE_ON_ERROR
+#define OPT_VERBOSE_ON_ERROR 1
+#endif
+
+#ifndef OPT_VERBOSE
+#define OPT_VERBOSE 2
+#endif
+
+#ifndef OPT_VERBOSE_EXTRA
+#define OPT_VERBOSE_EXTRA 3
+#endif
+
+#ifndef OPT_NO_FORCE
+#define OPT_NO_FORCE       0
+#endif
+
+#ifndef OPT_FORCE
+#define OPT_FORCE          1
+#endif
+
+#ifndef OPT_NO_BACKUP
+#define OPT_NO_BACKUP      0
+#endif
+
+#ifndef OPT_BACKUP
+#define OPT_BACKUP         1
+#endif
+
+#ifndef OPT_NO_FOLLOW_LNK
+#define OPT_NO_FOLLOW_LNK  0
+#endif
+
+#ifndef OPT_FOLLOW_LNK
+#define OPT_FOLLOW_LNK     1
+#endif
+
+#ifndef OPT_NO_PRESERVE
+#define OPT_NO_PRESERVE    0
+#endif
+
+#ifndef OPT_PRESERVE
+#define OPT_PRESERVE       1
+#endif
+
+#ifndef OPT_PRESERVE_OWNER
+#define OPT_PRESERVE_OWNER 2
+#endif
+
+#ifndef OPT_NO_RECURSIVE
+#define OPT_NO_RECURSIVE   0
+#endif
+
+#ifndef OPT_RECURSIVE
+#define OPT_RECURSIVE      1
+#endif
+
+#ifndef OPT_NO_UPDATE
+#define OPT_NO_UPDATE      0
+#endif
+
+#ifndef OPT_UPDATE
+#define OPT_UPDATE         1
+#endif
+
+#ifndef OPT_NO_ALL
+#define OPT_NO_ALL         0
+#endif
+
+#ifndef OPT_ALL
+#define OPT_ALL            1
+#endif
+
+#ifndef OPT_NO_INTERACTIVE
+#define OPT_NO_INTERACTIVE 0
+#endif
+
+#ifndef OPT_INTERACTIVE
+#define OPT_INTERACTIVE    1
+#endif
+
+#ifndef OPT_MAXDEPTH
+#define OPT_MAXDEPTH 1024
+#endif
+
 #ifndef DECLARE
 #define DECLARE 1
 #endif

@@ -9,8 +9,10 @@
 #define REQUIRE_VMAP_TYPE     DECLARE
 #define REQUIRE_VSTRING_TYPE  DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
+#define REQUIRE_OS_TYPE       DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
@@ -75,37 +77,16 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
 
-  VALUE v_verbose = La.get.qualifier (this, "verbose", INT(1));
-  ifnot (IS_INT(v_verbose)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-  int verbose = AS_INT(v_verbose);
+  int verbose = GET_OPT_VERBOSE();
+  int force = GET_OPT_FORCE();
 
-  VALUE v_force = La.get.qualifier (this, "force", INT(0));
-  ifnot (IS_INT(v_force)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-  int force = AS_INT(v_force);
-
-  FILE *out_fp = NULL;
-  VALUE v_out_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);
-  if (IS_NULL(v_out_stream)) {
-    out_fp = stdout;
-  } else {
-    ifnot (IS_OBJECT(v_out_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
-    object *o = AS_OBJECT(v_out_stream);
-    out_fp = (FILE *) AS_PTR(o->value);
-  }
-
-  FILE *err_fp = NULL;
-  VALUE v_err_stream = La.get.qualifier (this, "err_stream", NULL_VALUE);
-  if (IS_NULL(v_err_stream)) {
-    err_fp = stderr;
-  } else {
-    ifnot (IS_OBJECT(v_err_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
-    object *o = AS_OBJECT(v_err_stream);
-    err_fp = (FILE *) AS_PTR(o->value);
-  }
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
 
   La.set.Errno (this, 0);
 
   int retval = OK;
+
   retry:
   retval = symlink (src_file, dest_file);
   if (retval is -1) {
@@ -120,14 +101,16 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
     }
 
     La.set.Errno (this, errno);
-    if (verbose > 0) { // change it with a generic macro in cenv or libfile
+
+    if (verbose > OPT_NO_VERBOSE and err_fp isnot NULL) {
       fprintf (err_fp, "failed to create symlink: %s -> %s\n", src_file, dest_file);
       fprintf (err_fp, "%s\n", Error.errno_string (errno));
     }
 
     return NOTOK_VALUE;
+
   } else {
-    if (verbose is 2) // change it with a generic macro in cenv or libfile
+    if (verbose >= OPT_VERBOSE and NULL isnot out_fp)
       fprintf (out_fp, "%s -> %s\n", src_file, dest_file);
 
     return OK_VALUE;
@@ -145,14 +128,56 @@ static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {
   uid_t uid = (uid_t) AS_INT(v_uid);
   gid_t gid = (gid_t) AS_INT(v_gid);
 
+  int verbose = GET_OPT_VERBOSE();
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
+  int follow_lnk = GET_OPT_FOLLOW_LNK();
+
+  int changed = 1;
+
+  char *user = OS.get.pwname (uid);
+  char *group = OS.get.grname (gid);
+
+  char *newuser = NULL;
+  char *newgroup = NULL;
+
+  struct stat st;
+  int retval = stat (file, &st);
+  ifnot (retval) {
+    if (st.st_uid is uid and st.st_gid is gid) {
+      changed = 0;
+      goto success;
+    }
+
+    newuser = OS.get.pwname (st.st_uid);
+    newgroup = OS.get.grname (st.st_gid);
+  }
+
   La.set.Errno (this, 0);
 
-  int retval = chown (file, uid, gid);
+  if (follow_lnk)
+    retval = chown (file, uid, gid);
+  else
+    retval = lchown (file, uid, gid);
+
   if (retval is -1) {
     La.set.Errno (this, errno);
+    if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
+      fprintf (err_fp, "chown: changing ownership of '%s': %s\n",
+        file, Error.errno_string (errno));
+
     return NOTOK_VALUE;
-  } else
-    return OK_VALUE;
+  }
+
+  success:
+  if (verbose >= OPT_VERBOSE and out_fp isnot NULL) {
+    if (changed)
+      fprintf (out_fp, "changed ownership of '%s' from %s:%s to %s:%s\n",
+        file, user, group, newuser, newgroup);
+    else
+      fprintf (out_fp, "ownership of '%s' retained as %s:%s\n", file, user, group);
+
+  }
 
   return OK_VALUE;
 }
@@ -164,14 +189,57 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
   char *file = AS_STRING_BYTES(v_file);
   mode_t mode = (mode_t) AS_INT(v_mode);
 
+  int verbose = GET_OPT_VERBOSE();
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
+
   La.set.Errno (this, 0);
 
-  int retval = chmod (file, mode);
+  int retval;
+  int old_mode;
+
+  if (verbose) {
+    struct stat st;
+    retval = stat (file, &st);
+    ifnot (retval)
+      old_mode = st.st_mode;
+  }
+
+  retval = chmod (file, mode);
+
   if (retval is -1) {
     La.set.Errno (this, errno);
+    if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
+      fprintf (err_fp, "chmod: changing permissions of '%s': %s\n",
+        file, Error.errno_string (errno));
+
     return NOTOK_VALUE;
-  } else
-    return OK_VALUE;
+  }
+
+  if (verbose >= OPT_VERBOSE and out_fp isnot NULL) {
+    int new_mode;
+
+    struct stat st;
+    retval = stat (file, &st);
+    ifnot (retval)
+      new_mode = st.st_mode;
+    else {
+      ifnot (NULL is err_fp)
+        fprintf (err_fp, "failed to stat '%s' after succesfull chmod(): %s\n",
+          file, Error.errno_string (errno));
+      return NOTOK_VALUE;
+    }
+
+    char oldmode_str[16];
+    OS.mode.stat_to_string (oldmode_str, old_mode);
+    char newmode_str[16];
+    OS.mode.stat_to_string (newmode_str, new_mode);
+    char oldmode_oct[8]; Cstring.cp_fmt (oldmode_oct, 8, "%o", old_mode);
+    char newmode_oct[8]; Cstring.cp_fmt (newmode_oct, 8, "%o", new_mode);
+
+    fprintf (out_fp, "mode of '%s' changed from %s (%s) to %s (%s)\n",
+      file, &oldmode_oct[2], oldmode_str, &newmode_oct[2], newmode_str);
+  }
 
   return OK_VALUE;
 }
@@ -252,6 +320,7 @@ static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
 static VALUE do_stat (la_t *this, char *file, int (*fun) (const char *, struct stat *)) {
   struct stat st;
   int retval = fun (file, &st);
+
   if (-1 is retval) {
     La.set.Errno (this, errno);
     return NULL_VALUE;
@@ -443,19 +512,9 @@ static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
   char *file = AS_STRING_BYTES(v_file);
   string *str = AS_STRING(v_str);
 
-  VALUE v_verbose = La.get.qualifier (this, "verbose", INT(0));
-  ifnot (IS_INT(v_verbose)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-  int verbose = AS_INT(v_verbose);
-
-  FILE *out_fp = NULL;
-  VALUE v_out_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);
-  if (IS_NULL(v_out_stream)) {
-    out_fp = stdout;
-  } else {
-    ifnot (IS_OBJECT(v_out_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
-    object *o = AS_OBJECT(v_out_stream);
-    out_fp = (FILE *) AS_PTR(o->value);
-  }
+  int verbose = GET_OPT_VERBOSE();
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
 
   VALUE retval = NOTOK_VALUE;
 
@@ -464,14 +523,17 @@ static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
   FILE *fp = fopen (file, "w");
   if (NULL is fp) {
     La.set.Errno (this, errno);
+    if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
+      fprintf (err_fp, "%s\n", Error.errno_string (errno));
     return retval;
   }
 
   int num_written = fprintf (fp, "%s\n", str->bytes);
   if (num_written isnot (int) str->num_bytes + 1) {
-    La.set.Errno (this, errno);
+    if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
+      fprintf (err_fp, "failed to write in %s the requested bytes\n", file);
   } else {
-    if (verbose is 2 and out_fp isnot NULL)
+    if (verbose >= OPT_VERBOSE and out_fp isnot NULL)
       fprintf (out_fp, "%s: %d bytes written\n", file, num_written);
     retval = OK_VALUE;
   }
@@ -487,52 +549,18 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   char *src = AS_STRING_BYTES(v_src);
   char *dest = AS_STRING_BYTES(v_dest);
 
-  VALUE v_verbose = La.get.qualifier (this, "verbose", INT(0));
-  ifnot (IS_INT(v_verbose)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
+  int verbose = GET_OPT_VERBOSE();
+  int force = GET_OPT_FORCE();
+  int recursive = GET_OPT_RECURSIVE();
+  int interactive = GET_OPT_INTERACTIVE();
+  int backup = GET_OPT_BACKUP();
+  int follow_lnk = GET_OPT_FOLLOW_LNK();
+  int preserve = GET_OPT_PRESERVE();
+  int update = GET_OPT_UPDATE();
+  int all = GET_OPT_ALL();
 
-  VALUE v_force = La.get.qualifier (this, "force", INT(0));
-  ifnot (IS_INT(v_force)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  VALUE v_follow_lnk = La.get.qualifier (this, "follow_lnk", INT(0));
-  ifnot (IS_INT(v_follow_lnk)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  VALUE v_preserve = La.get.qualifier (this, "preserve", INT(0));
-  ifnot (IS_INT(v_preserve)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  VALUE v_backup = La.get.qualifier (this, "backup", INT(0));
-  ifnot (IS_INT(v_backup)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  VALUE v_recursive = La.get.qualifier (this, "recursive", INT(0));
-  ifnot (IS_INT(v_recursive)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  VALUE v_all = La.get.qualifier (this, "all", INT(0));
-  ifnot (IS_INT(v_all)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  VALUE v_update = La.get.qualifier (this, "update", INT(0));
-  ifnot (IS_INT(v_update)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  VALUE v_interactive = La.get.qualifier (this, "interactive", INT(0));
-  ifnot (IS_INT(v_interactive)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");
-
-  int verbose = AS_INT(v_verbose);
-  int force = AS_INT(v_force);
-  int follow_lnk = AS_INT(v_follow_lnk);
-  int preserve = AS_INT(v_preserve);
-  int backup = AS_INT(v_backup);
-  int recursive = AS_INT(v_recursive);
-  int update = AS_INT(v_update);
-  int all = AS_INT(v_all);
-  int interactive = AS_INT(v_interactive);
-
-  FILE *fp = NULL;
-  VALUE v_stream = La.get.qualifier (this, "out_stream", NULL_VALUE);
-  if (IS_NULL(v_stream)) {
-    fp = stdout;
-  } else {
-    ifnot (IS_OBJECT(v_stream)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file pointer");
-    object *o = AS_OBJECT(v_stream);
-    fp = (FILE *) AS_PTR(o->value);
-  }
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
 
   La.set.Errno (this, errno);
 
@@ -541,7 +569,7 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
       .backup = backup, .follow_lnk = follow_lnk,
       .preserve = preserve, .recursive = recursive,
       .update = update, .all = all, .interactive = interactive,
-      .out_stream = fp));
+      .out_stream = out_fp, .err_stream = err_fp));
 
   if (retval is NOTOK)
     La.set.Errno (this, errno);
@@ -579,11 +607,13 @@ static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
 public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
+  __INIT__(os);
   __INIT__(file);
   __INIT__(vmap);
   __INIT__(error);
   __INIT__(string);
   __INIT__(vstring);
+  __INIT__(cstring);
 
   (void) vstringType;
 

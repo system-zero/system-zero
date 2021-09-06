@@ -17,28 +17,32 @@ shared: clean-shared\
     file-size-shared \
     file-readlink-shared\
     file-stat-shared\
-    file-copy-shared
+    file-copy-shared\
+    file-symlink-shared
 
 static: clean-static\
     file-exists-static\
     file-size-static\
     file-readlink-static\
     file-stat-static\
-    file-copy-static
+    file-copy-static\
+    file-symlink-static
 
 clean-shared:\
     clean-file-exists-shared\
     clean-file-size-shared\
     clean-file-readlink-shared\
     clean-file-stat-shared\
-    clean-file-copy-shared
+    clean-file-copy-shared\
+    clean-file-symlink-shared
 
 clean-static:\
     clean-file-exists-static\
     clean-file-size-static\
     clean-file-readlink-static\
     clean-file-stat-static\
-    clean-file-copy-static
+    clean-file-copy-static\
+    clean-file-symlink-static
 
 #-----------------------------------------------#
 F_exists = File.exists
@@ -139,6 +143,26 @@ clean-file-copy-shared:
 
 clean-file-copy-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_copy)-static || $(RM) $(SYSBINDIR)/$(F_copy)-static
+
+#-----------------------------------------------#
+F_symlink = File.symlink
+file-symlink-shared:
+	@$(PRINTF) "#!La-shared\n\n" > $(SYSBINDIR)/$(F_symlink)
+	@$(CAT) $(F_symlink).lai >> $(SYSBINDIR)/$(F_symlink)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_symlink)
+	@$(PRINTF) "installing File.symlink to $(SYSBINDIR)\n"
+
+file-symlink-static:
+	@$(PRINTF) "#!La-static\n\n" > $(SYSBINDIR)/$(F_symlink)-static
+	@$(CAT) $(F_symlink).lai >> $(SYSBINDIR)/$(F_symlink)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_symlink)-static
+	@$(PRINTF) "installing File.symlink-static to $(SYSBINDIR)\n"
+
+clean-file-symlink-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_symlink) || $(RM) $(SYSBINDIR)/$(F_symlink)
+
+clean-file-symlink-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_symlink)-static || $(RM) $(SYSBINDIR)/$(F_symlink)-static
 
 #-----------------------------------------------#
 

@@ -3,29 +3,6 @@
 
 typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
 
-#define FILE_CP_NO_VERBOSE     0
-#define FILE_CP_ON_ERR_VERBOSE 1
-#define FILE_CP_VERBOSE        2
-#define FILE_CP_VERBOSE_EXTRA  3
-#define FILE_CP_NO_FORCE       0
-#define FILE_CP_FORCE          1
-#define FILE_CP_NO_BACKUP      0
-#define FILE_CP_BACKUP         1
-#define FILE_CP_NO_FOLLOW_LNK  0
-#define FILE_CP_FOLLOW_LNK     1
-#define FILE_CP_NO_PRESERVE    0
-#define FILE_CP_PRESERVE       1
-#define FILE_CP_PRESERVE_OWNER 2
-#define FILE_CP_NO_RECURSIVE   0
-#define FILE_CP_RECURSIVE      1
-#define FILE_CP_NO_UPDATE      0
-#define FILE_CP_UPDATE         1
-#define FILE_CP_NO_ALL         0
-#define FILE_CP_ALL            1
-#define FILE_CP_NO_INTERACTIVE 0
-#define FILE_CP_INTERACTIVE    1
-#define FILE_CP_MAXDEPTH      1024
-
 typedef int (*FileCopyInteractive) (char *);
 
 typedef struct file_copy_opts {
@@ -53,17 +30,17 @@ typedef struct file_copy_opts {
 } file_copy_opts;
 
 #define FileCopyOpts(...) (file_copy_opts) { \
-  .all = FILE_CP_NO_ALL,                     \
-  .force = FILE_CP_NO_FORCE,                 \
-  .backup = FILE_CP_NO_BACKUP,               \
-  .update = FILE_CP_NO_UPDATE,               \
-  .verbose = FILE_CP_ON_ERR_VERBOSE,         \
-  .preserve = FILE_CP_NO_PRESERVE,           \
-  .maxdepth = FILE_CP_MAXDEPTH,              \
+  .all = OPT_NO_ALL,                         \
+  .force = OPT_NO_FORCE,                     \
+  .backup = OPT_NO_BACKUP,                   \
+  .update = OPT_NO_UPDATE,                   \
+  .verbose = OPT_VERBOSE_ON_ERROR,           \
+  .preserve = OPT_NO_PRESERVE,               \
+  .maxdepth = OPT_MAXDEPTH,                  \
   .curdepth = 0,                             \
-  .recursive = FILE_CP_NO_RECURSIVE,         \
-  .follow_lnk = FILE_CP_NO_FOLLOW_LNK,       \
-  .interactive = FILE_CP_NO_INTERACTIVE,     \
+  .recursive = OPT_NO_RECURSIVE,             \
+  .follow_lnk = OPT_NO_FOLLOW_LNK,           \
+  .interactive = OPT_NO_INTERACTIVE,         \
   .backup_suffix = "~",                      \
   .out_stream = stdout,                      \
   .err_stream = stderr,                      \

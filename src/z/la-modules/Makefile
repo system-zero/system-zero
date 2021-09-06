@@ -51,7 +51,7 @@ clean-path-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/path-module.so  || $(RM)  $(SYSMODULEDIR)/path-module.so
 
 #-----------------------------------------------------------
-FILE_FLAGS = -lfile -lvmap -lstring -lvstring -lerror
+FILE_FLAGS = -lfile -lvmap -lstring -lvstring -lcstring -los -lerror
 file-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/file-module.so $(SHARED_FLAGS) $(FILE_FLAGS) file/file-module.c
 
