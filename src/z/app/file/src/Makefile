@@ -18,7 +18,8 @@ shared: clean-shared\
     file-readlink-shared\
     file-stat-shared\
     file-copy-shared\
-    file-symlink-shared
+    file-symlink-shared\
+    file-chmod-shared
 
 static: clean-static\
     file-exists-static\
@@ -26,7 +27,8 @@ static: clean-static\
     file-readlink-static\
     file-stat-static\
     file-copy-static\
-    file-symlink-static
+    file-symlink-static\
+    file-chmod-static
 
 clean-shared:\
     clean-file-exists-shared\
@@ -34,7 +36,8 @@ clean-shared:\
     clean-file-readlink-shared\
     clean-file-stat-shared\
     clean-file-copy-shared\
-    clean-file-symlink-shared
+    clean-file-symlink-shared\
+    clean-file-chmod-shared
 
 clean-static:\
     clean-file-exists-static\
@@ -42,7 +45,8 @@ clean-static:\
     clean-file-readlink-static\
     clean-file-stat-static\
     clean-file-copy-static\
-    clean-file-symlink-static
+    clean-file-symlink-static\
+    clean-file-chmod-static
 
 #-----------------------------------------------#
 F_exists = File.exists
@@ -163,6 +167,26 @@ clean-file-symlink-shared:
 
 clean-file-symlink-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_symlink)-static || $(RM) $(SYSBINDIR)/$(F_symlink)-static
+
+#-----------------------------------------------#
+F_chmod = File.chmod
+file-chmod-shared:
+	@$(PRINTF) "#!La-shared\n\n" > $(SYSBINDIR)/$(F_chmod)
+	@$(CAT) $(F_chmod).lai >> $(SYSBINDIR)/$(F_chmod)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_chmod)
+	@$(PRINTF) "installing File.chmod to $(SYSBINDIR)\n"
+
+file-chmod-static:
+	@$(PRINTF) "#!La-static\n\n" > $(SYSBINDIR)/$(F_chmod)-static
+	@$(CAT) $(F_chmod).lai >> $(SYSBINDIR)/$(F_chmod)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_chmod)-static
+	@$(PRINTF) "installing File.chmod-static to $(SYSBINDIR)\n"
+
+clean-file-chmod-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_chmod) || $(RM) $(SYSBINDIR)/$(F_chmod)
+
+clean-file-chmod-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_chmod)-static || $(RM) $(SYSBINDIR)/$(F_chmod)-static
 
 #-----------------------------------------------#
 

@@ -196,13 +196,17 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
   La.set.Errno (this, 0);
 
   int retval;
-  int old_mode;
+  int old_mode = -1;
 
-  if (verbose) {
-    struct stat st;
-    retval = stat (file, &st);
-    ifnot (retval)
-      old_mode = st.st_mode;
+  struct stat st;
+  retval = stat (file, &st);
+  ifnot (retval)
+    old_mode = st.st_mode;
+
+  int changed = 1;
+  if ((old_mode - mode) is 1 << 15) {
+    changed = 0;
+    goto success;
   }
 
   retval = chmod (file, mode);
@@ -216,8 +220,18 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
     return NOTOK_VALUE;
   }
 
+  success:
   if (verbose >= OPT_VERBOSE and out_fp isnot NULL) {
     int new_mode;
+
+    ifnot (changed) {
+      char oldmode_str[16];
+      OS.mode.stat_to_string (oldmode_str, old_mode);
+      fprintf (out_fp, "mode of '%s' retained as 0%o (%s)\n",
+        file, old_mode - (1 << 15), oldmode_str);
+
+      return OK_VALUE;
+    }
 
     struct stat st;
     retval = stat (file, &st);
@@ -234,11 +248,8 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
     OS.mode.stat_to_string (oldmode_str, old_mode);
     char newmode_str[16];
     OS.mode.stat_to_string (newmode_str, new_mode);
-    char oldmode_oct[8]; Cstring.cp_fmt (oldmode_oct, 8, "%o", old_mode);
-    char newmode_oct[8]; Cstring.cp_fmt (newmode_oct, 8, "%o", new_mode);
-
-    fprintf (out_fp, "mode of '%s' changed from %s (%s) to %s (%s)\n",
-      file, &oldmode_oct[2], oldmode_str, &newmode_oct[2], newmode_str);
+    fprintf (out_fp, "mode of '%s' changed from 0%o (%s) to 0%o (%s)\n",
+      file, old_mode - (1 << 15), oldmode_str, new_mode - (1 << 15), newmode_str);
   }
 
   return OK_VALUE;
