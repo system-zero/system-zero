@@ -131,31 +131,40 @@ static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {
   int verbose = GET_OPT_VERBOSE();
   FILE *out_fp = GET_OPT_OUT_STREAM();
   FILE *err_fp = GET_OPT_ERR_STREAM();
-  int follow_lnk = GET_OPT_FOLLOW_LNK();
+  int dereference = GET_OPT_DEREFERENCE();
 
   int changed = 1;
 
-  char *user = OS.get.pwname (uid);
-  char *group = OS.get.grname (gid);
-
+  char *user = NULL;
+  char *group = NULL;
   char *newuser = NULL;
   char *newgroup = NULL;
 
+  La.set.Errno (this, 0);
+
   struct stat st;
   int retval = stat (file, &st);
+
   ifnot (retval) {
+    user = OS.get.pwname (st.st_uid);
+    group = OS.get.grname (st.st_gid);
+
     if (st.st_uid is uid and st.st_gid is gid) {
       changed = 0;
       goto success;
     }
 
-    newuser = OS.get.pwname (st.st_uid);
-    newgroup = OS.get.grname (st.st_gid);
+  } else {
+    La.set.Errno (this, errno);
+    if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp) {
+      fprintf (err_fp, "chown: cannot access '%s': %s\n",
+        file, Error.errno_string (errno));
+    }
+
+    return NOTOK_VALUE;
   }
 
-  La.set.Errno (this, 0);
-
-  if (follow_lnk)
+  if (dereference)
     retval = chown (file, uid, gid);
   else
     retval = lchown (file, uid, gid);
@@ -171,12 +180,24 @@ static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {
 
   success:
   if (verbose >= OPT_VERBOSE and out_fp isnot NULL) {
-    if (changed)
+    ifnot (changed) {
+       fprintf (out_fp, "ownership of '%s' retained as %s:%s\n", file, user, group);
+     } else {
+      retval = stat (file, &st);
+
+      if (-1 is retval) {
+        ifnot (NULL is err_fp)
+          fprintf (err_fp, "failed to stat '%s' after succesfull chown(): %s\n",
+            file, Error.errno_string (errno));
+        return NOTOK_VALUE;
+      }
+
+      newuser = OS.get.pwname (st.st_uid);
+      newgroup = OS.get.grname (st.st_gid);
+
       fprintf (out_fp, "changed ownership of '%s' from %s:%s to %s:%s\n",
         file, user, group, newuser, newgroup);
-    else
-      fprintf (out_fp, "ownership of '%s' retained as %s:%s\n", file, user, group);
-
+    }
   }
 
   return OK_VALUE;
@@ -233,7 +254,6 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
       return OK_VALUE;
     }
 
-    struct stat st;
     retval = stat (file, &st);
     ifnot (retval)
       new_mode = st.st_mode;
@@ -565,7 +585,7 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   int recursive = GET_OPT_RECURSIVE();
   int interactive = GET_OPT_INTERACTIVE();
   int backup = GET_OPT_BACKUP();
-  int follow_lnk = GET_OPT_FOLLOW_LNK();
+  int dereference = GET_OPT_DEREFERENCE();
   int preserve = GET_OPT_PRESERVE();
   int update = GET_OPT_UPDATE();
   int all = GET_OPT_ALL();
@@ -577,7 +597,7 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
 
   int retval = File.copy (src, dest, FileCopyOpts (
       .verbose = verbose, .force = force,
-      .backup = backup, .follow_lnk = follow_lnk,
+      .backup = backup, .dereference = dereference,
       .preserve = preserve, .recursive = recursive,
       .update = update, .all = all, .interactive = interactive,
       .out_stream = out_fp, .err_stream = err_fp));

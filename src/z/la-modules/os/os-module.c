@@ -104,6 +104,12 @@ static VALUE os_getgrname (la_t *this, VALUE v_gid) {
   */
 }
 
+static VALUE os_getgrgid (la_t *this, VALUE v_name) {
+  ifnot (IS_STRING(v_name)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *name = AS_STRING_BYTES(v_name);
+  return INT(OS.get.grgid (name));
+}
+
 static VALUE os_getpwname (la_t *this, VALUE v_uid) {
   ifnot (IS_INT(v_uid)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   uid_t uid = AS_INT(v_uid);
@@ -115,6 +121,12 @@ static VALUE os_getpwname (la_t *this, VALUE v_uid) {
   string *s = String.new_with (pwname);
   free (pwname);
   return STRING(s);
+}
+
+static VALUE os_getpwuid (la_t *this, VALUE v_name) {
+  ifnot (IS_STRING(v_name)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *name = AS_STRING_BYTES(v_name);
+  return INT(OS.get.pwuid (name));
 }
 
 static VALUE os_getpwdir (la_t *this, VALUE v_uid) {
@@ -193,7 +205,9 @@ public int __init_os_module__ (la_t *this) {
     { "setenv",         PTR(os_setenv), 3 },
     { "environ",        PTR(os_environ), 0 },
     { "getpwdir",       PTR(os_getpwdir), 1 },
+    { "getgrgid",       PTR(os_getgrgid), 1 },
     { "getgrname",      PTR(os_getgrname), 1 },
+    { "getpwuid",       PTR(os_getpwuid), 1 },
     { "getpwname",      PTR(os_getpwname), 1 },
     { "os_arch",        PTR(os_arch), 0 },
     { "os_platform",    PTR(os_platform), 0 },
@@ -216,7 +230,9 @@ public int __init_os_module__ (la_t *this) {
       "setenv" : setenv,
       "environ": environ,
       "getpwdir" : getpwdir,
+      "getgrgid" : getgrgid,
       "getgrname" : getgrname,
+      "getpwuid" : getpwuid,
       "getpwname" : getpwname,
       "arch"      : os_arch,
       "platform"  : os_platform

@@ -58,6 +58,43 @@ static char *os_get_grname (gid_t gid) {
   return name;
 }
 
+static gid_t os_get_grgid (char *name) {
+  FILE *fp = fopen (GROUP_FILE, "r");
+  if (NULL is fp)
+    return -1;
+
+  size_t len = 0;
+  char *line = NULL;
+  ssize_t nread;
+
+  gid_t gid = -1;
+
+  while (-1 isnot (nread = getline (&line, &len, fp))) {
+    if (nread) {
+      cstring_tok *ctok = Cstring.tokenize (NULL, line, ":", NULL, NULL);
+      if (NULL is ctok)
+        continue;
+
+      if (ctok->num_tokens is 4) {
+        if (Cstring.eq (ctok->tokens[0], name)) {
+          gid = atoi (ctok->tokens[2]);
+          Cstring.tok_release (ctok);
+          break;
+        }
+      }
+
+      Cstring.tok_release (ctok);
+    }
+  }
+
+  ifnot (NULL is line)
+    free (line);
+
+  fclose (fp);
+
+  return gid;
+}
+
 static char *os_get_pwname (uid_t uid) {
   FILE *fp = fopen (PASSWD_FILE, "r");
   if (NULL is fp)
@@ -97,6 +134,42 @@ static char *os_get_pwname (uid_t uid) {
 
   fclose (fp);
   return name;
+}
+
+static uid_t os_get_pwuid (char *name) {
+  FILE *fp = fopen (PASSWD_FILE, "r");
+  if (NULL is fp)
+    return -1;
+
+  size_t len = 0;
+  char *line = NULL;
+  ssize_t nread;
+
+  uid_t uid = -1;
+
+  while (-1 isnot (nread = getline (&line, &len, fp))) {
+    if (nread) {
+      cstring_tok *ctok = Cstring.tokenize (NULL, line, ":", NULL, NULL);
+      if (NULL is ctok)
+        continue;
+
+      if (ctok->num_tokens is 7) {
+        if (Cstring.eq (ctok->tokens[0], name)) {
+          uid = atoi (ctok->tokens[2]);
+          Cstring.tok_release (ctok);
+          break;
+        }
+      }
+
+      Cstring.tok_release (ctok);
+    }
+  }
+
+  ifnot (NULL is line)
+    free (line);
+
+  fclose (fp);
+  return uid;
 }
 
 static char *os_get_pwdir (uid_t uid) {
@@ -179,6 +252,8 @@ public os_T __init_os__ () {
     .self = (os_self) {
       .get = (os_get_self) {
         .pwdir = os_get_pwdir,
+        .pwuid = os_get_pwuid,
+        .grgid = os_get_grgid,
         .pwname = os_get_pwname,
         .grname = os_get_grname
       },

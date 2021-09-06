@@ -1210,10 +1210,16 @@ To do that use:
   make DEBUG=1 static
 ```
 
-By default libraries and applications are installed in sys/`uname -m`.
-You may want to prepend LD_LIBRARY_PATH=sys/`uname -m`/lib/z path/to/exec when
-calling an executable, or the other options is through ldconfig for libraries,
-and to set the binary path `pwd`/sys/`uname -m`/bin to your shell env file.
+By default libraries and applications are installed in sys/`uname -m` namespace.
+
+For shared targets, normally you do not need to add the library path to ld.so.conf
+and call `ldconfig`.
+If a call to an executable fails with a message that linked libraries can not
+be found, you may want to prepend LD_LIBRARY_PATH=sys/`uname -m`/lib/z in the
+command line.
+
+For convienence you may add the sys/`uname -m`/bin to PATH environment variable
+to your shell environment file.
 
 There is no support for installation to the `/` namespace.
 
@@ -1221,7 +1227,11 @@ There is no support for installation to the `/` namespace.
 
 ```sh
   make bootstrap
-  # now we should be able to use shared libraries/applications within chroot
+  # now we should be able to use shared libraries/applications within the chroot
+  # jail.
+  # Still though the chroot call suffers from what have been described in the
+  # Chrooting section in this document, though it is still usefull in cases,
+  # so we are in need to find another way.
 ```
 
 ## License:

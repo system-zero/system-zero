@@ -10,18 +10,14 @@ argparse.add ("update", 'u', "update", "copy only if source file is newer than d
 argparse.add ("backup", 'b', "backup", "make a backup of each existing destination file", BooleanType, 0) 
 argparse.add ("preserve", 'p', "preserve", "preserve mode, ownership and timestamps", BooleanType, 0)
 argparse.add ("recursive", 'R', "recursive", "copy recursively", BooleanType, 0)
-argparse.add ("follow_lnk", 'L', "dereference", "follow symbolic links in source", BooleanType, 0)
+argparse.add ("dereference", 'L', "dereference", "follow symbolic links in source", BooleanType, 0)
 argparse.add ("interactive", 'i', "interactive", "prompt before overwrite", BooleanType, 0)
 argparse.add ("verbose", 'v', "verbose=", "be verbose", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
-ifnot (ok is argparse.process (__argv, 1)) {
-  exit (1)
-}
+ifnot ok is argparse.process (__argv, 1) then exit (1)
 
-if (argparse.exit is true) {
-  exit (0)
-}
+if argparse.exit is true then exit (0)
 
 var qualif = {
   "all"         : argparse.results.all
@@ -30,9 +26,9 @@ var qualif = {
   "backup"      : argparse.results.backup
   "preserve"    : argparse.results.preserve
   "recursive"   : argparse.results.recursive
-  "follow_lnk"  : argparse.results.follow_lnk
+  "dereference" : argparse.results.dereference
   "interactive" : argparse.results.interactive
-  "verbose"     : argparse.results.verbose: ifnot x then 1 orelse x + 1
+  "verbose"     : argparse.results.verbose: ifnot x then 1 orelse x + 1 end
 }
 
 if (argparse.argc < 2) {
@@ -48,7 +44,7 @@ var retval = ok
 
 for (var i = 0; i < argparse.argc - 1; i += 1) {
   retval = argparse.argv[i]: file_copy (destination; qualif)
-  exitval = retval: if is notok then 1 orelse exitval
+  exitval = retval: if x is notok then 1 orelse exitval end
 }
 
 exit (exitval)

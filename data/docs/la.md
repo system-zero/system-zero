@@ -1585,8 +1585,8 @@ The return statement
   # File Module Interface
     # IntegerType   File.copy (StringType src, StringType dest; [qualifiers])
        qualifiers: (they are trying to mimic cp(1) options)
-         force: [0|1], update: [0|1], backup: [0|1], preserve: [0|1],
-         recursive: [0|1], follow_lnk: [0|1],
+         force: [0|1], update: [0|1], backup: [0|1], preserve: [0|1|2],
+         recursive: [0|1], dereference  [0|1],
          interactive: [0|1] if it is set, it turns off `force',
          verbose: [0|1|2|3] 1: errors 2: like cp(1) 3: with a percent indicator
          all: same as preserve and recursive
@@ -1675,6 +1675,8 @@ The return statement
     # StringType    Os.getenv (StringType name)
     # StringType[]  Os.environ ()
     # StringType    Os.getpwdir (IntegerType uid)
+    # IntegerType   Os.getgrgid (StringType name)
+    # IntegerType   Os.getpwuid (StringType name)
     # StringType    Os.getgrname (IntegerType gid)
     # StringType    Os.getpwname (IntegerType uid)
 

@@ -16,7 +16,7 @@ typedef struct file_copy_opts {
     maxdepth,
     curdepth,
     recursive,
-    follow_lnk,
+    dereference,
     interactive;
 
   char *backup_suffix;
@@ -39,7 +39,7 @@ typedef struct file_copy_opts {
   .maxdepth = OPT_MAXDEPTH,                  \
   .curdepth = 0,                             \
   .recursive = OPT_NO_RECURSIVE,             \
-  .follow_lnk = OPT_NO_FOLLOW_LNK,           \
+  .dereference = OPT_NO_DEREFERENCE,         \
   .interactive = OPT_NO_INTERACTIVE,         \
   .backup_suffix = "~",                      \
   .out_stream = stdout,                      \

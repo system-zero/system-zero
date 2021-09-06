@@ -1,0 +1,40 @@
+var prog = "File.chown"
+
+import ("os")
+import ("std")
+import ("file")
+loadfile ("argparse")
+
+var argparse = New Argparse (3, 0, prog + " [option[s]] user[:group] file")
+argparse.add ("dereference", 'L', "dereference", "if a file is a symlink, change permissions of the referent, rather to symbolic link", BooleanType, 0)
+argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+if (argparse.argc isnot 2) {
+  println (stderr, "${%s, prog}: missing operand")
+  exit (1)
+}
+
+var qualif = {
+  "dereference" : argparse.results.dereference
+  "verbose" : argparse.results.verbose: ifnot x then 1 orelse 2 end
+}
+
+var user, group
+var who = argparse.argv[0]: tokenize (":")
+  user = who[0]
+
+if who: len () is 2 then group = who[1] orelse group = user
+
+user = user: getpwuid ()
+group = group: getgrgid ()
+
+var file = argparse.argv[1]
+
+var retval = file: file_chown (user, group; qualif)
+
+exit (retval: if notok then 1 orelse 0 end)

@@ -366,7 +366,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
   if (opts.all) {
     opts.recursive = 1;
     opts.preserve = 1;
-    opts.follow_lnk = 0;
+    opts.dereference = 0;
   }
 
   if (opts.interactive) opts.force = 0;
@@ -548,7 +548,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
 
     src_orig[r] = '\0';
 
-    if (opts.follow_lnk) {
+    if (opts.dereference) {
       retval = file_copy (src_orig, dest, opts);
       goto theerror;
     }

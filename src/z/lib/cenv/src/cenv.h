@@ -1611,12 +1611,12 @@ typedef ptrdiff_t idx_t;
 #define OPT_BACKUP         1
 #endif
 
-#ifndef OPT_NO_FOLLOW_LNK
-#define OPT_NO_FOLLOW_LNK  0
+#ifndef OPT_NO_DEREFERENCE
+#define OPT_NO_DEREFERENCE 0
 #endif
 
-#ifndef OPT_FOLLOW_LNK
-#define OPT_FOLLOW_LNK     1
+#ifndef OPT_DEREFERENCE
+#define OPT_DEREFERENCE    1
 #endif
 
 #ifndef OPT_NO_PRESERVE

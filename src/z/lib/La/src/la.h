@@ -256,11 +256,11 @@ typedef void (*ModuleDeinit) (la_t *);
   AS_INT(_v_backup);                                                      \
 })
 
-#define GET_OPT_FOLLOW_LNK() ({                                           \
-  VALUE _v_follow_lnk = La.get.qualifier (this, "follow_lnk", INT(OPT_NO_FOLLOW_LNK));\
-  ifnot (IS_INT(_v_follow_lnk))                                           \
+#define GET_OPT_DEREFERENCE() ({                                          \
+  VALUE _v_dereference = La.get.qualifier (this, "dereference", INT(OPT_NO_DEREFERENCE));\
+  ifnot (IS_INT(_v_dereference))                                          \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
-  AS_INT(_v_follow_lnk);                                                  \
+  AS_INT(_v_dereference);                                                 \
 })
 
 #define GET_OPT_PRESERVE() ({                                             \

@@ -7,6 +7,8 @@ typedef struct os_get_self {
     *(*pwname) (uid_t),
     *(*grname) (gid_t);
 
+  uid_t (*pwuid) (char *);
+  gid_t (*grgid) (char *);
 } os_get_self;
 
 typedef struct os_mode_self {

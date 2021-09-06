@@ -19,7 +19,8 @@ shared: clean-shared\
     file-stat-shared\
     file-copy-shared\
     file-symlink-shared\
-    file-chmod-shared
+    file-chmod-shared\
+    file-chown-shared
 
 static: clean-static\
     file-exists-static\
@@ -28,7 +29,8 @@ static: clean-static\
     file-stat-static\
     file-copy-static\
     file-symlink-static\
-    file-chmod-static
+    file-chmod-static\
+    file-chown-static
 
 clean-shared:\
     clean-file-exists-shared\
@@ -37,7 +39,8 @@ clean-shared:\
     clean-file-stat-shared\
     clean-file-copy-shared\
     clean-file-symlink-shared\
-    clean-file-chmod-shared
+    clean-file-chmod-shared\
+    clean-file-chown-shared
 
 clean-static:\
     clean-file-exists-static\
@@ -46,7 +49,8 @@ clean-static:\
     clean-file-stat-static\
     clean-file-copy-static\
     clean-file-symlink-static\
-    clean-file-chmod-static
+    clean-file-chmod-static\
+    clean-file-chown-static
 
 #-----------------------------------------------#
 F_exists = File.exists
@@ -187,6 +191,26 @@ clean-file-chmod-shared:
 
 clean-file-chmod-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_chmod)-static || $(RM) $(SYSBINDIR)/$(F_chmod)-static
+
+#-----------------------------------------------#
+F_chown = File.chown
+file-chown-shared:
+	@$(PRINTF) "#!La-shared\n\n" > $(SYSBINDIR)/$(F_chown)
+	@$(CAT) $(F_chown).lai >> $(SYSBINDIR)/$(F_chown)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_chown)
+	@$(PRINTF) "installing File.chown to $(SYSBINDIR)\n"
+
+file-chown-static:
+	@$(PRINTF) "#!La-static\n\n" > $(SYSBINDIR)/$(F_chown)-static
+	@$(CAT) $(F_chown).lai >> $(SYSBINDIR)/$(F_chown)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_chown)-static
+	@$(PRINTF) "installing File.chown-static to $(SYSBINDIR)\n"
+
+clean-file-chown-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_chown) || $(RM) $(SYSBINDIR)/$(F_chown)
+
+clean-file-chown-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_chown)-static || $(RM) $(SYSBINDIR)/$(F_chown)-static
 
 #-----------------------------------------------#
 

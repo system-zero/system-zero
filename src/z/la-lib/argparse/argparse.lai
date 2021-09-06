@@ -353,6 +353,9 @@ public
       }
 
       retval = false
+
+      ifnot arg: len () - 1 then return notok # for now
+
       if arg[1] isnot '-' {
         retval = this.parse_short_arg (arg)
 
