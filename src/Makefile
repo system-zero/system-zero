@@ -980,6 +980,23 @@ clean-v-static:
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 
 #----------------------------------------------------------#
+  # env
+  ZA_ENV          = env
+  ZA_ENV_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_ENV)/src
+
+env-shared: cenv libcstring-shared libargparse-shared
+	@cd $(ZA_ENV_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+env-static: cenv libcstring-static libargparse-static
+	@cd $(ZA_ENV_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-env-shared:
+	@cd $(ZA_ENV_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-env-static:
+	@cd $(ZA_ENV_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+
+#----------------------------------------------------------#
   # packman
   ZA_PACKMAN          = packman
   ZA_PACKMAN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_PACKMAN)/src

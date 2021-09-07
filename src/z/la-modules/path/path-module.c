@@ -18,8 +18,7 @@ static VALUE path_basename (la_t *this, VALUE v_path) {
   char *bn = Path.basename (tmp);
   string *s = String.new_with (bn);
   free (tmp);
-  VALUE r = STRING(s);
-  return r;
+  return STRING(s);
 }
 
 static VALUE path_basename_sans_extname (la_t *this, VALUE v_path) {
@@ -31,8 +30,7 @@ static VALUE path_basename_sans_extname (la_t *this, VALUE v_path) {
   string *s = String.new_with (bn);
   free (tmp);
   free (bn);
-  VALUE r = STRING(s);
-  return r;
+  return STRING(s);
 }
 
 static VALUE path_extname (la_t *this, VALUE v_path) {
@@ -41,8 +39,7 @@ static VALUE path_extname (la_t *this, VALUE v_path) {
   string *p = AS_STRING(v_path);
   char *n = Path.extname (p->bytes);
   string *s = String.new_with (n);
-  VALUE r = STRING(s);
-  return r;
+  return STRING(s);
 }
 
 static VALUE path_dirname (la_t *this, VALUE v_path) {
@@ -52,16 +49,14 @@ static VALUE path_dirname (la_t *this, VALUE v_path) {
   char *n = Path.dirname (p->bytes);
   string *s = String.new_with (n);
   free (n);
-  VALUE r = STRING(s);
-  return r;
+  return STRING(s);
 }
 
 static VALUE path_is_absolute (la_t *this, VALUE v_path) {
   (void) this;
   ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   string *p = AS_STRING(v_path);
-  VALUE r = INT(Path.is_absolute (p->bytes));
-  return r;
+  return INT(Path.is_absolute (p->bytes));
 }
 
 static VALUE path_real (la_t *this, VALUE v_path) {
@@ -98,6 +93,7 @@ static VALUE path_split (la_t *this, VALUE v_path) {
     String.replace_with (ar[idx++], it->data->bytes);
     it = it->next;
   }
+
   Vstring.release (a);
   return ARRAY(array);
 }

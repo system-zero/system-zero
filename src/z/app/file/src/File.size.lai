@@ -7,5 +7,5 @@ if (__argc is 1) {
   exit (1)
 }
 
-println (stdout, "${File.size (__argv[1])}")
+println (File.size (__argv[1]))
 exit (0)

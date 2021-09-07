@@ -90,10 +90,9 @@ int main (int argc, char **argv) {
       retval = 1;
     else
       retval = fn (dname, mode, DirOpts (
-
         .msg = verbose,
-          .msg_cb = dir_make_print
-        ));
+        .msg_cb = dir_make_print
+      ));
 
     goto theend;
   }
@@ -101,8 +100,8 @@ int main (int argc, char **argv) {
   CHECK_ARGC;
 
   retval = fn (argv[0], mode, DirOpts (
-      .msg = verbose,
-      .msg_cb = dir_make_print));
+    .msg = verbose,
+    .msg_cb = dir_make_print));
 
 theend:
   return (retval < 0 ? 1 : 0);

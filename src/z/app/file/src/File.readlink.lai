@@ -8,6 +8,7 @@ if (__argc is 1) {
 }
 
 var lnk = File.readlink (__argv[1])
+
 ifnot (null is lnk) {
   println (stdout, "${%s, File.readlink (__argv[1])}")
   exit (0)

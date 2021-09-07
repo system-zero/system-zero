@@ -284,6 +284,16 @@ typedef void (*ModuleDeinit) (la_t *);
   AS_INT(_v_all);                                                         \
 })
 
+#define GET_OPT_TARGET_DIRECTORY() ({                                     \
+  char * _t_ = NULL;                                                      \
+  VALUE _v_targetDir = La.get.qualifier (this, "targetDirectory", NULL_VALUE);  \
+  if (IS_STRING(_v_targetDir))                                            \
+    _t_ = AS_STRING_BYTES(_v_targetDir);                                  \
+  else if (IS_NULL(_v_targetDir) == 0)                                    \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+  _t_;                                                                    \
+})
+
 enum {
   LA_ERR_DYNLINK = -13,
   LA_ERR_IMPORT,

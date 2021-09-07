@@ -108,14 +108,13 @@
 
 #define OBJECT_APPEND                 (1 << 0)
 #define IDENT_LEAD_CHAR_CAN_BE_DIGIT  (1 << 1)
-#define ASSIGNMENT_STATE              (1 << 2)
-#define OBJECT_MMT_REASSIGN           (1 << 3)
-#define ARRAY_MEMBER                  (1 << 4)
-#define MAP_MEMBER                    (1 << 5)
-#define MAP_ASSIGNMENT                (1 << 6)
-#define FUNC_OVERRIDE                 (1 << 7)
-#define LHS_STRING_RELEASED           (1 << 8)
-#define RHS_STRING_RELEASED           (1 << 9)
+#define OBJECT_MMT_REASSIGN           (1 << 2)
+#define ARRAY_MEMBER                  (1 << 3)
+#define MAP_MEMBER                    (1 << 4)
+#define MAP_ASSIGNMENT                (1 << 5)
+#define FUNC_OVERRIDE                 (1 << 6)
+#define LHS_STRING_RELEASED           (1 << 7)
+#define RHS_STRING_RELEASED           (1 << 8)
 
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
@@ -5483,9 +5482,7 @@ do_token:
       if (is_un)
         NEXT_TOKEN();
 
-      this->objectState |= ASSIGNMENT_STATE;
       err = la_parse_expr (this, &val);
-      this->objectState &= ~ASSIGNMENT_STATE;
       THROW_ERR_IF_ERR(err);
 
       if (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) {

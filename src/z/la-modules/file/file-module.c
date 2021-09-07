@@ -79,21 +79,37 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
 
   int verbose = GET_OPT_VERBOSE();
   int force = GET_OPT_FORCE();
-
   FILE *out_fp = GET_OPT_OUT_STREAM();
   FILE *err_fp = GET_OPT_ERR_STREAM();
+  char *targetDir = GET_OPT_TARGET_DIRECTORY();
+
+  int dirfd = AT_FDCWD;
 
   La.set.Errno (this, 0);
+
+  if (targetDir isnot NULL) {
+    dirfd = open (targetDir, O_RDONLY);
+    if (dirfd < 0) {
+      La.set.Errno (this, errno);
+      if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
+        fprintf (err_fp, "symlink: can not open directory FD '%s': %s\n",
+          targetDir, Error.errno_string (errno));
+      return NOTOK_VALUE;
+    }
+  } else
+    targetDir = ".";
 
   int retval = OK;
 
   retry:
-  retval = symlink (src_file, dest_file);
+  retval = symlinkat (src_file, dirfd, dest_file);
+
   if (retval is -1) {
     if (errno is EEXIST) {
       if (force > 0) {
-        if (File.is_lnk (dest_file)) {
-          retval = unlink (dest_file);
+        char *d = STR_FMT("%s/%s", targetDir, dest_file);
+        if (File.is_lnk (d)) {
+          retval = unlinkat (dirfd, dest_file, 0);
           ifnot (retval)
             goto retry;
         }
