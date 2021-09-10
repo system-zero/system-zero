@@ -211,6 +211,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     V_Type             = V
     Z_V_SRCDIR         = $(Z_SRCLIBDIR)/$(V_Type)/src
 
+    # Md5 Type
+    Md5_Type           = Md5
+    Z_MD5_SRCDIR       = $(Z_SRCLIBDIR)/$(Md5_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -740,6 +744,18 @@ clean-libv-shared:
 clean-libv-static:
 	@cd $(Z_V_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libmd5-shared: Env cenv
+	@cd $(Z_MD5_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libmd5-static: Env cenv
+	@cd $(Z_MD5_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libmd5-shared:
+	@cd $(Z_MD5_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libmd5-static:
+	@cd $(Z_MD5_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared \
@@ -1026,7 +1042,7 @@ zero-shared:  Env cenv list\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared libterm-shared\
               libimap-shared libsmap-shared libvideo-shared\
-              libjson-shared\
+              libjson-shared libmd5-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared
@@ -1039,7 +1055,7 @@ zero-static:  Env cenv list\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static libterm-static\
               libimap-static libsmap-static libvideo-static\
-              libjson-static\
+              libjson-static libmd5-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static
@@ -1062,7 +1078,7 @@ zero-clean-shared:\
               clean-libvui-shared clean-libvmap-shared\
               clean-liberror-shared clean-libvwm-shared\
               clean-libla-shared clean-libv-shared\
-              clean-libos-shared\
+              clean-libos-shared clean-libmd5-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1087,7 +1103,7 @@ zero-clean-static:\
               clean-libvui-static clean-libvmap-static\
               clean-liberror-static clean-libvwm-static\
               clean-libla-static clean-libv-static\
-              clean-libos-static\
+              clean-libos-static clean-libmd5-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
@@ -1133,6 +1149,8 @@ sh-module-shared: libsh-shared
 time-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) time-module-shared
 
+crypt-module-shared: libmd5-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) crypt-module-shared
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 

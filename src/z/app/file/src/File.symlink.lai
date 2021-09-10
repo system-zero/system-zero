@@ -25,7 +25,7 @@ var qualif = {
 }
 
 if (argparse.argc isnot 2) {
-  println (stderr, "${%s, prog}: missing operand")
+  println (stderr, "${prog}: missing operand")
   exit (1)
 }
 

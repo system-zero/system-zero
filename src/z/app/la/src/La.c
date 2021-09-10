@@ -53,6 +53,10 @@
 #include "../../../la-modules/time/time-module.c"
 #endif
 
+#ifdef REQUIRE_CRYPT_MODULE
+#include "../../../la-modules/crypt/crypt-module.c"
+#endif
+
 static void la_completion (const char *buf, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
 
@@ -291,6 +295,9 @@ eval:
     __init_time_module__ (la);
   #endif
 
+  #ifdef REQUIRE_CRYPT_MODULE
+    __init_crypt_module__ (la);
+  #endif
 
   if (NULL is evalbuf) {
     ifnot (argc)

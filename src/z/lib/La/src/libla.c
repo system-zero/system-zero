@@ -5393,7 +5393,6 @@ do_token:
       prev_token = c;
       int is_const = c is TOKEN_CONSTDEF;
 
-
       NEXT_RAW_TOKEN();
       c = TOKEN;
 
@@ -6121,10 +6120,14 @@ static int la_parse_if_in_chain (la_t *this, VALUE *vp) {
   la_string savepc = PARSEPTR;
 
   NEXT_RAW_TOKEN();
+
   if (TOKEN isnot TOKEN_SYMBOL)
     THROW_SYNTAX_ERR("expected a symbol");
 
   char *key = sym_key (this, TOKENSTR);
+  sym_t *sym = ns_lookup_symbol (this->std, key);
+  ifnot (NULL is sym)
+    THROW_SYNTAX_ERR("can not redefine a standard symbol");
 
   funT *fun = Fun_new (this, funNew (
     .name = NS_WHEN_BLOCK, .namelen = NS_WHEN_BLOCK_LEN, .parent = this->curScope
@@ -6137,7 +6140,7 @@ static int la_parse_if_in_chain (la_t *this, VALUE *vp) {
   if (stackval.type is STRING_TYPE)
     stackval.refcount = STRING_LITERAL;
 
-  sym_t *sym = la_define_symbol (this, fun, key, stackval.type, stackval, 0);
+  sym = la_define_symbol (this, fun, key, stackval.type, stackval, 0);
 
   PARSEPTR = savepc;
 

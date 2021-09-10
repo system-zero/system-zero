@@ -1274,6 +1274,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_V_TYPE
 #endif /* REQUIRE_V_TYPE */
 
+#ifdef REQUIRE_MD5_TYPE
+  #ifndef MD5_TYPE_HDR
+  #define MD5_TYPE_HDR
+  #include <z/md5.h>
+  #endif /* MD5_TYPE_HDR */
+
+  #if (REQUIRE_MD5_TYPE == DECLARE)
+  static  md5_T   md5Type;
+  #define Md5     md5Type.self
+  #endif
+
+#undef REQUIRE_MD5_TYPE
+#endif /* REQUIRE_MD5_TYPE */
+
 /* Development (ignore this section) */
 
 #ifdef REQUIRE_NETM_TYPE
