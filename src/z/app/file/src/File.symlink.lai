@@ -7,7 +7,9 @@ var prog = __argv[0]: path_basename () # valgrind reports a leak here, but
 
 var argparse = New Argparse (4, 0, prog + " [option[s]] source destination")
 argparse.add ("force", 'f', "force", "if a destination file exists and it is a symbolic link, remove it and try again", BooleanType, 0)
-argparse.add ("targetDirectory", 't', "target-directory=", "specify the directory in which to create the link", StringType, ARG_VALUE_REQUIRED)
+#argparse.add ("targetDirectory", 't', "target-directory=", "specify the directory in which to create the link", StringType, ARG_VALUE_REQUIRED)
+# revert this, as it doesn't do what i thought it does
+argparse.add ("dereference", 'L', "dereference", "follow symbolic links in source", BooleanType, 0)
 argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
@@ -15,9 +17,10 @@ ifnot ok is argparse.process (__argv, 1) then exit (1)
 
 if argparse.exit is true then exit (0)
 
+# "targetDirectory": argparse.results.targetDirectory
 var qualif = {
   "force"          : argparse.results.force
-  "targetDirectory": argparse.results.targetDirectory
+  "dereference"    : argparse.results.dereference
   "verbose"        : argparse.results.verbose: ifnot x then 1 orelse 2 end
 }
 
@@ -28,4 +31,4 @@ if (argparse.argc isnot 2) {
 
 var retval = File.symlink (argparse.argv[0], argparse.argv[1]; qualif);
 
-exit (retval: if notok then 1 orelse 0 end)
+exit (retval: if x is notok then 1 orelse 0 end)

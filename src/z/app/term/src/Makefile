@@ -96,12 +96,12 @@ T_SANE_STATIC_FLAGS := -lerror-$(VERSION)
 
 term-sane-shared:
 	$(CC) $(T_SANE).c $(FLAGS) -o $(SYSBINDIR)/$(T_SANE)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(T_SANE)-shared $(SYSBINDIR)/$(T_SANE)
-	@$(LN_S) -vf $(SYSBINDIR)/$(T_SANE)-shared $(SYSBINDIR)/Term.raw
+	@$(LN_S) -vf $(T_SANE)-shared $(SYSBINDIR)/$(T_SANE)
+	@$(LN_S) -vf $(T_SANE)-shared $(SYSBINDIR)/Term.raw
 
 term-sane-static:
 	$(CC) $(T_SANE).c $(FLAGS) $(T_SANE_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(T_SANE)-static
-	@$(LN_S) -vf $(SYSBINDIR)/$(T_SANE)-static $(SYSBINDIR)/Term.raw-static
+	@$(LN_S) -vf $(T_SANE)-static $(SYSBINDIR)/Term.raw-static
 
 clean-term-sane-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(T_SANE)-shared || $(RM) $(SYSBINDIR)/$(T_SANE)-shared

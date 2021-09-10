@@ -91,16 +91,16 @@ I_PRINT_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION) -lerror-$(VERS
 
 io-print-shared:
 	$(CC) $(I_PRINT).c $(FLAGS) -o $(SYSBINDIR)/$(I_PRINT)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)
-	@$(LN_S) -vf $(SYSBINDIR)/$(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)ln
-	@$(LN_S) -vf $(SYSBINDIR)/$(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)ln_raw
-	@$(LN_S) -vf $(SYSBINDIR)/$(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)_raw
+	@$(LN_S) -vf $(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)
+	@$(LN_S) -vf $(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)ln
+	@$(LN_S) -vf $(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)ln_raw
+	@$(LN_S) -vf $(I_PRINT)-shared $(SYSBINDIR)/$(I_PRINT)_raw
 
 io-print-static:
 	$(CC) $(I_PRINT).c $(FLAGS) $(I_PRINT_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(I_PRINT)-static
-	@$(LN_S) -vf $(SYSBINDIR)/$(I_PRINT)-static $(SYSBINDIR)/$(I_PRINT)ln-static
-	@$(LN_S) -vf $(SYSBINDIR)/$(I_PRINT)-static $(SYSBINDIR)/$(I_PRINT)_raw-static
-	@$(LN_S) -vf $(SYSBINDIR)/$(I_PRINT)-static $(SYSBINDIR)/$(I_PRINT)ln_raw-static
+	@$(LN_S) -vf $(I_PRINT)-static $(SYSBINDIR)/$(I_PRINT)ln-static
+	@$(LN_S) -vf $(I_PRINT)-static $(SYSBINDIR)/$(I_PRINT)_raw-static
+	@$(LN_S) -vf $(I_PRINT)-static $(SYSBINDIR)/$(I_PRINT)ln_raw-static
 
 clean-io-print-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(I_PRINT)-shared || $(RM) $(SYSBINDIR)/$(I_PRINT)-shared

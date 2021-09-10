@@ -105,7 +105,7 @@ V_STATIC_FLAGS += -limap-$(VERSION) -lsmap-$(VERSION) -los-$(VERSION)
 
 v-util-shared:
 	$(CC) $(V).c $(V_FLAGS) -o $(SYSBINDIR)/$(V)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(V)-shared $(SYSBINDIR)/$(V)
+	@$(LN_S) -vf $(V)-shared $(SYSBINDIR)/$(V)
 
 v-util-static:
 	$(CC) $(V).c $(V_FLAGS) $(V_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(V)-static
@@ -132,7 +132,7 @@ V_WM_STATIC_FLAGS += -lvui-$(VERSION) -los-$(VERSION)
 
 v-wm-shared:
 	$(CC) $(V_WM).c $(V_WM_FLAGS) -o $(SYSBINDIR)/$(V_WM)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(V_WM)-shared $(SYSBINDIR)/$(V_WM)
+	@$(LN_S) -vf $(V_WM)-shared $(SYSBINDIR)/$(V_WM)
 
 v-wm-static:
 	$(CC) $(V_WM).c $(V_WM_FLAGS) $(V_WM_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(V_WM)-static

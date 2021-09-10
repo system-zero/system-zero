@@ -79,14 +79,18 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
 
   int verbose = GET_OPT_VERBOSE();
   int force = GET_OPT_FORCE();
+  int dereference = GET_OPT_DEREFERENCE();
+
   FILE *out_fp = GET_OPT_OUT_STREAM();
   FILE *err_fp = GET_OPT_ERR_STREAM();
-  char *targetDir = GET_OPT_TARGET_DIRECTORY();
+  // revert this, as it doesn't do what i thought it does
+  //char *targetDir = GET_OPT_TARGET_DIRECTORY();
 
   int dirfd = AT_FDCWD;
 
   La.set.Errno (this, 0);
 
+  /*
   if (targetDir isnot NULL) {
     dirfd = open (targetDir, O_RDONLY);
     if (dirfd < 0) {
@@ -98,6 +102,21 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
     }
   } else
     targetDir = ".";
+  */
+
+  string *src_lnk = NULL;
+
+  if (dereference and File.is_lnk (src_file)) {
+    string *s = File.readlink (src_file);
+    if (NULL is s) {
+      if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
+        fprintf (err_fp, "symlink: can not read link '%s': %s\n",
+            src_file, Error.errno_string (errno));
+      return NOTOK_VALUE;
+    }
+
+    src_file = src_lnk->bytes;
+  }
 
   int retval = OK;
 
@@ -107,8 +126,8 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   if (retval is -1) {
     if (errno is EEXIST) {
       if (force > 0) {
-        char *d = STR_FMT("%s/%s", targetDir, dest_file);
-        if (File.is_lnk (d)) {
+        //char *d = STR_FMT("%s/%s", targetDir, dest_file);
+        if (File.is_lnk (dest_file)) {
           retval = unlinkat (dirfd, dest_file, 0);
           ifnot (retval)
             goto retry;
@@ -119,20 +138,22 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
     La.set.Errno (this, errno);
 
     if (verbose > OPT_NO_VERBOSE and err_fp isnot NULL) {
-      fprintf (err_fp, "failed to create symlink: %s -> %s\n", src_file, dest_file);
+      fprintf (err_fp, "failed to create symlink: %s -> %s\n", dest_file, src_file);
       fprintf (err_fp, "%s\n", Error.errno_string (errno));
     }
 
-    return NOTOK_VALUE;
+    goto theend;
 
-  } else {
-    if (verbose >= OPT_VERBOSE and NULL isnot out_fp)
-      fprintf (out_fp, "%s -> %s\n", src_file, dest_file);
-
-    return OK_VALUE;
   }
 
-  return OK_VALUE;
+  if (verbose >= OPT_VERBOSE and NULL isnot out_fp)
+    fprintf (out_fp, "%s -> %s\n", dest_file, src_file);
+
+  retval = OK;
+
+theend:
+  String.release (src_lnk);
+  return INT(retval);
 }
 
 static VALUE file_chown (la_t *this, VALUE v_file, VALUE v_uid, VALUE v_gid) {

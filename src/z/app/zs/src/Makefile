@@ -81,7 +81,7 @@ zs: zs-shared zs-static
 
 zs-shared:
 	$(CC) $(NAME).c -DTMPDIR='"$(SYSTMPDIR)"' $(FLAGS) -o $(SYSBINDIR)/$(NAME)-shared
-	@$(LN_S) -f $(SYSBINDIR)/$(NAME)-shared $(SYSBINDIR)/$(NAME)
+	@$(LN_S) -vf $(NAME)-shared $(SYSBINDIR)/$(NAME)
 
 zs-static:
 	$(CC) $(NAME).c -DTMPDIR='"$(SYSTMPDIR)"' $(FLAGS) $(Z_ZS_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(NAME)-static

@@ -94,7 +94,7 @@ SYS_CHROOT_STATIC_FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lpath-$(VERSIO
 
 sys-chroot-shared:
 	$(CC) $(SYS_CHROOT).c $(FLAGS) -o $(SYSBINDIR)/$(SYS_CHROOT)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(SYS_CHROOT)-shared $(SYSBINDIR)/$(SYS_CHROOT)
+	@$(LN_S) -vf $(SYS_CHROOT)-shared $(SYSBINDIR)/$(SYS_CHROOT)
 
 sys-chroot-static:
 	$(CC) $(SYS_CHROOT).c $(FLAGS) $(SYS_CHROOT_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(SYS_CHROOT)-static

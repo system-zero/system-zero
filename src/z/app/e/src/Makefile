@@ -100,7 +100,7 @@ E_STATIC_FLAGS += -lvideo-$(VERSION) -lvmap-$(VERSION) -los-$(VERSION)
 
 e-shared:
 	$(CC) $(E).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(E)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(E)-shared $(SYSBINDIR)/$(E)
+	@$(LN_S) -vf $(E)-shared $(SYSBINDIR)/$(E)
 
 e-static:
 	$(CC) $(E).c $(FLAGS) $(E_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(E)-static

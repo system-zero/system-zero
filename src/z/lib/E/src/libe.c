@@ -760,7 +760,8 @@ char *lai_keywords[] = {
   "Type V", "New V", "override V",
   "public V", "private V", "import F", "loadfile F", "evalfile F",
   "typeof F", "typeofArray F", "typeAsString F", "typeArrayAsString F",
-  "len F", "print F", "const V",
+  "len F", "print F", "const V", "__argv V", "__argc V", "__file__ V",
+  "__importpath V", "__loadpath V",
    NULL
 };
 

@@ -180,7 +180,7 @@ endif
 
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(LA)-shared $(SYSBINDIR)/$(LA)
+	@$(LN_S) -vf $(LA)-shared $(SYSBINDIR)/$(LA)
 
 la-static:
 	$(CC) $(LA).c $(FLAGS) $(LA_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(LA)-static

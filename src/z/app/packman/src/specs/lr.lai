@@ -1,6 +1,8 @@
+import ("path")
 import ("file")
 
-var name = "lr"
+var name = __file__: path_basename_sans_extname ()
+
 var spec = New PackmanSpec (name)
 
 spec.set.version ("c3f0e7052453fed04a696535145d40dfd2a3b6a3")

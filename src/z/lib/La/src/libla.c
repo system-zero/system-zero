@@ -377,7 +377,7 @@ struct la_t {
   string
     *la_dir,
     *message,
-    *tmpString;
+    *evalFile;
 
   la_string
     tokenStr,
@@ -3180,12 +3180,26 @@ static int la_parse_array_set (la_t *this) {
   }
 
   int token = TOKEN;
+  int is_un = 0;
 
   if (token > TOKEN_ASSIGN) {
     NEXT_TOKEN();
+
+    if (TOKEN is TOKEN_UNARY) {
+      is_un = 1;
+      NEXT_TOKEN();
+    }
+
     VALUE v;
     err = la_parse_expr (this, &v);
     THROW_ERR_IF_ERR(err);
+
+    if (is_un) {
+      if (v.type is INTEGER_TYPE)
+        AS_INT(v) = ~AS_INT(v);
+      else
+        THROW_SYNTAX_ERR("error while setting an unary object, awaiting an integer");
+    }
 
     ArrayType *array = (ArrayType *) AS_ARRAY(ary);
     int idx = AS_INT(ix);
@@ -3598,8 +3612,19 @@ static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
 
   VALUE v;
   NEXT_TOKEN();
+  int is_un = TOKEN is TOKEN_UNARY;
+  if (is_un)
+    NEXT_TOKEN();
+
   err = la_parse_expr (this, &v);
   THROW_ERR_IF_ERR(err);
+
+  if (is_un) {
+    if (v.type is INTEGER_TYPE)
+      AS_INT(v) = ~AS_INT(v);
+    else
+      THROW_SYNTAX_ERR("error while setting an unary object, awaiting an integer");
+  }
 
   VALUE result;
   switch (token) {
@@ -5094,12 +5119,16 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       this->funcState &= ~EVAL_UNIT_STATE;
       THROW_ERR_IF_ERR(err);
 
+      VALUE curFile = this->file->value;
+      this->file->value = STRING(this->evalFile);
+
       funT *uf = this->curFunDef;
       VALUE ufv = PTR(uf);
       la_define_symbol (this, this->function, uf->funname, (UFUNC_TYPE | (uf->nargs << 8)), ufv, 0);
       la_string savepc = PARSEPTR;
       PARSEPTR = StringNew ("()");
       err = la_parse_func_call (this, vp, NULL, uf, ufv);
+      this->file->value = curFile;
       PARSEPTR = savepc;
       return err;
     }
@@ -9602,6 +9631,7 @@ static int la_eval_file (la_t *this, const char *filename) {
     uf->body = StringNew (script_buf->bytes);
     uf->nargs = 0;
     this->curFunDef = uf;
+    String.replace_with (this->evalFile, fn);
     return LA_OK;
   }
 
@@ -9667,7 +9697,7 @@ static void la_release (la_t **thisp) {
 
   String.release (this->la_dir);
   String.release (this->message);
-  String.release (this->tmpString);
+  String.release (this->evalFile);
   Imap.release   (this->funRefcount);
   Vmap.release   (this->units);
   Vmap.release   (this->types);
@@ -9942,7 +9972,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->units = Vmap.new (32);
   this->types = Vmap.new (32);
   this->qualifiers = NULL;
-  this->tmpString = String.new (128);
+  this->evalFile = String.new (128);
 
   la_append_instance (interp, this);
 

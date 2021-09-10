@@ -1,7 +1,8 @@
-import ("file")
 import ("dir")
+import ("path")
+import ("file")
 
-var name = "clone_libc"
+var name = __file__: path_basename_sans_extname ()
 var spec = New PackmanSpec (name)
 
 spec.set.version ("0.1")
@@ -55,12 +56,10 @@ var map[1] build = [
     }
 
     func install_links () {
-      return notok if notok is Dir.change (this.libdir)
-
       for |i, v| in links {
         i += 1
-        return notok if notok is File.symlink (v, links[i];
-            { "verbose" : 2, "force" : 1 })
+        return notok if notok is v: file_symlink (this.libdir + "/" + links[i];
+            { "verbose" : 2, "force" : 1})
       }
 
       return ok

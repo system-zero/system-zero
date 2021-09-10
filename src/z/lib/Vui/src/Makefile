@@ -94,7 +94,7 @@ prereq: Env
 shared: prereq header $(THIS_SHAREDLIB)
 $(THIS_SHAREDLIB):
 	$(CC) -x c $(THIS_LIBSRC) $(LIBOPTS) $(LIBFLAGS) $(SHARED_CFLAGS) -o $(THIS_SHAREDLIB)
-	@$(LN_S) -vf $(THIS_SHAREDLIB) $(SYSLIBDIR)/lib$(THIS_LIBNAME).so
+	@$(LN_S) -vf $(THIS_LIB).so $(SYSLIBDIR)/lib$(THIS_LIBNAME).so
 
 static: prereq header $(THIS_STATICLIB)
 $(THIS_STATICLIB):

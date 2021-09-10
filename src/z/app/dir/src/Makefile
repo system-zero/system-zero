@@ -102,7 +102,7 @@ D_MAKE_STATIC_FLAGS = -lpath-$(VERSION)\
 
 dir-make-shared:
 	$(CC) $(D_MAKE).c $(FLAGS) -o $(SYSBINDIR)/$(D_MAKE)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(D_MAKE)-shared $(SYSBINDIR)/$(D_MAKE)
+	@$(LN_S) -vf $(D_MAKE)-shared $(SYSBINDIR)/$(D_MAKE)
 
 dir-make-static:
 	$(CC) $(D_MAKE).c $(FLAGS) $(D_MAKE_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(D_MAKE)-static
@@ -122,7 +122,7 @@ D_RM_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)\
 
 dir-rm-shared:
 	$(CC) $(D_RM).c $(FLAGS) -o $(SYSBINDIR)/$(D_RM)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(D_RM)-shared $(SYSBINDIR)/$(D_RM)
+	@$(LN_S) -vf $(D_RM)-shared $(SYSBINDIR)/$(D_RM)
 
 dir-rm-static:
 	$(CC) $(D_RM).c $(FLAGS) $(D_RM_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(D_RM)-static

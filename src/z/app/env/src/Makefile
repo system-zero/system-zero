@@ -89,7 +89,7 @@ ENV = $(NAME)
 
 env-shared:
 	$(CC) $(ENV).c $(FLAGS) -o $(SYSBINDIR)/$(ENV)-shared
-	@$(LN_S) -vf $(SYSBINDIR)/$(ENV)-shared $(SYSBINDIR)/$(ENV)
+	@$(LN_S) -vf $(ENV)-shared $(SYSBINDIR)/$(ENV)
 
 env-static:
 	$(CC) $(ENV).c $(STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(ENV)-static

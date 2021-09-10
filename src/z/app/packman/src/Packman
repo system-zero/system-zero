@@ -1,4 +1,4 @@
-#!/usr/bin/env La
+#!/bin/env La
 # NOTE that such scripts can be loaded into the interpreter, since '# is a
 # comment it skips the first she-bang line, and so they can be checked by
 # valgrind and debugged with gdb.
@@ -9,10 +9,10 @@ loadfile ("argparse")
 loadfile ("packman")
 
 var argparse = New Argparse (6, 0, "Packman option[s] package")
-argparse.add ("install", 0, "install", "install package", BooleanType, 0)
-argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, 0) 
-argparse.add ("spec_info", 0, "spec-info", "spec information", BooleanType, 0)
-argparse.add ("settings", 0, "settings", "general settings", BooleanType, 0)
+argparse.add ("install", 0, "install", "install package", BooleanType, ARG_LITERAL)
+argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, ARG_LITERAL) 
+argparse.add ("spec_info", 0, "spec-info", "spec information", BooleanType, ARG_LITERAL)
+argparse.add ("settings", 0, "settings", "general settings", BooleanType, ARG_LITERAL)
 argparse.add ("force", 'f', "force", "force", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
@@ -52,7 +52,7 @@ ifnot (install + update_repo + spec_info + settings) {
 
 var p = New Packman ()
 
-var tmpdir = Sys.get ("TMPDIR")
+var tmpdir = "TMPDIR": sys_get ()
 if null is tmpdir then tmpdir = "/tmp"
 
 p.set.build_dir (tmpdir)
@@ -74,6 +74,7 @@ if (settings is true) {
 
 if (install is true) {
   p.new.spec (package)
+
   if (update_repo is true) {
     retval = p.update_repo ()
     if retval is notok then

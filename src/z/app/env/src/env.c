@@ -1,9 +1,7 @@
-#define APPNAME     "env"
 #define APPLICATION "env"
 #define APP_OPTS   "[opts] [prog]"
 
 #define REQUIRE_STDIO
-#define REQUIRE_STDLIB
 
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_STRING_TYPE  DONOT_DECLARE
@@ -46,5 +44,5 @@ int main (int argc, char **argv) {
     for (; *environ; ++environ)
       fprintf (stdout, "%s\n", *environ);
 
-  exit (0);
+  exit (retval);
 }

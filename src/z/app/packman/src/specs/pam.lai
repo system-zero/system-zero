@@ -1,4 +1,7 @@
-var name = "pam"
+import ("path")
+
+var name = __file__: path_basename_sans_extname ()
+
 var archive = "Linux-PAM"
 var version = "1.5.1"
 var spec = New PackmanSpec (name)

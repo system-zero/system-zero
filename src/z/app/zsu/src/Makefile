@@ -79,7 +79,7 @@ zsu: zsu-shared zsu-static
 
 zsu-shared:
 	$(CC) -DVSU_DIR='"$(VSU_DIR)"' $(NAME).c $(SHARED_FLAGS) -o $(NAME)-shared
-	@$(LN_S) -f $(SYSBINDIR)/$(NAME)-shared $(SYSBINDIR)/$(NAME)
+	@$(LN_S) -vf $(NAME)-shared $(SYSBINDIR)/$(NAME)
 
 install-shared: zsu-shared
 	@echo "WARNING NOTICE: zsu is installed as setuid root"
