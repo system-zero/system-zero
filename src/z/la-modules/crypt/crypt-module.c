@@ -115,7 +115,7 @@ static VALUE crypt_sum_file (la_t *this, VALUE v_file, struct MdOpts opts) {
   string *s = String.new (opts.md_len);
 
   for (int i = 0; i < opts.md_len; i++)
-    String.append_with_fmt (s, "%02x", md[i]);
+    String.append_with_fmt (s, "%02x", opts.md[i]);
 
   String.append_with_fmt (s, "  %s", file);
 

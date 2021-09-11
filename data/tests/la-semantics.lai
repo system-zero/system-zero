@@ -905,7 +905,7 @@ func semantics () {
   assert_true ("testing format function with an embedded call",  fmt is "string is 6 bytes length")
 
   fmt = format ("${%s, load_va} ${%s, load_vd}")
-  assert_true ("testing format function",  fmt is "string is 6 bytes length")
+  assert_true ("testing format function", fmt is "string is 6 bytes length")
 
   var dollars = "$$$$$$ $$$$$$ are 12 dollars"
   assert_true ("testing format function with escaped characters", load_vf is dollars)

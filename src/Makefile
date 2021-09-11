@@ -1045,6 +1045,24 @@ clean-env-static:
 	@cd $(ZA_ENV_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 
 #----------------------------------------------------------#
+  # crypt
+  ZA_CRYPT             = crypt
+  ZA_CRYPT_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_CRYPT)/src
+
+crypt-shared: libmd5-shared libsha256-shared libsha512-shared\
+              crypt-module-shared
+	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+crypt-static: libmd5-static libsha256-static libsha512-static
+	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-crypt-shared:
+	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-crypt-static:
+	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+
+#----------------------------------------------------------#
   # packman
   ZA_PACKMAN          = packman
   ZA_PACKMAN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_PACKMAN)/src
@@ -1078,7 +1096,7 @@ zero-shared:  Env cenv list\
               libsha512-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
-              sys-shared path-shared
+              sys-shared path-shared crypt-shared env-shared
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv list\
@@ -1092,7 +1110,7 @@ zero-static:  Env cenv list\
               libsha512-static\
               zs-static\
               dir-static file-static io-static term-static\
-              sys-static path-static
+              sys-static path-static crypt-static env-static
 
 clean-shared: zero-clean-shared
 zero-clean-shared:\
@@ -1185,7 +1203,7 @@ sh-module-shared: libsh-shared
 time-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) time-module-shared
 
-crypt-module-shared: libmd5-shared
+crypt-module-shared: libmd5-shared libsha256-shared libsha512-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) crypt-module-shared
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)

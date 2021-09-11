@@ -510,7 +510,7 @@ typedef struct tokenState {
 #define RESET_PARSEPTR do { PARSEPTR.len = 0; } while (0)
 
 #define GET_BYTE() la_get_byte (this)
-#define UNGET_BYTE do {                         \
+#define UNGET_BYTE() do {                       \
   SETSTRLEN(PARSEPTR, GETSTRLEN(PARSEPTR) + 1); \
   SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) - 1); \
   IGNORE_LAST_TOKEN;                            \
@@ -845,7 +845,7 @@ static void la_get_span (la_t *this, int (*testfn) (int)) {
     c = GET_BYTE();
   while (testfn (c));
 
-  if (c isnot TOKEN_EOF) UNGET_BYTE;
+  if (c isnot TOKEN_EOF) UNGET_BYTE();
 }
 
 static int la_get_opened_block (la_t *this, char *msg) {
@@ -977,7 +977,7 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
         THROW_SYNTAX_ERR("not a binary number");
   }
 
-  if (c isnot TOKEN_EOF) UNGET_BYTE;
+  if (c isnot TOKEN_EOF) UNGET_BYTE();
 
   return LA_OK;
 }
@@ -1446,7 +1446,7 @@ static int la_parse_format (la_t *this, VALUE *vp) {
   c= la_ignore_ws (this);
 
   if (c isnot TOKEN_DQUOTE) {
-    UNGET_BYTE;
+    UNGET_BYTE();
     NEXT_TOKEN();
     c = TOKEN;
     VALUE v;
@@ -1827,7 +1827,7 @@ static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
   if (TOKEN isnot TOKEN_PAREN_OPEN)
     THROW_SYNTAX_ERR("lambda error, awaiting (");
 
-  UNGET_BYTE;
+  UNGET_BYTE();
 
   if (justFun)
     return LA_OK;
@@ -3140,7 +3140,7 @@ static int la_parse_array_set (la_t *this) {
       case STRING_TYPE: {
         string **s_ar = (string **) AS_ARRAY(ar);
         VALUE v = STRING(s_ar[AS_INT(ix)]);
-        UNGET_BYTE;
+        UNGET_BYTE();
         err = la_string_set_char (this, v, 0);
         return err;
       }
@@ -3159,7 +3159,7 @@ static int la_parse_array_set (la_t *this) {
         Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ar);
         VALUE v = MAP(m_ar[AS_INT(ix)]);
         TOKENVAL = v;
-        UNGET_BYTE;
+        UNGET_BYTE();
         err = la_parse_map_set (this);
         return err;
       }
@@ -3456,7 +3456,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
       THROW_SYNTAX_ERR("not a map");
 
     TOKENVAL = v;
-    UNGET_BYTE;
+    UNGET_BYTE();
     return la_parse_map_get (this, vp);
   }
 
@@ -3466,7 +3466,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
       case STRING_TYPE:
         TOKENVAL = v;
         this->objectState |= ARRAY_MEMBER;
-        UNGET_BYTE;
+        UNGET_BYTE();
         err = la_string_get (this, vp);
         if (TOKEN is TOKEN_INDEX_OPEN)
           THROW_SYNTAX_ERR("unsupported indexing");
@@ -3475,7 +3475,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
       case ARRAY_TYPE:
         TOKENVAL = v;
-        UNGET_BYTE;
+        UNGET_BYTE();
         return la_parse_array_get (this, vp);
 
       default:
@@ -3815,7 +3815,7 @@ static int la_parse_map (la_t *this, VALUE *vp) {
         THROW_SYNTAX_ERR("error while setting map field, awaiting :");
       } else {
         la_map_set_value (this, map, key, NULL_VALUE, scope);
-        UNGET_BYTE;
+        UNGET_BYTE();
         continue;
       }
     }
@@ -3891,7 +3891,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
 
     TOKENVAL = save_map;
-    UNGET_BYTE;
+    UNGET_BYTE();
 
   } else if (TOKEN is TOKEN_SYMBOL) {
     Cstring.cp (key, MAXLEN_SYMBOL + 1,
@@ -3956,7 +3956,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       THROW_SYNTAX_ERR("not an array");
 
     TOKENVAL = *v;
-    UNGET_BYTE;
+    UNGET_BYTE();
     return la_parse_array_get (this, vp);
   }
 
@@ -3975,7 +3975,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     else
       THROW_SYNTAX_ERR_FMT("%s, not a method", key);
 
-    UNGET_BYTE;
+    UNGET_BYTE();
 
     if (type is FUNCPTR_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
@@ -4107,7 +4107,7 @@ static int la_parse_map_set (la_t *this) {
     else
       THROW_SYNTAX_ERR_FMT("%s, not a method", key);
 
-    UNGET_BYTE;
+    UNGET_BYTE();
 
     if (type is FUNCPTR_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
@@ -4160,7 +4160,7 @@ static int la_parse_map_set (la_t *this) {
         THROW_SYNTAX_ERR_FMT("%s, not an array", key);
 
       TOKENVAL = *v;
-      UNGET_BYTE;
+      UNGET_BYTE();
       return la_parse_array_set (this);
     }
   }
@@ -4225,7 +4225,7 @@ static int la_parse_new (la_t *this, VALUE *vp) {
   ifnot (val->type & FUNCPTR_TYPE)
    THROW_SYNTAX_ERR("init, not a function method");
 
-  UNGET_BYTE;
+  UNGET_BYTE();
 
   funT *uf = AS_FUNC_PTR((*val));
   VALUE th = val->sym->value;
@@ -4437,7 +4437,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   int c = TOKEN;
 
   if (c isnot TOKEN_PAREN_OPEN) {
-    UNGET_BYTE;
+    UNGET_BYTE();
     VALUE v;
     if (uf isnot NULL) {
       v = PTR(uf);
@@ -4646,6 +4646,8 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
     VALUE save_v;
 
+    this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
+
     if (c isnot TOKEN_SYMBOL)
       THROW_SYNTAX_ERR("awaiting a method");
 
@@ -4789,6 +4791,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
     save_v = *vp;
     if (vp->refcount > -1)
       vp->refcount++;
+
     stack_push (this, (*vp));
     this->argCount = 1;
 
@@ -5071,7 +5074,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       if (vp->type isnot MAP_TYPE)
         THROW_SYNTAX_ERR("not a map");
 
-      UNGET_BYTE;
+      UNGET_BYTE();
       TOKENVAL = *vp;
       /* fall through */
 
@@ -5096,7 +5099,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       ifnot (TOKEN is TOKEN_PAREN_OPEN)
         break;
 
-      UNGET_BYTE;
+      UNGET_BYTE();
 
       if (type is FUNCPTR_TYPE) {
         funT *uf = AS_FUNC_PTR((*vp));
@@ -5192,7 +5195,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       THROW_ERR_IF_ERR(err);
 
       while (TOKEN is TOKEN_DOT) {
-        UNGET_BYTE;
+        UNGET_BYTE();
 
         TOKENVAL = *vp;
         VALUE mapval = TOKENVAL;
@@ -5226,7 +5229,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       }
 
       while (TOKEN is TOKEN_DOT) {
-        UNGET_BYTE;
+        UNGET_BYTE();
 
         TOKENVAL = *vp;
         VALUE mapval = TOKENVAL;
@@ -5337,7 +5340,7 @@ static int la_parse_stmt (la_t *this) {
 
     if (TOKEN is TOKEN_EOF) return LA_OK;
 
-    UNGET_BYTE;
+    UNGET_BYTE();
 
     NEXT_TOKEN();
 
@@ -5894,6 +5897,7 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   int err;
   this->conditionState = 0;
   tokenState save;
+  int isorelse = TOKEN is TOKEN_ORELSE;
 
   this->curState |= MALLOCED_STRING_STATE;
   NEXT_TOKEN();
@@ -5944,6 +5948,11 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   this->conditionState = 1;
   THROW_ERR_IF_ERR(err);
 
+  if (isorelse or TOKEN is TOKEN_END) {
+    if (TOKEN is TOKEN_END) NEXT_TOKEN();
+    goto theend;
+  }
+
   if (TOKEN isnot TOKEN_NL and
       TOKEN isnot TOKEN_SEMICOLON) {
     if (TOKEN is TOKEN_ORELSE)
@@ -5959,6 +5968,13 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
       goto theend;
     } else
       THROW_SYNTAX_ERR("awaiting a new line or ;");
+  } else {
+    int p0 = PEEK_NTH_TOKEN(0);
+    if (p0 is TOKEN_ORELSE)
+      goto consume;
+    else if (p0 is TOKEN_NL)
+      if (PEEK_NTH_TOKEN(1) is TOKEN_ORELSE)
+        goto consume;
   }
 
   save = SAVE_TOKENSTATE();
@@ -8014,7 +8030,7 @@ static int la_parse_print (la_t *this) {
   VALUE v;
 
   if (c isnot TOKEN_DQUOTE) {
-    UNGET_BYTE;
+    UNGET_BYTE();
 
     NEXT_TOKEN();
     c = TOKEN;
@@ -8076,7 +8092,7 @@ static int la_parse_print (la_t *this) {
     c = la_ignore_ws (this);
 
     if (c isnot TOKEN_DQUOTE) {
-      UNGET_BYTE;
+      UNGET_BYTE();
 
       NEXT_TOKEN();
       c = TOKEN;

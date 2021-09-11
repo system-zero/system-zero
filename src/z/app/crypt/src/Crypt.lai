@@ -1,0 +1,45 @@
+import ("crypt")
+import ("path")
+loadfile ("argparse")
+
+var prog = __argv[0]: path_basename ()
+
+var argparse = New Argparse (2, 0, prog + " [option[s]] file")
+argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+if (argparse.argc isnot 1) {
+  println (stderr, "${prog}: missing operand")
+  exit (1)
+}
+
+var file = argparse.argv[0]
+
+# fix this: (failes to consume clauses or mismplaced orelse)
+#var fun =
+#  if String.eq (prog, "Crypt.md5sum") then
+#    crypt_md5sum_file orelse
+#    if String.eq (prog, "Crypt.sha256sum") then crypt_sha256sum_file  orelse
+#      crypt_sha512sum_file
+
+var fun =
+  if prog:eq ("Crypt.md5sum") then crypt_md5sum_file
+  orelse
+    if prog:eq ("Crypt.sha256sum") then crypt_sha256sum_file
+    orelse crypt_sha512sum_file
+
+# println ("${fun}}") fix this: (fails to consume '}')
+#                     advanced the pointer, breaks format() expressions
+#                     inside other format() expressions or print[ln] functions
+
+var rs = fun (file)
+
+if null is rs then exit (1) end
+
+println (rs)
+
+exit (0)

@@ -2,8 +2,7 @@ import ("file")
 import ("path")
 loadfile ("argparse")
 
-var prog = __argv[0]: path_basename () # valgrind reports a leak here, but
-                                       # probably is false, as indicated by debugging
+var prog = __argv[0]: path_basename ()
 
 var argparse = New Argparse (4, 0, prog + " [option[s]] source destination")
 argparse.add ("force", 'f', "force", "if a destination file exists and it is a symbolic link, remove it and try again", BooleanType, 0)
