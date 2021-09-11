@@ -14,9 +14,9 @@ enum { MD5_DIGEST_LENGTH = 16 };
 
 typedef struct md5_self {
   void
-    (*init) (struct md5*),
-    (*sum) (struct md5 *, uchar md[MD5_DIGEST_LENGTH]),
-    (*update) (struct md5 *, const uchar *, unsigned long);
+    (*init) (void *),
+    (*sum) (void *, uchar *),
+    (*update) (void *, const uchar *, unsigned long);
 } md5_self;
 
 typedef struct md5_T {

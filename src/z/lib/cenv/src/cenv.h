@@ -1288,6 +1288,34 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_MD5_TYPE
 #endif /* REQUIRE_MD5_TYPE */
 
+#ifdef REQUIRE_SHA256_TYPE
+  #ifndef SHA256_TYPE_HDR
+  #define SHA256_TYPE_HDR
+  #include <z/sha256.h>
+  #endif /* SHA256_TYPE_HDR */
+
+  #if (REQUIRE_SHA256_TYPE == DECLARE)
+  static  sha256_T   sha256Type;
+  #define Sha256     sha256Type.self
+  #endif
+
+#undef REQUIRE_SHA256_TYPE
+#endif /* REQUIRE_SHA256_TYPE */
+
+#ifdef REQUIRE_SHA512_TYPE
+  #ifndef SHA512_TYPE_HDR
+  #define SHA512_TYPE_HDR
+  #include <z/sha512.h>
+  #endif /* SHA512_TYPE_HDR */
+
+  #if (REQUIRE_SHA512_TYPE == DECLARE)
+  static  sha512_T   sha512Type;
+  #define Sha512     sha512Type.self
+  #endif
+
+#undef REQUIRE_SHA512_TYPE
+#endif /* REQUIRE_SHA512_TYPE */
+
 /* Development (ignore this section) */
 
 #ifdef REQUIRE_NETM_TYPE

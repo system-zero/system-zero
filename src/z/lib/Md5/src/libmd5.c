@@ -98,7 +98,9 @@ static void md5_pad (struct md5 *s) {
   md5_processblock (s, s->buf);
 }
 
-static void md5_init (struct md5 *s) {
+static void md5_init (void *ctx) {
+  struct md5 *s = ctx;
+
   s->len = 0;
   s->h[0] = 0x67452301;
   s->h[1] = 0xefcdab89;
@@ -106,7 +108,8 @@ static void md5_init (struct md5 *s) {
   s->h[3] = 0x10325476;
 }
 
-static void md5_sum (struct md5 *s, uchar md[MD5_DIGEST_LENGTH]) {
+static void md5_sum (void *ctx, uchar *md) {
+  struct md5 *s = ctx;
   int i;
 
   md5_pad (s);
@@ -118,7 +121,8 @@ static void md5_sum (struct md5 *s, uchar md[MD5_DIGEST_LENGTH]) {
   }
 }
 
-static void md5_update (struct md5 *s, const uchar *m, unsigned long len) {
+static void md5_update (void *ctx, const uchar *m, unsigned long len) {
+  struct md5 *s = ctx;
   const uchar *p = m;
   unsigned r = s->len % 64;
 

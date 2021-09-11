@@ -215,6 +215,14 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Md5_Type           = Md5
     Z_MD5_SRCDIR       = $(Z_SRCLIBDIR)/$(Md5_Type)/src
 
+    # Sha256 Type
+    SHA256_Type        = Sha256
+    Z_SHA256_SRCDIR    = $(Z_SRCLIBDIR)/$(SHA256_Type)/src
+
+    # Sha512 Type
+    SHA512_Type        = Sha512
+    Z_SHA512_SRCDIR    = $(Z_SRCLIBDIR)/$(SHA512_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -756,6 +764,30 @@ clean-libmd5-shared:
 clean-libmd5-static:
 	@cd $(Z_MD5_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libsha256-shared: Env cenv
+	@cd $(Z_SHA256_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libsha256-static: Env cenv
+	@cd $(Z_SHA256_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libsha256-shared:
+	@cd $(Z_SHA256_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libsha256-static:
+	@cd $(Z_SHA256_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libsha512-shared: Env cenv
+	@cd $(Z_SHA512_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libsha512-static: Env cenv
+	@cd $(Z_SHA512_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libsha512-shared:
+	@cd $(Z_SHA512_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libsha512-static:
+	@cd $(Z_SHA512_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared \
@@ -1042,7 +1074,8 @@ zero-shared:  Env cenv list\
               libsh-shared libargparse-shared libio-shared\
               libfile-shared libpath-shared libterm-shared\
               libimap-shared libsmap-shared libvideo-shared\
-              libjson-shared libmd5-shared\
+              libjson-shared libmd5-shared libsha256-shared\
+              libsha512-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared
@@ -1055,7 +1088,8 @@ zero-static:  Env cenv list\
               libsh-static libargparse-static libio-static\
               libfile-static libpath-static libterm-static\
               libimap-static libsmap-static libvideo-static\
-              libjson-static libmd5-static\
+              libjson-static libmd5-static libsha256-static\
+              libsha512-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static
@@ -1079,6 +1113,7 @@ zero-clean-shared:\
               clean-liberror-shared clean-libvwm-shared\
               clean-libla-shared clean-libv-shared\
               clean-libos-shared clean-libmd5-shared\
+              clean-libsha256-shared clean-libsha512-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1104,6 +1139,7 @@ zero-clean-static:\
               clean-liberror-static clean-libvwm-static\
               clean-libla-static clean-libv-static\
               clean-libos-static clean-libmd5-static\
+              clean-libsha256-static clean-libsha512-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
