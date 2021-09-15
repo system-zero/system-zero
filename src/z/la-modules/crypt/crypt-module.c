@@ -61,9 +61,9 @@ static VALUE crypt_sha256sum (la_t *this, VALUE v_str) {
   uchar md[SHA256_DIGEST_LENGTH];
   return crypt_sum (this, v_str, (struct MdOpts) {
     .ctx = &ctx,
-    .sum = Md5.sum,
-    .init = Md5.init,
-    .update = Md5.update,
+    .sum = Sha256.sum,
+    .init = Sha256.init,
+    .update = Sha256.update,
     .md = md,
     .md_len = SHA256_DIGEST_LENGTH
    });
@@ -74,9 +74,9 @@ static VALUE crypt_sha512sum (la_t *this, VALUE v_str) {
   uchar md[SHA512_DIGEST_LENGTH];
   return crypt_sum (this, v_str, (struct MdOpts) {
     .ctx = &ctx,
-    .sum = Md5.sum,
-    .init = Md5.init,
-    .update = Md5.update,
+    .sum = Sha512.sum,
+    .init = Sha512.init,
+    .update = Sha512.update,
     .md = md,
     .md_len = SHA512_DIGEST_LENGTH
    });
@@ -116,8 +116,6 @@ static VALUE crypt_sum_file (la_t *this, VALUE v_file, struct MdOpts opts) {
 
   for (int i = 0; i < opts.md_len; i++)
     String.append_with_fmt (s, "%02x", opts.md[i]);
-
-  String.append_with_fmt (s, "  %s", file);
 
   return STRING(s);
 }

@@ -1,4 +1,4 @@
-This a dynamic Programming Language, that has been implement to supply
+This a tiny Programming Language, that has been implement to supply
 this system, with an extension Language that can be used at runtime.
 
 The second purpose and a tiny ambition, is through research to understand
@@ -7,17 +7,17 @@ interpreted by [m]any Programming Language[s].
 
 That means that it should be composed with established concepts, such as a
 familiar syntax, and very well defined semantics, instantly understood by
-any programmer, and easy to interpreted by many Languages, sometimes even
+any programmer, and easy to interpreted by other Languages, sometimes even
 without the need of an interpretation.
 
-The idea is that you could write once one thing, that could be interpreted
-by many, the exact same code, having the same well defined results.Something
-like a Portable Syntax across Programming Languages.
+The general idea, that the exact same code, written in a nutreal way, can be
+interpreted by as many offers an implementation.
 
 There is a reference implementation, that should obey this basic abstraction.
 
 However, it still remains a language with an opinion, and its own prefered way
-to express, but this is out of scope.
+to express, but this is out of the basic scope, so the two concepts (hopefully
+well defined) should be presented separately.
 
 The following is an early draft, but looks quite close to the final reference.
 
@@ -28,7 +28,8 @@ This for now, it is written as an early description, and it is based on valid
 code, and with some inline comments for the purpose of development of a final
 reference.
 
-This a mix of established C and well defined concepts by Interpreted Languages.
+This a mix of established C and well defined concepts by dynamical Interpreted
+Languages.
 
 The basic aim here is to find a balance, between simplicity and capability.
 So, we have to define this, with the absolutelly minimum set of features is
@@ -71,7 +72,7 @@ Comments.
 
   # Give it a value:
   v = 1
-  # Any variable can be reassigned with a new value, unless it is declared as
+  # Any symbol can be reassigned with a new value, unless it is declared as
   # `const`. Symbols are associated with a value but do not have types, just
   # the type of the associated value.
 
@@ -134,7 +135,7 @@ Comments.
     ifnot (n) { return a }
     # the language supports an `ifnot` conditional, which evaluates to true
     # when the expression is zero. SLang has it too, others have something
-    # similar. Very useful for explicitly expressions.
+    # similar. Very useful for explicit expressions.
 
     if (n == 1) { return b }
 
@@ -151,13 +152,13 @@ Comments.
   }
 
   println (fibo_recursive (12)) # => 144
-  # however the stack can easily exhausted with some thousands of calls.
+  # however the stack can be easily exhausted with some thousands of calls.
   # Note also that in this case, it isn't a requirenment to declare first the
   # function to use it. But normally it is an error to use a symbol, that hasn't
   # been declared. The parsing order is the classic top to bottom. But functions
   # are not doing any kind of parsing first, other than the time of the evaluation,
   # and that it is the reason why this works for recursive functions.
-  # This is dangerous, since code that hasn't been used it doesn't checked at
+  # This is dangerous, since code that hasn't been used, it doesn't checked at
   # all for correctness.
 
   # Functions can be anonymous.
@@ -165,7 +166,7 @@ Comments.
   var v = lambda (x, y) { return x * y } (10, 100) # => 1000
 
   # A lambda function, it is like a function without a name, but it is called
-  # immediately. After the call release the resources. It is illegal to store
+  # immediately. After the call releases its resources. It is illegal to store
   # a lambda in a variable. It is also illegal to omit the argument list after
   # the body, even if it is an empty list, so a pair of parentheses is obligatory
   # after the body.
@@ -218,7 +219,7 @@ Comments.
 
   println (forfun (10)) # this it will print (null) as the function it
   # didn't return a value. But functions always return a value and functions
-  # that didn't return a value, this value is `null` by default. For C functions
+  # that didn't return a value. This value is `null` by default. For C functions
   # this is guarranteed by the function signature, which is always a VALUE type.
 
   # now print the sum
@@ -296,12 +297,12 @@ Comments.
     }
   }
 
-  # Testing for string equality a public property.
+  # Testing for string equality for a public property.
   println (dadamap.again_visible == "Visibility it is public by default.") # => 1
 
   # But this will raises an error:
     # println (dadamap.back_to_privacy)
-  # SYNTAX ERROR: back_to_privacy, symbol has private scope
+    # SYNTAX ERROR: back_to_privacy, symbol has private scope
 
   # Accessing map properties is through a dot ('.'), the same way C access its
   # structures.
@@ -317,7 +318,7 @@ Comments.
 
   # But it is not possible to override a method. This it will raises an error:
     # dadamap.sumfun = 100
-  # SYNTAX ERROR: you can not override a method
+    # SYNTAX ERROR: you can not override a method
 
   # Unless doing it explicitly:
   override dadamap.sumfun = 100
@@ -325,8 +326,8 @@ Comments.
 
   # But how can you access map members, when the key is constructed at runtime?
 
-  var x = "newkey"
-  dadamap.$(x) = "does has a value?"
+  var x = "Newkey!"
+  dadamap.$(x) = " Does really has a value?"
   dadamap.$("answer") = "Dubious. But nothing is lost forever."
 
   println (dadamap.$("question"))
@@ -343,7 +344,7 @@ Comments.
   # basic interface for now:
 
   for |key, value| in dadamap { println ("${key} : ${value}") }
-  # The private fields, would not printed in this case.
+  # The private fields, should not be printed in this case.
 
   # Untill now we saw many uses of strings, like string concatenation, or that
   # strings can be checked for equality.
@@ -524,20 +525,9 @@ Probably this will be a very messy output."
 And that is the first draft about the first basic interface that resembles the
 C way, with the obvious differences, basically the absent of type declarations.
 
-The other section that needs to be written it is more `functional` kind of operations.
-Again this is quite basic, and should be common concepts to everyone, with
-maybe a couple of new or refined ideas.
-
 Untill then, the following (which was the first document that has been produced
 during the phase of development in research to settle to syntax and semantics),
-it is still almost relevant, except the "when as expession section".
-This mechanism will (already implemented but not thoroughly tested) be replaced
-with the "if as expression".
-And the concepts are mixed.
-
-Finally and for the intention of this basic syntax and semantics.
-The idea is to be used as minimum code, that can be translated and
-executed by any language. And there are much more few than many, that cannot.
+it is still almost relevant.
 
 ## Syntax and Semantics
 ```js
@@ -547,7 +537,7 @@ executed by any language. And there are much more few than many, that cannot.
 # a time that will not have any reference. Tagged as LAnguageInterpreterDoc-0.0.
 # Hopefully will fulfil this aid promise, at least a bit.
 
-# LAID-0.0 (started at the dawn (ended at 04/09/21 late afterno.n))
+# LAID-0.0 (started at the dawn (ended at 04/09/21 late afternoon))
 
 # A `#' denotes the begining of a comment that ends up to the end of line.
 
@@ -639,7 +629,7 @@ executed by any language. And there are much more few than many, that cannot.
       if cond then
         ifnot cond ...
 
-  so this is linear.
+  so this is dyadic and linear.
 
   The mechanism doesn't create a new scope, as it happens with all the
   loops and block delimited conditionals, which they have to do (because
@@ -647,24 +637,13 @@ executed by any language. And there are much more few than many, that cannot.
   and release them at exit).
 
   So it doesn't accept variable declarations, as it doesn't make sence
-  to create a variable in a block with a single statement. Furthermore
-  and because there is no new scope, then a variable declaration quite
-  probably will have unexpected side effects to the rest of the code.
+  to create a variable in a block with a single statement.
 
   Such conditionals they have to end up with a semicolon ':' or with
   a new line character.
 
-  For parsing reasons, as they have to consume extra clauses when they
-  will not evaluate, they don't accept loops and block conditionals.
-  Otherwise a clear defined end, had to be used to handle them, like:
-
-    if cond then do_something orelse do_something else end
-
-    or like sh does:
-
-    if cond then do_something orelse do_something else fi
-
-    or other keywords like endif, e.t.c.
+  For parsing reasons, as they have to consume extra clauses, they don't
+  accept loops and block conditionals.
 
   This exact syntax can be used as an expression, which is explained
   in the [If As Expression](# If As expression) section below.
@@ -764,20 +743,14 @@ executed by any language. And there are much more few than many, that cannot.
   `ifnot`, should follow `break` or `continue` to the same line.
 
   (notes: that this should execute faster, than with an equivalent traditional
-     way and order. That is because the inner implementation, as an `if[not]`
-     conditional, creates a function state everytime it is called, as it has
-     to manage symbols scope, so it has to allocate and deallocate memory,
-     plus it has to parse the code with a way that can interpret correctly
-     `else if` and|or `else` clauses, and this is costly. In contrast only
-     a single evaluation taking place, as there is no expectation for other
-     options to look forward.
+     way and order. That is because, this mechanism it doesn't create a new
+     state/scope, unlike the `if[not]` conditional statements that they have
+     to do to manage symbols scope. Plus there is no need to parse the code
+     with a way that can interpret correctly `else if` and|or `else` clauses.
 
      Also note that it is believed that this is a more natural mind flow,
      as you might feel it (albeit with some bits of attention), when you
      will try to spell it, either loudly or in your mind.
-     Here I'm feeling that I'm pulling something (air), or is like pushing
-     back a thought, that seems that it is holding back than to continue
-     with the flow, even for a negligible fraction of time) when I say:
 
        "if condition then break" in contrast with "break if condition"
   )
@@ -788,7 +761,7 @@ executed by any language. And there are much more few than many, that cannot.
   c = 1  # this should fail
 
   if the value is not yet know, then it can be initialized with null,
-  and can be reassigned.
+  and then it can be reassigned.
 
 # variables can not be redeclared at the current scope
 
@@ -1209,7 +1182,7 @@ executed by any language. And there are much more few than many, that cannot.
 
 # If As Expression
 
-  The exact if[not]/then/orelse syntax and semantics for statements, can be
+  The exact if[not]/then/orelse/end syntax and semantics for statements, can be
   used to get a value of a single expression, thus it evaluates expressions
   instead of statements.
 
@@ -1241,13 +1214,9 @@ executed by any language. And there are much more few than many, that cannot.
   result would be different (without the last κοάξ).
 
 # Chaining with a Sequence of Functions Calls and Continuational Expressions.
-    (note that this is at early development)
-      (note+ that with the introduction of if as expressions, when expressions
-        they might looze the meaning of their existance)
 
-  The language wants to support a mechanism, where the current value,
-  becomes the first argument to the next function, or the last result
-  value.
+  The language supports a mechanism, where the current value, becomes the
+  first argument to the next function, or the last result value.
 
   At this stage is capable to satisfy the following code:
 
@@ -1640,14 +1609,14 @@ The return statement
     # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
     # StringType    String.advance (StringType str, IntegerType num)
     # StringType[]  String.tokenize (StringType str, StringType token)
-    # StringType    String.character (IntegerType c)
     # NumberType    String.to_number (StringType str)
     # IntegerType   String.to_integer (StringType str)
     # StringType    String.byte_in_str (StringType str, IntegerType byte)
     # StringType    String.advance_on_byte (StringType str, IntegerType c)
 
-    # StringType    Integer.to_string (IntegerType i, IntegerType base)
     # IntegerType   Integer.eq (IntegerType a, IntegerType b)
+    # StringType    String.char (IntegerType c)
+    # StringType    Integer.to_string (IntegerType i, IntegerType base)
 
   # Term Module Interface
     # ObjectType    Term.new ()
@@ -1693,6 +1662,14 @@ The return statement
     # IntegerType   Time.to_seconds (MapType tm)              # mktime()
     # StringType    Time.format (StringType fmt, null or MapType tm) # strftime()
 
+  # Crypt Module Interface
+    # StringType   Crypt.md5sum (StringType str)
+    # StringType   Crypt.sha256sum (StringType str)
+    # StringType   Crypt.sha512sum (StringType str)
+    # StringType   Crypt.md5sum_file (StringType file)
+    # StringType   Crypt.sha256sum_file (StringType file)
+    # StringType   Crypt.sha512sum_file (StringType file)
+
   (notes:
      - most of them are self explanatory, as they correspond to standard C functions
 
@@ -1706,7 +1683,6 @@ The return statement
           this code
 
      - those are all excuses to avoid writting extented documentation
-       (but yea should be self explanatory, or anyway at least there is consistency)
 
 # Library
   # Argparse Interface

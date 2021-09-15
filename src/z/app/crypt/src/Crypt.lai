@@ -4,6 +4,8 @@ loadfile ("argparse")
 
 var prog = __argv[0]: path_basename ()
 
+if prog: eq ("Crypt") then exit 1
+
 var argparse = New Argparse (2, 0, prog + " [option[s]] file")
 argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
@@ -40,6 +42,6 @@ var rs = fun (file)
 
 if null is rs then exit (1) end
 
-println (rs)
+println ("${rs}  ${file}")
 
 exit (0)

@@ -96,25 +96,23 @@
 #define VAR_IS_NOT_ALLOWED            (1 << 8)
 #define CONSUME                       (1 << 9)
 
-#define EXPR_LIST_STATE               (1 << 0)
-#define MAP_METHOD_STATE              (1 << 1)
-#define OBJECT_RELEASE_STATE          (1 << 2)
-#define TYPE_NEW_STATE                (1 << 3)
-#define EVAL_UNIT_STATE               (1 << 4)
-#define RETURN_STATE                  (1 << 5)
-#define CHAIN_STATE                   (1 << 6)
+#define MAP_METHOD_STATE              (1 << 0)
+#define OBJECT_RELEASE_STATE          (1 << 1)
+#define TYPE_NEW_STATE                (1 << 2)
+#define EVAL_UNIT_STATE               (1 << 3)
+#define RETURN_STATE                  (1 << 4)
+#define CHAIN_STATE                   (1 << 5)
 
 #define FMT_LITERAL                   (1 << 0)
 
 #define OBJECT_APPEND                 (1 << 0)
 #define IDENT_LEAD_CHAR_CAN_BE_DIGIT  (1 << 1)
-#define OBJECT_MMT_REASSIGN           (1 << 2)
-#define ARRAY_MEMBER                  (1 << 3)
-#define MAP_MEMBER                    (1 << 4)
-#define MAP_ASSIGNMENT                (1 << 5)
-#define FUNC_OVERRIDE                 (1 << 6)
-#define LHS_STRING_RELEASED           (1 << 7)
-#define RHS_STRING_RELEASED           (1 << 8)
+#define ARRAY_MEMBER                  (1 << 2)
+#define MAP_MEMBER                    (1 << 3)
+#define MAP_ASSIGNMENT                (1 << 4)
+#define FUNC_OVERRIDE                 (1 << 5)
+#define LHS_STRING_RELEASED           (1 << 6)
+#define RHS_STRING_RELEASED           (1 << 7)
 
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
@@ -127,9 +125,9 @@
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
-#define CFUNC_TYPE          'B'
-#define UFUNC_TYPE          'f'
-#define BINOP_TYPE          'o'
+#define CFUNC_TYPE       'B'
+#define UFUNC_TYPE       'f'
+#define BINOP_TYPE       'o'
 
 #define TOKEN_SYMBOL     'A'
 #define TOKEN_BUILTIN    'B'
@@ -181,29 +179,30 @@
 #define TOKEN_HEX_NUMBER 'x'
 #define TOKEN_ARRAY      'y'
 #define TOKEN_BLOCK      'z'
-#define TOKEN_INDEX_OPEN '['
-#define TOKEN_INDEX_CLOS ']'
+#define TOKEN_NL         '\n'
+#define TOKEN_DQUOTE     '"'
+#define TOKEN_COMMENT    '#'
+#define TOKEN_DOLLAR     '$'
 #define TOKEN_PAREN_OPEN '('
 #define TOKEN_PAREN_CLOS ')'
+#define TOKEN_STAR       '*'
+#define TOKEN_COMMA      ','
+#define TOKEN_DOT        '.'
+#define TOKEN_COLON      ':'
+#define TOKEN_SEMICOLON  ';'
+#define TOKEN_SQUOTE     '\''
+#define TOKEN_INDEX_OPEN '['
+#define TOKEN_SLASH      '\\'
+#define TOKEN_ESCAPE_CHR TOKEN_SLASH
+#define TOKEN_INDEX_CLOS ']'
+#define TOKEN_LIST       '^'
+#define TOKEN_BQUOTE     '`'
 #define TOKEN_BLOCK_OPEN '{'
+#define TOKEN_BAR        '|'
 #define TOKEN_MAP_OPEN   TOKEN_BLOCK_OPEN
 #define TOKEN_BLOCK_CLOS '}'
 #define TOKEN_MAP_CLOS   TOKEN_BLOCK_CLOS
-#define TOKEN_SEMICOLON  ';'
-#define TOKEN_COLON      ':'
-#define TOKEN_DOT        '.'
-#define TOKEN_COMMA      ','
-#define TOKEN_BAR        '|'
-#define TOKEN_COMMENT    '#'
-#define TOKEN_DOLLAR     '$'
 #define TOKEN_UNARY      '~'
-#define TOKEN_DQUOTE     '"'
-#define TOKEN_SQUOTE     '\''
-#define TOKEN_BQUOTE     '`'
-#define TOKEN_STAR       '*'
-#define TOKEN_NL         '\n'
-#define TOKEN_SLASH      '\\'
-#define TOKEN_ESCAPE_CHR TOKEN_SLASH
 //#define TOKEN_NULL       '0'
 #define TOKEN_ASSIGN      1000
 #define TOKEN_ASSIGN_APP  1001
@@ -370,6 +369,7 @@ struct la_t {
     continueCount,
     argCount,
     byteCount,
+    exprList,
     conditionState;
 
   size_t anon_id;
@@ -547,7 +547,6 @@ typedef struct tokenState {
   return NULL_VALUE;                \
 } while (0)
 
-typedef struct listType listType;
 typedef struct listNode listNode;
 
 struct listNode {
@@ -564,16 +563,6 @@ struct listType {
   int num_items;
   int cur_idx;
 };
-
-#define IS_LIST(__v__) ({             \
-  int _r_ = 0;                        \
-  if (IS_OBJECT(__v__)) {             \
-    object *_o_ = AS_OBJECT(__v__);   \
-    if (_o_->release == list_release) \
-      _r_ = 1;                        \
-  }                                   \
-  _r_;                                \
-})
 
 static int la_do_next_token (la_t *, int);
 static int la_parse_iforelse (la_t *, int, VALUE *);
@@ -600,6 +589,7 @@ static ArrayType *array_copy (ArrayType *);
 static int la_array_set_as_array (la_t *, VALUE, integer, integer, integer);
 static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
 static int la_parse_array_def (la_t *);
+static int la_parse_array_get (la_t *, VALUE *);
 static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static VALUE la_copy_map (VALUE);
 static VALUE map_release (VALUE);
@@ -1043,13 +1033,14 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
 
   switch (value.type) {
     case INTEGER_TYPE: String.append_with_len (buf, "IntegerType", 11); break;
+    case FILEPTR_TYPE: String.append_with_len (buf, "FilePtrType", 11); break;
     case NUMBER_TYPE:  String.append_with_len (buf, "NumberType",  10); break;
     case STRING_TYPE:  String.append_with_len (buf, "StringType",  10); break;
     case OBJECT_TYPE:  String.append_with_len (buf, "ObjectType",  10); break;
     case ARRAY_TYPE:   String.append_with_len (buf, "ArrayType",    9); break;
     case NULL_TYPE:    String.append_with_len (buf, "NullType",     8); break;
+    case LIST_TYPE:    String.append_with_len (buf, "ListType",     8); break;
     case MAP_TYPE:     String.append_with_len (buf, "MapType",      7); break;
-
     default:
       if (value.type & FUNCPTR_TYPE)
         String.append_with_len (buf, "FunctionType", 12);
@@ -1154,9 +1145,11 @@ static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, V
 }
 
 static VALUE la_fclose (la_t *this, VALUE fp_val) {
-  VALUE result = INT(LA_NOTOK);
+  VALUE result = NOTOK_VALUE;
 
   if (fp_val.type is NULL_TYPE) return result;
+
+  if (fp_val.refcount < 0) return OK_VALUE;
 
   FILE *fp = AS_FILEPTR(fp_val);
 
@@ -1168,7 +1161,6 @@ static VALUE la_fclose (la_t *this, VALUE fp_val) {
   if (0 isnot fclose (fp)) {
     ifnot (NULL is this)
       la_set_Errno (this, errno);
-    result = NOTOK_VALUE;
   } else
     result = OK_VALUE;
 
@@ -1232,8 +1224,7 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
 
 static VALUE list_release (la_t *this, VALUE v_list) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
-  object *o = AS_OBJECT(v_list);
-  listType *list = (listType *) AS_PTR(o->value);
+  listType *list = AS_LIST(v_list);
   listNode *it = list->head;
 
   while (it) {
@@ -1254,17 +1245,23 @@ static VALUE list_new (la_t *this) {
   list->cur_idx = -1;
   list->num_items = 0;
   list->head = list->tail = list->current = NULL;
-  VALUE v = OBJECT(list);
+  VALUE v = LIST(list);
   object *o = la_object_new (list_release, NULL, v);
-  return OBJECT(o);
+  return LIST(o);
 }
 
 static VALUE list_set (la_t *this, VALUE v_list, VALUE v_item, int what) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
-  object *o = AS_OBJECT(v_list);
-  listType *list = (listType *) AS_PTR(o->value);
+  listType *list = AS_LIST(v_list);
+
   listNode *node = Alloc(sizeof (listNode));
-  VALUE v = la_copy_value (v_item);
+
+  VALUE v;
+  if (v_item.sym isnot NULL)
+    v = la_copy_value (v_item);
+  else
+    v = v_item;
+
   VALUE *vp = Alloc (sizeof (VALUE));
   *vp = v;
   node->value = vp;
@@ -1287,8 +1284,8 @@ static VALUE list_append (la_t *this, VALUE v_list, VALUE v_item) {
 static VALUE list_set_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-  object *o = AS_OBJECT(v_list);
-  listType *list = (listType *) AS_PTR(o->value);
+
+  listType *list = AS_LIST(v_list);
 
   int idx = AS_INT(v_idx);
   if (0 > idx)
@@ -1313,9 +1310,8 @@ static VALUE list_set_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
 static VALUE list_insert_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-  object *o = AS_OBJECT(v_list);
-  listType *list = (listType *) AS_PTR(o->value);
 
+  listType *list = AS_LIST(v_list);
   int idx = AS_INT(v_idx);
   if (0 > idx)
     idx += list->num_items;
@@ -1349,8 +1345,7 @@ static VALUE list_get_at (la_t *this, VALUE v_list, VALUE v_idx) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
-  object *o = AS_OBJECT(v_list);
-  listType *list = (listType *) AS_PTR(o->value);
+  listType *list = AS_LIST(v_list);
 
   int idx = AS_INT(v_idx);
   if (0 > idx)
@@ -1369,7 +1364,43 @@ static VALUE list_get_at (la_t *this, VALUE v_list, VALUE v_idx) {
   if (NULL is node)
     return NULL_VALUE;
 
-  VALUE v = la_copy_value (*node->value);
+  VALUE *vp = node->value;
+  VALUE v;
+
+  int c = PEEK_NTH_BYTE(0);
+  int err;
+
+  switch (c) {
+    case TOKEN_DOT:
+      ifnot (IS_MAP((*vp)))
+        C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
+
+      TOKENVAL = *vp;
+      err = la_parse_map_get (this, vp);
+      if (err isnot LA_OK)  C_THROW(err, "");
+
+      v = *vp;
+      break;
+
+    case TOKEN_INDEX_OPEN:
+      ifnot (IS_ARRAY((*vp)))
+        C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
+
+      TOKENVAL = *vp;
+      err = la_parse_array_get (this, vp);
+      if (err isnot LA_OK) C_THROW(err, "");
+
+      v = *vp;
+      break;
+
+    default:
+      if (this->exprList)
+        v = *vp;
+      else
+        v = la_copy_value (*vp);
+
+  }
+
   return v;
 }
 
@@ -1377,8 +1408,7 @@ static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
-  object *o = AS_OBJECT(v_list);
-  listType *list = (listType *) AS_PTR(o->value);
+  listType *list = AS_LIST(v_list);
 
   int idx = AS_INT(v_idx);
   if (0 > idx)
@@ -1404,8 +1434,7 @@ static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
-  object *o = AS_OBJECT(v_list);
-  listType *list = (listType *) AS_PTR(o->value);
+  listType *list = AS_LIST(v_list);
 
   int idx = AS_INT(v_idx);
   if (0 > idx)
@@ -1421,11 +1450,46 @@ static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
   }
 
   listNode *node = DListPopAt(list, listNode, idx);
+
   VALUE v = la_copy_value (*node->value);
   la_release_val (this, *node->value);
   free (node->value);
   free (node);
   return v;
+}
+
+static int la_parse_list (la_t *this, VALUE *vp) {
+  int err;
+
+  NEXT_TOKEN();
+
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_OPEN,  "parsing list: awaiting (");
+
+  VALUE v_list = list_new (this);
+
+  NEXT_TOKEN();
+
+  while (1) {
+    VALUE v;
+    err = la_parse_expr (this, &v);
+    THROW_ERR_IF_ERR(err);
+
+    list_append (this, v_list, v);
+
+    if (TOKEN is TOKEN_COMMA) {
+      NEXT_TOKEN();
+      continue;
+    }
+
+    break;
+  }
+
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,  "parsing list: awaiting )");
+
+  *vp = v_list;
+  NEXT_TOKEN();
+
+  return LA_OK;
 }
 
 static int la_parse_format (la_t *, VALUE *);
@@ -1514,7 +1578,7 @@ theend:
   if (this->fmtRefcount)
     this->fmtState |= FMT_LITERAL;
   else
-    if (this->funcState & EXPR_LIST_STATE)
+    if (this->exprList)
       vp->refcount = STRING_LITERAL;
 
   return LA_OK;
@@ -1553,6 +1617,12 @@ static VALUE la_len (la_t *this, VALUE value) {
     case MAP_TYPE: {
       Vmap_t *map = AS_MAP(value);
       result = INT(Vmap.num_keys (map));
+      break;
+    }
+
+    case LIST_TYPE: {
+      listType *list = AS_LIST(value);
+      result = INT(list->num_items);
       break;
     }
   }
@@ -1612,12 +1682,15 @@ static VALUE la_release_val (la_t *this, VALUE value) {
   void *obj = NULL;
 
   switch (value.type) {
-    case POINTER_TYPE: obj = AS_VOID_PTR(value); break;
-    case   ARRAY_TYPE: return array_release (value);
-    case  STRING_TYPE: return string_release (value);
-    case  OBJECT_TYPE: return object_release (this, value);
-    case     MAP_TYPE: return map_release (value);
-    default: return result;
+    case   POINTER_TYPE: obj = AS_VOID_PTR(value); break;
+    case     ARRAY_TYPE: return array_release (value);
+    case    STRING_TYPE: return string_release (value);
+    case       MAP_TYPE: return map_release (value);
+    case   FILEPTR_TYPE:
+    case      LIST_TYPE:
+    case    OBJECT_TYPE: return object_release (this, value);
+    default:
+      return result;
   }
 
   ifnot (NULL is obj) {
@@ -2648,7 +2721,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   }
 
   *vp = ary;
-  if (this->funcState & EXPR_LIST_STATE)
+  if (this->exprList)
     vp->refcount = ARRAY_LITERAL;
 
   VALUE fidx = INT(1);
@@ -3022,8 +3095,7 @@ static int la_parse_array_set (la_t *this) {
 
     array_release (v);
 
-    this->objectState |= OBJECT_MMT_REASSIGN;
-    return LA_OK;
+    return LA_MMT_REASSIGN;
   }
 
   VALUE ix = INT(0);
@@ -3833,8 +3905,8 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
   v = MAP(map);
 
-  if (this->funcState & EXPR_LIST_STATE)
-      v.refcount--;
+  if (this->exprList)
+    v.refcount--;
 
   *vp = v;
   NEXT_TOKEN();
@@ -4006,7 +4078,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       *vp = la_copy_map (*v);
     } else {
       if (v->sym isnot NULL and is_this and this->funcState & RETURN_STATE
-           and 0 is (this->funcState & EXPR_LIST_STATE)) {
+           and 0 is this->exprList) {
         vp->refcount++;
         this->objectState |= MAP_MEMBER;
       }
@@ -4041,8 +4113,7 @@ static int la_parse_map_set (la_t *this) {
 
     Vmap.release (map);
 
-    this->objectState |= OBJECT_MMT_REASSIGN;
-    return LA_OK;
+    return LA_MMT_REASSIGN;
   }
 
   NEXT_TOKEN();
@@ -4270,11 +4341,12 @@ static int la_parse_expr_list (la_t *this) {
   int count = 0;
   VALUE v;
 
+  this->exprList++;
   do {
     this->curState |= MALLOCED_STRING_STATE;
-    this->funcState |= EXPR_LIST_STATE;
+    this->exprList++;
     err = la_parse_expr (this, &v);
-    this->funcState &= ~EXPR_LIST_STATE;
+    this->exprList--;
     THROW_ERR_IF_ERR(err);
 
     if (this->curState & FUNC_CALL_RESULT_IS_MMT)
@@ -4294,6 +4366,8 @@ static int la_parse_expr_list (la_t *this) {
     }
   } while (c is TOKEN_COMMA);
 
+  this->exprList--;
+
   count += this->argCount;
   this->argCount = 0;
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
@@ -4309,9 +4383,9 @@ static int la_parse_expr_list (la_t *this) {
       la_set_qualifiers (this, v);
 
     } else if (c is TOKEN_MAP) {
-      this->funcState |= EXPR_LIST_STATE;
+      this->exprList++;
       err = la_parse_map_get (this, &v);
-      this->funcState &= ~EXPR_LIST_STATE;
+      this->exprList--;
       THROW_ERR_IF_ERR(err);
 
       VALUE val = la_copy_map (v);
@@ -4320,9 +4394,9 @@ static int la_parse_expr_list (la_t *this) {
       la_set_qualifiers (this, v);
 
     } else {
-      this->funcState |= EXPR_LIST_STATE;
+      this->exprList++;
       err = la_parse_primary (this, &v);
-      this->funcState &= ~EXPR_LIST_STATE;
+      this->exprList--;
       THROW_ERR_IF_ERR(err);
 
       if (v.type is MAP_TYPE)
@@ -4551,7 +4625,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
         sym->value = none;
         uf->result.sym = NULL;
       } else {
-        ifnot (this->funcState & EXPR_LIST_STATE)
+        ifnot (this->exprList)
           if (uf->result.refcount is MALLOCED_STRING) {
             VALUE v = STRING(String.dup(AS_STRING(uf->result)));
             uf->result = v;
@@ -4648,6 +4722,8 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
     this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
+    int fun_should_be_freed = 0;
+
     if (c isnot TOKEN_SYMBOL)
       THROW_SYNTAX_ERR("awaiting a method");
 
@@ -4674,11 +4750,12 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "map_%s", key);
         break;
 
+      case LIST_TYPE:
+        Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "list_%s", key);
+        break;
+
       case NULL_TYPE:
       default:
-        if (IS_LIST((*vp)))
-          Cstring.cp_fmt (method, MAXLEN_SYMBOL * 2, "list_%s", key);
-        else
           method[0] = '\0';
         break;
 
@@ -4705,6 +4782,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
           sym = this->curSym;
           sym->value = PTR(this->curFunDef);
           sym->type |= FUNCPTR_TYPE;
+          fun_should_be_freed = 1;
           break;
 
         case TOKEN_FORMAT: {
@@ -4794,8 +4872,6 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
     stack_push (this, (*vp));
     this->argCount = 1;
-
-    int fun_should_be_freed = 0;
 
     if (type is FUNCPTR_TYPE) {
       funT *uf = AS_FUNC_PTR(val);
@@ -5011,9 +5087,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       THROW_ERR_IF_ERR(err);
 
       NEXT_TOKEN();
-      c = TOKEN;
 
-      if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+      if (TOKEN is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
         TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
@@ -5252,6 +5327,17 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       return err;
 
+    case TOKEN_LIST:
+      err = la_parse_list (this, vp);
+      THROW_ERR_IF_ERR(err);
+
+      if (TOKEN is TOKEN_COLON) {
+        TOKENVAL = *vp;
+        return la_parse_chain (this, vp);
+      }
+
+      return err;
+
     default:
       if ((c & 0xff) is TOKEN_BINOP) {
         OpFunc op = (OpFunc) AS_PTR(TOKENVAL);
@@ -5405,7 +5491,7 @@ do_token:
       }
 
       if (c isnot TOKEN_SYMBOL)
-        THROW_SYNTAX_ERR("expected a symbol");
+        THROW_SYNTAX_ERR("var definition: expected a symbol");
 
       name = TOKENSTR;
 
@@ -5616,11 +5702,10 @@ do_token:
     }
 
     case TOKEN_ARRAY:
-      this->objectState &= ~OBJECT_MMT_REASSIGN;
       err = la_parse_array_set (this);
       THROW_ERR_IF_ERR(err);
 
-      if (this->objectState & OBJECT_MMT_REASSIGN) {
+      if (err is LA_MMT_REASSIGN) {
         TOKEN = TOKEN_VAR;
         goto do_token;
       }
@@ -5628,11 +5713,10 @@ do_token:
       return err;
 
     case TOKEN_MAP:
-      this->objectState &= ~OBJECT_MMT_REASSIGN;
       err = la_parse_map_set (this);
       THROW_ERR_IF_ERR(err);
 
-      if (this->objectState & OBJECT_MMT_REASSIGN) {
+      if (err is LA_MMT_REASSIGN) {
         TOKEN = TOKEN_VAR;
         goto do_token;
       }
@@ -6606,12 +6690,10 @@ static int la_parse_foreach (la_t *this) {
     case MAP_TYPE:
     case ARRAY_TYPE:
     case STRING_TYPE:
+    case LIST_TYPE:
       break;
 
     default:
-      if (IS_LIST(v))
-        break;
-
       THROW_A_TYPE_MISMATCH(type, "illegal foreach type");
   }
 
@@ -6894,7 +6976,7 @@ static int la_parse_foreach (la_t *this) {
       la_fun_release_symbols (fun, 1, 0);
     }
 
-  } else if (IS_LIST(v)) {
+  } else if (v.type is LIST_TYPE) {
     ptr = ident;
     while (*ptr) ptr++;
     len = ptr - ident;
@@ -6906,8 +6988,8 @@ static int la_parse_foreach (la_t *this) {
     char elem[len + 1];
     Cstring.cp (elem, len + 1, ident, len);
     VALUE elem_value = NULL_VALUE;
-    object *o = AS_OBJECT(v);
-    listType *list = (listType *) AS_PTR(o->value);
+
+    listType *list = AS_LIST(v);
 
     sym_t *elem_sym = la_define_block_symbol (this, fun, elem, NULL_TYPE, elem_value, 0);
     int num = list->num_items;
@@ -7786,10 +7868,9 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
         c = TOKEN;
       }
 
-      int funcState = this->funcState;
-      this->funcState |= EXPR_LIST_STATE;
+      this->exprList++;
       err = la_parse_expr (this, &value);
-      this->funcState = funcState;
+      this->exprList--;
       if (err isnot LA_OK) goto theend;
 
       ifnot (directive) {
@@ -7798,7 +7879,6 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
           case INTEGER_TYPE: directive = 'd'; break;
           case NUMBER_TYPE:  directive = 'f'; break;
           case NULL_TYPE:    directive = 's'; break;
-          case OBJECT_TYPE:
           default: directive = 'p';
         }
       }
@@ -8078,7 +8158,7 @@ static int la_parse_print (la_t *this) {
         String.append_with_len (str, "(null)", 6);
         goto print_str;
 
-      case OBJECT_TYPE:
+      case FILEPTR_TYPE:
         if (1 is num_iterations)
           break;
 
@@ -8162,7 +8242,7 @@ theend:
 
 static int la_parse_println (la_t *this) {
   int err = la_parse_print (this);
-  ifnot (err is LA_NOTOK) {
+  if (err > LA_NOTOK) {
     fprintf (this->print_fp, "\n");
     this->byteCount++;
   }
@@ -8735,6 +8815,18 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
       }
 
     default:
+      if (x.type > OBJECT_TYPE) {
+        switch (y.type) {
+          case NULL_TYPE: return result;
+          default:
+            this->CFuncError = LA_ERR_TYPE_MISMATCH;
+            Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+                "ObjectType == %s is not possible",
+                AS_STRING_BYTES(la_typeAsString (this, y)));
+            return result;
+        }
+      }
+
       this->CFuncError = LA_ERR_TYPE_MISMATCH;
       Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
          "%s == %s is not possible",
@@ -8943,7 +9035,7 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
 
           this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
-          if (this->funcState & EXPR_LIST_STATE)
+          if (this->exprList)
             result.refcount = STRING_LITERAL;
 
           goto theend;
@@ -9268,6 +9360,7 @@ static struct def {
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
   { "New",     TOKEN_NEW,      NULL_VALUE },
   { "format",  TOKEN_FORMAT,   NULL_VALUE },
+  { "list",    TOKEN_LIST,     NULL_VALUE },
   { "if",      TOKEN_IF,       PTR(la_parse_if) },
   { "ifnot",   TOKEN_IFNOT,    PTR(la_parse_if) },
   { "while",   TOKEN_WHILE,    PTR(la_parse_while) },
@@ -9307,23 +9400,25 @@ static struct def {
   { "and",     BINOP(5),          PTR(la_logical_and) },
   { "||",      BINOP(5),          PTR(la_logical_or) },
   { "or",      BINOP(5),          PTR(la_logical_or) },
-  { "=",     TOKEN_ASSIGN,     NULL_VALUE },
-  { "+=",    TOKEN_ASSIGN_APP, NULL_VALUE },
-  { "-=",    TOKEN_ASSIGN_SUB, NULL_VALUE },
-  { "/=",    TOKEN_ASSIGN_DIV, NULL_VALUE },
-  { "*=",    TOKEN_ASSIGN_MUL, NULL_VALUE },
-  { "&=",    TOKEN_ASSIGN_AND, NULL_VALUE },
-  { "|=",    TOKEN_ASSIGN_BAR, NULL_VALUE },
+  { "=",       TOKEN_ASSIGN,      NULL_VALUE },
+  { "+=",      TOKEN_ASSIGN_APP,  NULL_VALUE },
+  { "-=",      TOKEN_ASSIGN_SUB,  NULL_VALUE },
+  { "/=",      TOKEN_ASSIGN_DIV,  NULL_VALUE },
+  { "*=",      TOKEN_ASSIGN_MUL,  NULL_VALUE },
+  { "&=",      TOKEN_ASSIGN_AND,  NULL_VALUE },
+  { "|=",      TOKEN_ASSIGN_BAR,  NULL_VALUE },
   { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },
+  { "BooleanType", INTEGER_TYPE,  INT(BOOLEAN_TYPE) },
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
   { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
-  { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
   { "CFunctionType",INTEGER_TYPE, INT(CFUNCTION_TYPE) },
+  { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
   { "StringType",  INTEGER_TYPE,  INT(STRING_TYPE) },
   { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
-  { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
   { "MapType",     INTEGER_TYPE,  INT(MAP_TYPE) } ,
-  { "BooleanType", INTEGER_TYPE,  INT(BOOLEAN_TYPE) },
+  { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
+  { "ListType",    INTEGER_TYPE,  INT(LIST_TYPE) },
+  { "FilePtrType", INTEGER_TYPE,  INT(FILEPTR_TYPE) },
   { "ok",          INTEGER_TYPE,  OK_VALUE },
   { "notok",       INTEGER_TYPE,  NOTOK_VALUE },
   { "true",        INTEGER_TYPE,  TRUE_VALUE },
@@ -9386,17 +9481,17 @@ static int la_def_std (la_t *this, char *name, int type, VALUE v, int is_const) 
 static int la_std_def (la_t *this, la_opts opts) {
   VALUE v = OBJECT(opts.out_fp);
   object *o = la_object_new (NULL, NULL, v);
-  int err = la_define (this, "stdout", OBJECT_TYPE, OBJECT(o));
+  int err = la_define (this, "stdout", FILEPTR_TYPE, FILEPTR(o));
   if (err) return LA_NOTOK;
 
   v = OBJECT(opts.err_fp);
   o = la_object_new (NULL, NULL, v);
-  err = la_define (this, "stderr", OBJECT_TYPE, OBJECT(o));
+  err = la_define (this, "stderr", FILEPTR_TYPE, FILEPTR(o));
   if (err) return LA_NOTOK;
 
-  v= OBJECT(stdin);
+  v = OBJECT(stdin);
   o = la_object_new (NULL, NULL, v);
-  err = la_define (this, "stdin", OBJECT_TYPE, OBJECT(o));
+  err = la_define (this, "stdin", FILEPTR_TYPE, FILEPTR(o));
   if (err) return LA_NOTOK;
 
   v = INT(opts.argc);
@@ -9910,6 +10005,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->anon_id = 0;
   this->loopCount = 0;
   this->argCount = 0;
+  this->exprList = 0;
 
   if (NULL is opts.la_dir) {
     char *ddir = getenv ("DATADIR");

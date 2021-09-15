@@ -246,18 +246,6 @@ static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
   return ARRAY(array);
 }
 
-static VALUE string_character (la_t *this, VALUE v_c) {
-  (void) this;
-  ifnot (IS_INT(v_c)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-
-  utf8 c = AS_INT(v_c);
-  char buf[8];
-  int len = 0;
-  Ustring.character (c, buf, &len);
-  string *s = String.new_with (buf);
-  return STRING(s);
-}
-
 static VALUE string_to_integer (la_t *this, VALUE v_str) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -335,6 +323,21 @@ static VALUE integer_to_string (la_t *this, VALUE v_int, VALUE v_base) {
   return STRING(s);
 }
 
+static VALUE integer_char (la_t *this, VALUE v_c) {
+  (void) this;
+  ifnot (IS_INT(v_c)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  utf8 c = AS_INT(v_c);
+  char buf[8];
+  int len = 0;
+  Ustring.character (c, buf, &len);
+  string *s = String.new_with (buf);
+  if (len is 1 and c is '\\')
+    String.append_byte (s, '\\');
+
+  return STRING(s);
+}
+
 static VALUE integer_eq (la_t *this, VALUE v_fint, VALUE v_sint) {
   (void) this;
   if (IS_INT(v_fint) is 0 or IS_INT(v_sint) is 0)
@@ -367,12 +370,12 @@ public int __init_std_module__ (la_t *this) {
     { "string_bytelen",     PTR(string_bytelen), 1 },
     { "string_numchars",    PTR(string_numchars), 1 },
     { "string_tokenize",    PTR(string_tokenize), 2 },
-    { "string_character",   PTR(string_character), 1 },
     { "string_to_number",   PTR(string_to_number), 1 },
     { "string_to_integer",  PTR(string_to_integer), 1 },
     { "string_byte_in_str", PTR(string_byte_in_str), 2 },
     { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
     { "integer_eq",         PTR(integer_eq), 2},
+    { "integer_char",       PTR(integer_char), 1 },
     { "integer_to_string",  PTR(integer_to_string), 2},
     { NULL, NULL_VALUE, 0}
   };
@@ -405,7 +408,6 @@ public int __init_std_module__ (la_t *this) {
        "bytelen" : string_bytelen,
        "numchars" : string_numchars,
        "tokenize" : string_tokenize,
-       "character" : string_character,
        "to_number" : string_to_number,
        "to_integer" : string_to_integer,
        "byte_in_str" : string_byte_in_str,
@@ -414,6 +416,7 @@ public int __init_std_module__ (la_t *this) {
 
      public var Integer = {
        "eq"        : integer_eq,
+       "char"      : integer_char,
        "to_string" : integer_to_string
      };
 

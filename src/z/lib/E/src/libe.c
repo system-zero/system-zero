@@ -1241,7 +1241,7 @@ static int buf_eval_expression (buf_t **thisp, int fidx, int lidx, string_t *str
       return OK;
 
     default:
-      snprintf (buf, 256, "%ld", AS_INT(v));
+      snprintf (buf, 256, "%zd", AS_INT(v));
   }
 
   Ed.reg.set (ed, '$', CHARWISE, buf, NORMAL_ORDER);
@@ -1972,28 +1972,28 @@ static void venv_new (ed_T *this) {
   if ($OurRoots(uid))
     __env_check_directory__ (Sys.get.env_value ("HOME"), "home directory", 1, 0, 0);
 
-#ifndef LIBVED_DIR
-  Sys.set.env_as (STR_FMT ("%s/.libved", Sys.get.env_value ("HOME"), "E_DIR", 1);
+#ifndef LIBE_DIR
+  Sys.set.env_as (STR_FMT ("%s/.libe", Sys.get.env_value ("HOME"), "E_DIR", 1);
 #else
-  Sys.set.env_as (LIBVED_DIR, "E_DIR", 1);
+  Sys.set.env_as (LIBE_DIR, "E_DIR", 1);
 #endif
  char *e_dir = Sys.get.env_value ("E_DIR");
   if ($OurRoots(uid))
-    __env_check_directory__ (e_dir, "libved directory", 1, 0, 0);
+    __env_check_directory__ (e_dir, "libe directory", 1, 0, 0);
 
-#ifndef LIBVED_TMPDIR
+#ifndef LIBE_TMPDIR
   Sys.set.env_as (STR_FMT ("%s/tmp", e_dir), "E_TMPDIR", 1);
 #else
-  Sys.set.env_as (LIBVED_TMPDIR, "E_TMPDIR", 1);
+  Sys.set.env_as (LIBE_TMPDIR, "E_TMPDIR", 1);
 #endif
   char *tmp_dir = Sys.get.env_value ("E_TMPDIR");
   if ($OurRoots(uid))
     __env_check_directory__ (tmp_dir, "editor temp directory", 1, 1, 0);
 
-#ifndef LIBVED_DATADIR
+#ifndef LIBE_DATADIR
   Sys.set.env_as (STR_FMT ("%s/data", e_dir), "E_DATADIR", 1);
 #else
-  Sys.set.env_as (LIBVED_DATADIR, "E_DATADIR", 1);
+  Sys.set.env_as (LIBE_DATADIR, "E_DATADIR", 1);
 #endif
   char *data_dir = Sys.get.env_value ("E_DATADIR");
   if ($OurRoots(uid))
@@ -10676,7 +10676,7 @@ static string_t *ed_history_set_search_file (ed_t *this, char *file) {
     else
       hs_file = String.replace_with (hs_file, data_dir);
 
-    String.append_with_fmt (hs_file, "/.%s_libved_hist_search",
+    String.append_with_fmt (hs_file, "/.%s_libe_hist_search",
         Sys.get.env_value ("USERNAME"));
   }
 
@@ -10699,7 +10699,7 @@ static string_t *ed_history_set_readline_file (ed_t *this, char *file) {
     else
       hrl_file = String.replace_with (hrl_file, data_dir);
 
-    String.append_with_fmt (hrl_file, "/.%s_libved_hist_readline",
+    String.append_with_fmt (hrl_file, "/.%s_libe_hist_readline",
         Sys.get.env_value ("USERNAME"));
   }
 

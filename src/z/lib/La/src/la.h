@@ -18,15 +18,17 @@ typedef integer     memsize;
 typedef integer     pointer;
 
 #define NULL_TYPE      0
-#define NUMBER_TYPE    (1 << 0)
-#define INTEGER_TYPE   (1 << 1)
-#define FUNCPTR_TYPE   (1 << 2)
-#define STRING_TYPE    (1 << 3)
-#define ARRAY_TYPE     (1 << 4)
-#define OBJECT_TYPE    (1 << 5)
-#define MAP_TYPE       (1 << 6)
-#define CFUNCTION_TYPE (1 << 7)
-#define BOOLEAN_TYPE   (1 << 8)
+#define BOOLEAN_TYPE   (1 << 0)
+#define NUMBER_TYPE    (1 << 1)
+#define INTEGER_TYPE   (1 << 2)
+#define CFUNCTION_TYPE (1 << 3)
+#define FUNCPTR_TYPE   (1 << 4)
+#define STRING_TYPE    (1 << 5)
+#define ARRAY_TYPE     (1 << 6)
+#define MAP_TYPE       (1 << 7)
+#define OBJECT_TYPE    (1 << 8)
+#define LIST_TYPE      (1 << 9)
+#define FILEPTR_TYPE   (1 << 10)
 #define POINTER_TYPE   INTEGER_TYPE
 
 struct ValueType {
@@ -44,26 +46,39 @@ struct ValueType {
 
 typedef ValueType VALUE;
 
-#define AS_NUMBER(__v__) __v__.asNumber
-#define    NUMBER(__n__) (VALUE) {.type = NUMBER_TYPE, .asNumber = __n__, .refcount = 0, .sym = NULL}
-
-#define AS_INT(__v__) __v__.asInteger
-#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .asInteger = __i__, .refcount = 0, .sym = NULL}
-
-#define  AS_STRING_BYTES(__v__) AS_STRING(__v__)->bytes
-#define  AS_STRING(__v__)  __v__.asString
-#define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .asString = __s__, .refcount = 0, .sym = NULL}
-#define STRING_NEW(__s__) STRING(String.new_with (__s__))
-#define STRING_NEW_WITH_LEN(__s__, __l__) STRING(String.new_with_len (__s__, __l__))
-
 typedef struct ArrayType {
   VALUE value;
   int type;
   size_t len;
 } ArrayType;
 
-#define AS_ARRAY AS_PTR
+typedef VALUE (*ObjectRelease) (la_t *, VALUE);
+typedef VALUE (*ObjectToString) (VALUE);
+
+typedef struct ObjectType {
+  ObjectRelease  release;
+  ObjectToString toString;
+  VALUE          value;
+} ObjectType;
+
+typedef ObjectType object;
+
+typedef struct listType listType;
+
+#define    INT(__i__) (VALUE) {.type = INTEGER_TYPE, .asInteger = __i__, .refcount = 0, .sym = NULL}
+#define AS_INT(__v__) __v__.asInteger
+
+#define    NUMBER(__n__) (VALUE) {.type = NUMBER_TYPE, .asNumber = __n__, .refcount = 0, .sym = NULL}
+#define AS_NUMBER(__v__) __v__.asNumber
+
+#define     STRING(__s__) (VALUE) {.type = STRING_TYPE, .asString = __s__, .refcount = 0, .sym = NULL}
+#define  AS_STRING(__v__)  __v__.asString
+#define  AS_STRING_BYTES(__v__) AS_STRING(__v__)->bytes
+#define STRING_NEW(__s__) STRING(String.new_with (__s__))
+#define STRING_NEW_WITH_LEN(__s__, __l__) STRING(String.new_with_len (__s__, __l__))
+
 #define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .asInteger = (pointer) __a__, .refcount = 0, .sym = NULL}
+#define AS_ARRAY AS_PTR
 #define    ARRAY_NEW(__type__, __len__) ({               \
   ArrayType *array_ = Alloc (sizeof (ArrayType));        \
   VALUE ary_;                                            \
@@ -108,78 +123,50 @@ typedef struct ArrayType {
   array_;                                                \
 })
 
-#define AS_PTR AS_INT
+#define    MAP(__v__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __v__, .refcount = 0, .sym = NULL}
+#define AS_MAP(__v__) (Vmap_t *) AS_PTR(__v__)
+
+#define    OBJECT(__o__) (VALUE) {.type = OBJECT_TYPE, .asInteger = (pointer) __o__, .refcount = 0, .sym = NULL}
+#define AS_OBJECT(__o__) (object *) AS_PTR(__o__)
+
+#define    LIST(__l__) (VALUE) {.type = LIST_TYPE, .asInteger = (pointer) __l__, .refcount = 0, .sym = NULL}
+#define AS_LIST(__v__) ({                          \
+  object *_o_ = AS_OBJECT(__v__);                  \
+  listType *_l_ = (listType *) AS_PTR(_o_->value); \
+  _l_;                                             \
+})
+
+#define FILEPTR(__fp__) (VALUE) {.type = FILEPTR_TYPE, .asInteger = (pointer) __fp__, .refcount = 0, .sym = NULL}
+#define AS_FILEPTR(__v__) ({                       \
+  object *_o_ = AS_OBJECT(__v__);                  \
+  FILE *_fp_ = (FILE *) AS_PTR(_o_->value);        \
+  _fp_;                                            \
+})
+
 #define    PTR(__p__) INT((pointer) __p__)
+#define AS_PTR AS_INT
 
 #define  AS_MEMSIZE(__v__) (size_t) AS_INT(__v__)
 #define AS_VOID_PTR(__v__) (void *) AS_PTR(__v__)
 #define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
-
 #define AS_NULL(__v__) __v__.asNull
-#define    NULL_VALUE (VALUE) {.type = NULL_TYPE, .asNull = (void *) 0, .refcount = 0, .sym = NULL}
 
 #define  TRUE_VALUE INT(1)
 #define FALSE_VALUE INT(0)
-
 #define    OK_VALUE INT(0)
 #define NOTOK_VALUE INT(-1)
+#define  NULL_VALUE (VALUE) {.type = NULL_TYPE, .asNull = (void *) 0, .refcount = 0, .sym = NULL}
 
-#define AS_MAP(__v__) (Vmap_t *) AS_PTR(__v__)
-#define    MAP(__v__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __v__, .refcount = 0, .sym = NULL}
-
-typedef VALUE (*ObjectRelease) (la_t *, VALUE);
-typedef VALUE (*ObjectToString) (VALUE);
-
-typedef struct ObjectType {
-  ObjectRelease  release;
-  ObjectToString toString;
-  VALUE          value;
-} ObjectType;
-
-typedef ObjectType object;
-
-#define AS_OBJECT(__o__) (object *) AS_PTR(__o__)
-#define    OBJECT(__o__) (VALUE) {.type = OBJECT_TYPE, .asInteger = (pointer) __o__, .refcount = 0, .sym = NULL}
-
-#define FILEPTR OBJECT
-#define AS_FILEPTR(__o__) ({                \
-  object *_o_ = AS_OBJECT(__o__);           \
-  FILE *_fp_ = (FILE *) AS_PTR(_o_->value); \
-  _fp_;                                     \
-})
-
-#define IS_INT(__v__) (__v__.type == INTEGER_TYPE)
-#define IS_PTR IS_INT
-#define IS_MAP(__v__) (__v__.type == MAP_TYPE)
-#define IS_NULL(__v__) (__v__.type == NULL_TYPE)
-#define IS_ARRAY(__v__) (__v__.type == ARRAY_TYPE)
+#define IS_INT(__v__)    (__v__.type == INTEGER_TYPE)
+#define IS_MAP(__v__)    (__v__.type == MAP_TYPE)
+#define IS_NULL(__v__)   (__v__.type == NULL_TYPE)
+#define IS_ARRAY(__v__)  (__v__.type == ARRAY_TYPE)
 #define IS_STRING(__v__) (__v__.type == STRING_TYPE)
 #define IS_NUMBER(__v__) (__v__.type == NUMBER_TYPE)
 #define IS_OBJECT(__v__) (__v__.type == OBJECT_TYPE)
-#define IS_FILEPTR(__v__) ({                             \
-  int _r_ = 0;                                           \
-  if (IS_OBJECT(__v__)) {                                \
-    object *_o_ = AS_OBJECT(__v__);                      \
-    if (_o_->release == la_fclose)                       \
-      _r_ = 1;                                           \
-    else {                                               \
-      sym_t *_s_;                                        \
-      _s_ = Vmap.get (this->std->symbols, "stdin");      \
-      if (AS_PTR(_s_->value) == AS_PTR(__v__)) {         \
-        _r_ = 1;                                         \
-      } else {                                           \
-        _s_ = Vmap.get (this->std->symbols, "stdout");   \
-        if (AS_PTR(_s_->value) ==  AS_PTR(__v__)) {      \
-          _r_ = 1;                                       \
-        } else {                                         \
-          _s_ = Vmap.get (this->std->symbols, "stderr"); \
-          _r_ = AS_PTR(_s_->value) == AS_PTR(__v__);     \
-        }                                                \
-      }                                                  \
-    }                                                    \
-  }                                                      \
-  _r_;                                                   \
-})
+#define IS_LIST(__v__)   (__v__.type == LIST_TYPE)
+#define IS_FILEPTR(__v__)(__v__.type == FILEPTR_TYPE)
+#define IS_PTR IS_INT
 
 #define THROW(__e__, __m__) do {    \
   La.set.CFuncError (this,  __e__); \
@@ -312,7 +299,8 @@ enum {
   LA_ERR_OK_ELSE,
   LA_ERR_BREAK,
   LA_ERR_CONTINUE,
-  LA_ERR_EXIT = 4
+  LA_ERR_EXIT = 4,
+  LA_MMT_REASSIGN = 1000
 };
 
 typedef struct LaDefCFun {

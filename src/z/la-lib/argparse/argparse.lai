@@ -146,7 +146,7 @@ private
       if (retval is false) {
         if (this.exit_on_unknown) {
           if (this.verbose) {
-            println ("-${c: string_character ()}: unknown argument")
+            println ("-${c: char ()}: unknown argument")
             this.print_description ()
           }
 
