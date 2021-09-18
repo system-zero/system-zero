@@ -14,7 +14,6 @@ typedef struct sym_t sym_t;
 
 typedef double      number;
 typedef ptrdiff_t   integer;
-typedef integer     memsize;
 typedef integer     pointer;
 
 #define NULL_TYPE      0
@@ -146,7 +145,6 @@ typedef struct listType listType;
 #define    PTR(__p__) INT((pointer) __p__)
 #define AS_PTR AS_INT
 
-#define  AS_MEMSIZE(__v__) (size_t) AS_INT(__v__)
 #define AS_VOID_PTR(__v__) (void *) AS_PTR(__v__)
 #define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
 #define AS_NULL(__v__) __v__.asNull

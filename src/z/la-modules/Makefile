@@ -23,14 +23,14 @@ Env: makeenv checkenv
 shared: Env clean-shared path-module-shared file-module-shared\
         std-module-shared term-module-shared dir-module-shared\
         sh-module-shared os-module-shared sys-module-shared\
-        time-module-shared crypt-module-shared
+        time-module-shared crypt-module-shared rand-module-shared
 
 clean: clean-shared
 
 clean-shared: clean-path-shared clean-file-shared clean-std-shared\
               clean-term-shared clean-dir-shared clean-sh-shared\
               clean-os-shared clean-sys-shared clean-time-shared\
-              clean-crypt-shared
+              clean-crypt-shared clean-random-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC -lla
@@ -118,6 +118,14 @@ crypt-module-shared:
 
 clean-crypt-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/crypt-module.so  || $(RM)  $(SYSMODULEDIR)/crypt-module.so
+
+#-----------------------------------------------------------
+RAND_FLAGS =
+rand-module-shared:
+	$(CC) -o $(SYSMODULEDIR)/rand-module.so $(SHARED_FLAGS) $(RAND_FLAGS) rand/rand-module.c
+
+clean-rand-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/rand-module.so  || $(RM)  $(SYSMODULEDIR)/rand-module.so
 #-----------------------------------------------------------
 makeenv:
 	@$(TEST) -d $(SYSMODULEDIR)     || $(MKDIR) -p $(SYSMODULEDIR)

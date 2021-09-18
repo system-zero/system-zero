@@ -1825,7 +1825,7 @@ func semantics () {
     var l = list ("1", [1, 2], {"k" : 1}, list (0, 1, 2))
     assert_true ("testing list type", typeof (l) is ListType and
         typeAsString (l) is "ListType" and
-        typeAsString (l: get_at (3)) is "ListType"  )
+        typeAsString (l: get_at (3)) is "ListType")
 
   }
 

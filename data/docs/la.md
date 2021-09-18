@@ -1670,6 +1670,9 @@ The return statement
     # StringType   Crypt.sha256sum_file (StringType file)
     # StringType   Crypt.sha512sum_file (StringType file)
 
+  # Rand Module Interface
+    # IntegerType Rand.new ()
+
   (notes:
      - most of them are self explanatory, as they correspond to standard C functions
 

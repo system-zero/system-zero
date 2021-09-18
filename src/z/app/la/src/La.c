@@ -57,6 +57,10 @@
 #include "../../../la-modules/crypt/crypt-module.c"
 #endif
 
+#ifdef REQUIRE_RAND_MODULE
+#include "../../../la-modules/rand/rand-module.c"
+#endif
+
 static void la_completion (const char *buf, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
 
@@ -297,6 +301,10 @@ eval:
 
   #ifdef REQUIRE_CRYPT_MODULE
     __init_crypt_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_RAND_MODULE
+    __init_rand_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

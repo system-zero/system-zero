@@ -188,6 +188,11 @@ ifeq ($(CRYPT_MODULE), 1)
   endif
 endif
 
+RAND_MODULE := 1
+ifeq ($(RAND_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_RAND_MODULE
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(LA)-shared $(SYSBINDIR)/$(LA)

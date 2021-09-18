@@ -1205,6 +1205,9 @@ time-module-shared:
 
 crypt-module-shared: libmd5-shared libsha256-shared libsha512-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) crypt-module-shared
+
+rand-module-shared: Env
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) rand-module-shared
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 
