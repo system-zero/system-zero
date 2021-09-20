@@ -223,6 +223,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     SHA512_Type        = Sha512
     Z_SHA512_SRCDIR    = $(Z_SRCLIBDIR)/$(SHA512_Type)/src
 
+    # Random Type
+    RANDOM_Type        = Random
+    Z_RANDOM_SRCDIR    = $(Z_SRCLIBDIR)/$(RANDOM_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -788,6 +792,18 @@ clean-libsha512-shared:
 clean-libsha512-static:
 	@cd $(Z_SHA512_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+librandom-shared: Env cenv
+	@cd $(Z_RANDOM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+librandom-static: Env cenv
+	@cd $(Z_RANDOM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-librandom-shared:
+	@cd $(Z_RANDOM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-librandom-static:
+	@cd $(Z_RANDOM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared \
@@ -967,7 +983,9 @@ lai-static: libargparse-static librline-static libla-static
 la-shared: lai-shared modules-shared la-library packman
 
 la-static: libsh-static libsys-static libos-static\
-           libdir-static libfile-static lai-static la-library
+           libdir-static libfile-static librandom-static\
+           libmd5-static libsha256-static libsha512-static\
+           lai-static la-library
 
 clean-lai-shared:
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
@@ -1093,7 +1111,7 @@ zero-shared:  Env cenv list\
               libfile-shared libpath-shared libterm-shared\
               libimap-shared libsmap-shared libvideo-shared\
               libjson-shared libmd5-shared libsha256-shared\
-              libsha512-shared\
+              libsha512-shared librandom-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared
@@ -1107,7 +1125,7 @@ zero-static:  Env cenv list\
               libfile-static libpath-static libterm-static\
               libimap-static libsmap-static libvideo-static\
               libjson-static libmd5-static libsha256-static\
-              libsha512-static\
+              libsha512-static librandom-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static
@@ -1132,6 +1150,7 @@ zero-clean-shared:\
               clean-libla-shared clean-libv-shared\
               clean-libos-shared clean-libmd5-shared\
               clean-libsha256-shared clean-libsha512-shared\
+              clean-librandom-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1158,6 +1177,7 @@ zero-clean-static:\
               clean-libla-static clean-libv-static\
               clean-libos-static clean-libmd5-static\
               clean-libsha256-static clean-libsha512-static\
+              clean-librandom-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
@@ -1206,8 +1226,8 @@ time-module-shared:
 crypt-module-shared: libmd5-shared libsha256-shared libsha512-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) crypt-module-shared
 
-rand-module-shared: Env
-	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) rand-module-shared
+random-module-shared: Env librandom-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) random-module-shared
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 

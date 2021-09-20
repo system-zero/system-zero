@@ -1827,6 +1827,12 @@ func semantics () {
         typeAsString (l) is "ListType" and
         typeAsString (l: get_at (3)) is "ListType")
 
+    func f (x) {}
+    assert_true ("testing function types",
+        f: typeof () is FunctionType and
+        f: typeAsString () is "FunctionType" and
+        typeof: typeof () is CFunctionType and
+        typeAsString : typeAsString () is "CFunctionType") 
   }
 
   types ()

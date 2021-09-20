@@ -8,11 +8,12 @@ import ("sys")
 loadfile ("argparse")
 loadfile ("packman")
 
-var argparse = New Argparse (6, 0, "Packman option[s] package")
+var argparse = New Argparse (7, 0, "Packman option[s] package")
 argparse.add ("install", 0, "install", "install package", BooleanType, ARG_LITERAL)
 argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, ARG_LITERAL) 
 argparse.add ("spec_info", 0, "spec-info", "spec information", BooleanType, ARG_LITERAL)
 argparse.add ("settings", 0, "settings", "general settings", BooleanType, ARG_LITERAL)
+argparse.add ("list_specs", 0, "list-specs", "list available specs", BooleanType, ARG_LITERAL)
 argparse.add ("force", 'f', "force", "force", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
@@ -24,11 +25,12 @@ var update_repo = argparse.results.update_repo
 var install     = argparse.results.install
 var spec_info   = argparse.results.spec_info
 var settings    = argparse.results.settings
+var list_specs  = argparse.results.list_specs
 var force       = argparse.results.force
 
 var package = lambda {
   ifnot (argparse.argc) {
-    if (settings is false or spec_info is true) {
+    if ((settings is false and list_specs is false) or spec_info is true) {
       println (stderr, "No package has been specified")
       exit (1)
     }
@@ -39,7 +41,7 @@ var package = lambda {
   return argparse.argv[0]
 } ()
 
-ifnot (install + update_repo + spec_info + settings) {
+ifnot (install + update_repo + spec_info + settings + list_specs) {
   println ("no action has been specified in the command line" +
     ifnot null is package then " for " + package orelse "")
   # it doesn't really need this, i leave it here for historical reasons
@@ -58,6 +60,11 @@ if null is tmpdir then tmpdir = "/tmp"
 p.set.build_dir (tmpdir)
 
 var retval = notok
+
+if (list_specs is true) {
+  p.list.specs (; {"verbose" : 1})
+  exit (0)
+}
 
 if (spec_info is true) {
   var spec = p.new.spec (package)

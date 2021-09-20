@@ -191,6 +191,7 @@ endif
 RAND_MODULE := 1
 ifeq ($(RAND_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_RAND_MODULE
+  LA_STATIC_FLAGS += -lrandom-$(VERSION)
 endif
 
 la-shared:

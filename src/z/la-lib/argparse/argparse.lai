@@ -174,17 +174,25 @@ private
         var long_len = long: len ()
 
         if (long: eq_n (arg, long_len)) {
-          found = true
           var type = this.types[j]
           var as = this.as[j]
           var flags = this.flags[j]
 
+          continue if (flags & ARG_LITERAL)
+
+          found = true
           ifnot (flags) {
-            if (type is IntegerType or type is BooleanType) {
+   #         if (type is IntegerType or type is BooleanType) {
+   #           this.results.$(as) = true
+   #         } else if (type is StringType) {
+   #           this.results.$(as) = ""
+   #         }
+   #      ifnot flags then
+            if type is IntegerType or type is BooleanType then
               this.results.$(as) = true
-            } else if (type is StringType) {
-              this.results.$(as) = ""
-            }
+            orelse
+              if type is StringType then
+                this.results.$(as) = ""
 
             return true
           }
@@ -310,15 +318,19 @@ public
 
       var is_long = 0
       var llen = 0
+      var is_literal = 0
+
       if (null isnot this.longopts[i]) {
         llen = this.longopts[i]: len ()
         if (llen) {
           is_long = 1
+          is_literal = this.flags[i] & ARG_LITERAL
+
           if (is_short) {
-            msg += ",--"
+            ifnot is_literal then msg += ",--" orelse msg += ","
             slen += 1
           } else {
-            msg += "  --"
+            ifnot is_literal then msg += "  --" orelse msg += "  "
           }
           msg += this.longopts[i]
         }
@@ -329,7 +341,7 @@ public
       var first = this.maxlen + 5
       var num_spaces = first - (llen + slen)
 
-      if llen then num_spaces -= 2
+      if llen then ifnot is_literal then num_spaces -= 2
 
       loop (num_spaces) {
         msg += ' '

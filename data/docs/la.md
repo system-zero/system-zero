@@ -10,8 +10,8 @@ familiar syntax, and very well defined semantics, instantly understood by
 any programmer, and easy to interpreted by other Languages, sometimes even
 without the need of an interpretation.
 
-The general idea, that the exact same code, written in a nutreal way, can be
-interpreted by as many offers an implementation.
+The general idea is, that the exact same code, written in a nutreal way, can
+be interpreted by as many offers an implementation. 
 
 There is a reference implementation, that should obey this basic abstraction.
 
@@ -54,25 +54,26 @@ Comments.
   var v;
   # or
   var c
-  # both are valid. A new line denotes the end of a statement, based on the
-  # context, thus they can spawn into multiply lines. A semicolon explicitly
-  # ends a statement. Multiply statements in one line without a semicolon
-  # at the end, may work most of the time, but there are a couple of obvious
-  # ambiquities, so can not be guarranteed. However this is valid:
+  # both are valid. An explicit semicolon, denotes the end of a statement.
+  # A new line also can denote the end of a statement, when they didn't left
+  # any tokens to consume. Thus a statement, and based on the context of the
+  # may spawn into multiply lines.
+  # Multiply statements in one line without a semicolon at the end, may work
+  # or may not work, as there are a couple of obvious ambiquities, so it can
+  # not be guarranteed. However this is valid in this specific implementation:
 
   var a = 10 var b = "a" println (b) if (a) { b = "b" }
 
-  # are four statements, that are being parsed correctly currently. If in doubt
-  # you may use a semicolon as a separator. Again, this is not ought to be
-  # guarranteed.
+  # are four statements, that are being parsed correctly, but easily can be
+  # misinterpreted. 
 
   # If a variable is not initialized with some value at the declaration time,
-  # it is initialized with the `null` value, so `v' and `c' right now they
-  # have the value of `null`.
+  # as it happened above, it is initialized with the `null` value, so `v' and
+  # `c' they have the value of `null`.
 
   # Give it a value:
   v = 1
-  # Any symbol can be reassigned with a new value, unless it is declared as
+  # Any symbol can be reassigned with a new value, unless it is attributed as
   # `const`. Symbols are associated with a value but do not have types, just
   # the type of the associated value.
 
@@ -85,21 +86,24 @@ Comments.
   # uninitialized, untill the first time that will be initialized with a value
   # other than `null`.
 
-  # You can assign multiply variables, with a single `var`.
+  # You may assign multiply variables, as long they are separated by a comma:
   var xxx,
       yyy,
       ccc;
 
 
-  # This is a function declaration. Functions and arguments do not have types,.
+  # The following is a function declaration. Functions and function arguments
+  # do not have types.
   func name (arg) {
     return arg * 2
   }
+  # The function body, is delimited by a pair if braces '{}'.
 
-  # Note:
   # All the blocks are delimited with a pair of braces '{}' and are mandatory,
-  # for this basic interface at least. Every block creates a new scope, which
-  # is invisible to the outer scope, and accessible only to nested blocks.
+  # for this basic interface at least.
+
+  # Every block creates a new local scope, which is invisible to the outer scope,
+  # and accessible only from the nested blocks.
 
   # You can associate a function with a symbol and use it with the same way
   # you use a function.
@@ -117,10 +121,10 @@ Comments.
   # A function without an argument list can be declared without the leading
   # parentheses, as:
   func fu { println (fun (ref, 22)) }
-  fu () # this it will print 42 and a new line at the end, unlike the `print`
-        # function that do not, and which otherwise behaves like `println`.
+  fu ()   # this it will print 44 and a new line at the end, unlike the `print`
+          # function that do not, and which otherwise behaves like `println`.
 
-  # Functions can be nested in arbritary level:
+  # Functions can be nested in arbitrary level:
   func fuc (a, b, c) {
     func fud (a, b, c) {
       return a + b + c
@@ -152,14 +156,19 @@ Comments.
   }
 
   println (fibo_recursive (12)) # => 144
-  # however the stack can be easily exhausted with some thousands of calls.
+  # however the stack can be easily exhausted with some thousands of calls, at
+  # least in this implementation.
   # Note also that in this case, it isn't a requirenment to declare first the
-  # function to use it. But normally it is an error to use a symbol, that hasn't
-  # been declared. The parsing order is the classic top to bottom. But functions
-  # are not doing any kind of parsing first, other than the time of the evaluation,
-  # and that it is the reason why this works for recursive functions.
-  # This is dangerous, since code that hasn't been used, it doesn't checked at
-  # all for correctness.
+  # function to use it.
+  # Normally it is an error to use a symbol, that hasn't been already declared.
+  # The parsing order is the classic top to bottom.
+  # In this implementations, functions are not doing any kind of parsing first,
+  # at the time of the declaration, other than the time of the evaluation.
+  # That it is the reason why this works for recursive functions, as the function
+  # symbol name has been already declared, at the time when the inline code calls
+  # itself. As a note, this is dangerous, since code that hasn't been used, it
+  # doesn't checked at all for correctness, but this is the nature of dynamical
+  # programming languages that evaluate code at the runtime.
 
   # Functions can be anonymous.
 
@@ -219,7 +228,7 @@ Comments.
 
   println (forfun (10)) # this it will print (null) as the function it
   # didn't return a value. But functions always return a value and functions
-  # that didn't return a value. This value is `null` by default. For C functions
+  # that don't return a value. This value is `null` by default. For C functions
   # this is guarranteed by the function signature, which is always a VALUE type.
 
   # now print the sum
@@ -363,7 +372,7 @@ Probably this will be a very messy output."
   var la = "la"
   println (la[0] == 'l') # => 1
   # Here also we see that individual characters can be enclosed in single quotes,
-  # and they will point to the associated integer value, again like C does.
+  # that they should point to the associated integer value, again like C does.
   # But unlike C, this is not limited to the ascii range. This works the same:
 
   println ('α') # => 945
@@ -392,7 +401,7 @@ Probably this will be a very messy output."
 
   println (code_string_for_evaluation)
 
-  # Other attributes may added in future, but for# those cases there is a
+  # Other attributes may added in future, but for those cases there is a
   # more expressive way. This is also out of scope of this basic interface,
   # but this is a valid expression:
 
@@ -402,15 +411,16 @@ Probably this will be a very messy output."
     # var mdoc_string = code_string_for_evaluation: to_markdown ()
     # var code_string_for_evaluation = `var ....`: trim_leading_ws (4)
   # There aren't such functions yet, but this is the mechanism, which
-  # is quite more expressive, without cryptic Capital letters, that may
-  # take an option, and are separated by a bar (to resemble pipes). But
-  # for this use is okey. SLang has such strings, with a couple of attributes
-  # that tune the behavior at the parsing time, without to have to call a
-  # filter later to transform the string. 
+  # is quite more expressive, without cryptic Capital letters.
 
-  # Finally the "std" modules includes functions that deal with strings, and:
-  # there are also two special forms of the for loop, that can be used to loop
+  # SLang also has backquoted strings, with a couple of attributes that tune
+  # the behavior at the parsing time, without to have to call a filter later
+  # to transform the string. 
+
+  # Finally the "std" modules includes functions that deal with strings.
+  # There are also two special forms of the for loop, that can be used to loop
   # over strings, one with byte semantics and one with character semantics.
+  # Again this doesn't belong for now to this interface.
 
   var byte_semantics = "byte samntics"
   for |c| in byte_semantics {
@@ -464,13 +474,13 @@ Probably this will be a very messy output."
 
     # Also we saw how to access array elements, which is the exact C way.
     # Indices start from zero and can be negative, where -1 points to the
-    # last element. The interpreter will throw an out of bounds error when
+    # last element. The interpreter should throw an out of bounds error when
     # the index is equal or greater than the length of the elements.
   }
 
   # The same can be written more compactly like:
   for |v| in int_ar { println (v) }
-  # But this kind of loop belongs to the extended interface.
+  # But this kind of loop belongs to the extended interface for now.
 
   # The above forms can be mixed:
 
@@ -485,15 +495,17 @@ Probably this will be a very messy output."
   int_ar[0:] = [1, 1, 1, 1]  # if the second idx is ommited, then assumed array length - 1
 
   # In any case if the number of expressions doesn't match or any idx is >= length
-  # the arraym, the interpreter will raises an OUT_OF_BOUNDS error.
+  # the arraym, the interpreter should raise an OUT_OF_BOUNDS error.
 
   # For such cases a more short form exists:
   int_ar[*] = 1
-  # This syntax should be attributed at SLang Programming Language,
+  # This syntax should be attributed at SLang Programming Language, and it is
+  # out of scope for now.
 
   ## This is the end of the first draft.
   # Left to do:
 
+  # Flow control statements (break/continue/return)
   # Logical operations (briefly the same exact C way)
   # Bitwise operations (briefly the same exact C way)
   # Import C code (briefly the same way as other Interpreted Languages)
@@ -503,11 +515,11 @@ Probably this will be a very messy output."
 
   non_existing_function ()
 
-  # this will throw an error, and it will terminate execution of the current
+  # this should throw an error, and it should terminate execution of the current
   # interpreter instance, with an error cobstant less than zero (a zero value
   # indicates success).
-  # The interpreter in that case, it will print (to the standard error by default),
-  # a message that with explain the error, and then it will try to print the
+  # The interpreter in that case, it should print (to the standard error by default),
+  # a message that with explain the error, and then it should try to print the
   # error line and with some lines offset, that raised the error.
   # All errors should propagated internally, from the current error point, back
   # to the very first function that started the evaluation. There is no kind of
@@ -525,7 +537,299 @@ Probably this will be a very messy output."
 And that is the first draft about the first basic interface that resembles the
 C way, with the obvious differences, basically the absent of type declarations.
 
-Untill then, the following (which was the first document that has been produced
+This zero point syntax and semantics, should obey to the least surprise
+principal, so they should not violate expectations.
+If a specific point, it does not obey or if it does, then naturrally it should
+be considered as either a bug that should be fixed, or should not be supported.
+
+The next is a first draft of a document that describes the own syntax
+and semantics of the language.
+
+```js
+  # if[not]/then/[orelse]/[end] conditional of single statements:
+  var condition = 0
+  if condition then println ("not zero") orelse println ("zero")
+  # The `end` can be ommited here, because it follows a new line.
+
+  # Also an `orelse` can be ommited:
+  ifnot condition then println ("zero")
+
+  # Those conditionals are dyadic operations and they can be followed by
+  # other if[not]/then/[orelse]/[end], in a linear way:
+    # if cond then
+    #   if cond then
+    #     ifnot cond ...
+
+  # It is illegal to declare a variable in such conditionals, as in such
+  # case, it might produce side affects to the rest of the code.
+
+  # It is also illegal to use all kind of loops or block operations that
+  # create a new scope.
+
+  # This exact syntax can be used as an expression. The only difference is
+  # instead of single statements, evaluates single expressions:
+
+  # in a variable assignment:
+  var x = null
+  var v = if x is null then "null" orelse "notnull" # => "null"
+   # here the `is` reserved keyword is same as '=='
+   # also the `isnot` keyword is same as '!='. Both is the prefered way.
+
+  # in a function call argument list:
+  func f (arg) {
+    return arg * 2
+  }
+
+  var res = f (if v is null then 1 orelse 0) # => an argument of value 1
+
+  # to get an array index:
+  var ar = [1, 2, 3]
+  println (ar[if v isnot null then 0 orelse 2]) # => 3
+
+  # to access a map key with an expression:
+  var m = {"key" : 1, "f" : 2}
+  println (m.$(if v isnot null then "f" orelse "key")) # => 1
+
+  # as an operand to binary operations:
+  var s = "Βρεκεκεκὲξ" + (if v is null then " κοὰξ" orelse "") +  " κοάξ"
+  println (s) # => "Βρεκεκεκὲξ κοὰξ κοάξ"
+  # note here that the expression is surrounded with parentheses, otherwise
+  # without them, the `orelse` would continue with the add operation and the
+  # result would be different (without the last κοάξ).
+
+
+  # Chaining with a Sequence of Functions Calls and Continuational Expressions.
+
+  # The language supports a mechanism, where the current value, becomes the
+  # first argument to the next function in the chain, or the last result value.
+
+  # As it evaluates only single expressions, and because the first value is
+  # copied at the begining of the sequence, it should not have side affects:
+
+  var r = ar: len () # => 3
+  # Here what is assigned is the length of the array value. The len() function
+  # it takes an object argument. In this case the `ar' value is pushed to the
+  # stack and becomes the first argument. 
+
+  # Lets use some functions from the std-module.
+  import ("std")
+
+  func fdouble (d) { return d * 2 }
+
+  var rs = r: fdouble (): to_string (16)  # =
+  # here the `r' value is passed as an argument to the user defined function
+  # fdouble(), and the result of the call is passed as a first argument to
+  # function integer_to_string() from the std-module. This function gets a
+  # second argument which is the base that the integer would stringnize.
+  # Here is in base 16. Note that in this case it doesn't has to use the
+  # full function name, as it is prepended based on the type of the value.
+
+  # Any valid expression is a valid value.
+  var s = "97"
+  println (s: to_integer ()) # => 97
+  println ('a' is s: to_integer ()) # => true
+  var is_eq = "asdf": eq ("asdfg") #  => false
+  var is_neq = "asdf": eq_n ("asdfg", 4) # => true
+  println (("10": to_integer () * 12 + 52 - 24) : to_string (2)) # => 10010100
+  var ary = "fa:fb:fc": tokenize (":") # => ["fa", "fb", "fc"]
+  println ({"k" : 1, "l" : 2}: len ()) # => 2
+  println ((1 is 100): to_string (10)) # "0"
+  # (note that the first expression is surrounded with parentheses, otherwise
+  # without them, a binary operation would be performed, between `1' and the
+  # result of (100: to_string (10)).
+
+  # Functions should accept at least one argument and functions can be also
+  # lambdas:
+  println (12342 :
+      lambda (x) { return x: to_string (10) } ():
+      lambda (x) { return x: to_integer () } ())  # 12342
+
+  # The value on the stack, can be an operand of a conditional expression,
+  # which is an `if/then/[orelse]/end' construct. Here the `end` keyword is
+  # obligatory to avoid ambiguities.
+
+  var xm = {"k" : 1, "l" : 2 };
+  println (xm.k: if x is 1 then x + 10 end) # => 11
+  # here `x' is the symbol that is associated with the value on the stack,
+  # and which it can be used at the evaluation.
+
+  # change the value of the key and retry:
+  xm.k = 100
+  println (xm.k: if x is 1 then x + 10 end) # => 100
+  # since the condition was false and there wasn't an `orelse`, the result
+  # it is the current input value on the stack.
+
+  # Qualifiers
+  # The language supports a mechanism to pass additional information to the
+  # called functions. This it has been copied by the SLang Programming Language,
+  # and it works the same with user defined functions and with C functions.
+
+  # This extra information gets passed with a map, within the expression list
+  # on a function call, and when after the argument list it follows a semicolon:
+
+  func q (x) {
+    var v = qualifier ("key", 10)
+    return v * x
+  }
+  # the `qualifier` function, first checks if a qualifier with the name "key"
+  # exists. If it couldn't been found then it uses as default value the second
+  # argument.
+
+  println (q (100)) # => 1000
+  println (q (100; {"key" : 200})) # => 20000
+
+  func qq (x) {
+    var m = qualifiers ()
+    if null is m then m = {"key" : 10} 
+    return x * m.key
+  }
+  # similarly, the `qualifiers` function, checks for a pending set of qualifiers,
+  # and it returns null it there isn't, orelse a map.
+
+  println (qq (100)) # => 1000
+  println (qq (100; {"key" : 200}) # => 2000
+
+  func qqq (x) {
+    return qualifier_exists ("key")
+  }
+  # while the `qualifier_exists' function checks for the existance of a key,
+  # and it returns `false` if `qualifiers' is null or the key doesn't exists
+  # orelse returns `true`.
+
+  # Note that only one set of qualifiers can be active at the running instance.
+  # Because of that the called function, should use the interface, before any
+  # new function call.
+
+  # Again, this mechanism should be attributed to the SLang Programming Language,
+  # and it is exposed with the exact interface.
+
+
+  # User Defined Types.
+  # These are like Maps, with a couple of differences that are described below.
+
+  # A new type is defined by using the `Type` keyword. The leading identifier
+  # character should be capitalized.
+
+  Type Typename {
+  private
+    "key"
+    "init" : func (x) { this.key = x }
+  public
+    "fun" : func { return this.key }
+   }
+
+  # A user defined type is initialized with the `New` keyword:
+
+  var s = New Typename (100)
+
+  # Then it can be called like a MapType:
+
+  println (s.fun ()) # => 100
+
+  # Types should provide an `init` method. This can be attributed as `private`
+  # or as `public`. In the latter case the state can be reinitialized at the
+  # runtime by the user, without the `New` keyword.
+
+  # Declared fields are not obligated to provide a value on declaration
+  # time. In this case these properties are initialized as `null`.
+
+
+  # Control statements.
+
+  # A continue statement into a body of a loop, continues with the next iteration.
+
+  # A break statement returns control to an outter scope, of the current loop
+  # state. This by default is one (the current one) loop level. However it can
+  # be set explicitly (with a given `count` that follows the statement), to break
+  # to `count` outer loop levels.
+
+  for (var i = 1; i < 10; i += 1) {
+    for (var j = 0; j < 100; j += 1) {
+      if (j is 5) {
+        break 2
+      }
+    }
+  }
+  # this will pass control to the first loop level. In other words "break"
+  # and "break 1" is synonymous.
+  # If the given `count` is greater than the existing loop level, a syntax error
+  # is raised. Maximum `count` is 9 nested loops.
+
+  # If botth `continue` and `break`, is not into a loop state then a syntax error
+  # is raised.
+
+  # However both can be expressed in a boolean context. That means that they
+  # get executed only if the condition is true:
+  for (var i = 1; i < 10; i += 1) {
+    continue ifnot i is 5
+    println ("only ${i}")
+  } # => "only 5"
+  # It accepts only a single expression to evaluate, and it doesn't accepts
+  # clauses. It works for both `if` and `ifnot`.
+
+  # Finally, it has to be seen the same way as an `else if[not]`, so an `if`
+  # or an `ifnot`, should follow `break` or `continue` to the same line.
+
+
+  # The return statement
+
+  # A return may appear in a function to return control to the caller of the
+  # function.
+
+  # A single return that is followed by a semicolon or a new line it breaks
+  # execution without returning back a value. In this case the
+  # value becomes `null`.
+
+  func ret1 () { return }
+  println (ret1 ()) # => null
+
+  # A return that is followed by an expression and a semicolon or
+  # a new line, returns the value of the expression.
+
+  func ret2 () { return true }
+  println (ret2 ()) # => true
+
+  # A return that is followed by an if[not], it breaks function
+  # execution without returning a value, if the next expression is
+  # evaluated to true.
+
+  func ret3 (x) {
+    return if x is 10
+    return [x]
+  }
+
+  println (ret3 (10)) # => null
+  println (typeAsString (ret3 (1))) # => "ArrayType" 
+
+  # A return that is followed by a single token expression, which is
+  # followed by an if[not], it returns the value of the expression
+  # if the next expression is evaluated to true.
+
+  func ret4 (x) {
+    var y = x * 2
+    return y if x is 10
+    return y * 2
+  }
+
+  println (ret4 (10)) # => 20
+  println (ret4 (100)) # => 400
+  # Note that a map property or method, or an array item it is not
+  # a single token expression, so those are not valid code:
+    #  return map.prop if true
+    #  return array[0] if true
+```
+The first level/point aims mostly, to investigate syntactical ways to imitate
+the exact human's mind usual roolllingg flow that happens the exact time that
+the underlying thought it is expressed in code, through our fingertrips while
+watching the code that it is expressed with words now in our visual editor.
+
+The hard part is that the intented words and expressions, should correspond to
+expected semantics, without ambiguities that could make the mind to stop for a
+second while rolling an expression.
+
+As such it is a reasearch to unification of the intention with the expression.
+
+As this is a very first draft, the following (which was the first document that has been produced
 during the phase of development in research to settle to syntax and semantics),
 it is still almost relevant.
 
@@ -613,7 +917,7 @@ it is still almost relevant.
 
   if the prior conditional expression evaluated to zero.
 
-# if[not]/then/orelse conditional:
+# if[not]/then/orelse/[end] conditional:
 
   full form:
 
@@ -639,8 +943,8 @@ it is still almost relevant.
   So it doesn't accept variable declarations, as it doesn't make sence
   to create a variable in a block with a single statement.
 
-  Such conditionals they have to end up with a semicolon ':' or with
-  a new line character.
+  Such conditionals they have to end up with a new line character or the
+  `end` keyword.
 
   For parsing reasons, as they have to consume extra clauses, they don't
   accept loops and block conditionals.
@@ -2022,26 +2326,13 @@ which much of it is complex and loops, in a fraction of a second, in a very
 old 32bit netbook computer. And this is enough. Plus it runs on ridiculously
 low memory resources.
 
-## DEVELOPMENT DOC SECTION (IGNORE)
+At September Equinox day of 2021, the syntax and semantics, are nearly stable.
+Very few will change, and a few left to be implemented.
+Of course the logical aim here is that both the syntax and semantics
+will be freezed in the eternity.
 
-Th
-least surpise and should not violate expectations. If it does not or if it does,
-this should be considered as a bug. It is important to note that this language,
-doesn't bring even the singlest new consept in the programming language universe.
-It is written for C and follows C where it makes sense, and had been influenced
-a lot by the S-Lang programming language, which is quite like C. However, it
-provides mechanisms for object oriented techniques, and also some functional
-concepts.
-
-However, besides the quite common and almost established syntax and semantics,
-it aims to find syntactical ways to imitate the human's mind flow with symbols
-that match the underlying word, and to set the semantics for a code flow that
-follows the underlying programmer thought and exhibits finally the underlying
-intention. As such the language probaly can be described in a sentence, as an
-intentional and expressional language, that imitates the human mind and using
-human expressions. And this is a main focus.
-
-First draft of the extented interface (and our way) and quite empty for now.
-```js
-
-```
+So and as a conclusion, it is the result of the implementation that matters mostly here,
+and not the actual implementation, which is not good. This has to be rewritten
+normally, but since we live in an abnormal situation and since that seems
+to work, quite probably it won't never happen.
+In the meantime seems a really nice way to expess.

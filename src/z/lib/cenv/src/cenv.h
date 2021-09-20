@@ -1316,6 +1316,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SHA512_TYPE
 #endif /* REQUIRE_SHA512_TYPE */
 
+#ifdef REQUIRE_RANDOM_TYPE
+  #ifndef RANDOM_TYPE_HDR
+  #define RANDOM_TYPE_HDR
+  #include <z/random.h>
+  #endif /* RANDOM_TYPE_HDR */
+
+  #if (REQUIRE_RANDOM_TYPE == DECLARE)
+  static  random_T   randomType;
+  #define Random     randomType.self
+  #endif
+
+#undef REQUIRE_RANDOM_TYPE
+#endif /* REQUIRE_RANDOM_TYPE */
+
 /* Development (ignore this section) */
 
 #ifdef REQUIRE_NETM_TYPE

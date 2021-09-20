@@ -754,9 +754,9 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     ifnot (ferror (sfp)) {
       if (written isnot total) {
         ifnot (NULL is opts.err_stream)
-          fprintf (opts.err_stream, " copied %ld bytes instead of %ld", written, total);
+          fprintf (opts.err_stream, " copied %zd bytes instead of %zd", written, total);
         else
-          fprintf (opts.out_stream, " copied %ld bytes instead of %ld", written, total);
+          fprintf (opts.out_stream, " copied %zd bytes instead of %zd", written, total);
 
       } else {
         fprintf (opts.out_stream, " (100%%)");

@@ -1,8 +1,9 @@
-import ("dir")
-import ("file"
-import ("sys")
 import ("os")
 import ("sh")
+import ("dir")
+import ("sys")
+import ("file")
+import ("path")
 
 const PACKMAN_NO_VERBOSE         = 0
 const PACKMAN_VERBOSE            = 1
@@ -293,6 +294,18 @@ public
       var specname = this.spec_dir + "/" + name + ".lai"
       this.spec = evalfile (specname)
       return this.spec
+    }
+  }
+
+  "list" : {
+    "specs" : func {
+      var verb = qualifier ("verbose", 0)
+      var ar = this.spec_dir: dir_list ()
+      return null if null is ar
+      for |i, v| in ar { ar[i] = v: path_basename_sans_extname () } 
+      return ar ifnot verb
+      var fp = qualifier ("out_stream", stdout) 
+      for |v| in ar { println (fp, v) }
     }
   }
 

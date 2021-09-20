@@ -121,6 +121,7 @@
 #define ARRAY_LITERAL                 -3000
 #define MAP_LITERAL                   -4000
 #define MALLOCED_STRING               -5000
+#define UNDELETABLE                   -100000
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -546,6 +547,9 @@ typedef struct tokenState {
   la_set_curMsg (this, __m__);      \
   return NULL_VALUE;                \
 } while (0)
+
+#define IS_UFUNC(_t_) ((_t_ & 0xff) == UFUNC_TYPE)
+#define IS_CFUNC(_t_) ((_t_ & 0xff) == CFUNC_TYPE)
 
 typedef struct listNode listNode;
 
@@ -1005,9 +1009,10 @@ static VALUE la_errno_name (la_t *this, VALUE v_err) {
 static VALUE la_typeof (la_t *this, VALUE value) {
   (void) this;
   VALUE v;
-  if ((value.type & 0xff) is UFUNC_TYPE)
-    v = INT(FUNCPTR_TYPE);
-  else if ((value.type & 0x77) is TOKEN_BUILTIN)
+
+  if (IS_UFUNC(value.type) or value.type & UFUNCTION_TYPE)
+    v = INT(UFUNCTION_TYPE);
+  else if (IS_CFUNC(value.type))
     v = INT(CFUNCTION_TYPE);
   else
     v = INT(value.type);
@@ -1042,9 +1047,9 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
     case LIST_TYPE:    String.append_with_len (buf, "ListType",     8); break;
     case MAP_TYPE:     String.append_with_len (buf, "MapType",      7); break;
     default:
-      if (value.type & FUNCPTR_TYPE)
+      if (IS_UFUNC(value.type) or value.type & UFUNCTION_TYPE)
         String.append_with_len (buf, "FunctionType", 12);
-      else if ((value.type & 0xff) is TOKEN_BUILTIN)
+      else if (IS_CFUNC(value.type))
         String.append_with_len (buf, "CFunctionType", 13);
       else
         String.append_with_len (buf, "UnknownType", 11);
@@ -1108,22 +1113,17 @@ static int la_C_qualifier_exists (la_t *this, char *key) {
 }
 
 static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
-  if (NULL is this->qualifiers) {
-    VALUE val = la_copy_value (v_defval);
-    return val;
-  }
+  if (NULL is this->qualifiers)
+    return la_copy_value (v_defval);
 
   ifnot (IS_STRING(v_key)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   VALUE *v = (VALUE *) Vmap.get (this->qualifiers, AS_STRING_BYTES(v_key));
 
-  if (v is NULL) {
-    VALUE val = la_copy_value (v_defval);
-    return val;
-  }
+  if (v is NULL)
+    return la_copy_value (v_defval);
 
-  VALUE val = la_copy_value ((*v));
-  return val;
+  return la_copy_value ((*v));
 }
 
 static VALUE la_get_qualifier (la_t *this, char *key, VALUE v_defval) {
@@ -1651,9 +1651,10 @@ theend:
 static VALUE object_release (la_t *this, VALUE value) {
   VALUE result = INT(LA_OK);
 
-  if (value.refcount < 0) return result;
+  if (value.refcount < 0)
+    return result;
 
-  if (value.refcount) goto theend;
+  if (value.refcount > 0) goto theend;
 
   if (value.type is NULL_TYPE) goto theend;
 
@@ -1733,8 +1734,8 @@ static void la_release_sym (void *sym) {
 
   VALUE v = this->value;
 
-  if ((this->type & 0xff) is UFUNC_TYPE) {
-    ifnot (v.type & FUNCPTR_TYPE) {
+  if (IS_UFUNC(this->type)) {
+    ifnot (v.type & UFUNCTION_TYPE) {
       funT *f = AS_FUNC_PTR(v);
       fun_release (&f);
     }
@@ -3036,14 +3037,17 @@ static int la_parse_array_def (la_t *this) {
 
   int c = TOKEN;
 
-  VALUE len;
-  this->curState |= INDEX_STATE;
-  err = la_parse_primary (this, &len);
-  this->curState &= ~INDEX_STATE;
-  THROW_ERR_IF_ERR(err);
+  NEXT_TOKEN();
 
+  VALUE len;
+  err = la_parse_expr (this, &len);
+  THROW_ERR_IF_ERR(err);
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS,
+    "array assignment: awaiting ]");
   THROW_SYNTAX_ERR_IF(len.type isnot INTEGER_TYPE,
     "awaiting an integer expression, when getting array length");
+
+  NEXT_TOKEN();
 
   VALUE ar;
   if (this->curState & MAP_STATE) {
@@ -3679,7 +3683,7 @@ static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
   if (NULL is val)
     THROW_SYNTAX_ERR_FMT("%s key doesn't exists", key);
 
-  if (val->type > STRING_TYPE or val->type is FUNCPTR_TYPE)
+  if (val->type > STRING_TYPE or IS_UFUNC(val->type))
     THROW_A_TYPE_MISMATCH(val->type, "illegal map type");
 
   VALUE v;
@@ -3749,7 +3753,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
     THROW_ERR_IF_ERR(err);
 
     v = PTR(this->curFunDef);
-    v.type = FUNCPTR_TYPE;
+    v.type = UFUNCTION_TYPE;
     goto assign;
   }
 
@@ -3919,13 +3923,16 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   int is_this = (GETSTRLEN(TOKENSTR) is 4 and
       Cstring.eq_n (GETSTRPTR(TOKENSTR), "this", 4));
 
+  VALUE m = TOKENVAL;
+
   NEXT_TOKEN();
 
   if (TOKEN isnot TOKEN_DOT) {
     if (this->objectState & MAP_ASSIGNMENT)
-      *vp = la_copy_map (TOKENVAL);
+      *vp = la_copy_map (m);
     else
-      *vp = TOKENVAL;
+      *vp = m;
+
     return LA_OK;
   }
 
@@ -4040,8 +4047,8 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
 
     int type;
-    if (v->type & FUNCPTR_TYPE)
-      type = FUNCPTR_TYPE;
+    if (v->type & UFUNCTION_TYPE)
+      type = UFUNCTION_TYPE;
     else if ((v->type & 0x77) is TOKEN_BUILTIN)
       type = CFUNCTION_TYPE;
     else
@@ -4049,7 +4056,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
     UNGET_BYTE();
 
-    if (type is FUNCPTR_TYPE) {
+    if (type is UFUNCTION_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
 
       VALUE th;
@@ -4171,16 +4178,16 @@ static int la_parse_map_set (la_t *this) {
       THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
 
     int type;
-    if (v->type & FUNCPTR_TYPE)
-      type = FUNCPTR_TYPE;
-    else if ((v->type & 0x77) is TOKEN_BUILTIN)
+    if (v->type & UFUNCTION_TYPE)
+      type = UFUNCTION_TYPE;
+    else if (IS_CFUNC(v->type))
       type = CFUNCTION_TYPE;
     else
       THROW_SYNTAX_ERR_FMT("%s, not a method", key);
 
     UNGET_BYTE();
 
-    if (type is FUNCPTR_TYPE) {
+    if (type is UFUNCTION_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
 
       VALUE th;
@@ -4241,7 +4248,7 @@ static int la_parse_map_set (la_t *this) {
     if (v->sym->scope is NULL and 0 is is_this)
       THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
 
-    if (v->type & FUNCPTR_TYPE or
+    if (v->type & UFUNCTION_TYPE or
        (v->type & 0x77) is TOKEN_BUILTIN) {
       if (c is TOKEN_ASSIGN and 0 is override)
         THROW_SYNTAX_ERR("you can not override a method");
@@ -4293,7 +4300,7 @@ static int la_parse_new (la_t *this, VALUE *vp) {
 
   THROW_SYNTAX_ERR_IF(NULL is val, "init method doesn't exists");
 
-  ifnot (val->type & FUNCPTR_TYPE)
+  ifnot (val->type & UFUNCTION_TYPE)
    THROW_SYNTAX_ERR("init, not a function method");
 
   UNGET_BYTE();
@@ -4337,9 +4344,12 @@ static int la_parse_type (la_t *this) {
 
 static int la_parse_expr_list (la_t *this) {
   int err;
-  int c;
+  int c = TOKEN;
   int count = 0;
   VALUE v;
+
+  if (c is TOKEN_SEMICOLON)
+    goto parse_qualifiers;
 
   this->exprList++;
   do {
@@ -4373,9 +4383,9 @@ static int la_parse_expr_list (la_t *this) {
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
   if (c is TOKEN_SEMICOLON) {
+parse_qualifiers:
     NEXT_TOKEN();
     c = TOKEN;
-
     if (c is TOKEN_BLOCK) {
       err = la_parse_map (this, &v);
       THROW_ERR_IF_ERR(err);
@@ -4515,8 +4525,9 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     VALUE v;
     if (uf isnot NULL) {
       v = PTR(uf);
-      v.type |= FUNCPTR_TYPE;
+      v.type |= UFUNCTION_TYPE;
     } else {
+      NEXT_TOKEN();
       v = PTR(op);
       v.type = value.sym->type;
     }
@@ -4574,7 +4585,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
     for (int i = 0; i < expectargs; i++) {
       VALUE v = this->funArgs[i];
-      if (v.type & FUNCPTR_TYPE) {
+      if (v.type & UFUNCTION_TYPE) {
         funT *f = AS_FUNC_PTR(v);
         uf_argsymbols[i] = la_define_symbol (this, uf, uf->argName[i], (UFUNC_TYPE | (f->nargs << 8)), v, 0);
       } else {
@@ -4617,7 +4628,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     la_release_qualifiers (this);
 
     this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
-    if (uf->result.type >= FUNCPTR_TYPE) {
+    if (uf->result.type >= UFUNCTION_TYPE) {
       sym_t *sym = uf->result.sym;
       this->curState |= FUNC_CALL_RESULT_IS_MMT;
       ifnot (NULL is sym) {
@@ -4635,7 +4646,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
     for (int i = 0; i < expectargs; i++) {
       VALUE v = this->funArgs[i];
-      if (v.type >= FUNCPTR_TYPE) {
+      if (v.type >= UFUNCTION_TYPE) {
         sym_t *uf_sym = uf_argsymbols[i];
         VALUE uf_val = uf_sym->value;
         sym_t *sym = uf_val.sym;
@@ -4691,7 +4702,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   la_release_qualifiers (this);
 
   this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
-  if (vp->type >= FUNCPTR_TYPE)
+  if (vp->type >= UFUNCTION_TYPE)
     this->curState |= FUNC_CALL_RESULT_IS_MMT;
 
   err = this->CFuncError;
@@ -4781,7 +4792,6 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
           sym = this->curSym;
           sym->value = PTR(this->curFunDef);
-          sym->type |= FUNCPTR_TYPE;
           fun_should_be_freed = 1;
           break;
 
@@ -4839,14 +4849,14 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         }
 
         default:
-          if (sym->value.type is POINTER_TYPE)
+          if (IS_UFUNC(sym->type) or IS_CFUNC(sym->type))
             break;
 
           THROW_SYNTAX_ERR_FMT("%s|%s: unknown function", method, key);
       }
     }
 
-    int type;
+
     if (sym->type is TOKEN_IF or sym->type is TOKEN_IFNOT) {
       save_v = *vp;
       if (save_v.refcount is STRING_LITERAL)
@@ -4858,9 +4868,12 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
       goto release_value;
 
-    } else if (sym->type & FUNCPTR_TYPE)
-      type = FUNCPTR_TYPE;
-    else if ((sym->type & 0xff) is TOKEN_BUILTIN)
+    }
+
+    int type;
+    if (IS_UFUNC(sym->type))
+      type = UFUNCTION_TYPE;
+    else if (IS_CFUNC(sym->type))
       type = CFUNCTION_TYPE;
     else
       THROW_SYNTAX_ERR("not a function type");
@@ -4873,7 +4886,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
     stack_push (this, (*vp));
     this->argCount = 1;
 
-    if (type is FUNCPTR_TYPE) {
+    if (type is UFUNCTION_TYPE) {
       funT *uf = AS_FUNC_PTR(val);
       err = la_parse_func_call (this, vp, NULL, uf, *vp);
 
@@ -4915,6 +4928,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
   return err;
 }
 
+static VALUE la_equals (la_t *this, VALUE, VALUE);
 static int la_parse_primary (la_t *this, VALUE *vp) {
   int err = LA_OK;
   int c = TOKEN;
@@ -5158,9 +5172,9 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       THROW_ERR_IF_ERR(err);
 
       int type;
-      if (vp->type & FUNCPTR_TYPE)
-        type = FUNCPTR_TYPE;
-      else if ((vp->type & 0xff) is TOKEN_BUILTIN)
+      if (vp->type & UFUNCTION_TYPE)
+        type = UFUNCTION_TYPE;
+      else if (IS_CFUNC(vp->type))
         type = CFUNCTION_TYPE;
       else {
         if (TOKEN is TOKEN_COLON) {
@@ -5176,7 +5190,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       UNGET_BYTE();
 
-      if (type is FUNCPTR_TYPE) {
+      if (type is UFUNCTION_TYPE) {
         funT *uf = AS_FUNC_PTR((*vp));
         VALUE th = vp->sym->value;
         la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
@@ -5339,7 +5353,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return err;
 
     default:
-      if ((c & 0xff) is TOKEN_BINOP) {
+      /* if ((c & 0xff) is TOKEN_BINOP) {
         OpFunc op = (OpFunc) AS_PTR(TOKENVAL);
         NEXT_TOKEN();
         VALUE v;
@@ -5349,6 +5363,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         *vp = op (this, INT(0), v);
         return err;
       }
+      */
 
       if (c is TOKEN_NL) {
         NEXT_TOKEN();
@@ -5620,7 +5635,7 @@ do_token:
           THROW_SYNTAX_ERR("error while setting an unary object, awaiting an integer");
       }
 
-      if (val.type & FUNCPTR_TYPE) {
+      if (val.type & UFUNCTION_TYPE) {
         funT *f = AS_FUNC_PTR(val);
         symbol->type = (UFUNC_TYPE | (f->nargs << 8));
         Cstring.cp (f->funname, MAXLEN_SYMBOL, GETSTRPTR(name),
@@ -5637,7 +5652,7 @@ do_token:
             break;
 
           default:
-            if (symbol->type & FUNCPTR_TYPE) {
+            if (symbol->type & UFUNCTION_TYPE) {
               funT *f = AS_FUNC_PTR(symbol->value);
               fun_release (&f);
               break;
@@ -6100,7 +6115,6 @@ static int la_parse_cond (la_t *this, int nottrue) {
   int err;
 
   NEXT_TOKEN();
-
   THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_EOF, "unended conditional expression");
 
   this->curState |= MALLOCED_STRING_STATE;
@@ -7873,6 +7887,13 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
       this->exprList--;
       if (err isnot LA_OK) goto theend;
 
+      if (TOKEN isnot TOKEN_BLOCK_CLOS) {
+        this->print_fmt_bytes (this->err_fp, "string fmt error, awaiting '}'\n");
+        la_err_ptr (this, LA_NOTOK);
+        err = LA_ERR_SYNTAX;
+        goto theend;
+      }
+
       ifnot (directive) {
         switch (value.type) {
           case STRING_TYPE:  directive = 's'; break;
@@ -8264,7 +8285,7 @@ static int la_parse_exit (la_t *this) {
 }
 
 static int la_parse_return (la_t *this) {
-  int err = LA_OK;
+  int err = LA_OK, type;
   funT *scope = this->curScope;
 
   NEXT_TOKEN();
@@ -8320,11 +8341,16 @@ static int la_parse_return (la_t *this) {
   ifnot (HASTORETURN) return LA_OK;
 
   check_value:
-  if (scope->result.type is STRING_TYPE or scope->result.type is ARRAY_TYPE) {
-    if (this->objectState & MAP_MEMBER) {
-      scope->result.refcount++;
-      this->objectState &= ~MAP_MEMBER;
-    }
+  type = scope->result.type;
+
+  switch (type) {
+    case ARRAY_TYPE:
+    case STRING_TYPE:
+      if (this->objectState & MAP_MEMBER) {
+        scope->result.refcount++;
+        this->objectState &= ~MAP_MEMBER;
+        break;
+      }
   }
 
   if (TOKEN isnot TOKEN_SEMICOLON and
@@ -8485,7 +8511,7 @@ static int la_parse_import (la_t *this) {
     sym_t *symbol = la_lookup_symbol (this, x);
     if (symbol isnot NULL) {
       v = symbol->value;
-      if (v.type & FUNCPTR_TYPE) {
+      if (v.type & UFUNCTION_TYPE) {
         funT *f = AS_FUNC_PTR(v);
         load_ns = f;
         goto theload;
@@ -8634,7 +8660,7 @@ static int la_parse_loadfile (la_t *this) {
     sym_t *symbol = la_lookup_symbol (this, x);
     if (symbol isnot NULL) {
       v = symbol->value;
-      if (v.type & FUNCPTR_TYPE) {
+      if (v.type & UFUNCTION_TYPE) {
         funT *f = AS_FUNC_PTR(v);
         load_ns = f;
         goto theload;
@@ -9412,7 +9438,7 @@ static struct def {
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },
   { "IntegerType", INTEGER_TYPE,  INT(INTEGER_TYPE) },
   { "CFunctionType",INTEGER_TYPE, INT(CFUNCTION_TYPE) },
-  { "FunctionType",INTEGER_TYPE,  INT(FUNCPTR_TYPE) },
+  { "FunctionType",INTEGER_TYPE,  INT(UFUNCTION_TYPE) },
   { "StringType",  INTEGER_TYPE,  INT(STRING_TYPE) },
   { "ArrayType",   INTEGER_TYPE,  INT(ARRAY_TYPE) },
   { "MapType",     INTEGER_TYPE,  INT(MAP_TYPE) } ,
@@ -9481,17 +9507,23 @@ static int la_def_std (la_t *this, char *name, int type, VALUE v, int is_const) 
 static int la_std_def (la_t *this, la_opts opts) {
   VALUE v = OBJECT(opts.out_fp);
   object *o = la_object_new (NULL, NULL, v);
-  int err = la_define (this, "stdout", FILEPTR_TYPE, FILEPTR(o));
+  v = FILEPTR(o);
+  v.refcount = UNDELETABLE;
+  int err = la_define (this, "stdout", FILEPTR_TYPE, v);
   if (err) return LA_NOTOK;
 
   v = OBJECT(opts.err_fp);
   o = la_object_new (NULL, NULL, v);
-  err = la_define (this, "stderr", FILEPTR_TYPE, FILEPTR(o));
+  v = FILEPTR(o);
+  v.refcount = UNDELETABLE;
+  err = la_define (this, "stderr", FILEPTR_TYPE, v);
   if (err) return LA_NOTOK;
 
   v = OBJECT(stdin);
   o = la_object_new (NULL, NULL, v);
-  err = la_define (this, "stdin", FILEPTR_TYPE, FILEPTR(o));
+  v = FILEPTR(o);
+  v.refcount = UNDELETABLE;
+  err = la_define (this, "stdin", FILEPTR_TYPE, v);
   if (err) return LA_NOTOK;
 
   v = INT(opts.argc);
@@ -9805,6 +9837,16 @@ static la_opts la_default_options (la_t *this, la_opts opts) {
   return opts;
 }
 
+static void la_release_stdns (la_t *this) {
+  sym_t *sym = ns_lookup_symbol (this->std, "stdout");
+  sym->value.refcount = 0;
+  sym = ns_lookup_symbol (this->std, "stderr");
+  sym->value.refcount = 0;
+  sym = ns_lookup_symbol (this->std, "stdin");
+  sym->value.refcount = 0;
+  fun_release (&this->std);
+}
+
 static void la_release (la_t **thisp) {
   if (NULL is *thisp) return;
   la_t *this = *thisp;
@@ -9816,8 +9858,8 @@ static void la_release (la_t **thisp) {
   Vmap.release   (this->units);
   Vmap.release   (this->types);
   fun_release (&this->function);
-  fun_release (&this->std);
   fun_release (&this->datatypes);
+  la_release_stdns (this);
   la_release_qualifiers (this);
 
   free (this);

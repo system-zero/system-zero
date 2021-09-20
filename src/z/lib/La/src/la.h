@@ -21,7 +21,7 @@ typedef integer     pointer;
 #define NUMBER_TYPE    (1 << 1)
 #define INTEGER_TYPE   (1 << 2)
 #define CFUNCTION_TYPE (1 << 3)
-#define FUNCPTR_TYPE   (1 << 4)
+#define UFUNCTION_TYPE (1 << 4)
 #define STRING_TYPE    (1 << 5)
 #define ARRAY_TYPE     (1 << 6)
 #define MAP_TYPE       (1 << 7)

@@ -81,10 +81,11 @@ static VALUE dir_list (la_t *this, VALUE v_dir) {
   char *dir = AS_STRING_BYTES (v_dir);
 
   ifnot (Dir.is_directory (dir)) {
-    ArrayType *array = ARRAY_NEW(STRING_TYPE, 1);
-    string **ar = (string **) AS_ARRAY(array->value);
-    String.replace_with (ar[0], dir);
-    return ARRAY(array);
+    return NULL_VALUE;
+    // ArrayType *array = ARRAY_NEW(STRING_TYPE, 1);
+    // string **ar = (string **) AS_ARRAY(array->value);
+    // String.replace_with (ar[0], dir);
+    // return ARRAY(array);
   }
 
   dirlist_t *dlist = Dir.list (dir, 0);
