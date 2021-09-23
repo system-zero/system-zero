@@ -62,7 +62,7 @@ p.set.build_dir (tmpdir)
 var retval = notok
 
 if (list_specs is true) {
-  p.list.specs (; {"verbose" : 1})
+  p.list.specs ()
   exit (0)
 }
 

@@ -122,21 +122,19 @@ private
                   return notok
                 }
 
-                if (type is IntegerType or type is BooleanType) {
-                  this.results.$(as) = true
-                } else if (type is StringType) {
-                  this.results.$(as) = ""
-                }
+                this.results.$(as) = 
+                  if type is IntegerType or type is BooleanType then true
+                  orelse if type is StringType then ""
+
                 break
               }
             }
 
             this.curidx += 1
-            if (type is IntegerType) {
-              this.results.$(as) = this.input_argv[this.curidx]: to_integer ()
-            } else if (type is StringType) {
-              this.results.$(as) = this.input_argv[this.curidx]
-            }
+
+            this.results.$(as) = 
+              if type is IntegerType then this.input_argv[this.curidx]: to_integer ()
+              orelse if type is StringType then this.input_argv[this.curidx]
           }
 
           break
@@ -156,6 +154,48 @@ private
     }
 
     return retval
+  }
+
+  "parse_opt_val" : func (flags, type, as) {
+    if (flags & ARG_VALUE_APPEND) {
+      flags &= ~ARG_VALUE_OPTIONAL
+      flags |= ARG_VALUE_REQUIRED
+    }
+
+    if (this.curidx is this.input_argc - 1 or
+       this.input_argv[this.curidx + 1][0] is '-') {
+      if (flags & ARG_VALUE_REQUIRED) {
+        if this.verbose is true then
+          println (stderr, "error ${arg) argument awaits a value")
+        orelse
+          this.err_message = format ("error ${arg) argument awaits a value")
+
+        return notok
+      }
+
+      this.results.$(as) = 
+        if type is IntegerType or type is BooleanType then true
+        orelse if type is StringType then ""
+
+      return true
+    }
+
+    this.curidx += 1
+    if (type is IntegerType) {
+      this.results.$(as) = this.input_argv[this.curidx]: to_integer ()
+    } else if (type is BooleanType) {
+      this.results.$(as) = this.input_argv[this.curidx]:
+          to_integer (): if x < 0 or x > 1 then false orelse true end
+    } else if (type is StringType) {
+       this.results.$(as) = this.input_argv[this.curidx]
+    } else if (type is ListType) {
+      if this.results.$(as) is null then
+         this.results.$(as) = list_new ()
+
+      list_append (this.results.$(as), this.input_argv[this.curidx])
+    }
+
+    return true
   }
 
   "parse_long_arg" : func (arg) {
@@ -182,59 +222,15 @@ private
 
           found = true
           ifnot (flags) {
-   #         if (type is IntegerType or type is BooleanType) {
-   #           this.results.$(as) = true
-   #         } else if (type is StringType) {
-   #           this.results.$(as) = ""
-   #         }
-   #      ifnot flags then
-            if type is IntegerType or type is BooleanType then
-              this.results.$(as) = true
-            orelse
-              if type is StringType then
-                this.results.$(as) = ""
+            this.results.$(as) = 
+              if type is IntegerType or type is BooleanType then true
+              orelse if type is StringType then ""
 
             return true
           }
 
-          if (long[-1] isnot '=') {
-            if (flags & ARG_VALUE_REQUIRED|ARG_VALUE_OPTIONAL) {
-              if (this.curidx is this.input_argc - 1 or
-                  this.input_argv[this.curidx + 1][0] is '-') {
-                if (flags & ARG_VALUE_REQUIRED) {
-                  if this.verbose is true then
-                    println (stderr, "error ${arg) argument awaits a value")
-                  orelse
-                    this.err_message = format ("error ${arg) argument awaits a value")
-
-                  return notok
-                }
-
-                if type is IntegerType or type is BooleanType {
-                  this.results.$(as) = true
-                } else if type is StringType {
-                  this.results.$(as) = ""
-                }
-
-                return true
-              } else {
-                this.curidx += 1
-                if (type is IntegerType) {
-                  this.results.$(as) = this.input_argv[this.curidx]: to_integer ()
-                } else if (type is BooleanType) {
-                  this.results.$(as) = this.input_argv[this.curidx]:
-                     to_integer (): if x < 0 or x > 1 then false orelse true end
-
-                } else if (type is StringType) {
-                  this.results.$(as) = this.input_argv[this.curidx]
-                }
-
-                return true
-              }
-            }
-
-            return true
-          }
+          if long[-1] isnot '=' then
+            return this.parse_opt_val (flags, type, as)
 
           var optval = arg: byte_in_str ('=')
           var vallen = optval: len ()
@@ -249,24 +245,23 @@ private
 
               return notok
 
-            } else if (type is BooleanType or type is IntegerType) {
-              this.results.$(as) = true
-            } else if (type is StringType) {
-              this.results.$(as) = ""
             }
+
+            this.results.$(as) = 
+              if type is IntegerType or type is BooleanType then true
+              orelse if type is StringType then ""
 
             return true
           }
 
-          if (type is BooleanType) {
-            this.results.$(as) = optval: to_integer ():
-              if x isnot false then true orelse false end
-
-          } else if (type is IntegerType) {
-            this.results.$(as) = optval: to_integer ()
-          } else if (type is StringType) {
-            this.results.$(as) = optval
-          }
+          this.results.$(as) =
+            if type is BooleanType then
+              optval: to_integer (): if x isnot false then true orelse false end
+            orelse
+              if type is IntegerType then
+                optval: to_integer ()
+              orelse
+                if type is StringType then optval
 
           break
         }
@@ -413,7 +408,7 @@ public
         }
       }
 
-      if this.exit is true then return ok
+      return ok if this.exit is true
     }
 
     return ok

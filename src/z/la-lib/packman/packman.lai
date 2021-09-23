@@ -4,6 +4,7 @@ import ("dir")
 import ("sys")
 import ("file")
 import ("path")
+import ("crypt")
 
 const PACKMAN_NO_VERBOSE         = 0
 const PACKMAN_VERBOSE            = 1
@@ -17,10 +18,15 @@ const PACKMAN_BUILD_PATCH        = 2
 const PACKMAN_BUILD_CONFIGURE    = 3
 const PACKMAN_BUILD_MAKE         = 4
 const PACKMAN_BUILD_MAKE_INSTALL = 5
-const PACKMAN_BUILD_USER_COM     = 6
-const PACKMAN_BUILD_EVAL         = 7
+const PACKMAN_BUILD_MD_CHECK     = 6
+const PACKMAN_BUILD_USER_COM     = 7
+const PACKMAN_BUILD_EVAL         = 8
 
-var LAST_TYPE = PACKMAN_BUILD_EVAL
+var LAST_BUILD_TYPE = PACKMAN_BUILD_EVAL
+
+const MD5TYPE                    = 1
+const SHA256TYPE                 = 2
+const SHA512TYPE                 = 3
 
 Type PackmanBuild {
 private
@@ -43,6 +49,8 @@ private
   "repo"
   "build"
   "descr"
+  "md"
+  "md_type"
   "license"
   "baseurl"
   "version"
@@ -60,6 +68,8 @@ public
     "repo"      : func (repo)  { this.repo = repo }
     "type"      : func (type)  { this.type = type }
     "descr"     : func (descr) { this.descr = descr }
+    "md"        : func (md)    { this.md = md }
+    "md_type"   : func (type)  { this.md_type = type }
     "build"     : func (build) { this.build = build }
     "license"   : func (lic)   { this.license = lic }
     "baseurl"   : func (url)   { this.baseurl = url }
@@ -76,6 +86,8 @@ public
     "repo"      : func { return this.repo }
     "type"      : func { return this.type }
     "descr"     : func { return this.descr }
+    "md"        : func { return this.md }
+    "md_type"   : func { return this.md_type }
     "build"     : func { return this.build }
     "license"   : func { return this.license }
     "baseurl"   : func { return this.baseurl }
@@ -87,6 +99,8 @@ public
   }
 
   "info" : func (packman) {
+    var verb = qualifier ("verbose", 1)
+    var fp = qualifier ("out_stream", stdout)
     var msg =
       "SPEC NAME        : " + this.name + "\n" +
       "DESCRIPTION      : " + this.descr + "\n" +
@@ -98,14 +112,16 @@ public
       "REPOSITORY       : " + this.repo:
         if x isnot null then x orelse "" end + "\n" +
       "ARCHIVE          : " + this.archive:
-          if x is null then ""
-          orelse x +
-            if (packman.get.sources_dir () + "/" + this.archive): file_exists ()
-              then " exists in the filesystem"
-              orelse " doesn't exists in the filesystem" end
+        if x is null then ""
+        orelse x +
+          if (packman.get.sources_dir () + "/" + this.archive): file_exists ()
+            then " exists in the filesystem"
+          orelse " doesn't exists in the filesystem" end + "\n" +
+      "MESSAGE DIGEST   : " + this.md:
+        if x is null then "NONE" orelse x end
 
-     println (msg)
-
+    return msg ifnot verb
+    println (fp, msg)
    }
 }
 
@@ -197,6 +213,47 @@ private
 
     var retval = this.sh:exec (this.tar_exec + " " + this.tar_args + " " + archive)
     return if retval is notok or retval > ok then notok orelse ok
+  }
+
+  "md_check" :  func {
+    if (this.spec is null) {
+      println (stderr, "spec hasn't been set")
+      return notok
+    }
+
+    if (this.spec.archive is null) {
+      println (stderr, "archive property hasn't been set")
+      return notok
+    }
+
+    return 0 if this.spec.md is null
+
+    var md_type = if this.spec.md_type is null then MD5TYPE
+                  orelse this.spec.md_type
+
+    var verb = qualifier ("verbose", 0)
+    var fp = qualifier ("out_stream", stdout) 
+
+    var archive = this.sources_dir + "/" + this.spec.archive
+
+    var is_eq = this.spec.md: lambda (x) {
+      return x is
+        if md_type is MD5TYPE then
+          archive: crypt_md5sum_file ()
+        orelse
+          if md_type is SH256TYPE then
+            archive: crypt_sha256sum_file ()
+          orelse
+            archive: crypt_sha512sum_file ()
+    } ()
+
+    if verb then
+      if is_eq then
+        println (fp, "MD_CHECK: [OK]")
+      orelse
+        println (fp, "MD_CHECK: [NOTOK]")
+
+     return is_eq
   }
 
   "fetch_sources" : func {
@@ -299,12 +356,12 @@ public
 
   "list" : {
     "specs" : func {
-      var verb = qualifier ("verbose", 0)
+      var verb = qualifier ("verbose", 1)
+      var fp = qualifier ("out_stream", stdout) 
       var ar = this.spec_dir: dir_list ()
       return null if null is ar
       for |i, v| in ar { ar[i] = v: path_basename_sans_extname () } 
       return ar ifnot verb
-      var fp = qualifier ("out_stream", stdout) 
       for |v| in ar { println (fp, v) }
     }
   }
@@ -318,9 +375,17 @@ public
       "USER             : " + this.user     + "\n" +
       "GROUP            : " + this.group    + "\n"
 
-    println (msg)
+    var verb = qualifier ("verbose", 1)
+    var fp = qualifier ("out_stream", stdout)
 
-    if this.spec isnot null then this.spec:info (this)
+    if verb then println (fp, msg)
+
+    msg += 
+      if this.spec isnot null then
+        "\n" + this.spec:info (this; qualifiers ())
+      orelse ""
+
+    return msg ifnot verb
   }
 
   "update_repo" : func {
@@ -385,7 +450,7 @@ public
 
         if (action.type is null or
             action.type < 0 or
-            action.type > LAST_TYPE) {
+            action.type > LAST_BUILD_TYPE) {
           println (stderr, "the spec build type, hasn't been set properly")
           break 2
         }
@@ -393,10 +458,21 @@ public
         if (action.type is PACKMAN_BUILD_EXTRACT) {
           break 2 if notok is this.extract ()
           break 2 if notok is this.change_to_build_dirname ()
+          continue
+        }
 
-        } else if (action.type is PACKMAN_BUILD_COPY) {
+        if (action.type is PACKMAN_BUILD_COPY) {
           break 2 if notok is this.copy_sources ()
           break 2 if notok is this.change_to_build_dirname ()
+          continue
+        }
+
+        if (action.type is PACKMAN_BUILD_MD_CHECK) {
+          var r = this.md_check (; {"verbose" : 1})
+          break 2 if notok is r
+          ifnot r then
+            break 2 ifnot null is this.spec.md
+          continue
         }
 
         if (action.type is PACKMAN_BUILD_CONFIGURE) {

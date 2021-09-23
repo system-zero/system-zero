@@ -94,7 +94,8 @@
 #define MAP_STATE                     (1 << 6)
 #define BLOCK_STATE                   (1 << 7)
 #define VAR_IS_NOT_ALLOWED            (1 << 8)
-#define CONSUME                       (1 << 9)
+#define CONSUME_STATE                 (1 << 9)
+#define CLOSURE_STATE                 (1 << 10)
 
 #define MAP_METHOD_STATE              (1 << 0)
 #define OBJECT_RELEASE_STATE          (1 << 1)
@@ -122,6 +123,7 @@
 #define MAP_LITERAL                   -4000
 #define MALLOCED_STRING               -5000
 #define UNDELETABLE                   -100000
+#define UNCHANGEABLE                  -200000
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -130,6 +132,13 @@
 #define UFUNC_TYPE       'f'
 #define BINOP_TYPE       'o'
 
+#define TOKEN_EOF        -1
+#define TOKEN_STRING      9
+#define TOKEN_ARRAY      11
+#define TOKEN_MAP        16
+#define TOKEN_LIST       17
+#define TOKEN_OBJECT     18
+#define TOKEN_FILEPTR    19
 #define TOKEN_SYMBOL     'A'
 #define TOKEN_BUILTIN    'B'
 #define TOKEN_CHAR       'C'
@@ -142,13 +151,10 @@
 #define TOKEN_ORELSE     'J'
 #define TOKEN_THEN       'K'
 #define TOKEN_LOOP       'L'
-#define TOKEN_MAP        'M'
 #define TOKEN_CONTINUE   'N'
-#define TOKEN_OPERATOR   'O'
 #define TOKEN_PRINT      'P'
 #define TOKEN_EVALFILE   'Q'
 #define TOKEN_RETURN     'R'
-#define TOKEN_STRING     'S'
 #define TOKEN_TYPE       'T'
 #define TOKEN_NEW        'U'
 #define TOKEN_VARDEF     'V'
@@ -178,7 +184,6 @@
 #define TOKEN_VAR        'v'
 #define TOKEN_WHILE      'w'
 #define TOKEN_HEX_NUMBER 'x'
-#define TOKEN_ARRAY      'y'
 #define TOKEN_BLOCK      'z'
 #define TOKEN_NL         '\n'
 #define TOKEN_DQUOTE     '"'
@@ -196,7 +201,6 @@
 #define TOKEN_SLASH      '\\'
 #define TOKEN_ESCAPE_CHR TOKEN_SLASH
 #define TOKEN_INDEX_CLOS ']'
-#define TOKEN_LIST       '^'
 #define TOKEN_BQUOTE     '`'
 #define TOKEN_BLOCK_OPEN '{'
 #define TOKEN_BAR        '|'
@@ -204,6 +208,7 @@
 #define TOKEN_BLOCK_CLOS '}'
 #define TOKEN_MAP_CLOS   TOKEN_BLOCK_CLOS
 #define TOKEN_UNARY      '~'
+#define TOKEN_LIST_ANON   127
 //#define TOKEN_NULL       '0'
 #define TOKEN_ASSIGN      1000
 #define TOKEN_ASSIGN_APP  1001
@@ -214,7 +219,6 @@
 #define TOKEN_ASSIGN_BAR  1006
 #define TOKEN_ASSIGN_AND  1007
 #define TOKEN_ASSIGN_LAST_VAL TOKEN_ASSIGN_AND
-#define TOKEN_EOF        -1
 
 typedef struct la_string {
   uint len;
@@ -370,6 +374,7 @@ struct la_t {
     continueCount,
     argCount,
     byteCount,
+    qualifierCount,
     exprList,
     conditionState;
 
@@ -1073,8 +1078,15 @@ static VALUE la_typeArrayAsString (la_t *this, VALUE value) {
 }
 
 static void la_release_qualifiers (la_t *this) {
-  ifnot (NULL is this->qualifiers)
+  ifnot (NULL is this->qualifiers) {
+    if (this->qualifierCount) {
+      this->qualifierCount--;
+      return;
+    }
+
     map_release (MAP(this->qualifiers));
+  }
+
   this->qualifiers = NULL;
 }
 
@@ -1089,6 +1101,8 @@ static VALUE la_qualifiers (la_t *this) {
   if (NULL is this->qualifiers)
     return NULL_VALUE;
 
+  this->qualifierCount++;
+
   VALUE val = la_copy_map (MAP(this->qualifiers));
   return val;
 }
@@ -1096,12 +1110,15 @@ static VALUE la_qualifiers (la_t *this) {
 static Vmap_t *la_get_qualifiers (la_t *this) {
   VALUE v = la_qualifiers (this);
   if (IS_NULL(v)) return NULL;
+  this->qualifierCount--;
   return AS_MAP(v);
 }
 
 static VALUE la_qualifier_exists (la_t *this, VALUE v_key) {
   if (NULL is this->qualifiers)
     return FALSE_VALUE;
+
+  this->qualifierCount++;
 
   ifnot (IS_STRING(v_key)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
@@ -1115,6 +1132,8 @@ static int la_C_qualifier_exists (la_t *this, char *key) {
 static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
   if (NULL is this->qualifiers)
     return la_copy_value (v_defval);
+
+  this->qualifierCount++;
 
   ifnot (IS_STRING(v_key)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
@@ -1394,7 +1413,7 @@ static VALUE list_get_at (la_t *this, VALUE v_list, VALUE v_idx) {
       break;
 
     default:
-      if (this->exprList)
+      if (this->exprList and 0 is this->fmtRefcount)
         v = *vp;
       else
         v = la_copy_value (*vp);
@@ -2122,180 +2141,154 @@ theend:
 
 static int la_do_next_token (la_t *this, int israw) {
   int err;
-  int r = LA_NOTOK;
 
-  sym_t *symbol = NULL;
   TOKENSYM = NULL;
 
   RESET_TOKEN;
 
   int c = la_ignore_ws (this);
 
-  char token = c;
-
   if (c is '#') {
     do c = GET_BYTE(); while (c >= 0 and c isnot TOKEN_NL);
     TOKEN = c;
-    return c;
+    return TOKEN;
   }
 
   if (is_alpha (c) or c is '_' or (
-      (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c)))
-    token = TOKEN_SYMBOL;
-  else if (is_digit (c) or (c is '-' and is_digit (PEEK_NTH_BYTE(0))))
-    token = TOKEN_INTEGER;
-  else if (is_operator (c))
-    token = TOKEN_OPERATOR;
-  else if (c is TOKEN_COLON or c is TOKEN_DOLLAR) {
-    TOKEN = c;
-    return c;
-  }
+      (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c))) {
+    la_get_span (this, is_identifier);
 
-  switch (token) {
-    case TOKEN_INTEGER:
-      if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", PEEK_NTH_BYTE(0))
-          and is_hexchar (PEEK_NTH_BYTE(1))) {
-        GET_BYTE();
-        IGNORE_FIRST_TOKEN;
-        IGNORE_FIRST_TOKEN;
-        la_get_span (this, is_hexchar);
-        r = TOKEN_HEX_NUMBER;
-      } else
-        if (LA_NOTOK is parse_number (this, c, &r))
-          THROW_SYNTAX_ERR("error while tokenizing a number");
+    TOKEN = TOKEN_SYMBOL;
 
-      break;
+    if (GETSTRLEN(TOKENSTR) > MAXLEN_SYMBOL)
+      THROW_SYNTAX_ERR_FMT("%s: exceeds maximum length (%d) of an identifier",
+         cur_msg_str (this, TOKENSTR), MAXLEN_SYMBOL);
 
-    case TOKEN_SQUOTE: {
-        c = GET_BYTE(); // get first
-        if (c is TOKEN_ESCAPE_CHR) {
-          if (PEEK_NTH_BYTE(0) is 'x') {
-            GET_BYTE();
+    if (israw)
+      return TOKEN;
 
-            if (PEEK_NTH_BYTE(0) isnot '{')
-              THROW_SYNTAX_ERR("error while parsing char, awaiting {");
+    TOKENSYM = la_lookup_symbol (this, TOKENSTR);
 
-            GET_BYTE();
-            RESET_TOKEN;
+    ifnot (TOKENSYM)
+      return TOKEN;
 
-            la_get_span (this, is_hexchar);
-            c = GET_BYTE();
-            if (c isnot '}')
-              THROW_SYNTAX_ERR("error while parsing char, awaiting }");
+    TOKEN = TOKENSYM->type & 0xff;
 
-            IGNORE_LAST_TOKEN;
-
-            c = GET_BYTE();
-            if (c isnot TOKEN_SQUOTE)
-              THROW_SYNTAX_ERR("error while parsing char, awaiting '");
-
-            IGNORE_LAST_TOKEN;
-            r = TOKEN_HEX_CHAR;
-            break;
-          } else
-            GET_BYTE();
-        }
-
-        int max = 4;
-        r = TOKEN_SYNTAX_ERR;
-
-        /* multibyte support */
-        do {
-          c = GET_BYTE();
-          if (c is TOKEN_SQUOTE) {
-            IGNORE_FIRST_TOKEN;
-            IGNORE_LAST_TOKEN;
-            r = TOKEN_CHAR;
-            break;
-          }
-        } while (--max isnot 0);
-
-      break;
-    }
-
-    case TOKEN_SYMBOL:
-      la_get_span (this, is_identifier);
-      r = TOKEN_SYMBOL;
-
-      if (GETSTRLEN(TOKENSTR) > MAXLEN_SYMBOL)
-        THROW_SYNTAX_ERR_FMT("%s: exceeds maximum length (%d) of an identifier",
-            cur_msg_str (this, TOKENSTR), MAXLEN_SYMBOL);
-
-      if (israw)
-        break;
-
-      TOKENSYM = symbol = la_lookup_symbol (this, TOKENSTR);
-
-      ifnot (symbol)
-        break;
-
-      r = symbol->type & 0xff;
-
-      if (r is TOKEN_BINOP) { /* is, isnot, and, or */
-        TOKEN = TOKENSYM->type;
-        TOKENVAL = TOKENSYM->value;
-        return TOKEN;
-      }
-
-      TOKENARGS = (symbol->type >> 8) & 0xff;
-      symbol->value.sym = symbol;
-
-      if (r is ARRAY_TYPE) {
-        r = TOKEN_ARRAY;
-        symbol->value.type = ARRAY_TYPE;
-      } else if (r is MAP_TYPE) {
-        r = TOKEN_MAP;
-        symbol->value.type = MAP_TYPE;
-      } else
-        if (r < '@')
-          r = TOKEN_VAR;
-
-      TOKENVAL = symbol->value;
-      TOKEN = r;
-      return r;
-
-    case TOKEN_OPERATOR: {
-      la_get_span (this, is_operator_span);
-
-      char *key = sym_key (this, TOKENSTR);
-      TOKENSYM = ns_lookup_symbol (this->std, key);
-
-      if (TOKENSYM) {
-        TOKEN = TOKENSYM->type;
-        TOKENVAL = TOKENSYM->value;
-      } else
-        TOKEN = TOKEN_SYNTAX_ERR;
-
+    if (TOKEN is TOKEN_BINOP) { /* is, isnot, and, or */
+      TOKEN = TOKENSYM->type;
+      TOKENVAL = TOKENSYM->value;
       return TOKEN;
     }
 
-    case TOKEN_BLOCK_OPEN: {
+    TOKENARGS = (TOKENSYM->type >> 8) & 0xff;
+    TOKENSYM->value.sym = TOKENSYM;
+    TOKENVAL = TOKENSYM->value;
+    return TOKEN;
+  }
+
+  if (is_digit (c) or (c is '-' and is_digit (PEEK_NTH_BYTE(0)))) {
+    if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", PEEK_NTH_BYTE(0))
+        and is_hexchar (PEEK_NTH_BYTE(1))) {
+      GET_BYTE();
       RESET_TOKEN;
-      err = la_get_opened_block (this, "unended opened block");
-      THROW_ERR_IF_ERR(err);
-
-      IGNORE_LAST_TOKEN;
-      TOKEN = TOKEN_BLOCK;
+      la_get_span (this, is_hexchar);
+      TOKEN = TOKEN_HEX_NUMBER;
       return TOKEN;
     }
 
-    case TOKEN_BQUOTE:
-    case TOKEN_DQUOTE:
+    int r;
+    err = parse_number (this, c, &r);
+    THROW_SYNTAX_ERR_IF_ERR(err, "error while tokenizing a number");
+    TOKEN = r;
+    return TOKEN;
+  }
 
-      if (this->curState & CONSUME) {
-        err = la_consume_string (this, c);
-        THROW_ERR_IF_ERR(err);
+  if (is_operator (c)) {
+    la_get_span (this, is_operator_span);
+
+    TOKENSYM = ns_lookup_symbol (this->std, sym_key (this, TOKENSTR));
+
+    if (TOKENSYM) {
+      TOKEN = TOKENSYM->type;
+      TOKENVAL = TOKENSYM->value;
+    } else
+      TOKEN = TOKEN_SYNTAX_ERR;
+
+    return TOKEN;
+  }
+
+  if (c is TOKEN_BQUOTE or c is TOKEN_DQUOTE) {
+    if (this->curState & CONSUME_STATE) {
+      err = la_consume_string (this, c);
+      THROW_ERR_IF_ERR(err);
+      return TOKEN;
+    }
+
+    return la_get_string (this, c);
+  }
+
+  if (c is TOKEN_BLOCK_OPEN) {
+    RESET_TOKEN;
+    err = la_get_opened_block (this, "unended opened block");
+    THROW_ERR_IF_ERR(err);
+
+    IGNORE_LAST_TOKEN;
+    TOKEN = TOKEN_BLOCK;
+    return TOKEN;
+  }
+
+  if (c is TOKEN_COLON or c is TOKEN_DOLLAR) {
+    TOKEN = c;
+    return TOKEN;
+  }
+
+  if (c is TOKEN_SQUOTE) {
+    c = GET_BYTE();
+    if (c is TOKEN_ESCAPE_CHR) {
+      if (PEEK_NTH_BYTE(0) is 'x') {
+        GET_BYTE();
+
+        THROW_SYNTAX_ERR_IF(PEEK_NTH_BYTE(0) isnot '{',
+          "error while parsing char, awaiting {");
+
+        GET_BYTE();
+        RESET_TOKEN;
+
+        la_get_span (this, is_hexchar);
+        c = GET_BYTE();
+        THROW_SYNTAX_ERR_IF(c isnot '}', "error while parsing char, awaiting }");
+
+        IGNORE_LAST_TOKEN;
+
+        c = GET_BYTE();
+        THROW_SYNTAX_ERR_IF(c isnot TOKEN_SQUOTE, "error while parsing char, awaiting '");
+
+        IGNORE_LAST_TOKEN;
+        TOKEN = TOKEN_HEX_CHAR;
         return TOKEN;
       }
 
-      return la_get_string (this, c);
+      GET_BYTE();
+    }
 
-    default:
-      r = c;
+    int max = 4;
+
+    do {
+      c = GET_BYTE();
+      if (c is TOKEN_SQUOTE) {
+        IGNORE_FIRST_TOKEN;
+        IGNORE_LAST_TOKEN;
+        TOKEN = TOKEN_CHAR;
+        return TOKEN;
+      }
+    } while (--max isnot 0);
+
+    RESET_TOKEN;
+    return LA_ERR_SYNTAX;
   }
 
-  TOKEN = r;
-  return r;
+  TOKEN = c;
+  return TOKEN;
 }
 
 static void stack_push (la_t *this, VALUE x) {
@@ -3953,15 +3946,16 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     VALUE save_map = TOKENVAL;
     VALUE v_key;
 
-    this->curState |= MALLOCED_STRING_STATE;
+    this->curState |= (MALLOCED_STRING_STATE|CLOSURE_STATE);
     NEXT_TOKEN();
-
     err = la_parse_expr (this, &v_key);
-    this->curState &= ~MALLOCED_STRING_STATE;
+    this->curState &= ~(MALLOCED_STRING_STATE|CLOSURE_STATE);
     THROW_ERR_IF_ERR(err);
 
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS, "awaiting ')'");
+
     if (v_key.type isnot STRING_TYPE)
-      THROW_SYNTAX_ERR("map set, awaiting a string as a key");
+      THROW_SYNTAX_ERR("map get, awaiting a string as a key");
 
     string *s_key = AS_STRING(v_key);
     if (s_key->num_bytes >= MAXLEN_SYMBOL)
@@ -3970,7 +3964,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
 
     TOKENVAL = save_map;
-    UNGET_BYTE();
+    // UNGET_BYTE();
 
   } else if (TOKEN is TOKEN_SYMBOL) {
     Cstring.cp (key, MAXLEN_SYMBOL + 1,
@@ -4594,6 +4588,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
       }
     }
 
+    int hastoreturn = HASTORETURN;
     HASTORETURN = 0;
 
     uf->result = NULL_VALUE;
@@ -4623,7 +4618,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
     String.replace_with (func, this->curScope->funname);
 
-    HASTORETURN = 0;
+    HASTORETURN = hastoreturn;
 
     la_release_qualifiers (this);
 
@@ -4982,18 +4977,14 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
          ? TOKEN_PAREN_CLOS : TOKEN_INDEX_CLOS);
 
       NEXT_TOKEN();
-      c = TOKEN;
 
       err = la_parse_expr (this, vp);
       THROW_ERR_IF_ERR(err);
 
-      c = TOKEN;
-
-      if (c is close_token) {
+      if (TOKEN is close_token and 0 is (this->curState & CLOSURE_STATE)) {
         NEXT_TOKEN();
-        c = TOKEN;
 
-        if (c is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
+        if (TOKEN is TOKEN_COLON and 0 is (this->curState & INDEX_STATE)) {
           TOKENVAL = *vp;
           return la_parse_chain (this, vp);
         }
@@ -5006,6 +4997,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     case TOKEN_IFNOT:
     case TOKEN_IF:
+
       err = la_parse_cond (this, c is TOKEN_IFNOT);
       THROW_ERR_IF_ERR(err);
 
@@ -5130,20 +5122,31 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       }
       return err;
 
-    case TOKEN_VAR:
-      if (TOKENVAL.type is STRING_TYPE) {
-        err = la_string_get (this, vp);
-        THROW_ERR_IF_ERR(err);
+    case TOKEN_LIST:
+     *vp = TOKENVAL;
 
-      } else {
-        *vp = TOKENVAL;
-        NEXT_TOKEN();
-        err = LA_OK;
+      NEXT_TOKEN();
+
+      switch (TOKEN) {
+        case TOKEN_COLON:
+          if (this->curState & INDEX_STATE) return LA_OK;
+          return la_parse_chain (this, vp);
+
+        default:
+          return LA_OK;
       }
+
+    case TOKEN_OBJECT:
+    case TOKEN_FILEPTR:
+    case 0 ... 4:
+    case TOKEN_VAR:
+      *vp = TOKENVAL;
+
+      NEXT_TOKEN();
 
       if (TOKEN isnot TOKEN_COLON or
           (this->curState & INDEX_STATE))
-        return err;
+        return LA_OK;
 
       return la_parse_chain (this, vp);
 
@@ -5341,7 +5344,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       return err;
 
-    case TOKEN_LIST:
+    case TOKEN_LIST_ANON:
       err = la_parse_list (this, vp);
       THROW_ERR_IF_ERR(err);
 
@@ -5433,22 +5436,7 @@ static int la_parse_stmt (la_t *this) {
   funT *scope = this->curScope;
   VALUE val;
 
-  if (HASTORETURN) {
-    do {
-      c = GET_BYTE();
-    } while (c >= 0 and c isnot TOKEN_NL and c isnot TOKEN_SEMICOLON and
-       c isnot TOKEN_BLOCK_CLOS);
-
-    if (TOKEN is TOKEN_EOF) return LA_OK;
-
-    UNGET_BYTE();
-
-    NEXT_TOKEN();
-
-    return LA_OK;
-  }
-
-do_token:
+  do_token:
   c = TOKEN;
 
   switch (c) {
@@ -5571,17 +5559,21 @@ do_token:
       }
 
       this->scopeState = 0;
-      c = TOKEN_VAR;
-      /* fall through */
+      TOKEN = TOKEN_VAR;
+      goto do_token;
     }
 
+    case TOKEN_STRING:
+      if (PEEK_NTH_BYTE(0) is TOKEN_INDEX_OPEN) {
+        sym_t *symbol = TOKENSYM;
+        return la_string_set_char (this, symbol->value, symbol->is_const);
+      }
+      /* fall through */
+
+    case 0 ... 4:
     case TOKEN_VAR: {
       name = TOKENSTR;
       sym_t *symbol = TOKENSYM;
-
-      if (symbol->value.type is STRING_TYPE)
-        if (PEEK_NTH_BYTE(0) is TOKEN_INDEX_OPEN)
-          return la_string_set_char (this, symbol->value, symbol->is_const);
 
       NEXT_TOKEN();
 
@@ -5599,23 +5591,32 @@ do_token:
           THROW_SYNTAX_ERR("can not reassign to a constant");
 
       NEXT_TOKEN();
-      c = TOKEN;
 
-      if (c is TOKEN_FUNCDEF) {
-        char *key = sym_key (this, name);
-        la_release_sym (Vmap.pop (scope->symbols, key));
-        Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, key, GETSTRLEN(name));
-        err = la_parse_func_def (this);
-        this->curFunName[0] = '\0';
-        return err;
+      int is_un = 0;
+
+      switch (TOKEN) {
+        case TOKEN_FUNCDEF: {
+          char *key = sym_key (this, name);
+          la_release_sym (Vmap.pop (scope->symbols, key));
+          Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, key, GETSTRLEN(name));
+          err = la_parse_func_def (this);
+          this->curFunName[0] = '\0';
+          return err;
+        }
+
+        case TOKEN_UNARY:
+          is_un = 1;
+          NEXT_TOKEN();
+          break;
       }
 
-      int is_un = c is TOKEN_UNARY;
-      if (is_un)
-        NEXT_TOKEN();
-
+      val = symbol->value;
+      val.refcount = UNCHANGEABLE;
       err = la_parse_expr (this, &val);
       THROW_ERR_IF_ERR(err);
+
+      if (val.refcount is UNCHANGEABLE)
+        return LA_OK;
 
       if (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) {
         switch (val.type) {
@@ -5661,7 +5662,8 @@ do_token:
             la_release_val (this, symbol->value);
         }
 
-        if (val.type is STRING_TYPE and val.sym isnot NULL) {
+        if ((val.type is STRING_TYPE or val.type is ARRAY_TYPE) and
+             val.sym isnot NULL) {
           VALUE v = val;
           val = la_copy_value (v);
         }
@@ -5691,7 +5693,7 @@ do_token:
       }
 
       if (result.type is NULL_TYPE)
-        THROW_SYNTAX_ERR("unxpected operation");
+        THROW_SYNTAX_ERR("unexpected operation");
 
       assign_and_return:
       symbol->value = result;
@@ -5704,7 +5706,7 @@ do_token:
       if (TOKEN is TOKEN_COMMA) {
         uint n = 0;
         c = NEXT_BYTE_NOWS_INLINE_N(&n);
-        if (c  is TOKEN_NL) {
+        if (c is TOKEN_NL) {
           for (uint i = 0; i <= n; i++)
             IGNORE_NEXT_BYTE;
         }
@@ -5927,7 +5929,7 @@ static int la_consume_ifelse (la_t *this) {
 
 static int la_consume_iforelse (la_t *this, int break_at_orelse) {
   int levels = 1;
-  this->curState |= CONSUME;
+  this->curState |= CONSUME_STATE;
 
   int paren_open = 0;
   int index_open = 0;
@@ -5950,6 +5952,7 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
         goto theend;
 
       case TOKEN_END: NEXT_TOKEN();
+        levels--;
         goto theend;
 
       case TOKEN_ORELSE:
@@ -5988,7 +5991,7 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
   }
 
 theend:
-  this->curState &= ~CONSUME;
+  this->curState &= ~CONSUME_STATE;
   return levels;
 }
 
@@ -6017,19 +6020,19 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
 
     save = SAVE_TOKENSTATE();
 
-    this->curState |= CONSUME;
+    this->curState |= CONSUME_STATE;
 
     NEXT_TOKEN();
 
     if (TOKEN is TOKEN_ORELSE) {
-      this->curState &= ~CONSUME;
+      this->curState &= ~CONSUME_STATE;
       if (err > 1)
         goto consume;
       else
         return la_parse_iforelse (this, 1, vp);
     }
 
-    this->curState &= ~CONSUME;
+    this->curState &= ~CONSUME_STATE;
 
     RESTORE_TOKENSTATE(save);
     return LA_OK;
@@ -6069,9 +6072,12 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
       THROW_SYNTAX_ERR("awaiting a new line or ;");
   } else {
     int p0 = PEEK_NTH_TOKEN(0);
-    if (p0 is TOKEN_ORELSE)
+    if (p0 is TOKEN_ORELSE) {
+      NEXT_TOKEN();
       goto consume;
-    else if (p0 is TOKEN_NL)
+    }
+
+    if (p0 is TOKEN_NL)
       if (PEEK_NTH_TOKEN(1) is TOKEN_ORELSE)
         goto consume;
   }
@@ -6079,7 +6085,7 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   save = SAVE_TOKENSTATE();
 
   consume_orelse:
-  this->curState |= CONSUME;
+  this->curState |= CONSUME_STATE;
   int nc = PEEK_NTH_TOKEN(0);
   if (nc is TOKEN_PAREN_CLOS or nc is TOKEN_INDEX_CLOS) {
     RESTORE_TOKENSTATE(save);
@@ -6091,9 +6097,10 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   if (TOKEN is TOKEN_ORELSE) {
 
     consume:
-    this->curState |= CONSUME;
+    this->curState |= CONSUME_STATE;
 
     NEXT_TOKEN();
+
     while (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
     err = la_consume_iforelse (this, 0);
@@ -6107,7 +6114,7 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   }
 
 theend:
-  this->curState &= ~CONSUME;
+  this->curState &= ~CONSUME_STATE;
   return LA_OK;
 }
 
@@ -6140,9 +6147,8 @@ static int la_parse_if (la_t *this) {
 
   if (TOKEN is TOKEN_THEN)
     return la_parse_iforelse (this, is_true, NULL);
-  else
-    if (TOKEN isnot TOKEN_BLOCK)
-      THROW_SYNTAX_ERR("parsing if, not a block string");
+
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_BLOCK, "parsing if, not a block string");
 
   la_string elsepart;
   la_string ifpart = TOKENSTR;
@@ -8812,17 +8818,6 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
       }
       return result;
 
-    case OBJECT_TYPE:
-      switch (y.type) {
-        case NULL_TYPE: return result;
-        default:
-          this->CFuncError = LA_ERR_TYPE_MISMATCH;
-          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
-              "ObjectType == %s is not possible",
-              AS_STRING_BYTES(la_typeAsString (this, y)));
-          return result;
-      }
-
     case MAP_TYPE:
       switch (y.type) {
         case NULL_TYPE: return result;
@@ -8840,6 +8835,19 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
         default: return result;
       }
 
+    case FILEPTR_TYPE:
+    case OBJECT_TYPE:
+      switch (y.type) {
+        case NULL_TYPE: return result;
+        default:
+          this->CFuncError = LA_ERR_TYPE_MISMATCH;
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "%s == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, x)),
+              AS_STRING_BYTES(la_typeAsString (this, y)));
+          return result;
+      }
+
     default:
       if (x.type > OBJECT_TYPE) {
         switch (y.type) {
@@ -8847,7 +8855,8 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
           default:
             this->CFuncError = LA_ERR_TYPE_MISMATCH;
             Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
-                "ObjectType == %s is not possible",
+                "%s == %s is not possible",
+                AS_STRING_BYTES(la_typeAsString (this, x)),
                 AS_STRING_BYTES(la_typeAsString (this, y)));
             return result;
         }
@@ -9101,6 +9110,10 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             result.refcount = x.refcount;
           goto theend;
         }
+
+        case NULL_TYPE:
+          result = x;
+
         goto theend;
       }
   }
@@ -9386,7 +9399,7 @@ static struct def {
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
   { "New",     TOKEN_NEW,      NULL_VALUE },
   { "format",  TOKEN_FORMAT,   NULL_VALUE },
-  { "list",    TOKEN_LIST,     NULL_VALUE },
+  { "list",    TOKEN_LIST_ANON,NULL_VALUE },
   { "if",      TOKEN_IF,       PTR(la_parse_if) },
   { "ifnot",   TOKEN_IFNOT,    PTR(la_parse_if) },
   { "while",   TOKEN_WHILE,    PTR(la_parse_while) },
@@ -10047,6 +10060,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->anon_id = 0;
   this->loopCount = 0;
   this->argCount = 0;
+  this->qualifierCount = 0;
   this->exprList = 0;
 
   if (NULL is opts.la_dir) {
