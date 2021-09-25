@@ -101,7 +101,7 @@ private
           var flags = this.flags[j]
 
           if (type is IntegerType and flags & ARG_VALUE_APPEND) {
-            this.results.$(as) += 1
+            this.results.$(as)++
             # or more verbose
             # Map.set (this.results, as, this.results: get (as) + 1);
             break

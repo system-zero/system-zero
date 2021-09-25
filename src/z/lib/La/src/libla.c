@@ -218,7 +218,9 @@
 #define TOKEN_ASSIGN_MOD  1005
 #define TOKEN_ASSIGN_BAR  1006
 #define TOKEN_ASSIGN_AND  1007
-#define TOKEN_ASSIGN_LAST_VAL TOKEN_ASSIGN_AND
+#define TOKEN_PLUS_PLUS   1008
+#define TOKEN_MINUS_MINUS 1009
+#define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
 
 typedef struct la_string {
   uint len;
@@ -455,9 +457,9 @@ typedef struct tokenState {
   this->print_bytes (this->err_fp, "\n");                   \
   return la_err_ptr (this, LA_ERR_OUTOFBOUNDS);             \
 } while (0)
-#define THROW_UNKNOWN_SYMBOL(_sym_) do {                    \
+#define THROW_UNKNOWN_SYMBOL(_symname_) do {                \
   this->print_fmt_bytes (this->err_fp,                      \
-    "unknown symbol: %s\n", cur_msg_str (this, _sym_));     \
+    "unknown symbol: %s\n", cur_msg_str (this, _symname_)); \
   return la_err_ptr (this, LA_ERR_UNKNOWN_SYM);             \
 } while (0)
 #define THROW_INV_ARRAY_TYPE(_tp_) do {                     \
@@ -736,7 +738,7 @@ static inline int is_operator (int c) {
 }
 
 static inline int is_operator_span (int c) {
-  return NULL isnot Cstring.byte.in_str ("=<>&|^", c);
+  return NULL isnot Cstring.byte.in_str ("=<>&|^+-", c);
 }
 
 static tokenState la_save_token_state (la_t *this) {
@@ -3254,6 +3256,30 @@ static int la_parse_array_set (la_t *this) {
   int is_un = 0;
 
   if (token > TOKEN_ASSIGN) {
+    if (token is TOKEN_PLUS_PLUS or token is TOKEN_MINUS_MINUS) {
+      ArrayType *array = (ArrayType *) AS_ARRAY(ary);
+      int idx = AS_INT(ix);
+
+      switch (array->type) {
+        case INTEGER_TYPE: {
+          integer *i_ar = (integer *) AS_ARRAY(array->value);
+          i_ar[idx] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          NEXT_TOKEN();
+          return LA_OK;
+        }
+
+        case NUMBER_TYPE: {
+          number *n_ar = (number *) AS_ARRAY(array->value);
+          n_ar[idx] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          NEXT_TOKEN();
+          return LA_OK;
+        }
+
+        default:
+          THROW_SYNTAX_ERR("awaiting an integer or a number");
+      }
+    }
+
     NEXT_TOKEN();
 
     if (TOKEN is TOKEN_UNARY) {
@@ -3531,6 +3557,26 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     return la_parse_map_get (this, vp);
   }
 
+  if (c is TOKEN_PLUS_PLUS or c is TOKEN_MINUS_MINUS) {
+    switch (vp->type) {
+      case INTEGER_TYPE: {
+        integer *ary = (integer *) AS_ARRAY(array->value);
+        ary[idx] += (c is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+      }
+
+      case NUMBER_TYPE: {
+        number *ary = (number *) AS_ARRAY(array->value);
+        ary[idx] += (c is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+     }
+      default:
+        THROW_SYNTAX_ERR("awaiting an integer or a number");
+    }
+  }
+
   if (c is TOKEN_INDEX_OPEN) {
     VALUE v = *vp;
     switch (v.type) {
@@ -3680,6 +3726,24 @@ static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
 
   if (val->type > STRING_TYPE or IS_UFUNC(val->type))
     THROW_A_TYPE_MISMATCH(val->type, "illegal map type");
+
+
+  if (token is TOKEN_PLUS_PLUS or token is TOKEN_MINUS_MINUS) {
+    switch (val->type) {
+      case INTEGER_TYPE:
+        AS_INT((*val)) = AS_INT((*val)) + (token is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+
+      case NUMBER_TYPE:
+        AS_NUMBER((*val)) = AS_NUMBER((*val)) + (token is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+
+      default:
+        THROW_SYNTAX_ERR("awaiting an integer or a number");
+    }
+  }
 
   VALUE v;
   NEXT_TOKEN();
@@ -3991,6 +4055,23 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   *vp = *v;
 
   NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_PLUS_PLUS or TOKEN is TOKEN_MINUS_MINUS) {
+    switch (v->type) {
+      case INTEGER_TYPE:
+        AS_INT((*v)) = AS_INT((*v)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+
+      case NUMBER_TYPE:
+        AS_NUMBER((*v)) = AS_NUMBER((*v)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+
+      default:
+        THROW_SYNTAX_ERR("awaiting an integer or a number");
+    }
+  }
 
   if (TOKEN is TOKEN_DOT or TOKEN is TOKEN_COLON) {
     if (v->type isnot MAP_TYPE) {
@@ -5145,6 +5226,28 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       NEXT_TOKEN();
 
+      if (TOKEN is TOKEN_PLUS_PLUS or TOKEN is TOKEN_MINUS_MINUS) {
+        VALUE v = *vp;
+        sym_t *sym = vp->sym;
+
+        switch (vp->type) {
+          case INTEGER_TYPE:
+            sym->value = INT(AS_INT((*vp)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1));
+            NEXT_TOKEN();
+            *vp = v;
+            break;
+
+          case NUMBER_TYPE:
+            sym->value = NUMBER(AS_NUMBER((*vp)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1));
+            NEXT_TOKEN();
+            *vp = v;
+            break;
+
+          default:
+            THROW_SYNTAX_ERR("awaiting an integer or a number");
+        }
+      }
+
       if (TOKEN isnot TOKEN_COLON or
           (this->curState & INDEX_STATE))
         return LA_OK;
@@ -5429,6 +5532,41 @@ static int la_parse_boolean_stmt (la_t *this, int tok) {
   return tok;
 }
 
+static int la_handle_break (la_t *this) {
+  ifnot (this->curState & LOOP_STATE)
+    THROW_SYNTAX_ERR("break is not in a loop");
+
+  int c;
+  uint nth = 0;
+  int level = 0;
+  int num = NEXT_BYTE_NOWS_NONL_N(&nth);
+  if ('1' <= num and num <= '9') {
+    nth++;
+    c = NEXT_BYTE_NOWS_INLINE_N(&nth);
+
+    if (c isnot TOKEN_SEMICOLON and c isnot TOKEN_NL and
+        c isnot TOKEN_BLOCK_CLOS and c isnot TOKEN_EOF and
+        c isnot 'i')
+      THROW_SYNTAX_ERR("unexpected token after a break statement");
+
+    num -= ('0' + 1);
+
+    if (num >= this->loopCount)
+      THROW_SYNTAX_ERR("break statement: too many loop count levels");
+
+    const char *ptr = GETSTRPTR(PARSEPTR) + 2;
+    uint len = GETSTRLEN(PARSEPTR) - 2;
+    SETSTRPTR(PARSEPTR, ptr);
+    SETSTRLEN(PARSEPTR, len);
+    level = num;
+  }
+
+  int err = la_parse_boolean_stmt (this, LA_ERR_BREAK);
+  THROW_ERR_IF_ERR(err);
+  if (err is LA_ERR_BREAK) this->breakCount = level;
+  return err;
+}
+
 static int la_parse_stmt (la_t *this) {
   int err = LA_OK;
   int c;
@@ -5442,36 +5580,7 @@ static int la_parse_stmt (la_t *this) {
 
   switch (c) {
     case TOKEN_BREAK:
-      ifnot (this->curState & LOOP_STATE)
-        THROW_SYNTAX_ERR("break is not in a loop");
-
-      uint nth = 0;
-      int level = 0;
-      int num = NEXT_BYTE_NOWS_NONL_N(&nth);
-      if ('1' <= num and num <= '9') {
-        nth++;
-        c = NEXT_BYTE_NOWS_INLINE_N(&nth);
-
-        if (c isnot TOKEN_SEMICOLON and c isnot TOKEN_NL and
-            c isnot TOKEN_BLOCK_CLOS and c isnot TOKEN_EOF and
-            c isnot 'i')
-          THROW_SYNTAX_ERR("unexpected token after a break statement");
-        num -= ('0' + 1);
-
-        if (num >= this->loopCount)
-          THROW_SYNTAX_ERR("break statement: too many loop count levels");
-
-        const char *ptr = GETSTRPTR(PARSEPTR) + 2;
-        uint len = GETSTRLEN(PARSEPTR) - 2;
-        SETSTRPTR(PARSEPTR, ptr);
-        SETSTRLEN(PARSEPTR, len);
-        level = num;
-      }
-
-      err = la_parse_boolean_stmt (this, LA_ERR_BREAK);
-      THROW_ERR_IF_ERR(err);
-      if (err is LA_ERR_BREAK) this->breakCount = level;
-      return err;
+      return la_handle_break (this);
 
     case TOKEN_CONTINUE:
       ifnot (this->curState & LOOP_STATE)
@@ -5576,6 +5685,11 @@ static int la_parse_stmt (la_t *this) {
       name = TOKENSTR;
       sym_t *symbol = TOKENSYM;
 
+      ifnot (symbol)
+        THROW_UNKNOWN_SYMBOL(name);
+
+      val = symbol->value;
+
       NEXT_TOKEN();
 
       int token = TOKEN;
@@ -5584,8 +5698,23 @@ static int la_parse_stmt (la_t *this) {
           token > TOKEN_ASSIGN_LAST_VAL)
         THROW_SYNTAX_ERR("expected assignment operator");
 
-      ifnot (symbol)
-        THROW_UNKNOWN_SYMBOL(name);
+      if (token is TOKEN_PLUS_PLUS or token is TOKEN_MINUS_MINUS) {
+        switch (val.type) {
+          case INTEGER_TYPE:
+            symbol->value = INT(AS_INT(val) + (token is TOKEN_PLUS_PLUS ? 1 : -1));
+            NEXT_TOKEN();
+            return LA_OK;
+
+          case NUMBER_TYPE:
+            symbol->value = NUMBER(AS_NUMBER(val) + (token is TOKEN_PLUS_PLUS ? 1 : -1));
+            NEXT_TOKEN();
+            return LA_OK;
+
+          default:
+            THROW_SYNTAX_ERR_IF(val.type isnot INTEGER_TYPE or val.type isnot NUMBER_TYPE,
+              "awaiting an integer or a number");
+        }
+      }
 
       if (symbol->is_const)
         if (symbol->value.type isnot NULL_TYPE)
@@ -5611,7 +5740,6 @@ static int la_parse_stmt (la_t *this) {
           break;
       }
 
-      val = symbol->value;
       val.refcount = UNCHANGEABLE;
       err = la_parse_expr (this, &val);
       THROW_ERR_IF_ERR(err);
@@ -9526,6 +9654,8 @@ static struct def {
   { "*=",      TOKEN_ASSIGN_MUL,  NULL_VALUE },
   { "&=",      TOKEN_ASSIGN_AND,  NULL_VALUE },
   { "|=",      TOKEN_ASSIGN_BAR,  NULL_VALUE },
+  { "++",      TOKEN_PLUS_PLUS,   NULL_VALUE },
+  { "--",      TOKEN_MINUS_MINUS, NULL_VALUE },
   { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },
   { "BooleanType", INTEGER_TYPE,  INT(BOOLEAN_TYPE) },
   { "NumberType",  INTEGER_TYPE,  INT(NUMBER_TYPE) },

@@ -253,7 +253,7 @@ Comments.
     do {
       sum += i
       i += 1  # there is no support for ++,-- assignment operators because of
-              # side effects to support both prefix and postfix with a mix of
+              # side affects to support both prefix and postfix with a mix of
               # functions calls. The easier is the prefix semantics. The usefull
               # though it is with the postfix semantics, which may need to track
               # unexpected "vibrations". 

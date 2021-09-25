@@ -264,6 +264,53 @@ func semantics () {
   assert_false ("testing bitwise operators",
       (retval & v1 != 1) or (retval & v2 != 2) or (retval & v3 != 4))
 
+  var pm_map = {"key" : 1}
+  func p_m (x) {
+    if (x is 10) {
+      return x++
+    } else if (x++ is 20) {
+      return x--
+    } else if (x-- is 32) {
+      x--
+      return x++
+    } else if (x++ is 39) {
+      return x++: if xx++ is 40 then xx++ + 1 orelse notok end
+    } else {
+      return pm_map.key++
+    }
+  }
+
+  var pi_iama = [1, 2]
+  func p_ap (x) {
+    pi_iama[x]++
+    return pi_iama[x]++
+  }
+
+  var pm_ar = [1, 2]
+  func p_am (x) {
+    pm_ar[x]--
+    return pm_ar[x]--
+  }
+
+  var pm_10 = p_m (10)
+  var pm_21 = p_m (20)
+  var pm_30 = p_m (31)
+  var pm_42 = p_m (39)
+  var pm_k  = p_m (100)
+  var pm_at_0 = p_ap (0)
+  var pm_dt_1 = p_am (1)
+  assert_true ("testing postfix [de|in]crement --,++ operators",
+      pm_10 is 10 and
+      pm_21 is 21 and
+      pm_30 is 30 and
+      pm_42 is 42 and
+      pm_k is 1 and
+      pm_map.key is 2 and
+      pm_at_0 is 2 and
+      pi_iama[0] is 3 and
+      pm_dt_1 is 1 and
+      pm_ar[1] is 0)
+
   func loop_test_break (limit) {
     var i = 1
     while (i) {
@@ -1529,7 +1576,7 @@ func semantics () {
       var i = 2
       while (i <= n) {
         f[i] = f[i - 1] + f[i - 2]
-        i += 1
+        i++
       }
 
       return f[n]
