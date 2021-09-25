@@ -586,6 +586,8 @@ static int la_parse_primary (la_t *, VALUE *);
 static int la_parse_func_def (la_t *);
 static int la_eval_file (la_t *, const char *);
 static int la_parse_fmt (la_t *, string *, int);
+static VALUE la_equals (la_t *, VALUE, VALUE);
+static VALUE la_ne (la_t *, VALUE, VALUE);
 static VALUE la_mul  (la_t *, VALUE, VALUE);
 static VALUE la_add  (la_t *, VALUE, VALUE);
 static VALUE la_sub  (la_t *, VALUE, VALUE);
@@ -4923,7 +4925,6 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
   return err;
 }
 
-static VALUE la_equals (la_t *this, VALUE, VALUE);
 static int la_parse_primary (la_t *this, VALUE *vp) {
   int err = LA_OK;
   int c = TOKEN;
@@ -5779,6 +5780,72 @@ static int la_parse_stmt (la_t *this) {
   return err;
 }
 
+static int la_consume_binop (la_t *this) {
+  int is_index_open = 0;
+  int is_paren_open = 0;
+  int is_if = 0;
+  int is_binop = 0;
+
+  NEXT_TOKEN();
+
+next:
+  is_binop = (TOKEN & 0xff) is TOKEN_BINOP;
+  NEXT_TOKEN();
+
+  switch (TOKEN) {
+    case TOKEN_INDEX_OPEN:
+      is_index_open++;
+      goto next;
+
+    case TOKEN_PAREN_OPEN:
+      is_paren_open++;
+      goto next;
+
+    case TOKEN_IF:
+    case TOKEN_IFNOT:
+      is_if++;
+      goto next;
+
+    case TOKEN_INDEX_CLOS:
+      if (is_index_open) {
+        is_index_open--;
+        goto next;
+      }
+
+    case TOKEN_PAREN_CLOS:
+      if (is_paren_open) {
+        is_paren_open--;
+        goto next;
+      }
+
+    case TOKEN_BLOCK:
+      ifnot (is_binop)
+        break;
+      goto next;
+
+    case TOKEN_THEN:
+      if (is_if) {
+        is_if--;
+        goto next;
+      }
+
+    case TOKEN_NL:
+      if (is_binop)
+        goto next;
+
+    case TOKEN_SEMICOLON:
+    // case TOKEN_COLON: cannot happen as end?
+      break;
+
+    case TOKEN_EOF:
+      return LA_NOTOK;
+    default:
+      goto next;
+  }
+
+  return LA_OK;
+}
+
 // parse a level n expression
 // level 0 is the lowest level (highest precedence)
 static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
@@ -5843,7 +5910,19 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     if (num_iter++) this->objectState |= OBJECT_APPEND;
     this->objectState &= ~(LHS_STRING_RELEASED|RHS_STRING_RELEASED);
 
+    const char *ptr = GETSTRPTR(TOKENSTR);
     lhs = op (this, lhs, rhs);
+
+    if (op is la_equals or op is la_ne) {
+      ifnot (AS_INT(lhs)) {
+        if (Cstring.eq_n (ptr, "and", 3) or Cstring.eq_n (ptr, "&&", 2)) {
+          err = la_consume_binop (this);
+          THROW_SYNTAX_ERR_IF(err is LA_NOTOK, "awaiting the end of a binary operation");
+          lhs = FALSE_VALUE;
+          goto theend;
+        }
+      }
+    }
 
     ifnot (num_iter - 1)
       lhs_released = this->objectState & LHS_STRING_RELEASED;
@@ -5876,6 +5955,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     this->curState &= ~LITERAL_STRING_STATE;
   } while ((c & 0xff) is TOKEN_BINOP);
 
+theend:
   this->curState &= ~(MALLOCED_STRING_STATE|LITERAL_STRING_STATE);
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|OBJECT_APPEND|LHS_STRING_RELEASED|RHS_STRING_RELEASED);
 

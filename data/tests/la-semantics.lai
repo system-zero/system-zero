@@ -157,8 +157,40 @@ func semantics () {
   retval = fue (20)
   assert_true ("testing function nesting and scope", retval is 41)
 
-  assert_true ("testing logical AND", 1 is 1 and 1 is 1 and
-      (1 is 1 and 2 is 2) && (1 isnot 2 && 1 isnot 2))
+  var rba = 1 is 1 and 1 is 1 and
+      (1 is 1 and 2 is 2) && (1 isnot 2 && 1 isnot 2)
+  var rn = null
+  var rbaa = rn isnot null and rn is true
+  var rbac = if rn isnot null and rn is true then notok orelse ok
+  var rbad = if rn isnot null and rn is true then notok
+  var rbae
+  if rn isnot null and rn is true {
+    rbae = notok
+  } else {
+    rbae = ok
+  }
+
+  var rblues
+  if rn isnot null and rn is true or
+      notreached_here is ok and also_here or
+      here and
+      a_bit_far then
+    this statement will not evaluate you could write whatever you like
+  orelse
+    rblues = `anything can happen, the destination and the scratch of the
+       time at the same time`S8
+
+  var is_blues = rblues is
+"anything can happen, the destination and the scratch of the time at the same time" and
+    rblues isnot null
+
+  assert_true ("testing logical AND",
+      rba is true and
+      rbaa is false and
+      rbac is ok and
+      rbad is null and
+      rbae is ok and
+      is_blues is ok)
 
   assert_false ("testing logical OR", 2 < 1 or 2 > 2 or 1 isnot 1 or 2 != 2 ||
       2 < 2 || 1 > 2 || 1 > 2 || 2 < 1)
