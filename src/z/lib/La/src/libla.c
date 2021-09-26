@@ -373,7 +373,6 @@ struct la_t {
     didExit,
     loopCount,
     breakCount,
-    continueCount,
     argCount,
     byteCount,
     qualifierCount,
@@ -4037,7 +4036,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
         GETSTRPTR(TOKENSTR), GETSTRLEN(TOKENSTR));
 
   } else
-    THROW_SYNTAX_ERR("map get, awaiting a symbol");
+    THROW_SYNTAX_ERR("map get, awaiting a symbol as a key");
 
   VALUE mapv = TOKENVAL;
   Vmap_t *map = AS_MAP(mapv);
@@ -4170,6 +4169,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   }
 
 theend:
+
   if (vp->type is STRING_TYPE or vp->type is ARRAY_TYPE)
     this->objectState |= MAP_MEMBER;
 
@@ -5006,6 +5006,120 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
   return err;
 }
 
+static int la_parse_postfix (la_t *this, VALUE *vp, int op_token) {
+  int err;
+
+  NEXT_TOKEN();
+
+  switch (TOKEN) {
+    case INTEGER_TYPE:
+    case NUMBER_TYPE: {
+      err = la_parse_primary (this, vp);
+      THROW_ERR_IF_ERR(err);
+      THROW_SYNTAX_ERR_IF(vp->type isnot INTEGER_TYPE and vp->type isnot NUMBER_TYPE,
+         "awaiting an integer or a number");
+
+      sym_t *sym = NULL;
+
+      sym = vp->sym;
+      THROW_SYNTAX_ERR_IF(sym is NULL, "awaiting a symbol");
+
+      switch (vp->type) {
+        case INTEGER_TYPE:
+          sym->value = INT(AS_INT((*vp)) + (op_token is TOKEN_PLUS_PLUS ? 1 : -1));
+          break;
+
+        case NUMBER_TYPE:
+          sym->value = NUMBER(AS_NUMBER((*vp)) + (op_token is TOKEN_PLUS_PLUS ? 1 : -1));
+      }
+
+      *vp = sym->value;
+      return LA_OK;
+    }
+
+    case TOKEN_ARRAY:
+    case TOKEN_MAP: {
+      int token = TOKEN;
+      VALUE tokenval = TOKENVAL;
+
+      const char *ptr = GETSTRPTR(PARSEPTR);
+      err = la_parse_primary (this, vp);
+      THROW_ERR_IF_ERR(err);
+      THROW_SYNTAX_ERR_IF(vp->type isnot INTEGER_TYPE and vp->type isnot NUMBER_TYPE,
+        "awaiting an integer or a number");
+      const char *cptr = GETSTRPTR(PARSEPTR);
+      integer len = cptr - ptr;
+      char buf[len + 3];
+      integer idx = 0;
+      for (integer i = 0; i < len; i++) {
+        if (ptr[i] is '-') {
+          if (ptr[i+1] is '-') { // there is room: if last then it is a syntax error
+            THROW_SYNTAX_ERR_IF(i + 2 is len or
+              (i + 3 is len and (ptr[i+2] is '\n' or ptr[i+2] is ';')),
+              "prefixed and postfixed operations on the same object, is not allowed");
+              /* the above should be catched before and should count and for
+               * the opposite operators
+               */
+
+            buf[idx++] = ' ';
+            i++;
+            continue;
+          }
+        }
+
+        if (ptr[i] is '+') {
+          if (ptr[i+1] is '+') {
+            THROW_SYNTAX_ERR_IF(i + 2 is len or
+              (i + 3 is len and (ptr[i+2] is '\n' or ptr[i+2] is ';')),
+              "prefixed and postfixed operations on the same object, is not allowed");
+
+            buf[idx++] = ' ';
+            i++;
+            continue;
+          }
+        }
+
+        buf[idx++] = ptr[i];
+      }
+
+      op_token = (op_token is TOKEN_PLUS_PLUS ? '+' : '-');
+      if (buf[idx - 1] is '\n') idx--;
+      buf[idx++] = op_token;
+      buf[idx++] = op_token;
+      buf[idx] = '\0';
+
+      la_string savepc = PARSEPTR;
+      PARSEPTR = StringNew(buf);
+
+      int curtok = TOKEN;
+      TOKEN = token;
+      TOKENVAL = tokenval;
+      err = la_parse_primary (this, vp);
+      THROW_ERR_IF_ERR(err);
+      PARSEPTR = savepc;
+      TOKEN = curtok;
+
+      VALUE v;
+      switch (vp->type) {
+        case INTEGER_TYPE:
+          v = INT(AS_INT((*vp)) + (op_token is '+' ? 1 : -1));
+          *vp = v;
+          return LA_OK;
+
+        case NUMBER_TYPE:
+          v = NUMBER(AS_NUMBER((*vp)) + (op_token is '-' ? 1 : -1));
+          *vp = v;
+          return LA_OK;
+      }
+    }
+
+    default:
+      THROW_SYNTAX_ERR("awaiting a variable, a map or an array");
+  }
+
+  return LA_NOTOK;
+}
+
 static int la_parse_primary (la_t *this, VALUE *vp) {
   int err = LA_OK;
   int c = TOKEN;
@@ -5311,6 +5425,10 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         return la_parse_func_call (this, vp, op, NULL, *vp);
       }
     }
+
+    case TOKEN_PLUS_PLUS:
+    case TOKEN_MINUS_MINUS:
+      return la_parse_postfix (this, vp, c);
 
     case TOKEN_EVALFILE: {
       this->funcState |= EVAL_UNIT_STATE;

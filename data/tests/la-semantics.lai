@@ -311,6 +311,20 @@ func semantics () {
       pm_dt_1 is 1 and
       pm_ar[1] is 0)
 
+  var didy = 3
+  var dady = ++didy
+  var dar = [2, 3]
+  var dard = --dar[0]
+  var dardi = {"k" : 3}
+  var dardilada = --dardi.k
+  assert_true ("testing prefix --,++ operators for expressions (devel)",
+      dady is 4 and
+      didy is 4 and
+      dard is 1 and
+      dar[0] is 1 and
+      dardilada is 2 and
+      dardi.k is 2)
+
   func loop_test_break (limit) {
     var i = 1
     while (i) {
