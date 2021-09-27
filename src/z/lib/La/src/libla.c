@@ -2147,6 +2147,8 @@ static int la_do_next_token (la_t *this, int israw) {
 
   TOKENSYM = NULL;
 
+  int token =  TOKEN;
+
   RESET_TOKEN;
 
   int c = la_ignore_ws (this);
@@ -2189,7 +2191,7 @@ static int la_do_next_token (la_t *this, int israw) {
     return TOKEN;
   }
 
-  if (is_digit (c) or (c is '-' and is_digit (PEEK_NTH_BYTE(0)))) {
+  if (is_digit (c) or (c is '-' and is_digit (PEEK_NTH_BYTE(0)) and token isnot INTEGER_TYPE)) {
     if (c is '0' and NULL isnot Cstring.byte.in_str ("xX", PEEK_NTH_BYTE(0))
         and is_hexchar (PEEK_NTH_BYTE(1))) {
       GET_BYTE();
@@ -3256,6 +3258,23 @@ static int la_parse_array_set (la_t *this) {
 
   if (token > TOKEN_ASSIGN) {
     if (token is TOKEN_PLUS_PLUS or token is TOKEN_MINUS_MINUS) {
+      int peek = PEEK_NTH_BYTE(0);
+      switch (peek) {
+        case TOKEN_INDEX_CLOS:
+        case TOKEN_SEMICOLON:
+        case TOKEN_PAREN_CLOS:
+        case TOKEN_NL:
+        case TOKEN_COLON:
+        case ' ':
+        case '\t':
+        case TOKEN_EOF:
+          break;
+
+        default:
+          THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+            (token is TOKEN_PLUS_PLUS ? "++" : "--"));
+      }
+
       ArrayType *array = (ArrayType *) AS_ARRAY(ary);
       int idx = AS_INT(ix);
 
@@ -3557,6 +3576,23 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   }
 
   if (c is TOKEN_PLUS_PLUS or c is TOKEN_MINUS_MINUS) {
+    int peek = PEEK_NTH_BYTE(0);
+    switch (peek) {
+      case TOKEN_INDEX_CLOS:
+      case TOKEN_SEMICOLON:
+      case TOKEN_PAREN_CLOS:
+      case TOKEN_NL:
+      case TOKEN_COLON:
+      case ' ':
+      case '\t':
+      case TOKEN_EOF:
+        break;
+
+      default:
+        THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+          (c is TOKEN_PLUS_PLUS ? "++" : "--"));
+    }
+
     switch (vp->type) {
       case INTEGER_TYPE: {
         integer *ary = (integer *) AS_ARRAY(array->value);
@@ -3726,8 +3762,24 @@ static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
   if (val->type > STRING_TYPE or IS_UFUNC(val->type))
     THROW_A_TYPE_MISMATCH(val->type, "illegal map type");
 
-
   if (token is TOKEN_PLUS_PLUS or token is TOKEN_MINUS_MINUS) {
+    int peek = PEEK_NTH_BYTE(0);
+    switch (peek) {
+      case TOKEN_INDEX_CLOS:
+      case TOKEN_SEMICOLON:
+      case TOKEN_PAREN_CLOS:
+      case TOKEN_NL:
+      case TOKEN_COLON:
+      case ' ':
+      case '\t':
+      case TOKEN_EOF:
+        break;
+
+      default:
+        THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+          (token is TOKEN_PLUS_PLUS ? "++" : "--"));
+    }
+
     switch (val->type) {
       case INTEGER_TYPE:
         AS_INT((*val)) = AS_INT((*val)) + (token is TOKEN_PLUS_PLUS ? 1 : -1);
@@ -4056,6 +4108,23 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   NEXT_TOKEN();
 
   if (TOKEN is TOKEN_PLUS_PLUS or TOKEN is TOKEN_MINUS_MINUS) {
+    int peek = PEEK_NTH_BYTE(0);
+    switch (peek) {
+      case TOKEN_INDEX_CLOS:
+      case TOKEN_SEMICOLON:
+      case TOKEN_PAREN_CLOS:
+      case TOKEN_NL:
+      case TOKEN_COLON:
+      case ' ':
+      case '\t':
+      case TOKEN_EOF:
+        break;
+
+      default:
+        THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+          (TOKEN is TOKEN_PLUS_PLUS ? "++" : "--"));
+    }
+
     switch (v->type) {
       case INTEGER_TYPE:
         AS_INT((*v)) = AS_INT((*v)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1);
@@ -4169,7 +4238,6 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   }
 
 theend:
-
   if (vp->type is STRING_TYPE or vp->type is ARRAY_TYPE)
     this->objectState |= MAP_MEMBER;
 
@@ -5006,7 +5074,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
   return err;
 }
 
-static int la_parse_postfix (la_t *this, VALUE *vp, int op_token) {
+static int la_parse_prefix (la_t *this, VALUE *vp, int op_token) {
   int err;
 
   NEXT_TOKEN();
@@ -5047,9 +5115,10 @@ static int la_parse_postfix (la_t *this, VALUE *vp, int op_token) {
       THROW_ERR_IF_ERR(err);
       THROW_SYNTAX_ERR_IF(vp->type isnot INTEGER_TYPE and vp->type isnot NUMBER_TYPE,
         "awaiting an integer or a number");
+
       const char *cptr = GETSTRPTR(PARSEPTR);
       integer len = cptr - ptr;
-      char buf[len + 3];
+      char buf[len + 128];
       integer idx = 0;
       for (integer i = 0; i < len; i++) {
         if (ptr[i] is '-') {
@@ -5061,7 +5130,11 @@ static int la_parse_postfix (la_t *this, VALUE *vp, int op_token) {
                * the opposite operators
                */
 
-            buf[idx++] = ' ';
+            if (i and (ptr[i - 1] isnot ' ' and ptr[i - 1] isnot TOKEN_INDEX_OPEN and ptr[i - 1] isnot TOKEN_PAREN_OPEN)) {
+              buf[idx++] = ' '; buf[idx++] = '+';
+              buf[idx++] = ' '; buf[idx++] = '1';
+            }
+
             i++;
             continue;
           }
@@ -5073,7 +5146,11 @@ static int la_parse_postfix (la_t *this, VALUE *vp, int op_token) {
               (i + 3 is len and (ptr[i+2] is '\n' or ptr[i+2] is ';')),
               "prefixed and postfixed operations on the same object, is not allowed");
 
-            buf[idx++] = ' ';
+            if (i and (ptr[i - 1] isnot ' ' and ptr[i - 1] isnot TOKEN_INDEX_OPEN and ptr[i - 1] isnot TOKEN_PAREN_OPEN)) {
+              buf[idx++] = ' '; buf[idx++] = '-';
+              buf[idx++] = ' '; buf[idx++] = '1';
+            }
+
             i++;
             continue;
           }
@@ -5082,22 +5159,35 @@ static int la_parse_postfix (la_t *this, VALUE *vp, int op_token) {
         buf[idx++] = ptr[i];
       }
 
+      if (buf[idx - 1] is '\n' or buf[idx - 1] is ';') {
+        idx--;
+      } else {
+        int toklen = GETSTRLEN(TOKENSTR);
+        if (buf[idx - toklen - 1] is ' ')
+          idx -= (toklen + 1);
+        else
+          THROW_SYNTAX_ERR("unexpected token on a prefix operation");
+      }
+
       op_token = (op_token is TOKEN_PLUS_PLUS ? '+' : '-');
-      if (buf[idx - 1] is '\n') idx--;
-      buf[idx++] = op_token;
-      buf[idx++] = op_token;
+
+      buf[idx++] = op_token; buf[idx++] = op_token;
       buf[idx] = '\0';
 
-      la_string savepc = PARSEPTR;
-      PARSEPTR = StringNew(buf);
-
       int curtok = TOKEN;
+      VALUE curtokenval = TOKENVAL;
+      la_string savepc = PARSEPTR;
+
+      PARSEPTR = StringNew(buf);
       TOKEN = token;
       TOKENVAL = tokenval;
+
       err = la_parse_primary (this, vp);
       THROW_ERR_IF_ERR(err);
+
       PARSEPTR = savepc;
       TOKEN = curtok;
+      TOKENVAL = curtokenval;
 
       VALUE v;
       switch (vp->type) {
@@ -5341,6 +5431,23 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       NEXT_TOKEN();
 
       if (TOKEN is TOKEN_PLUS_PLUS or TOKEN is TOKEN_MINUS_MINUS) {
+        int peek = PEEK_NTH_BYTE(0);
+        switch (peek) {
+          case TOKEN_INDEX_CLOS:
+          case TOKEN_SEMICOLON:
+          case TOKEN_PAREN_CLOS:
+          case TOKEN_NL:
+          case TOKEN_COLON:
+          case ' ':
+          case '\t':
+          case TOKEN_EOF:
+            break;
+
+          default:
+            THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+              (TOKEN is TOKEN_PLUS_PLUS ? "++" : "--"));
+        }
+
         VALUE v = *vp;
         sym_t *sym = vp->sym;
 
@@ -5428,7 +5535,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     case TOKEN_PLUS_PLUS:
     case TOKEN_MINUS_MINUS:
-      return la_parse_postfix (this, vp, c);
+      return la_parse_prefix (this, vp, c);
 
     case TOKEN_EVALFILE: {
       this->funcState |= EVAL_UNIT_STATE;
@@ -5817,6 +5924,23 @@ static int la_parse_stmt (la_t *this) {
         THROW_SYNTAX_ERR("expected assignment operator");
 
       if (token is TOKEN_PLUS_PLUS or token is TOKEN_MINUS_MINUS) {
+        int peek = PEEK_NTH_BYTE(0);
+        switch (peek) {
+          case TOKEN_INDEX_CLOS:
+          case TOKEN_SEMICOLON:
+          case TOKEN_PAREN_CLOS:
+          case TOKEN_NL:
+          case TOKEN_COLON:
+          case ' ':
+          case '\t':
+          case TOKEN_EOF:
+            break;
+
+          default:
+            THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+              (token is TOKEN_PLUS_PLUS ? "++" : "--"));
+        }
+
         switch (val.type) {
           case INTEGER_TYPE:
             symbol->value = INT(AS_INT(val) + (token is TOKEN_PLUS_PLUS ? 1 : -1));
@@ -6006,6 +6130,12 @@ static int la_parse_stmt (la_t *this) {
         la_release_val (this, val);
 
       return err;
+
+    case TOKEN_MINUS_MINUS:
+    case TOKEN_PLUS_PLUS: {
+      VALUE v;
+      return la_parse_prefix (this, &v, c);
+    }
 
     case TOKEN_COMMA:
       NEXT_TOKEN();

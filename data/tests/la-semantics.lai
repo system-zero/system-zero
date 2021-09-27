@@ -108,8 +108,8 @@ func expected_to_fail (msg, msg_on_error, a_expr, b_expr) {
   println ("[OK]")
 }
 
-func semantics () {
-  var retval = 0
+func zero_semantics () {
+  var retval
   var a = 1
 
   func fu (a) {
@@ -117,7 +117,7 @@ func semantics () {
   }
 
   retval = fu (11)
-  assert_true ("testing scope", retval is 11)
+  assert_true ("testing scope", retval == 11)
 
   var b = 2
 
@@ -126,14 +126,14 @@ func semantics () {
   }
 
   retval = fua (11, 12)
-  assert_true ("testing scope", retval is 23)
+  assert_true ("testing scope", retval == 23)
 
   func fub (b) {
     return a + b
   }
 
   retval = fub (10)
-  assert_true ("testing scope", retval is 11)
+  assert_true ("testing scope", retval == 11)
 
   func fuc (a, b, c) {
     func fud (a, b, c) {
@@ -144,7 +144,7 @@ func semantics () {
   }
 
   retval = fuc (10, 20, 30)
-  assert_true ("testing function nesting and scope", retval is 60)
+  assert_true ("testing function nesting and scope", retval == 60)
 
   var fue = func (c) {
     var fuda = func (b) {
@@ -155,10 +155,268 @@ func semantics () {
   }
 
   retval = fue (20)
-  assert_true ("testing function nesting and scope", retval is 41)
+  assert_true ("testing function nesting and scope", retval == 41)
+
+  var rba = 1 == 1 && 1 == 1 &&
+      (1 == 1 && 2 == 2) && (1 != 2 && 1 != 2)
+  var rn = null
+  var rbaa = rn != null && rn == true
+  var rbae
+  if rn != null && rn == true {
+    rbae = notok
+  } else {
+    rbae = ok
+  }
+  assert_true ("testing logical AND",
+      rba == true &&
+      rbaa == false &&
+      rbae == ok)
+
+  assert_false ("testing logical OR", 2 < 1 || 2 > 2 || 1 != 1 || 2 != 2 ||
+      2 < 2 || 1 > 2 || 1 > 2 || 2 < 1)
+
+  func fibo_tail (n, a, b) {
+    ifnot (n) { return a }
+
+    if (n == 1) { return b }
+
+    return fibo_tail (n - 1, b, a + b)
+  }
+
+  retval = fibo_tail (92, 0, 1)
+  assert_true ("testing recursive function", retval == 7540113804746346429)
+
+  func fibo_recursive (n) {
+    if (n < 2) { return n }
+    return fibo_recursive (n - 1) + fibo_recursive (n - 2)
+   }
+
+  retval = fibo_recursive (12)
+  assert_true ("testing recursive function", retval == 144)
+
+  retval = lambda (x, y) {
+    if (x <= 100) { return x * 2 } else { return y * 2 }} (100, 200)
+
+  assert_true ("testing lambda", retval == 200)
+
+  retval = lambda (x) { return x * 2 } (10) +
+           lambda (y) { return y / 2 } (20) +
+           lambda (z) { return z % 2 } (21) + 11
+
+  assert_true ("testing sequential lambdas", retval == 42)
+
+  retval = lambda (x, y) {
+    var xl = x + y
+    return lambda (k) { return k * 2 } (x) +
+           lambda (z) {
+             var i = lambda (x) { return x + 100 } (z)
+             return (z * 2) + i } (xl)
+  } (50, 100)
+
+  assert_true ("testing complex nested lambdas", retval == 650)
+
+  retval -= 50
+  assert_true ("testing binary assignment operator [-=]", retval == 600)
+  retval /= 20
+  assert_true ("testing binary assignment assignment operator [/=]", retval == 30)
+  retval *= 20
+  assert_true ("testing binary assignment assignment operator [*=]", retval == 600)
+  retval += -600
+  assert_true ("testing binary assignment assignment operator [+=]", retval == 0)
+
+  var v1 = (1 << 0)
+  var v2 = (1 << 1)
+  var v3 = (1 << 2)
+
+  retval |= v1
+  assert_true ("testing binary assignment assignment operator [|=]", retval == 1)
+  retval |= v2
+  assert_true ("testing binary assignment assignment operator [|=]", retval == 3)
+  retval &= v2
+  assert_true ("testing binary assignment assignment operator [&=]", retval == 2)
+  retval |= v3
+  assert_true ("testing binary assignment assignment operator [|=]", retval == 6)
+  retval &= ~(v3|v1|v2)
+  assert_true ("testing binary assignment assignment operator [&=]", retval == 0)
+  retval |= (v3|v1|v2)
+  assert_false ("testing binary assignment assignment operator [|=]",
+      (retval & v1 == 0) || (retval & v2 == 0) || (retval & v3 == 0))
+  assert_false ("testing bitwise operators",
+      (retval & v1 != 1) || (retval & v2 != 2) || (retval & v3 != 4))
+
+  var nifelse = func (n) {
+    if (n != 10) {
+      return false
+    } else {
+      if (n != 10) {
+        return false
+      } else {
+        if (n != 10) {
+          return false
+        } else {
+          if (n != 10) {
+            return false
+          } else {
+            if (n == 10) {
+              return true
+            } else {
+              return false
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert_true ("testing nested if/else",
+     nifelse (10) == true and
+     nifelse (11) == false)
+
+  var felseifnot = func (n) {
+    if (n != 10) {
+      return false
+    } else ifnot (n == 10) {
+      return false
+    } else {
+      ifnot (n == 10) {
+        return false
+      } else if (n == 10) {
+        return true
+      }
+    }
+  }
+
+  assert_true ("testing else if[not]",
+      felseifnot (10) == true and
+      felseifnot (11) == false)
+
+  var r = (-12 + -30)
+  assert_true ("testing signed addition", r == -42)
+
+  r = (-12 - -30)
+  assert_true ("testing signed substraction", r == 18)
+
+  r = (-168 / -4)
+  assert_true ("testing signed division", r == 42)
+
+  r = (-12 * -30)
+  assert_true ("testing signed multiplication", r == 360)
+
+  r = (2 * -30)
+  assert_true ("testing mixed unsigned and signed multiplication", r == -60)
+
+  r = (-12 % -30)
+  assert_true ("testing mixed unsigned and signed modulo", r == -12)
+
+  var c = 'α'
+  assert_true ("testing char '' (utf8)", c == 945)
+
+  var cc = '\x{3b1}'
+  assert_true ("testing char '' in hexadecimal notation", cc == 945)
+
+  c = '\''
+  assert_true ("testing single quote as char", c == 39)
+
+  func funptr {
+    func f1 (f, i, ia, f1, f2) {
+      return f (i, ia, f1, f2);
+    }
+
+    func f5 (i) {
+      return i - i + 1
+    }
+
+    func f4 (i, f) {
+      return (i * 2) + f (i)
+    }
+
+    func f3 (i, f, f1) {
+      return (i + 100) + f (i, f1)
+    }
+
+    func f2 (i, ia, f, f1) {
+      return (i * 2) + f (ia, f1, f5);
+    }
+
+    var r = f1 (f2, 20, 30, f3, f4)
+
+    func f9 (v1, v2, v3, v4, v5, v6, v7, v8, b9) {
+      return (v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + b9)
+    }
+
+    func ff (f) {
+      return f (1, 2, 3, 4, 5, 6, 7, 8, 9)
+    }
+
+    var s = f9
+    var rr = ff (s)
+
+    assert_true ("testing function references as function arguments",
+        r == 231 and
+        rr == 45)
+
+    var fassign = func (s) {return s * 2}
+    r = fassign (40)
+    assert_true ("testing function assignment to a variable", r == 80)
+
+    func tassign (f, i) {return f (i)}
+    r = tassign (fassign, 400)
+
+    var fu = func (x, y) {return x * y}
+    r = fu (10, 100)
+    assert_true ("testing assignment function to a variable", r == 1000)
+  }
+
+  funptr ()
+
+  var astr = "ταυtoughstuff"
+  var bstr = "ταυtoughstuffenough"
+  var cstr = "ταυtoughstuffenough"
+
+  assert_not_equal ("testing string equality", astr, bstr)
+  assert_equal ("testing string equality", bstr, cstr)
+
+  retval = len (astr);
+  assert_true ("testing string length", retval == 16)
+
+  var str = "asdf"
+  retval = str[-1]
+  assert_true ("testing string indices [get]", retval == 'f')
+
+  str[-1] = 'g'
+  retval = str[-1]
+  assert_true ("testing string indices [set]", retval == 'g')
+
+  retval = 200 - (str[0] + 3)
+  assert_true ("testing string indices [statement]", retval == 100)
+
+  var str_h = "ba"
+  str_h += "μπάκι"
+  str_h += 'α'
+  var s_str = " and μπακακάκια"
+  str_h += s_str
+
+  assert_true ("testing string appending operator [+=]", str_h == "baμπάκια and μπακακάκια")
+
+  assert_true_msg ("testing string appending operator [+=]",
+     "probably a freed variable that shouldn't be freed",  s_str == " and μπακακάκια")
+
+  var str_hh = "κοάξ"
+
+  str_h = '"' + "Βρεκεκεκὲ" + 'ξ' + ' ' + "κοὰξ" + ' ' + str_hh + '"'
+
+  assert_true ("testing string concatenation using the [+] operator",
+      str_h == "\"Βρεκεκεκὲξ κοὰξ κοάξ\"")
+
+}
+
+zero_semantics ()
+
+func semantics () {
+  var retval
 
   var rba = 1 is 1 and 1 is 1 and
-      (1 is 1 and 2 is 2) && (1 isnot 2 && 1 isnot 2)
+      (1 is 1 and 2 is 2) and (1 isnot 2 and 1 isnot 2)
   var rn = null
   var rbaa = rn isnot null and rn is true
   var rbac = if rn isnot null and rn is true then notok orelse ok
@@ -191,78 +449,6 @@ func semantics () {
       rbad is null and
       rbae is ok and
       is_blues is ok)
-
-  assert_false ("testing logical OR", 2 < 1 or 2 > 2 or 1 isnot 1 or 2 != 2 ||
-      2 < 2 || 1 > 2 || 1 > 2 || 2 < 1)
-
-  func fibo_tail (n, a, b) {
-    ifnot n then return a
-
-    if n is 1 then return b
-
-    return fibo_tail (n - 1, b, a + b)
-  }
-
-  retval = fibo_tail (92, 0, 1)
-  assert_true ("testing recursive function", retval is 7540113804746346429)
-
-  func fibo_recursive (n) {
-    if n < 2 then return n
-    return fibo_recursive (n - 1) + fibo_recursive (n - 2)
-   }
-
-  retval = fibo_recursive (12)
-  assert_true ("testing recursive function", retval is 144)
-
-  retval = lambda (x, y) {
-    if (x <= 100) { return x * 2 } else { return y * 2 }} (100, 200)
-
-  assert_true ("testing lambda", retval is 200)
-
-  retval = lambda (x) { return x * 2 } (10) +
-           lambda (y) { return y / 2 } (20) +
-           lambda (z) { return z % 2 } (21) + 11
-
-  assert_true ("testing sequential lambdas", retval is 42)
-
-  retval = lambda (x, y) {
-    var xl = x + y
-    return lambda (k) { return k * 2 } (x) +
-           lambda (z) {
-             var i = lambda (x) { return x + 100 } (z)
-             return (z * 2) + i } (xl)
-  } (50, 100)
-
-  assert_true ("testing complex nested lambdas", retval is 650)
-
-  retval -= 50
-  assert_true ("testing binary assignment operator [-=]", retval is 600)
-  retval /= 20
-  assert_true ("testing binary assignment assignment operator [/=]", retval is 30)
-  retval *= 20
-  assert_true ("testing binary assignment assignment operator [*=]", retval is 600)
-  retval += -600
-  assert_true ("testing binary assignment assignment operator [+=]", retval is 0)
-
-  var v1 = (1 << 0)
-  var v2 = (1 << 1)
-  var v3 = (1 << 2)
-
-  retval |= v1
-  assert_true ("testing binary assignment assignment operator [|=]", retval is 1)
-  retval |= v2
-  assert_true ("testing binary assignment assignment operator [|=]", retval is 3)
-  retval &= v2
-  assert_true ("testing binary assignment assignment operator [&=]", retval is 2)
-  retval |= v3
-  assert_true ("testing binary assignment assignment operator [|=]", retval is 6)
-  retval &= ~(v3|v1|v2)
-  assert_true ("testing binary assignment assignment operator [&=]", retval is 0)
-  retval |= (v3|v1|v2)
-  assert_false ("testing binary assignment assignment operator [|=]",
-      (retval & v1 is 0) or (retval & v2 is 0) or (retval & v3 is 0))
-  assert_false ("testing bitwise operators",
-      (retval & v1 != 1) or (retval & v2 != 2) or (retval & v3 != 4))
 
   var pm_map = {"key" : 1}
   func p_m (x) {
@@ -317,12 +503,28 @@ func semantics () {
   var dard = --dar[0]
   var dardi = {"k" : 3}
   var dardilada = --dardi.k
-  assert_true ("testing prefix --,++ operators for expressions (devel)",
+  assert_true ("testing prefix --,++ operators for expressions",
       dady is 4 and
       didy is 4 and
       dard is 1 and
       dar[0] is 1 and
       dardilada is 2 and
+      dardi.k is 2)
+  ++didy
+  dady = didy
+  --didy
+  ++dar[0]
+  dard = dar[0]
+  --dar[0]
+  ++dardi.k
+  dardilada = dardi.k
+  --dardi.k
+  assert_true ("testing prefix --,++ operators for statements",
+      dady is 5 and
+      didy is 4 and
+      dard is 2 and
+      dar[0] is 1 and
+      dardilada is 3 and
       dardi.k is 2)
 
   func loop_test_break (limit) {
@@ -610,11 +812,11 @@ func semantics () {
       var ign = 0
       var ign_str = "a"
       if (i is 10) {
-        i += 1
+        i++
         continue
       }
       s += i
-      i += 1
+      i++
     }
 
     return s
@@ -625,7 +827,7 @@ func semantics () {
   sum = lambda {
     var s = 0; var i = 0;
     loop (100) {
-      break if (i is 10)
+      break if i is 10
       s += i; i += 1
     }
     return s
@@ -730,52 +932,6 @@ func semantics () {
   map_sum.calc (0)
   assert_true ("testing nested loops", map_sum.res is 36)
 
-  var nifelse = func (n) {
-    if (n isnot 10) {
-      return false
-    } else {
-      if (n isnot 10) {
-        return false
-      } else {
-        if (n isnot 10) {
-          return false
-        } else {
-          if (n isnot 10) {
-            return false
-          } else {
-            if (n is 10) {
-              return true
-            } else {
-              return false
-            }
-          }
-        }
-      }
-    }
-  }
-
-  assert_true ("testing nested if/else",
-     nifelse (10) is true and
-     nifelse (11) is false)
-
-  var felseifnot = func (n) {
-    if (n isnot 10) {
-      return false
-    } else ifnot (n is 10) {
-      return false
-    } else {
-      ifnot (n is 10) {
-        return false
-      } else if (n is 10) {
-        return true
-      }
-    }
-  }
-
-  assert_true ("testing else if[not]",
-      felseifnot (10) is true and
-      felseifnot (11) is false)
-
   var if_short = func (n) {
     if n is 10 or n is 11 then
       if n isnot 20 then
@@ -847,124 +1003,6 @@ func semantics () {
       xar[ifnot false then 0 orelse 1] is 31 and
       xar[if true then 1 orelse 0] is 41 and
       x_y (if true then 10 orelse 0, 21) is 31)
-
-  var r = (-12 + -30)
-  assert_true ("testing signed addition", r is -42)
-
-  r = (-12 - -30)
-  assert_true ("testing signed substraction", r is 18)
-
-  r = (-168 / -4)
-  assert_true ("testing signed division", r is 42)
-
-  r = (-12 * -30)
-  assert_true ("testing signed multiplication", r is 360)
-
-  r = (2 * -30)
-  assert_true ("testing mixed unsigned and signed multiplication", r is -60)
-
-  r = (-12 % -30)
-  assert_true ("testing mixed unsigned and signed modulo", r is -12)
-
-  var c = 'α'
-  assert_true ("testing char '' (utf8)", c is 945)
-
-  var cc = '\x{3b1}'
-  assert_true ("testing char '' in hexadecimal notation", cc is 945)
-
-  c = '\''
-  assert_true ("testing single quote as char", c is 39)
-
-  func funptr {
-    func f1 (f, i, ia, f1, f2) {
-      return f (i, ia, f1, f2);
-    }
-
-    func f5 (i) {
-      return i - i + 1
-    }
-
-    func f4 (i, f) {
-      return (i * 2) + f (i)
-    }
-
-    func f3 (i, f, f1) {
-      return (i + 100) + f (i, f1)
-    }
-
-    func f2 (i, ia, f, f1) {
-      return (i * 2) + f (ia, f1, f5);
-    }
-
-    var r = f1 (f2, 20, 30, f3, f4)
-
-    func f9 (v1, v2, v3, v4, v5, v6, v7, v8, b9) {
-      return (v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + b9)
-    }
-
-    func ff (f) {
-      return f (1, 2, 3, 4, 5, 6, 7, 8, 9)
-    }
-
-    var s = f9
-    var rr = ff (s)
-
-    assert_true ("testing function references as function arguments",
-        r is 231 and
-        rr is 45)
-
-    var fassign = func (s) {return s * 2}
-    r = fassign (40)
-    assert_true ("testing function assignment to a variable", r is 80)
-
-    func tassign (f, i) {return f (i)}
-    r = tassign (fassign, 400)
-
-    var fu = func (x, y) {return x * y}
-    r = fu (10, 100)
-    assert_true ("testing assignment function to a variable", r is 1000)
-  }
-
-  funptr ()
-
-  var astr = "ταυtoughstuff"
-  var bstr = "ταυtoughstuffenough"
-  var cstr = "ταυtoughstuffenough"
-
-  assert_not_equal ("testing string equality", astr, bstr)
-  assert_equal ("testing string equality", bstr, cstr)
-
-  retval = len (astr);
-  assert_true ("testing string length", retval is 16)
-
-  var str = "asdf"
-  retval = str[-1]
-  assert_true ("testing string indices [get]", retval is 'f')
-
-  str[-1] = 'g'
-  retval = str[-1]
-  assert_true ("testing string indices [set]", retval is 'g')
-
-  retval = 200 - (str[0] + 3)
-  assert_true ("testing string indices [statement]", retval is 100)
-
-  var str_h = "ba"
-  str_h += "μπάκι"
-  str_h += 'α'
-  var s_str = " and μπακακάκια"
-  str_h += s_str
-
-  assert_true ("testing string appending operator [+=]", str_h is "baμπάκια and μπακακάκια")
-
-  assert_true_msg ("testing string appending operator [+=]",
-     "probably a freed variable that shouldn't be freed",  s_str is " and μπακακάκια")
-
-  var str_hh = "κοάξ"
-
-  str_h = '"' + "Βρεκεκεκὲ" + 'ξ' + ' ' + "κοὰξ" + ' ' + str_hh + '"'
-
-  assert_true ("testing string concatenation using the [+] operator",
-      str_h is "\"Βρεκεκεκὲξ κοὰξ κοάξ\"")
 
   var str_iter = "κοάξasd"
   var sum_i = 0
