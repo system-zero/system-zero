@@ -172,8 +172,13 @@ func zero_semantics () {
       rbaa == false &&
       rbae == ok)
 
-  assert_false ("testing logical OR", 2 < 1 || 2 > 2 || 1 != 1 || 2 != 2 ||
-      2 < 2 || 1 > 2 || 1 > 2 || 2 < 1)
+  var vor = 2 < 1 || 2 > 2 || 1 != 1 || 2 != 2 || 2 < 2 || 1 > 2
+  var vora = 2 < 1 || 2 > 2 || 1 != 1 || 2 != 2 || 2 < 2 || 1 > 2 || 2 == 2
+  var vorb = 2 < 1 || 2 == 2 || 1 != 1 || 2 != 2 || 2 < 2 || 1 > 2
+  assert_true ("testing logical OR",
+      vor is false and
+      vora is true and
+      vorb is true)
 
   func fibo_tail (n, a, b) {
     ifnot (n) { return a }
@@ -189,7 +194,7 @@ func zero_semantics () {
   func fibo_recursive (n) {
     if (n < 2) { return n }
     return fibo_recursive (n - 1) + fibo_recursive (n - 2)
-   }
+  }
 
   retval = fibo_recursive (12)
   assert_true ("testing recursive function", retval == 144)
@@ -412,7 +417,7 @@ func zero_semantics () {
 
 zero_semantics ()
 
-func semantics () {
+func self_semantics () {
   var retval
 
   var rba = 1 is 1 and 1 is 1 and
@@ -1058,6 +1063,33 @@ func semantics () {
   assert_true ("testing expressions to the format function", "42" is fmtexp)
 
   assert_true ("testing stdin and fileno", 0 is fileno (stdin))
+
+  func tail_call_rec (n, a, b) {
+    ifnot (n) { return a }
+
+    if (n == 1) { return b }
+
+    return self (n - 1, b, a + b)
+  }
+  var rtc = tail_call_rec (92, 0, 1)
+
+  func tail_call_rec_str_double (n, s) {
+    return s ifnot n
+    var ns = s + s
+    return self (--n, ns)
+  }
+  var rtcs = tail_call_rec_str_double (4, "a")
+
+  #func tail_call_long (n) {
+  #  return n ifnot n
+  #  return self (--n)
+  #}
+
+  # var trcl = tail_call_long (1000000)
+
+  assert_true ("testing self as a recursive tail call",
+      rtc is 7540113804746346429 and
+      rtcs is "aaaaaaaaaaaaaaaa")
 
   func import_test () {
     func path_module () {
@@ -1985,7 +2017,7 @@ func semantics () {
   public const c_visible = "visible constant"
 }
 
-semantics ()
+self_semantics ()
 
 assert_equal ("testing public variable attribute", v_visible, "visible variable")
 assert_equal ("testing public function attribute", f_visible (22), 44)

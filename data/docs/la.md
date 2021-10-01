@@ -156,19 +156,14 @@ Comments.
   }
 
   println (fibo_recursive (12)) # => 144
-  # however the stack can be easily exhausted with some thousands of calls, at
-  # least in this implementation.
-  # Note also that in this case, it isn't a requirenment to declare first the
-  # function to use it.
-  # Normally it is an error to use a symbol, that hasn't been already declared.
-  # The parsing order is the classic top to bottom.
-  # In this implementations, functions are not doing any kind of parsing first,
-  # at the time of the declaration, other than the time of the evaluation.
-  # That it is the reason why this works for recursive functions, as the function
-  # symbol name has been already declared, at the time when the inline code calls
-  # itself. As a note, this is dangerous, since code that hasn't been used, it
-  # doesn't checked at all for correctness, but this is the nature of dynamical
-  # programming languages that evaluate code at the runtime.
+  # however the stack can be easily exhausted with some thousands of calls.
+  # In the standard own interface, the compiler performs a tail call optimization
+  # if explicitly call itself as `self`. However the return statement should be
+  # a tail call, e.g., the last one in the scope.
+  # In the above case it's not a tail call though, so hypothetically can overflow.
+  # But the first form it is a tail call, and so the return statement it could be
+  # written as:
+  #   return self (n - 1, b, a + b)
 
   # Functions can be anonymous.
 
@@ -253,7 +248,7 @@ Comments.
     do {
       sum += i
       i += 1  # there is no support for ++,-- assignment operators because of
-              # side affects to support both prefix and postfix with a mix of
+              # side effects to support both prefix and postfix with a mix of
               # functions calls. The easier is the prefix semantics. The usefull
               # though it is with the postfix semantics, which may need to track
               # unexpected "vibrations". 
@@ -561,19 +556,19 @@ and semantics of the language.
     #     ifnot cond ...
 
   # It is illegal to declare a variable in such conditionals, as in such
-  # case, it might produce side affects to the rest of the code.
+  # case, it might produce side effects to the rest of the code.
 
   # It is also illegal to use all kind of loops or block operations that
   # create a new scope.
 
   # This exact syntax can be used as an expression. The only difference is
-  # instead of single statements, evaluates single expressions:
+  # that instead of single statements, evaluates single expressions:
 
   # in a variable assignment:
   var x = null
   var v = if x is null then "null" orelse "notnull" # => "null"
    # here the `is` reserved keyword is same as '=='
-   # also the `isnot` keyword is same as '!='. Both is the prefered way.
+   # also the `isnot` keyword is same as '!='.
 
   # in a function call argument list:
   func f (arg) {
@@ -603,9 +598,6 @@ and semantics of the language.
   # The language supports a mechanism, where the current value, becomes the
   # first argument to the next function in the chain, or the last result value.
 
-  # As it evaluates only single expressions, and because the first value is
-  # copied at the begining of the sequence, it should not have side affects:
-
   var r = ar: len () # => 3
   # Here what is assigned is the length of the array value. The len() function
   # it takes an object argument. In this case the `ar' value is pushed to the
@@ -620,9 +612,8 @@ and semantics of the language.
   # here the `r' value is passed as an argument to the user defined function
   # fdouble(), and the result of the call is passed as a first argument to
   # function integer_to_string() from the std-module. This function gets a
-  # second argument which is the base that the integer would stringnize.
-  # Here is in base 16. Note that in this case it doesn't has to use the
-  # full function name, as it is prepended based on the type of the value.
+  # second argument which is the base. Here is in base 16. Note that in this
+  # case the underlying type it is prepended to the function name.
 
   # Any valid expression is a valid value.
   var s = "97"
@@ -817,6 +808,25 @@ and semantics of the language.
   # a single token expression, so those are not valid code:
     #  return map.prop if true
     #  return array[0] if true
+
+
+  # Prefix and postfix [in|de]crement operators ++, --:
+  # Those should have the same semantics with C.
+
+
+  # Recursive functions and stack overflows.
+  # Because calling recursively a function, it easily can overflow the stack
+  # with some thousand calls, the language supports a `self` keyword after a
+  # return statement, that it can be used to call the own function again. In
+  # this case a tail call optimization it is performed. If the statement it is
+  # not a tail call, a syntax error is raised:
+  func rec (n) {
+    return n ifnot (n)
+    return self (--n)
+  }
+
+  println (rec (2000000))
+
 ```
 The first level/point aims mostly, to investigate syntactical ways to imitate
 the exact human's mind usual roolllingg flow that happens the exact time that

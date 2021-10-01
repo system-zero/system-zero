@@ -4757,7 +4757,60 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
     int loopcount = this->loopCount;
     this->loopCount = 0;
 
+    la_string savepc = PARSEPTR;
+again:
+
     err = la_parse_string (this, uf->body);
+
+    if (err is LA_ERR_TCALLREC) {
+      NEXT_TOKEN();
+      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_OPEN,
+        "error while parsing function call, awaiting (");
+
+      this->curState |= MALLOCED_STRING_STATE;
+      NEXT_TOKEN();
+      paramCount = la_parse_expr_list (this);
+      this->curState &= ~MALLOCED_STRING_STATE;
+
+      int peek_tok = PEEK_NTH_TOKEN(0);
+
+      if (peek_tok isnot TOKEN_SEMICOLON and peek_tok isnot TOKEN_NL and
+          peek_tok isnot TOKEN_EOF and (peek_tok & 0xff) is TOKEN_BINOP)
+        THROW_SYNTAX_ERR ("awaiting a tail call");
+
+      if (paramCount < 0)
+        return paramCount;
+
+      if (expectargs isnot paramCount)
+        THROW_NUM_FUNCTION_ARGS_MISMATCH(expectargs, paramCount);
+
+      while (paramCount > 0) {
+        this->funArgs[--paramCount] = stack_pop (this);
+      }
+
+      for (int i = 0; i < expectargs; i++) {
+        VALUE v = this->funArgs[i];
+        VALUE val = la_copy_value (v);
+        val.refcount = 0;
+        this->funArgs[i] = val;
+      }
+
+      la_fun_release_symbols (uf, 1, is_method);
+
+      for (int i = 0; i < expectargs; i++) {
+        VALUE v = this->funArgs[i];
+        if (v.type & UFUNCTION_TYPE) {
+          funT *f = AS_FUNC_PTR(v);
+          uf_argsymbols[i] = la_define_symbol (this, uf, uf->argName[i], (UFUNC_TYPE | (f->nargs << 8)), v, 0);
+        } else {
+          uf_argsymbols[i] = la_define_symbol (this, uf, uf->argName[i], v.type, v, 0);
+        }
+      }
+
+      goto again;
+    }
+
+    PARSEPTR = savepc;
 
     this->loopCount = loopcount;
     if (this->loopCount)
@@ -6295,6 +6348,13 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
           err = la_consume_binop (this);
           THROW_SYNTAX_ERR_IF(err is LA_NOTOK, "awaiting the end of a binary operation");
           lhs = FALSE_VALUE;
+          goto theend;
+        }
+      } else {
+        if (Cstring.eq_n (ptr, "or", 2) or Cstring.eq_n (ptr, "||", 2)) {
+          err = la_consume_binop (this);
+          THROW_SYNTAX_ERR_IF(err is LA_NOTOK, "awaiting the end of a binary operation");
+          lhs = TRUE_VALUE;
           goto theend;
         }
       }
@@ -8794,8 +8854,14 @@ static int la_parse_return (la_t *this) {
     goto check_value;
   }
 
+  if (TOKEN is TOKEN_USRFUNC) {
+    if (Cstring.eq ("self", sym_key (this, TOKENSTR)))
+      return LA_ERR_TCALLREC;
+  }
+
   HASTORETURN = 1;
   this->funcState |= RETURN_STATE;
+
   err = la_parse_expr (this, &scope->result);
   this->funcState &= ~RETURN_STATE;
   THROW_ERR_IF_ERR(err);
@@ -10089,6 +10155,14 @@ static int la_std_def (la_t *this, la_opts opts) {
 
   v = INT(0);
   err = la_define (this, "errno", INTEGER_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  funT *uf = Fun_new (this, funNew (
+    .name = "self", .namelen = 4, .parent = this->function, .nargs = 0));
+
+  v = PTR(uf);
+  if (NULL is la_define_symbol (this, this->function, "self", (UFUNC_TYPE | (0 << 8)), v, 0))
+    return LA_NOTOK;
 
   return err;
 }
