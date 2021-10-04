@@ -537,11 +537,79 @@ principal, so they should not violate expectations.
 If a specific point, it does not obey or if it does, then naturrally it should
 be considered as either a bug that should be fixed, or should not be supported.
 
-The next is a first draft of a document that describes the own syntax
-and semantics of the language.
+The next section is a very first draft of a document that describes the
+experiences towards a more humanized kind of code expressions, that could
+litterally express the underlying thought and so and the intention, and
+which is the single most precious jewel when reading and re-writting the
+code.
+
+Those mentioned expressions have been implemented, but this is really dynamic
+development, and so it needs a bit of time to get understand the best balance
+without ambiguities. Most of them though are already established and they will
+never change. So doubts might be mentioned in cases, which it will simply means
+that there simple doubts.
 
 ```js
-  # if[not]/then/[orelse]/[end] conditional of single statements:
+
+# Development Items (all stand by its own):
+
+#  - if cond then do this orelse do that, kind of Code Expressions. See below.
+
+#  - instead of:
+#    if condition is true then do [control statements {return, break, continue}]
+#    to
+#    [control statement] [argument] if condition
+#    or more literally as:
+#    do this if true expressions
+#   
+    forever
+      break if true
+
+#   See the section for the appropriate statement and the argument that might
+#   take.
+
+# - replace the '==', '!=', '&&' and '||' operators with the: `is`, `isnot`,
+#   `and`, and `or` key operators:
+
+    if (1 is 1 and 2 is 3 or 3 is 3 and 4 isnot 5) println (ok)
+
+# - use the `ok' and `notok' keywords to denote success or failure. The
+#   underlying value is '0' and '-1' internally, which is the same as C.
+
+# - loops can have as a body a single statement that fit in a single line.
+#   In this case the braces are ommited:
+
+    while (true) break
+#   or
+    while (true)
+      break
+#  But no more than a statement than fit in a single line, and which may
+#  have a loops that produce another loop, as long all those they fit in
+#  a single line.
+#  See the specific section, below.
+
+# if cond then do this orelse do that, kind of Code Expressions.
+
+# This is a dyadic operation, which is a "do this or do that" entity. An
+# orelse evaluates the next entity (the next dyadic operation). Evaluation
+# stops, when there are no more orelse to evaluate, or when a condition of
+# the executed dyadic operation found true. In this case the next _single_
+# statement is evaluated and no more than one.
+
+# When it is being used as an expression this litteraly is:
+# if cond then return expr orelse return sexpr, as it produces and returns
+# a value. Again a single expression is evaluated and no more than one.
+# Theoreticaly it is not possible to influence the outter environment within
+# an expression as it has not has such mechanics, though currently they can:
+#  - through a function call
+#  - with the ++,-- operators
+
+  # development: strict environemt, as is with private/public to denotes some
+  # constraints to possibilities, like not be able to use the ++,-- operators.
+  # For future future to call only functions that evaluate only expressions,
+  # or functions that do not have code that influence or is influenced by the
+  # outter environment.
+
   var condition = 0
   if condition then println ("not zero") orelse println ("zero")
   # The `end` can be ommited here, because it follows a new line.
@@ -549,17 +617,16 @@ and semantics of the language.
   # Also an `orelse` can be ommited:
   ifnot condition then println ("zero")
 
-  # Those conditionals are dyadic operations and they can be followed by
-  # other if[not]/then/[orelse]/[end], in a linear way:
-    # if cond then
-    #   if cond then
-    #     ifnot cond ...
-
   # It is illegal to declare a variable in such conditionals, as in such
   # case, it might produce side effects to the rest of the code.
 
   # It is also illegal to use all kind of loops or block operations that
   # create a new scope.
+  # Those conditionals are dyadic operations and they can be followed by
+  # other if[not]/then/[orelse]/[end], in a linear way:
+    # if cond then
+    #   if cond then
+    #     ifnot cond ...
 
   # This exact syntax can be used as an expression. The only difference is
   # that instead of single statements, evaluates single expressions:
@@ -592,6 +659,45 @@ and semantics of the language.
   # without them, the `orelse` would continue with the add operation and the
   # result would be different (without the last κοάξ).
 
+# All the loops can be written as a single statements that fit in a single
+# line without braces:
+
+  func f (x) return x * 3
+  while (true) break
+  for (var i = 0; i < 10; i++) for (var j = 0; j < 10; j++) println (i * j)
+  # the same above could be splitted as:
+  for (var i = 0; i < 10; i++)
+    for (var j = 0; j < 10; j++) println (i * j)
+  # that means that if the next token after the for init statements is a new
+  # line, then the next line is considered as a single statement. Searching
+  # for a single statement stops at the new line character or at a semicolon
+  # character that is not in a string or to another loop construct statements.
+  # If a token found that it doesn't denote the end of evaluated string, then
+  # (for now) a warning is issued about extra statements.
+    # development: this can be an instance option -> be_strict
+
+  # One line functions.
+  # Likewise, a function can define its body as a single line body, if it is
+  # not surrounded by a pair of braces '{}':
+  func xx (x) return x * 2
+  func xxx (x)
+    return x * 2
+
+  # Currently the body can contain multiply statements, and evaluated correctly
+  # as long they have clear semantices and which they usually have. There are
+  # cases though that multiply statements in a single line without semicolons at
+  # the end, they produce unintented evaluation. For that reason only a statement
+  # can be guarranteed.
+
+```
+
+The next is a first draft of a document that describes the syntax and semantics of the language.
+of the language. This development is towards to a more functional environment,
+and to a more concise code and expressions.
+This is under development. Many concepts have been stabilized or almost ready,
+though there are still left to be implemented.
+
+```js
 
   # Chaining with a Sequence of Functions Calls and Continuational Expressions.
 
@@ -606,9 +712,9 @@ and semantics of the language.
   # Lets use some functions from the std-module.
   import ("std")
 
-  func fdouble (d) { return d * 2 }
+  func fdouble (d) return d * 2
 
-  var rs = r: fdouble (): to_string (16)  # =
+  var rs = r: fdouble (): to_string (16)  # 0x6
   # here the `r' value is passed as an argument to the user defined function
   # fdouble(), and the result of the call is passed as a first argument to
   # function integer_to_string() from the std-module. This function gets a
@@ -704,9 +810,9 @@ and semantics of the language.
   Type Typename {
   private
     "key"
-    "init" : func (x) { this.key = x }
+    "init" : func (x) this.key = x
   public
-    "fun" : func { return this.key }
+    "fun" : func return this.key
    }
 
   # A user defined type is initialized with the `New` keyword:
@@ -771,13 +877,13 @@ and semantics of the language.
   # execution without returning back a value. In this case the
   # value becomes `null`.
 
-  func ret1 () { return }
+  func ret1 () return
   println (ret1 ()) # => null
 
   # A return that is followed by an expression and a semicolon or
   # a new line, returns the value of the expression.
 
-  func ret2 () { return true }
+  func ret2 () return true
   println (ret2 ()) # => true
 
   # A return that is followed by an if[not], it breaks function
@@ -794,7 +900,7 @@ and semantics of the language.
 
   # A return that is followed by a single token expression, which is
   # followed by an if[not], it returns the value of the expression
-  # if the next expression is evaluated to true.
+  # if the next expression is evaluated to true:
 
   func ret4 (x) {
     var y = x * 2
@@ -804,7 +910,7 @@ and semantics of the language.
 
   println (ret4 (10)) # => 20
   println (ret4 (100)) # => 400
-  # Note that a map property or method, or an array item it is not
+  # note that a map property or method, or an array item it is not
   # a single token expression, so those are not valid code:
     #  return map.prop if true
     #  return array[0] if true
@@ -812,7 +918,6 @@ and semantics of the language.
 
   # Prefix and postfix [in|de]crement operators ++, --:
   # Those should have the same semantics with C.
-
 
   # Recursive functions and stack overflows.
   # Because calling recursively a function, it easily can overflow the stack
@@ -826,6 +931,8 @@ and semantics of the language.
   }
 
   println (rec (2000000))
+
+
 
 ```
 The first level/point aims mostly, to investigate syntactical ways to imitate

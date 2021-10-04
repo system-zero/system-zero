@@ -443,6 +443,7 @@ typedef struct tokenState {
 #define PREVTOKEN   this->prevToken
 #define HASTORETURN this->hasToReturn
 
+
 #define THROW_ERR_IF_ERR(_e_) do { if (_e_ < 0) return _e_; } while (0)
 #define THROW_SYNTAX_ERR(__msg__) do { return this->syntax_error (this, __msg__); } while (0)
 #define THROW_SYNTAX_ERR_IF_ERR(_e_, _msg_) \
@@ -659,7 +660,9 @@ static int la_err_ptr (la_t *this, int err) {
   size_t len = GETSTRLEN(PARSEPTR);
 
   char *sp = (char *) keep;
-  while (sp > this->script_buffer and 0 is Cstring.byte.in_str (";\n", *(sp - 1)))
+  while (sp > this->script_buffer and
+      0 is Cstring.byte.in_str (";\n", *(sp - 1)) and
+      *(sp - 1) >= ' ')
     sp--;
 
   size_t n_len = (keep - sp);
@@ -684,6 +687,33 @@ static int la_err_ptr (la_t *this, int err) {
   this->print_bytes (this->err_fp, "\n");
 
   return err;
+}
+
+static void la_print_current_line (la_t *this, const char *msg, FILE *fp) {
+  const char *sp = GETSTRPTR(PARSEPTR);
+  const char *end = sp;
+  int max = 80;
+  while (max-- and
+      sp > this->script_buffer and
+      0 is Cstring.byte.in_str (";\n", *(sp - 1)) and
+      *(sp - 1) >= ' ')
+    sp--;
+  while (*end) {
+    if (*(end + 1))
+      if (Cstring.byte.in_str (";\n", *(end + 1)))
+        break;
+
+    end++;
+  }
+
+  if (fp is NULL) fp = this->err_fp;
+
+  if (NULL isnot msg) fprintf (fp, "%s", msg);
+
+  for (int i = 0; i < end - sp; i++)
+    fprintf (fp, "%c", sp[i]);
+
+  fprintf (fp, "\n");
 }
 
 static int la_syntax_error (la_t *this, const char *msg) {
@@ -3867,7 +3897,6 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
     goto assign;
   }
 
-
   if (NULL isnot TOKENSYM and
       IS_INT(TOKENSYM->value) and
       AS_VOID_PTR(TOKENSYM->value) is la_parse_array_def) {
@@ -4772,10 +4801,12 @@ again:
       paramCount = la_parse_expr_list (this);
       this->curState &= ~MALLOCED_STRING_STATE;
 
+      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,
+        "error while parsing function call, awaiting )");
+
       int peek_tok = PEEK_NTH_TOKEN(0);
 
-      if (peek_tok isnot TOKEN_SEMICOLON and peek_tok isnot TOKEN_NL and
-          peek_tok isnot TOKEN_EOF and (peek_tok & 0xff) is TOKEN_BINOP)
+      if ((peek_tok & 0xff) is TOKEN_BINOP)
         THROW_SYNTAX_ERR ("awaiting a tail call");
 
       if (paramCount < 0)
@@ -5822,9 +5853,10 @@ static int la_handle_break (la_t *this) {
     nth++;
     c = NEXT_BYTE_NOWS_INLINE_N(&nth);
 
+
     if (c isnot TOKEN_SEMICOLON and c isnot TOKEN_NL and
         c isnot TOKEN_BLOCK_CLOS and c isnot TOKEN_EOF and
-        c isnot 'i')
+        c isnot 'i' and c isnot 'e')
       THROW_SYNTAX_ERR("unexpected token after a break statement");
 
     num -= ('0' + 1);
@@ -6412,6 +6444,67 @@ static int la_parse_expr (la_t *this, VALUE *vp) {
   return err;
 }
 
+static int la_parse_block (la_t *this, const char *descr) {
+  if (TOKEN is TOKEN_BLOCK)
+    return LA_OK;
+
+  if (TOKEN is TOKEN_EOF)
+    THROW_SYNTAX_ERR(STR_FMT("%s: not a string", descr));
+
+  if (TOKEN is TOKEN_NL) NEXT_TOKEN();
+
+  THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL,
+    STR_FMT("%s: expecting a string, found a new line\n", descr));
+
+  int parens = 0;
+  int in_str = 0;
+  int c = 0;
+  int prev;
+
+  while (1) {
+    prev = c;
+    c = GET_BYTE();
+
+    switch (c) {
+      case TOKEN_PAREN_OPEN:
+        ifnot (in_str) parens++;
+         continue;
+
+      case TOKEN_PAREN_CLOS:
+        ifnot (in_str) parens--;
+         continue;
+
+      case '"':
+        if (prev isnot TOKEN_ESCAPE_CHR) {
+          if (in_str)
+            in_str--;
+          else
+            in_str++;
+        }
+
+        continue;
+
+      case TOKEN_SEMICOLON:
+        if (parens or in_str)
+          continue;
+        break;
+
+      case TOKEN_NL:
+        UNGET_BYTE();
+
+      case TOKEN_EOF:
+        break;
+
+      default:
+        continue;
+    }
+
+    break;
+  }
+
+  return LA_OK;
+}
+
 static int la_consume_ifelse (la_t *this) {
   int err;
   int c;
@@ -6560,6 +6653,10 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   } else {
     this->curState |= VAR_IS_NOT_ALLOWED;
     err = la_parse_stmt (this);
+    if (err is LA_ERR_BREAK or err is LA_ERR_CONTINUE)
+      if (TOKEN is TOKEN_BREAK or TOKEN is TOKEN_CONTINUE)
+        NEXT_TOKEN();
+
     this->curState &= ~VAR_IS_NOT_ALLOWED;
   }
 
@@ -6572,20 +6669,25 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   }
 
   if (TOKEN isnot TOKEN_NL and
-      TOKEN isnot TOKEN_SEMICOLON) {
-    if (TOKEN is TOKEN_ORELSE)
+      TOKEN isnot TOKEN_SEMICOLON and
+      TOKEN isnot TOKEN_EOF) {
+    if (TOKEN is TOKEN_ORELSE) {
       goto consume;
-    else if (TOKEN is TOKEN_PAREN_CLOS or
-             TOKEN is TOKEN_INDEX_CLOS or
-             TOKEN is TOKEN_COMMA or
-             (TOKEN is TOKEN_COLON and this->curState is INDEX_STATE))
+
+    } else if (
+        TOKEN is TOKEN_PAREN_CLOS or
+        TOKEN is TOKEN_INDEX_CLOS or
+        TOKEN is TOKEN_COMMA or
+       (TOKEN is TOKEN_COLON and this->curState is INDEX_STATE)) {
       goto theend;
 
-    else if (TOKEN is TOKEN_END) {
+    } else if (TOKEN is TOKEN_END) {
       NEXT_TOKEN();
       goto theend;
-    } else
+    } else {
       THROW_SYNTAX_ERR("awaiting a new line or ;");
+    }
+
   } else {
     int p0 = PEEK_NTH_TOKEN(0);
     if (p0 is TOKEN_ORELSE) {
@@ -6619,8 +6721,8 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
 
     while (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
-    err = la_consume_iforelse (this, 0);
-    THROW_ERR_IF_ERR(err);
+    int lerr = la_consume_iforelse (this, 0);
+    THROW_ERR_IF_ERR(lerr);
 
     save = SAVE_TOKENSTATE();
 
@@ -6631,7 +6733,7 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
 
 theend:
   this->curState &= ~CONSUME_STATE;
-  return LA_OK;
+  return err;
 }
 
 static int la_parse_cond (la_t *this, int nottrue) {
@@ -6664,10 +6766,12 @@ static int la_parse_if (la_t *this) {
   if (TOKEN is TOKEN_THEN)
     return la_parse_iforelse (this, is_true, NULL);
 
-  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_BLOCK, "parsing if, not a block string");
+  err = la_parse_block (this, "if");
+  THROW_ERR_IF_ERR(err);
+  //THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_BLOCK, "parsing if, not a block string");
 
-  la_string elsepart;
   la_string ifpart = TOKENSTR;
+  la_string elsepart;
 
   NEXT_TOKEN();
 
@@ -6873,14 +6977,14 @@ static int la_parse_while (la_t *this) {
   SETSTRLEN(PARSEPTR, orig_len - cond_len - 1);
 
   NEXT_TOKEN();
-  c = TOKEN;
+  err = la_parse_block (this, "while statement");
+  THROW_ERR_IF_ERR(err);
 
-  if (c isnot TOKEN_BLOCK)
-    THROW_SYNTAX_ERR("parsing while, not a block string");
+  int is_single = TOKEN isnot TOKEN_BLOCK;
 
   tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR);
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
@@ -6903,7 +7007,21 @@ static int la_parse_while (la_t *this) {
     ifnot (AS_INT(v)) goto theend;
 
     this->curState |= LOOP_STATE;
-    err= la_parse_string (this, body_str);
+    if (is_single) {
+      PARSEPTR = body_str;
+      NEXT_TOKEN();
+      err = la_parse_stmt (this);
+      if (TOKEN isnot TOKEN_EOF) {
+        // ADD STRICT INSTANCE OPTION
+        la_print_current_line (this,
+          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          NULL);
+      }
+
+    } else {
+      err = la_parse_string (this, body_str);
+    }
+
     this->curState &= ~LOOP_STATE;
     THROW_ERR_IF_ERR(err);
 
@@ -6955,13 +7073,26 @@ static int la_parse_do (la_t *this) {
   this->loopCount++;
 
   NEXT_TOKEN();
-  int c = TOKEN;
+  err = la_parse_block (this, "do/while statement");
+  THROW_ERR_IF_ERR(err);
 
-  if (c isnot TOKEN_BLOCK)
-    THROW_SYNTAX_ERR("parsing do/while loop, not a block string");
-
-  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR);
   const char *tmp_ptr = GETSTRPTR(TOKENSTR);
+
+  int is_single = TOKEN isnot TOKEN_BLOCK;
+
+  if (is_single) {
+    int idx = 0;
+    const char *ptr = tmp_ptr;
+    while (idx++ < bodylen - 4) {
+      if (*ptr is 'w' and Cstring.eq_n (ptr, "while", 5)) {
+        bodylen = (ptr - tmp_ptr) - 1;
+        PARSEPTR = StringNew (ptr);
+        break;
+      }
+      ptr++;
+    }
+  }
 
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
@@ -6971,7 +7102,7 @@ static int la_parse_do (la_t *this) {
   la_string body_str = StringNewLen (body, bodylen);
 
   NEXT_TOKEN();
-  c = TOKEN;
+  int c = TOKEN;
 
   if (c isnot TOKEN_WHILE)
     THROW_SYNTAX_ERR("error while parsing do/while loop, awaiting while");
@@ -7045,7 +7176,20 @@ static int la_parse_do (la_t *this) {
   VALUE v;
   for (;;) {
     this->curState |= LOOP_STATE;
-    err = la_parse_string (this, body_str);
+    if (is_single) {
+      PARSEPTR = body_str;
+      NEXT_TOKEN();
+      err = la_parse_stmt (this);
+      if (TOKEN isnot TOKEN_EOF) {
+        la_print_current_line (this,
+          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          NULL);
+      }
+
+    } else {
+      err = la_parse_string (this, body_str);
+    }
+
     this->curState &= ~LOOP_STATE;
     THROW_ERR_IF_ERR(err);
 
@@ -7201,10 +7345,12 @@ static int la_parse_foreach (la_t *this) {
   SETSTRLEN(PARSEPTR, p_len - (ptr - tmp_ptr));
 
   NEXT_TOKEN();
-  int c = TOKEN;
+  err = la_parse_block (this, "for statement");
+  THROW_ERR_IF_ERR(err);
+  //int c = TOKEN;
 
-  if (c isnot TOKEN_BLOCK)
-    THROW_SYNTAX_ERR("awaiting {");
+  //if (c isnot TOKEN_BLOCK)
+  //  THROW_SYNTAX_ERR("awaiting {");
 
   size_t len = GETSTRLEN(TOKENSTR);
   char body[len+1];
@@ -7742,23 +7888,23 @@ theend:
 
 static char *find_end_for_stmt (const char *str) {
   int in_str = 0;
-  int op_par = 0;
-  int cl_par = 0;
+  int op_paren = 0;
+  int cl_paren = 0;
 
   char *ptr = (char *) str;
   char prev_c = *ptr;
 
-  while (cl_par <= op_par) {
+  while (cl_paren <= op_paren) {
     if (*ptr is TOKEN_EOF)
       return NULL;
 
     if (*ptr is TOKEN_PAREN_CLOS) {
-      ifnot (in_str) cl_par++;
+      ifnot (in_str) cl_paren++;
       goto next;
     }
 
     if (*ptr is TOKEN_PAREN_OPEN) {
-      ifnot (in_str) op_par++;
+      ifnot (in_str) op_paren++;
       goto next;
     }
 
@@ -7848,17 +7994,18 @@ static int la_parse_for (la_t *this) {
   SETSTRPTR(PARSEPTR, ptr + 1);
   SETSTRLEN(PARSEPTR, orig_len - advanced_len);
 
+  if (*ptr is TOKEN_NL) UNGET_BYTE();
+
   NEXT_TOKEN();
-  c = TOKEN;
 
-  if (c isnot TOKEN_BLOCK)
-    THROW_SYNTAX_ERR("parsing for, not a block string");
+  err = la_parse_block (this, "for statement");
+  THROW_ERR_IF_ERR(err);
 
-  GET_BYTE();
+  int is_single = TOKEN isnot TOKEN_BLOCK;
 
   tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR);
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
@@ -7881,7 +8028,20 @@ static int la_parse_for (la_t *this) {
     ifnot (AS_INT(v)) goto theend;
 
     this->curState |= LOOP_STATE;
-    err = la_parse_string (this, body_str);
+    if (is_single) {
+      PARSEPTR = body_str;
+      NEXT_TOKEN();
+      err = la_parse_stmt (this);
+      if (TOKEN isnot TOKEN_EOF) {
+        la_print_current_line (this,
+          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          NULL);
+      }
+
+    } else {
+      err = la_parse_string (this, body_str);
+    }
+    //   err = la_parse_string (this, body_str);
     this->curState &= ~LOOP_STATE;
     THROW_ERR_IF_ERR(err);
 
@@ -8014,16 +8174,14 @@ static int la_parse_loop (la_t *this) {
 
   integer num = AS_INT(v);
 
-  c = TOKEN;
+  err = la_parse_block (this, "loop statement");
+  THROW_ERR_IF_ERR(err);
 
-  if (c isnot TOKEN_BLOCK)
-    THROW_SYNTAX_ERR("parsing loop, not a block string");
-
-  GET_BYTE();
+  int is_single = TOKEN isnot TOKEN_BLOCK;
 
   const char *tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR);
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
@@ -8035,7 +8193,20 @@ static int la_parse_loop (la_t *this) {
 
   for (integer i = 0; i < num; i++) {
     this->curState |= LOOP_STATE;
-    err = la_parse_string (this, body_str);
+    if (is_single) {
+      PARSEPTR = body_str;
+      NEXT_TOKEN();
+      err = la_parse_stmt (this);
+      if (TOKEN isnot TOKEN_EOF) {
+        la_print_current_line (this,
+          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          NULL);
+      }
+
+    } else {
+      err = la_parse_string (this, body_str);
+    }
+
     this->curState &= ~LOOP_STATE;
     THROW_ERR_IF_ERR(err);
 
@@ -8116,14 +8287,14 @@ static int la_parse_forever (la_t *this) {
     c = TOKEN;
   }
 
-  if (c isnot TOKEN_BLOCK)
-    THROW_SYNTAX_ERR("parsing forever, not a block string");
+  err = la_parse_block (this, "forever statement");
+  THROW_ERR_IF_ERR(err);
 
-  GET_BYTE();
+  int is_single = TOKEN isnot TOKEN_BLOCK;
 
   const char *tmp_ptr = GETSTRPTR(TOKENSTR);
 
-  integer bodylen = GETSTRLEN(TOKENSTR) - 1;
+  integer bodylen = GETSTRLEN(TOKENSTR);
   char body[bodylen + 1];
   for (integer i = 0; i < bodylen; i++)
     body[i] = tmp_ptr[i];
@@ -8135,7 +8306,20 @@ static int la_parse_forever (la_t *this) {
 
   for (;;) {
     this->curState |= LOOP_STATE;
-    err = la_parse_string (this, body_str);
+    if (is_single) {
+      PARSEPTR = body_str;
+      NEXT_TOKEN();
+      err = la_parse_stmt (this);
+      if (TOKEN isnot TOKEN_EOF) {
+        la_print_current_line (this,
+          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          NULL);
+      }
+
+    } else {
+      err = la_parse_string (this, body_str);
+    }
+
     this->curState &= ~LOOP_STATE;
     THROW_ERR_IF_ERR(err);
 
@@ -8171,7 +8355,6 @@ theend:
     this->curState |= LOOP_STATE;
 
   PARSEPTR = savepc;
-
   TOKEN = TOKEN_SEMICOLON;
 
   if (err is LA_ERR_BREAK and this->breakCount) {
@@ -8243,6 +8426,11 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
 
       if (c is TOKEN_COMMA) {
         NEXT_RAW_TOKEN();
+        if (TOKEN is TOKEN_NL)
+          NEXT_RAW_TOKEN();
+        THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL or TOKEN is TOKEN_COMMA,
+          "awaiting a symbol, while parsing argument list");
+
         c = TOKEN;
       }
 
@@ -8304,21 +8492,20 @@ static int la_parse_func_def (la_t *this) {
     NEXT_TOKEN();
   }
 
-  if (TOKEN isnot TOKEN_BLOCK)
-    THROW_SYNTAX_ERR("function definition, not a string");
+  int err = la_parse_block (this, STR_FMT("function `%s'", uf->funname));
+  THROW_ERR_IF_ERR(err);
 
   uf->body = TOKENSTR;
 
   VALUE v = PTR(uf);
 
   funT *scope = (this->scopeState is PUBLIC_SCOPE ? this->function : this->curScope);
-  this->curSym = la_define_symbol (this, scope, fn, (UFUNC_TYPE | (nargs << 8)), v, 0);
+  this->curSym = la_define_symbol (this, scope, uf->funname, (UFUNC_TYPE | (nargs << 8)), v, 0);
   this->scopeState = 0;
 
   this->curFunDef = uf;
 
   NEXT_TOKEN();
-
   return LA_OK;
 }
 

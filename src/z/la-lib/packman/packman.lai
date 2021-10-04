@@ -39,6 +39,7 @@ private
     this.type = type
     this.command = com
   }
+
 }
 
 Type PackmanSpec {
@@ -58,44 +59,42 @@ private
   "build_dirname"
   "extension"
 
-  "init" : func (name) {
-    this.name = name
-  }
+  "init" : func (name) this.name = name
 
 public
   "set" : {
-    "home"      : func (home)  { this.home = home }
-    "repo"      : func (repo)  { this.repo = repo }
-    "type"      : func (type)  { this.type = type }
-    "descr"     : func (descr) { this.descr = descr }
-    "md"        : func (md)    { this.md = md }
-    "md_type"   : func (type)  { this.md_type = type }
-    "build"     : func (build) { this.build = build }
-    "license"   : func (lic)   { this.license = lic }
-    "baseurl"   : func (url)   { this.baseurl = url }
-    "version"   : func (vers)  { this.version = vers }
-    "archive"   : func (arch)  { this.archive = arch }
-    "sources"   : func (src)   { this.sources = src }
-    "extension" : func (ext)   { this.extension = ext }
-    "build_dirname" : func (dir) { this.build_dirname = dir }
+    "home"      : func (home)    this.home = home
+    "repo"      : func (repo)    this.repo = repo
+    "type"      : func (type)    this.type = type
+    "descr"     : func (descr)   this.descr = descr
+    "md"        : func (md)      this.md = md
+    "md_type"   : func (type)    this.md_type = type
+    "build"     : func (build)   this.build = build
+    "license"   : func (lic)     this.license = lic
+    "baseurl"   : func (url)     this.baseurl = url
+    "version"   : func (vers)    this.version = vers
+    "archive"   : func (arch)    this.archive = arch
+    "sources"   : func (src)     this.sources = src
+    "extension" : func (ext)     this.extension = ext
+    "build_dirname" : func (dir) this.build_dirname = dir
   }
 
   "get" : {
-    "name"      : func { return this.name }
-    "home"      : func { return this.home }
-    "repo"      : func { return this.repo }
-    "type"      : func { return this.type }
-    "descr"     : func { return this.descr }
-    "md"        : func { return this.md }
-    "md_type"   : func { return this.md_type }
-    "build"     : func { return this.build }
-    "license"   : func { return this.license }
-    "baseurl"   : func { return this.baseurl }
-    "version"   : func { return this.version }
-    "archive"   : func { return this.archive }
-    "sources"   : func { return this.sources }
-    "extension" : func { return this.extension }
-    "build_dirname" : func { return this.build_dirname }
+    "name"      : func return this.name
+    "home"      : func return this.home
+    "repo"      : func return this.repo
+    "type"      : func return this.type
+    "descr"     : func return this.descr
+    "md"        : func return this.md
+    "md_type"   : func return this.md_type
+    "build"     : func return this.build
+    "license"   : func return this.license
+    "baseurl"   : func return this.baseurl
+    "version"   : func return this.version
+    "archive"   : func return this.archive
+    "sources"   : func return this.sources
+    "extension" : func return this.extension
+    "build_dirname" : func return this.build_dirname
   }
 
   "info" : func (packman) {
@@ -320,30 +319,30 @@ private
 
 public
   "set" : {
-    "spec"        : func (spec)  { this.spec = spec }
-    "patch_exec"  : func (patch) { this.patch_exec = patch }
-    "fetch_exec"  : func (fetch) { this.fetch_exec = fetch }
-    "fetch_args"  : func (args)  { this.fetch_args = args }
-    "git_exec"    : func (git)   { this.git_exec = git }
-    "clone_args"  : func (args)  { this.clone_args = args }
-    "pull_args"   : func (args)  { this.pull_args = args }
-    "verbose"     : func (what)  { this.verbose = what }
-    "spec_dir"    : func (dir)   { this.spec_dir = dir }
-    "build_dir"   : func (dir)   { this.build_dir = dir }
-    "sources_dir" : func (dir)   { this.sources_dir = dir }
-    "bindir"      : func (dir)   { this.bindir = dir }
-    "sysdir"      : func (dir)   { this.sysdir = dir }
-    "libdir"      : func (dir)   { this.libdir = dir }
+    "spec"        : func (spec)  this.spec = spec
+    "patch_exec"  : func (patch) this.patch_exec = patch
+    "fetch_exec"  : func (fetch) this.fetch_exec = fetch
+    "fetch_args"  : func (args)  this.fetch_args = args
+    "git_exec"    : func (git)   this.git_exec = git
+    "clone_args"  : func (args)  this.clone_args = args
+    "pull_args"   : func (args)  this.pull_args = args
+    "verbose"     : func (what)  this.verbose = what
+    "spec_dir"    : func (dir)   this.spec_dir = dir
+    "build_dir"   : func (dir)   this.build_dir = dir
+    "sources_dir" : func (dir)   this.sources_dir = dir
+    "bindir"      : func (dir)   this.bindir = dir
+    "sysdir"      : func (dir)   this.sysdir = dir
+    "libdir"      : func (dir)   this.libdir = dir
   }
 
   "get" : {
-    "spec"        : func { return this.spec }
-    "spec_dir"    : func { return this.spec_dir }
-    "build_dir"   : func { return this.build_dir }
-    "sources_dir" : func { return this.sources_dir }
-    "bindir"      : func { return this.bindir }
-    "sysdir"      : func { return this.sysdir }
-    "libdir"      : func { return this.libdir }
+    "spec"        : func return this.spec
+    "spec_dir"    : func return this.spec_dir
+    "build_dir"   : func return this.build_dir
+    "sources_dir" : func return this.sources_dir
+    "bindir"      : func return this.bindir
+    "sysdir"      : func return this.sysdir
+    "libdir"      : func return this.libdir
   }
 
   "new" : {

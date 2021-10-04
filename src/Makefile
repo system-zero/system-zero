@@ -1193,7 +1193,9 @@ MODULE_FLAGS += SYSMODULEDIR=$(SYSZMODULEDIR)
 modules-all:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) all
 
-modules-shared: libsh-shared libsys-shared
+modules-shared: libsh-shared libsys-shared\
+                libmd5-shared libsha256-shared libsha512-shared\
+                librandom-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
 
 path-module-shared:

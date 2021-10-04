@@ -427,15 +427,14 @@ func self_semantics () {
   var rbac = if rn isnot null and rn is true then notok orelse ok
   var rbad = if rn isnot null and rn is true then notok
   var rbae
-  if rn isnot null and rn is true {
+  if rn isnot null and rn is true then
     rbae = notok
-  } else {
+  orelse
     rbae = ok
-  }
 
   var rblues
   if rn isnot null and rn is true or
-      notreached_here is ok and also_here or
+      notreached_here and also_here or
       here and
       a_bit_far then
     this statement will not evaluate you could write whatever you like
@@ -590,11 +589,11 @@ func self_semantics () {
     for |i, j| in bar {
       for |ii, k| in car {
         tsum += k
-        break 1 if (ii is 1)
+        break 1 if ii is 1
       }
 
       tsum += j
-      break 2 if (i is 1)
+      break 2 if i is 1
     }
 
     tsum += v
@@ -608,11 +607,11 @@ func self_semantics () {
     for |i, j| in bar {
       for |ii, k| in car {
         tsum += k
-        break 2 if (ii is 1)
+        break 2 if ii is 1
       }
 
       tsum += j
-      break 2 if (i is 1)
+      break 2 if i is 1
     }
 
     tsum += v
@@ -635,20 +634,19 @@ func self_semantics () {
   }
 
   var ifnotsum1 = 0
-  var i = -1
-  while (i < 10) {
-    i += 1
-    break ifnot i < 7
-    ifnotsum1 += i
+  var iex = -1
+  while (iex < 10) {
+    iex += 1
+    break ifnot iex < 7
+    ifnotsum1 += iex
   }
 
-  i = -1
+  iex = -1
   var ifnotsum2 = 0
   do {
-    i += 1
-    break ifnot i < 7
-    ifnotsum2 += i
-  } while (i < 10)
+    break ifnot ++iex < 7
+    ifnotsum2 += iex
+  } while (iex < 10)
 
   var ifnotsum3 = 0
   for (var i = 0; i < 10; i += 1) {
@@ -738,9 +736,8 @@ func self_semantics () {
     return r
   }
 
-  func rfunc2 (x) {
+  func rfunc2 (x)
     return if x is 10 then x * 100 orelse x * 10
-  }
 
   assert_true ("testing return statement",
       rval is 120 and
@@ -960,18 +957,25 @@ func self_semantics () {
     return -1
   }
 
+  func if_break (x) {
+    var i
+    for (i = 0; i < 1000; i++) if i is x then break
+
+    return i
+  }
+
   assert_true ("testing if/then/orelse",
       if_short (10) is 10 and
-      if_short (11) is 11)
+      if_short (11) is 11 and
+      if_break (10) is 10)
 
   var fvar = if null then null orelse "notnull"
   var svar = ifnot fvar is null then "notnull" orelse fvar
   var tvar = if svar is fvar then if svar is null then ok orelse notok
   var evar = if tvar is ok then ifnot fvar is null then notok orelse ok
 
-  func xxx (y) {
+  func xxx (y)
     return if y < 10 then -1 orelse if y is 10 then ok orelse 1
-  }
 
   assert_true ("testing if/then/else expressions",
       fvar is null and
@@ -985,9 +989,8 @@ func self_semantics () {
   var integer[2] xar
   xar[if true then 0 orelse 1 : ifnot false then 1 orelse 100] = [31, 41]
 
-  func xa (xa) {
+  func xa (xa)
     return if xa > 22 then xa * 2 orelse xa / 2
-  }
 
   var xif = "asdfg" + if true then "hjklm" orelse ""
   var xifb = "asdfg" + (if true then "hjklm" orelse "") + "12345"
@@ -995,9 +998,7 @@ func self_semantics () {
   var m = {"k" : "mapkey"}
   var xifc = m.$(if false then "ka" orelse "k")
 
-  func x_y (x, y) {
-    return x + y
-  }
+  func x_y (x, y) return x + y
 
   assert_true ("testing complex if/then/orelse expressions",
       xif is "asdfghjklm" and
@@ -1065,11 +1066,9 @@ func self_semantics () {
   assert_true ("testing stdin and fileno", 0 is fileno (stdin))
 
   func tail_call_rec (n, a, b) {
-    ifnot (n) { return a }
-
-    if (n == 1) { return b }
-
-    return self (n - 1, b, a + b)
+    return a ifnot n
+    return b if n is 1
+    return self (--n, b, a + b)
   }
   var rtc = tail_call_rec (92, 0, 1)
 
@@ -1201,9 +1200,7 @@ func self_semantics () {
         "f" : 11
       }
 
-      func sa (m, k, v) {
-        Map.set (m, k, v)
-      }
+      func sa (m, k, v) Map.set (m, k, v)
 
       sa (s, "f", 12)
       assert_true ("testing the std module and the map set method",
@@ -1436,24 +1433,15 @@ func self_semantics () {
   integers ()
 
   func test_qualifiers () {
-    func q (x) {
-      var av = qualifier ("key", 10)
-      return av * x
-    }
+    func q (x) return qualifier ("key", 10) * x
 
     func qq (x) {
       var m = qualifiers ()
       return x * m.key
     }
 
-    func qqq (x) {
-      var y = qualifier_exists ("key") + 9
-      return x * y
-    }
-
-    func qqqq (x) {
-      return qqq (x; qualifiers ())
-    }
+    func qqq (x) return x * (qualifier_exists ("key") + 9)
+    func qqqq (x) return qqq (x; qualifiers ())
 
     var m = {"key" : 1000}
     var qa = q (10)
@@ -1490,9 +1478,7 @@ func self_semantics () {
 
   public var v_visible = "visible variable"
 
-  public func f_visible (x) {
-    return x * 2
-  }
+  public func f_visible (x) return x * 2
 
   var nilstr = format ("${%s, null}")
   assert_true ("testing null string representation", nilstr is "(null)")
@@ -1521,13 +1507,8 @@ func self_semantics () {
 
     assert_equal ("testing Double vars equality", d, da)
 
-    func d1 (d) {
-      return d + 12
-    }
-
-    func d2 (d) {
-      return d - 12
-    }
+    func d1 (d) return d + 12
+    func d2 (d) return d - 12
 
     var df = d2
     var dfr = df (da)
@@ -1585,9 +1566,8 @@ func self_semantics () {
       var sum = 0
       var idx = 0
       var length = len (xx)
-      for (idx = 0; idx < length; idx += 1) {
-        sum += xx[idx]
-      }
+
+      for (idx = 0; idx < length; idx++) sum += xx[idx]
 
       return sum
     }
@@ -1673,9 +1653,8 @@ func self_semantics () {
     var ara = [1, 2, 3, 4, 5, 6]
 
     var sum_a = 0
-    for |v| in ara {
+    for |v| in ara
       sum_a += v
-    }
 
     var sum_b = 0
     for |i, v| in ara {
@@ -1686,24 +1665,21 @@ func self_semantics () {
     var str_ar = ["1", "2", "3", "4", "5", "6"]
     var str_a = ""
 
-    for |v| in str_ar {
+    for |v| in str_ar
       str_a += v
-    }
 
     var array[1] x
     x[0] = [1, 2, 3]
     var sum_c = 0
-    for |v| in x[0] {
+    for |v| in x[0]
       sum_c += v
-    }
 
     var mm = {
       "ar" : [1, 2, 3]
     }
     var sum_d = 0
-    for |v| in mm.ar {
+    for |v| in mm.ar
       sum_d += v
-    }
 
     assert_true ("testing array iteration",
         sum_a is 21 and sum_b is 9 and str_a is "123456" and
@@ -1721,6 +1697,7 @@ func self_semantics () {
   }
 
   test_array (10)
+
   func test_maps {
     var m = {}
 
@@ -1737,12 +1714,12 @@ func self_semantics () {
       private
       "one" : 1
       "three" : "three"
-      "fun" : func { return (this.one + this.two) * 10000 }
-      "threefun" : func { return this.three }
+      "fun" : func return (this.one + this.two) * 10000
+      "threefun" : func return this.three
 
       public
       "two" : 2,
-      "fn" : func (x) { return x * this.fun () }
+      "fn" : func (x) return x * this.fun ()
     }
 
     assert_true ("testing map functions", mapa.fn (2) is 60000 and mapa.two is 2)
@@ -1750,34 +1727,19 @@ func self_semantics () {
     mapa.new = "new"
     assert_true ("testing map extension", mapa.new is "new")
 
-    mapa.newfun = func (x) { return (x * 2) + this.one }
+    mapa.newfun = func (x) return (x * 2) + this.one
     assert_true ("testing map new function and visibility", mapa.newfun (10) is 21)
 
-    func x (m) {
-      return m.two
-    }
+    func x (m) return m.two
 
     assert_true ("testing map as a function argument", x (mapa) is 2 and x (mapa) is mapa.two)
 
-    func xx () {
-      var m = {"1" : 11, "2" : 2, "k" : 10}
-      return m
-    }
-
-    var mapf = xx ()
-    assert_true ("testing returning map from a function", mapf.1 is 11 and
-        typeof (mapf) is MapType)
-
-    func mapfa () {
-      return {"11" : 11, "12" : 12}
-    }
+    func mapfa () return {"11" : 11, "12" : 12}
 
     var el = mapfa () 
     assert_true ("testing returning anonymous map from a function", el.11 is 11)
 
-    func x (a) {
-      return a.key
-    }
+    func x (a) return a.key
 
     assert_true ("testing anonymous map", x ({"key" : 22, "aa" : 2}) is 22)
 
@@ -1831,37 +1793,36 @@ func self_semantics () {
     mmm.ar[0:] = [1, 2, 3]
     var sum_a = 0
 
-    for |v| in mmm.ar {
-      sum_a += v
-    }
-
-    for |v| in mmm.ara {
-      sum_a += v
-    }
+    for |v| in mmm.ar sum_a += v
+    for |v| in mmm.ara sum_a += v
 
     assert_true ("testing map iteration", sum is 33 and sum_a is 21)
 
     var sum_p = 0
     var sum_pa = 0
     var mmmm = {
-      private
+    private
       "k" : 10,
 
-      public
+    public
       "ka" : 10,
       "kb" : 11,
-      "f"  : func {
-        for |k, v| in this {
-          ifnot String.eq (k, "f") then sum_p += v
-        }
-      }
+      # FIX: we can not put a comment after the func definition
+      "f"  : func
+        for |k, v| in this ifnot String.eq  (k, "f") then sum_p += v
+        # this reveals a tiny visual issue, as the connection is missing
+        # while reading the statement (you can feel it a small stop), so
+        # probably a `do` keyword it is justified.
+        # We can not also split the `for' tokens with the `for' body in a
+        # new line. This is because the function definition awaits one line
+        # of code. If we delimit the function body with braces, then we can
+        # split the statement, and then the block it makes sence.
     }    
 
     mmmm.f ()
 
-    for |k, v| in mmmm {
+    for |k, v| in mmmm
       ifnot String.eq (k, "f") then sum_pa += v
-    }
 
     assert_true ("testing map iteration with members with private scope",
         sum_p is 31 and sum_pa is 21)
@@ -1884,7 +1845,7 @@ func self_semantics () {
 
     var subm = {
       "k" : 11
-      "f" : func { return this.k }
+      "f" : func return this.k
     }
 
     var parm = {
@@ -1896,10 +1857,10 @@ func self_semantics () {
        parm.submap:f () is 11)
 
     var mmma = {
-      "f" : func { return 1 }
+      "f" : func return 1
     }
     var res = mmma.f ()
-    func t { return 11 }
+    func t return 11
     override mmma.f = t
 
     assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
@@ -2013,6 +1974,68 @@ func self_semantics () {
 
   types ()
 
+  func chains {
+    var sa = ("10": to_integer () * 12 + 52 - 24): to_string (2)
+    var sd = "97"
+    var dd = sd: to_integer ()
+    var ii = 111: to_string (10)
+    var oo = 040: to_string (8)
+    var hh = 0x20: to_string (16)
+    var bb = 0b00100000: to_string (2)
+    var cc = ' ': to_string (8)
+    var vv = "asdf": eq ("asdf")
+    var vx = "asdf": eq_n ("asdfg", 5)
+    var fa = "fa"
+    var xx = "${%s, fa}:fb:fc": format (): tokenize (":")
+    var sb = "123"
+    var sc = "${%s, sb}"
+    var ff = "${%s, sc}": format (): format ()
+    var xa = [1, 2, 3]: len ()
+    var xm = {"k" : 1, "l" : 2, "sub" : {"ka" : 1, "ar" : [1, 1, 3] } }
+    var xk = xm:keys (): len ()
+    var mx = {"k" : 1, "l" : 2}: len ()
+    var ll = 12342: lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
+    var ms = xm.sub: keys (): len ()
+    var mp = xm.sub.ar: where (1): len ()
+    var mm = xm.k: if x is 1 then 11 end
+    var wi = 12: if x < 12 then x + 22 orelse x + 32 end: to_string (10)
+    var wu = ("asdf" is "asdf"): if v then "ok" orelse "notok" end
+    var wn = null
+    var wv =  wn: if x is null then 10 orelse 100 end
+    var ws = "asdf": if x:eq ("asdfg") then "ok" orelse "notok" end
+    var we = "asdf": if x:eq ("asdfg") then "ok" end
+    var wa = ["a", "b", "c"]: if x[2] is "c" then "ok" end
+    var wc = ["a", "b", "c"]: ifnot x[2] is "c" then "ok" end
+
+    assert_true ("testing chained functions",
+        wa is "ok" and
+        sa is "10010100" and
+        mp is 2 and
+        ms is 2 and
+        mm is 11 and
+        mx is 2 and
+        xk is 3 and
+        xa is 3 and
+        ff is "123" and
+        xx is ["fa", "fb", "fc"] and
+        vx is false and
+        vv is true  and
+        ii is "111" and
+        dd is 'a' and
+        cc is "040" and
+        bb is "0b00100000" and
+        hh is "0x20" and
+        oo is "040" and
+        ll is 42 and
+        wi is "44" and
+        wu is "ok" and
+        wv is 10 and
+        ws is "notok" and
+        we is "asdf")
+  }
+
+  chains ()
+
   public var integer[2] a_visible = [1, 2]
   public const c_visible = "visible constant"
 }
@@ -2023,68 +2046,6 @@ assert_equal ("testing public variable attribute", v_visible, "visible variable"
 assert_equal ("testing public function attribute", f_visible (22), 44)
 assert_equal ("testing public array attribute", a_visible[0], 1)
 assert_equal ("testing public constant attribute", c_visible, "visible constant")
-
-func chains {
-  var sa = ("10": to_integer () * 12 + 52 - 24): to_string (2)
-  var sd = "97"
-  var dd = sd: to_integer ()
-  var ii = 111: to_string (10)
-  var oo = 040: to_string (8)
-  var hh = 0x20: to_string (16)
-  var bb = 0b00100000: to_string (2)
-  var cc = ' ': to_string (8)
-  var vv = "asdf": eq ("asdf")
-  var vx = "asdf": eq_n ("asdfg", 5)
-  var fa = "fa"
-  var xx = "${%s, fa}:fb:fc": format (): tokenize (":")
-  var sb = "123"
-  var sc = "${%s, sb}"
-  var ff = "${%s, sc}": format (): format ()
-  var xa = [1, 2, 3]: len ()
-  var xm = {"k" : 1, "l" : 2, "sub" : {"ka" : 1, "ar" : [1, 1, 3] } }
-  var xk = xm:keys (): len ()
-  var mx = {"k" : 1, "l" : 2}: len ()
-  var ll = 12342: lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
-  var ms = xm.sub: keys (): len ()
-  var mp = xm.sub.ar: where (1): len ()
-  var mm = xm.k: if x is 1 then 11 end
-  var wi = 12: if x < 12 then x + 22 orelse x + 32 end: to_string (10)
-  var wu = ("asdf" is "asdf"): if v then "ok" orelse "notok" end
-  var wn = null
-  var wv =  wn: if x is null then 10 orelse 100 end
-  var ws = "asdf": if x:eq ("asdfg") then "ok" orelse "notok" end
-  var we = "asdf": if x:eq ("asdfg") then "ok" end
-  var wa = ["a", "b", "c"]: if x[2] is "c" then "ok" end
-  var wc = ["a", "b", "c"]: ifnot x[2] is "c" then "ok" end
-
-  assert_true ("testing chained functions",
-      wa is "ok" and
-      sa is "10010100" and
-      mp is 2 and
-      ms is 2 and
-      mm is 11 and
-      mx is 2 and
-      xk is 3 and
-      xa is 3 and
-      ff is "123" and
-      xx is ["fa", "fb", "fc"] and
-      vx is false and
-      vv is true  and
-      ii is "111" and
-      dd is 'a' and
-      cc is "040" and
-      bb is "0b00100000" and
-      hh is "0x20" and
-      oo is "040" and
-      ll is 42 and
-      wi is "44" and
-      wu is "ok" and
-      wv is 10 and
-      ws is "notok" and
-      we is "asdf")
-}
-
-chains ()
 
 func valgrind_tests () {
   func xx () {

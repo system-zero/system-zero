@@ -130,7 +130,7 @@ private
               }
             }
 
-            this.curidx += 1
+            this.curidx++
 
             this.results.$(as) = 
               if type is IntegerType then this.input_argv[this.curidx]: to_integer ()
@@ -180,7 +180,8 @@ private
       return true
     }
 
-    this.curidx += 1
+    this.curidx++
+
     if (type is IntegerType) {
       this.results.$(as) = this.input_argv[this.curidx]: to_integer ()
     } else if (type is BooleanType) {
@@ -268,10 +269,7 @@ private
       }
     }
 
-    if (found is false) {
-      this.argv[this.argc] = arg
-      this.argc += 1
-    }
+    if (found is false) then this.argv[this.argc++] = arg
 
     return found
   }
@@ -279,7 +277,7 @@ private
 public
 
   "add" : func (as, short, long, descr, type, flags) {
-    this.idx += 1
+    this.idx++
     this.shortopts[this.idx] = short
     this.longopts[this.idx]  = long
     this.as[this.idx]        = as
@@ -301,7 +299,7 @@ public
     var msg = format ("Usage: ${%s, this.message} \n\n")
     var arlen = this.shortopts: len ()
 
-    for (var i = 0; i < arlen; i += 1) {
+    for (var i = 0; i < arlen; i++) {
       var slen = 0
       var is_short = 0
 
@@ -323,10 +321,11 @@ public
 
           if (is_short) {
             ifnot is_literal then msg += ",--" orelse msg += ","
-            slen += 1
+            slen++
           } else {
             ifnot is_literal then msg += "  --" orelse msg += "  "
           }
+
           msg += this.longopts[i]
         }
       }
@@ -338,9 +337,7 @@ public
 
       if llen then ifnot is_literal then num_spaces -= 2
 
-      loop (num_spaces) {
-        msg += ' '
-      }
+      loop (num_spaces) msg += ' '
 
       msg += "  " + this.descr[i] + "\n"
     }
@@ -357,16 +354,14 @@ public
 
     var retval = false
 
-    for (this.curidx = 0; this.curidx < argc; this.curidx += 1) {
+    for (this.curidx = 0; this.curidx < argc; this.curidx++) {
       continue if (this.curidx < start)
 
       var arg = argv[this.curidx]
 
       if (arg is "--") {
-        for (var j = this.curidx + 1; j < argc; j += 1) {
-          this.argv[this.argc] = this.input_argv[j]
-          this.argc += 1
-        }
+        for (var j = this.curidx + 1; j < argc; j++)
+          this.argv[this.argc++] = this.input_argv[j]
 
         return ok
       }
@@ -374,8 +369,7 @@ public
       if (arg[0] isnot '-') {
         continue if true is this.parse_literal_arg (arg)
 
-        this.argv[this.argc] = arg
-        this.argc += 1
+        this.argv[this.argc++] = arg
         continue
       }
 
