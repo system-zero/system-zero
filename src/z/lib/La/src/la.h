@@ -2,7 +2,7 @@
 #define LA_HDR
 
 #define MAX_BUILTIN_PARAMS 9
-#define MAXLEN_SYMBOL      63
+#define MAXLEN_SYMBOL      255
 #define MAXLEN_MSG         255
 
 typedef struct la_T la_T;

@@ -977,7 +977,7 @@ func self_semantics () {
   func xxx (y)
     return if y < 10 then -1 orelse if y is 10 then ok orelse 1
 
-  assert_true ("testing if/then/else expressions",
+  assert_true ("testing if/then/orelse expressions",
       fvar is null and
       svar is null and
       tvar is ok and
@@ -1865,7 +1865,8 @@ func self_semantics () {
 
     assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
 
-    var dmap = {"key" : 1, "submap" : {"skey" : 2}}
+    var crzy = "key"
+    var dmap = {$(crzy) : 1, "submap" : {"skey" : 2}}
     var new = "new"
     var submp = "submap"
     dmap.$("new") = 10
@@ -1879,13 +1880,24 @@ func self_semantics () {
     dmap.$("submap").$("new") = 48
     var lval = dmap.$(submp).$(new)
 
-    assert_true ("testind map operations [set/get] with dollar expressions",
+    assert_true ("testing map operations [set/get] with dollar expressions",
         fval is 10 and
         sval is 20 and
         tval is 1 and
         zval is 2 and
         nval is 22 and
         lval is 48)
+
+    var mi = {
+      key : 1
+      f : func return 2
+      fk : 2
+      "!@#$%^&**()_++1;'" : 11
+    }
+    assert_true ("testing map member with identifiers [development]",
+        mi.key is 1 and
+        mi.f () is 2 and
+        mi."!@#$%^&**()_++1;'" is 11)
   }
 
   test_maps ()

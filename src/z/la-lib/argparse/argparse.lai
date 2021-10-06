@@ -12,22 +12,22 @@ const ARG_VALUE_APPEND    = 1 << 3
 
 Type Argparse {
 private
-  "idx"
-  "curidx"
-  "maxlen"
-  "verbose"
-  "exit_on_unknown"
-  "print_and_exit_on_help"
-  "short_h_is_help"
-  "types"
-  "flags"
-  "as"
-  "shortopts"
-  "longopts"
-  "descr"
-  "message"
+  idx
+  curidx
+  maxlen
+  verbose
+  exit_on_unknown
+  print_and_exit_on_help
+  short_h_is_help
+  types
+  flags
+  as
+  shortopts
+  longopts
+  descr
+  message
 
-  "init" : func (num_options, flags, message) {
+  init : func (num_options, flags, message) {
     this.idx = -1
     this.curidx = -1
     this.maxlen =  2
@@ -51,7 +51,7 @@ private
     this.exit = false
   }
 
-  "parse_literal_arg" : func (arg) {
+  parse_literal_arg : func (arg) {
     for |j, opt| in this.longopts {
       if (null isnot opt and opt: len ()) {
         if (opt: eq (arg)) {
@@ -74,7 +74,7 @@ private
     return false
   }
 
-  "parse_short_arg" : func (arg) {
+  parse_short_arg : func (arg) {
     String.advance (arg, 1)
 
     var retval = false
@@ -156,7 +156,7 @@ private
     return retval
   }
 
-  "parse_opt_val" : func (flags, type, as) {
+  parse_opt_val : func (flags, type, as) {
     if (flags & ARG_VALUE_APPEND) {
       flags &= ~ARG_VALUE_OPTIONAL
       flags |= ARG_VALUE_REQUIRED
@@ -199,7 +199,7 @@ private
     return true
   }
 
-  "parse_long_arg" : func (arg) {
+  parse_long_arg : func (arg) {
     if (arg is "--help") {
       if (this.print_and_exit_on_help) {
         this.print_description ()
@@ -276,7 +276,7 @@ private
 
 public
 
-  "add" : func (as, short, long, descr, type, flags) {
+  add : func (as, short, long, descr, type, flags) {
     this.idx++
     this.shortopts[this.idx] = short
     this.longopts[this.idx]  = long
@@ -295,7 +295,7 @@ public
     }
   }
 
-  "print_description" : func {
+  print_description : func {
     var msg = format ("Usage: ${%s, this.message} \n\n")
     var arlen = this.shortopts: len ()
 
@@ -345,7 +345,7 @@ public
     println (msg)
   }
 
-  "process" : func (argv, start) {
+  process : func (argv, start) {
     var argc = len (argv)
     this.argv = string[argc]
     this.argc = 0

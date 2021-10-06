@@ -5,45 +5,7 @@
  * for details about syntax and semantics.
  */
 
- /* this code is based on expectations and|or on non unpredictable cases,
-  * and established in our brain interfaces; and there is nothing (not even
-  * close) like C and|or a C modern library that supports all the standards,
-  * and of course nothing like a generous and blessed by time and wisdom,
-  * UNIX like environment, that respects and offers a POSIX interface, even if
-  * in specific cases offers a saner interface than the standard one (and which
-  * of course if it proves usefull and sane, can be then blessed by POSIX (as
-  * this is the way it works and brings expectativity (if such a word))) */
-
- /* also it doesn't care much of how it performs, rather than to realize and
-  * implement the needed syntax and set the semantics, perhaps with an (sometimes)
-  * unorthodoxical way (compared with established and common by now techniques
-  * by most (if all) modern programming languages (no, its not that thing)),
-  * and while it borrowed the machinery of TinyScript (a great tiny code) (
-  * and still uses these small bit details abouts bits and bytes from them
-  * (which it makes a difference to get them exact right (like shift right or
-  * shift left (i do not have a single hope to work with them always perferct
-  * in practise (i always forget those really true realizations, but always
-  * forget the exact realization which is important to have to be confident
-  * that what you want is what you write (perhaps because i really never had
-  * any proper (normal) education, (probably because and of my own absense (
-  * okey..., following an instict of an unconscious human child, that really
-  * had no control on dreams) to participate in a system that you didn't really
-  * believe that it was the best we could (not even close), to provide with
-  * fresh energy the continuation of a gained knowledge, with contributions
-  * to stabilization, refiniment and evolution, of humans that love to do what
-  * they do, of that knowledge))))))), and which it wasn't meant to support a
-  * complicated environment other that for what it was made for (basic syntax
-  * enough to develop logic to work with integers (not even strings or arrays)) */
- /* it was really because i wanted to implement that thing, to extend this system
-  * with scripting cababilities, that will first emulate and the C style way of
-  * this project (so to satisfy expectations and instant familiarity), but with
-  * a proud way (enough datatypes, automatic memory managment, common consepts,
-  * ridiculous easy to understant syntax (to at least realize fast the intentions
-  * of the reading code, and ideally to write within a few explanations)), and
-  * so there isn't a question if it could be implemented better (some thousands
-  * of times better!!! (a proper lexer, parser, compiler)), but what it does?
-  * It seems that it does what it does want to do, or it is close, albeit it
-  * might does it with an unorthodoxical way */
+ /* an unorthodoxical way */
 
 #define LIBRARY "la"
 
@@ -107,13 +69,12 @@
 #define FMT_LITERAL                   (1 << 0)
 
 #define OBJECT_APPEND                 (1 << 0)
-#define IDENT_LEAD_CHAR_CAN_BE_DIGIT  (1 << 1)
-#define ARRAY_MEMBER                  (1 << 2)
-#define MAP_MEMBER                    (1 << 3)
-#define MAP_ASSIGNMENT                (1 << 4)
-#define FUNC_OVERRIDE                 (1 << 5)
-#define LHS_STRING_RELEASED           (1 << 6)
-#define RHS_STRING_RELEASED           (1 << 7)
+#define ARRAY_MEMBER                  (1 << 1)
+#define MAP_MEMBER                    (1 << 2)
+#define MAP_ASSIGNMENT                (1 << 3)
+#define FUNC_OVERRIDE                 (1 << 4)
+#define LHS_STRING_RELEASED           (1 << 5)
+#define RHS_STRING_RELEASED           (1 << 6)
 
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
@@ -728,6 +689,24 @@ static int la_syntax_error_fmt (la_t *this, const char *fmt, ...) {
   return this->syntax_error (this, bytes);
 }
 
+static inline char *sym_key (la_t *this, la_string x) {
+  Cstring.cp (this->symKey, MAXLEN_SYMBOL + 1,
+      GETSTRPTR(x), GETSTRLEN(x));
+  return this->symKey;
+}
+
+static inline char *map_key (la_t *this, la_string x) {
+  Cstring.cp (this->curMapKey, MAXLEN_SYMBOL + 1,
+      GETSTRPTR(x), GETSTRLEN(x));
+  return this->curMapKey;
+}
+
+static inline char *cur_msg_str (la_t *this, la_string x) {
+  Cstring.cp (this->curMsg, MAXLEN_MSG + 1,
+      GETSTRPTR(x), GETSTRLEN(x));
+  return this->curMsg;
+}
+
 static inline int is_space (int c) {
   return (c is ' ') or (c is '\t') or (c is '\r');
 }
@@ -931,99 +910,6 @@ static int la_get_opened_block (la_t *this, char *msg) {
   }
 
   return LA_OK;
-}
-
-static inline int parse_number (la_t *this, int c, int *token_type) {
-  *token_type = TOKEN_INTEGER;
-
-  int dot_found = 0;
-  int plus_found = 0;
-  int minus_found = 0;
-
-  int is_octOrbin = c is '0';
-
-  c = GET_BYTE();
-
-  if (is_octOrbin) {
-    ifnot (is_digit (c)) {
-      if (c is 'b') {
-        *token_type = TOKEN_BINARY;
-        RESET_TOKEN;
-        c = GET_BYTE();
-      }
-    } else
-      *token_type = TOKEN_OCTAL;
-  }
-
-  if (c is '-' or c is '+')
-    return LA_NOTOK;
-
-  goto parse;
-
-  for (;;) {
-    c = GET_BYTE();
-
-    parse:
-    if (c is '-' or '+' is c) {
-      if (*token_type isnot TOKEN_NUMBER) return LA_NOTOK;
-      if (c is '-') {
-        if (minus_found++) return LA_NOTOK;
-        else if (plus_found++) return LA_NOTOK;
-      }
-
-      int cc = PEEK_NTH_BYTE(0);
-      ifnot (is_digit (cc)) return LA_NOTOK;
-      continue;
-    }
-
-    if (c is '.') {
-      *token_type = TOKEN_NUMBER;
-
-      if (dot_found++) return LA_NOTOK;
-      ifnot (is_digit (PEEK_NTH_BYTE(0))) return LA_NOTOK;
-      continue;
-    }
-
-    if (c is 'e' or c is 'E') {
-      *token_type = TOKEN_NUMBER;
-
-      int cc = PEEK_NTH_BYTE(0);
-      if (0 is is_digit (cc) or
-          cc isnot '-' or
-          cc isnot '.' or
-          cc isnot '+') {
-        return LA_NOTOK;
-      }
-
-      continue;
-    }
-
-    ifnot (is_digit (c)) break;
-
-    if (*token_type is TOKEN_OCTAL)
-      if (c > '7')
-        THROW_SYNTAX_ERR("not an octal number");
-
-    if (*token_type is TOKEN_BINARY)
-      if (c > '1')
-        THROW_SYNTAX_ERR("not a binary number");
-  }
-
-  if (c isnot TOKEN_EOF) UNGET_BYTE();
-
-  return LA_OK;
-}
-
-static void ns_release_malloced_strings (funT *this) {
-  malloced_string *item = this->head;
-  while (item) {
-    malloced_string *tmp = item->next;
-    String.release (item->data);
-    free (item);
-    item = tmp;
-  }
-
-  this->head = NULL;
 }
 
 static VALUE la_errno_string (la_t *this, VALUE v_err) {
@@ -1369,9 +1255,6 @@ static VALUE list_insert_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
     idx += list->num_items;
 
   if (idx <= -1 or idx > list->num_items) {
-    // compiler complains:
-    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
-    //    idx, list->num_items));
     char msg[256]; Cstring.cp_fmt (msg, 256,
       "index %d > than %d length, or less or equal than -1", idx, list->num_items);
     C_THROW(LA_ERR_OUTOFBOUNDS, msg);
@@ -1404,9 +1287,6 @@ static VALUE list_get_at (la_t *this, VALUE v_list, VALUE v_idx) {
     idx += list->num_items;
 
   if (idx <= -1 or idx >= list->num_items) {
-    // compiler complains:
-    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
-    //    idx, list->num_items));
     char msg[256]; Cstring.cp_fmt (msg, 256,
       "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
     C_THROW(LA_ERR_OUTOFBOUNDS, msg);
@@ -1467,9 +1347,6 @@ static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
     idx += list->num_items;
 
   if (idx <= -1 or idx >= list->num_items) {
-    // compiler complains:
-    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
-    //    idx, list->num_items));
     char msg[256]; Cstring.cp_fmt (msg, 256,
       "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
     C_THROW(LA_ERR_OUTOFBOUNDS, msg);
@@ -1493,9 +1370,6 @@ static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
     idx += list->num_items;
 
   if (idx <= -1 or idx >= list->num_items) {
-    // compiler complains:
-    // C_THROW(LA_ERR_OUTOFBOUNDS, STR_FMT("index %d >= than %d length, or less or equal than -1",
-    //    idx, list->num_items));
     char msg[256]; Cstring.cp_fmt (msg, 256,
       "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
     C_THROW(LA_ERR_OUTOFBOUNDS, msg);
@@ -1755,6 +1629,18 @@ static VALUE la_release_val (la_t *this, VALUE value) {
   return result;
 }
 
+static void ns_release_malloced_strings (funT *this) {
+  malloced_string *item = this->head;
+  while (item) {
+    malloced_string *tmp = item->next;
+    String.release (item->data);
+    free (item);
+    item = tmp;
+  }
+
+  this->head = NULL;
+}
+
 static void fun_release (funT **thisp) {
   if (*thisp is NULL) return;
   funT *this = *thisp;
@@ -1833,24 +1719,6 @@ static funT *Fun_new (la_t *this, funNewArgs options) {
   return f;
 }
 
-static inline char *sym_key (la_t *this, la_string x) {
-  Cstring.cp (this->symKey, MAXLEN_SYMBOL + 1,
-      GETSTRPTR(x), GETSTRLEN(x));
-  return this->symKey;
-}
-
-static inline char *map_key (la_t *this, la_string x) {
-  Cstring.cp (this->curMapKey, MAXLEN_SYMBOL + 1,
-      GETSTRPTR(x), GETSTRLEN(x));
-  return this->curMapKey;
-}
-
-static inline char *cur_msg_str (la_t *this, la_string x) {
-  Cstring.cp (this->curMsg, MAXLEN_MSG + 1,
-      GETSTRPTR(x), GETSTRLEN(x));
-  return this->curMsg;
-}
-
 static sym_t *la_define_block_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
   (void) this;
   ifnot (key) return NULL;
@@ -1871,7 +1739,6 @@ static sym_t *la_define_block_symbol (la_t *this, funT *f, char *key, int typ, V
 }
 
 static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
-  (void) this;
   if (this->curState & BLOCK_STATE)
     return la_define_block_symbol (this, f, key, typ, value, is_const);
 
@@ -2172,6 +2039,87 @@ theend:
   return TOKEN;
 }
 
+static inline int parse_number (la_t *this, int c, int *token_type) {
+  *token_type = TOKEN_INTEGER;
+
+  int dot_found = 0;
+  int plus_found = 0;
+  int minus_found = 0;
+
+  int is_octOrbin = c is '0';
+
+  c = GET_BYTE();
+
+  if (is_octOrbin) {
+    ifnot (is_digit (c)) {
+      if (c is 'b') {
+        *token_type = TOKEN_BINARY;
+        RESET_TOKEN;
+        c = GET_BYTE();
+      }
+    } else
+      *token_type = TOKEN_OCTAL;
+  }
+
+  if (c is '-' or c is '+')
+    return LA_NOTOK;
+
+  goto parse;
+
+  for (;;) {
+    c = GET_BYTE();
+
+    parse:
+    if (c is '-' or '+' is c) {
+      if (*token_type isnot TOKEN_NUMBER) return LA_NOTOK;
+      if (c is '-') {
+        if (minus_found++) return LA_NOTOK;
+        else if (plus_found++) return LA_NOTOK;
+      }
+
+      int cc = PEEK_NTH_BYTE(0);
+      ifnot (is_digit (cc)) return LA_NOTOK;
+      continue;
+    }
+
+    if (c is '.') {
+      *token_type = TOKEN_NUMBER;
+
+      if (dot_found++) return LA_NOTOK;
+      ifnot (is_digit (PEEK_NTH_BYTE(0))) return LA_NOTOK;
+      continue;
+    }
+
+    if (c is 'e' or c is 'E') {
+      *token_type = TOKEN_NUMBER;
+
+      int cc = PEEK_NTH_BYTE(0);
+      if (0 is is_digit (cc) or
+          cc isnot '-' or
+          cc isnot '.' or
+          cc isnot '+') {
+        return LA_NOTOK;
+      }
+
+      continue;
+    }
+
+    ifnot (is_digit (c)) break;
+
+    if (*token_type is TOKEN_OCTAL)
+      if (c > '7')
+        THROW_SYNTAX_ERR("not an octal number");
+
+    if (*token_type is TOKEN_BINARY)
+      if (c > '1')
+        THROW_SYNTAX_ERR("not a binary number");
+  }
+
+  if (c isnot TOKEN_EOF) UNGET_BYTE();
+
+  return LA_OK;
+}
+
 static int la_do_next_token (la_t *this, int israw) {
   int err;
 
@@ -2189,8 +2137,7 @@ static int la_do_next_token (la_t *this, int israw) {
     return TOKEN;
   }
 
-  if (is_alpha (c) or c is '_' or (
-      (this->objectState & IDENT_LEAD_CHAR_CAN_BE_DIGIT) and is_digit (c))) {
+  if (is_alpha (c) or c is '_') {
     la_get_span (this, is_identifier);
 
     TOKEN = TOKEN_SYMBOL;
@@ -3983,8 +3930,104 @@ static VALUE la_copy_map (VALUE mapval) {
   return nval;
 }
 
+static int la_get_map_key (la_t *this, char ident[MAXLEN_SYMBOL + 1]) {
+  int idx = 0;
+  int num_comma = 0;
+  int c;
+
+  get_byte:
+  c = GET_BYTE();
+
+  while (is_space (c)) c = GET_BYTE();
+
+  if (c is TOKEN_NL) goto get_byte;
+
+  if (c is TOKEN_COMMENT) {
+    do c = GET_BYTE(); while (c >= 0 and c isnot TOKEN_NL);
+    goto get_byte;
+  }
+
+  if (c is TOKEN_COMMA) {
+    if (num_comma++)
+      THROW_SYNTAX_ERR("error while getting map field, found two consecutive commas");
+    goto get_byte;
+  }
+
+  if (is_alpha (c) or c is '_' or is_digit (c)) {
+
+    identifier:
+    THROW_SYNTAX_ERR_IF(idx is MAXLEN_SYMBOL, "map key identifier exceeded maximum length");
+
+    ident[idx++] = c;
+
+    c = GET_BYTE();
+    if (c is TOKEN_EOF)
+      goto theend;
+
+    if (0 is is_alpha (c) and c isnot '_' and 0 is is_digit (c)) {
+      UNGET_BYTE();
+      goto theend;
+    }
+
+    goto identifier;
+  }
+
+  if (c is TOKEN_DOLLAR) {
+    VALUE v_key;
+
+    this->curState |= (MALLOCED_STRING_STATE|CLOSURE_STATE);
+    NEXT_TOKEN();
+    int err = la_parse_expr (this, &v_key);
+    this->curState &= ~(MALLOCED_STRING_STATE|CLOSURE_STATE);
+    THROW_ERR_IF_ERR(err);
+
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS, "awaiting ')'");
+
+    if (v_key.type isnot STRING_TYPE)
+      THROW_SYNTAX_ERR("map get, awaiting a string as a key");
+
+    string *s_key = AS_STRING(v_key);
+    if (s_key->num_bytes >= MAXLEN_SYMBOL)
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
+
+    Cstring.cp (ident, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
+    return LA_OK;
+  }
+
+  if (c isnot TOKEN_DQUOTE)
+    return c;
+
+  get_char:
+  c = GET_BYTE();
+  THROW_SYNTAX_ERR_IF(c is TOKEN_EOF,
+    "error while getting string as a map key, found end of input");
+  THROW_SYNTAX_ERR_IF(c is TOKEN_NL,
+    "error while getting string as a map key, found a new line");
+
+  if (c is TOKEN_DQUOTE) goto theend;
+
+  THROW_SYNTAX_ERR_IF(idx is MAXLEN_SYMBOL, "map key identifier exceeded maximum length");
+
+  ident[idx++] = c;
+  goto get_char;
+
+theend:
+  ident[idx] = '\0';
+  if ('p' is *ident) {
+    if (idx >= 6) {
+      if (Cstring.eq (ident, "private"))
+        return TOKEN_PRIVATE;
+      if (Cstring.eq (ident, "public"))
+        return TOKEN_PUBLIC;
+   }
+  }
+
+  return LA_OK;
+}
+
 static int la_parse_map (la_t *this, VALUE *vp) {
   int err;
+
   Vmap_t *map = Vmap.new (32);
 
   la_string saved_ptr = PARSEPTR;
@@ -3998,15 +4041,17 @@ static int la_parse_map (la_t *this, VALUE *vp) {
 
   for (;;) {
 
-    this->curState |= MALLOCED_STRING_STATE;
-     NEXT_TOKEN();
-    this->curState &= ~MALLOCED_STRING_STATE;
+    char key[MAXLEN_SYMBOL + 1];
+    TOKEN = la_get_map_key (this, key);
 
     if (TOKEN is TOKEN_EOF) break;
 
-    if (TOKEN is TOKEN_COMMA or TOKEN is TOKEN_NL) continue;
+    THROW_ERR_IF_ERR(TOKEN);
 
     switch (TOKEN) {
+      case LA_OK:
+        break;
+
       case TOKEN_PRIVATE:
         scope = this->scopeState = PRIVATE_SCOPE;
         continue;
@@ -4014,14 +4059,11 @@ static int la_parse_map (la_t *this, VALUE *vp) {
       case TOKEN_PUBLIC:
         scope = this->scopeState = PUBLIC_SCOPE;
         continue;
+
+      default:
+        THROW_SYNTAX_ERR(
+          "error while getting a map field, awaiting a double quoted string or an identifier token");
     }
-
-    v = TOKENVAL;
-
-    if (v.type isnot STRING_TYPE)
-      THROW_SYNTAX_ERR("awaiting a string as a key");
-
-    char *key = AS_STRING_BYTES(v);
 
     NEXT_TOKEN();
 
@@ -4080,44 +4122,14 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   int submap = 0;
 
   redo: {}
-  this->objectState |= IDENT_LEAD_CHAR_CAN_BE_DIGIT;
 
-  NEXT_RAW_TOKEN();
-
-  this->objectState &= ~IDENT_LEAD_CHAR_CAN_BE_DIGIT;
+  VALUE save_map = TOKENVAL;
 
   char key[MAXLEN_SYMBOL + 1];
+  TOKEN = la_get_map_key (this, key);
+  THROW_ERR_IF_ERR(TOKEN);
 
-  if (TOKEN is TOKEN_DOLLAR) {
-    VALUE save_map = TOKENVAL;
-    VALUE v_key;
-
-    this->curState |= (MALLOCED_STRING_STATE|CLOSURE_STATE);
-    NEXT_TOKEN();
-    err = la_parse_expr (this, &v_key);
-    this->curState &= ~(MALLOCED_STRING_STATE|CLOSURE_STATE);
-    THROW_ERR_IF_ERR(err);
-
-    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS, "awaiting ')'");
-
-    if (v_key.type isnot STRING_TYPE)
-      THROW_SYNTAX_ERR("map get, awaiting a string as a key");
-
-    string *s_key = AS_STRING(v_key);
-    if (s_key->num_bytes >= MAXLEN_SYMBOL)
-      THROW_SYNTAX_ERR("identifier exceeded maximum length");
-
-    Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
-
-    TOKENVAL = save_map;
-    // UNGET_BYTE();
-
-  } else if (TOKEN is TOKEN_SYMBOL) {
-    Cstring.cp (key, MAXLEN_SYMBOL + 1,
-        GETSTRPTR(TOKENSTR), GETSTRLEN(TOKENSTR));
-
-  } else
-    THROW_SYNTAX_ERR("map get, awaiting a symbol as a key");
+  TOKENVAL = save_map;
 
   VALUE mapv = TOKENVAL;
   Vmap_t *map = AS_MAP(mapv);
@@ -4304,43 +4316,15 @@ static int la_parse_map_set (la_t *this) {
     THROW_SYNTAX_ERR("awaiting .");
 
   int submap = 0;
+  int err;
 
   redo: {}
-
-  int err;
-  NEXT_RAW_TOKEN();
-  c = TOKEN;
-
   char key[MAXLEN_SYMBOL + 1];
+  TOKEN = la_get_map_key (this, key);
+  THROW_ERR_IF_ERR(TOKEN);
 
-  if (c is TOKEN_DOLLAR) {
-    VALUE v_key;
-    this->curState |= MALLOCED_STRING_STATE;
-    NEXT_TOKEN();
-    err = la_parse_expr (this, &v_key);
-    this->curState &= ~MALLOCED_STRING_STATE;
-    THROW_ERR_IF_ERR(err);
-
-    if (v_key.type isnot STRING_TYPE)
-      THROW_SYNTAX_ERR("map set, awaiting a string as a key");
-
-    string *s_key = AS_STRING(v_key);
-    if (s_key->num_bytes >= MAXLEN_SYMBOL)
-      THROW_SYNTAX_ERR("identifier exceeded maximum length");
-
-    Cstring.cp (key, MAXLEN_SYMBOL + 1, s_key->bytes, s_key->num_bytes);
-
-    c = TOKEN;
-
-  } else if (c is TOKEN_SYMBOL) {
-    Cstring.cp (key, MAXLEN_SYMBOL + 1,
-        GETSTRPTR(TOKENSTR), GETSTRLEN(TOKENSTR));
-    NEXT_TOKEN();
-    c = TOKEN;
-
-  } else
-    THROW_SYNTAX_ERR("map set, awaiting a symbol");
-
+  NEXT_TOKEN();
+  c = TOKEN;
   VALUE *v;
 
   if (c is TOKEN_PAREN_OPEN) {
@@ -4958,6 +4942,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
     NEXT_RAW_TOKEN();
     while (TOKEN is TOKEN_NL) NEXT_RAW_TOKEN();
     c = TOKEN;
+
 
     VALUE save_v;
 
@@ -7014,7 +6999,7 @@ static int la_parse_while (la_t *this) {
       if (TOKEN isnot TOKEN_EOF) {
         // ADD STRICT INSTANCE OPTION
         la_print_current_line (this,
-          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          "[WARNING]: extra tokens detected after the end of a while statement\n",
           NULL);
       }
 
@@ -7347,10 +7332,6 @@ static int la_parse_foreach (la_t *this) {
   NEXT_TOKEN();
   err = la_parse_block (this, "for statement");
   THROW_ERR_IF_ERR(err);
-  //int c = TOKEN;
-
-  //if (c isnot TOKEN_BLOCK)
-  //  THROW_SYNTAX_ERR("awaiting {");
 
   size_t len = GETSTRLEN(TOKENSTR);
   char body[len+1];
@@ -8034,14 +8015,14 @@ static int la_parse_for (la_t *this) {
       err = la_parse_stmt (this);
       if (TOKEN isnot TOKEN_EOF) {
         la_print_current_line (this,
-          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          "[WARNING]: extra tokens detected after the end of a for statement\n",
           NULL);
       }
 
     } else {
       err = la_parse_string (this, body_str);
     }
-    //   err = la_parse_string (this, body_str);
+
     this->curState &= ~LOOP_STATE;
     THROW_ERR_IF_ERR(err);
 
@@ -8051,7 +8032,6 @@ static int la_parse_for (la_t *this) {
       this->curState &= ~LOOP_STATE;
       TOKEN = TOKEN_SEMICOLON;
       RESET_PARSEPTR;
-      //PARSEPTR = savepc;
       Vmap.release (fun->block_symbols);
       fun_release (&fun);
       return LA_OK;
@@ -8199,7 +8179,7 @@ static int la_parse_loop (la_t *this) {
       err = la_parse_stmt (this);
       if (TOKEN isnot TOKEN_EOF) {
         la_print_current_line (this,
-          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          "[WARNING]: extra tokens detected after the end of a loop statement\n",
           NULL);
       }
 
@@ -8312,7 +8292,7 @@ static int la_parse_forever (la_t *this) {
       err = la_parse_stmt (this);
       if (TOKEN isnot TOKEN_EOF) {
         la_print_current_line (this,
-          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          "[WARNING]: extra tokens detected after the end of a forever statement\n",
           NULL);
       }
 

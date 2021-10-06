@@ -229,7 +229,7 @@ Comments.
   # now print the sum
   println (sum) # => 46
 
-  # likewise a while:
+  # likewise with a while:
 
   sum = 1
   func forwhile (x) {
@@ -247,11 +247,7 @@ Comments.
     var i = 0
     do {
       sum += i
-      i += 1  # there is no support for ++,-- assignment operators because of
-              # side effects to support both prefix and postfix with a mix of
-              # functions calls. The easier is the prefix semantics. The usefull
-              # though it is with the postfix semantics, which may need to track
-              # unexpected "vibrations". 
+      i += 1
     }  while (i < x)
   }
 
@@ -274,19 +270,37 @@ Comments.
     #  - %x as a hexadecimal (0x is prefixed in the output)
     #  - %f as a double
 
-  # We saw that a map declaration, consists of a series of sequences of a key
-  # and a value association, separated with a comma. The comma can be left out
-  # if the declaration continues to the next line, like in the next code, which
-  # it also saws some more map properties.
+  # Maps
 
+  # We saw above a map declaration. A MapType it is a container, that has the
+  # the semantics of an associative array. That means a `key' it is associated
+  # with a `value'.
+
+  # A key can be defined in one of the following three ways:
+
+  # - as a string.
+  # - as an identifier. In this case it is constructed only by valid identifiers
+  #   [_a-zA-Z] and digits.
+  # - as an expression, using $(expession)
+
+  # A key length can be upto 255 bytes.
+
+  # A value can be constructed by any valid expression, so it can be of any type.
+
+  # A map declaration, consists of a series of a key and a value, separated
+  # with a comma. The comma can be left out if the declaration continues to
+  # the next line, like in the next code, which also saws some more properties.
+
+  var identifier = "key"
   var dadamap = {
     private
     "private_prop" : "I'm invisible to the outer scope"
-    "metoo" : "and visible only to the map methods."
+    metoo : "and visible only to the map methods."
+    $(identifier) : "an expression as a key"
 
     public
-    "visible" : "Now I'm visible again until the next private attribute."
-    "again_visible" : "Visibility it is public by default."
+    visible : "Now I'm visible again until the next private attribute."
+    "again visible" : "Visibility it is public by default."
 
     private
     "back_to_privacy" : "So and the next properties until a public attribute."
@@ -302,14 +316,14 @@ Comments.
   }
 
   # Testing for string equality for a public property.
-  println (dadamap.again_visible == "Visibility it is public by default.") # => 1
+  println (dadamap."again visible" == "Visibility it is public by default.") # => 1
 
   # But this will raises an error:
     # println (dadamap.back_to_privacy)
     # SYNTAX ERROR: back_to_privacy, symbol has private scope
 
   # Accessing map properties is through a dot ('.'), the same way C access its
-  # structures.
+  # structures. The properties can be eithers strings, identifiers or expressions.
 
   # You can append a property or a method to a map at runtime:
 
@@ -330,18 +344,16 @@ Comments.
 
   # But how can you access map members, when the key is constructed at runtime?
 
-  var x = "Newkey!"
+  var x = "question!"
   dadamap.$(x) = " Does really has a value?"
   dadamap.$("answer") = "Dubious. But nothing is lost forever."
 
-  println (dadamap.$("question"))
+  println (dadamap.$("question!"))
   println (dadamap.$("ans" + "wer")) # string concatenation
 
   # If it wasn't for that, we had to use 2 C map functions (setter/getter) from
   # the "std" module, for any of those expressions/statements. To that same
   # C module, there are specific to maps functions that may assist.
-
-  # That is pretty much all about basic map operations.
 
   # As the last.
   # There is a convienent way to loop over a map, but it is outside of this
@@ -349,6 +361,7 @@ Comments.
 
   for |key, value| in dadamap { println ("${key} : ${value}") }
   # The private fields, should not be printed in this case.
+
 
   # Untill now we saw many uses of strings, like string concatenation, or that
   # strings can be checked for equality.
@@ -361,8 +374,8 @@ tab\t back feed \b ring a bell \a, form feed \n, vertical tab \v,
 carriage return \r, escape \e or the backslash itself \\\\.
 Probably this will be a very messy output."
 
-  # You can access a string by using indices like in. And again like C it has
-  # byte semantics, that means it points to the the underlying byte.
+  # You can access a string by using indices like in C. And again like C it has
+  # byte semantics, that means it points to the underlying byte.
 
   var la = "la"
   println (la[0] == 'l') # => 1
@@ -388,25 +401,14 @@ Probably this will be a very messy output."
   `S4
 
   eval (code_string_for_evaluation)
-
-  # That string will be stripped by maximum 4 leading spaces, so the string
-  # can be declared without to loose the current indentation, but also and
-  # the end result can be indented properly. In this case it started at the
-  # fourth index of the line.
+  # That string will be stripped by maximum 4 leading bytes of whitespace,
+  # to maintain indentation.
 
   println (code_string_for_evaluation)
 
   # Other attributes may added in future, but for those cases there is a
-  # more expressive way. This is also out of scope of this basic interface,
-  # but this is a valid expression:
-
-  var length = code_string_for_evaluation: len ()
-
-  # Though len() in this case is not that usefull, but it could be:
-    # var mdoc_string = code_string_for_evaluation: to_markdown ()
-    # var code_string_for_evaluation = `var ....`: trim_leading_ws (4)
-  # There aren't such functions yet, but this is the mechanism, which
-  # is quite more expressive, without cryptic Capital letters.
+  # more expressive way implememted in the language, that can filter a value
+  # through a series of function calls and expressions.
 
   # SLang also has backquoted strings, with a couple of attributes that tune
   # the behavior at the parsing time, without to have to call a filter later
@@ -490,7 +492,7 @@ Probably this will be a very messy output."
   int_ar[0:] = [1, 1, 1, 1]  # if the second idx is ommited, then assumed array length - 1
 
   # In any case if the number of expressions doesn't match or any idx is >= length
-  # the arraym, the interpreter should raise an OUT_OF_BOUNDS error.
+  # the array, the interpreter should raise an OUT_OF_BOUNDS error.
 
   # For such cases a more short form exists:
   int_ar[*] = 1
@@ -506,15 +508,21 @@ Probably this will be a very messy output."
   # Import C code (briefly the same way as other Interpreted Languages)
   # LoadFile with code (basically the same way)
 
+  # And answers to questions:
+    # - var s = "string"; var sa = s; s[0] = 'd'
+    # should `sa' be modified?
+    # Such questions are answered by the implementation for now,
+    # but they should be documented one by one 
+
   # finally:
 
   non_existing_function ()
 
   # this should throw an error, and it should terminate execution of the current
-  # interpreter instance, with an error cobstant less than zero (a zero value
+  # interpreter instance, with an error constant less than zero (a zero value
   # indicates success).
   # The interpreter in that case, it should print (to the standard error by default),
-  # a message that with explain the error, and then it should try to print the
+  # a message that will explain the error, and then it should try to print the
   # error line and with some lines offset, that raised the error.
   # All errors should propagated internally, from the current error point, back
   # to the very first function that started the evaluation. There is no kind of

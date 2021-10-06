@@ -30,11 +30,8 @@ const SHA512TYPE                 = 3
 
 Type PackmanBuild {
 private
-  "msg"
-  "type"
-  "command"
-
-  "init" : func (msg, type, com) {
+  msg, type, command
+  init : func (msg, type, com) {
     this.msg = msg
     this.type = type
     this.command = com
@@ -44,60 +41,60 @@ private
 
 Type PackmanSpec {
 private
-  "name"
-  "home"
-  "type"
-  "repo"
-  "build"
-  "descr"
-  "md"
-  "md_type"
-  "license"
-  "baseurl"
-  "version"
-  "archive"
-  "build_dirname"
-  "extension"
+  name
+  home
+  type
+  repo
+  build
+  descr
+  md
+  md_type
+  license
+  baseurl
+  version
+  archive
+  build_dirname
+  extension
 
-  "init" : func (name) this.name = name
+  init : func (name) this.name = name
 
 public
-  "set" : {
-    "home"      : func (home)    this.home = home
-    "repo"      : func (repo)    this.repo = repo
-    "type"      : func (type)    this.type = type
-    "descr"     : func (descr)   this.descr = descr
-    "md"        : func (md)      this.md = md
-    "md_type"   : func (type)    this.md_type = type
-    "build"     : func (build)   this.build = build
-    "license"   : func (lic)     this.license = lic
-    "baseurl"   : func (url)     this.baseurl = url
-    "version"   : func (vers)    this.version = vers
-    "archive"   : func (arch)    this.archive = arch
-    "sources"   : func (src)     this.sources = src
-    "extension" : func (ext)     this.extension = ext
-    "build_dirname" : func (dir) this.build_dirname = dir
+  set : {
+    home      : func (home)    this.home = home
+    repo      : func (repo)    this.repo = repo
+    type      : func (type)    this.type = type
+    descr     : func (descr)   this.descr = descr
+    md        : func (md)      this.md = md
+    md_type   : func (type)    this.md_type = type
+    build     : func (build)   this.build = build
+    license   : func (lic)     this.license = lic
+    baseurl   : func (url)     this.baseurl = url
+    version   : func (vers)    this.version = vers
+    archive   : func (arch)    this.archive = arch
+    sources   : func (src)     this.sources = src
+    extension : func (ext)     this.extension = ext
+    build_dirname : func (dir) this.build_dirname = dir
   }
 
-  "get" : {
-    "name"      : func return this.name
-    "home"      : func return this.home
-    "repo"      : func return this.repo
-    "type"      : func return this.type
-    "descr"     : func return this.descr
-    "md"        : func return this.md
-    "md_type"   : func return this.md_type
-    "build"     : func return this.build
-    "license"   : func return this.license
-    "baseurl"   : func return this.baseurl
-    "version"   : func return this.version
-    "archive"   : func return this.archive
-    "sources"   : func return this.sources
-    "extension" : func return this.extension
-    "build_dirname" : func return this.build_dirname
+  get : {
+    name      : func return this.name
+    home      : func return this.home
+    repo      : func return this.repo
+    type      : func return this.type
+    descr     : func return this.descr
+    md        : func return this.md
+    md_type   : func return this.md_type
+    build     : func return this.build
+    license   : func return this.license
+    baseurl   : func return this.baseurl
+    version   : func return this.version
+    archive   : func return this.archive
+    sources   : func return this.sources
+    extension : func return this.extension
+    build_dirname : func return this.build_dirname
   }
 
-  "info" : func (packman) {
+  info : func (packman) {
     var verb = qualifier ("verbose", 1)
     var fp = qualifier ("out_stream", stdout)
     var msg =
@@ -126,34 +123,34 @@ public
 
 Type Packman {
 private
-  "spec"
-  "sh"          : New Shell ()
-  "curdir"
-  "user"        : Os.getpwname (Os.getuid ())
-  "group"       : Os.getgrname (Os.getgid ())
-  "make_exec"   : Sys.which ("make")
-  "patch_exec"  : Sys.which ("patch")
-  "fetch_exec"  : Sys.which ("wget")
-  "fetch_args"
-  "tar_exec"    : Sys.which ("tar")
-  "tar_args"    : "xf"
-  "git_exec"    : Sys.which ("git")
-  "clone_args"  : "clone"
-  "pull_args"   : "pull"
-  "verbose"     : PACKMAN_VERBOSE
-  "spec_dir"    : Sys.get ("DATADIR") + "/Packman/specs"
-  "sources_dir" : Sys.get ("DATADIR") + "/Packman/sources"
-  "build_dir"   : Sys.get ("TMPDIR")  + "/Packman"
-  "platform"    : Sys.get ("PLATFORM")
-  "tmpdir"      : Sys.get ("TMPDIR")
-  "datadir"     : Sys.get ("DATADIR")
-  "homedir"     : Sys.get ("HOME")
-  "sysdir"      : Sys.get ("SYSDIR")
-  "bindir"      : Sys.get ("SYSDIR") + "/bin"
-  "libdir"      : Sys.get ("SYSDIR") + "/lib"
-  "path"        : Sys.get ("PATH")
+  spec
+  sh          : New Shell ()
+  curdir
+  user        : Os.getpwname (Os.getuid ())
+  group       : Os.getgrname (Os.getgid ())
+  make_exec   : Sys.which ("make")
+  patch_exec  : Sys.which ("patch")
+  fetch_exec  : Sys.which ("wget")
+  fetch_args
+  tar_exec    : Sys.which ("tar")
+  tar_args    : "xf"
+  git_exec    : Sys.which ("git")
+  clone_args  : "clone"
+  pull_args   : "pull"
+  verbose     : PACKMAN_VERBOSE
+  spec_dir    : Sys.get ("DATADIR") + "/Packman/specs"
+  sources_dir : Sys.get ("DATADIR") + "/Packman/sources"
+  build_dir   : Sys.get ("TMPDIR")  + "/Packman"
+  platform    : Sys.get ("PLATFORM")
+  tmpdir      : Sys.get ("TMPDIR")
+  datadir     : Sys.get ("DATADIR")
+  homedir     : Sys.get ("HOME")
+  sysdir      : Sys.get ("SYSDIR")
+  bindir      : Sys.get ("SYSDIR") + "/bin"
+  libdir      : Sys.get ("SYSDIR") + "/lib"
+  path        : Sys.get ("PATH")
 
-  "init" : func {
+  init : func {
     this.curdir = Dir.current ()
     if (this.fetch_exec is null) {
       this.fetch_exec = Sys.which ("curl")
@@ -165,7 +162,7 @@ private
     }
   }
 
-  "fetch" : func {
+  fetch : func {
     if (this.spec.archive is null) {
       println (stderr, "archive property hasn't been set")
       return notok
@@ -192,7 +189,7 @@ private
     return notok
   }
 
-  "extract" : func {
+  extract : func {
     if (null is this.tar_exec) {
       println (stderr, "the tar executable couln't been found")
       return notok
@@ -214,7 +211,7 @@ private
     return if retval is notok or retval > ok then notok orelse ok
   }
 
-  "md_check" :  func {
+  md_check :  func {
     if (this.spec is null) {
       println (stderr, "spec hasn't been set")
       return notok
@@ -255,7 +252,7 @@ private
      return is_eq
   }
 
-  "fetch_sources" : func {
+  fetch_sources : func {
     if (this.spec.sources is null) {
       println (stderr, "sources property hasn't been set")
       return notok
@@ -283,7 +280,7 @@ private
     return if retval then notok orelse ok
   }
 
-  "copy_sources" : func () {
+  copy_sources : func () {
     if (null is this.spec.sources) {
       println (stderr, "sources property hasn't been set")
       return notok
@@ -303,7 +300,7 @@ private
 
   }
 
-  "change_to_build_dirname" : func {
+  change_to_build_dirname : func {
     if (this.spec.build_dirname is null) {
       println (stderr, "build_dirname property hasn't been set")
       return notok
@@ -318,43 +315,43 @@ private
   }
 
 public
-  "set" : {
-    "spec"        : func (spec)  this.spec = spec
-    "patch_exec"  : func (patch) this.patch_exec = patch
-    "fetch_exec"  : func (fetch) this.fetch_exec = fetch
-    "fetch_args"  : func (args)  this.fetch_args = args
-    "git_exec"    : func (git)   this.git_exec = git
-    "clone_args"  : func (args)  this.clone_args = args
-    "pull_args"   : func (args)  this.pull_args = args
-    "verbose"     : func (what)  this.verbose = what
-    "spec_dir"    : func (dir)   this.spec_dir = dir
-    "build_dir"   : func (dir)   this.build_dir = dir
-    "sources_dir" : func (dir)   this.sources_dir = dir
-    "bindir"      : func (dir)   this.bindir = dir
-    "sysdir"      : func (dir)   this.sysdir = dir
-    "libdir"      : func (dir)   this.libdir = dir
+  set : {
+    spec        : func (spec)  this.spec = spec
+    patch_exec  : func (patch) this.patch_exec = patch
+    fetch_exec  : func (fetch) this.fetch_exec = fetch
+    fetch_args  : func (args)  this.fetch_args = args
+    git_exec    : func (git)   this.git_exec = git
+    clone_args  : func (args)  this.clone_args = args
+    pull_args   : func (args)  this.pull_args = args
+    verbose     : func (what)  this.verbose = what
+    spec_dir    : func (dir)   this.spec_dir = dir
+    build_dir   : func (dir)   this.build_dir = dir
+    sources_dir : func (dir)   this.sources_dir = dir
+    bindir      : func (dir)   this.bindir = dir
+    sysdir      : func (dir)   this.sysdir = dir
+    libdir      : func (dir)   this.libdir = dir
   }
 
-  "get" : {
-    "spec"        : func return this.spec
-    "spec_dir"    : func return this.spec_dir
-    "build_dir"   : func return this.build_dir
-    "sources_dir" : func return this.sources_dir
-    "bindir"      : func return this.bindir
-    "sysdir"      : func return this.sysdir
-    "libdir"      : func return this.libdir
+  get : {
+    spec        : func return this.spec
+    spec_dir    : func return this.spec_dir
+    build_dir   : func return this.build_dir
+    sources_dir : func return this.sources_dir
+    bindir      : func return this.bindir
+    sysdir      : func return this.sysdir
+    libdir      : func return this.libdir
   }
 
-  "new" : {
-    "spec" : func (name) {
+  new : {
+    spec : func (name) {
       var specname = this.spec_dir + "/" + name + ".lai"
       this.spec = evalfile (specname)
       return this.spec
     }
   }
 
-  "list" : {
-    "specs" : func {
+  list : {
+    specs : func {
       var verb = qualifier ("verbose", 1)
       var fp = qualifier ("out_stream", stdout) 
       var ar = this.spec_dir: dir_list ()
@@ -365,7 +362,7 @@ public
     }
   }
 
-  "info" : func {
+  info : func {
     var msg =
       "PLATFORM         : " + this.platform + "\n" +
       "SYSTEM DIRECTORY : " + this.sysdir   + "\n" +
@@ -387,7 +384,7 @@ public
     return msg ifnot verb
   }
 
-  "update_repo" : func {
+  update_repo : func {
     if (this.spec is null) {
       println (stderr, "spec hasn't been set")
       return notok
@@ -419,7 +416,7 @@ public
     return if retval is 0 then ok orelse notok
   }
 
-  "build" : func {
+  build : func {
     var retval = notok
 
     if (this.spec is null) {
