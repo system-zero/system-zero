@@ -3723,10 +3723,14 @@ static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int sc
 
 static int la_map_reset_value (la_t *this, Vmap_t *map, char *key, VALUE v) {
   VALUE *val = Vmap.pop (map, key);
-  if (val isnot NULL)
-    la_release_map_val (val);
+  int scope = PUBLIC_SCOPE;
 
-  return la_map_set_value (this, map, key, v, 1);
+  if (val isnot NULL) {
+    scope = val->sym->scope isnot NULL;
+    la_release_map_val (val);
+  }
+
+  return la_map_set_value (this, map, key, v, scope);
 }
 
 static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
@@ -4413,13 +4417,16 @@ static int la_parse_map_set (la_t *this) {
     }
   }
 
+  int scope = PUBLIC_SCOPE;
   if (c <= TOKEN_ASSIGN) {
-    if (v isnot NULL)
+    if (v isnot NULL) {
+      scope = v->sym->scope isnot NULL;
       la_release_map_val (Vmap.pop (map, key));
+    }
   } else
     return map_set_append_rout (this, map, key, c);
 
-  return map_set_rout (this, map, key, 1);
+  return map_set_rout (this, map, key, scope);
 }
 
 
@@ -6538,14 +6545,17 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
         ifnot (this->curState & INDEX_STATE)
           break;
 
-      case TOKEN_NL:
       case TOKEN_SEMICOLON:
+      case TOKEN_NL:
+        if (paren_open) break;
+
       case TOKEN_EOF:
         if (this->funcState & CHAIN_STATE)
           break;
         goto theend;
 
-      case TOKEN_END: NEXT_TOKEN();
+      case TOKEN_END:
+        NEXT_TOKEN();
         levels--;
         goto theend;
 

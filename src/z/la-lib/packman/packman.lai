@@ -29,14 +29,12 @@ const SHA256TYPE                 = 2
 const SHA512TYPE                 = 3
 
 Type PackmanBuild {
-private
   msg, type, command
   init : func (msg, type, com) {
     this.msg = msg
     this.type = type
     this.command = com
   }
-
 }
 
 Type PackmanSpec {

@@ -1712,14 +1712,14 @@ func self_semantics () {
 
     var mapa = {
       private
-      "one" : 1
-      "three" : "three"
-      "fun" : func return (this.one + this.two) * 10000
-      "threefun" : func return this.three
+      one : 1
+      three : "three"
+      fun : func return (this.one + this.two) * 10000
+      threefun : func return this.three
 
       public
-      "two" : 2,
-      "fn" : func (x) return x * this.fun ()
+      two : 2,
+      fn : func (x) return x * this.fun ()
     }
 
     assert_true ("testing map functions", mapa.fn (2) is 60000 and mapa.two is 2)
