@@ -1,4 +1,4 @@
-THIS_LIBNAME = random
+THIS_LIBNAME = contain
 
 NS      :=
 API     := 0
@@ -8,6 +8,9 @@ VERSION := $(API).$(REV)
 # macOS doesn't have realpath by default (available through coreutils)
 # THISDIR := $(shell realpath .)
 THISDIR := $(shell (cd . && pwd))
+
+SRCDIR  := $(shell (cd ../../../.. && pwd))
+DATADIR := $(shell (cd ../../../../../sys/data && pwd))
 
 THIS_LIBVERS  :=  $(VERSION)
 
@@ -22,8 +25,6 @@ CC_STD        := -std=c11
 SYSKERNEL     := $(shell uname -s)
 SYSARCH       := $(shell uname -m)
 SYS           := $(SYSKERNEL)-$(SYSARCH)
-
-DATADIR    =  $(THISDIR)/data
 
 SYSDIR    := $(THISDIR)/../../sys
 SYSLIBDIR  = $(SYSDIR)/lib/$(NS)
@@ -82,7 +83,10 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
-LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
+LIBFLAGS := -DSRCDIR='"$(SRCDIR)"' -DDATADIR='"$(DATADIR)"'
+LIBFLAGS += -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
+LIBFLAGS += -lerror-$(VERSION) -lcstring-$(VERSION)
+LIBFLAGS += -lfile-$(VERSION) -ldir-$(VERSION)
 
 all: shared static
 

@@ -34,10 +34,10 @@
 #endif
 
 /* we need those to be funtional in this unit */
-#include <stddef.h> /* for ptrdiff_t (see below the idx_t section) */
-#include <stdint.h> /* get them (the integer types) right */
-#include <stdlib.h> /* we need it here for malloc/free */
-#include <errno.h>  /* this is a thread safe errno */
+#include <stddef.h> /* for ptrdiff_t */
+#include <stdint.h> /* integer types */
+#include <stdlib.h> /* malloc/free */
+#include <errno.h>
 
 /* the following seven magnificent are unnegotiatable */
 #ifndef OK
@@ -548,6 +548,87 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SIGNAL
 #endif /* REQUIRE_SIGNAL */
 
+#ifdef REQUIRE_SCHED
+  #ifndef SCHED_HDR
+  #define SCHED_HDR
+  #include <sched.h>
+  #endif /* SCHED_HDR */
+
+#undef REQUIRE_SCHED
+#endif /* REQUIRE_SCHED */
+
+#ifdef REQUIRE_LIMITS
+  #ifndef LIMITS_HDR
+  #define LIMITS_HDR
+  #include <limits.h>
+  #endif /* LIMITS_HDR */
+
+#undef REQUIRE_LIMITS
+#endif /* REQUIRE_LIMITS */
+
+#ifdef REQUIRE_POLL
+  #ifndef POLL_HDR
+  #define POLL_HDR
+  #include <poll.h>
+  #endif /* POLL_HDR */
+
+#undef REQUIRE_POLL
+#endif /* REQUIRE_POLL */
+
+#ifdef REQUIRE_LINUX_SCHED
+  #ifndef LINUX_SCHED_HDR
+  #define LINUX_SCHED_HDR
+  #include <linux/sched.h>
+  #endif /* LINUX_SCHED_HDR */
+
+#undef REQUIRE_LINUX_SCHED
+#endif /* REQUIRE_LINUX_SCHED */
+
+#ifdef REQUIRE_SYSCALL
+  #ifndef SYSCALL_HDR
+  #define SYSCALL_HDR
+  #include <syscall.h>
+  #endif /* SYSCALL_HDR */
+
+#undef REQUIRE_SYSCALL
+#endif /* REQUIRE_SYSCALL */
+
+#ifdef REQUIRE_SYSEXITS
+  #ifndef SYSEXITS_HDR
+  #define SYSEXITS_HDR
+  #include <sysexits.h>
+  #endif /* SYSEXITS_HDR */
+
+#undef REQUIRE_SYSEXITS
+#endif /* REQUIRE_SYSEXITS */
+
+#ifdef REQUIRE_SYS_MOUNT
+  #ifndef SYS_MOUNT_HDR
+  #define SYS_MOUNT_HDR
+  #include <sys/mount.h>
+  #endif /* SYS_MOUNT_HDR */
+
+#undef REQUIRE_SYS_MOUNT
+#endif /* REQUIRE_SYS_MOUNT */
+
+#ifdef REQUIRE_SYS_SIGNALFD
+  #ifndef SYS_SIGNALFD_HDR
+  #define SYS_SIGNALFD_HDR
+  #include <sys/signalfd.h>
+  #endif /* SYS_SIGNALFD_HDR */
+
+#undef REQUIRE_SYS_SIGNALFD
+#endif /* REQUIRE_SYS_SIGNALFD */
+
+#ifdef REQUIRE_SYS_PRCTL
+  #ifndef SYS_PRCTL_HDR
+  #define SYS_PRCTL_HDR
+  #include <sys/prctl.h>
+  #endif /* SYS_PRCTL_HDR */
+
+#undef REQUIRE_SYS_PRCTL
+#endif /* REQUIRE_SYS_PRCTL */
+
 #ifdef REQUIRE_SYS_WAIT
   #ifndef SYS_WAIT_HDR
   #define SYS_WAIT_HDR
@@ -565,6 +646,15 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_SYS_MMAN
 #endif /* REQUIRE_SYS_MMAN */
+
+#ifdef REQUIRE_SYS_SENDFILE
+  #ifndef SYS_SENDFILE_HDR
+  #define SYS_SENDFILE_HDR
+  #include <sys/sendfile.h>
+  #endif /* SYS_SENDFILE_HDR */
+
+#undef REQUIRE_SYS_SENDFILE
+#endif /* REQUIRE_SYS_SENDFILE */
 
 #ifdef REQUIRE_SYS_STAT
   #ifndef SYS_STAT_HDR
@@ -1329,6 +1419,20 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_RANDOM_TYPE
 #endif /* REQUIRE_RANDOM_TYPE */
+
+#ifdef REQUIRE_CONTAIN_TYPE
+  #ifndef CONTAIN_TYPE_HDR
+  #define CONTAIN_TYPE_HDR
+  #include <z/contain.h>
+  #endif /* CONTAIN_TYPE_HDR */
+
+  #if (REQUIRE_CONTAIN_TYPE == DECLARE)
+  static  contain_T   containType;
+  #define Contain     containType.self
+  #endif
+
+#undef REQUIRE_CONTAIN_TYPE
+#endif /* REQUIRE_CONTAIN_TYPE */
 
 /* Development (ignore this section) */
 

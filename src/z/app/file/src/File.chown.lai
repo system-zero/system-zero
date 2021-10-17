@@ -37,4 +37,4 @@ var file = argparse.argv[1]
 
 var retval = file: file_chown (user, group; qualif)
 
-exit (retval: if notok then 1 orelse 0 end)
+exit (if retval is notok then 1 orelse 0 end)

@@ -1232,6 +1232,8 @@ There is no support for installation to the `/` namespace.
   # Still though the chroot call suffers from what have been described in the
   # Chrooting section in this document, though it is still usefull in cases,
   # so we are in need to find another way.
+  # Mid days of Octomber: use a simple container implementation.
+
 ```
 
 ## License:
@@ -1269,6 +1271,8 @@ gained consience. Hopefully one day.
 * [Terminal [de|at]tach.](https://github.com/crigler/dtach.git)
 * [Splitvt by Sam Lantiga.](https://slouken.libsdl.org/projects/splitvt/index.html)
 * [Suckless sbase.](https://core.suckless.org/sbase/)
+* [PCG Random Number Generation for C.](https://github.com/imneme/pcg-c-basic)
+* [Contain: A simple implementation of containers for Linux.](https://github.com/arachsys/containers)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

@@ -275,6 +275,33 @@ static int sys_init_environment (sys_env_opts opts) {
   if (sysdir->num_bytes isnot 8)
     String.trim_end (sysdir, DIR_SEP);
 
+  char *src_dir = getenv ("SRCDIR");
+  string_t *srcdir = NULL;
+
+  ifnot (NULL is src_dir)
+    srcdir = sys_set_env_as (src_dir, "SRCDIR", opts.overwrite);
+  else {
+    do {
+      if (opts.srcdir isnot NULL) {
+        srcdir = sys_set_env_as (opts.srcdir, "SRCDIR", opts.overwrite);
+        break;
+      }
+
+      #ifdef SRCDIR
+        char tmp[PATH_MAX + 1];
+        if (NULL is Path.real (SRCDIR, tmp))
+          srcdir = sys_set_env_as (SRCDIR, "SRCDIR", opts.overwrite);
+        else
+          srcdir = sys_set_env_as (tmp, "SRCDIR", opts.overwrite);
+      #else
+        srcdir = sys_set_env_as (DIR_SEP_STR, "SRCDIR", opts.overwrite);
+     #endif
+    } while (0);
+  }
+
+  if (srcdir->num_bytes isnot 8)
+    String.trim_end (srcdir, DIR_SEP);
+
   char *tdir = getenv ("TMPDIR");
   string_t *tmpdir = NULL;
 

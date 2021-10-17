@@ -29,6 +29,7 @@ VERSION  = $(API).$(REV)
 # The last thing we can do is to use the plain assignment symbol '=' instead of using
 # ':=' , more like a convention to declare an intention, rather it makes a difference.
 THISDIR        = $(shell (cd . && pwd))
+
 # actually we implement this variable this way, because we know that the following code:
 # THISDIR := $(shell realpath .)
 # is not quite portable in macOS, because this Operating System lacks a realpath
@@ -216,16 +217,20 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Z_MD5_SRCDIR       = $(Z_SRCLIBDIR)/$(Md5_Type)/src
 
     # Sha256 Type
-    SHA256_Type        = Sha256
-    Z_SHA256_SRCDIR    = $(Z_SRCLIBDIR)/$(SHA256_Type)/src
+    Sha256_Type        = Sha256
+    Z_SHA256_SRCDIR    = $(Z_SRCLIBDIR)/$(Sha256_Type)/src
 
     # Sha512 Type
-    SHA512_Type        = Sha512
-    Z_SHA512_SRCDIR    = $(Z_SRCLIBDIR)/$(SHA512_Type)/src
+    Sha512_Type        = Sha512
+    Z_SHA512_SRCDIR    = $(Z_SRCLIBDIR)/$(Sha512_Type)/src
 
     # Random Type
-    RANDOM_Type        = Random
-    Z_RANDOM_SRCDIR    = $(Z_SRCLIBDIR)/$(RANDOM_Type)/src
+    Random_Type        = Random
+    Z_RANDOM_SRCDIR    = $(Z_SRCLIBDIR)/$(Random_Type)/src
+
+    # Contain Type
+    Contain_Type       = Contain
+    Z_CONTAIN_SRCDIR   = $(Z_SRCLIBDIR)/$(Contain_Type)/src
 
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
@@ -313,13 +318,13 @@ Z_SU        := $(ZC_SU)
   # we use rpath in this early stage, so we do not need to run ldconfig
   ifeq ($(RPATH), 1)
     BASE_FLAGS  += -Wl,-rpath=$(Z_SYSLIBDIR)
-#:$(SYSLIBDIR):/lib/z:/lib
   endif
 
   ZARGS  = NS=$(ZNAME)
   MARGS :=
   MARGS  = API=$(API) REV=$(REV) VERSION=$(VERSION) DEBUG=$(DEBUG)
   MARGS += CC=$(CC) CC_STD=$(CC_STD)
+  MARGS += SRCDIR=$(SRCDIR)
   MARGS += SYSDIR=$(SYSDIR) SYSDATADIR=$(SYSDATADIR) SYSTMPDIR=$(SYSTMPDIR)
   MARGS += BASE_FLAGS='$(BASE_FLAGS)'
   MARGS += USERNAME=$(USERNAME) GROUPNAME=$(GROUPNAME)
@@ -804,6 +809,18 @@ clean-librandom-shared:
 clean-librandom-static:
 	@cd $(Z_RANDOM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libcontain-shared: Env cenv
+	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libcontain-static: Env cenv
+	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libcontain-shared:
+	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libcontain-static:
+	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared \
@@ -1081,6 +1098,23 @@ clean-crypt-static:
 	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 
 #----------------------------------------------------------#
+  # contain
+  ZA_CONTAIN          = contain
+  ZA_CONTAIN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_CONTAIN)/src
+
+contain-shared: cenv libcontain-shared libargparse-shared
+	@cd $(ZA_CONTAIN_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+contain-static: cenv libcontain-static libargparse-static
+	@cd $(ZA_CONTAIN_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-contain-shared:
+	@cd $(ZA_CONTAIN_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-contain-static:
+	@cd $(ZA_CONTAIN_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+
+#----------------------------------------------------------#
   # packman
   ZA_PACKMAN          = packman
   ZA_PACKMAN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_PACKMAN)/src
@@ -1193,15 +1227,16 @@ MODULE_FLAGS += SYSMODULEDIR=$(SYSZMODULEDIR)
 modules-all:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) all
 
-modules-shared: libsh-shared libsys-shared\
+modules-shared: libsh-shared libsys-shared libterm-shared\
+                libpath-shared libfile-shared libdir-shared\
                 libmd5-shared libsha256-shared libsha512-shared\
                 librandom-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
 
-path-module-shared:
+path-module-shared: libpath-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) path-module-shared
 	
-file-module-shared:
+file-module-shared: libfile-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) file-module-shared
 
 std-module-shared:
@@ -1213,10 +1248,10 @@ os-module-shared:
 sys-module-shared: libsys-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sys-module-shared
 
-term-module-shared:
+term-module-shared: libterm-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) term-module-shared
 
-dir-module-shared:
+dir-module-shared: libdir-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) dir-module-shared
 
 sh-module-shared: libsh-shared

@@ -68,7 +68,7 @@ GROUPNAME := (shell id -gn)
 
 FLAGS += -DUSERNAME='"$(USERNAME)"' -DGROUPNAME='"$(GROUPNAME)"'
 FLAGS += -DDATADIR='"$(SYSDATADIR)"' -DTMPDIR='"$(SYSTMPDIR)"'
-FLAGS += -DSYSDIR='"$(SYSDIR)"'
+FLAGS += -DSYSDIR='"$(SYSDIR)"' -DSRCDIR='"$(SRCDIR)"'
 
 CHECK_PTR_BOUNDS_FLAGS := -mmpx -fcheck-pointer-bounds
 

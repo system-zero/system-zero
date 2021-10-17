@@ -61,6 +61,63 @@ static VALUE term_sane_mode (la_t *this, VALUE v_term) {
   return INT(retval);
 }
 
+static term_t *__get_term_arg (VALUE v_term) {
+  ifnot (IS_OBJECT(v_term))
+    return NULL;
+
+  object *o = AS_OBJECT(v_term);
+  term_t *term = (term_t *) AS_PTR(o->value);
+  return term;
+}
+
+static VALUE term_init_size (la_t *this, VALUE v_term) {
+  (void) this;
+  term_t *term = __get_term_arg (v_term);
+  if (NULL is term)
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+
+  char mode = term->mode;
+
+  if (mode isnot 'r') {
+    if (NOTOK is Term.raw_mode (term))
+      return NOTOK_VALUE;
+  }
+
+  int rows = 0;
+  int cols = 0;
+  Term.init_size (term, &rows, &cols);
+
+  switch (mode) {
+    case 'o':
+      if (NOTOK is Term.orig_mode (term))
+        return NOTOK_VALUE;
+      break;
+
+    case 's':
+      if (NOTOK is Term.sane_mode (term))
+        return NOTOK_VALUE;
+
+  }
+
+  return OK_VALUE;
+}
+
+static VALUE term_get_rows (la_t *this, VALUE v_term) {
+  (void) this;
+  term_t *term = __get_term_arg (v_term);
+  if (NULL is term)
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  return INT(term->num_rows);
+}
+
+static VALUE term_get_cols (la_t *this, VALUE v_term) {
+  (void) this;
+  term_t *term = __get_term_arg (v_term);
+  if (NULL is term)
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  return INT(term->num_cols);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_term_module__ (la_t *this) {
@@ -73,9 +130,12 @@ public int __init_term_module__ (la_t *this) {
 
   LaDefCFun lafuns[] = {
     { "term_new",         PTR(term_new), 0 },
+    { "term_getkey",      PTR(term_getkey), 1 },
+    { "term_get_rows",    PTR(term_get_rows), 1 },
+    { "term_get_cols",    PTR(term_get_cols), 1 },
     { "term_raw_mode",    PTR(term_raw_mode), 1 },
     { "term_sane_mode",   PTR(term_sane_mode), 1 },
-    { "term_getkey",      PTR(term_getkey), 1 },
+    { "term_init_size",   PTR(term_init_size), 1 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -90,7 +150,12 @@ public int __init_term_module__ (la_t *this) {
        "new" : term_new,
        "getkey" : term_getkey,
        "raw_mode" : term_raw_mode,
-       "sane_mode" : term_sane_mode
+       "sane_mode" : term_sane_mode,
+       "init_size" : term_init_size,
+       "get" : {
+         "rows" : term_get_rows,
+         "cols" : term_get_cols,
+       }
      }
  );
 

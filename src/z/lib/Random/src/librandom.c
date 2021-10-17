@@ -1,6 +1,4 @@
-
-
-#define LIBRARY "Sh"
+#define LIBRARY "Random"
 
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
