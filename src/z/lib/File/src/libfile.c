@@ -89,6 +89,7 @@ static int file_is_elf (const char *file) {
   return retval;
 }
 
+/* [20/10/21: this doesn't handles dangling symbolic links */
 static int file_exists (const char *fname) {
   return (0 is access (fname, F_OK));
 }
@@ -334,11 +335,11 @@ theend:
   return this;
 }
 
-static int file_copy_on_interactive (char *file) {
+static int file_on_interactive (char *file, char *msg) {
   term_t *term = Term.new ();
   Term.raw_mode (term);
 
-  fprintf (stdout, "copy: overwrite `%s'? y[es]/n[o]/q[uit]", file);
+  fprintf (stdout, "%s `%s'? y[es]/n[o]/q[uit]", msg, file);
   fflush (stdout);
 
   int retval = 0;
@@ -560,9 +561,9 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
       if (opts.interactive) {
         int what = 0;
         if (NULL is opts.on_interactive)
-          what = file_copy_on_interactive (dest);
+          what = file_on_interactive (dest, "copy: overwrite");
         else
-          what = opts.on_interactive (dest);
+          what = opts.on_interactive (dest, "copy: overwrite");
 
         switch (what) {
           case  1: goto are_same;
@@ -822,7 +823,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
 
   if (n is -1) {
     if (outToErrStream)
-      fprintf (opts.err_stream, "fsailed to copy '%s' to '%s': %s\n",
+      fprintf (opts.err_stream, "failed to copy '%s' to '%s': %s\n",
           src, dest, Error.errno_string (errno));
     goto theend_no_verbose;
   }
@@ -888,6 +889,141 @@ theerror:
   return retval;
 }
 
+static int file_remove (const char *, file_remove_opts);
+static int file_remove (const char *file, file_remove_opts opts) {
+  int retval = NOTOK;
+
+  if (opts.interactive) opts.force = 0;
+
+  int outToErrStream = (opts.verbose > OPT_NO_VERBOSE and NULL isnot opts.err_stream);
+
+  if (NULL is file) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to remove: file argument is a NULL pointer\n");
+    return NOTOK;
+  }
+
+  size_t file_len = bytelen (file);
+  ifnot (file_len) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to remove: file argument is an empty string\n");
+    return NOTOK;
+  }
+
+  struct stat file_st;
+  if (-1 is lstat (file, &file_st)) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "%s: %s\n", file, Error.errno_string (errno));
+    goto theerror;
+  }
+
+  int is_dir = S_ISDIR(file_st.st_mode);
+
+  if (is_dir) {
+    ifnot (opts.recursive) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "%s: is a directory\n", file);
+      goto theerror;
+    }
+
+    if (opts.curdepth is opts.maxdepth) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "'%d' depth exceeded '%d' maxdepth\n",
+            opts.curdepth, opts.maxdepth);
+      goto theerror;
+    }
+
+    opts.curdepth++;
+
+    dirlist_t *dlist = Dir.list ((char *) file, 0);
+    ifnot (dlist->list->num_items)
+      retval = OK;
+
+    vstring_t *it = dlist->list->head;
+
+    while (it) {
+      String.trim_end (it->data, DIR_SEP);
+      size_t newlen = file_len + 1 + it->data->num_bytes;
+      char newfile[newlen + 1];
+      Cstring.cp_fmt (newfile, newlen + 1, "%s/%s", file, it->data->bytes);
+      retval = file_remove (newfile, opts);
+      if (retval isnot OK)
+        break;
+
+      it = it->next;
+    }
+
+    dlist->release (dlist);
+
+    if (retval isnot OK) goto theerror;
+
+    // fallthrough
+  }
+
+  ifnot (opts.force) {
+    if (opts.interactive) {
+      char msg[32];
+      if (is_dir) {
+        Cstring.cp (msg, 32, "remove directory", 16);
+      } else if (S_ISREG(file_st.st_mode)) {
+        Cstring.cp (msg, 32, "remove regular file", 19);
+      } else if (S_ISLNK(file_st.st_mode)) {
+        Cstring.cp (msg, 32, "remove link", 16);
+      } else if (S_ISSOCK(file_st.st_mode)) {
+        Cstring.cp (msg, 32, "remove socket", 13);
+      } else if (S_ISCHR(file_st.st_mode)) {
+        Cstring.cp (msg, 32, "remove character device", 23);
+      } else if (S_ISBLK(file_st.st_mode)) {
+        Cstring.cp (msg, 32, "remove block", 13);
+      } else if (S_ISFIFO(file_st.st_mode)) {
+        Cstring.cp (msg, 32, "remove fifo", 12);
+      }
+
+      int what = 0;
+      if (NULL is opts.on_interactive)
+        what = file_on_interactive ((char *) file, msg);
+      else
+        what = opts.on_interactive ((char *) file, msg);
+
+      switch (what) {
+        case  0:
+          retval = OK;
+        case -1:
+          goto theend;
+      }
+    }
+  }
+
+  if (is_dir) {
+    retval = rmdir (file);
+    if (retval is -1) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to remove '%s' directory: %s\n",
+          file, Error.errno_string (errno));
+
+      goto theerror;
+    }
+  } else {
+    if (-1 is unlink (file)) {
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to remove '%s': %s\n", file, Error.errno_string (errno));
+
+       goto theerror;
+    }
+  }
+
+  if (opts.verbose >= OPT_VERBOSE and opts.out_stream isnot NULL)
+    fprintf (opts.out_stream, "removed '%s'\n", file);
+
+  retval = OK;
+
+theend:
+  return retval;
+
+theerror:
+  return NOTOK;
+}
+
 public file_T __init_file__ (void) {
   __INIT__ (io);
   __INIT__ (os);
@@ -905,6 +1041,7 @@ public file_T __init_file__ (void) {
       .copy = file_copy,
       .write = file_write,
       .append = file_append,
+      .remove = file_remove,
       .exists = file_exists,
       .is_rwx = file_is_rwx,
       .is_elf = file_is_elf,

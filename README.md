@@ -231,9 +231,68 @@ wise to apply this principle rigorously when they are being extended.
 
 We also believe  that the description shares the same  importance with the end
 result. This  satisfy first  the inner human  curiosity, but  most importantly
-allows a system to be further developed. But mainly because a human being gets
-answers and has the chance to create a system based on own efforts, if there is
-such a desire.
+allows a system to be further evolved and developed, by the human's realization
+of how a system works underlying. Also by exposing the description, what it is
+actually being exposed it is the intention. And by breaking down the pieces and
+the their intentions, the human's mind flow procedure (sooner or later, and if
+there is a desire) will visualize the big picture as a sudden light.
+
+This exact realization usually reveals the way to the implementation, either as
+a new code or by modifying the existing.
+
+Some words from the future (mid++ octomber raining days and nights of 2021):
+```C
+ /*
+  Later in the code path, we've been implemented a programming languages, that
+  suffers from two things:
+    - very high code complexity to handle deallocations
+    - there isn't a virtual machine, so optimizations are futile
+    - there isn't a proper lexer/parser/compiler indepented code unit/namespace/phase
+
+  Really it became really complicated to understand the intention of the code
+  at places, and modifications are quite fragile with high probability to break
+  the code logic, in another place of the code.
+
+  However the language it is really nice one:
+    - it is quite fast for what it does, that is to be the driver and leaving
+      to C to do the underlying work
+    - it handles the so desired deallocations (at least for the code that has
+      been written so far (and it quite complex sometimes)), albeit with this
+      hard an insufficient way it does
+    - it is enough rich but and simple to use
+    - and..., it is quite expressive :). I really like it.
+
+  But why it happened to be so bad code (though at the same time clever at places)?
+    - I never wrote a programming language before. I'm not even a programmer with
+      common sense, I never was a proper student (again with the common sense) .
+      I just know enough to develop logic and design what it has to be designed.
+
+      And as I can not learn by reading, as I have to be faced with the facts
+      to realize a concept, the underlying implementation code, lacks the above
+      fundamental for a programming language and well defined by now concepts.
+
+  And so we are guilty, because we didn't followed the so called "break down
+  the complexity in well defined pieces" UNIX wisdom mentality.
+
+  A couple of days ago, I read the wonderfull [Crafting Interpreters](https://github.com/munificent/craftinginterpreters)
+  by Robert Nystrom. He said at some point, how difficult would be to incorporate
+  at later phase a garbage collector, if you don't do it with the beggining. I'm
+  facing with this fact :).
+
+  Another trueth fact is though, that I could recognize also the challenges
+  of a programming language that are described by Bob, as I've been faced with
+  them, and so it is probably the way we have all the way to realization
+  at the end.
+
+  I don't think that time will be enough generous to allow me to re-write it
+  from the scratch. But it is quite fascinate to get a text file written with
+  a special syntax, interpret it and transform it finnally to instructions.
+  But I'm afraid that even if I do it at some point in time, it would
+  probably ended up again to be the same language!!! So what it is the
+  point! But it is, because we could have the speed also of a Virtual Machine
+  and the fascination to implement one. So there is a temptation yes.
+ */
+```
 
 We have also to appreciate the availability of the required tools to build the
 system. These tools are free to use them (free as free beer) by anyone in this
@@ -297,7 +356,7 @@ Here is the code:
 ```
 The  `st`  structure contains  all  the   information about  the inode   that  is
 associated with  the requested  filename. In  this function  we're interesting
-about  the number  of  bytes, which  we  return  them to  our  callee.
+about  the number  of  bytes, which  we  return  them to  our  caller.
 
 It is callers duty to parse the user input, that usually comes from the keyboard,
 before calling the function. Here is the call:
@@ -1090,7 +1149,7 @@ To do that use:
 
       cause:  For certain it is the jump code that calculates wrong the line numbers.
 
-      state: good to fix, but this is not my style to work.
+      state: good to fix, but this is not my style to work, so it doesn't happens.
 
      - under circumstances when writting with characters > ASCII_RANGE
        reproducible: needs some time but possible. Write some greek and make
@@ -1098,7 +1157,7 @@ To do that use:
 
       cause: easy (wrong calculation, when going [for|back]ward)
 
-      state: very good to fix as it is annoying, but do not have time
+      state: very good to fix as it is annoying, but need to have time and will
 
   - a [terminal multiplexer] (https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) calles as:
 
@@ -1123,7 +1182,7 @@ To do that use:
    [executable](src/z/app/v/src/v.c)
 
    state: on stabilization. Syntax and semantics are hard to change.
-   crashes: it is an ongoing work and it is quite fragile, but its not
+   crashes: it is an ongoing work and it is quite fragile, but not
      with current code
 
   - many libraries
@@ -1150,7 +1209,7 @@ To do that use:
 
   - a shell
     state: don't never tried to work with it, as there are other areas to
-      dedicate attention (it is not a priority, as might change direction)
+      dedicate attention (it is not a priority, as the direction might change)
 
    sources:
    [document](data/docs/zs.md)
@@ -1159,15 +1218,15 @@ To do that use:
 
   - an early draft of a sudo like utility
     state: audit and careful review it is required. It works for my usage and
-    I use it a lot. But should be unhandled cases. It is just a proof of concept
-    mostly and written in the very first days.
+    I use it a lot. But there should be unhandled cases. It is just a proof of
+    concept mostly and written in the very first days.
 
    sources:
    [Auth Library](src/z/lib/Auth/src/libauth.c)
    [executable](src/app/zsu/src/zsu.c)
 
    notes:
-     - libpam is required
+     - libpam is required (we might use another option one day, like crypt())
      - likewise the sudo utility, as the executable is installed as setuid root
 
   - a package manager
@@ -1176,8 +1235,8 @@ To do that use:
 
 Requirements:
   The make utility, a C compiler, a linker, a libc and libpam  as zsu dependemcy
-  (for now (as we  don't really need it at this stage), so it has to move from
-  the initialization system state).
+  (for now (as we  don't really need it at this stage), so it has to be moved
+   from the initialization system state).
 
 ```sh
   cd src
@@ -1232,7 +1291,7 @@ There is no support for installation to the `/` namespace.
   # Still though the chroot call suffers from what have been described in the
   # Chrooting section in this document, though it is still usefull in cases,
   # so we are in need to find another way.
-  # Mid days of Octomber: use a simple container implementation.
+  # Mid days of Octomber: We now use a simple container implementation.
 
 ```
 

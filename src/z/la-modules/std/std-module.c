@@ -204,11 +204,12 @@ static VALUE string_advance_on_byte (la_t *this, VALUE v_str, VALUE v_byte) {
   ifnot (IS_INT(v_byte)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   char *str = AS_STRING_BYTES(v_str);
   int byte = AS_INT(v_byte);
-  char *new = Cstring.byte.in_str (str, byte);
-  if (NULL is new) return v_str;
-  int n = new - str;
-  String.delete_numbytes_at (AS_STRING(v_str), n, 0);
-  return v_str;
+
+  char *sp = Cstring.byte.in_str (str, byte);
+  if (NULL is sp) return NULL_VALUE;
+
+  string *new = String.new_with (sp);
+  return STRING(new);
 }
 
 static VALUE string_advance (la_t *this, VALUE v_str, VALUE v_n) {
@@ -219,10 +220,11 @@ static VALUE string_advance (la_t *this, VALUE v_str, VALUE v_n) {
   int n = AS_INT(v_n);
 
   if (n < 1) return STRING(str);
-
   if (n >= (int) str->num_bytes) n = str->num_bytes - 1;
-  String.delete_numbytes_at (str, n, 0);
-  return STRING(str);
+
+  string *new = String.new_with_len (str->bytes + n, str->num_bytes - n);
+
+  return STRING(new);
 }
 
 static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
@@ -277,6 +279,16 @@ static VALUE string_numchars (la_t *this, VALUE v_str) {
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   string *s = AS_STRING(v_str);
   return INT(Ustring.char_num (s->bytes, s->num_bytes)); // a small disharmony here
+}
+
+static VALUE string_trim_byte_at_end (la_t *this, VALUE v_str, VALUE v_byte) {
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_byte))   THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  string *s = AS_STRING(v_str);
+  int byte = AS_INT(v_byte);
+  string *new = String.dup (s);
+  String.trim_end (new, byte);
+  return STRING(new);
 }
 
 static VALUE integer_to_string (la_t *this, VALUE v_int, VALUE v_base) {
@@ -374,6 +386,7 @@ public int __init_std_module__ (la_t *this) {
     { "string_to_integer",  PTR(string_to_integer), 1 },
     { "string_byte_in_str", PTR(string_byte_in_str), 2 },
     { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
+    { "string_trim_byte_at_end", PTR(string_trim_byte_at_end), 2},
     { "integer_eq",         PTR(integer_eq), 2},
     { "integer_char",       PTR(integer_char), 1 },
     { "integer_to_string",  PTR(integer_to_string), 2},
@@ -412,6 +425,7 @@ public int __init_std_module__ (la_t *this) {
        "to_integer" : string_to_integer,
        "byte_in_str" : string_byte_in_str,
        "advance_on_byte" : string_advance_on_byte,
+       "trim_byte_at_end" : string_trim_byte_at_end
      };
 
      public var Integer = {

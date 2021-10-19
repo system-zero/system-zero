@@ -98,6 +98,24 @@ static VALUE path_split (la_t *this, VALUE v_path) {
   return ARRAY(array);
 }
 
+static VALUE path_concat (la_t *this, VALUE v_apath, VALUE v_bpath) {
+  (void) this;
+  ifnot (IS_STRING(v_apath)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_bpath)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *pa = AS_STRING(v_apath);
+  string *pb = AS_STRING(v_bpath);
+
+  string *new = String.dup (pa);
+  String.trim_end (new, DIR_SEP);
+
+  int idx = 0;
+  while (pb->bytes[idx] is DIR_SEP) idx++;
+  String.append_byte (new, DIR_SEP);
+  String.append_with (new, pb->bytes + idx);
+
+  return STRING(new);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_path_module__ (la_t *this) {
@@ -110,6 +128,7 @@ public int __init_path_module__ (la_t *this) {
   LaDefCFun lafuns[] = {
     { "path_real",        PTR(path_real), 1 },
     { "path_split",       PTR(path_split), 1 },
+    { "path_concat",      PTR(path_concat), 2 },
     { "path_extname",     PTR(path_extname), 1 },
     { "path_dirname",     PTR(path_dirname), 1 },
     { "path_basename",    PTR(path_basename), 1 },
@@ -128,6 +147,7 @@ public int __init_path_module__ (la_t *this) {
     public var Path = {
        "real" : path_real,
        "split" : path_split,
+       "concat" : path_concat,
        "dirname"  : path_dirname,
        "extname"  : path_extname,
        "basename" : path_basename,

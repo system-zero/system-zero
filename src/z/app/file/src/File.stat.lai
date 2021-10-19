@@ -22,7 +22,7 @@ var oct = st.st_mode: file_mode_to_octal_string ()
 
 var type = st.st_mode: file_type_to_string ()
 var dev_x = format ("${%x, st.st_dev}")
-String.advance (dev_x, 2);
+dev_x = String.advance (dev_x, 2);
 
 var acct = st.st_atime: time_local ()
 var acc = "Access: %Y-%m-%d %H:%M:%S": time_format (acct)

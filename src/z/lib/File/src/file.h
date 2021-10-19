@@ -3,7 +3,7 @@
 
 typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
 
-typedef int (*FileCopyInteractive) (char *);
+typedef int (*FileInteractive) (char *, char *);
 
 typedef struct file_copy_opts {
   int
@@ -25,7 +25,7 @@ typedef struct file_copy_opts {
     *out_stream,
     *err_stream;
 
-  FileCopyInteractive on_interactive;
+  FileInteractive on_interactive;
 
 } file_copy_opts;
 
@@ -45,6 +45,35 @@ typedef struct file_copy_opts {
   .out_stream = stdout,                      \
   .err_stream = stderr,                      \
   .on_interactive = NULL,                    \
+  __VA_ARGS__}
+
+typedef struct file_remove_opts {
+  int
+    force,
+    verbose,
+    maxdepth,
+    curdepth,
+    recursive,
+    interactive;
+
+  FILE
+    *out_stream,
+    *err_stream;
+
+  FileInteractive on_interactive;
+
+} file_remove_opts;
+
+#define FileRemoveOpts(...) (file_remove_opts) { \
+  .force = OPT_NO_FORCE,                         \
+  .verbose = OPT_VERBOSE_ON_ERROR,               \
+  .maxdepth = OPT_MAXDEPTH,                      \
+  .curdepth = 0,                                 \
+  .recursive = OPT_NO_RECURSIVE,                 \
+  .interactive = OPT_NO_INTERACTIVE,             \
+  .out_stream = stdout,                          \
+  .err_stream = stderr,                          \
+  .on_interactive = NULL,                        \
   __VA_ARGS__}
 
 #define FILE_TMPFNAME_UNLINK_FILE (1 << 0)
@@ -71,6 +100,7 @@ typedef struct file_self {
 
   int
     (*copy) (const char *, const char *, file_copy_opts),
+    (*remove) (const char *, file_remove_opts),
     (*exists) (const char *),
     (*is_lnk) (const char *),
     (*is_reg) (const char *),

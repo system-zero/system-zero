@@ -1,6 +1,5 @@
-#define APPNAME     "Contain.new"
 #define APPLICATION "Contain.new"
-#define APP_OPTS   "directory"
+#define APP_OPTS "directory"
 
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD

@@ -75,7 +75,7 @@ private
   }
 
   parse_short_arg : func (arg) {
-    String.advance (arg, 1)
+    arg = String.advance (arg, 1)
 
     var retval = false
 
@@ -236,7 +236,8 @@ private
           var optval = arg: byte_in_str ('=')
           var vallen = optval: len ()
 
-          String.advance (optval, 1);
+          optval = String.advance (optval, 1);
+
           if (vallen is optval: len ()) {
             if (flags & ARG_VALUE_REQUIRED) {
               if this.verbose is true then

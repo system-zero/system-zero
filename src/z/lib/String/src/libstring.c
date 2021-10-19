@@ -26,19 +26,6 @@ static size_t cstring_cp (char *dest, size_t dest_len, const char *src, size_t n
   return len;
 }
 
-static char *cstring_byte_in_str (const char *s, int c) {
-  const char *sp = s;
-  while (*sp != c) {
-    if (*sp == 0) return NULL;
-    sp++;
-  }
-  return (char *) sp;
-}
-
-static char *cstring_byte_null_in_str (const char *s) {
-  return cstring_byte_in_str (s, 0);
-}
-
 static size_t cstring_byte_mv (char *str, size_t len, size_t to_idx,
                                    size_t from_idx, size_t nelem) {
   if (from_idx is to_idx) return 0;
@@ -269,13 +256,12 @@ static string_t *string_replace_with_fmt (string_t *this, const char *fmt, ...) 
 }
 
 static string_t *string_trim_end (string_t *this, char c) {
-  char *sp = cstring_byte_null_in_str (this->bytes);
-  sp--;
+  char *sp = this->bytes + this->num_bytes - 1;
 
-  while (sp >= this->bytes) {
-    if (*sp isnot c) break;
+  while (1) {
+    if (*sp-- isnot c) break;
     string_clear_at (this, -1);
-    if (sp is this->bytes) break;
+    ifnot (this->num_bytes) break;
   }
 
   return this;

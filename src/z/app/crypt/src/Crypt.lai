@@ -21,7 +21,7 @@ if (argparse.argc isnot 1) {
 
 var file = argparse.argv[0]
 
-# fix this: (failes to consume clauses or mismplaced orelse)
+# fix this: (fails to consume clauses or mismplaced orelse)
 #var fun =
 #  if String.eq (prog, "Crypt.md5sum") then
 #    crypt_md5sum_file orelse

@@ -1053,6 +1053,7 @@ static int contain_run (contain_t *cnt) {
       putenv ("TMPDIR=/tmp");
       putenv ("PATH=/bin");
       putenv ("SRCDIR=/src");
+      putenv ("SYSDIR=/");
       putenv (STR_FMT("HOME=/home/%s", cnt->user));
       putenv (STR_FMT("DATADIR=/home/%s", cnt->user));
       putenv (STR_FMT("USERNAME=%s", cnt->user));

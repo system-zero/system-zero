@@ -4510,7 +4510,8 @@ static int la_parse_type (la_t *this) {
 static int la_parse_expr_list (la_t *this) {
   int err;
   int c = TOKEN;
-  int count = 0;
+  int count = this->argCount;
+  this->argCount = 0;
   VALUE v;
 
   if (c is TOKEN_SEMICOLON)
@@ -4543,8 +4544,6 @@ static int la_parse_expr_list (la_t *this) {
 
   this->exprList--;
 
-  count += this->argCount;
-  this->argCount = 0;
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
   if (c is TOKEN_SEMICOLON) {

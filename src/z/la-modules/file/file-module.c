@@ -331,23 +331,6 @@ static VALUE file_mkfifo (la_t *this, VALUE v_file, VALUE v_mode) {
   return OK_VALUE;
 }
 
-static VALUE file_remove (la_t *this, VALUE v_file) {
-  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  char *file = AS_STRING_BYTES(v_file);
-
-  La.set.Errno (this, 0);
-
-  int retval = unlink (file);
-  if (retval is -1) {
-    La.set.Errno (this, errno);
-    return NOTOK_VALUE;
-  } else
-    return OK_VALUE;
-
-  return OK_VALUE;
-}
-
 static VALUE file_rename (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   ifnot (IS_STRING(v_src_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_dest_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -645,6 +628,32 @@ static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   return INT(retval);
 }
 
+static VALUE file_remove (la_t *this, VALUE v_file) {
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  char *file = AS_STRING_BYTES(v_file);
+
+  int verbose = GET_OPT_VERBOSE();
+  int force = GET_OPT_FORCE();
+  int recursive = GET_OPT_RECURSIVE();
+  int interactive = GET_OPT_INTERACTIVE();
+
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
+
+  La.set.Errno (this, 0);
+
+  int retval = File.remove (file, FileRemoveOpts (
+      .verbose = verbose, .force = force,
+      .recursive = recursive, .interactive = interactive,
+      .out_stream = out_fp, .err_stream = err_fp));
+
+  if (retval is NOTOK)
+    La.set.Errno (this, errno);
+
+  return INT(retval);
+}
+
 static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   int mode = AS_INT(v_mode);
@@ -693,10 +702,10 @@ public int __init_file_module__ (la_t *this) {
     { "file_lstat",      PTR(file_lstat), 1 },
     { "file_chown",      PTR(file_chown), 3 },
     { "file_chmod",      PTR(file_chmod), 2 },
+    { "file_remove",     PTR(file_remove), 1 },
     { "file_exists",     PTR(file_exists), 1 },
     { "file_access",     PTR(file_access), 2 },
     { "file_mkfifo",     PTR(file_mkfifo), 2 },
-    { "file_remove",     PTR(file_remove), 1 },
     { "file_rename",     PTR(file_rename), 2 },
     { "file_symlink",    PTR(file_symlink), 2 },
     { "file_hardlink",   PTR(file_hardlink), 2 },
@@ -765,10 +774,10 @@ public int __init_file_module__ (la_t *this) {
       "lstat" : file_lstat,
       "chown" : file_chown,
       "chmod" : file_chmod,
+      "remove" : file_remove,
       "exists" : file_exists,
       "access" : file_access,
       "mkfifo" : file_mkfifo,
-      "remove" : file_remove,
       "rename" : file_rename,
       "symlink" : file_symlink,
       "hardlink" : file_hardlink,

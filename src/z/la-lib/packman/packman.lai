@@ -122,7 +122,7 @@ public
 Type Packman {
 private
   spec
-  sh          : New Shell ()
+  sh
   curdir
   user        : Os.getpwname (Os.getuid ())
   group       : Os.getgrname (Os.getgid ())
@@ -149,6 +149,35 @@ private
   path        : Sys.get ("PATH")
 
   init : func {
+    this.sh = New Shell ()
+    this.user = Os.getpwname (Os.getuid ())
+    this.group = Os.getgrname (Os.getgid ())
+    this.make_exec = Sys.which ("make")
+    this.patch_exec = Sys.which ("patch")
+    this.fetch_exec = Sys.which ("wget")
+    this.tar_exec = Sys.which ("tar")
+    this.tar_args = "xf"
+    this.git_exec = Sys.which ("git")
+    this.clone_args = "clone"
+    this.pull_args = "pull"
+    this.verbose = PACKMAN_VERBOSE
+
+    var sysdir = Sys.get ("SYSDIR")
+    var datadir = Sys.get ("DATADIR")
+    var tmpdir = Sys.get ("TMPDIR")
+
+    this.spec_dir = datadir: path_concat ("Packman/specs")
+    this.sources_dir = datadir: path_concat ("Packman/sources")
+    this.build_dir = tmpdir: path_concat ("Packman")
+    this.platform = Sys.get ("PLATFORM")
+    this.homedir = Sys.get ("HOME")
+    this.datadir = datadir
+    this.tmpdir = tmpdir
+    this.sysdir = sysdir
+    this.bindir = sysdir: path_concat ("/bin")
+    this.libdir = sysdir: path_concat ("/lib")
+    this.path = Sys.get ("PATH")
+
     this.curdir = Dir.current ()
     if (this.fetch_exec is null) {
       this.fetch_exec = Sys.which ("curl")
@@ -177,7 +206,7 @@ private
     }
 
     var webarch = this.baseurl + "/" + this.spec.archive
-    var archive = this.sources_dir + "/" + this.spec.archive
+    var archive = this.sources_dir: path_concat (this.spec.archive)
 
     if (ok is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " +
         "-o" + archive + " " + webarch) {
@@ -198,7 +227,7 @@ private
       return notok
     }
 
-    var archive = this.sources_dir + "/" + this.spec.archive
+    var archive = this.sources_dir: path_concat (this.spec.archive)
 
     ifnot (File.exists (archive)) {
       println ("fetching sources: hasn't been implemented")
@@ -228,7 +257,7 @@ private
     var verb = qualifier ("verbose", 0)
     var fp = qualifier ("out_stream", stdout) 
 
-    var archive = this.sources_dir + "/" + this.spec.archive
+    var archive = this.sources_dir: path_concat (this.spec.archive)
 
     var is_eq = this.spec.md: lambda (x) {
       return x is
@@ -293,7 +322,7 @@ private
       return notok if this.fetch_sources () is notok
     }
 
-    return (this.sources_dir + "/" + this.spec.sources): file_copy (
+    return (this.sources_dir: path_concat (this.spec.sources)): file_copy (
        "."; { "force" : 1, "recursive" : 1, "update" : 1, "verbose" : 1})
 
   }
@@ -342,7 +371,7 @@ public
 
   new : {
     spec : func (name) {
-      var specname = this.spec_dir + "/" + name + ".lai"
+      var specname = this.spec_dir: path_concat (name + ".lai")
       this.spec = evalfile (specname)
       return this.spec
     }
@@ -405,7 +434,8 @@ public
 
     var curdir = Dir.current ()
 
-    return notok if notok is Dir.change (this.sources_dir + "/" + this.spec.sources)
+    return notok if notok is Dir.change (
+      this.sources_dir: path_concat (this.spec.sources)
 
     var retval = this.sh:exec (this.git_exec + " " + this.pull_args)
 
@@ -511,7 +541,7 @@ public
         continue if action.command is null
 
         if (action.type is PACKMAN_BUILD_EVAL) {
-          break 2 ifnot 0 is (eval (action.command));
+          break 2 ifnot 0 is (action.command: eval ());
           continue
         }
 

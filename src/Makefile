@@ -1145,10 +1145,11 @@ zero-shared:  Env cenv list\
               libfile-shared libpath-shared libterm-shared\
               libimap-shared libsmap-shared libvideo-shared\
               libjson-shared libmd5-shared libsha256-shared\
-              libsha512-shared librandom-shared\
+              libsha512-shared librandom-shared libcontain-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
-              sys-shared path-shared crypt-shared env-shared
+              sys-shared path-shared crypt-shared env-shared\
+              contain-shared
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv list\
@@ -1159,10 +1160,11 @@ zero-static:  Env cenv list\
               libfile-static libpath-static libterm-static\
               libimap-static libsmap-static libvideo-static\
               libjson-static libmd5-static libsha256-static\
-              libsha512-static librandom-static\
+              libsha512-static librandom-static libcontain-static\
               zs-static\
               dir-static file-static io-static term-static\
-              sys-static path-static crypt-static env-static
+              sys-static path-static crypt-static env-static\
+              contain-static
 
 clean-shared: zero-clean-shared
 zero-clean-shared:\
@@ -1184,12 +1186,12 @@ zero-clean-shared:\
               clean-libla-shared clean-libv-shared\
               clean-libos-shared clean-libmd5-shared\
               clean-libsha256-shared clean-libsha512-shared\
-              clean-librandom-shared\
+              clean-librandom-shared clean-libcontain-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared clean-v-shared clean-e-shared\
-              clean-path-shared
+              clean-path-shared clean-env-shared clean-contain-shared
 
 clean-static: zero-clean-static
 zero-clean-static:\
@@ -1211,12 +1213,12 @@ zero-clean-static:\
               clean-libla-static clean-libv-static\
               clean-libos-static clean-libmd5-static\
               clean-libsha256-static clean-libsha512-static\
-              clean-librandom-static\
+              clean-librandom-static clean-libcontain-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
               clean-sys-static clean-v-static clean-e-static\
-              clean-path-static
+              clean-path-static clean-env-static clean-contain-static
 
 all: shared static
 

@@ -61,6 +61,17 @@ static VALUE term_sane_mode (la_t *this, VALUE v_term) {
   return INT(retval);
 }
 
+static VALUE term_orig_mode (la_t *this, VALUE v_term) {
+  (void) this;
+  ifnot (IS_OBJECT(v_term))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+
+  object *o = AS_OBJECT(v_term);
+  term_t *term = (term_t *) AS_PTR(o->value);
+  int retval = Term.orig_mode (term);
+  return INT(retval);
+}
+
 static term_t *__get_term_arg (VALUE v_term) {
   ifnot (IS_OBJECT(v_term))
     return NULL;
@@ -135,6 +146,7 @@ public int __init_term_module__ (la_t *this) {
     { "term_get_cols",    PTR(term_get_cols), 1 },
     { "term_raw_mode",    PTR(term_raw_mode), 1 },
     { "term_sane_mode",   PTR(term_sane_mode), 1 },
+    { "term_orig_mode",   PTR(term_orig_mode), 1 },
     { "term_init_size",   PTR(term_init_size), 1 },
     { NULL, NULL_VALUE, 0}
   };
@@ -151,6 +163,7 @@ public int __init_term_module__ (la_t *this) {
        "getkey" : term_getkey,
        "raw_mode" : term_raw_mode,
        "sane_mode" : term_sane_mode,
+       "orig_mode" : term_orig_mode,
        "init_size" : term_init_size,
        "get" : {
          "rows" : term_get_rows,

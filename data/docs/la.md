@@ -1971,9 +1971,34 @@ The return statement
 # in lower case, e.g., import ("path"). Those exposing a public variable of
 # a MapType, that has the exact name but the leading char is capitalized.
 
+  # Std Module Interface
+    # IntegerType   Map.set (MapType map, StringType key, Value v)
+    # ValueType     Map.get (MapType map, StringType key)
+    # StringType[]  Map.keys (MapType map)
+    # IntegerType   Map.remove (MapType map, StringType key)
+    # IntegerType   Map.key_exists (MapType map, StringType key)
+
+    # IntegerType[] Array.where (ArrayType ar, Value expression)
+
+    # IntegerType   String.eq (StringType a, StringType b)
+    # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
+    # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
+    # StringType    String.advance (StringType str, IntegerType num)
+    # StringType[]  String.tokenize (StringType str, StringType token)
+    # NumberType    String.to_number (StringType str)
+    # IntegerType   String.to_integer (StringType str)
+    # StringType    String.byte_in_str (StringType str, IntegerType byte)
+    # StringType    String.advance_on_byte (StringType str, IntegerType c)
+    # StringType    String.trim_byte_at_end (StringType a, StringType b)
+
+    # IntegerType   Integer.eq (IntegerType a, IntegerType b)
+    # StringType    String.char (IntegerType c)
+    # StringType    Integer.to_string (IntegerType i, IntegerType base)
+
   # Path Module Interface
     # StringType    Path.real (StringType path)
     # StringType[]  Path.split (StringType path)
+    # StringType    Path.concat (StringType a, StringType b)
     # StringType    Path.dirname (StringType path)
     # StringType    Path.extname (StringType path)
     # StringType    Path.basename (StringType path)
@@ -1990,6 +2015,11 @@ The return statement
          all: same as preserve and recursive
          (note that on the command implementation errors are on by default, and
           so the other two is minus one (a small inconsistency here))
+    # IntegerType   File.remove (StringType file)
+       qualifiers: 
+         force: [0|1], recursive: [0|1],
+         interactive: [0|1] if it is set, it turns off `force',
+         verbose: [0|1]
     # MapType       File.stat (StringType file)
     # MapType       File.lstat (StringType file)
     # IntegerType   File.size (StringType file)
@@ -2023,29 +2053,6 @@ The return statement
     # IntegerType   S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR
     # IntegerType   S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP
     # IntegerType   S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
-
-  # Std Module Interface
-    # IntegerType   Map.set (MapType map, StringType key, Value v)
-    # ValueType     Map.get (MapType map, StringType key)
-    # StringType[]  Map.keys (MapType map)
-    # IntegerType   Map.remove (MapType map, StringType key)
-    # IntegerType   Map.key_exists (MapType map, StringType key)
-
-    # IntegerType[] Array.where (ArrayType ar, Value expression)
-
-    # IntegerType   String.eq (StringType a, StringType b)
-    # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
-    # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
-    # StringType    String.advance (StringType str, IntegerType num)
-    # StringType[]  String.tokenize (StringType str, StringType token)
-    # NumberType    String.to_number (StringType str)
-    # IntegerType   String.to_integer (StringType str)
-    # StringType    String.byte_in_str (StringType str, IntegerType byte)
-    # StringType    String.advance_on_byte (StringType str, IntegerType c)
-
-    # IntegerType   Integer.eq (IntegerType a, IntegerType b)
-    # StringType    String.char (IntegerType c)
-    # StringType    Integer.to_string (IntegerType i, IntegerType base)
 
   # Term Module Interface
     # ObjectType    Term.new ()

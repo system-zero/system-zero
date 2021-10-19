@@ -1103,6 +1103,7 @@ func self_semantics () {
       assert_true ("testing the split method", len (spl) is 4 and spl[0] is "/" and
         spl[1] is "home" and spl[2] is "aga" and spl[3] is "t")
       assert_equal ("testing the real method", Path.real ("/home/../usr/../usr/lib/../../usr/lib/../lib"), "/usr/lib")
+      assert_equal ("testing the concat method", Path.concat ("/usr///", "///bin"), "/usr/bin")
     }
 
     path_module ()
@@ -1164,10 +1165,8 @@ func self_semantics () {
 
       var fifname = "/tmp/test_file_module_fifo"
 
-      assert_true ("testing the mkfifo method",
-          File.mkfifo (fifname, 0600) is ok)
-
-      assert_true ("testing the is_lnk method",
+      assert_true ("testing the mkfifo and is_fifo methods",
+          File.mkfifo (fifname, 0600) is ok and
           File.is_fifo (fifname))
 
       var far = ["asdfghjkl", "qwertyuiop", "zxcvbnm,."]
@@ -1257,17 +1256,17 @@ func self_semantics () {
           tok[3] is "mno")
 
       var stra = "asdfg"
-      String.advance (stra, 3)
+      stra = String.advance (stra, 3)
 
       assert_true ("testing the advance method", stra is "fg")
 
       var strb = "asdfg"
-      String.advance_on_byte (strb, 'f')
+      strb = String.advance_on_byte (strb, 'f')
       assert_true ("testing the advance_on_byte method", strb is "fg")
 
       var strc = "asdfg"
       var strd = String.byte_in_str (strc, 'f')
-      assert_true ("testing the byte_in_str method", strb is "fg")
+      assert_true ("testing the byte_in_str method", strd is "fg")
 
       var si = "1234"
       var sf = "1234.1234"
@@ -2287,7 +2286,7 @@ func term_tests () {
     key = Term.getkey (fd)
   }
 
-  return Term.sane_mode (term)
+  return Term.orig_mode (term)
 }
 
 if term_tests () is notok then println ("terminal error")
