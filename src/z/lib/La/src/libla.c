@@ -4029,16 +4029,8 @@ theend:
   return LA_OK;
 }
 
-static int la_parse_map (la_t *this, VALUE *vp) {
+static int la_parse_map_members (la_t *this, VALUE map) {
   int err;
-
-  Vmap_t *map = Vmap.new (32);
-
-  la_string saved_ptr = PARSEPTR;
-  PARSEPTR = TOKENSTR;
-
-  VALUE v;
-
   this->curState |= MAP_STATE;
   this->scopeState = PUBLIC_SCOPE;
   int scope = this->scopeState;
@@ -4064,6 +4056,9 @@ static int la_parse_map (la_t *this, VALUE *vp) {
         scope = this->scopeState = PUBLIC_SCOPE;
         continue;
 
+      case TOKEN_PAREN_CLOS:
+        if (this->exprList) goto theend;
+
       default:
         THROW_SYNTAX_ERR(
           "error while getting a map field, awaiting a double quoted string or an identifier token");
@@ -4075,29 +4070,53 @@ static int la_parse_map (la_t *this, VALUE *vp) {
       ifnot (this->funcState & TYPE_NEW_STATE) {
         THROW_SYNTAX_ERR("error while setting map field, awaiting :");
       } else {
-        la_map_set_value (this, map, key, NULL_VALUE, scope);
+        la_map_set_value (this, AS_MAP(map), key, NULL_VALUE, scope);
         UNGET_BYTE();
         continue;
       }
     }
 
-    err = map_set_rout (this, map, key, this->scopeState is PUBLIC_SCOPE);
+    err = map_set_rout (this, AS_MAP(map), key, this->scopeState is PUBLIC_SCOPE);
     this->scopeState = scope;
     THROW_ERR_IF_ERR(err);
 
-    if (TOKEN is TOKEN_EOF) break;
+    switch (TOKEN) {
+      case TOKEN_EOF:
+        goto theend;
+
+      case TOKEN_NL:
+      case TOKEN_COMMA:
+        continue;
+
+      case TOKEN_PAREN_CLOS:
+        if (this->exprList)
+          goto theend;
+
+      default:
+        THROW_SYNTAX_ERR("awaiting a new line or a comma");
+    }
   }
 
+theend:
   this->curState &= ~MAP_STATE;
   this->scopeState = PRIVATE_SCOPE;
+  return LA_OK;
+}
+
+static int la_parse_map (la_t *this, VALUE *vp) {
+  la_string saved_ptr = PARSEPTR;
+  PARSEPTR = TOKENSTR;
+
+  Vmap_t *map = Vmap.new (32);
+  int err = la_parse_map_members (this, MAP(map));
+  THROW_ERR_IF_ERR(err);
+
   PARSEPTR = saved_ptr;
 
-  v = MAP(map);
-
-  if (this->exprList)
-    v.refcount--;
-
+  VALUE v = MAP(map);
+  if (this->exprList) v.refcount--;
   *vp = v;
+
   NEXT_TOKEN();
   return LA_OK;
 }
@@ -4509,6 +4528,7 @@ static int la_parse_type (la_t *this) {
 
 static int la_parse_expr_list (la_t *this) {
   int err;
+  la_string saved_ptr;
   int c = TOKEN;
   int count = this->argCount;
   this->argCount = 0;
@@ -4548,8 +4568,11 @@ static int la_parse_expr_list (la_t *this) {
 
   if (c is TOKEN_SEMICOLON) {
 parse_qualifiers:
+    saved_ptr = PARSEPTR;
+
     NEXT_TOKEN();
     c = TOKEN;
+
     if (c is TOKEN_BLOCK) {
       err = la_parse_map (this, &v);
       THROW_ERR_IF_ERR(err);
@@ -4568,15 +4591,32 @@ parse_qualifiers:
       la_set_qualifiers (this, v);
 
     } else {
-      this->exprList++;
-      err = la_parse_primary (this, &v);
-      this->exprList--;
-      THROW_ERR_IF_ERR(err);
+      if (PEEK_NTH_TOKEN(0) is TOKEN_COLON) {
+        Vmap_t *map = Vmap.new (32);
+        PARSEPTR = saved_ptr;
+        RESET_TOKEN;
 
-      if (v.type is MAP_TYPE)
-        la_set_qualifiers (this, v);
-      else if (v.type isnot NULL_TYPE)
-        THROW_SYNTAX_ERR("awaiting a map as qualifiers");
+        this->exprList++;
+        err = la_parse_map_members (this, MAP(map));
+        this->exprList--;
+        THROW_ERR_IF_ERR(err);
+
+        THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,
+          "error while getting qualifiers, awaiting )");
+
+        la_set_qualifiers (this, MAP(map));
+
+      } else {
+        this->exprList++;
+        err = la_parse_primary (this, &v);
+        this->exprList--;
+        THROW_ERR_IF_ERR(err);
+
+        if (v.type is MAP_TYPE)
+          la_set_qualifiers (this, v);
+        else if (v.type isnot NULL_TYPE)
+          THROW_SYNTAX_ERR("awaiting a map as qualifiers");
+      }
     }
   }
 

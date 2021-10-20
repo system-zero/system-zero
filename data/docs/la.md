@@ -801,9 +801,35 @@ though there are still left to be implemented.
   # and it returns `false` if `qualifiers' is null or the key doesn't exists
   # orelse returns `true`.
 
+  # Syntax forms:
+    # literal forms:
+      # fun (args; {key : val, next_key : val})
+      # fun (args; key : val, nextkey : next val)
+    # expression forms:
+      # fun (args; map_symbol)
+      # fun (args; map_expression)
+
+    # examples
+    func q_fun (x) {
+      var y = qualifier ("y", 100)
+      return (qualifier ("key", 900) + y) * x
+    }
+
+    println (q_fun (10))               # => 10000
+    println (q_fun (10; {key : 9900})) # => 100000
+    println (q_fun (10; key : 9900))   # => 100000
+
+    var m = {y : 1100}
+    println (q_fun (10; m))            # => 20000
+
+    func fm () {
+      return {y : 2100}
+    }
+    println (q_fun (10; fm ()))        # => 30000
+
   # Note that only one set of qualifiers can be active at the running instance.
   # Because of that the called function, should use the interface, before any
-  # new function call.
+  # new function call. (this might be best to change)
 
   # Again, this mechanism should be attributed to the SLang Programming Language,
   # and it is exposed with the exact interface.

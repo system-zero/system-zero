@@ -1459,6 +1459,20 @@ func self_semantics () {
         qe is 100 and
         qf is 90 and
         qg is 100)
+
+    func q_fun (x) {
+      var y = qualifier ("y", 100)
+      return (qualifier ("key", 900) + y) * x
+    }
+
+    var qm = {y : 1100}
+    func fm () { return {y : 2100}}
+
+    assert_true ("testing qualifiers syntax forms",
+        q_fun (10; key : 9900) is 100000 and
+        q_fun (10; {key : 9900}) is 100000 and
+        q_fun (10; qm) is 20000 and
+        q_fun (10; fm ()) is 30000)
   }
 
   test_qualifiers ()

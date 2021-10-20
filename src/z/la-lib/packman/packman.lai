@@ -208,10 +208,8 @@ private
     var webarch = this.baseurl + "/" + this.spec.archive
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    if (ok is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " +
-        "-o" + archive + " " + webarch) {
-      return ok
-    }
+    return ok if 0 is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " +
+        " -o " + archive + " " + webarch)
 
     return notok
   }
@@ -322,8 +320,8 @@ private
       return notok if this.fetch_sources () is notok
     }
 
-    return (this.sources_dir: path_concat (this.spec.sources)): file_copy (
-       "."; { "force" : 1, "recursive" : 1, "update" : 1, "verbose" : 1})
+    return this.sources_dir: path_concat (this.spec.sources): file_copy (
+       "."; force : 1, recursive : 1, update : 1, verbose : 1)
 
   }
 
@@ -383,9 +381,11 @@ public
       var fp = qualifier ("out_stream", stdout) 
       var ar = this.spec_dir: dir_list ()
       return null if null is ar
-      for |i, v| in ar { ar[i] = v: path_basename_sans_extname () } 
+      for |i, v| in ar
+        ar[i] = v: path_basename_sans_extname ()
       return ar ifnot verb
-      for |v| in ar { println (fp, v) }
+      for |v| in ar
+        println (fp, v)
     }
   }
 
@@ -492,7 +492,7 @@ public
         }
 
         if (action.type is PACKMAN_BUILD_MD_CHECK) {
-          var r = this.md_check (; {"verbose" : 1})
+          var r = this.md_check (; verbose : 1)
           break 2 if notok is r
           ifnot r then
             break 2 ifnot null is this.spec.md
@@ -541,7 +541,7 @@ public
         continue if action.command is null
 
         if (action.type is PACKMAN_BUILD_EVAL) {
-          break 2 ifnot 0 is (action.command: eval ());
+          break 2 ifnot 0 is (action.command: eval ())
           continue
         }
 
