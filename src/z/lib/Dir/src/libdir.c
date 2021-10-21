@@ -28,9 +28,9 @@
    - add and expose error
  */
 
-static int dir_is_directory (char *dname) {
+static int dir_is_directory (char *dname) { // -> const
   struct stat st;
-  if (NOTOK is stat (dname, &st)) return 0;
+  if (NOTOK is lstat (dname, &st)) return 0;
   return S_ISDIR (st.st_mode);
 }
 

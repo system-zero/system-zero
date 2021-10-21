@@ -33,6 +33,10 @@
    StateRetval = fun (args, SomeState()).retval
  */
 
+static int file_copy (const char *, const char *, file_copy_opts);
+static int file_remove (const char *, file_remove_opts);
+static int file_on_interactive (char *, char *);
+
 static int file_is_lnk (const char *fname) {
   struct stat st;
   if (NOTOK is lstat (fname, &st)) return 0;
@@ -89,9 +93,14 @@ static int file_is_elf (const char *file) {
   return retval;
 }
 
-/* [20/10/21: this doesn't handles dangling symbolic links */
 static int file_exists (const char *fname) {
-  return (0 is access (fname, F_OK));
+  /* [20/10/21: this doesn't handles dangling links */
+  // return (0 is access (fname, F_OK));
+  struct stat st;
+  if (-1 is lstat (fname, &st))
+    return 0;
+
+  return 1;
 }
 
 static size_t file_size (const char *fname) {
@@ -358,7 +367,38 @@ static int file_on_interactive (char *file, char *msg) {
   return retval;
 }
 
-static int file_copy (const char *, const char *, file_copy_opts);
+static string *file_backup (const char *file, size_t file_len, struct stat file_st, file_copy_opts opts) {
+  int outToErrStream = (opts.verbose > OPT_NO_VERBOSE and NULL isnot opts.err_stream);
+
+  if (opts.backup_suffix is NULL) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to create backup: backup suffix is a NULL pointer\n");
+    return NULL;
+  }
+
+  ifnot (S_ISREG(file_st.st_mode)) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "%s: can make backups only in regular files\n", file);
+    return NULL;
+  }
+
+  size_t blen = bytelen (opts.backup_suffix);
+  ifnot (blen) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to backup %s: empty backup suffix\n", file);
+    return NULL;
+  }
+
+  blen += file_len;
+  char dbuf[blen + 1];
+  Cstring.cp_fmt (dbuf, blen + 1, "%s%s", file, opts.backup_suffix);
+  if (NOTOK is file_copy (file, dbuf, FileCopyOpts
+      (.force = OPT_FORCE, .verbose = opts.verbose)))
+    return NULL;
+
+  return String.new_with (Path.basename (dbuf));
+}
+
 static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) {
   int retval = NOTOK;
 
@@ -588,32 +628,9 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
   }
 
   if (opts.backup is OPT_BACKUP and dest_exists) {
-    if (opts.backup_suffix is NULL) {
-      if (outToErrStream)
-        fprintf (opts.err_stream, "failed to create backup: backup suffix is a NULL pointer\n");
+    backup_file = file_backup (dest, dest_len, dest_st, opts);
+    if (NULL is backup_file)
       goto theerror;
-    }
-
-    ifnot (S_ISREG(dest_st.st_mode)) {
-      if (outToErrStream)
-        fprintf (opts.err_stream, "%s: can make backups only in regular files\n", dest);
-      goto theerror;
-    }
-
-    size_t blen = bytelen (opts.backup_suffix);
-    ifnot (blen) {
-      if (outToErrStream)
-        fprintf (opts.err_stream, "failed to backup %s: empty backup suffix\n", dest);
-    }
-
-    blen += dest_len;
-    char dbuf[blen + 1];
-    Cstring.cp_fmt (dbuf, blen + 1, "%s%s", dest, opts.backup_suffix);
-    if (NOTOK is file_copy (dest, dbuf, FileCopyOpts
-        (.force = OPT_FORCE, .verbose = opts.verbose)))
-      goto theerror;
-
-    backup_file = String.new_with (Path.basename (dbuf));
   }
 
   if (S_ISSOCK(src_st.st_mode) or
@@ -889,7 +906,121 @@ theerror:
   return retval;
 }
 
-static int file_remove (const char *, file_remove_opts);
+static int file_rename (const char *src, const char *a_dest, file_rename_opts opts) {
+  int retval = NOTOK;
+
+  char *dest = (char *) a_dest;
+
+  if (opts.interactive) opts.force = 0;
+
+  int outToErrStream = (opts.verbose > OPT_NO_VERBOSE and NULL isnot opts.err_stream);
+
+  if (NULL is src or NULL is dest) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to rename: either src or dest are NULL pointers\n");
+    return NOTOK;
+  }
+
+  string *backup_file = NULL;
+
+  size_t src_len = bytelen (src);
+  size_t dest_len = bytelen (dest);
+
+  if (0 is src_len or 0 is dest_len) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to rename: either src or dest are zero length\n");
+    return NOTOK;
+  }
+
+  int dest_isdir = 0;
+  char *bname = Path.basename ((char *) src);
+  size_t buf_len = bytelen (bname) + 1 + dest_len;
+  char buf[buf_len + 1];
+
+  char *orig_dest = dest;
+  int dest_exists = file_exists (dest);
+
+  if (dest_exists) {
+    dest_isdir = Dir.is_directory (dest);
+    if (dest_isdir) {
+      Cstring.cp_fmt (buf, buf_len + 1, "%s/%s", dest, bname);
+      dest = buf;
+      dest_len = buf_len;
+      dest_exists = file_exists (dest);
+    }
+  }
+
+  if (dest_exists) {
+    ifnot (opts.force) {
+      if (opts.interactive) {
+        int what = 0;
+        if (NULL is opts.on_interactive)
+          what = file_on_interactive (dest, "rename: overwrite");
+        else
+          what = opts.on_interactive (dest, "rename: overwrite");
+
+        switch (what) {
+          case  1: goto backup;
+          case  0:
+          case -1:
+            retval = OK;
+            goto theend;
+        }
+      }
+
+      errno = EEXIST;
+      if (outToErrStream)
+        fprintf (opts.err_stream, "failed to rename '%s' to '%s': %s and `force` is not set\n",
+            src, dest, Error.errno_string (errno));
+      goto theend;
+    }
+
+backup:
+    if (opts.backup) {
+      struct stat st;
+       if (-1 is lstat (dest, &st))
+         return NOTOK;
+
+      backup_file = file_backup (dest, dest_len, st, FileCopyOpts(
+        .verbose = opts.verbose, .backup_suffix = opts.backup_suffix,
+        .err_stream = opts.err_stream));
+      if (NULL is backup_file)
+        return NOTOK;
+    }
+  }
+
+  retval = rename (src, dest);
+
+print:
+  ifnot (retval) {
+    if (opts.verbose >= OPT_VERBOSE and opts.out_stream isnot NULL)
+      fprintf (opts.out_stream, "renamed '%s' -> '%s'\n", src, dest);
+  } else {
+    if (errno is EXDEV) {
+      if (0 is opts.backup or 0 is dest_isdir) {
+        retval = file_copy (src, orig_dest, FileCopyOpts(
+          .verbose = OPT_VERBOSE_ON_ERROR, .force = 1, .recursive = 1,
+          .err_stream = opts.err_stream));
+
+        if (OK is retval)
+          retval = file_remove (src, FileRemoveOpts(
+            .verbose = OPT_VERBOSE_ON_ERROR, .force = 1, .recursive = 1,
+            .err_stream = opts.err_stream));
+
+        goto print;
+      }
+    }
+
+    if (outToErrStream)
+      fprintf (opts.err_stream, "failed to rename '%s' to '%s': %s\n",
+        src, dest, Error.errno_string (errno));
+  }
+
+theend:
+  String.release (backup_file);
+  return retval;
+}
+
 static int file_remove (const char *file, file_remove_opts opts) {
   int retval = NOTOK;
 
@@ -1042,6 +1173,7 @@ public file_T __init_file__ (void) {
       .write = file_write,
       .append = file_append,
       .remove = file_remove,
+      .rename = file_rename,
       .exists = file_exists,
       .is_rwx = file_is_rwx,
       .is_elf = file_is_elf,
@@ -1062,7 +1194,6 @@ public file_T __init_file__ (void) {
       .mode = (file_mode_self) {
         .stat_to_string = OS.mode.stat_to_string,
         .from_octal_string = file_mode_from_octal_string
-
       }
     }
   };

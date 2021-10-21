@@ -240,7 +240,7 @@ there is a desire) will visualize the big picture as a sudden light.
 This exact realization usually reveals the way to the implementation, either as
 a new code or by modifying the existing.
 
-Some words from the future (mid++ octomber raining days and nights of 2021):
+Some words from the future (mid++ Octomber raining days and nights of 2021):
 ```C
  /*
   Later in the code path, we've been implemented a programming languages, that
@@ -260,9 +260,9 @@ Some words from the future (mid++ octomber raining days and nights of 2021):
       been written so far (and it quite complex sometimes)), albeit with this
       hard an insufficient way it does
     - it is enough rich but and simple to use
-    - and..., it is quite expressive :). I really like it.
+    - and..., it is quite expressive.
 
-  But why it happened to be so bad code (though at the same time clever at places)?
+  But why it ended up to be so bad code (though at the same time clever at places)?
     - I never wrote a programming language before. I'm not even a programmer with
       common sense, I never was a proper student (again with the common sense) .
       I just know enough to develop logic and design what it has to be designed.
@@ -274,53 +274,82 @@ Some words from the future (mid++ octomber raining days and nights of 2021):
   And so we are guilty, because we didn't followed the so called "break down
   the complexity in well defined pieces" UNIX wisdom mentality.
 
-  A couple of days ago, I read the wonderfull [Crafting Interpreters](https://github.com/munificent/craftinginterpreters)
-  by Robert Nystrom. He said at some point, how difficult would be to incorporate
-  at later phase a garbage collector, if you don't do it with the beggining. I'm
-  facing with this fact :).
+  A couple of days ago, I read the wonderful "Crafting Interpreters" book by
+  Robert Nystrom. He says at some point, how hard is to incorporate at later
+  phase a garbage collector, if you don't do it from the very beginning. I'm
+  facing with this fact!
 
-  Another trueth fact is though, that I could recognize also the challenges
+  Another true fact is though, that I could now recognize also the challenges
   of a programming language that are described by Bob, as I've been faced with
-  them, and so it is probably the way we have all the way to realization
-  at the end.
+  them, and so by walking the path it is probably the way we have all the way
+  up to realization at the end.
 
   I don't think that time will be enough generous to allow me to re-write it
   from the scratch. But it is quite fascinate to get a text file written with
   a special syntax, interpret it and transform it finnally to instructions.
-  But I'm afraid that even if I do it at some point in time, it would
-  probably ended up again to be the same language!!! So what it is the
-  point! But it is, because we could have the speed also of a Virtual Machine
-  and the fascination to implement one. So there is a temptation yes.
+  But I'm afraid that even if I do it at some point in time, it would probably
+  be again the same language!!! So what it is the  point! But it is, it is my
+  boy, as we may try to implement a Virtual Machine. So there is a temptation.
+
+  In any case, all the programming concepts and algorithms, had their own scratch
+  code written by someone who probably throw away it at some point for a rewrite.
+  Or two. Or one and a half anyway.
+
+  The wisdom here is to apply in your code the gained knowledge. It may looks
+  that we haven't apllied much of it here. As for us, the whole point of this
+  existance is realizations!!! Really.
+  Realizations through the way to the implemention of intentions. In this case
+  to glue the necessary components to build a system. And there
+  is yet another reason. It is still eighties for us!
+
+  For all the cases, mistakes are probably equally useful to be recorded, and
+  it may be proved, that might helps a lot to an understanding. My narrow view
+  on this, that it might be proved, that all of it has been made because of a
+  mistake, as the mistake that happens because of a will of an action, reveals
+  a bit, which might sounds like an echo of the beat of the heart and which it
+  might looks attractive to follow. Or something like this anyway. The thing is
+  that we might look for a mistake, or an exception in the rule, or a backdoor.
+
  */
 ```
 
 We have also to appreciate the availability of the required tools to build the
 system. These tools are free to use them (free as free beer) by anyone in this
 world. But it is so, because we obey  and serve, to the one and only principle
-that is:  the source code should be free (free as in freedom here).
+that the source code should be free (free as in freedom here).
 
 We can be sure, that the people of this world, wouldn't be possible to produce
 this tremendous in size and quality code, in that so sort time, if they had to
-pay for those tools, or wouldn't be available code to study. We don't even want
-to imagine this possibility! So we owe a lot, especially in the GNU project.
-
+pay for those tools, or if the code wouldn't be  available to study.  We don't
+even want to imagine this possibility! So we owe a lot, especially in the GNU
+project.
 The open and free source model, it is for the benefit of all, and this  should
-become quite crystal clear by now.
+became quite crystal clear by now.
 
 But this is also about justice. The tools should (should as an almost obligation
 here) be available to the people of the world, no matter where they live and how
-rich they are. Or their parents were, or even their grand/grand parents were.
+rich they are. Or their parents, or even their grand/grand parents.
 
 It is believed that those are the ways to satisfy our uncontrollable desire for
-the ultimate freedom and a pride path to our evolution, without  hiding  behind
-our known by now illusions. But we are free to choose. There are ready solutions
-and conveniences, special made to hold us back on our lifes, by pushing us in a
-eternal painfull cycle. Somehow we should climb that hill. We are saying instead
-of a torture, this can became a pleasant journey. But even if its getting painfull
-sometimes, it is much better if we walk this path with others. So it isn't the open  source
-model that should adjust, it is the other way around. The society and the system
-should do this task, no matter how painfull that is for us. The end result  will
-repay us with uncountable and precious gifts.
+the ultimate freedom and a pride path to our evolution, without hiding  behind
+from our known by now convenient illusions, that probably they provide  to  us
+excuses, to take a path that it might give us a chance to escape with a  style
+from this eternal and painfull cycle, that always reproduces the same result.
+
+Somehow and at some point all the atoms we should climb that hill to meet the
+eternity. If we won a tiny wisdom, then we may realized that every single ring
+of the chain it is equally and crucial important, as an indepented being that
+holds an own wisdom, that it is required to tune and drive this single ship.
+
+In any case, and if we won a tiny and so hard to gain wisdom, then at least we
+should try really really hard to make this a pleasant journey for every single
+participant of the Now. By that desire alone, it is probably enough to attract th
+the lights of Justice that liberates, even if our convienences will blow up in
+an infinite number of pieces to the space. Then we may feel that we are staring
+our destination. Then it is up to every single existance to walk this last mile
+of the path by their own will and with their own unique way.
+
+And all of it is an Art by itself.
 
 ## Commands and Shell Interface.
 
@@ -1202,6 +1231,9 @@ To do that use:
       (used mostly for testing the development). Many of the usual options
       haven't been implemented.
 
+      update (last days of Octomber): quite some of a basic set of a system
+      command line functionality has been implemented.
+
     sources: (some of them)
     [Dir.make in C](src/z/app/dir/src/Dir.make.c)
     [File.stat in La](src/z/app/file/src/File.stat.lai)
@@ -1211,27 +1243,41 @@ To do that use:
     state: don't never tried to work with it, as there are other areas to
       dedicate attention (it is not a priority, as the direction might change)
 
-   sources:
-   [document](data/docs/zs.md)
-   [Sh   library](src/z/lib/Sh/src/libsh.c)
-   [Proc library](src/z/lib/Proc/src/libproc.c)
+    sources:
+    [document](data/docs/zs.md)
+    [Sh   library](src/z/lib/Sh/src/libsh.c)
+    [Proc library](src/z/lib/Proc/src/libproc.c)
 
   - an early draft of a sudo like utility
     state: audit and careful review it is required. It works for my usage and
     I use it a lot. But there should be unhandled cases. It is just a proof of
     concept mostly and written in the very first days.
 
-   sources:
-   [Auth Library](src/z/lib/Auth/src/libauth.c)
-   [executable](src/app/zsu/src/zsu.c)
+    sources:
+    [Auth Library](src/z/lib/Auth/src/libauth.c)
+    [executable](src/app/zsu/src/zsu.c)
 
-   notes:
-     - libpam is required (we might use another option one day, like crypt())
-     - likewise the sudo utility, as the executable is installed as setuid root
+    notes:
+      - libpam is required (we might use another option one day, like crypt())
+      - likewise the sudo utility, as the executable is installed as setuid root
 
   - a package manager
     state: really early, but it seems to work with a couple of specs. It builds
       the static libpam library though. Didn't try the network code!
+
+  - a container
+    state: early but it works.
+
+    This is an important point at the coding path, because there is now a way
+    to see how the (disassociated from the host system) system works alone and
+    without the flaws of a chroot jail.
+
+    sources:
+    [Contail Library](src/z/lib/Contain/src/libcontain.c)
+    [executable](src/z/app/contain/src/Contain.new.c)
+
+    Usage:
+      Contain.new sys/`uname -m`
 
 Requirements:
   The make utility, a C compiler, a linker, a libc and libpam  as zsu dependemcy

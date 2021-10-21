@@ -413,6 +413,38 @@ func zero_semantics () {
   assert_true ("testing string concatenation using the [+] operator",
       str_h == "\"Βρεκεκεκὲξ κοὰξ κοάξ\"")
 
+  func call_by_reference () {  # this is not final
+    var s = "asdf"
+    var a = ["zzsdf"]
+    var m = {key : "zzzsdf"}
+
+    func x (xx) { xx[0] = 'b' }
+
+    x (s)
+    var r_a = s == "bsdf"
+
+    x (a[0])
+    var r_b = a[0] == "bzsdf"
+
+    x (m.key)
+    var r_c = m.key == "bzzsdf"
+
+    func aa (x) { x[0] = s }
+    aa (a)
+    var r_d = a[0] == "bsdf"
+
+    func mm (xx) {
+      xx.key = s
+    }
+    mm (m)
+    var r_e = m.key == "bsdf"
+
+    assert_true ("testing call by reference values",
+        r_a and r_b and r_c and r_d and r_e)
+  }
+
+  call_by_reference ()
+
 }
 
 zero_semantics ()

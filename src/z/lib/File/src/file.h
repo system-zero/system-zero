@@ -76,6 +76,34 @@ typedef struct file_remove_opts {
   .on_interactive = NULL,                        \
   __VA_ARGS__}
 
+typedef struct file_rename_opts {
+  int
+    force,
+    backup,
+    verbose,
+    interactive;
+
+  char *backup_suffix;
+
+  FILE
+    *out_stream,
+    *err_stream;
+
+  FileInteractive on_interactive;
+
+} file_rename_opts;
+
+#define FileRenameOpts(...) (file_rename_opts) { \
+  .force = OPT_NO_FORCE,                     \
+  .backup = OPT_NO_BACKUP,                   \
+  .verbose = OPT_VERBOSE_ON_ERROR,           \
+  .interactive = OPT_NO_INTERACTIVE,         \
+  .backup_suffix = "~",                      \
+  .out_stream = stdout,                      \
+  .err_stream = stderr,                      \
+  .on_interactive = NULL,                    \
+  __VA_ARGS__}
+
 #define FILE_TMPFNAME_UNLINK_FILE (1 << 0)
 #define FILE_TMPFNAME_CLOSE_FD    (1 << 1)
 
@@ -101,6 +129,7 @@ typedef struct file_self {
   int
     (*copy) (const char *, const char *, file_copy_opts),
     (*remove) (const char *, file_remove_opts),
+    (*rename) (const char *, const char *, file_rename_opts),
     (*exists) (const char *),
     (*is_lnk) (const char *),
     (*is_reg) (const char *),
@@ -118,7 +147,8 @@ typedef struct file_self {
     (*write) (char *, char *, ssize_t),
     (*append) (char *, char *, ssize_t);
 
-  string_t *(*readlink) (const char *);
+  string_t
+    *(*readlink) (const char *);
 
   Vstring_t
     *(*readlines) (char *, Vstring_t *, FileReadLines_cb, void *),

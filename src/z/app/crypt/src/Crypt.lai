@@ -40,7 +40,7 @@ var fun =
 
 var rs = fun (file)
 
-if null is rs then exit (1) end
+if null is rs then exit (1)
 
 println ("${rs}  ${file}")
 

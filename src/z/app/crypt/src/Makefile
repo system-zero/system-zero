@@ -13,7 +13,7 @@ SYSTMPDIR  = $(SYSDIR)/tmp
 file: shared static
 
 shared: clean-shared
-	@$(PRINTF) "#!La-shared\n\n" > $(SYSBINDIR)/$(NAME)
+	@$(PRINTF) "#!/bin/env La-shared\n\n" > $(SYSBINDIR)/$(NAME)
 	@$(CAT) $(NAME).lai >> $(SYSBINDIR)/$(NAME)
 	@$(CHMOD) 0755 $(SYSBINDIR)/$(NAME)
 	@$(LN_S) -v $(NAME) $(SYSBINDIR)/$(NAME).md5sum
@@ -22,7 +22,7 @@ shared: clean-shared
 	@$(PRINTF) "installing $(NAME) to $(SYSBINDIR)\n"
 
 static: clean-static
-	@$(PRINTF) "#!La-static\n\n" > $(SYSBINDIR)/$(NAME)-static
+	@$(PRINTF) "#!/bin/env La-static\n\n" > $(SYSBINDIR)/$(NAME)-static
 	@$(CAT) $(NAME).lai >> $(SYSBINDIR)/$(NAME)-static
 	@$(CHMOD) 0755 $(SYSBINDIR)/$(NAME)-static
 	@$(PRINTF) "installing $(NAME)-static to $(SYSBINDIR)\n"

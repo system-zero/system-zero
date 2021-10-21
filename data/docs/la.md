@@ -2039,13 +2039,12 @@ The return statement
          interactive: [0|1] if it is set, it turns off `force',
          verbose: [0|1|2|3] 1: errors 2: like cp(1) 3: with a percent indicator
          all: same as preserve and recursive
-         (note that on the command implementation errors are on by default, and
-          so the other two is minus one (a small inconsistency here))
     # IntegerType   File.remove (StringType file)
        qualifiers: 
-         force: [0|1], recursive: [0|1],
-         interactive: [0|1] if it is set, it turns off `force',
-         verbose: [0|1]
+         force: [0|1], recursive: [0|1], interactive: [0|1], verbose: [0|1]
+    # IntegerType   File.rename (StringType src, StringType dest)
+       qualifiers: 
+         force: [0|1], interactive: [0|1], verbose: [0|1], backup: [0|1]
     # MapType       File.stat (StringType file)
     # MapType       File.lstat (StringType file)
     # IntegerType   File.size (StringType file)
@@ -2065,8 +2064,6 @@ The return statement
     # IntegerType   File.writelines (StringType file, StringType[] array)
     # IntegerType   File.access (StringType file, IntegerType mode)
     # IntegerType   File.mkfifo (StringType file, IntegerType mode)
-    # IntegerType   File.remove (StringType file)
-    # IntegerType   File.rename (StringType src, StringType dest)
     # IntegerType   File.symlink (StringType src, StringType dest)
     # IntegerType   File.hardlink (StringType src, StringType dest)
     # StringType    File.readlink (StringType file)
@@ -2166,6 +2163,8 @@ The return statement
     # arg_flags exposed constants
       ARG_VALUE_REQUIRED
       ARG_VALUE_OPTIONAL
+      ARG_LITERAL
+      ARG_VALUE_APPEND
 
     # retval can be `ok` that denotes success, otherwise it returns `notok`.
       In the latter case, and if `verbose` has been set (on by default), it
@@ -2185,6 +2184,8 @@ The return statement
     # Types can be one (for now) of the followings:
 
       IntegerType, StringType, BooleanType
+
+      # when the ARG_VALUE_APPEND flag has been set, then the result is a LisType
 
     # All the options that do not correspond to none of the given options, are
       stored in the argparse.argv, while the argparse.argc holds the length of
@@ -2295,7 +2296,7 @@ The return statement
 
   - maximum number of function arguments is nine
 
-  - maximum length of any identifier is 63 bytes
+  - maximum length of any identifier is 255 bytes
 
 # Types (integer type constants)
 
@@ -2305,6 +2306,7 @@ The return statement
   StringType  : string type (container that holds C strings)
   ArrayType   : array
   MapType     : map
+  ObjectType  : C objects
 
 # Aplication Programming Interface.
 
@@ -2359,9 +2361,6 @@ style. However it should be okey if practicing consistency.
   primitive one. However running the extensive test suite and the applications
   that use the language under valgring, it doesn't reveal any memory leaks, but
   this is just a sign that quite probably is false.
-
-  again: this is just a reference implementation, and has no ambition other
-  than to be a reference implemtation and be usefull which already is anyway.
 
 # DEVELOPMENT
 
@@ -2484,6 +2483,9 @@ which much of it is complex and loops, in a fraction of a second, in a very
 old 32bit netbook computer. And this is enough. Plus it runs on ridiculously
 low memory resources.
 
+All the allocated resources are releasing soon as we get out of
+scope, pretty much the same C way.
+
 At September Equinox day of 2021, the syntax and semantics, are nearly stable.
 Very few will change, and a few left to be implemented.
 Of course the logical aim here is that both the syntax and semantics
@@ -2492,5 +2494,5 @@ will be freezed in the eternity.
 So and as a conclusion, it is the result of the implementation that matters mostly here,
 and not the actual implementation, which is not good. This has to be rewritten
 normally, but since we live in an abnormal situation and since that seems
-to work, quite probably it won't never happen.
+to work, quite probably it won't never happen. Though there is a desire.
 In the meantime seems a really nice way to expess.

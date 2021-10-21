@@ -18,11 +18,13 @@
 #include <z/cenv.h>
 
 static VALUE file_exists (la_t *this, VALUE v_file) {
-  (void) this;
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
   char *file = AS_STRING_BYTES(v_file);
-  return INT(File.exists (file));
+
+  La.set.Errno (this, 0);
+  if (1 is File.exists (file)) return TRUE_VALUE;
+  La.set.Errno (this, errno);
+  return FALSE_VALUE;
 }
 
 static VALUE file_size (la_t *this, VALUE v_file) {
@@ -35,45 +37,30 @@ static VALUE file_size (la_t *this, VALUE v_file) {
 
 static VALUE file_readlink (la_t *this, VALUE v_file) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
   char *file = AS_STRING_BYTES(v_file);
 
   La.set.Errno (this, 0);
-
   string *s = File.readlink (file);
-  if (NULL is s) {
-    La.set.Errno (this, errno);
-    return NULL_VALUE;
-  } else {
-    return STRING(s);
-  }
-
+  ifnot (NULL is s) return STRING(s);
+  La.set.Errno (this, errno);
   return NULL_VALUE;
 }
 
 static VALUE file_hardlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   ifnot (IS_STRING(v_src_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_dest_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
 
   La.set.Errno (this, 0);
-
-  int retval = link (src_file, dest_file);
-  if (retval is -1) {
-    La.set.Errno (this, errno);
-    return NOTOK_VALUE;
-  } else
-    return OK_VALUE;
-
-  return OK_VALUE;
+  ifnot (-1 is link (src_file, dest_file)) return OK_VALUE;
+  La.set.Errno (this, errno);
+  return NOTOK_VALUE;
 }
 
 static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   ifnot (IS_STRING(v_src_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_dest_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
 
@@ -315,57 +302,46 @@ static VALUE file_chmod (la_t *this, VALUE v_file, VALUE v_mode) {
 static VALUE file_mkfifo (la_t *this, VALUE v_file, VALUE v_mode) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-
   char *file = AS_STRING_BYTES(v_file);
   int mode = AS_INT(v_mode);
 
   La.set.Errno (this, 0);
-
-  int retval = mkfifo (file, mode);
-  if (retval is -1) {
-    La.set.Errno (this, errno);
-    return NOTOK_VALUE;
-  } else
-    return OK_VALUE;
-
-  return OK_VALUE;
+  ifnot (-1 is mkfifo (file, mode)) return OK_VALUE;
+  La.set.Errno (this, errno);
+  return NOTOK_VALUE;
 }
 
 static VALUE file_rename (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   ifnot (IS_STRING(v_src_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_dest_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
   char *src_file = AS_STRING_BYTES(v_src_file);
   char *dest_file = AS_STRING_BYTES(v_dest_file);
 
-  La.set.Errno (this, 0);
+  int verbose = GET_OPT_VERBOSE();
+  int force = GET_OPT_FORCE();
+  int interactive = GET_OPT_INTERACTIVE();
+  int backup = GET_OPT_BACKUP();
 
-  int retval = rename (src_file, dest_file);
-  if (retval is -1) {
-    La.set.Errno (this, errno);
-    return NOTOK_VALUE;
-  } else
-    return OK_VALUE;
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
 
-  return OK_VALUE;
+  int retval = File.rename (src_file, dest_file, FileRenameOpts(
+    .verbose = verbose, .force = force, .interactive = interactive,
+    .backup = backup, .out_stream = out_fp, .err_stream = err_fp));
+
+  return INT(retval);
 }
 
 static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-
   char *file = AS_STRING_BYTES(v_file);
   int mode = AS_INT(v_mode);
+
   La.set.Errno (this, 0);
-
-  int retval = access (file, mode);
-  if (retval is -1) {
-    La.set.Errno (this, errno);
-    return NOTOK_VALUE;
-  } else
-    return OK_VALUE;
-
-  return OK_VALUE;
+  ifnot (-1 is access (file, mode)) return OK_VALUE;
+  La.set.Errno (this, errno);
+  return NOTOK_VALUE;
 }
 
 static VALUE do_stat (la_t *this, char *file, int (*fun) (const char *, struct stat *)) {
@@ -397,37 +373,25 @@ static VALUE do_stat (la_t *this, char *file, int (*fun) (const char *, struct s
 
 static VALUE file_stat (la_t *this, VALUE v_file) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
 
   La.set.Errno (this, 0);
-
-  char *file = AS_STRING_BYTES(v_file);
-  ifnot (File.exists (file)) {
-    La.set.Errno (this, ENOENT);
-    return NULL_VALUE;
-  }
-
   return do_stat (this, file, stat);
 }
 
 static VALUE file_lstat (la_t *this, VALUE v_file) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
 
   La.set.Errno (this, 0);
-
-  char *file = AS_STRING_BYTES(v_file);
-  ifnot (File.exists (file)) {
-    La.set.Errno (this, ENOENT);
-    return NULL_VALUE;
-  }
-
   return do_stat (this, file, lstat);
 }
 
 static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
   (void) this;
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-
   mode_t mode = AS_INT(v_mode);
+
   char mode_string[12];
   File.mode.stat_to_string (mode_string, mode);
   string *s = String.new_with (mode_string);
@@ -437,8 +401,8 @@ static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
 static VALUE file_mode_to_octal_string (la_t *this, VALUE v_mode) {
   (void) this;
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-
   mode_t mode = AS_INT(v_mode);
+
   char oct_str[16];
   snprintf (oct_str, 16, "%o", mode);
   string *s = String.new_with (oct_str+2);

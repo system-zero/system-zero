@@ -21,7 +21,9 @@ shared: clean-shared\
     file-symlink-shared\
     file-chmod-shared\
     file-chown-shared\
-    file-remove-shared
+    file-remove-shared\
+    file-rename-shared\
+    file-move-shared
 
 static: clean-static\
     file-exists-static\
@@ -32,7 +34,9 @@ static: clean-static\
     file-symlink-static\
     file-chmod-static\
     file-chown-static\
-    file-remove-static
+    file-remove-static\
+    file-rename-static\
+    file-move-static
 
 clean-shared:\
     clean-file-exists-shared\
@@ -43,7 +47,9 @@ clean-shared:\
     clean-file-symlink-shared\
     clean-file-chmod-shared\
     clean-file-chown-shared\
-    clean-file-remove-shared
+    clean-file-remove-shared\
+    clean-file-rename-shared\
+    clean-file-move-shared
 
 clean-static:\
     clean-file-exists-static\
@@ -54,7 +60,9 @@ clean-static:\
     clean-file-symlink-static\
     clean-file-chmod-static\
     clean-file-chown-static\
-    clean-file-remove-static
+    clean-file-remove-static\
+    clean-file-rename-shared\
+    clean-file-move-shared
 
 #-----------------------------------------------#
 F_exists = File.exists
@@ -235,6 +243,46 @@ clean-file-remove-shared:
 
 clean-file-remove-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_remove)-static || $(RM) $(SYSBINDIR)/$(F_remove)-static
+
+#-----------------------------------------------#
+F_rename = File.rename
+file-rename-shared:
+	@$(PRINTF) "#!/bin/env La-shared\n\n" > $(SYSBINDIR)/$(F_rename)
+	@$(CAT) $(F_rename).lai >> $(SYSBINDIR)/$(F_rename)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_rename)
+	@$(PRINTF) "installing File.rename to $(SYSBINDIR)\n"
+
+file-rename-static:
+	@$(PRINTF) "#!/bin/env La-static\n\n" > $(SYSBINDIR)/$(F_rename)-static
+	@$(CAT) $(F_rename).lai >> $(SYSBINDIR)/$(F_rename)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_rename)-static
+	@$(PRINTF) "installing File.rename-static to $(SYSBINDIR)\n"
+
+clean-file-rename-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_rename) || $(RM) $(SYSBINDIR)/$(F_rename)
+
+clean-file-rename-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_rename)-static || $(RM) $(SYSBINDIR)/$(F_rename)-static
+
+#-----------------------------------------------#
+F_move = File.move
+file-move-shared:
+	@$(PRINTF) "#!/bin/env La-shared\n\n" > $(SYSBINDIR)/$(F_move)
+	@$(CAT) $(F_move).lai >> $(SYSBINDIR)/$(F_move)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_move)
+	@$(PRINTF) "installing File.move to $(SYSBINDIR)\n"
+
+file-move-static:
+	@$(PRINTF) "#!/bin/env La-static\n\n" > $(SYSBINDIR)/$(F_move)-static
+	@$(CAT) $(F_move).lai >> $(SYSBINDIR)/$(F_move)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_move)-static
+	@$(PRINTF) "installing File.move-static to $(SYSBINDIR)\n"
+
+clean-file-move-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_move) || $(RM) $(SYSBINDIR)/$(F_move)
+
+clean-file-move-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_move)-static || $(RM) $(SYSBINDIR)/$(F_move)-static
 
 #-----------------------------------------------#
 
