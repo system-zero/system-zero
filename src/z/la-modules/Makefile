@@ -52,7 +52,7 @@ clean-path-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/path-module.so  || $(RM)  $(SYSMODULEDIR)/path-module.so
 
 #-----------------------------------------------------------
-FILE_FLAGS = -lfile -lvmap -lstring -lvstring -lcstring -los -lerror
+FILE_FLAGS = -lfile -lvmap -lstring -lvstring -lcstring -los -lerror -lsys
 file-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/file-module.so $(SHARED_FLAGS) $(FILE_FLAGS) file/file-module.c
 
@@ -68,7 +68,7 @@ clean-std-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/std-module.so  || $(RM)  $(SYSMODULEDIR)/std-module.so
 
 #-----------------------------------------------------------
-TERM_FLAGS = -lio -lterm -lstring -lvmap
+TERM_FLAGS = -lio -lterm -lstring -lvmap -lcstring
 term-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/term-module.so $(SHARED_FLAGS) $(TERM_FLAGS) term/term-module.c
 
@@ -84,7 +84,7 @@ clean-dir-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/dir-module.so  || $(RM)  $(SYSMODULEDIR)/dir-module.so
 
 #-----------------------------------------------------------
-SH_FLAGS = -lvmap -lvstring -lstring -lsh
+SH_FLAGS = -lvmap -lvstring -lstring -lcstring -lsh
 sh-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/sh-module.so $(SHARED_FLAGS) $(SH_FLAGS) sh/sh-module.c
 

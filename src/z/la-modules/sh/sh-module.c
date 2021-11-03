@@ -3,18 +3,25 @@
 #define REQUIRE_VMAP_TYPE    DONOT_DECLARE
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_STRING_TYPE  DONOT_DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_LA_TYPE      DECLARE
 
 #include <z/cenv.h>
 
+#define IS_SH(__v__)({ int _r_ = 0; \
+  if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "ShType");}\
+  _r_; })
+
+#define AS_SH(__v__)\
+({object *_o_ = AS_OBJECT(__v__); sh_t *_s_ = (sh_t *) AS_OBJECT (_o_->value); _s_;})
+
 static VALUE sh_exec (la_t *this, VALUE v_sh, VALUE v_command) {
   (void) this;
-  ifnot (IS_OBJECT(v_sh)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
+  ifnot (IS_SH(v_sh)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
   ifnot (IS_STRING(v_command)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
-  object *o = AS_OBJECT(v_sh);
-  sh_t *sh = (sh_t *) AS_PTR(o->value);
+  sh_t *sh = AS_SH(v_sh);
   char *command = AS_STRING_BYTES(v_command);
   Sh.release_list (sh);
   return INT(Sh.exec (sh, command));
@@ -22,10 +29,8 @@ static VALUE sh_exec (la_t *this, VALUE v_sh, VALUE v_command) {
 
 static VALUE sh_release (la_t *this, VALUE v_sh) {
   (void) this;
-  ifnot (IS_OBJECT(v_sh)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
-
-  object *o = AS_OBJECT(v_sh);
-  sh_t *sh = (sh_t *) AS_PTR(o->value);
+  ifnot (IS_SH(v_sh)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a sh object");
+  sh_t *sh = AS_SH(v_sh);
   Sh.release (sh);
   return OK_VALUE;
 }
@@ -35,7 +40,7 @@ static VALUE sh_new (la_t *this) {
 
   sh_t *sh = Sh.new ();
   VALUE v = OBJECT(sh);
-  object *o = La.object.new (sh_release, NULL, v);
+  object *o = La.object.new (sh_release, NULL, "ShType", v);
   return OBJECT(o);
 }
 
@@ -44,6 +49,7 @@ static VALUE sh_new (la_t *this) {
 public int __init_sh_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(sh);
+  __INIT__(cstring);
 
   (void) vstringType;
   (void) vmapType;

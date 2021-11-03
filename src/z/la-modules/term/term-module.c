@@ -3,6 +3,7 @@
 
 #define REQUIRE_VMAP_TYPE     DONOT_DECLARE
 #define REQUIRE_STRING_TYPE   DONOT_DECLARE
+#define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_TERM_TYPE     DECLARE
 #define REQUIRE_TERM_MACROS
@@ -10,6 +11,15 @@
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+#define IS_TERM(__v__)({ int _r_ = 0; \
+  if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "TermType");}\
+  _r_;\
+})
+
+#define AS_TERM(__v__)\
+({object *_o_ = AS_OBJECT(__v__); term_t *_s_ = (term_t *) AS_OBJECT (_o_->value); _s_;})
+
 
 static VALUE term_getkey (la_t *this, VALUE v_fd) {
   (void) this;
@@ -22,11 +32,8 @@ static VALUE term_getkey (la_t *this, VALUE v_fd) {
 
 static VALUE term_release (la_t *this, VALUE v_term) {
   (void) this;
-  ifnot (IS_OBJECT(v_term))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-
-  object *o = AS_OBJECT(v_term);
-  term_t *term = (term_t *) AS_PTR(o->value);
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
   Term.release (&term);
   return OK_VALUE;
 }
@@ -35,58 +42,38 @@ static VALUE term_new (la_t *this) {
   (void) this;
   term_t *term = Term.new ();
   VALUE v = OBJECT(term);
-  object *o = La.object.new (term_release, NULL, v);
+  object *o = La.object.new (term_release, NULL, "TermType", v);
   return OBJECT(o);
 }
 
 static VALUE term_raw_mode (la_t *this, VALUE v_term) {
   (void) this;
-  ifnot (IS_OBJECT(v_term))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-
-  object *o = AS_OBJECT(v_term);
-  term_t *term = (term_t *) AS_PTR(o->value);
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
   int retval = Term.raw_mode (term);
   return INT(retval);
 }
 
 static VALUE term_sane_mode (la_t *this, VALUE v_term) {
   (void) this;
-  ifnot (IS_OBJECT(v_term))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-
-  object *o = AS_OBJECT(v_term);
-  term_t *term = (term_t *) AS_PTR(o->value);
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
   int retval = Term.sane_mode (term);
   return INT(retval);
 }
 
 static VALUE term_orig_mode (la_t *this, VALUE v_term) {
   (void) this;
-  ifnot (IS_OBJECT(v_term))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-
-  object *o = AS_OBJECT(v_term);
-  term_t *term = (term_t *) AS_PTR(o->value);
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
   int retval = Term.orig_mode (term);
   return INT(retval);
 }
 
-static term_t *__get_term_arg (VALUE v_term) {
-  ifnot (IS_OBJECT(v_term))
-    return NULL;
-
-  object *o = AS_OBJECT(v_term);
-  term_t *term = (term_t *) AS_PTR(o->value);
-  return term;
-}
-
 static VALUE term_init_size (la_t *this, VALUE v_term) {
   (void) this;
-  term_t *term = __get_term_arg (v_term);
-  if (NULL is term)
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
   char mode = term->mode;
 
   if (mode isnot 'r') {
@@ -115,17 +102,15 @@ static VALUE term_init_size (la_t *this, VALUE v_term) {
 
 static VALUE term_get_rows (la_t *this, VALUE v_term) {
   (void) this;
-  term_t *term = __get_term_arg (v_term);
-  if (NULL is term)
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
   return INT(term->num_rows);
 }
 
 static VALUE term_get_cols (la_t *this, VALUE v_term) {
   (void) this;
-  term_t *term = __get_term_arg (v_term);
-  if (NULL is term)
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
   return INT(term->num_cols);
 }
 
@@ -135,6 +120,7 @@ public int __init_term_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
   __INIT__(term);
+  __INIT__(cstring);
 
   (void) vmapType;
   (void) stringType;

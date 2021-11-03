@@ -73,6 +73,7 @@ FLAGS += -DDATADIR='"$(SYSDATADIR)"'
 FLAGS += -lla-$(VERSION) -lio-$(VERSION) -largparse-$(VERSION)
 FLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lvstring-$(VERSION)
 FLAGS += -lterm-$(VERSION) -lcstring-$(VERSION) -lrline-$(VERSION)
+FLAGS += -lrandom-$(VERSION) -ldir-$(VERSION) -lpath-$(VERSION)
 
 la: shared static
 

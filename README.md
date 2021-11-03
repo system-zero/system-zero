@@ -1242,6 +1242,8 @@ To do that use:
   - a shell
     state: don't never tried to work with it, as there are other areas to
       dedicate attention (it is not a priority, as the direction might change)
+      [update at first days of November]: This is now at least a little bit more
+      useful with command, argument, filename and last component completions.
 
     sources:
     [document](data/docs/zs.md)
@@ -1378,6 +1380,7 @@ gained consience. Hopefully one day.
 * [Suckless sbase.](https://core.suckless.org/sbase/)
 * [PCG Random Number Generation for C.](https://github.com/imneme/pcg-c-basic)
 * [Contain: A simple implementation of containers for Linux.](https://github.com/arachsys/containers)
+* [Linenoise (Steve's Bennet fork)](https://github.com/msteveb/linenoise)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

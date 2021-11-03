@@ -1221,6 +1221,13 @@ func self_semantics () {
           File.remove (fifname) is ok and
           File.remove (farfn) is ok and
           File.remove (cpfn) is ok)
+
+      var tmpn = File.tmpname ();
+      rv = File.writelines (tmpn, far)
+      farb = File.readlines (tmpn)
+      tmpn = null
+      assert_true ("testing the tmpname method",
+          rv is ok and far is farb)
     }
 
     file_module ()
@@ -1336,7 +1343,7 @@ func self_semantics () {
       import ("dir")
       var cwd = Dir.current ()
       assert_true ("testing the dir module and the current method",
-        cwd isnot null)
+          cwd isnot null)
 
       assert_true ("testing the chdir method",
           Dir.change ("/tmp") is ok)
@@ -1404,6 +1411,7 @@ func self_semantics () {
       var s512 = Crypt.sha512sum (s)
 
       File.write (f, s)
+      File.append (f, "\n");
 
       var md5f = Crypt.md5sum_file (f)
       var s256f = Crypt.sha256sum_file (f)
@@ -1421,6 +1429,17 @@ func self_semantics () {
     }
 
     crypt_module ()
+
+    func os_module () {
+      import ("os")
+      var r = Os.setenv ("TEST", "test", 1)
+      var t = Os.getenv ("TEST")
+      assert_true ("testing the os module",
+          r is ok and
+          t is "test")
+    }
+
+    os_module ()
   }
 
   import_test ()

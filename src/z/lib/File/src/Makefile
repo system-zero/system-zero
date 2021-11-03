@@ -85,6 +85,7 @@ endif
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS) -lstring-$(VERSION)
 LIBFLAGS += -lvstring-$(VERSION) -lcstring-$(VERSION) -ldir-$(VERSION)
 LIBFLAGS += -los-$(VERSION) -lio-$(VERSION) -lterm-$(VERSION)
+LIBFLAGS += -lrandom-$(VERSION)
 
 all: shared static
 

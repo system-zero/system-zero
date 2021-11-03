@@ -27,6 +27,7 @@ struct rline_t {
 #define $my(__v__) $myprop->__v__
 
 struct rlineCompletions {
+  int flags;  // ADDITION
   size_t len;
   char **cvec;
 };
@@ -36,6 +37,9 @@ typedef rlineCompletions linenoiseCompletions;
 typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *, void *);
 typedef char*(linenoiseHintsCallback)(const char *, int *color, int *bold, void *);
 typedef void(linenoiseFreeHintsCallback)(void *, void *);
+
+OnInput_cb linenoiseOnInputCallback;
+OnCarriageReturn_cb linenoiseOnCarriageReturnCallback;
 
 int linenoiseHistoryAdd(const char *line);
 
@@ -1545,15 +1549,40 @@ static void freeCompletions(linenoiseCompletions *lc) {
     free(lc->cvec);
 }
 
-static int completeLine(struct current *current) {
-    linenoiseCompletions lc = { 0, NULL };
+static int completeLine(struct current *current, int ch) {
+    linenoiseCompletions lc = { 0, 0, NULL };
     int c = 0;
 
-    completionCallback(sb_str(current->buf),&lc,completionUserdata);
+    if (ch == 0)
+      completionCallback(sb_str(current->buf),&lc,completionUserdata);
+    else { // ADDITION
+      int r = linenoiseOnInputCallback (sb_str(current->buf), &ch,
+          utf8_index(sb_str(current->buf), current->pos), &lc, completionUserdata);
+
+      if (r == -1) {
+        c = ch;
+        goto theend;
+      }
+
+      if (r > 0) {
+        c = r;
+        goto theend;
+      }
+
+      if (ch is 0)
+        ch = '\t';
+    }
+
     if (lc.len == 0) {
         beep();
     } else {
         size_t stop = 0, i = 0;
+
+        if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM) { /* ADDITION */
+          set_current(current,lc.cvec[i]);
+          refreshLine(current);
+          stop = 1;
+        }
 
         while(!stop) {
             /* Show completion or original buffer */
@@ -1568,6 +1597,8 @@ static int completeLine(struct current *current) {
             if (c == -1) {
                 break;
             }
+
+            if (c == ch) c = '\t'; // ADDITION
 
             switch(c) {
                 case '\t': /* tab */
@@ -1592,6 +1623,7 @@ static int completeLine(struct current *current) {
         }
     }
 
+theend:
     freeCompletions(&lc);
     return c; /* Return last read character */
 }
@@ -2302,12 +2334,18 @@ static int linenoiseEdit(struct current *current) {
         int dir = -1;
         int c = fd_read(current);
 
+        if (linenoiseOnInputCallback) {
+            if (c == CHAR_ESCAPE)
+                c = check_special(current->fd);
+            c = completeLine(current, c); // ADDITION
+        }
+
 #ifndef NO_COMPLETION
         /* Only autocomplete when the callback is set. It returns < 0 when
          * there was an error reading from fd. Otherwise it will return the
          * character that should be handled next. */
         if (c == '\t' && current->pos == sb_chars(current->buf) && completionCallback != NULL) {
-            c = completeLine(current);
+            c = completeLine(current, 0);
         }
 #endif
         if (c == ctrl('R')) {
@@ -2331,6 +2369,9 @@ static int linenoiseEdit(struct current *current) {
             break;
         case '\r':    /* enter/CR */
         case '\n':    /* LF */
+            if (linenoiseOnCarriageReturnCallback) // ADDITION
+                linenoiseOnCarriageReturnCallback (sb_str(current->buf), completionUserdata);
+
             history_len--;
             free(history[history_len]);
             current->pos = sb_chars(current->buf);
@@ -2487,7 +2528,7 @@ history_navigation:
             }
             break;
         case ctrl('Y'): /* Ctrl+y, insert saved chars at current position */
-            if (current->capture && insert_chars(current, current->pos, sb_str(current->capture))) {
+            if (current->capture  && insert_chars(current, current->pos, sb_str(current->capture))) {
                 refreshLine(current);
             }
             break;
@@ -2660,6 +2701,9 @@ int linenoiseHistorySave(const char *filename) {
     if (fp == NULL) return -1;
     for (j = 0; j < history_len; j++) {
         const char *str = history[j];
+        if (*str == '\n' || *str == '\r')
+          continue;
+
         /* Need to encode backslash, nl and cr */
         while (*str) {
             if (*str == '\\') {
@@ -2773,9 +2817,24 @@ static void rline_set_completion_cb (rline_t *this, RlineCompletion_cb cb, void 
   linenoiseSetCompletionCallback (cb, userdata);
 }
 
+static void rline_set_on_input_cb (rline_t *this, OnInput_cb cb) {
+  (void) this;
+  linenoiseOnInputCallback = cb;
+}
+
+static void rline_set_on_carriage_return_cb (rline_t *this, OnCarriageReturn_cb cb) {
+  (void) this;
+  linenoiseOnCarriageReturnCallback = cb;
+}
+
 static void rline_set_hints_cb (rline_t *this, RlineHints_cb cb, void *userdata) {
   $my(hints_cb) = cb;
   linenoiseSetHintsCallback (cb, userdata);
+}
+
+static void rline_set_flags (rline_t *this, rlineCompletions *lc, int flags) {
+  (void) this;
+  lc->flags |= flags;
 }
 
 static void rline_set_prompt (rline_t *this, char *prompt) {
@@ -2835,9 +2894,12 @@ public rline_T __init_rline__ (void) {
       .release = rline_release,
       .add_completion = rline_add_completion,
       .set = (rline_set_self) {
+        .flags = rline_set_flags,
         .prompt = rline_set_prompt,
         .hints_cb = rline_set_hints_cb,
-        .completion_cb = rline_set_completion_cb
+        .on_input_cb = rline_set_on_input_cb,
+        .completion_cb = rline_set_completion_cb,
+        .on_carriage_return_cb = rline_set_on_carriage_return_cb
       },
       .history = (rline_history_self) {
         .add = rline_history_add,
@@ -2846,11 +2908,11 @@ public rline_T __init_rline__ (void) {
         .release = rline_history_release,
         .get = (rline_history_get_self) {
           .lines = rline_history_get_lines,
-          .length = rline_history_get_length
+          .length = rline_history_get_length,
         },
         .set = (rline_history_set_self) {
           .file = rline_history_set_file,
-          .length = rline_history_set_length
+          .length = rline_history_set_length,
         }
       }
     }

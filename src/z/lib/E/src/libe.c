@@ -4723,7 +4723,7 @@ thediff:;
 
   char com[MAXLEN_COM];
   Cstring.cp_fmt (com, MAXLEN_COM, "%s -u %s %s", diff_exec->bytes,
-      tmpn->fname->bytes, file);
+      file, tmpn->fname->bytes);
 
   buf_write_to_fname (this, tmpn->fname->bytes, DONOT_APPEND, 0, this->num_items - 1, FORCE, VERBOSE_OFF);
 

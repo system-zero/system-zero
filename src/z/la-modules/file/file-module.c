@@ -13,9 +13,18 @@
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_OS_TYPE       DECLARE
+#define REQUIRE_SYS_TYPE      DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+#define IS_TMPNAME(__v__)({ int _r_ = 0; \
+  if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "TmpnameType");}\
+  _r_;\
+})
+
+#define AS_TMPNAME(__v__)\
+({object *_o_ = AS_OBJECT(__v__); tmpfname_t *_s_ = (tmpfname_t *) AS_OBJECT (_o_->value); _s_;})
 
 static VALUE file_exists (la_t *this, VALUE v_file) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -332,6 +341,29 @@ static VALUE file_rename (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   return INT(retval);
 }
 
+static VALUE file_tmpname_release (la_t *this, VALUE v_tmp) {
+  (void) this;
+  ifnot (IS_TMPNAME(v_tmp)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a tmpname object");
+
+  tmpfname_t *tmp = AS_TMPNAME(v_tmp);
+  File.tmpfname.release (tmp, FILE_TMPFNAME_UNLINK_FILE|FILE_TMPFNAME_CLOSE_FD);
+  return OK_VALUE;
+}
+
+static VALUE file_tmpname (la_t *this) {
+  (void) this;
+  char *dir = Sys.get.env_value ("TMPDIR");
+  char *prefix = "file_tmpname";
+
+  tmpfname_t *tmp = File.tmpfname.new (dir, prefix);
+  if (NULL is tmp)
+    return NULL_VALUE;
+
+  VALUE v = OBJECT(tmp);
+  object *o = La.object.new (file_tmpname_release, NULL, "TmpnameType", v);
+  return OBJECT(o);
+}
+
 static VALUE file_access (la_t *this, VALUE v_file, VALUE v_mode) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
@@ -468,9 +500,13 @@ static VALUE file_is_executable (la_t *this, VALUE v_file) {
 
 static VALUE file_readlines (la_t *this, VALUE v_file) {
   (void) this;
-  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
-
-  char *file = AS_STRING_BYTES(v_file);
+  char *file;
+  ifnot (IS_STRING(v_file)) {
+    ifnot (IS_TMPNAME(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+    tmpfname_t *tmp = AS_TMPNAME(v_file);
+    file = tmp->fname->bytes;
+  } else
+    file = AS_STRING_BYTES(v_file);
 
   Vstring_t *vs = File.readlines (file, NULL, NULL, NULL);
   if (NULL is vs)
@@ -494,10 +530,16 @@ static VALUE file_readlines (la_t *this, VALUE v_file) {
 
 static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
   (void) this;
-  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file;
+  ifnot (IS_STRING(v_file)) {
+    ifnot (IS_TMPNAME(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+    tmpfname_t *tmp = AS_TMPNAME(v_file);
+    file = tmp->fname->bytes;
+  } else
+    file = AS_STRING_BYTES(v_file);
+
   ifnot (IS_ARRAY(v_ar)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
 
-  char *file = AS_STRING_BYTES(v_file);
   ArrayType *array = (ArrayType *) AS_ARRAY(v_ar);
   if (array->type isnot STRING_TYPE)
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string type array");
@@ -519,12 +561,18 @@ static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
   return OK_VALUE;
 }
 
-static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
+static VALUE file_write_rout (la_t *this, VALUE v_file, VALUE v_str, char *mode) {
   (void) this;
-  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file;
+  ifnot (IS_STRING(v_file)) {
+    ifnot (IS_TMPNAME(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+    tmpfname_t *tmp = AS_TMPNAME(v_file);
+    file = tmp->fname->bytes;
+  } else
+    file = AS_STRING_BYTES(v_file);
+
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
-  char *file = AS_STRING_BYTES(v_file);
   string *str = AS_STRING(v_str);
 
   int verbose = GET_OPT_VERBOSE();
@@ -535,7 +583,7 @@ static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
 
   La.set.Errno (this, 0);
 
-  FILE *fp = fopen (file, "w");
+  FILE *fp = fopen (file, mode);
   if (NULL is fp) {
     La.set.Errno (this, errno);
     if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
@@ -543,8 +591,8 @@ static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
     return retval;
   }
 
-  int num_written = fprintf (fp, "%s\n", str->bytes);
-  if (num_written isnot (int) str->num_bytes + 1) {
+  int num_written = fprintf (fp, "%s", str->bytes);
+  if (num_written isnot (int) str->num_bytes) {
     if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
       fprintf (err_fp, "failed to write in %s the requested bytes\n", file);
   } else {
@@ -555,6 +603,14 @@ static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
 
   fclose (fp);
   return retval;
+}
+
+static VALUE file_write (la_t *this, VALUE v_file, VALUE v_str) {
+  return file_write_rout (this, v_file, v_str, "w");
+}
+
+static VALUE file_append (la_t *this, VALUE v_file, VALUE v_str) {
+  return file_write_rout (this, v_file, v_str, "a");
 }
 
 static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
@@ -649,6 +705,7 @@ public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
   __INIT__(os);
+  __INIT__(sys);
   __INIT__(file);
   __INIT__(vmap);
   __INIT__(error);
@@ -662,10 +719,11 @@ public int __init_file_module__ (la_t *this) {
     { "file_copy",       PTR(file_copy), 2 },
     { "file_stat",       PTR(file_stat), 1 },
     { "file_size",       PTR(file_size), 1 },
-    { "file_write",      PTR(file_write), 2 },
     { "file_lstat",      PTR(file_lstat), 1 },
     { "file_chown",      PTR(file_chown), 3 },
     { "file_chmod",      PTR(file_chmod), 2 },
+    { "file_write",      PTR(file_write), 2 },
+    { "file_append",     PTR(file_append), 2 },
     { "file_remove",     PTR(file_remove), 1 },
     { "file_exists",     PTR(file_exists), 1 },
     { "file_access",     PTR(file_access), 2 },
@@ -679,6 +737,7 @@ public int __init_file_module__ (la_t *this) {
     { "file_is_lnk",     PTR(file_is_lnk), 1 },
     { "file_is_fifo",    PTR(file_is_fifo), 1 },
     { "file_is_sock",    PTR(file_is_sock), 1 },
+    { "file_tmpname",    PTR(file_tmpname), 0 },
     { "file_is_readable",PTR(file_is_readable), 1 },
     { "file_is_writable",PTR(file_is_writable), 1 },
     { "file_is_executable", PTR(file_is_executable), 1 },
@@ -734,15 +793,17 @@ public int __init_file_module__ (la_t *this) {
       "copy" : file_copy,
       "stat" : file_stat,
       "size" : file_size,
-      "write" : file_write,
       "lstat" : file_lstat,
       "chown" : file_chown,
       "chmod" : file_chmod,
+      "write" : file_write,
+      "append" : file_append,
       "remove" : file_remove,
       "exists" : file_exists,
       "access" : file_access,
       "mkfifo" : file_mkfifo,
       "rename" : file_rename,
+      "tmpname" : file_tmpname,
       "symlink" : file_symlink,
       "hardlink" : file_hardlink,
       "readlink" : file_readlink,
@@ -769,5 +830,6 @@ public int __init_file_module__ (la_t *this) {
 
 public void __deinit_file_module__ (la_t *this) {
   (void) this;
+  __deinit_sys__ ();
   return;
 }

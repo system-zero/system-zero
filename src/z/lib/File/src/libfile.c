@@ -15,8 +15,10 @@
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_OS_TYPE      DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
+//#define REQUIRE_SYS_TYPE     DECLARE
 #define REQUIRE_TERM_TYPE    DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
+#define REQUIRE_RANDOM_TYPE  DECLARE
 #define REQUIRE_FILE_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -261,10 +263,9 @@ static void file_tmpfname_release (tmpfname_t *this, int flags) {
   free (this);
 }
 
-static tmpfname_t *file_tmpfname_new (char *dname, char *prefix) {
-  static unsigned int seed = 12252;
-  if (NULL is dname) return NULL;
-  ifnot (Dir.is_directory (dname)) return NULL;
+static tmpfname_t *file_tmpfname_new (char *dirname, char *prefix) {
+  char *dname = dirname;
+  if (NULL is dname or 0 is Dir.is_directory (dname)) return NULL;
 
   tmpfname_t *this = NULL;
 
@@ -277,8 +278,6 @@ static tmpfname_t *file_tmpfname_new (char *dname, char *prefix) {
   char name[len];
   snprintf (name, len, "%s/%s-%s.xxxxxx", dname, prefix, bpid);
 
-  srand ((unsigned int) time (NULL) + (unsigned int) pid + seed++);
-
   dirlist_t *dlist = Dir.list (dname, 0);
   if (NULL is dlist) return NULL;
 
@@ -288,7 +287,8 @@ static tmpfname_t *file_tmpfname_new (char *dname, char *prefix) {
     max_loops = 1024,
     inner_loops = 0,
     max_inner_loops = 1024;
-  char c;
+
+  uint32_t c;
 
   while (1) {
 again:
@@ -300,9 +300,10 @@ again:
       while (1) {
         if (++inner_loops is max_inner_loops) goto theend;
 
-        c = (char) (rand () % 123);
+        c = Random.new () % 123;
+
         if ((c <= 'z' and c >= 'a') or (c >= '0' and c <= '9') or
-            (c >= 'A' and c <= 'Z') or c is '_') {
+            (c >= 'A' and c <= 'Z') or c is '_' or c is '-' or c is '+') {
           name[len - i - 2] = c;
           break;
         }
@@ -1160,8 +1161,9 @@ public file_T __init_file__ (void) {
   __INIT__ (os);
   __INIT__ (dir);
   __INIT__ (path);
-  __INIT__ (error);
   __INIT__ (term);
+  __INIT__ (error);
+  __INIT__ (random);
   __INIT__ (string);
   __INIT__ (vstring);
   __INIT__ (cstring);

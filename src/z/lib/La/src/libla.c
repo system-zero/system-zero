@@ -965,11 +965,14 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
     case FILEPTR_TYPE: String.append_with_len (buf, "FilePtrType", 11); break;
     case NUMBER_TYPE:  String.append_with_len (buf, "NumberType",  10); break;
     case STRING_TYPE:  String.append_with_len (buf, "StringType",  10); break;
-    case OBJECT_TYPE:  String.append_with_len (buf, "ObjectType",  10); break;
     case ARRAY_TYPE:   String.append_with_len (buf, "ArrayType",    9); break;
     case NULL_TYPE:    String.append_with_len (buf, "NullType",     8); break;
     case LIST_TYPE:    String.append_with_len (buf, "ListType",     8); break;
     case MAP_TYPE:     String.append_with_len (buf, "MapType",      7); break;
+    case OBJECT_TYPE: {
+      object *o = AS_OBJECT(value); String.append_with (buf, o->name);
+      break;
+    }
     default:
       if (IS_UFUNC(value.type) or value.type & UFUNCTION_TYPE)
         String.append_with_len (buf, "FunctionType", 12);
@@ -1074,10 +1077,14 @@ static VALUE la_get_qualifier (la_t *this, char *key, VALUE v_defval) {
   return *v;
 }
 
-static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, VALUE value) {
+static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, const char *name, VALUE value) {
   object *o = Alloc (sizeof (object));
   o->release = o_release;
   o->toString = o_tostr;
+  ifnot (NULL is name)
+    Cstring.cp (o->name, MAXLEN_TYPENAME + 1, name, MAXLEN_TYPENAME);
+  else
+    Cstring.cp (o->name, MAXLEN_TYPENAME + 1, "ObjectType", MAXLEN_TYPENAME);
   o->value = value;
   return o;
 }
@@ -1156,7 +1163,7 @@ static VALUE la_fopen (la_t *this, VALUE fn_value, VALUE mod_value) {
   }
 
   VALUE v = FILEPTR(fp);
-  object *o = la_object_new (la_fclose, NULL, v);
+  object *o = la_object_new (la_fclose, NULL, "FilePtrType", v);
   return FILEPTR(o);
 }
 
@@ -1184,7 +1191,7 @@ static VALUE list_new (la_t *this) {
   list->num_items = 0;
   list->head = list->tail = list->current = NULL;
   VALUE v = LIST(list);
-  object *o = la_object_new (list_release, NULL, v);
+  object *o = la_object_new (list_release, NULL, "ListType", v);
   return LIST(o);
 }
 
@@ -2975,16 +2982,26 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
       THROW_SYNTAX_ERR("array assignment: awaiting [");
   }
 
-  if (array->type is INTEGER_TYPE) {
-    err = la_array_set_as_int (this, ary, len, idx, last_idx);
-  } else if (array->type is STRING_TYPE) {
-    err = la_array_set_as_string (this, ary, len, idx, last_idx);
-  } else if (array->type is MAP_TYPE) {
-    err = la_array_set_as_map (this, ary, len, idx, last_idx);
-  } else if (array->type is ARRAY_TYPE) {
-    err = la_array_set_as_array (this, ary, len, idx, last_idx);
-  } else
-    err = la_array_set_as_number (this, ary, len, idx, last_idx);
+  switch (array->type) {
+    case INTEGER_TYPE:
+      err = la_array_set_as_int (this, ary, len, idx, last_idx);
+      break;
+
+    case STRING_TYPE:
+      err = la_array_set_as_string (this, ary, len, idx, last_idx);
+      break;
+
+    case MAP_TYPE:
+      err = la_array_set_as_map (this, ary, len, idx, last_idx);
+      break;
+
+    case ARRAY_TYPE:
+      err = la_array_set_as_array (this, ary, len, idx, last_idx);
+      break;
+
+    default:
+      err = la_array_set_as_number (this, ary, len, idx, last_idx);
+  }
 
   THROW_ERR_IF_ERR(err);
 
@@ -6021,6 +6038,8 @@ static int la_parse_stmt (la_t *this) {
       }
       /* fall through */
 
+    case TOKEN_OBJECT:
+    case TOKEN_FILEPTR:
     case 0 ... 4:
     case TOKEN_VAR: {
       name = TOKENSTR;
@@ -10259,21 +10278,22 @@ static int la_def_std (la_t *this, char *name, int type, VALUE v, int is_const) 
 
 static int la_std_def (la_t *this, la_opts opts) {
   VALUE v = OBJECT(opts.out_fp);
-  object *o = la_object_new (NULL, NULL, v);
+  object *o = la_object_new (NULL, NULL, "FilePtrType", v);
   v = FILEPTR(o);
   v.refcount = UNDELETABLE;
   int err = la_define (this, "stdout", FILEPTR_TYPE, v);
   if (err) return LA_NOTOK;
 
   v = OBJECT(opts.err_fp);
-  o = la_object_new (NULL, NULL, v);
+  o = la_object_new (NULL, NULL, "FilePtrType", v);
   v = FILEPTR(o);
   v.refcount = UNDELETABLE;
   err = la_define (this, "stderr", FILEPTR_TYPE, v);
   if (err) return LA_NOTOK;
 
   v = OBJECT(stdin);
-  o = la_object_new (NULL, NULL, v);
+  o = la_object_new (NULL, NULL, "FilePtrType", v);
+
   v = FILEPTR(o);
   v.refcount = UNDELETABLE;
   err = la_define (this, "stdin", FILEPTR_TYPE, v);

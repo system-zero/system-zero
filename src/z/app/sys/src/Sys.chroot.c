@@ -106,5 +106,7 @@ execute_command:
     return retval;
   }
 
-  return sys_exec (argv);
+  retval = sys_exec (argv);
+  __deinit_sys__ ();
+  return retval;
 }

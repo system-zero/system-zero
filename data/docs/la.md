@@ -57,7 +57,7 @@ Comments.
   # both are valid. An explicit semicolon, denotes the end of a statement.
   # A new line also can denote the end of a statement, when they didn't left
   # any tokens to consume. Thus a statement, and based on the context of the
-  # may spawn into multiply lines.
+  # may span into multiply lines.
   # Multiply statements in one line without a semicolon at the end, may work
   # or may not work, as there are a couple of obvious ambiquities, so it can
   # not be guarranteed. However this is valid in this specific implementation:
@@ -1029,7 +1029,7 @@ it is still almost relevant.
 # Code blocks are delimited with braces '{}', and are mandatory.
 
 # Statements are separated with a semicolon or with a new line character,
-  and they can spawn to multiply lines based on the context. Note that it
+  and they can span to multiply lines based on the context. Note that it
   is allowed for multiply statements in a single line, and are separated
   based on the context, though there might be unhandled cases, like:
 
@@ -2051,12 +2051,14 @@ The return statement
     # IntegerType   File.chown (StringType file, IntegerType uid, IntegerType gid)
     # IntegerType   File.chmod (StringType file, IntegerType mode)
     # IntegerType   File.write (StringType file, StringType str)
+    # IntegerType   File.append (StringType file, StringType str)
     # IntegerType   File.exists (StringType file)
     # IntegerType   File.is_rwx (StringType file)
     # IntegerType   File.is_reg (StringType file)
     # IntegerType   File.is_lnk (StringType file)
     # IntegerType   File.is_fifo (StringType file)
     # IntegerType   File.is_sock (StringType file)
+    # TmpnameType   File.tmpname () it can be used as argument to write and read functions
     # IntegerType   File.is_readable (StringType file)
     # IntegerType   File.is_writable (StringType file)
     # IntegerType   File.is_executable (StringType file)
@@ -2240,7 +2242,7 @@ The return statement
      before the new line character. In any other case it is considered an error.
 
    - variables can be declared in consecutive manner, separated with a comma
-     and they can spawn to multiply lines, e.g.,:
+     and they can span to multiply lines, e.g.,:
 
        var i = 0, ii = 1,
          a = null,

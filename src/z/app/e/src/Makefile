@@ -97,6 +97,7 @@ E = $(NAME)
 
 E_STATIC_FLAGS  = -lustring-$(VERSION) -lre-$(VERSION) -lspell-$(VERSION)
 E_STATIC_FLAGS += -lvideo-$(VERSION) -lvmap-$(VERSION) -los-$(VERSION)
+E_STATIC_FLAGS += -lrandom-$(VERSION)
 
 e-shared:
 	$(CC) $(E).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(E)-shared

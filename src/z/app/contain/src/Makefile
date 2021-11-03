@@ -95,6 +95,7 @@ C_NEW = $(NAME).new
 C_NEW_STATIC_FLAGS  = -lcstring-$(VERSION) -lstring-$(VERSION) -los-$(VERSION)
 C_NEW_STATIC_FLAGS += -lustring-$(VERSION) -ldir-$(VERSION) -lfile-$(VERSION)
 C_NEW_STATIC_FLAGS += -lterm-$(VERSION) -lpath-$(VERSION) -lvstring-$(VERSION)
+C_NEW_STATIC_FLAGS += -lrandom-$(VERSION)
 
 contain-new-shared:
 	$(CC) $(C_NEW).c $(FLAGS) -o $(SYSBINDIR)/$(C_NEW)-shared

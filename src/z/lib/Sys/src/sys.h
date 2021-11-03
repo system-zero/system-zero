@@ -1,6 +1,8 @@
 #ifndef SYS_HDR
 #define SYS_HDR
 
+#define SYSENV_LEN  64
+
 typedef struct sys_set_self {
   string_t *(*env_as) (char *, char *, int);
 } sys_set_self;

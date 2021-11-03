@@ -90,7 +90,7 @@ SYS_CHROOT = $(NAME).chroot
 
 SYS_CHROOT_STATIC_FLAGS := -lcstring-$(VERSION) -lustring-$(VERSION)
 SYS_CHROOT_STATIC_FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lpath-$(VERSION)\
-                           -los-$(VERSION)
+                           -los-$(VERSION) -lrandom-$(VERSION)
 
 sys-chroot-shared:
 	$(CC) $(SYS_CHROOT).c $(FLAGS) -o $(SYSBINDIR)/$(SYS_CHROOT)-shared

@@ -33,10 +33,10 @@ static Smap_t *__ENV__ = NULL;
 
 static sys_T __SYS__;
 static int is_initialized = 0;
+static int sys_init_environment (sys_env_opts);
 
 static string_t *sys_set_env_as (char *val, char *as, int replace) {
-  if (NULL is __ENV__)
-    __ENV__ = Smap.new (32);
+  if (NULL is __ENV__) sys_init_environment (SysEnvOpts());
 
   string_t *old = Smap.get (__ENV__, as);
 
@@ -58,6 +58,7 @@ static string_t *sys_set_env_as (char *val, char *as, int replace) {
 }
 
 static string_t *sys_get_env (char *as) {
+  if (NULL is __ENV__) sys_init_environment (SysEnvOpts());
    return Smap.get (__ENV__, as);
 }
 
@@ -122,6 +123,10 @@ static string_t *sys_which (char *ex, char *path) {
 }
 
 static int sys_init_environment (sys_env_opts opts) {
+  ifnot (NULL is __ENV__) return OK;
+
+  __ENV__ = Smap.new (SYSENV_LEN);
+
  /* yet to be done:
   * return_a_proper error; for now return NOTOK
   * print the error? option

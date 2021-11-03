@@ -1,4 +1,4 @@
-#define APPLICATION "Dir.rm"
+#define APPLICATION "Dir.remove"
 #define APP_OPTS "directory-name"
 
 #define REQUIRE_STDIO

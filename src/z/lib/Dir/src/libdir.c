@@ -359,8 +359,8 @@ static int dir_rm_parents (char *dir, dir_opts opts) {
 }
 
 public dir_T __init_dir__ (void) {
-  __INIT__(os);
   __INIT__(path);
+  __INIT__(os);
   __INIT__(error);
   __INIT__ (string);
   __INIT__ (cstring);

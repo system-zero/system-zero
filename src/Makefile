@@ -18,7 +18,7 @@
 #-----------------------------------------------#
 # Application Interface and versioning.
 API     := 0
-REV     := 2
+REV     := 3
 VERSION  = $(API).$(REV)
 #-----------------------------------------------#
 #           HIERARCHY
@@ -472,13 +472,14 @@ clean-libos-shared:
 
 clean-libos-static:
 	@cd $(Z_OS_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#               libos-shared libio-shared libterm-shared librandom-shared libsys-shared
 #----------------------------------------------------------#
 libfile-shared: Env cenv libstring-shared libcstring-shared libvstring-shared libdir-shared libpath-shared\
-                libos-shared libio-shared libterm-shared
+                libos-shared libio-shared libterm-shared librandom-shared
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libfile-static: Env cenv libstring-static libcstring-static libvstring-static libdir-static libpath-static\
-                libos-static libio-static libterm-static
+                libos-static libio-static libterm-static librandom-static
 	@cd $(Z_FILE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libfile-shared:
@@ -823,14 +824,16 @@ clean-libcontain-static:
 #----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
-libself-shared: Env cenv libstring-shared libcstring-shared \
-                libvstring-shared libdir-shared libfile-shared \
-                libpath-shared libre-shared
+libself-shared: Env cenv libstring-shared libcstring-shared\
+                libvstring-shared libdir-shared libfile-shared\
+                libpath-shared libre-shared la-shared e-shared\
+                v-shared
 	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libself-static: Env cenv libstring-static libcstring-static \
-                libvstring-static libdir-static libfile-static \
-                libpath-static libre-static
+libself-static: Env cenv libstring-static libcstring-static\
+                libvstring-static libdir-static libfile-static\
+                libpath-static libre-static la-static e-static\
+                v-static
 	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libself-shared:

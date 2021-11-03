@@ -6,10 +6,11 @@
 #define REQUIRE_TERMIOS
 
 #define REQUIRE_VMAP_TYPE    DECLARE
-#define REQUIRE_PATH_TYPE    DONOT_DECLARE
+#define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
+#define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
-#define REQUIRE_CSTRING_TYPE DONOT_DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_USTRING_TYPE DONOT_DECLARE
 #define REQUIRE_RLINE_TYPE   DECLARE
@@ -61,16 +62,184 @@
 #include "../../../la-modules/rand/rand-module.c"
 #endif
 
+const char *keywords[] = {
+  "for (", "for |", "exit (", "var ", "import (\"", "if (", "ifnot (",
+  "loadfile (\"", "print (", "println (", NULL
+};
+
 static void la_completion (const char *buf, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
+  size_t  len = bytelen (buf);
 
+  int i = 0;
   if (buf[0] is '\0') {
-    Rline.add_completion (this, lc, "exit (");
+    while (keywords[i]) {
+      Rline.add_completion (this, lc, (char *) keywords[i]);
+      i++;
+    }
+
     return;
   }
 
-  if (buf[0] is 'e')
-    Rline.add_completion (this, lc, "exit (");
+  dirlist_t *dlist = NULL;
+  char *dirname = NULL;
+  string *arg = String.new (len);
+
+  char *ptr = (char *) buf + len;
+  int ptrlen = len;
+
+  if (buf[len-1] is '"') {
+    while (ptrlen--) {
+      char c = *(ptr-1);
+      if (('0' <= c and c <= '9') or
+          ('a' <= c and c <= 'z') or
+          ('A' <= c and c <= 'Z') or
+          c is '_' or c is DIR_SEP or c is '.') {
+        ptr--;
+        continue;
+      }
+      break;
+    }
+
+    size_t diff = len - ptrlen - 1;
+    len = (len - diff);
+    ptrlen = diff;
+    goto filename_completion;
+  }
+
+  int is_filename = 0;
+  while (ptrlen--) {
+    char c = *(ptr-1);
+    if (('0' <= c and c <= '9') or
+        ('a' <= c and c <= 'z') or
+        ('A' <= c and c <= 'Z') or
+        c is '_' or c is '.') {
+      ptr--;
+      continue;
+    }
+
+    if (c is '/') { // quarks so it is a duck
+      is_filename = 1;
+      ptr--;
+      continue;
+    }
+    break;
+  }
+
+  if (is_filename) {
+    size_t diff = len - ptrlen - 1;
+    len = (len - diff);
+    ptrlen = diff;
+    goto filename_completion;
+  }
+
+  if (-1 is ptrlen) {
+    while (keywords[i]) {
+      if (Cstring.eq_n (keywords[i], buf, len))
+        Rline.add_completion (this, lc, (char *) keywords[i]);
+      i++;
+    }
+    goto theend;
+  }
+
+  size_t diff = len - ptrlen - 1;
+  len = (len - diff);
+  ptrlen = diff;
+
+  ifnot (ptrlen)
+    goto filename_completion;
+
+  int num = 0;
+  String.replace_with_len (arg, buf, len);
+
+  i = 0;
+  while (keywords[i]) {
+    if (Cstring.eq_n (keywords[i], ptr, ptrlen)) {
+      String.append_with (arg, keywords[i]);
+      Rline.add_completion (this, lc, arg->bytes);
+      String.clear_at (arg, len);
+      num++;
+    }
+
+    i++;
+  }
+
+  if (num) goto theend;
+
+ filename_completion: {}
+
+  String.replace_with_len (arg, buf, len);
+
+  dirname = Path.dirname (ptr);
+  char *basename = Path.basename (ptr);
+
+  is_filename = 0;
+
+  if (Dir.is_directory (ptr)) {
+    if (ptr[ptrlen-1] isnot DIR_SEP) {
+      String.append_with_fmt (arg, "%s%c", ptr, DIR_SEP);
+      Rline.add_completion (this, lc, arg->bytes);
+      Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
+      goto theend;
+    }
+
+    is_filename = 1;
+    dlist  = Dir.list (ptr, 0);
+  } else ifnot (ptrlen) {
+    get_current: {}
+    char *cwd = Dir.current ();
+    if (NULL is cwd) return;
+    dlist = Dir.list (cwd, 0);
+    free (cwd);
+  } else {
+    ifnot (Dir.is_directory (dirname))
+      goto get_current;
+
+    dlist = Dir.list (dirname, 0);
+  }
+
+  if (NULL is dlist) goto theend;
+
+  vstring_t *it = dlist->list->head;
+
+  size_t dirlen = bytelen (dirname);
+  size_t bname_len = bytelen (basename);
+
+  if (1 is dirlen and *dirname is '.' and 0 is bname_len + is_filename) {
+    while (it) {
+      if (it->data->bytes[0] isnot '.') {
+        String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
+        Rline.add_completion (this, lc, arg->bytes);
+        String.clear_at (arg, len);
+      }
+      it = it->next;
+    }
+  } else {
+    while (it) {
+      if (is_filename) {
+        String.append_with_fmt (arg, "%s%s%s", ptr,
+            (ptr[ptrlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
+        Rline.add_completion (this, lc, arg->bytes);
+        String.clear_at (arg, len);
+
+      } else if (Cstring.eq_n (it->data->bytes, basename, bname_len)) {
+        if (dirlen is 1 and *dirname is '.')
+          String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
+        else
+          String.append_with_fmt (arg, "%s%c%s", dirname, DIR_SEP, it->data->bytes);
+
+        Rline.add_completion (this, lc, arg->bytes);
+        String.clear_at (arg, len);
+      }
+
+      it = it->next;
+    }
+  }
+
+theend:
+  ifnot (NULL is dlist) dlist->release (dlist);
+  ifnot (NULL is dirname) free (dirname);
+  String.release (arg);
 }
 
 static char *la_hints (const char *buf, int *color, int *bold, void *userdata) {
@@ -224,9 +393,12 @@ int main (int argc, char **argv) {
   la_T *LaN = __init_la__ ();
   __LA__ = *LaN;
 
-  __INIT__ (string);
+  __INIT__ (dir);
+  __INIT__ (path);
   __INIT__ (file);
   __INIT__ (rline);
+  __INIT__ (string);
+  __INIT__ (cstring);
 
   __INIT_APP__;
 

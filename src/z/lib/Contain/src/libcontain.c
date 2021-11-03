@@ -514,13 +514,6 @@ static int getconsole (contain_t *cnt) {
 static int rawmode (contain_t *cnt) {
   RETURN_NOTOK_IF(cnt, isatty (STDIN_FILENO) == 0, 0, "not a controlling terminal", "");
   Term.raw_mode (cnt->term);
-
- // struct termios termios;
- // int retval = tcgetattr (STDIN_FILENO, &termios);
- // RETURN_NOTOK_IF(cnt, retval < 0, errno, "tcgetattr()", "");
-
- // cfmakeraw (&termios);
- // tcsetattr (STDIN_FILENO, TCSANOW, &termios);
   return OK;
 }
 
@@ -703,6 +696,12 @@ static int createroot (contain_t *cnt) {
   retval = mount ("devpts", "dev/pts", "devpts", 0, "newinstance,ptmxmode=666");
   RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to mount /dev/pts in new root filesystem", "");
 
+  retval = mkdir ("dev/shm", 0755);
+  RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to make /dev/shm directory", "");
+
+  retval = mount ("tmpfs", "dev/shm", "tmpfs", MS_NOEXEC|MS_NOSUID|MS_RELATIME, NULL);
+  RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to mount /dev/shm in new root filesystem", "");
+
   retval = mkdir ("dev/tmp", 0755);
   RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to make /dev/tmp directory", "");
 
@@ -767,7 +766,6 @@ static int enterroot (contain_t *cnt) {
     rmdir (cnt->tmpDir);
   }
 
-  //free (cnt->tmpDir);
   cnt->tmpDir = NULL;
 
   retval = chdir ("/");

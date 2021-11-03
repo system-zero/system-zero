@@ -4,6 +4,7 @@
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_SYMBOL      255
 #define MAXLEN_MSG         255
+#define MAXLEN_TYPENAME    15
 
 typedef struct la_T la_T;
 typedef struct la_t la_t;
@@ -66,6 +67,7 @@ typedef VALUE (*ObjectToString) (VALUE);
 typedef struct ObjectType {
   ObjectRelease  release;
   ObjectToString toString;
+  char           name[MAXLEN_TYPENAME + 1];
   VALUE          value;
 } ObjectType;
 
@@ -288,7 +290,7 @@ typedef struct la_set_self {
 } la_set_self;
 
 typedef struct la_object_self {
-  object *(*new) (ObjectRelease, ObjectToString, VALUE);
+  object *(*new) (ObjectRelease, ObjectToString, const char *, VALUE);
 } la_object_self;
 
 typedef struct la_map_self {

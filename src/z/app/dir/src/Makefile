@@ -78,19 +78,19 @@ dir: shared static
 
 shared: clean-shared\
     dir-make-shared\
-    dir-rm-shared
+    dir-remove-shared
 
 static: clean-static\
     dir-make-static\
-    dir-rm-static
+    dir-remove-static
 
 clean-shared:\
     clean-dir-make-shared\
-    clean-dir-rm-shared
+    clean-dir-remove-shared
 
 clean-static:\
     clean-dir-make-static\
-    clean-dir-rm-static
+    clean-dir-remove-static
 #-----------------------------------------------#
 D_MAKE = $(NAME).make
 
@@ -98,7 +98,7 @@ FLAGS += -lcstring-$(VERSION)
 
 D_MAKE_STATIC_FLAGS = -lpath-$(VERSION)\
                       -lvstring-$(VERSION) -lstring-$(VERSION) -lustring-$(VERSION)\
-                      -los-$(VERSION)
+                      -los-$(VERSION) -lrandom-$(VERSION)
 
 dir-make-shared:
 	$(CC) $(D_MAKE).c $(FLAGS) -o $(SYSBINDIR)/$(D_MAKE)-shared
@@ -114,25 +114,25 @@ clean-dir-make-shared:
 clean-dir-make-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(D_MAKE)-static || $(RM) $(SYSBINDIR)/$(D_MAKE)-static
 #-----------------------------------------------#
-D_RM = $(NAME).rm
+D_REMOVE = $(NAME).remove
 
-D_RM_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)\
+D_REMOVE_STATIC_FLAGS = -lpath-$(VERSION) -lcstring-$(VERSION) -lvstring-$(VERSION)\
                     -lstring-$(VERSION) -lustring-$(VERSION)\
                     -los-$(VERSION)
 
-dir-rm-shared:
-	$(CC) $(D_RM).c $(FLAGS) -o $(SYSBINDIR)/$(D_RM)-shared
-	@$(LN_S) -vf $(D_RM)-shared $(SYSBINDIR)/$(D_RM)
+dir-remove-shared:
+	$(CC) $(D_REMOVE).c $(FLAGS) -o $(SYSBINDIR)/$(D_REMOVE)-shared
+	@$(LN_S) -vf $(D_REMOVE)-shared $(SYSBINDIR)/$(D_REMOVE)
 
-dir-rm-static:
-	$(CC) $(D_RM).c $(FLAGS) $(D_RM_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(D_RM)-static
+dir-remove-static:
+	$(CC) $(D_REMOVE).c $(FLAGS) $(D_REMOVE_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(D_REMOVE)-static
 
-clean-dir-rm-shared:
-	@$(TEST) ! -f $(SYSBINDIR)/$(D_RM)-shared || $(RM) $(SYSBINDIR)/$(D_RM)-shared
-	@$(TEST) ! -L $(SYSBINDIR)/$(D_RM) || $(RM) $(SYSBINDIR)/$(D_RM)
+clean-dir-remove-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(D_REMOVE)-shared || $(RM) $(SYSBINDIR)/$(D_REMOVE)-shared
+	@$(TEST) ! -L $(SYSBINDIR)/$(D_REMOVE) || $(RM) $(SYSBINDIR)/$(D_REMOVE)
 
-clean-dir-rm-static:
-	@$(TEST) ! -f $(SYSBINDIR)/$(D_RM)-static || $(RM) $(SYSBINDIR)/$(D_RM)-static
+clean-dir-remove-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(D_REMOVE)-static || $(RM) $(SYSBINDIR)/$(D_REMOVE)-static
 #-----------------------------------------------#
 
 TEST = test
