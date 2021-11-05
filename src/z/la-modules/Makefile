@@ -112,7 +112,7 @@ sys-module-shared:
 clean-sys-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/sys-module.so  || $(RM)  $(SYSMODULEDIR)/sys-module.so
 #-----------------------------------------------------------
-CRYPT_FLAGS = -lvmap -lstring -lerror -lmd5 -lsha256 -lsha512
+CRYPT_FLAGS = -lvmap -lstring -lerror -lmd5 -lsha256 -lsha512 -lbase64
 crypt-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/crypt-module.so $(SHARED_FLAGS) $(CRYPT_FLAGS) crypt/crypt-module.c
 

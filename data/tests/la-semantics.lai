@@ -1419,13 +1419,24 @@ func self_semantics () {
 
       File.remove (f)
 
-      assert_true ("testing the crypt module",
+      assert_true ("testing the crypt module and the md5/sha256/sha512 methods",
           md5 is "6d110772905599113ea9520b1b4d35c7" and
           s256 is "c472cf566ff7d83f343c58674f33303510d8ad8deb6e35f3abc21521838b3986" and
           s512 is "bfed7465747258e2e717da48df3c840b1b4ca870cd9196f16a11b46bae7b251c6b69c6b5f96841e9f0507a5d61c172fbaf0d76877ddb9670208a29eb6d7ffa72" and
           md5f is "cb7463afca0acda1bd9a52cd8793f3ab" and
           s256f is "19b508d28ddb3d76a967961312bddc04b2dad365cc758efb1fe05b0d3ccbc404" and
           s512f is "09cbec48df2ea60ffe580c45d7d1eee51e64e56766db3ae1a165c41c4652eb2f712a2b3ef705981b2f0f1b1bee1b1c1c09df040c1f59154df5b98644cf90e8e5")
+
+      var b = "asdfghjklmnopqrstuασδφγηκλόιθευεηαγσσρεγαησξσξσκακαλακμχμχ1293αλλα\nalla\nwiiw"
+      var bd = b: crypt_base64_encode ()
+      var be = bd: crypt_base64_decode ()
+      var bda= be: crypt_base64_encode ()
+      var bea= bda: crypt_base64_decode ()
+
+      assert_true ("testing the base64 method",
+          b is be and
+          b is bea and
+          bd is bda)
     }
 
     crypt_module ()

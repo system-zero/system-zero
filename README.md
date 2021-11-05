@@ -1161,28 +1161,28 @@ To do that use:
 
   - an ala [vim](http://www.vim.org) [editor](data/docs/editor.md) called as:
 
-     E or E-static [options] [filename[s]]
+     E or E-static [options] [filename[s]]  
      E --help  # for a short help
 
-   sources:
-     [E  library](src/z/lib/E/src/libe.c)
-     [executable](src/z/app/e/src/E.c)
+   sources:  
+     [E  library](src/z/lib/E/src/libe.c)  
+     [executable](src/z/app/e/src/E.c)  
 
    state: rather stable
 
    maybe_crashed:
-     - under circumstances with a series of undo/redos
-      reproducible: a bit hard, as it does not happens on continuously
-        undos/redos (without to change the cursor on different line between
-        the two calls, and without to insert new lines).
+     under circumstances with a series of undo/redos
+       reproducible: a bit hard, as it does not happens on continuously
+         undos/redos (without to change the cursor on different line between
+         the two calls, and without to insert new lines).
 
       cause:  For certain it is the jump code that calculates wrong the line numbers.
 
       state: good to fix, but this is not my style to work, so it doesn't happens.
 
-     - under circumstances when writting with characters > ASCII_RANGE
+     under circumstances when writting with characters > ASCII_RANGE
        reproducible: needs some time but possible. Write some greek and make
-       various moves like backspace/delete.
+         various moves like backspace/delete.
 
       cause: easy (wrong calculation, when going [for|back]ward)
 
@@ -1190,25 +1190,25 @@ To do that use:
 
   - a [terminal multiplexer] (https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) calles as:
 
-     V or V-static [options] socketname
+     V or V-static [options] socketname  
      V --help  # for s short help
 
-   sources:
-   [V  library](src/z/lib/V/src/libv.c)
-   [WM library](src/z/lib/Vwm/src/libvwm.c)
-   [executable](src/z/app/v/src/v.c)
+   sources:  
+   [V  library](src/z/lib/V/src/libv.c)  
+   [WM library](src/z/lib/Vwm/src/libvwm.c)  
+   [executable](src/z/app/v/src/v.c)  
 
    state: rather stable
    crashes: not with current usage, but quite possible there are unhandled cases
 
   - a [programming language](data/docs/la.md) called as:
 
-     La or La-static [options] [filename[s]]
-     La --help  # for options
+     La or La-static [options] [filename[s]]  
+     La --help  # for options  
 
-   sources:
-   [La library](src/z/lib/La/src/libla.c)
-   [executable](src/z/app/v/src/v.c)
+   sources:  
+   [La library](src/z/lib/La/src/libla.c)  
+   [executable](src/z/app/v/src/v.c)  
 
    state: on stabilization. Syntax and semantics are hard to change.
    crashes: it is an ongoing work and it is quite fragile, but not
@@ -1220,10 +1220,10 @@ To do that use:
       C kindergarden (still in the last grade). But no crashes if the
       memory serves well
 
-    sources: (some of them)
-    [String   library](src/z/lib/String/src/libstring.c)
-    [C String library](src/z/lib/Cstring/src/libcstring.c)
-    [File     library](src/z/lib/File/src/libfile.c)
+    sources: (some of them)  
+    [String   library](src/z/lib/String/src/libstring.c)  
+    [C String library](src/z/lib/Cstring/src/libcstring.c)  
+    [File     library](src/z/lib/File/src/libfile.c)  
    ....
 
   - applications:
@@ -1234,9 +1234,9 @@ To do that use:
       update (last days of Octomber): quite some of a basic set of a system
       command line functionality has been implemented.
 
-    sources: (some of them)
-    [Dir.make in C](src/z/app/dir/src/Dir.make.c)
-    [File.stat in La](src/z/app/file/src/File.stat.lai)
+    sources: (some of them)  
+    [Dir.make in C](src/z/app/dir/src/Dir.make.c)  
+    [File.stat in La](src/z/app/file/src/File.stat.lai)  
     ...
 
   - a shell
@@ -1245,21 +1245,21 @@ To do that use:
       [update at first days of November]: This is now at least a little bit more
       useful with command, argument, filename and last component completions.
 
-    sources:
-    [document](data/docs/zs.md)
-    [Sh   library](src/z/lib/Sh/src/libsh.c)
-    [Proc library](src/z/lib/Proc/src/libproc.c)
+    sources:  
+    [document](data/docs/zs.md)  
+    [Sh   library](src/z/lib/Sh/src/libsh.c)  
+    [Proc library](src/z/lib/Proc/src/libproc.c)  
 
   - an early draft of a sudo like utility
     state: audit and careful review it is required. It works for my usage and
     I use it a lot. But there should be unhandled cases. It is just a proof of
     concept mostly and written in the very first days.
 
-    sources:
-    [Auth Library](src/z/lib/Auth/src/libauth.c)
-    [executable](src/app/zsu/src/zsu.c)
+    sources:  
+    [Auth Library](src/z/lib/Auth/src/libauth.c)  
+    [executable](src/app/zsu/src/zsu.c)  
 
-    notes:
+    notes:  
       - libpam is required (we might use another option one day, like crypt())
       - likewise the sudo utility, as the executable is installed as setuid root
 
@@ -1274,9 +1274,9 @@ To do that use:
     to see how the (disassociated from the host system) system works alone and
     without the flaws of a chroot jail.
 
-    sources:
-    [Contail Library](src/z/lib/Contain/src/libcontain.c)
-    [executable](src/z/app/contain/src/Contain.new.c)
+    sources:  
+    [Contain Library](src/z/lib/Contain/src/libcontain.c)  
+    [executable](src/z/app/contain/src/Contain.new.c)  
 
     Usage:
       Contain.new sys/`uname -m`

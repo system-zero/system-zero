@@ -2130,6 +2130,10 @@ The return statement
     # StringType   Crypt.md5sum_file (StringType file)
     # StringType   Crypt.sha256sum_file (StringType file)
     # StringType   Crypt.sha512sum_file (StringType file)
+    # StringType   Crypt.base64_encode (StringType str)
+    # StringType   Crypt.base64_decode (StringType str)
+    # StringType   Crypt.base64_encode_file (StringType str)
+    # StringType   Crypt.base64_decode_file (StringType str)
 
   # Rand Module Interface
     # IntegerType Rand.new ()
@@ -2470,6 +2474,15 @@ This interpreter might be very slow, when it competes with others. I never did
 it (benchmark), and probably I never going to do it, but it has to be slow, or
 else something is strange.
 
+The code it takes a huuge amount of optimizations at almost at every bit of
+its implementation, and here in this domain, every little bit little detail
+matters quite a bit of bits.
+
+It was never a design from the scratch, it was written without any sense of
+what i would be faced. Added almost every bit, bit by bit and block by block
+as was still keeping on to the next beats of thoughts of what i wanted next.
+_The whole thing is a big hack_, like to steal in black jack.
+
 There isn't a proper lexer/parser/vm. It is just a bunch of (sometimes clever
 though) ways to handle the complexity of an interpreter. There is a weakness
 to understand things in theory, as I have to face with the facts, to realize
@@ -2485,16 +2498,150 @@ which much of it is complex and loops, in a fraction of a second, in a very
 old 32bit netbook computer. And this is enough. Plus it runs on ridiculously
 low memory resources.
 
-All the allocated resources are releasing soon as we get out of
-scope, pretty much the same C way.
+All the allocated resources are releasing soon as we get out of scope, pretty
+much the same C way. So and joking some bits, it really it's the first kind
+of a garbage collector of a dynamic language, that really has a real kind of
+a deterministic behavior. The question when i was handled this slowly to the
+route of the development, was: Do I need this more? If not release it as you
+go out of scope.
 
+I mean that was the idea, albeit a bit of total nonsense. This might be the
+only thing that still i do not know the way to handle memory resources if i
+was attempting a rewrite. But i like the idea of "release uneeded resources
+as soon as you don't need them anymore". It simplifies a lot of things, and
+can end up to a coding expression style, that fits better with that kind of
+thing. Albeit it looks that it hurts performance pretty badly. With this so
+fragile code state, this can not change drammatically the execution speed,
+but if the mind knows that wants to implement this kind of the thing from
+the very beggining, then it could influence the scratch code design a lot,
+so it might reduce many instructions and conditionals jumps.
+
+At the end, there are many many indirections which are the reusable libraries
+of this system.
+There is a big convienence to reuse libraries, but if you want speed the first
+thing to do is to use own code for specific operations, rather a generic code.
+So there is a huge price here.
+
+## Appendix:
 At September Equinox day of 2021, the syntax and semantics, are nearly stable.
 Very few will change, and a few left to be implemented.
-Of course the logical aim here is that both the syntax and semantics
-will be freezed in the eternity.
+Of course the logical aim here is that both the syntax and semantics will be
+freezed in the eternity.
 
 So and as a conclusion, it is the result of the implementation that matters mostly here,
 and not the actual implementation, which is not good. This has to be rewritten
-normally, but since we live in an abnormal situation and since that seems
-to work, quite probably it won't never happen. Though there is a desire.
-In the meantime seems a really nice way to expess.
+normally, but since we live in an abnormal situation and since that seems to
+work, quite probably it won't never happen. Though there is a desire.
+
+## The Aim.
+
+Of course to resemble C, with more than a couple of convienences of course, but
+with a dynamical way.
+
+Now the underlying C way to write the underlying code and the exposed interface,
+the dynamical interface (this language), and the exposed to the user interface
+(commands), they should match. All of them.
+
+This allows interconnection with the underlying source code. You all you have
+to do is to take the path to the corresponded library -> Class.lib|method and
+to the corresponded function.
+
+For instance in our C code we use File.remove (): The library|Class File exposes
+this method: This language exposes through the file module, the same function
+with the same name, method and access as File.remove (): And finnally there is
+a command with the exact same name and access.
+
+The arguments of the command line, are translated through the usage of qualifiers,
+at the end as arguments to the corresponded File Class, that acts on the file
+given argument.
+
+This method, it has a default char *argument (the one to be removed), but also
+awaits an environment, through designated initializers which is at least in C11.
+
+```C
+typedef struct file_remove_opts {
+  int
+    force,
+    verbose,
+    maxdepth,
+    curdepth,
+    recursive,
+    interactive;
+
+  FILE
+    *out_stream,
+    *err_stream;
+
+  FileInteractive on_interactive;
+
+} file_remove_opts;
+
+#define FileRemoveOpts(...) (file_remove_opts) { \
+  .force = OPT_NO_FORCE,                         \
+  .verbose = OPT_VERBOSE_ON_ERROR,               \
+  .maxdepth = OPT_MAXDEPTH,                      \
+  .curdepth = 0,                                 \
+  .recursive = OPT_NO_RECURSIVE,                 \
+  .interactive = OPT_NO_INTERACTIVE,             \
+  .out_stream = stdout,                          \
+  .err_stream = stderr,                          \
+  .on_interactive = NULL,                        \
+  __VA_ARGS__}
+```
+
+and here is the output of the File.remove --help command:
+```sh
+
+Usage: File.remove [option[s]] file
+
+  -f,--force        if a destination file cannot be opened, remove it and try again
+  -R,--recursive    copy recursively
+  -i,--interactive  prompt before overwrite
+  -v,--verbose=     be verbose
+  -h,--help         show this message
+```
+
+As you see the command has a required file as argument - same with the underlying
+function that does the requested operation - and optional tuning to a default
+behavior through the arguments: that become qualifiers in this language: that
+finnaly passed with the C's above mechanism, as an environment. There is always
+a default which is up to either to the user or to a standard that has this duty
+to cherry pick established behavior which has been builted through experience
+in real conditions. Of course the user has to have the ability to modify those
+semantics as they fit to the specific user personality, with an own responsibility.
+
+So the Aim here is to emphasize the importance of such a mechanism for someone
+that wants to take that repsonsibility.
+
+Again, we are talking about the mechanism, not with the actual implementation.
+
+And of course the belief that the source code and the exposed interface its not
+that separated. A knowledge of a system, whatever that system is, an operating
+computer system, or the ultimate system that govern us all, or our way of living,
+give us the feeling that belong to us. Not with the property semantics but with
+the servant/server semantics that implements a wish based on the communication.
+
+I'm here, you know me, you can use me and if you care you can modify me to fix
+some bugs, or to extend me to with an extented communication protocol, so to try
+to make even more things from them we already can do or to do them with a much
+more efficient way or even with a much more fancy way, or with a more compact
+way, which it can be also a more secure way, or with your own way anyway. At the
+very least i'm trying to make it easier for you to know where to find me, if you
+want and inclined and for any reason anyway.
+
+This care it is believed that slowly connects the source and the exposed end
+execution interface with such way that they can be used interchangeable which
+it is in the reality (they actually depend to each other, with a different way
+of cource - the source is interested for the development of the mechanics, the
+execution environment uses those mechanics to do its thing). Which it is almost
+perfect in my humble opinion, if you ever someone will ever ask me.
+
+Plus this gives confidence to the own being, that is fascinated by the way the
+things works and feels the magic (which is not that magic - it is just mechanics) -
+when see the result of an own code.
+
+Plus the knowledge and the access to open and free bits of the source code, it
+returns a big gift, that is the trust to the system.
+
+In any case, the aim is to offer a mechanism that is trying to show the path
+to the user to find the way into the system that lives and uses. That's all folks.

@@ -228,6 +228,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Random_Type        = Random
     Z_RANDOM_SRCDIR    = $(Z_SRCLIBDIR)/$(Random_Type)/src
 
+    # Base64 Type
+    Base64_Type        = Base64
+    Z_BASE64_SRCDIR    = $(Z_SRCLIBDIR)/$(Base64_Type)/src
+
     # Contain Type
     Contain_Type       = Contain
     Z_CONTAIN_SRCDIR   = $(Z_SRCLIBDIR)/$(Contain_Type)/src
@@ -707,7 +711,9 @@ libla-shared: Env cenv list libstring-shared libcstring-shared libimap-shared\
 
 libla-static: Env cenv list libstring-static libcstring-static libimap-static\
               libvstring-static libustring-static libpath-static libfile-static\
-              liberror-static libvmap-static libio-static libdir-static libterm-static
+               liberror-static libvmap-static libio-static libdir-static libterm-static\
+               libmd5-static libsha256-static libsha512-static\
+               libbase64-static
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libla-shared:
@@ -809,6 +815,18 @@ clean-librandom-shared:
 
 clean-librandom-static:
 	@cd $(Z_RANDOM_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libbase64-shared: Env cenv
+	@cd $(Z_BASE64_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libbase64-static: Env cenv
+	@cd $(Z_BASE64_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libbase64-shared:
+	@cd $(Z_BASE64_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libbase64-static:
+	@cd $(Z_BASE64_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libcontain-shared: Env cenv
 	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
@@ -1088,10 +1106,11 @@ clean-env-static:
   ZA_CRYPT_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_CRYPT)/src
 
 crypt-shared: libmd5-shared libsha256-shared libsha512-shared\
-              crypt-module-shared
+              libbase64-shared crypt-module-shared
 	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
-crypt-static: libmd5-static libsha256-static libsha512-static
+crypt-static: libmd5-static libsha256-static libsha512-static\
+              libbase64-static
 	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-crypt-shared:
@@ -1265,7 +1284,8 @@ sh-module-shared: libsh-shared
 time-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) time-module-shared
 
-crypt-module-shared: libmd5-shared libsha256-shared libsha512-shared
+crypt-module-shared: libmd5-shared libsha256-shared libsha512-shared\
+                     libbase64-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) crypt-module-shared
 
 random-module-shared: Env librandom-shared

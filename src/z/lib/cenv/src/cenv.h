@@ -1420,6 +1420,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_RANDOM_TYPE
 #endif /* REQUIRE_RANDOM_TYPE */
 
+#ifdef REQUIRE_BASE64_TYPE
+  #ifndef BASE64_TYPE_HDR
+  #define BASE64_TYPE_HDR
+  #include <z/base64.h>
+  #endif /* BASE64_TYPE_HDR */
+
+  #if (REQUIRE_BASE64_TYPE == DECLARE)
+  static  base64_T   base64Type;
+  #define Base64     base64Type.self
+  #endif
+
+#undef REQUIRE_BASE64_TYPE
+#endif /* REQUIRE_BASE64_TYPE */
+
 #ifdef REQUIRE_CONTAIN_TYPE
   #ifndef CONTAIN_TYPE_HDR
   #define CONTAIN_TYPE_HDR

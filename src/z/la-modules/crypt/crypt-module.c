@@ -11,6 +11,7 @@
 #define REQUIRE_MD5_TYPE      DECLARE
 #define REQUIRE_SHA256_TYPE   DECLARE
 #define REQUIRE_SHA512_TYPE   DECLARE
+#define REQUIRE_BASE64_TYPE   DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
@@ -159,6 +160,72 @@ static VALUE crypt_sha512sum_file (la_t *this, VALUE v_file) {
    });
 }
 
+static VALUE crypt_base64_encode (la_t *this, VALUE v_plain) {
+  ifnot (IS_STRING(v_plain)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *cipher = Base64.encode (AS_STRING_BYTES(v_plain));
+  return STRING(String.new_with (cipher));
+}
+
+static VALUE crypt_base64_decode (la_t *this, VALUE v_cipher) {
+  ifnot (IS_STRING(v_cipher)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *plain = Base64.decode (AS_STRING_BYTES(v_cipher));
+  return STRING(String.new_with (plain));
+}
+
+static string *get_string_from_file (la_t *this, const char *file) {
+  La.set.Errno (this, 0);
+
+  char *buf = NULL;
+  size_t len;
+  ssize_t nread;
+
+  FILE *fp = fopen (file, "r");
+  if (NULL is fp) {
+    La.set.Errno (this, errno);
+    return NULL;
+  }
+
+  string *bytes = String.new (128);
+
+  while (-1 isnot (nread = getline (&buf, &len, fp))) {
+    buf[nread] = '\0';
+    String.append_with_len (bytes, buf, nread);
+  }
+
+  fclose (fp);
+
+  ifnot (NULL is buf)
+    free (buf);
+
+  return bytes;
+}
+
+static VALUE crypt_base64_encode_file (la_t *this, VALUE v_file) {
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+
+  string *bytes = get_string_from_file (this, file);
+  if (NULL is bytes) return NULL_VALUE;
+
+  VALUE plain = STRING(bytes);
+  VALUE cipher = crypt_base64_encode (this, plain);
+  String.release (bytes);
+  return cipher;
+}
+
+static VALUE crypt_base64_decode_file (la_t *this, VALUE v_file) {
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+
+  string *bytes = get_string_from_file (this, file);
+  if (NULL is bytes) return NULL_VALUE;
+
+  VALUE cipher = STRING(bytes);
+  VALUE plain = crypt_base64_decode (this, cipher);
+  String.release (bytes);
+  return plain;
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_crypt_module__ (la_t *this) {
@@ -166,6 +233,7 @@ public int __init_crypt_module__ (la_t *this) {
   __INIT__(md5);
   __INIT__(sha256);
   __INIT__(sha512);
+  __INIT__(base64);
   __INIT__(error);
   __INIT__(string);
 
@@ -178,6 +246,10 @@ public int __init_crypt_module__ (la_t *this) {
     { "crypt_sha256sum_file", PTR(crypt_sha256sum_file), 1},
     { "crypt_sha512sum",      PTR(crypt_sha512sum), 1 },
     { "crypt_sha512sum_file", PTR(crypt_sha512sum_file), 1},
+    { "crypt_base64_encode",  PTR(crypt_base64_encode), 1},
+    { "crypt_base64_decode",  PTR(crypt_base64_decode), 1},
+    { "crypt_base64_encode_file",  PTR(crypt_base64_encode_file), 1},
+    { "crypt_base64_decode_file",  PTR(crypt_base64_decode_file), 1},
     { NULL, NULL_VALUE, 0}
   };
 
@@ -194,7 +266,11 @@ public int __init_crypt_module__ (la_t *this) {
       "sha512sum"      : crypt_sha512sum,
       "md5sum_file"    : crypt_md5sum_file,
       "sha256sum_file" : crypt_sha256sum_file,
-      "sha512sum_file" : crypt_sha512sum_file
+      "sha512sum_file" : crypt_sha512sum_file,
+      "base64_encode"  : crypt_base64_encode,
+      "base64_decode"  : crypt_base64_decode,
+      "base64_encode_file" : crypt_base64_encode_file,
+      "base64_decode_file" : crypt_base64_decode_file
      }
    );
 
