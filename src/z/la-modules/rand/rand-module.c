@@ -3,7 +3,7 @@
 #define REQUIRE_FCNTL
 
 #define REQUIRE_VMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DONOT_DECLARE
+#define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_RANDOM_TYPE   DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
@@ -15,17 +15,32 @@ static VALUE rand_new (la_t *this) {
   return INT(r);
 }
 
+static VALUE rand_get_entropy_bytes (la_t *this, VALUE v_size) {
+  (void) this;
+  ifnot (IS_INT(v_size)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  size_t size = AS_INT(v_size);
+  char buf[size + 1];
+  if (NOTOK is Random.get.entropy_bytes (buf, size))
+    return NULL_VALUE;
+
+  buf[size] = '\0';
+
+  string *s = String.new_with_len (buf, size);
+  return STRING(s);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_rand_module__ (la_t *this) {
   __INIT_MODULE__(this);
+  __INIT__ (string);
   __INIT__ (random);
 
   (void) vmapType;
-  (void) stringType;
 
   LaDefCFun lafuns[] = {
     { "rand_new",  PTR(rand_new), 0 },
+    { "rand_get_entropy_bytes", PTR(rand_get_entropy_bytes), 1},
     { NULL, NULL_VALUE, 0}
   };
 
@@ -37,7 +52,8 @@ public int __init_rand_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Rand = {
-      "new" : rand_new
+      "new" : rand_new,
+      "get_entropy_bytes" : rand_get_entropy_bytes
      }
    );
 

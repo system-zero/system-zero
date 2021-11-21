@@ -50,11 +50,8 @@ Semantics:
     - Multiline mode  
     - UTF8-support  
     - History set/load/save  
-    - FileName Completion and specific to this system, Command and Argument  
-      completion.  
+    - Filename, and specific to this system, Command and Argument tab completion.  
   
-      Tab completion is performed on an empty line or when the cursor is at the end  
-      of the line.  
       Command completion is triggered at the beggining of the line or when the cursor  
       is at the command token.  
       Argument completion is triggered when the last character is a dash (-) which it  
@@ -72,7 +69,22 @@ Semantics:
     Note that in the case of multiply completion items, a hint that indicates the number  
     of items is printed right to the cursor. However, in this implementation it is not  
     visually possible to expand all the items in the screen at once.  
+    The underlying machine is linenoise with UTF-8 support, but in this implementation  
+    the API is incompatible, just to support tab completion at any cursor point in the line,  
+    and not just at the end of the line. Also there are two more callback functions, one that  
+    is called immediately after a received input and before any processing, and the other  
+    on a carriage return.  
+    Generally the tendency is for a bit aggressive interaction.  
   
+  Word expansion:  
+    For now expansion happens through wordexp(). This is very convenient but also this  comes  
+    with some caveats, mostly because the implementations across C libraries differ. Most  
+    of them just fork and let "/bin/sh" to do all the expansions, but not glibc and which  
+    its implementation is almost the size of this shell itself. So at some point we should  
+    do the expansion ourselves. In any case probably we might need a "/bin/sh", though  
+    we have the freedom to ignore it, given all the (realized by all) quirks and the fragility  
+    of the language.  
+
   Keys:  
     BACKSPACE: remove char at left of cursor  
        DELETE: remove char at right of cursor  

@@ -1,0 +1,9 @@
+-a,--archive
+-f,--force
+-u,--update
+-b,--backup
+-p,--preserve
+-R,--recursive
+-L,--dereference
+-i,--interactive
+-v,--verbose=

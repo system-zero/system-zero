@@ -61,6 +61,7 @@ struct dirwalk_t {
 
 #define DIRLIST_DONOT_CHECK_DIRECTORY (1 << 0)
 #define DIRLIST_LONG_FORMAT           (1 << 1)
+#define DIRLIST_LNK_IS_DIRECTORY      (1 << 2)
 
 typedef struct dirlist_t dirlist_t;
 
@@ -86,7 +87,8 @@ typedef struct dir_self {
   DirRm   rm;
   DirRm   rm_parents;
   int
-    (*is_directory) (char *);
+    (*is_directory) (char *),
+    (*lnk_is_directory) (const char *);
 
   dirlist_t *(*list) (char *, int);
 

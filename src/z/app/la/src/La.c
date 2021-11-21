@@ -67,28 +67,34 @@ const char *keywords[] = {
   "loadfile (\"", "print (", "println (", NULL
 };
 
-static void la_completion (const char *buf, rlineCompletions *lc, void *userdata) {
+static void la_completion (const char *buf, int curpos, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
-  size_t  len = bytelen (buf);
+
+  dirlist_t *dlist = NULL;
+  char *dirname = NULL;
+
+  const char *lptr = buf + curpos;
+  size_t lptrlen = bytelen (lptr);
+
+  size_t buflen = bytelen (buf) - lptrlen;
+  char ptrbuf[buflen + 1];
 
   int i = 0;
   if (buf[0] is '\0') {
     while (keywords[i]) {
-      Rline.add_completion (this, lc, (char *) keywords[i]);
+      Rline.add_completion (this, lc, (char *) keywords[i], -1);
       i++;
     }
 
     return;
   }
 
-  dirlist_t *dlist = NULL;
-  char *dirname = NULL;
-  string *arg = String.new (len);
+  string *arg = String.new (buflen);
 
-  char *ptr = (char *) buf + len;
-  int ptrlen = len;
+  char *ptr = (char *) buf + buflen;
+  int ptrlen = buflen;
 
-  if (buf[len-1] is '"') {
+  if (buf[buflen-1] is '"') {
     while (ptrlen--) {
       char c = *(ptr-1);
       if (('0' <= c and c <= '9') or
@@ -101,8 +107,8 @@ static void la_completion (const char *buf, rlineCompletions *lc, void *userdata
       break;
     }
 
-    size_t diff = len - ptrlen - 1;
-    len = (len - diff);
+    size_t diff = buflen - ptrlen - 1;
+    buflen -= diff;
     ptrlen = diff;
     goto filename_completion;
   }
@@ -127,37 +133,37 @@ static void la_completion (const char *buf, rlineCompletions *lc, void *userdata
   }
 
   if (is_filename) {
-    size_t diff = len - ptrlen - 1;
-    len = (len - diff);
+    size_t diff = buflen - ptrlen - 1;
+    buflen -= diff;
     ptrlen = diff;
     goto filename_completion;
   }
 
   if (-1 is ptrlen) {
     while (keywords[i]) {
-      if (Cstring.eq_n (keywords[i], buf, len))
-        Rline.add_completion (this, lc, (char *) keywords[i]);
+      if (Cstring.eq_n (keywords[i], buf, buflen))
+        Rline.add_completion (this, lc, (char *) keywords[i], -1);
       i++;
     }
     goto theend;
   }
 
-  size_t diff = len - ptrlen - 1;
-  len = (len - diff);
+  size_t diff = buflen - ptrlen - 1;
+  buflen -= diff;
   ptrlen = diff;
 
   ifnot (ptrlen)
     goto filename_completion;
 
   int num = 0;
-  String.replace_with_len (arg, buf, len);
+  String.replace_with_len (arg, buf, buflen);
 
   i = 0;
   while (keywords[i]) {
     if (Cstring.eq_n (keywords[i], ptr, ptrlen)) {
       String.append_with (arg, keywords[i]);
-      Rline.add_completion (this, lc, arg->bytes);
-      String.clear_at (arg, len);
+      Rline.add_completion (this, lc, arg->bytes, -1);
+      String.clear_at (arg, buflen);
       num++;
     }
 
@@ -166,25 +172,27 @@ static void la_completion (const char *buf, rlineCompletions *lc, void *userdata
 
   if (num) goto theend;
 
- filename_completion: {}
+  filename_completion: {}
 
-  String.replace_with_len (arg, buf, len);
+  Cstring.cp (ptrbuf, ptrlen + 1, ptr, ptrlen);
+  String.replace_with_len (arg, buf, buflen);
 
-  dirname = Path.dirname (ptr);
-  char *basename = Path.basename (ptr);
+  dirname = Path.dirname (ptrbuf);
+  char *basename = Path.basename (ptrbuf);
 
   is_filename = 0;
 
-  if (Dir.is_directory (ptr)) {
-    if (ptr[ptrlen-1] isnot DIR_SEP) {
+  if (Dir.is_directory (ptrbuf) or (File.is_lnk (ptrbuf) and Dir.lnk_is_directory (ptrbuf))) {
+    if (ptrbuf[ptrlen-1] isnot DIR_SEP) {
       String.append_with_fmt (arg, "%s%c", ptr, DIR_SEP);
-      Rline.add_completion (this, lc, arg->bytes);
+      String.append_with_len (arg, lptr, lptrlen);
+      Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
       Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
       goto theend;
     }
 
     is_filename = 1;
-    dlist  = Dir.list (ptr, 0);
+    dlist  = Dir.list (ptrbuf, DIRLIST_LNK_IS_DIRECTORY);
   } else ifnot (ptrlen) {
     get_current: {}
     char *cwd = Dir.current ();
@@ -192,10 +200,11 @@ static void la_completion (const char *buf, rlineCompletions *lc, void *userdata
     dlist = Dir.list (cwd, 0);
     free (cwd);
   } else {
-    ifnot (Dir.is_directory (dirname))
+    if (0 is Dir.is_directory (dirname) and (
+        0 is File.is_lnk (dirname) and Dir.lnk_is_directory (dirname)))
       goto get_current;
 
-    dlist = Dir.list (dirname, 0);
+    dlist = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
   }
 
   if (NULL is dlist) goto theend;
@@ -209,18 +218,20 @@ static void la_completion (const char *buf, rlineCompletions *lc, void *userdata
     while (it) {
       if (it->data->bytes[0] isnot '.') {
         String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
-        Rline.add_completion (this, lc, arg->bytes);
-        String.clear_at (arg, len);
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        String.clear_at (arg, buflen);
       }
       it = it->next;
     }
   } else {
     while (it) {
       if (is_filename) {
-        String.append_with_fmt (arg, "%s%s%s", ptr,
-            (ptr[ptrlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
-        Rline.add_completion (this, lc, arg->bytes);
-        String.clear_at (arg, len);
+        String.append_with_fmt (arg, "%s%s%s", ptrbuf,
+            (ptrbuf[ptrlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        String.clear_at (arg, buflen);
 
       } else if (Cstring.eq_n (it->data->bytes, basename, bname_len)) {
         if (dirlen is 1 and *dirname is '.')
@@ -228,8 +239,9 @@ static void la_completion (const char *buf, rlineCompletions *lc, void *userdata
         else
           String.append_with_fmt (arg, "%s%c%s", dirname, DIR_SEP, it->data->bytes);
 
-        Rline.add_completion (this, lc, arg->bytes);
-        String.clear_at (arg, len);
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        String.clear_at (arg, buflen);
       }
 
       it = it->next;

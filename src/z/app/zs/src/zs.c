@@ -12,6 +12,7 @@
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
+#define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_SYS_TYPE     DECLARE
@@ -66,7 +67,7 @@ typedef struct zs_t {
   rline_t *rline;
 } zs_t;
 
-static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata) {
+static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, void *userdata) {
   zs_t *zs = (zs_t *) userdata;
   rline_t *this = zs->rline;
   Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
@@ -78,7 +79,12 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
   dirlist_t *dlist = NULL;
   char *dirname = NULL;
 
-  size_t len = bytelen (buf);
+  const char *lptr = buf + curpos;
+  size_t lptrlen = bytelen (lptr);
+
+  size_t buflen = bytelen (buf) - lptrlen;
+
+  char ptrbuf[buflen + 1];
 
   if (buf[0] is '\0') {
     Command *it = zs->command_head;
@@ -91,7 +97,7 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
       }
 
       zs->num_items++;
-      Rline.add_completion (this, lc, arg->bytes);
+      Rline.add_completion (this, lc, arg->bytes, -1);
 
       while (it->next) {
         if (Cstring.eq_n (arg->bytes, it->next->name, arg->num_bytes)) {
@@ -108,13 +114,19 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
     goto theend;
   }
 
-  if (buf[len-1] is '.') {
+  if (buf[buflen-1] is '.') {
     Command *it = zs->command_head;
 
     while (it) {
-      if (Cstring.eq_n (it->name, buf, len)) {
+      if (Cstring.eq_n (it->name, buf, buflen)) {
         zs->num_items++;
-        Rline.add_completion (this, lc, it->name);
+        String.replace_with (arg, it->name);
+        if (buf + buflen -1 is lptr) {
+          lptr++; lptrlen--;
+        }
+
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
       }
       it = it->next;
     }
@@ -122,7 +134,7 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
    goto theend;
   }
 
-  char *ptr = (char *) buf + len;
+  char *ptr = (char *) lptr;
   int is_arg = 0;
   int arglen = 0;
 
@@ -134,7 +146,7 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
   }
 
   if (ptr isnot buf and *ptr is '-') {
-    len = ptr - buf;
+    buflen = ptr - buf;
     is_arg = 1;
   }
 
@@ -142,7 +154,7 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
   int comlen = 0;
   char *sp = (char *) buf;
   while (*sp is ' ') sp++;
-  if (sp is buf + len)
+  if (sp is buf + buflen)
     goto theend;
 
   while (*sp) {
@@ -161,7 +173,7 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
       if (Cstring.eq (it->name, com)) {
         if (it->flags & ZS_COMMAND_HAS_NO_FILENAME_ARG) {
           is_arg = 1;
-          len = ptr - buf;
+          buflen = ptr - buf;
         }
 
         break;
@@ -186,7 +198,7 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
     char *args = NULL;
     size_t argslen;
     ssize_t nread;
-    String.append_with_len (arg, buf, len);
+    String.append_with_len (arg, buf, buflen);
 
     while (-1 isnot (nread = getline (&args, &argslen, fp))) {
       args[nread - 1] = '\0';
@@ -211,13 +223,14 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
         }
 
         if (*sp is ',') {
-          if (arg->num_bytes > len) {
-            if (Cstring.eq_n (ptr, arg->bytes + len, arglen)) {
+          if (arg->num_bytes > buflen) {
+            if (Cstring.eq_n (ptr, arg->bytes + buflen, arglen)) {
               zs->num_items++;
-              Rline.add_completion (this, lc, arg->bytes);
+              String.append_with_len (arg, lptr, lptrlen);
+              Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
             }
 
-            String.clear_at (arg, len);
+            String.clear_at (arg, buflen);
           }
 
           sp++;
@@ -227,13 +240,14 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
         String.append_byte (arg, *sp++);
       }
 
-      if (arg->num_bytes > len) {
-        if (Cstring.eq_n (ptr, arg->bytes + len, arglen)) {
+      if (arg->num_bytes > buflen) {
+        if (Cstring.eq_n (ptr, arg->bytes + buflen, arglen)) {
           zs->num_items++;
-          Rline.add_completion (this, lc, arg->bytes);
+          String.append_with_len (arg, lptr, lptrlen);
+          Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
         }
 
-        String.clear_at (arg, len);
+        String.clear_at (arg, buflen);
       }
     }
 
@@ -244,8 +258,8 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
     goto theend;
   }
 
-  ptr = (char *) buf + len;
-  int ptrlen = len;
+  ptr = (char *) buf + buflen;
+  int ptrlen = buflen;
 
   int is_filename = 0;
   while (ptrlen--) {
@@ -273,9 +287,14 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
     while (*sp) {
       if (*sp++ is '.') {
         while (it) {
-          if (Cstring.eq_n (it->name, buf, len)) {
+          if (Cstring.eq_n (it->name, buf, buflen)) {
             zs->num_items++;
-            Rline.add_completion (this, lc, it->name);
+            String.replace_with (arg, it->name);
+            if (sp - 1 is lptr) {
+              lptr++; lptrlen--;
+            }
+            String.append_with_len (arg, lptr, lptrlen);
+            Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
           }
 
           it = it->next;
@@ -287,14 +306,14 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
 
     while (it) {
       char *name = it->name;
-      if (Cstring.eq_n (name, buf, len)) {
+      if (Cstring.eq_n (name, buf, buflen)) {
         while (*name) {
           String.append_byte (arg, *name);
           if (*name++ is '.') break;
         }
 
         zs->num_items++;
-        Rline.add_completion (this, lc, arg->bytes);
+        Rline.add_completion (this, lc, arg->bytes, -1);
 
         while (it->next) {
           if (Cstring.eq_n (arg->bytes, it->next->name, arg->num_bytes)) {
@@ -313,27 +332,30 @@ static void zs_completion (const char *buf, rlineCompletions *lc, void *userdata
     goto theend;
  }
 
-  size_t diff = len - ptrlen - 1;
-  len = (len - diff);
+  size_t diff = buflen - ptrlen - 1;
+  buflen = (buflen - diff);
   ptrlen = diff;
 
-  String.replace_with_len (arg, buf, len);
+  String.replace_with_len (arg, buf, buflen);
 
-  dirname = Path.dirname (ptr);
-  char *basename = Path.basename (ptr);
+  Cstring.cp (ptrbuf, ptrlen + 1, ptr, ptrlen);
+
+  dirname = Path.dirname (ptrbuf);
+  char *basename = Path.basename (ptrbuf);
 
   is_filename = 0;
 
-  if (Dir.is_directory (ptr)) {
-    if (ptr[ptrlen-1] isnot DIR_SEP) {
-      String.append_with_fmt (arg, "%s%c", ptr, DIR_SEP);
+  if (Dir.is_directory (ptrbuf) or (File.is_lnk (ptrbuf) and Dir.lnk_is_directory (ptrbuf))) {
+    if (ptrbuf[ptrlen-1] isnot DIR_SEP) {
       zs->num_items++;
-      Rline.add_completion (this, lc, arg->bytes);
+      String.append_with_fmt (arg, "%s%c", ptrbuf, DIR_SEP);
+      String.append_with_len (arg, lptr, lptrlen);
+      Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
       goto theend;
     }
 
     is_filename = 1;
-    dlist  = Dir.list (ptr, 0);
+    dlist  = Dir.list (ptrbuf, DIRLIST_LNK_IS_DIRECTORY);
   } else ifnot (ptrlen) {
 get_current: {}
     char *cwd = Dir.current ();
@@ -341,10 +363,11 @@ get_current: {}
     dlist = Dir.list (cwd, 0);
     free (cwd);
   } else {
-    ifnot (Dir.is_directory (dirname))
+    if (0 is Dir.is_directory (dirname) and (
+        0 is File.is_lnk (dirname) and Dir.lnk_is_directory (dirname)))
       goto get_current;
 
-    dlist = Dir.list (dirname, 0);
+    dlist = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
   }
 
   if (NULL is dlist) goto theend;
@@ -357,32 +380,35 @@ get_current: {}
   if (1 is dirlen and *dirname is '.' and 0 is bname_len + is_filename) {
     while (it) {
       if (it->data->bytes[0] isnot '.') {
-        String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
         zs->num_items++;
-        Rline.add_completion (this, lc, arg->bytes);
-        String.clear_at (arg, len);
+        String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        String.clear_at (arg, buflen);
       }
       it = it->next;
     }
   } else {
     while (it) {
       if (is_filename) {
-        String.append_with_fmt (arg, "%s%s%s", ptr,
-            (ptr[ptrlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
         zs->num_items++;
-        Rline.add_completion (this, lc, arg->bytes);
-        String.clear_at (arg, len);
+        String.append_with_fmt (arg, "%s%s%s", ptrbuf,
+            (ptrbuf[ptrlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        String.clear_at (arg, buflen);
 
       } else if (Cstring.eq_n (it->data->bytes, basename, bname_len)) {
+        zs->num_items++;
         if (dirlen is 1 and *dirname is '.')
           String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
         else
           String.append_with_fmt (arg, "%s%s%s", dirname,
             (dirname[dirlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
 
-        zs->num_items++;
-        Rline.add_completion (this, lc, arg->bytes);
-        String.clear_at (arg, len);
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        String.clear_at (arg, buflen);
       }
 
       it = it->next;
@@ -403,14 +429,14 @@ static int zs_on_input (const char *buf, int *ch, int curpos, rlineCompletions *
   if (0 is curpos and buf[0] is '\0') {
     if (('A' <= c and c <= 'Z') or ('a' <= c and c <= 'z') or c is '_') {
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
-      zs_completion (newbuf, lc, userdata);
+      zs_completion (newbuf, 1, lc, userdata);
       ifnot (zs->num_items) return -1;
       *ch = 0;
       return 0;
     }
   }
 
-  // escape: clear the line
+  // escape: clear the line (maybe vi mode?)
   if (c is 033)
     return CTRL('u');
 
@@ -419,18 +445,55 @@ static int zs_on_input (const char *buf, int *ch, int curpos, rlineCompletions *
     rline_t *this = zs->rline;
     zs->num_items = 0;
     Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
-    LastComp *it = zs->lastcomp_head;
+
+    const char *ptr = buf + curpos;
+    size_t ptrlen = bytelen (ptr);
+
     string *arg = zs->arg;
     size_t len = bytelen (buf);
+    len -= ptrlen;
+
     String.replace_with_len (arg, buf, len);
+
+    LastComp *it = zs->lastcomp_head;
     while (it) {
       zs->num_items++;
-      String.append_with (arg, it->lastcomp);
-      Rline.add_completion (this, lc, arg->bytes);
+      size_t llen = bytelen (it->lastcomp);
+      String.append_with_len (arg, it->lastcomp, llen);
+      String.append_with_len (arg, ptr, ptrlen);
+      Rline.add_completion (this, lc, arg->bytes, curpos + llen);
       String.clear_at (arg, len);
       it = it->next;
     }
+
+    ifnot (zs->num_items) return -1;
+
     return 0;
+  }
+
+  if (c is '~') {
+    if (curpos > 0) {
+      if (buf[curpos - 1] is ' ') {
+        rline_t *this = zs->rline;
+        zs->num_items = 1;
+        Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
+        string *arg = zs->arg;
+
+        const char *ptr = buf + curpos;
+        size_t ptrlen = bytelen (ptr);
+        size_t len = bytelen (buf) - ptrlen;
+
+        String.replace_with_len (arg, buf, len);
+        char *home = Sys.get.env_value ("HOME");
+        size_t homlen = bytelen (home);
+        String.append_with_len (arg, home, homlen);
+        String.append_byte (arg, DIR_SEP);
+        String.append_with_len (arg, ptr, ptrlen);
+        Rline.add_completion (this, lc, arg->bytes, curpos + homlen + 1);
+        String.clear_at (arg, len);
+        return 0;
+      }
+    }
   }
 
   return -1;
@@ -499,6 +562,11 @@ static void init_rline_commands (zs_t *this) {
 
   Command *next = Alloc (sizeof (Command));
   next->name = Cstring.dup ("cd", 2);
+  comit->next = next;
+  comit = next;
+
+  next = Alloc (sizeof (Command));
+  next->name = Cstring.dup ("pwd", 3);
   comit->next = next;
   comit = next;
 
@@ -635,6 +703,18 @@ static int zs_builtins (char *line, Vstring_t *cdpath) {
     return ZS_CONTINUE;
   }
 
+  if (Cstring.eq (line, "pwd")) {
+    char *curdir = Dir.current ();
+    if (NULL is curdir)
+      Stderr.print ("couldn't get current working directory\n");
+    else {
+      Stdout.print_fmt ("%s\n", curdir);
+      free (curdir);
+    }
+
+    return ZS_CONTINUE;
+  }
+
   return ZS_NOTHING_TODO;
 }
 
@@ -705,6 +785,7 @@ int main (int argc, char **argv) {
   __INIT__ (sys);
   __INIT__ (dir);
   __INIT__ (path);
+  __INIT__ (file);
   __INIT__ (error);
   __INIT__ (rline);
   __INIT__ (string);

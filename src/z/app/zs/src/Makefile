@@ -73,7 +73,7 @@ FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION)
 FLAGS += -lsh-$(VERSION) -lproc-$(VERSION) -lrline-$(VERSION)
 FLAGS += -lio-$(VERSION) -lstring-$(VERSION) -lsys-$(VERSION) -lsmap-$(VERSION)
 FLAGS += -lerror-$(VERSION) -lterm-$(VERSION)
-FLAGS += -lpath-$(VERSION)
+FLAGS += -lpath-$(VERSION) -lfile-$(VERSION)
 
 Z_ZS_STATIC_FLAGS := -lpath-$(VERSION) -lustring-$(VERSION) -lfile-$(VERSION)
 Z_ZS_STATIC_FLAGS += -los-$(VERSION) -lterm-$(VERSION) -lrandom-$(VERSION)

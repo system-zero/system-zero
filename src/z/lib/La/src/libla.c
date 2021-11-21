@@ -179,8 +179,9 @@
 #define TOKEN_ASSIGN_MOD  1005
 #define TOKEN_ASSIGN_BAR  1006
 #define TOKEN_ASSIGN_AND  1007
-#define TOKEN_PLUS_PLUS   1008
-#define TOKEN_MINUS_MINUS 1009
+#define TOKEN_ASSIGN_XOR  1008
+#define TOKEN_PLUS_PLUS   1009
+#define TOKEN_MINUS_MINUS 1010
 #define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
 
 typedef struct la_string {
@@ -404,7 +405,6 @@ typedef struct tokenState {
 #define PREVTOKEN   this->prevToken
 #define HASTORETURN this->hasToReturn
 
-
 #define THROW_ERR_IF_ERR(_e_) do { if (_e_ < 0) return _e_; } while (0)
 #define THROW_SYNTAX_ERR(__msg__) do { return this->syntax_error (this, __msg__); } while (0)
 #define THROW_SYNTAX_ERR_IF_ERR(_e_, _msg_) \
@@ -558,6 +558,7 @@ static VALUE la_div  (la_t *, VALUE, VALUE);
 static VALUE la_mod  (la_t *, VALUE, VALUE);
 static VALUE la_bset (la_t *, VALUE, VALUE);
 static VALUE la_bnot (la_t *, VALUE, VALUE);
+static VALUE la_bitxor (la_t *, VALUE, VALUE);
 static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
 static int la_array_set_as_array (la_t *, VALUE, integer, integer, integer);
@@ -3356,6 +3357,8 @@ static int la_parse_array_set (la_t *this) {
         result = la_bset (this, val, v); break;
       case TOKEN_ASSIGN_AND:
         result = la_bnot (this, val, v); break;
+      case TOKEN_ASSIGN_XOR:
+        result = la_bitxor (this, val, v); break;
     }
 
     if (result.type is NULL_TYPE)
@@ -3830,6 +3833,8 @@ static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
       result = la_bset (this, *val, v); break;
     case TOKEN_ASSIGN_AND:
       result = la_bnot (this, *val, v); break;
+    case TOKEN_ASSIGN_XOR:
+      result = la_bitxor (this, *val, v); break;
   }
 
   if (result.type is NULL_TYPE)
@@ -6195,6 +6200,7 @@ static int la_parse_stmt (la_t *this) {
         case TOKEN_ASSIGN_MOD: result = la_mod  (this, symbol->value, val); break;
         case TOKEN_ASSIGN_BAR: result = la_bset (this, symbol->value, val); break;
         case TOKEN_ASSIGN_AND: result = la_bnot (this, symbol->value, val); break;
+        case TOKEN_ASSIGN_XOR: result = la_bitxor (this, symbol->value, val); break;
         default: THROW_SYNTAX_ERR("unknown operator");
       }
 
@@ -10203,6 +10209,7 @@ static struct def {
   { "*=",      TOKEN_ASSIGN_MUL,  NULL_VALUE },
   { "&=",      TOKEN_ASSIGN_AND,  NULL_VALUE },
   { "|=",      TOKEN_ASSIGN_BAR,  NULL_VALUE },
+  { "^=",      TOKEN_ASSIGN_XOR,  NULL_VALUE },
   { "++",      TOKEN_PLUS_PLUS,   NULL_VALUE },
   { "--",      TOKEN_MINUS_MINUS, NULL_VALUE },
   { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },

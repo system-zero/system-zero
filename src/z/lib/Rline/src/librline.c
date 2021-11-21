@@ -12,8 +12,8 @@
 
 typedef struct rline_prop {
   string_t
-     *prompt,
-     *history_fname;
+    *prompt,
+    *history_fname;
 
   RlineHints_cb hints_cb;
   RlineCompletion_cb completion_cb;
@@ -28,13 +28,16 @@ struct rline_t {
 
 struct rlineCompletions {
   int flags;  // ADDITION
+  currentLine *current;
   size_t len;
   char **cvec;
+  int *pos;
 };
 
 typedef rlineCompletions linenoiseCompletions;
 
-typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *, void *);
+typedef RlineCompletion_cb linenoiseCompletionCallback;
+//typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *, void *);
 typedef char*(linenoiseHintsCallback)(const char *, int *color, int *bold, void *);
 typedef void(linenoiseFreeHintsCallback)(void *, void *);
 
@@ -918,7 +921,7 @@ static int history_len = 0;
 static char **history = NULL;
 
 /* Structure to contain the status of the current (being edited) line */
-struct current {
+struct currentLine {
     stringbuf *buf; /* Current buffer. Always null terminated */
     int pos;    /* Cursor position, measured in chars */
     int cols;   /* Size of the window, in chars */
@@ -946,16 +949,16 @@ struct current {
 #endif
 };
 
-static int fd_read(struct current *current);
-static int getWindowSize(struct current *current);
-static void cursorDown(struct current *current, int n);
-static void cursorUp(struct current *current, int n);
-static void eraseEol(struct current *current);
-static void refreshLine(struct current *current);
-static void refreshLineAlt(struct current *current, const char *prompt, const char *buf, int cursor_pos);
-static void setCursorPos(struct current *current, int x);
-static void setOutputHighlight(struct current *current, const int *props, int nprops);
-static void set_current(struct current *current, const char *str);
+static int fd_read(struct currentLine *current);
+static int getWindowSize(struct currentLine *current);
+static void cursorDown(struct currentLine *current, int n);
+static void cursorUp(struct currentLine *current, int n);
+static void eraseEol(struct currentLine *current);
+static void refreshLine(struct currentLine *current);
+static void refreshLineAlt(struct currentLine *current, const char *prompt, const char *buf, int cursor_pos);
+static void setCursorPos(struct currentLine *current, int x);
+static void setOutputHighlight(struct currentLine *current, const int *props, int nprops);
+static void set_current(struct currentLine *current, const char *str);
 
 void linenoiseHistoryFree(void) {
     if (history) {
@@ -1117,7 +1120,7 @@ static int isUnsupportedTerm(void) {
     return 0;
 }
 
-static int enableRawMode(struct current *current) {
+static int enableRawMode(struct currentLine *current) {
     struct termios raw;
 
     current->fd = STDIN_FILENO;
@@ -1158,7 +1161,7 @@ fatal:
     return 0;
 }
 
-static void disableRawMode(struct current *current) {
+static void disableRawMode(struct currentLine *current) {
     /* Don't even check the return value as it's too late. */
     if (rawmode && tcsetattr(current->fd,TCSADRAIN,&orig_termios) != -1)
         rawmode = 0;
@@ -1181,7 +1184,7 @@ static void linenoiseAtExit(void) {
 /**
  * Output bytes directly, or accumulate output (if current->output is set)
  */
-static void outputChars(struct current *current, const char *buf, int len)
+static void outputChars(struct currentLine *current, const char *buf, int len)
 {
     if (len < 0) {
         len = strlen(buf);
@@ -1196,7 +1199,7 @@ static void outputChars(struct current *current, const char *buf, int len)
 
 /* Like outputChars, but using printf-style formatting
  */
-static void outputFormatted(struct current *current, const char *format, ...)
+static void outputFormatted(struct currentLine *current, const char *format, ...)
 {
     va_list args;
     char buf[64];
@@ -1210,12 +1213,12 @@ static void outputFormatted(struct current *current, const char *format, ...)
     outputChars(current, buf, n);
 }
 
-static void cursorToLeft(struct current *current)
+static void cursorToLeft(struct currentLine *current)
 {
     outputChars(current, "\r", -1);
 }
 
-static void setOutputHighlight(struct current *current, const int *props, int nprops)
+static void setOutputHighlight(struct currentLine *current, const int *props, int nprops)
 {
     outputChars(current, "\x1b[", -1);
     while (nprops--) {
@@ -1224,12 +1227,12 @@ static void setOutputHighlight(struct current *current, const int *props, int np
     }
 }
 
-static void eraseEol(struct current *current)
+static void eraseEol(struct currentLine *current)
 {
     outputChars(current, "\x1b[0K", -1);
 }
 
-static void setCursorPos(struct current *current, int x)
+static void setCursorPos(struct currentLine *current, int x)
 {
     if (x == 0) {
         cursorToLeft(current);
@@ -1239,14 +1242,14 @@ static void setCursorPos(struct current *current, int x)
     }
 }
 
-static void cursorUp(struct current *current, int n)
+static void cursorUp(struct currentLine *current, int n)
 {
     if (n) {
         outputFormatted(current, "\x1b[%dA", n);
     }
 }
 
-static void cursorDown(struct current *current, int n)
+static void cursorDown(struct currentLine *current, int n)
 {
     if (n) {
         outputFormatted(current, "\x1b[%dB", n);
@@ -1287,7 +1290,7 @@ static int fd_read_char(int fd, int timeout)
  * Reads a complete utf-8 character
  * and returns the unicode value, or -1 on error.
  */
-static int fd_read(struct current *current)
+static int fd_read(struct currentLine *current)
 {
 #ifdef USE_UTF8
     char buf[MAX_UTF8_LEN];
@@ -1320,7 +1323,7 @@ static int fd_read(struct current *current)
  * Stores the current cursor column in '*cols'.
  * Returns 1 if OK, or 0 if failed to determine cursor pos.
  */
-static int queryCursor(struct current *current, int* cols)
+static int queryCursor(struct currentLine *current, int* cols)
 {
     struct esc_parser parser;
     int ch;
@@ -1355,7 +1358,7 @@ static int queryCursor(struct current *current, int* cols)
 /**
  * Updates current->cols with the current window size (width)
  */
-static int getWindowSize(struct current *current)
+static int getWindowSize(struct currentLine *current)
 {
     struct winsize ws;
 
@@ -1474,13 +1477,13 @@ static int check_special(int fd)
 }
 #endif
 
-static void clearOutputHighlight(struct current *current)
+static void clearOutputHighlight(struct currentLine *current)
 {
     int nohighlight = 0;
     setOutputHighlight(current, &nohighlight, 1);
 }
 
-static void outputControlChar(struct current *current, char ch)
+static void outputControlChar(struct currentLine *current, char ch)
 {
     int reverse = 7;
     setOutputHighlight(current, &reverse, 1);
@@ -1505,7 +1508,7 @@ static int utf8_getchars(char *buf, int c)
  * Returns the unicode character at the given offset,
  * or -1 if none.
  */
-static int get_char(struct current *current, int pos)
+static int get_char(struct currentLine *current, int pos)
 {
     if (pos >= 0 && pos < sb_chars(current->buf)) {
         int c;
@@ -1528,7 +1531,7 @@ static int char_display_width(int ch)
 }
 
 #ifndef NO_COMPLETION
-static linenoiseCompletionCallback *completionCallback = NULL;
+static linenoiseCompletionCallback completionCallback = NULL;
 static void *completionUserdata = NULL;
 static int showhints = 1;
 static linenoiseHintsCallback *hintsCallback = NULL;
@@ -1547,17 +1550,19 @@ static void freeCompletions(linenoiseCompletions *lc) {
     for (i = 0; i < lc->len; i++)
         free(lc->cvec[i]);
     free(lc->cvec);
+    if (lc->len)
+      free (lc->pos);
 }
 
-static int completeLine(struct current *current, int ch) {
-    linenoiseCompletions lc = { 0, 0, NULL };
+static int completeLine(struct currentLine *current, int ch) {
+    linenoiseCompletions lc = { 0, current, 0, NULL, NULL};
+    const char *curbuf = sb_str(current->buf);
+    int curpos = utf8_index(curbuf, current->pos);
     int c = 0;
-
     if (ch == 0)
-      completionCallback(sb_str(current->buf),&lc,completionUserdata);
+      completionCallback(curbuf, curpos, &lc, completionUserdata);
     else { // ADDITION
-      int r = linenoiseOnInputCallback (sb_str(current->buf), &ch,
-          utf8_index(sb_str(current->buf), current->pos), &lc, completionUserdata);
+      int r = linenoiseOnInputCallback (curbuf, &ch, curpos, &lc, completionUserdata);
 
       if (r == -1) {
         c = ch;
@@ -1579,7 +1584,9 @@ static int completeLine(struct current *current, int ch) {
         size_t stop = 0, i = 0;
 
         if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM) { /* ADDITION */
-          set_current(current,lc.cvec[i]);
+          set_current(current,lc.cvec[0]);
+          if (lc.pos[0] >= 0)
+            current->pos = lc.pos[0];
           refreshLine(current);
           stop = 1;
         }
@@ -1587,7 +1594,7 @@ static int completeLine(struct current *current, int ch) {
         while(!stop) {
             /* Show completion or original buffer */
             if (i < lc.len) {
-                int chars = utf8_strlen(lc.cvec[i], -1);
+                int chars = (lc.pos[i] >= 0 ? lc.pos[i] : utf8_strlen(lc.cvec[i], -1));
                 refreshLineAlt(current, current->prompt, lc.cvec[i], chars);
             } else {
                 refreshLine(current);
@@ -1599,6 +1606,8 @@ static int completeLine(struct current *current, int ch) {
             }
 
             if (c == ch) c = '\t'; // ADDITION
+            if (c == CHAR_ESCAPE)
+              c = check_special(current->fd);
 
             switch(c) {
                 case '\t': /* tab */
@@ -1606,6 +1615,7 @@ static int completeLine(struct current *current, int ch) {
                     if (i == lc.len) beep();
                     break;
                 case CHAR_ESCAPE: /* escape */
+                   // if (c == CHAR_ESCAPE)
                     /* Re-show original buffer */
                     if (i < lc.len) {
                         refreshLine(current);
@@ -1616,6 +1626,8 @@ static int completeLine(struct current *current, int ch) {
                     /* Update buffer and return */
                     if (i < lc.len) {
                         set_current(current,lc.cvec[i]);
+                        if (lc.pos[i] >= 0)
+                          current->pos = lc.pos[i];
                     }
                     stop = 1;
                     break;
@@ -1631,16 +1643,20 @@ theend:
 /* Register a callback function to be called for tab-completion.
    Returns the prior callback so that the caller may (if needed)
    restore it when done. */
-linenoiseCompletionCallback * linenoiseSetCompletionCallback(linenoiseCompletionCallback *fn, void *userdata) {
-    linenoiseCompletionCallback * old = completionCallback;
+linenoiseCompletionCallback linenoiseSetCompletionCallback(linenoiseCompletionCallback fn, void *userdata) {
+    //linenoiseCompletionCallback * old = completionCallback;
+    linenoiseCompletionCallback old = completionCallback;
     completionCallback = fn;
     completionUserdata = userdata;
     return old;
 }
 
-void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str) {
+void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str, int pos) {
     lc->cvec = (char **)realloc(lc->cvec,sizeof(char*)*(lc->len+1));
-    lc->cvec[lc->len++] = strdup(str);
+    lc->cvec[lc->len] = strdup(str);
+    lc->pos = (int *)realloc(lc->pos,sizeof(int)*(lc->len+1));
+    lc->pos[lc->len] = pos;
+    lc->len++;
 }
 
 void linenoiseSetHintsCallback(linenoiseHintsCallback *callback, void *userdata)
@@ -1726,7 +1742,7 @@ void linenoiseSetMultiLine(int enableml)
  * Returns 1 if a hint was shown, or 0 if not
  * If 'display' is 0, does no output. Just returns the appropriate return code.
  */
-static int refreshShowHints(struct current *current, const char *buf, int availcols, int display)
+static int refreshShowHints(struct currentLine *current, const char *buf, int availcols, int display)
 {
     int rc = 0;
     if (showhints && hintsCallback && availcols > 0) {
@@ -1771,14 +1787,14 @@ static int refreshShowHints(struct current *current, const char *buf, int availc
 }
 
 #ifdef USE_TERMIOS
-static void refreshStart(struct current *current)
+static void refreshStart(struct currentLine *current)
 {
     /* We accumulate all output here */
     assert(current->output == NULL);
     current->output = sb_alloc();
 }
 
-static void refreshEnd(struct current *current)
+static void refreshEnd(struct currentLine *current)
 {
     /* Output everything at once */
 
@@ -1787,24 +1803,24 @@ static void refreshEnd(struct current *current)
     current->output = NULL;
 }
 
-static void refreshStartChars(struct current *current)
+static void refreshStartChars(struct currentLine *current)
 {
     (void)current;
 }
 
-static void refreshNewline(struct current *current)
+static void refreshNewline(struct currentLine *current)
 {
     DRL("<nl>");
     outputChars(current, "\n", 1);
 }
 
-static void refreshEndChars(struct current *current)
+static void refreshEndChars(struct currentLine *current)
 {
     (void)current;
 }
 #endif
 
-static void refreshLineAlt(struct current *current, const char *prompt, const char *buf, int cursor_pos)
+static void refreshLineAlt(struct currentLine *current, const char *prompt, const char *buf, int cursor_pos)
 {
     int i;
     const char *pt;
@@ -2030,12 +2046,12 @@ static void refreshLineAlt(struct current *current, const char *prompt, const ch
 #endif
 }
 
-static void refreshLine(struct current *current)
+static void refreshLine(struct currentLine *current)
 {
     refreshLineAlt(current, current->prompt, sb_str(current->buf), current->pos);
 }
 
-static void set_current(struct current *current, const char *str)
+static void set_current(struct currentLine *current, const char *str)
 {
     sb_clear(current->buf);
     sb_append(current->buf, str);
@@ -2048,7 +2064,7 @@ static void set_current(struct current *current, const char *str)
  * Returns 1 if the line needs to be refreshed, 2 if not
  * and 0 if nothing was removed
  */
-static int remove_char(struct current *current, int pos)
+static int remove_char(struct currentLine *current, int pos)
 {
     if (pos >= 0 && pos < sb_chars(current->buf)) {
         int offset = utf8_index(sb_str(current->buf), pos);
@@ -2106,7 +2122,7 @@ static int remove_char(struct current *current, int pos)
  * Returns 1 if the line needs to be refreshed, 2 if not
  * and 0 if nothing was inserted (no room)
  */
-static int insert_char(struct current *current, int pos, int ch)
+static int insert_char(struct currentLine *current, int pos, int ch)
 {
     if (pos >= 0 && pos <= sb_chars(current->buf)) {
         char buf[MAX_UTF8_LEN + 1];
@@ -2156,7 +2172,7 @@ static int insert_char(struct current *current, int pos, int ch)
  *
  * This replaces any existing characters in the cut buffer.
  */
-static void capture_chars(struct current *current, int pos, int nchars)
+static void capture_chars(struct currentLine *current, int pos, int nchars)
 {
     if (pos >= 0 && (pos + nchars - 1) < sb_chars(current->buf)) {
         int offset = utf8_index(sb_str(current->buf), pos);
@@ -2179,7 +2195,7 @@ static void capture_chars(struct current *current, int pos, int nchars)
  *
  * Returns 0 if no chars were removed or non-zero otherwise.
  */
-static int remove_chars(struct current *current, int pos, int n)
+static int remove_chars(struct currentLine *current, int pos, int n)
 {
     int removed = 0;
 
@@ -2196,7 +2212,7 @@ static int remove_chars(struct current *current, int pos, int n)
  *
  * Returns 0 if no chars were inserted or non-zero otherwise.
  */
-static int insert_chars(struct current *current, int pos, const char *chars)
+static int insert_chars(struct currentLine *current, int pos, const char *chars)
 {
     int inserted = 0;
 
@@ -2216,7 +2232,7 @@ static int insert_chars(struct current *current, int pos, const char *chars)
 /**
  * Returns the keycode to process, or 0 if none.
  */
-static int reverseIncrementalSearch(struct current *current)
+static int reverseIncrementalSearch(struct currentLine *current)
 {
     /* Display the reverse-i-search prompt and process chars */
     char rbuf[50];
@@ -2320,7 +2336,7 @@ static int reverseIncrementalSearch(struct current *current)
     return c;
 }
 
-static int linenoiseEdit(struct current *current) {
+static int linenoiseEdit(struct currentLine *current) {
     int history_index = 0;
 
     /* The latest history entry is always our current buffer, that
@@ -2344,7 +2360,8 @@ static int linenoiseEdit(struct current *current) {
         /* Only autocomplete when the callback is set. It returns < 0 when
          * there was an error reading from fd. Otherwise it will return the
          * character that should be handled next. */
-        if (c == '\t' && current->pos == sb_chars(current->buf) && completionCallback != NULL) {
+        //if (c == '\t' && current->pos == sb_chars(current->buf) && completionCallback != NULL) {
+        if (c == '\t' && completionCallback != NULL) {
             c = completeLine(current, 0);
         }
 #endif
@@ -2554,7 +2571,7 @@ history_navigation:
 
 int linenoiseColumns(void)
 {
-    struct current current;
+    struct currentLine current;
     current.output = NULL;
     enableRawMode (&current);
     getWindowSize (&current);
@@ -2600,7 +2617,7 @@ static stringbuf *sb_getline(FILE *fh)
 char *linenoise(const char *prompt)
 {
     int count;
-    struct current current;
+    struct currentLine current;
     stringbuf *sb;
 
     memset(&current, 0, sizeof(current));
@@ -2806,10 +2823,10 @@ static char *rline_edit (rline_t *this) {
   return linenoise ($my(prompt)->bytes);
 }
 
-static void rline_add_completion (rline_t *this, rlineCompletions *lc, char *item) {
+static void rline_add_completion (rline_t *this, rlineCompletions *lc, char *item, int pos) {
   (void) this;
   if (NULL is item) return;
-  linenoiseAddCompletion (lc, item);
+  linenoiseAddCompletion (lc, item, pos);
 }
 
 static void rline_set_completion_cb (rline_t *this, RlineCompletion_cb cb, void *userdata) {
@@ -2842,6 +2859,12 @@ static void rline_set_prompt (rline_t *this, char *prompt) {
     String.clear ($my(prompt));
   else
     String.replace_with ($my(prompt), prompt);
+}
+
+static void rline_set_curpos (rline_t *this, rlineCompletions *lc, int pos) {
+  (void) this;
+  currentLine *current = lc->current;
+  current->pos = pos;
 }
 
 static void rline_history_set_file (rline_t *this, char *fname) {
@@ -2896,6 +2919,7 @@ public rline_T __init_rline__ (void) {
       .set = (rline_set_self) {
         .flags = rline_set_flags,
         .prompt = rline_set_prompt,
+        .curpos = rline_set_curpos,
         .hints_cb = rline_set_hints_cb,
         .on_input_cb = rline_set_on_input_cb,
         .completion_cb = rline_set_completion_cb,

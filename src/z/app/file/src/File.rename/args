@@ -1,0 +1,4 @@
+-f,--force        do not prompt before overwriting
+-b,--backup       make a backup of each existing destination file
+-i,--interactive  prompt before overwrite
+-v,--verbose=     be verbose

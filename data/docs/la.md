@@ -1905,6 +1905,7 @@ The return statement
 # %=          -  modulo            -||-
 # |=          -  bit or            -||-
 # &=          -  bit and           -||-
+# ^=          -  bit xor           -||-
 
 # Predefined types:
 # integer, string, map, number, array (those actually will throw a bit different
@@ -2134,9 +2135,12 @@ The return statement
     # StringType   Crypt.base64_decode (StringType str)
     # StringType   Crypt.base64_encode_file (StringType str)
     # StringType   Crypt.base64_decode_file (StringType str)
+    # StringType   Crypt.hash_passwd (StringType passwd) # Bcrypt implementation
+    # IntegerType  Crypt.verify_passwd_hash (StringType passwd, StringType hash)
 
   # Rand Module Interface
     # IntegerType Rand.new ()
+    # StringType  Rand.get_entropy_bytes (IntegerType size)
 
   (notes:
      - most of them are self explanatory, as they correspond to standard C functions
@@ -2202,7 +2206,7 @@ The return statement
   - standard keywords and functions can not be redefined and reassigned
 
   - function arguments that are memory types (like strings, arrays and maps),
-    are passed by reference and so can be modified by the callee function
+    are passed by reference and so can be modified by the called function
 
   - valid identifiers are [_a-zA-Z] and may include digits after the leading
     byte (with an exception to map members that may start with a digit)
@@ -2226,7 +2230,7 @@ The return statement
     - hexadecimal notation (base 16) that start with "0[xX]" and consists with
       [0-9][a-f][A-F] characters
 
-  - single characters can be specified as integers, when are enclosed in signle
+  - single characters can be specified as integers, when are enclosed in single
     quotes:
 
       'a' => 97
@@ -2235,7 +2239,7 @@ The return statement
 
       'α' => 945
 
-    in the case the value is the codepoint of the UTF8 byte sequence.
+    in this case the value is the codepoint of the UTF8 byte sequence.
 
     They can be also specified in hexadecimal notation using this form:
 

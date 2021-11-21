@@ -20,7 +20,10 @@ SYSINCDIR  = $(SYSDIR)/include/$(NS)
 SYSDATADIR = $(SYSDIR)/../data
 SYSTMPDIR  = $(SYSDIR)/tmp
 
-packman: Env
+Z_SHELL         := zs
+Z_SHELL_DATADIR := $(SYSDATADIR)/$(Z_SHELL)
+
+packman: Env install-data
 	@$(PRINTF) "installing $(NAME) to $(SYSBINDIR)\n"
 	@$(CP) $(NAME) $(SYSBINDIR)
 	@$(CHMOD) 755  $(SYSBINDIR)/$(NAME)
@@ -30,6 +33,9 @@ clean:
 	@$(TEST) ! -x $(SYSBINDIR)/$(NAME)        || $(RM) $(SYSBINDIR)/$(NAME)
 	@$(TEST) ! -d $(SYSDATADIR)/$(NAME)/specs || $(RM_R) $(SYSDATADIR)/${NAME)/specs
 
+install-data:
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(NAME)    || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(NAME)
+	@$(CP) packman/* $(Z_SHELL_DATADIR)/commands/$(NAME)
 #-----------------------------------------------------------
 Env: makeenv checkenv
 makeenv:

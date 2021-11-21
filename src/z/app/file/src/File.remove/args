@@ -1,0 +1,4 @@
+-f,--force        do not prompt
+-R,--recursive    remove directories and their contents recursively
+-i,--interactive  prompt before removing
+-v,--verbose=     be verbose

@@ -29,7 +29,7 @@ struct pcg_state_setseq_64 {  // Internals are *Private*.
 
 typedef struct pcg_state_setseq_64 pcg32_random_t;
 
-static int entropy_getbytes(void* dest, size_t size) {
+static int entropy_getbytes (void* dest, size_t size) {
   int fd = open ("/dev/urandom", O_RDONLY);
   if (fd < 0)
      return NOTOK;
@@ -66,10 +66,14 @@ static uint32_t random_new (void) {
   return r;
 }
 
+#define random_get_entropy_bytes entropy_getbytes
 public random_T __init_random__ (void) {
   return (random_T) {
     .self = (random_self) {
       .new = random_new,
+      .get = (random_get_self) {
+        .entropy_bytes = random_get_entropy_bytes
+      }
     }
   };
 }

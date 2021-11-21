@@ -1242,9 +1242,11 @@ To do that use:
   - a shell
     state: don't never tried to work with it, as there are other areas to
       dedicate attention (it is not a priority, as the direction might change)
-      [update at first days of November]: This is now at least a little bit more
-      useful with command, argument, filename and last component completions.
-
+      updates:
+        Sweet November Days and olive season: This is now at least a little bit
+        more useful with command, argument, filename, last component completions
+        and shell word expansion.
+        
     sources:  
     [document](data/docs/zs.md)  
     [Sh   library](src/z/lib/Sh/src/libsh.c)  

@@ -69,6 +69,9 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
+Z_SHELL         := zs
+Z_SHELL_DATADIR := $(SYSDATADIR)/$(Z_SHELL)
+
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -ldir-$(VERSION) -lpath-$(VERSION) -lfile-$(VERSION)
 FLAGS += -largparse-$(VERSION) -lio-$(VERSION)
@@ -78,11 +81,13 @@ dir: shared static
 
 shared: clean-shared\
     dir-make-shared\
-    dir-remove-shared
+    dir-remove-shared\
+    install-data
 
 static: clean-static\
     dir-make-static\
-    dir-remove-static
+    dir-remove-static\
+    install-data
 
 clean-shared:\
     clean-dir-make-shared\
@@ -91,6 +96,12 @@ clean-shared:\
 clean-static:\
     clean-dir-make-static\
     clean-dir-remove-static
+
+install-data:
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(D_MAKE)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(D_MAKE)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(D_REMOVE) || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(D_REMOVE)
+	@$(CP) $(D_MAKE)/args   $(Z_SHELL_DATADIR)/commands/$(D_MAKE)
+	@$(CP) $(D_REMOVE)/args $(Z_SHELL_DATADIR)/commands/$(D_MAKE)
 #-----------------------------------------------#
 D_MAKE = $(NAME).make
 
@@ -139,3 +150,7 @@ TEST = test
 RM = rm
 LN = ln
 LN_S = $(LN) -s
+MKDIR = mkdir
+MKDIR_P = $(MKDIR) -p
+CP = cp
+CP_R = $(CP) -r

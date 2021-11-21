@@ -1,0 +1,2 @@
+-v,--verbose     print a message when creating a directory
+-p,--parents     remove directory and its ancestors

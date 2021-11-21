@@ -4,19 +4,28 @@
 #define RLINE_ACCEPT_ONE_ITEM  (1 << 0)
 
 typedef struct rline_t rline_t;
+typedef struct currentLine currentLine;
 
 typedef struct rlineCompletions rlineCompletions;
-typedef void (*RlineCompletion_cb) (const char *, rlineCompletions *, void *);
+                /* incompatible API */
+typedef void (*RlineCompletion_cb) (const char *, int, rlineCompletions *, void *);
+/* this is to support tab completions even if the pointer is not at the end
+ * of the line */
 
 typedef char *(*RlineHints_cb) (const char *, int *, int *, void *);
 typedef void  (*RlineFreeHints_cb) (void *, void *);
+
+/* ADDITION: if not NULL this is called first before any parsing */
 typedef int   (*OnInput_cb) (const char *, int *, int, rlineCompletions *, void *);
+/* ADDITION: if not NULL this is called when a carriage return is received */
 typedef void  (*OnCarriageReturn_cb) (const char *, void *);
 
+/* this is our API, a little bit more than merely a wrapper around linenoise */
 typedef struct rline_set_self {
   void
      (*flags) (rline_t *, rlineCompletions *, int),
      (*prompt) (rline_t *, char *),
+     (*curpos) (rline_t *, rlineCompletions *, int),
      (*hints_cb) (rline_t *, RlineHints_cb, void *),
      (*on_input_cb) (rline_t *, OnInput_cb),
      (*completion_cb) (rline_t *, RlineCompletion_cb, void *),
@@ -55,7 +64,7 @@ typedef struct rline_self {
 
   void
     (*release) (rline_t *),
-    (*add_completion) (rline_t *, rlineCompletions *, char *);
+    (*add_completion) (rline_t *, rlineCompletions *, char *, int);
 
   char *(*edit) (rline_t *);
 

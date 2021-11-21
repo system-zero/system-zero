@@ -353,17 +353,14 @@ static void proc_set_stdin (proc_t *this, char *buf, size_t size) {
 }
 
 static void proc_set_user_data (proc_t *this, void *user_data) {
-  if (NULL is this) return;
   $my(user_data) = user_data;
 }
 
 static void proc_set_pre_fork_cb (proc_t *this, ProcPreFork_cb cb) {
-  if (NULL is this) return;
   $my(pre_fork_cb) = cb;
 }
 
 static void proc_set_at_fork_cb (proc_t *this, ProcAtFork_cb cb) {
-  if (NULL is this) return;
   $my(at_fork_cb) = cb;
 }
 

@@ -53,7 +53,7 @@ SYSLIBDIR      = $(SYSDIR)/lib
 SYSBINDIR      = $(SYSDIR)/bin
 SYSINCDIR      = $(SYSDIR)/include
 
-# (not sure about them too yet: the question is: should be one or two? 
+# (not sure about those two yet: the question is: should be one or two? 
 #  perhaps a USER_ prefix is justified, though this can be abstracted
 #  at runtime by our identity)
 SYSDATADIR     = $(SYSDIR)/../data
@@ -232,6 +232,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Base64_Type        = Base64
     Z_BASE64_SRCDIR    = $(Z_SRCLIBDIR)/$(Base64_Type)/src
 
+    # Bcrypt Type
+    Bcrypt_Type        = Bcrypt
+    Z_BCRYPT_SRCDIR    = $(Z_SRCLIBDIR)/$(Bcrypt_Type)/src
+
     # Contain Type
     Contain_Type       = Contain
     Z_CONTAIN_SRCDIR   = $(Z_SRCLIBDIR)/$(Contain_Type)/src
@@ -255,6 +259,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     # shell
     Z_SHELL             = zs
     Z_SHELL_SRCDIR     := $(Z_SRCAPPDIR)/$(Z_SHELL)/src
+    Z_SHELL_DATADIR    := $(SYSDATADIR)/$(Z_SHELL)
 
     # utility to execute commands with superuser rights
     # note that is installed as setuid root, with root/$(GROUP) permission
@@ -281,9 +286,6 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
 
 Z_SYSLIBDIR  = $(SYSLIBDIR)/$(ZNAME)
 Z_SYSINCDIR  = $(SYSINCDIR)/$(ZNAME)
-
-Z_SHELL     := $(ZC_SHELL)
-Z_SU        := $(ZC_SU)
 
 # In this level we want a shell and an utility that will permit
 # us to execute commands with SuperUser (su for sort) rights.
@@ -330,6 +332,7 @@ Z_SU        := $(ZC_SU)
   MARGS += CC=$(CC) CC_STD=$(CC_STD)
   MARGS += SRCDIR=$(SRCDIR)
   MARGS += SYSDIR=$(SYSDIR) SYSDATADIR=$(SYSDATADIR) SYSTMPDIR=$(SYSTMPDIR)
+  MARGS += Z_SHELL_DATADIR=$(Z_SHELL_DATADIR) Z_SHELL=$(Z_SHELL)
   MARGS += BASE_FLAGS='$(BASE_FLAGS)'
   MARGS += USERNAME=$(USERNAME) GROUPNAME=$(GROUPNAME)
   MARGS += HOME=$(HOME) UID=$(UID) GID=$(GID) TERM=$(TERM)
@@ -713,7 +716,7 @@ libla-static: Env cenv list libstring-static libcstring-static libimap-static\
               libvstring-static libustring-static libpath-static libfile-static\
                liberror-static libvmap-static libio-static libdir-static libterm-static\
                libmd5-static libsha256-static libsha512-static\
-               libbase64-static
+               libbase64-static libbcrypt-static
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libla-shared:
@@ -827,6 +830,18 @@ clean-libbase64-shared:
 
 clean-libbase64-static:
 	@cd $(Z_BASE64_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+libbcrypt-shared: Env cenv
+	@cd $(Z_BCRYPT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libbcrypt-static: Env cenv
+	@cd $(Z_BCRYPT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libbcrypt-shared:
+	@cd $(Z_BCRYPT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libbcrypt-static:
+	@cd $(Z_BCRYPT_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libcontain-shared: Env cenv
 	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
@@ -1106,11 +1121,11 @@ clean-env-static:
   ZA_CRYPT_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_CRYPT)/src
 
 crypt-shared: libmd5-shared libsha256-shared libsha512-shared\
-              libbase64-shared crypt-module-shared
+              libbase64-shared libbcrypt-shared crypt-module-shared
 	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
 crypt-static: libmd5-static libsha256-static libsha512-static\
-              libbase64-static
+              libbase64-static libbcrypt-static
 	@cd $(ZA_CRYPT_SRCDIR) && $(MAKE) $(APP_FLAGS) static
 
 clean-crypt-shared:
@@ -1285,11 +1300,11 @@ time-module-shared:
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) time-module-shared
 
 crypt-module-shared: libmd5-shared libsha256-shared libsha512-shared\
-                     libbase64-shared
+                     libbase64-shared libbcrypt-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) crypt-module-shared
 
-random-module-shared: Env librandom-shared
-	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) random-module-shared
+rand-module-shared: Env librandom-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) rand-module-shared
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 

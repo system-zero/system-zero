@@ -1,16 +1,15 @@
-var prog = "File.nove"
-
+import ("path")
 import ("file")
 import ("dir")
-
 loadfile ("argparse")
 
-var argparse = New Argparse (6, 0, prog + " [option[s]] source destination")
+var prog = __file__: path_basename ()
+
+var argparse = New Argparse (6, 0, prog + " [option[s]] source[s] destination")
 argparse.add ("force", 'f', "force", "do not prompt before overwriting", BooleanType, 0)
 argparse.add ("backup", 'b', "backup", "make a backup of each existing destination file", BooleanType, 0) 
-argparse.add ("recursive", 'R', "recursive", "copy recursively", BooleanType, 0)
 argparse.add ("interactive", 'i', "interactive", "prompt before overwrite", BooleanType, 0)
-argparse.add ("verbose", 'v', "verbose=", "be verbose", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
+argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 ifnot ok is argparse.process (__argv, 1) then exit (1)
@@ -20,7 +19,6 @@ if argparse.exit is true then exit (0)
 var qualif = {
   force       : argparse.results.force
   backup      : argparse.results.backup
-  recursive   : argparse.results.recursive
   interactive : argparse.results.interactive
   verbose     : argparse.results.verbose: ifnot x then 1 orelse x + 1 end
 }
@@ -45,8 +43,10 @@ var exitval = 0
 
 var retval = ok
 
+var move_to = file_rename
+
 for (var i = 0; i < argparse.argc - 1; i += 1) {
-  retval = argparse.argv[i]: file_rename (destination; qualif)
+  retval = argparse.argv[i]: move_to (destination; qualif)
   exitval = if retval is notok then 1 orelse exitval
 }
 

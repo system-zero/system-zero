@@ -935,7 +935,8 @@ static int file_rename (const char *src, const char *a_dest, file_rename_opts op
 
   int dest_isdir = 0;
   char *bname = Path.basename ((char *) src);
-  size_t buf_len = bytelen (bname) + 1 + dest_len;
+  size_t bname_len = bytelen (bname);
+  size_t buf_len = bname_len + 1 + dest_len;
   char buf[buf_len + 1];
 
   char *orig_dest = dest;
@@ -944,7 +945,13 @@ static int file_rename (const char *src, const char *a_dest, file_rename_opts op
   if (dest_exists) {
     dest_isdir = Dir.is_directory (dest);
     if (dest_isdir) {
-      Cstring.cp_fmt (buf, buf_len + 1, "%s/%s", dest, bname);
+      if (dest[dest_len - 1] isnot DIR_SEP and *bname isnot DIR_SEP) 
+        Cstring.cp_fmt (buf, buf_len + 1, "%s/%s", dest, bname);
+      else {
+        Cstring.cp_fmt (buf, buf_len + 1, "%s%s", dest, bname);
+        buf_len--;
+      }
+
       dest = buf;
       dest_len = buf_len;
       dest_exists = file_exists (dest);

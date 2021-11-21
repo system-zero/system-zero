@@ -34,6 +34,12 @@ static int dir_is_directory (char *dname) { // -> const
   return S_ISDIR (st.st_mode);
 }
 
+static int dir_lnk_is_directory (const char *dname) {
+  struct stat st;
+  if (NOTOK is stat (dname, &st)) return 0;
+  return S_ISDIR (st.st_mode);
+}
+
 static char *dir_current (void) {
   size_t size = 64;
   char *buf = Alloc (size);
@@ -56,8 +62,15 @@ static void dir_list_release (dirlist_t *dlist) {
 /* this needs a simplification and enhancement */
 static dirlist_t *dir_list (char *dir, int flags) {
   if (NULL is dir) return NULL;
-  ifnot (flags & DIRLIST_DONOT_CHECK_DIRECTORY)
-    ifnot (dir_is_directory (dir)) return NULL;
+  ifnot (flags & DIRLIST_DONOT_CHECK_DIRECTORY) {
+    int isdir = 0;
+    if (flags & DIRLIST_LNK_IS_DIRECTORY)
+      isdir = dir_lnk_is_directory (dir);
+    else
+      isdir = dir_is_directory (dir);
+
+    ifnot (isdir) return NULL;
+  }
 
   int is_long = flags & DIRLIST_LONG_FORMAT;
 
@@ -375,6 +388,7 @@ public dir_T __init_dir__ (void) {
       .rm_parents = dir_rm_parents,
       .make_parents = dir_make_parents,
       .is_directory = dir_is_directory,
+      .lnk_is_directory = dir_lnk_is_directory,
       .walk = (dir_walk_self) {
         .release = dir_walk_release,
         .new = dir_walk_new,

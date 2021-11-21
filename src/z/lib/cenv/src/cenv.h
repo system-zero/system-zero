@@ -1420,6 +1420,20 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_RANDOM_TYPE
 #endif /* REQUIRE_RANDOM_TYPE */
 
+#ifdef REQUIRE_BCRYPT_TYPE
+  #ifndef BCRYPT_TYPE_HDR
+  #define BCRYPT_TYPE_HDR
+  #include <z/bcrypt.h>
+  #endif /* BCRYPT_TYPE_HDR */
+
+  #if (REQUIRE_BCRYPT_TYPE == DECLARE)
+  static  bcrypt_T   bcryptType;
+  #define Bcrypt     bcryptType.self
+  #endif
+
+#undef REQUIRE_BCRYPT_TYPE
+#endif /* REQUIRE_BCRYPT_TYPE */
+
 #ifdef REQUIRE_BASE64_TYPE
   #ifndef BASE64_TYPE_HDR
   #define BASE64_TYPE_HDR

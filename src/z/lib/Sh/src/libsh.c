@@ -10,6 +10,7 @@
 #define REQUIRE_STDARG
 #define REQUIRE_SYS_WAIT
 #define REQUIRE_SIGNAL
+#include <wordexp.h>
 
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
@@ -152,6 +153,8 @@ static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
         fp = fopen (file->bytes, "w");
     }
   }
+
+  if (fp is NULL) return OK;
 
   char *line = NULL;
   size_t len = 0;
@@ -439,7 +442,22 @@ static int sh_parse (sh_t *this, char *buf) {
         }
       }
 
-      Proc.parse (p, buf);
+      wordexp_t we;
+      wordexp(buf, &we, 0);
+
+      string *command = String.new (8);
+      for (size_t i = 0; i < we.we_wordc; i++) {
+        String.append_with (command, we.we_wordv[i]);
+        String.append_byte (command, ' ');
+      }
+
+      String.clear_at (command, -1);
+
+      wordfree (&we);
+
+      Proc.parse (p, command->bytes);
+
+      String.release (command);
 
       if (type is PIPE_TYPE) {
         Proc.set.at_fork_cb (p, sh_at_fork_pipeline_cb);

@@ -10,6 +10,9 @@ SYSLIBDIR  = $(SYSDIR)/lib/$(NS)
 SYSBINDIR  = $(SYSDIR)/bin
 SYSTMPDIR  = $(SYSDIR)/tmp
 
+Z_SHELL         := zs
+Z_SHELL_DATADIR := $(SYSDATADIR)/$(Z_SHELL)
+
 file: shared static
 
 shared: clean-shared\
@@ -23,7 +26,8 @@ shared: clean-shared\
     file-chown-shared\
     file-remove-shared\
     file-rename-shared\
-    file-move-shared
+    file-move-shared\
+    install-data
 
 static: clean-static\
     file-exists-static\
@@ -36,7 +40,8 @@ static: clean-static\
     file-chown-static\
     file-remove-static\
     file-rename-static\
-    file-move-static
+    file-move-static\
+    install-data
 
 clean-shared:\
     clean-file-exists-shared\
@@ -64,6 +69,24 @@ clean-static:\
     clean-file-rename-shared\
     clean-file-move-shared
 
+install-data:
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_exists)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_exists)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_readlink) || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_readlink)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_stat)     || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_stat)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_exists)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_exists)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_size)     || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_size)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_copy)     || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_copy)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_chmod)    || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_chmod)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_chown)    || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_chown)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_remove)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_remove)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_rename)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_rename)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_move)     || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_move)
+
+	@$(CP) $(F_copy)/args   $(Z_SHELL_DATADIR)/commands/$(F_copy)
+	@$(CP) $(F_move)/args   $(Z_SHELL_DATADIR)/commands/$(F_move)
+	@$(CP) $(F_chmod)/args  $(Z_SHELL_DATADIR)/commands/$(F_chmod)
+	@$(CP) $(F_rename)/args $(Z_SHELL_DATADIR)/commands/$(F_rename)
+	@$(CP) $(F_remove)/args $(Z_SHELL_DATADIR)/commands/$(F_remove)
 #-----------------------------------------------#
 F_exists = File.exists
 file-exists-shared:
@@ -291,3 +314,7 @@ CAT = cat
 RM = rm
 PRINTF = printf
 CHMOD = chmod
+MKDIR = mkdir
+MKDIR_P = $(MKDIR) -p
+CP = cp
+CP_R = $(CP) -r

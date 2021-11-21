@@ -69,6 +69,9 @@ ifneq ($(DEBUG), 0)
   FLAGS += $(DEBUG_FLAGS)
 endif
 
+Z_SHELL         := zs
+Z_SHELL_DATADIR := $(SYSDATADIR)/$(Z_SHELL)
+
 FLAGS += -DSYSDIR='"$(SYSDIR)"' -DSRCDIR='"$(SRCDIR)"'
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -lcontain-$(VERSION)
@@ -79,16 +82,19 @@ FLAGS += -lerror-$(VERSION)
 contain: shared static
 
 shared: clean-shared\
-    contain-new-shared
+    contain-new-shared install-data
 
 static: clean-static\
-    contain-new-static
+    contain-new-static install-data
 
 clean-shared:\
     clean-contain-new-shared
 
 clean-static:\
     clean-contain-new-static
+
+install-data:
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(C_NEW) || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(C_NEW)
 #-----------------------------------------------#
 C_NEW = $(NAME).new
 
@@ -101,7 +107,7 @@ contain-new-shared:
 	$(CC) $(C_NEW).c $(FLAGS) -o $(SYSBINDIR)/$(C_NEW)-shared
 	@$(LN_S) -vf $(C_NEW)-shared $(SYSBINDIR)/$(C_NEW)
 
-contain-new-static:
+contain-new-static: install-data
 	$(CC) $(C_NEW).c $(FLAGS) $(C_NEW_STATIC_FLAGS) $(STATIC_CFLAGS) -o $(SYSBINDIR)/$(C_NEW)-static
 
 clean-contain-new-shared:
@@ -116,3 +122,6 @@ TEST = test
 RM = rm
 LN = ln
 LN_S = $(LN) -s
+MKDIR = mkdir
+MKDIR_P = $(MKDIR) -p
+

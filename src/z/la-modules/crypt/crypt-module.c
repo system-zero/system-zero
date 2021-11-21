@@ -12,6 +12,7 @@
 #define REQUIRE_SHA256_TYPE   DECLARE
 #define REQUIRE_SHA512_TYPE   DECLARE
 #define REQUIRE_BASE64_TYPE   DECLARE
+#define REQUIRE_BCRYPT_TYPE   DECLARE
 #define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
@@ -226,6 +227,30 @@ static VALUE crypt_base64_decode_file (la_t *this, VALUE v_file) {
   return plain;
 }
 
+static VALUE crypt_hash_passwd (la_t *this, VALUE v_passwd) {
+  ifnot (IS_STRING(v_passwd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *passwd = AS_STRING_BYTES(v_passwd);
+
+  char *cipher = Bcrypt.hashpw (passwd);
+
+  if (NULL is cipher) return NULL_VALUE;
+  size_t len = bytelen (cipher);
+
+  string *s = String.new (len);
+  s->bytes = cipher;
+  s->num_bytes = len;
+  return STRING(s);
+}
+
+static VALUE crypt_verify_passwd_hash (la_t *this, VALUE v_passwd, VALUE v_hash) {
+  ifnot (IS_STRING(v_passwd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_hash)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *passwd = AS_STRING_BYTES(v_passwd);
+  char *hash   = AS_STRING_BYTES(v_hash);
+  int r = Bcrypt.verify_pw_hash (passwd, hash);
+  return INT(r);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
 public int __init_crypt_module__ (la_t *this) {
@@ -234,6 +259,7 @@ public int __init_crypt_module__ (la_t *this) {
   __INIT__(sha256);
   __INIT__(sha512);
   __INIT__(base64);
+  __INIT__(bcrypt);
   __INIT__(error);
   __INIT__(string);
 
@@ -250,6 +276,8 @@ public int __init_crypt_module__ (la_t *this) {
     { "crypt_base64_decode",  PTR(crypt_base64_decode), 1},
     { "crypt_base64_encode_file",  PTR(crypt_base64_encode_file), 1},
     { "crypt_base64_decode_file",  PTR(crypt_base64_decode_file), 1},
+    { "crypt_hash_passwd",         PTR(crypt_hash_passwd), 1},
+    { "crypt_verify_passwd_hash",  PTR(crypt_verify_passwd_hash), 2},
     { NULL, NULL_VALUE, 0}
   };
 
@@ -270,7 +298,9 @@ public int __init_crypt_module__ (la_t *this) {
       "base64_encode"  : crypt_base64_encode,
       "base64_decode"  : crypt_base64_decode,
       "base64_encode_file" : crypt_base64_encode_file,
-      "base64_decode_file" : crypt_base64_decode_file
+      "base64_decode_file" : crypt_base64_decode_file,
+      "hash_passwd"        : crypt_hash_passwd,
+      "verify_passwd_hash" : crypt_verify_passwd_hash
      }
    );
 
