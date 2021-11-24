@@ -267,6 +267,15 @@ static string_t *string_trim_end (string_t *this, char c) {
   return this;
 }
 
+static string_t *string_new_with_allocated (const char *allocated, size_t len) {
+  string_t *s = Alloc (sizeof (string_t));
+  s->bytes = (char *) allocated;
+  s->num_bytes = len;
+  s->mem_size = len;
+  s->bytes[len] = '\0';
+  return s;
+}
+
 public string_T __init_string__ (void) {
   return (string_T) {
     .self = (string_self) {
@@ -294,7 +303,8 @@ public string_T __init_string__ (void) {
       .replace_numbytes_at_with = string_replace_numbytes_at_with,
       .replace_with = string_replace_with,
       .replace_with_len = string_replace_with_len,
-      .replace_with_fmt = string_replace_with_fmt
+      .replace_with_fmt = string_replace_with_fmt,
+      .new_with_allocated = string_new_with_allocated
     }
   };
 }

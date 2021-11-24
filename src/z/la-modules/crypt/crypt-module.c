@@ -164,21 +164,21 @@ static VALUE crypt_sha512sum_file (la_t *this, VALUE v_file) {
 static VALUE crypt_base64_encode (la_t *this, VALUE v_plain) {
   ifnot (IS_STRING(v_plain)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *cipher = Base64.encode (AS_STRING_BYTES(v_plain));
-  return STRING(String.new_with (cipher));
+  size_t len = bytelen (cipher);
+  string *s = String.new_with_allocated (cipher, len);
+  return STRING(s);
 }
 
 static VALUE crypt_base64_decode (la_t *this, VALUE v_cipher) {
   ifnot (IS_STRING(v_cipher)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *plain = Base64.decode (AS_STRING_BYTES(v_cipher));
-  return STRING(String.new_with (plain));
+  size_t len = bytelen (plain);
+  string *s = String.new_with_allocated (plain, len);
+  return STRING(s);
 }
 
 static string *get_string_from_file (la_t *this, const char *file) {
   La.set.Errno (this, 0);
-
-  char *buf = NULL;
-  size_t len;
-  ssize_t nread;
 
   FILE *fp = fopen (file, "r");
   if (NULL is fp) {
@@ -187,6 +187,10 @@ static string *get_string_from_file (la_t *this, const char *file) {
   }
 
   string *bytes = String.new (128);
+
+  char *buf = NULL;
+  size_t len;
+  ssize_t nread;
 
   while (-1 isnot (nread = getline (&buf, &len, fp))) {
     buf[nread] = '\0';
@@ -231,14 +235,12 @@ static VALUE crypt_hash_passwd (la_t *this, VALUE v_passwd) {
   ifnot (IS_STRING(v_passwd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *passwd = AS_STRING_BYTES(v_passwd);
 
-  char *cipher = Bcrypt.hashpw (passwd);
+  char *hash = Bcrypt.hashpw (passwd);
 
-  if (NULL is cipher) return NULL_VALUE;
-  size_t len = bytelen (cipher);
+  if (NULL is hash) return NULL_VALUE;
 
-  string *s = String.new (len);
-  s->bytes = cipher;
-  s->num_bytes = len;
+  size_t len = bytelen (hash);
+  string *s = String.new_with_allocated (hash, len);
   return STRING(s);
 }
 

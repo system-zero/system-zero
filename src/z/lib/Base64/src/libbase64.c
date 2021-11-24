@@ -59,7 +59,8 @@ static char *base64_decode (const char *cipher) {
   uchar buffer[4]; /* CHANGE [ag]: same with above but looks the same eitherway, probably
                     * because cipher composition is limited to the ascii range
                     */
-  uchar* plain = Alloc (len * 3 / 4);
+  uchar* plain = Alloc (len * 3 / 4 + 1);
+
   int i = 0, p = 0;
 
   for (i = 0; cipher[i] != '\0'; i++) {

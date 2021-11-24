@@ -34,7 +34,8 @@ typedef struct string_self {
     *(*replace_with_len) (string_t *, const char *, size_t),
     *(*replace_with_fmt) (string_t *, const char *, ...),
     *(*trim_end) (string_t *, char c),
-    *(*replace_numbytes_at_with) (string_t *, int, int, const char *);
+    *(*replace_numbytes_at_with) (string_t *, int, int, const char *),
+    *(*new_with_allocated) (const char *, size_t);
 
   int (*delete_numbytes_at) (string_t *, int, int);
 } string_self;

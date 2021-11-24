@@ -246,6 +246,12 @@ func zero_semantics () {
   retval |= (v3|v1|v2)
   assert_false ("testing binary assignment assignment operator [|=]",
       (retval & v1 == 0) || (retval & v2 == 0) || (retval & v3 == 0))
+  var rxo = 0
+  rxo ^= 100
+  var rxoc = rxo
+  rxoc ^= 99
+  assert_true ("testing binary assignment assignment operator [^=]",
+      rxo == 100 and rxoc == 7)
   assert_false ("testing bitwise operators",
       (retval & v1 != 1) || (retval & v2 != 2) || (retval & v3 != 4))
 
@@ -1437,6 +1443,12 @@ func self_semantics () {
           b is be and
           b is bea and
           bd is bda)
+
+      var passwd = "123qwe456asdzxc"
+      var hash = passwd: crypt_hash_passwd ()
+      var rh = passwd: crypt_verify_passwd_hash (hash)
+      assert_true ("testing the hash_passwd and verify_passwd_hash methods",
+        rh is true)
     }
 
     crypt_module ()

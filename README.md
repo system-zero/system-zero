@@ -91,25 +91,24 @@ the specific needs,  in an expected way  and without the fear to  bring down a
 monolithic system, like  say "systemd", which some  modern Linux distributions
 (at the 2020 era) favor instead of  a traditional init, and which violates the
 above standards.  There is  nothing wrong  with the underlying  idea, to  be a
-"userspace kernel", but it is the implementation that makes it inadequate to a
-UNIX like system,  which is based on modularization and  expectations. We also
-want to be, and when we grown up, a "User Space Kernel".
+"userspace kernel", but it is the implementation that makes it inadequate for a
+UNIX like system. We also want to be, and when we grown up, a "User Space Kernel".
 
-Also usually  distributions are using  this init  process, to log  the booting
-process and the  messages from the kernel,  in a way that will  be useful for
-debugging.
+Also usually distributions can use this init process to capture messages from the
+kernel and log the booting process, in a way that will be useful for debugging.
 
-At least in Linux systems, if anything go wrong with the init process, such an
-init  system can  use a  console to  start an  emergency shell,  and which  is
-actually the `dash` shell, a POSIX compatible `/bin/sh`.
+At least in Linux systems, kernel messages are displayed in a console device, and
+if anything go wrong with the booting process, such an init system can start up an
+emergency shell, and which is actually the `dash` shell, a POSIX compatible `/bin/sh`.
+
+Otherwise this same console device is being used for user authentication. After a
+succesfull login the system spawns the default user's shell, which is a more rich
+interactive shell than "/bin/sh", and which usually is the `bash` shell or the more
+advanced `zsh` shell.
 
 Interacting  through  a shell  is  the  most  primitive  and powerful  way  to
 administrate and  use a  system, and  in a  Linux ecosystem  is capable  to do
 anything that it doesn't requires a graphical environment (an X display).
-
-And that it is  what actually is being done by default, after  user login in a
-system. For  instance a Linux system  offers a pseydoterminal that  could then
-run a shell.
 
 And that  is what  we have to  implement at  our first stage.  We also  want a
 utility that will offer a way to execute commands with superuser rights, so we
