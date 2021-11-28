@@ -755,38 +755,24 @@ public int __init_file_module__ (la_t *this) {
       return err;
   }
 
-  if (La.def_std (this, "F_OK", INTEGER_TYPE, INT(F_OK), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "X_OK", INTEGER_TYPE, INT(X_OK), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "W_OK", INTEGER_TYPE, INT(W_OK), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "R_OK", INTEGER_TYPE, INT(R_OK), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IRWXU", INTEGER_TYPE, INT(S_IRWXU), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IRUSR", INTEGER_TYPE, INT(S_IRUSR), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IWUSR", INTEGER_TYPE, INT(S_IWUSR), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IXUSR", INTEGER_TYPE, INT(S_IXUSR), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IRWXG", INTEGER_TYPE, INT(S_IRWXG), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IRGRP", INTEGER_TYPE, INT(S_IRGRP), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IWGRP", INTEGER_TYPE, INT(S_IWGRP), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IXGRP", INTEGER_TYPE, INT(S_IXGRP), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IRWXO", INTEGER_TYPE, INT(S_IRWXO), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IROTH", INTEGER_TYPE, INT(S_IROTH), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IWOTH", INTEGER_TYPE, INT(S_IWOTH), 1))
-    return LA_NOTOK;
-  if (La.def_std (this, "S_IXOTH", INTEGER_TYPE, INT(S_IXOTH), 1))
-    return LA_NOTOK;
+  if (La.def_std (this, "F_OK", INTEGER_TYPE, INT(F_OK), 1)) return LA_NOTOK;
+  if (La.def_std (this, "X_OK", INTEGER_TYPE, INT(X_OK), 1)) return LA_NOTOK;
+  if (La.def_std (this, "W_OK", INTEGER_TYPE, INT(W_OK), 1)) return LA_NOTOK;
+  if (La.def_std (this, "R_OK", INTEGER_TYPE, INT(R_OK), 1)) return LA_NOTOK;
+
+  /* could be already redefined at io */
+  if (La.def_std (this, "S_IRWXU", INTEGER_TYPE, INT(S_IRWXU), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IRUSR", INTEGER_TYPE, INT(S_IRUSR), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IWUSR", INTEGER_TYPE, INT(S_IWUSR), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IXUSR", INTEGER_TYPE, INT(S_IXUSR), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IRWXG", INTEGER_TYPE, INT(S_IRWXG), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IRGRP", INTEGER_TYPE, INT(S_IRGRP), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IWGRP", INTEGER_TYPE, INT(S_IWGRP), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IXGRP", INTEGER_TYPE, INT(S_IXGRP), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IRWXO", INTEGER_TYPE, INT(S_IRWXO), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IROTH", INTEGER_TYPE, INT(S_IROTH), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IWOTH", INTEGER_TYPE, INT(S_IWOTH), -1)) return LA_NOTOK;
+  if (La.def_std (this, "S_IXOTH", INTEGER_TYPE, INT(S_IXOTH), -1)) return LA_NOTOK;
 
   const char evalString[] = EvalString (
     public var File = {

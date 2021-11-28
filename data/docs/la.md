@@ -5,13 +5,13 @@ The second purpose and a tiny ambition, is through research to understand
 and finally design, a basic Programming Language Interface, that could be
 interpreted by [m]any Programming Language[s].
 
-That means that it should be composed with established concepts, such as a
-familiar syntax, and very well defined semantics, instantly understood by
+That means that it should be composed with established concepts, such with
+a familiar syntax, and very well defined semantics, instantly understood by
 any programmer, and easy to interpreted by other Languages, sometimes even
-without the need of an interpretation.
+without the need of a special interpretation, but as is.
 
 The general idea is, that the exact same code, written in a nutreal way, can
-be interpreted by as many offers an implementation. 
+be interpreted by as many offers an implementation.
 
 There is a reference implementation, that should obey this basic abstraction.
 
@@ -28,7 +28,7 @@ This for now, it is written as an early description, and it is based on valid
 code, and with some inline comments for the purpose of development of a final
 reference.
 
-This a mix of established C and well defined concepts by dynamical Interpreted
+This is a mix of established C, and well defined concepts by many dynamical
 Languages.
 
 The basic aim here is to find a balance, between simplicity and capability.
@@ -37,11 +37,13 @@ possible, but at the same time those features should be enough to make this
 useful and practical, otherwise it doesn't really make a sence.
 
 Basic DataTypes:
+
   - StringType (with UTF8 support)
-  - IntegerType (as wide as ptrdiff_t)
+  - IntegerType
   - NumberType (double)
-  - ArrayType
   - MapType
+  - ArrayType
+
   - ObjectType (C objects)
   - User Defined Functions
   - C Functions
@@ -65,7 +67,7 @@ Comments.
   var a = 10 var b = "a" println (b) if (a) { b = "b" }
 
   # are four statements, that are being parsed correctly, but easily can be
-  # misinterpreted. 
+  # misinterpreted.
 
   # If a variable is not initialized with some value at the declaration time,
   # as it happened above, it is initialized with the `null` value, so `v' and
@@ -97,7 +99,7 @@ Comments.
   func name (arg) {
     return arg * 2
   }
-  # The function body, is delimited by a pair if braces '{}'.
+  # The function body, is delimited by a pair of braces '{}'.
 
   # All the blocks are delimited with a pair of braces '{}' and are mandatory,
   # for this basic interface at least.
@@ -164,6 +166,9 @@ Comments.
   # But the first form it is a tail call, and so the return statement it could be
   # written as:
   #   return self (n - 1, b, a + b)
+  # instead of:
+  #  return fibo_tail (n - 1, b, a + b)
+  # In the first case the language can perfom a tail call optimization.
 
   # Functions can be anonymous.
 
@@ -412,7 +417,8 @@ Probably this will be a very messy output."
 
   # SLang also has backquoted strings, with a couple of attributes that tune
   # the behavior at the parsing time, without to have to call a filter later
-  # to transform the string. 
+  # to transform the string.
+
 
   # Finally the "std" modules includes functions that deal with strings.
   # There are also two special forms of the for loop, that can be used to loop
@@ -496,8 +502,7 @@ Probably this will be a very messy output."
 
   # For such cases a more short form exists:
   int_ar[*] = 1
-  # This syntax should be attributed at SLang Programming Language, and it is
-  # out of scope for now.
+  # This syntax should be attributed at SLang Programming Language.
 
   ## This is the end of the first draft.
   # Left to do:
@@ -512,7 +517,7 @@ Probably this will be a very messy output."
     # - var s = "string"; var sa = s; s[0] = 'd'
     # should `sa' be modified?
     # Such questions are answered by the implementation for now,
-    # but they should be documented one by one 
+    # but they should be documented one by one.
 
   # finally:
 
@@ -548,13 +553,12 @@ be considered as either a bug that should be fixed, or should not be supported.
 The next section is a very first draft of a document that describes the
 experiences towards a more humanized kind of code expressions, that could
 litterally express the underlying thought and so and the intention, and
-which is the single most precious jewel when reading and re-writting the
-code.
+which is the single most precious jewel when reading and re-writting code.
 
-Those mentioned expressions have been implemented, but this is really dynamic
-development, and so it needs a bit of time to get understand the best balance
+Those mentioned expressions have been implemented, but this is really a dynamic
+development, and so it needs a bit of time to understand it, and then find the best balance,
 without ambiguities. Most of them though are already established and they will
-never change. So doubts might be mentioned in cases, which it will simply means
+never change, but doubts might be mentioned in cases, which it will simply means
 that there simple doubts.
 
 ```js
@@ -564,17 +568,17 @@ that there simple doubts.
 #  - if cond then do this orelse do that, kind of Code Expressions. See below.
 
 #  - instead of:
-#    if condition is true then do [control statements {return, break, continue}]
-#    to
-#    [control statement] [argument] if condition
-#    or more literally as:
-#    do this if true expressions
-#   
+#      if condition is true then do [control statements {return, break, continue}]
+#    to:
+#      [control statement] [argument] if condition
+#    or in a more literal form:
+#      do this if true expressions
+
     forever
       break if true
 
-#   See the section for the appropriate statement and the argument that might
-#   take.
+#   See the section for the appropriate statement for its syntax and any argument
+#   that might take.
 
 # - replace the '==', '!=', '&&' and '||' operators with the: `is`, `isnot`,
 #   `and`, and `or` key operators:
@@ -585,14 +589,14 @@ that there simple doubts.
 #   underlying value is '0' and '-1' internally, which is the same as C.
 
 # - loops can have as a body a single statement that fit in a single line.
-#   In this case the braces are ommited:
+#   In this case the braces can be ommited:
 
     while (true) break
 #   or
     while (true)
       break
 #  But no more than a statement than fit in a single line, and which may
-#  have a loops that produce another loop, as long all those they fit in
+#  have a loops that produce another loop, as long all these they fit in
 #  a single line.
 #  See the specific section, below.
 
@@ -612,11 +616,11 @@ that there simple doubts.
 #  - through a function call
 #  - with the ++,-- operators
 
-  # development: strict environemt, as is with private/public to denotes some
+  # [development: strict environemt, as it is with private/public to denotes some
   # constraints to possibilities, like not be able to use the ++,-- operators.
-  # For future future to call only functions that evaluate only expressions,
-  # or functions that do not have code that influence or is influenced by the
-  # outter environment.
+  # For future this might allows to call only functions that evaluate only expressions,
+  # or functions that do not have code that influence or it is influenced by the
+  # outter environment.]
 
   var condition = 0
   if condition then println ("not zero") orelse println ("zero")
@@ -630,6 +634,7 @@ that there simple doubts.
 
   # It is also illegal to use all kind of loops or block operations that
   # create a new scope.
+
   # Those conditionals are dyadic operations and they can be followed by
   # other if[not]/then/[orelse]/[end], in a linear way:
     # if cond then
@@ -642,8 +647,8 @@ that there simple doubts.
   # in a variable assignment:
   var x = null
   var v = if x is null then "null" orelse "notnull" # => "null"
-   # here the `is` reserved keyword is same as '=='
-   # also the `isnot` keyword is same as '!='.
+    # here the `is` reserved keyword is same as '=='
+    # also the `isnot` keyword is same as '!='.
 
   # in a function call argument list:
   func f (arg) {
@@ -667,7 +672,7 @@ that there simple doubts.
   # without them, the `orelse` would continue with the add operation and the
   # result would be different (without the last κοάξ).
 
-# All the loops can be written as a single statements that fit in a single
+# All the loops can be written as single statements that fit in a single
 # line without braces:
 
   func f (x) return x * 3
@@ -682,7 +687,7 @@ that there simple doubts.
   # character that is not in a string or to another loop construct statements.
   # If a token found that it doesn't denote the end of evaluated string, then
   # (for now) a warning is issued about extra statements.
-    # development: this can be an instance option -> be_strict
+    # [development: this can be an instance option -> be_strict]
 
   # One line functions.
   # Likewise, a function can define its body as a single line body, if it is
@@ -702,7 +707,7 @@ that there simple doubts.
 The next is a first draft of a document that describes the syntax and semantics of the language.
 of the language. This development is towards to a more functional environment,
 and to a more concise code and expressions.
-This is under development. Many concepts have been stabilized or almost ready,
+This is under development. Many concepts have been stabilized or are almost ready,
 though there are still left to be implemented.
 
 ```js
@@ -715,7 +720,7 @@ though there are still left to be implemented.
   var r = ar: len () # => 3
   # Here what is assigned is the length of the array value. The len() function
   # it takes an object argument. In this case the `ar' value is pushed to the
-  # stack and becomes the first argument. 
+  # stack and becomes the first argument.
 
   # Lets use some functions from the std-module.
   import ("std")
@@ -785,7 +790,7 @@ though there are still left to be implemented.
 
   func qq (x) {
     var m = qualifiers ()
-    if null is m then m = {"key" : 10} 
+    if null is m then m = {"key" : 10}
     return x * m.key
   }
   # similarly, the `qualifiers` function, checks for a pending set of qualifiers,
@@ -930,7 +935,7 @@ though there are still left to be implemented.
   }
 
   println (ret3 (10)) # => null
-  println (typeAsString (ret3 (1))) # => "ArrayType" 
+  println (typeAsString (ret3 (1))) # => "ArrayType"
 
   # A return that is followed by a single token expression, which is
   # followed by an if[not], it returns the value of the expression
@@ -2041,10 +2046,10 @@ The return statement
          verbose: [0|1|2|3] 1: errors 2: like cp(1) 3: with a percent indicator
          all: same as preserve and recursive
     # IntegerType   File.remove (StringType file)
-       qualifiers: 
+       qualifiers:
          force: [0|1], recursive: [0|1], interactive: [0|1], verbose: [0|1]
     # IntegerType   File.rename (StringType src, StringType dest)
-       qualifiers: 
+       qualifiers:
          force: [0|1], interactive: [0|1], verbose: [0|1], backup: [0|1]
     # MapType       File.stat (StringType file)
     # MapType       File.lstat (StringType file)
@@ -2139,8 +2144,14 @@ The return statement
     # IntegerType  Crypt.verify_passwd_hash (StringType passwd, StringType hash)
 
   # Rand Module Interface
-    # IntegerType Rand.new ()
-    # StringType  Rand.get_entropy_bytes (IntegerType size)
+    # IntegerType  Rand.new ()
+    # StringType   Rand.get_entropy_bytes (IntegerType size)
+
+  # Io Module Interface
+    # FdType       Io.open (StringType filename, IntegerType flags, IntegerType mode)
+    # IntegerType  Io.isatty (FdType fd)
+    # StringType   Io.fd.read (FdType fd)
+    # IntegerType  Io.fd.write (FdType fd, StringType buf)
 
   (notes:
      - most of them are self explanatory, as they correspond to standard C functions
@@ -2155,6 +2166,22 @@ The return statement
           this code
 
      - those are all excuses to avoid writting extented documentation
+
+  # Constants:
+    # Exposed by the io module:
+      O_RDONLY, O_WRONLY, O_RDWR
+      O_CREAT,  O_APPEND, O_TRUNC
+      O_NOCTTY, O_CLOEXEC, O_NONBLOCK, O_EXCL, O_DIRECTORY, O_NOFOLLOW
+      # and if defined
+      O_LARGEFILE, O_SYNC, O_ASYNC
+
+      # those are defined at file module also
+      S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR,
+      S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP,
+      S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
+
+    # Exposed by the file module (the S_I* above and):
+      F_OK, X_OK, W_OK, R_OK
 
 # Library
   # Argparse Interface
@@ -2347,20 +2374,23 @@ The core of the language it is pretty small, and tries to do as many with as
 less possible, so specific components (like the tokenizer) are weak in places,
 or simply refuse to add overhead to handle unexpected style.
 So it can be considered as a strict in syntax language, that might enforces a
-style. However it should be okey if practicing consistency.
+style. However it should be okey, if practicing consistency.
 
 - every token should be separated with at least a space, though it might work
   without that rule, but the parser can not handle all the cases, like in (x-1)
   where -1 is considered as a number and should be coded as (x - -1). It is
   actually the only known case that is not handled correctly (but they might be
   others). No matter the parser, it is believed that a space that it separates
-  tokens, it adds visual clarity.
+  tokens, it adds visual clarity, and it feels more like a sentence where the words
+  are separated.
 
 - recursive functions though they should work properly, can be easily overflow
   the stack, as the compiler doesn't perform any kind of tail call optimizations
   (this is a week point, and the worst is that this is quite difficult to change,
   so it is better to avoid code with recursive function calls beyond some thousand
-  of calls, instead it is prefered the imperative version).
+  of calls, instead it is prefered the imperative version). [update: now there is
+  a way to avoid stack exhaustion by using tail calls when calling recursively a
+  function]
 
 - the number type (typedef'ed as `double`) operations, need an expertise which
   is absent to the author. So this isn't going to change soon, but the mechanism
@@ -2482,9 +2512,9 @@ The code it takes a huuge amount of optimizations at almost at every bit of
 its implementation, and here in this domain, every little bit little detail
 matters quite a bit of bits.
 
-It was never a design from the scratch, it was written without any sense of
+There was never a design from the scratch, it was written without any sense of
 what i would be faced. Added almost every bit, bit by bit and block by block
-as was still keeping on to the next beats of thoughts of what i wanted next.
+as was still keeping on to the next bits of thoughts of what i wanted next.
 _The whole thing is a big hack_, like to steal in black jack.
 
 There isn't a proper lexer/parser/vm. It is just a bunch of (sometimes clever
@@ -2506,11 +2536,11 @@ All the allocated resources are releasing soon as we get out of scope, pretty
 much the same C way. So and joking some bits, it really it's the first kind
 of a garbage collector of a dynamic language, that really has a real kind of
 a deterministic behavior. The question when i was handled this slowly to the
-route of the development, was: Do I need this more? If not release it as you
-go out of scope.
+route of the development, was: Do I need this more? If not release it as soon
+it goes out of scope.
 
 I mean that was the idea, albeit a bit of total nonsense. This might be the
-only thing that still i do not know the way to handle memory resources if i
+only thing that still i do not know the way to handle (memory resources) if i
 was attempting a rewrite. But i like the idea of "release uneeded resources
 as soon as you don't need them anymore". It simplifies a lot of things, and
 can end up to a coding expression style, that fits better with that kind of
@@ -2551,7 +2581,7 @@ to do is to take the path to the corresponded library -> Class.lib|method and
 to the corresponded function.
 
 For instance in our C code we use File.remove (): The library|Class File exposes
-this method: This language exposes through the file module, the same function
+this method: This language exposes (through the file module) the same function
 with the same name, method and access as File.remove (): And finnally there is
 a command with the exact same name and access.
 
@@ -2560,7 +2590,8 @@ at the end as arguments to the corresponded File Class, that acts on the file
 given argument.
 
 This method, it has a default char *argument (the one to be removed), but also
-awaits an environment, through designated initializers which is at least in C11.
+awaits an environment, through designated initializers which are standardised at
+least in C11.
 
 ```C
 typedef struct file_remove_opts {
@@ -2642,10 +2673,11 @@ perfect in my humble opinion, if you ever someone will ever ask me.
 
 Plus this gives confidence to the own being, that is fascinated by the way the
 things works and feels the magic (which is not that magic - it is just mechanics) -
-when see the result of an own code.
+when sees the result of an own code.
 
 Plus the knowledge and the access to open and free bits of the source code, it
 returns a big gift, that is the trust to the system.
 
 In any case, the aim is to offer a mechanism that is trying to show the path
-to the user to find the way into the system that lives and uses. That's all folks.
+to the user, to find the way into the system that lives and uses.
+That's all folks.

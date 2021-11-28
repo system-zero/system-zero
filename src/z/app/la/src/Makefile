@@ -196,6 +196,12 @@ ifeq ($(RAND_MODULE), 1)
   LA_STATIC_FLAGS += -lrandom-$(VERSION)
 endif
 
+IO_MODULE := 1
+ifeq ($(IO_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_IO_MODULE
+  LA_STATIC_FLAGS += -lio-$(VERSION)
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(LA)-shared $(SYSBINDIR)/$(LA)

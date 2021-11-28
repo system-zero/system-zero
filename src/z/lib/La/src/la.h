@@ -38,6 +38,7 @@ typedef integer     pointer;
 #define LIST_TYPE      17
 #define OBJECT_TYPE    18
 #define FILEPTR_TYPE   19
+#define FD_TYPE        24
 #define POINTER_TYPE   INTEGER_TYPE
 
 struct ValueType {
@@ -153,6 +154,13 @@ typedef struct listType listType;
   _fp_;                                            \
 })
 
+#define FILEDES(__fd__) (VALUE) {.type = FD_TYPE, .asInteger = (pointer) __fd__, .refcount = 0, .sym = NULL}
+#define AS_FILEDES(__v__) ({                       \
+  object *_o_ = AS_OBJECT(__v__);                  \
+  int _fd_ = AS_INT(_o_->value);                   \
+  _fd_;                                            \
+})
+
 #define    PTR(__p__) INT((pointer) __p__)
 #define AS_PTR AS_INT
 
@@ -175,6 +183,7 @@ typedef struct listType listType;
 #define IS_OBJECT(__v__) (__v__.type == OBJECT_TYPE)
 #define IS_LIST(__v__)   (__v__.type == LIST_TYPE)
 #define IS_FILEPTR(__v__)(__v__.type == FILEPTR_TYPE)
+#define IS_FILEDES(__v__)(__v__.type == FD_TYPE)
 #define IS_PTR IS_INT
 
 typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);

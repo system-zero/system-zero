@@ -437,27 +437,29 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     goto theerror;
   }
 
+  struct stat src_st;
+  if (-1 is lstat (src, &src_st)) {
+    if (outToErrStream)
+      fprintf (opts.err_stream, "'%s': %s\n", src, Error.errno_string (errno));
+    goto theerror;
+  }
+
   int src_exists = file_exists (src);
   ifnot (src_exists) {
     errno = ENOENT;
     if (outToErrStream)
-      fprintf (opts.err_stream, "`%s': %s\n", src, Error.errno_string (errno));
+      fprintf (opts.err_stream, "'%s': %s\n", src, Error.errno_string (errno));
     goto theerror;
 
   } else {
     ifnot (file_is_readable (src)) {
-      errno = EPERM;
-      if (outToErrStream)
-        fprintf (opts.err_stream, "'%s': %s\n", src, Error.errno_string (errno));
-      goto theerror;
+      ifnot (S_ISLNK(src_st.st_mode)) {
+        errno = EPERM;
+        if (outToErrStream)
+          fprintf (opts.err_stream, "'%s': %s\n", src, Error.errno_string (errno));
+        goto theerror;
+      }
     }
-  }
-
-  struct stat src_st;
-  if (-1 is lstat (src, &src_st)) {
-    if (outToErrStream)
-      fprintf (opts.err_stream, "%s: %s\n", src, Error.errno_string (errno));
-    goto theerror;
   }
 
   int dest_exists = file_exists (dest);
@@ -466,7 +468,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
   if (dest_exists) {
     if (-1 is lstat (dest, &dest_st)) {
       if (outToErrStream)
-        fprintf (opts.err_stream, "%s: %s\n", dest, Error.errno_string (errno));
+        fprintf (opts.err_stream, "'%s': %s\n", dest, Error.errno_string (errno));
       goto theerror;
     }
   }
@@ -557,7 +559,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     if (dest_exists) {
       if (-1 is lstat (dest, &dest_st)) {
         if (outToErrStream)
-          fprintf (opts.err_stream, "%s: %s\n", dest, Error.errno_string (errno));
+          fprintf (opts.err_stream, "'%s': %s\n", dest, Error.errno_string (errno));
         goto theerror;
       }
 
@@ -584,7 +586,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     int r;
     if (-1 is (r = readlink (src, src_orig, PATH_MAX - 1))) {
       if (outToErrStream)
-        fprintf (opts.err_stream, "%s: %s\n", src, Error.errno_string (errno));
+        fprintf (opts.err_stream, "'%s': %s\n", src, Error.errno_string (errno));
       goto theerror;
     }
 
@@ -788,7 +790,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
 
     } else {
       if (NULL isnot opts.err_stream)
-        fprintf (opts.err_stream, "ferrailed to copy '%s' to '%s': %s\n",
+        fprintf (opts.err_stream, "failed to copy '%s' to '%s': %s\n",
             src, dest, Error.errno_string (errno));
     }
 

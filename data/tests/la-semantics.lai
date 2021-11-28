@@ -1444,11 +1444,11 @@ func self_semantics () {
           b is bea and
           bd is bda)
 
-      var passwd = "123qwe456asdzxc"
-      var hash = passwd: crypt_hash_passwd ()
-      var rh = passwd: crypt_verify_passwd_hash (hash)
-      assert_true ("testing the hash_passwd and verify_passwd_hash methods",
-        rh is true)
+#      var passwd = "123qwe456asdzxc"
+#      var hash = passwd: crypt_hash_passwd ()
+#      var rh = passwd: crypt_verify_passwd_hash (hash)
+#      assert_true ("testing the hash_passwd and verify_passwd_hash methods",
+#        rh is true)
     }
 
     crypt_module ()
@@ -2367,7 +2367,7 @@ func term_tests () {
   println ("press q to exit")
   return notok if Term.raw_mode (term) is notok
 
-  var fd = fileno (stdin)
+  var fd = STDIN_FILENO
   var key = 0
   while (key isnot 'q') {
     return notok if key is notok

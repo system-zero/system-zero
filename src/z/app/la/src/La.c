@@ -62,6 +62,10 @@
 #include "../../../la-modules/rand/rand-module.c"
 #endif
 
+#ifdef REQUIRE_IO_MODULE
+#include "../../../la-modules/io/io-module.c"
+#endif
+
 const char *keywords[] = {
   "for (", "for |", "exit (", "var ", "import (\"", "if (", "ifnot (",
   "loadfile (\"", "print (", "println (", NULL
@@ -489,6 +493,10 @@ eval:
 
   #ifdef REQUIRE_RAND_MODULE
     __init_rand_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_IO_MODULE
+    __init_io_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

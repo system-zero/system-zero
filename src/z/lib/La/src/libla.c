@@ -89,6 +89,9 @@
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
 
+#define IS_UFUNC(_t_) ((_t_ & 0xff) == UFUNC_TYPE)
+#define IS_CFUNC(_t_) ((_t_ & 0xff) == CFUNC_TYPE)
+
 #define CFUNC_TYPE       'B'
 #define UFUNC_TYPE       'f'
 #define BINOP_TYPE       'o'
@@ -100,6 +103,7 @@
 #define TOKEN_LIST       17
 #define TOKEN_OBJECT     18
 #define TOKEN_FILEPTR    19
+#define TOKEN_FD         24
 #define TOKEN_SYMBOL     'A'
 #define TOKEN_BUILTIN    'B'
 #define TOKEN_CHAR       'C'
@@ -515,9 +519,6 @@ typedef struct tokenState {
   la_set_curMsg (this, __m__);      \
   return NULL_VALUE;                \
 } while (0)
-
-#define IS_UFUNC(_t_) ((_t_ & 0xff) == UFUNC_TYPE)
-#define IS_CFUNC(_t_) ((_t_ & 0xff) == CFUNC_TYPE)
 
 typedef struct listNode listNode;
 
@@ -970,6 +971,7 @@ static VALUE la_typeAsString (la_t *this, VALUE value) {
     case NULL_TYPE:    String.append_with_len (buf, "NullType",     8); break;
     case LIST_TYPE:    String.append_with_len (buf, "ListType",     8); break;
     case MAP_TYPE:     String.append_with_len (buf, "MapType",      7); break;
+    case FD_TYPE:      String.append_with_len (buf, "FdType",       6); break;
     case OBJECT_TYPE: {
       object *o = AS_OBJECT(value); String.append_with (buf, o->name);
       break;
@@ -1621,6 +1623,7 @@ static VALUE la_release_val (la_t *this, VALUE value) {
     case     ARRAY_TYPE: return array_release (value);
     case    STRING_TYPE: return string_release (value);
     case       MAP_TYPE: return map_release (value);
+    case        FD_TYPE:
     case   FILEPTR_TYPE:
     case      LIST_TYPE:
     case    OBJECT_TYPE: return object_release (this, value);
@@ -5559,10 +5562,11 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
           return LA_OK;
       }
 
-    case TOKEN_OBJECT:
+    case  TOKEN_OBJECT:
     case TOKEN_FILEPTR:
-    case 0 ... 4:
-    case TOKEN_VAR:
+    case      TOKEN_FD:
+    case       0 ... 4:
+    case     TOKEN_VAR:
       *vp = TOKENVAL;
 
       NEXT_TOKEN();
@@ -6043,10 +6047,11 @@ static int la_parse_stmt (la_t *this) {
       }
       /* fall through */
 
-    case TOKEN_OBJECT:
+    case  TOKEN_OBJECT:
     case TOKEN_FILEPTR:
-    case 0 ... 4:
-    case TOKEN_VAR: {
+    case      TOKEN_FD:
+    case       0 ... 4:
+    case     TOKEN_VAR: {
       name = TOKENSTR;
       sym_t *symbol = TOKENSYM;
 
@@ -9598,8 +9603,9 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
         default: return result;
       }
 
+    case      FD_TYPE:
     case FILEPTR_TYPE:
-    case OBJECT_TYPE:
+    case  OBJECT_TYPE:
       switch (y.type) {
         case NULL_TYPE: return result;
         default:
@@ -10224,6 +10230,7 @@ static struct def {
   { "ObjectType",  INTEGER_TYPE,  INT(OBJECT_TYPE) },
   { "ListType",    INTEGER_TYPE,  INT(LIST_TYPE) },
   { "FilePtrType", INTEGER_TYPE,  INT(FILEPTR_TYPE) },
+  { "FdType",      INTEGER_TYPE,  INT(FD_TYPE) },
   { "ok",          INTEGER_TYPE,  OK_VALUE },
   { "notok",       INTEGER_TYPE,  NOTOK_VALUE },
   { "true",        INTEGER_TYPE,  TRUE_VALUE },
@@ -10279,8 +10286,11 @@ static int la_def_std (la_t *this, char *name, int type, VALUE v, int is_const) 
     return (sym is NULL ? LA_NOTOK : LA_OK);
   }
 
-  int err = la_define (this, name, type, v);
-  return (err ? LA_NOTOK : LA_OK);
+  if (LA_NOTOK is la_define (this, name, type, v))
+    if (is_const > 0)  // could be already redefined (happens with S_I* at file/io)
+      return LA_NOTOK; // no other error could happen i think
+
+  return LA_OK;
 }
 
 static int la_std_def (la_t *this, la_opts opts) {
@@ -10300,10 +10310,30 @@ static int la_std_def (la_t *this, la_opts opts) {
 
   v = OBJECT(stdin);
   o = la_object_new (NULL, NULL, "FilePtrType", v);
-
   v = FILEPTR(o);
   v.refcount = UNDELETABLE;
   err = la_define (this, "stdin", FILEPTR_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  v = OBJECT(0);
+  o = la_object_new (NULL, NULL, "FdType", v);
+  v = FILEDES(o);
+  v.refcount = UNDELETABLE;
+  err = la_define (this, "STDIN_FILENO", FD_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  v = OBJECT(1);
+  o = la_object_new (NULL, NULL, "FdType", v);
+  v = FILEDES(o);
+  v.refcount = UNDELETABLE;
+  err = la_define (this, "STDOUT_FILENO", FD_TYPE, v);
+  if (err) return LA_NOTOK;
+
+  v = OBJECT(2);
+  o = la_object_new (NULL, NULL, "FdType", v);
+  v = FILEDES(o);
+  v.refcount = UNDELETABLE;
+  err = la_define (this, "STDERR_FILENO", FD_TYPE, v);
   if (err) return LA_NOTOK;
 
   v = INT(opts.argc);
@@ -10329,15 +10359,6 @@ static int la_std_def (la_t *this, la_opts opts) {
   v = STRING(func);
   this->func = la_define_symbol (this, this->std, "__func__", STRING_TYPE, v, 0);
   if (NULL is this->func) return LA_NOTOK;
-
-#ifdef STATIC
-  v = INT(1);
-#else
-  v = INT(0);
-#endif
-
-  err = la_define (this, "__static", INTEGER_TYPE, v);
-  if (err) return LA_NOTOK;
 
   int len = 2;
   if (this->la_dir->num_bytes) len++;
@@ -10632,6 +10653,14 @@ static void la_release_stdns (la_t *this) {
   sym->value.refcount = 0;
   sym = ns_lookup_symbol (this->std, "stdin");
   sym->value.refcount = 0;
+
+  sym = ns_lookup_symbol (this->std, "STDIN_FILENO");
+  sym->value.refcount = 0;
+  sym = ns_lookup_symbol (this->std, "STDOUT_FILENO");
+  sym->value.refcount = 0;
+  sym = ns_lookup_symbol (this->std, "STDERR_FILENO");
+  sym->value.refcount = 0;
+
   fun_release (&this->std);
 }
 

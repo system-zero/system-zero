@@ -14,19 +14,16 @@
 
 #define IS_TERM(__v__)({ int _r_ = 0; \
   if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "TermType");}\
-  _r_;\
+  _r_; \
 })
 
 #define AS_TERM(__v__)\
 ({object *_o_ = AS_OBJECT(__v__); term_t *_s_ = (term_t *) AS_OBJECT (_o_->value); _s_;})
 
-
 static VALUE term_getkey (la_t *this, VALUE v_fd) {
   (void) this;
-  ifnot (IS_INT(v_fd))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer as fd descriptor");
-
-  utf8 k = IO.input.getkey (AS_INT(v_fd));
+  ifnot (IS_FILEDES(v_fd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file descriptor");
+  utf8 k = IO.input.getkey (AS_FILEDES(v_fd));
   return INT(k);
 }
 
@@ -145,18 +142,18 @@ public int __init_term_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Term = {
-       "new" : term_new,
-       "getkey" : term_getkey,
-       "raw_mode" : term_raw_mode,
-       "sane_mode" : term_sane_mode,
-       "orig_mode" : term_orig_mode,
-       "init_size" : term_init_size,
-       "get" : {
-         "rows" : term_get_rows,
-         "cols" : term_get_cols,
-       }
-     }
- );
+      "new" : term_new,
+      "getkey" : term_getkey,
+      "raw_mode" : term_raw_mode,
+      "sane_mode" : term_sane_mode,
+      "orig_mode" : term_orig_mode,
+      "init_size" : term_init_size,
+      "get" : {
+        "rows" : term_get_rows,
+        "cols" : term_get_cols,
+      }
+    }
+  );
 
   err = La.eval_string (this, evalString);
   if (err isnot LA_OK) return err;

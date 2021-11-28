@@ -1038,6 +1038,7 @@ la-shared: lai-shared modules-shared la-library packman
 la-static: libsh-static libsys-static libos-static\
            libdir-static libfile-static librandom-static\
            libmd5-static libsha256-static libsha512-static\
+           libio-static\
            lai-static la-library
 
 clean-lai-shared:
@@ -1305,6 +1306,9 @@ crypt-module-shared: libmd5-shared libsha256-shared libsha512-shared\
 
 rand-module-shared: Env librandom-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) rand-module-shared
+
+io-module-shared: Env libio-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) io-module-shared
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 

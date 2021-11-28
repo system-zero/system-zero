@@ -434,7 +434,7 @@ public int __init_std_module__ (la_t *this) {
        "to_string" : integer_to_string
      };
 
-    public var Std = null
+    public const Std = false
  );
 
   err = La.eval_string (this, evalString);
