@@ -94,7 +94,7 @@ STRING_DECLARED = 0
 #-----------------------------------------------#
 LA = $(NAME)
 
-LA_STATIC_FLAGS  = -lustring-$(VERSION) -ldir-$(VERSION)
+LA_STATIC_FLAGS  = -DSTATIC -lustring-$(VERSION) -ldir-$(VERSION)
 LA_STATIC_FLAGS += -lpath-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
 LA_STATIC_FLAGS += -lerror-$(VERSION) -los-$(VERSION)
 

@@ -1463,6 +1463,44 @@ func self_semantics () {
     }
 
     os_module ()
+
+    func io_module () {
+      import ("io")
+      var open = Io.open,
+          isatty = Io.isatty,
+          write = Io.fd.write,
+          read = Io.fd.read
+
+      var txt = "io-test\n",
+          txtlen = txt: len ()
+
+      var is_atty = 0
+
+      func wf () {
+        var fd = "/tmp/io_module_test": open (O_WRONLY|O_CREAT, S_IRWXU)
+        is_atty = fd: isatty ()
+        return write (fd, txt)
+      }
+
+      var w_nbts = wf ()
+
+      func rf () {
+        var fd = "/tmp/io_module_test": open (O_RDONLY, 0)
+        return read (fd)
+      }
+
+      assert_true ("testing the io module",
+          isatty (STDIN_FILENO) and
+          isatty (STDOUT_FILENO) and
+          isatty (STDERR_FILENO) and
+          is_atty is 0 and
+          txt is rf () and
+          w_nbts is txtlen)
+
+      File.remove ("/tmp/io_module_test")
+    }
+
+    io_module ()
   }
 
   import_test ()

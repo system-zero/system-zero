@@ -361,6 +361,29 @@ static int la_interactive (la_t *this) {
 
   string *evalbuf = String.new (256);
 
+  #ifndef STATIC
+    String.append_with (evalbuf,
+      "import (\"sh\"); "
+      "import (\"os\"); "
+      "import (\"io\"); "
+      "import (\"std\"); "
+      "import (\"dir\"); "
+      "import (\"sys\"); "
+      "import (\"path\"); "
+      "import (\"file\"); "
+      "import (\"rand\"); "
+      "import (\"term\"); "
+      "import (\"time\"); "
+      "import (\"crypt\"); "
+      "const zs = New Shell ()"
+      );
+    if (La.eval_string (this, evalbuf->bytes) isnot LA_OK) {
+      String.release (evalbuf);
+      return LA_NOTOK;
+    }
+    String.clear (evalbuf);
+  #endif
+
   int should_eval = 0;
   char *line;
 

@@ -68,7 +68,7 @@ public int __init_sh_module__ (la_t *this) {
   }
 
   const char evalString[] = EvalString (
-    public var Sh =  {};
+    public var Sh = {};
 
     Type Shell {
     private
