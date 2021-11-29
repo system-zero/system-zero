@@ -11,7 +11,7 @@
 
 #include <z/cenv.h>
 
-static VALUE io_isatty (la_t *this, VALUE v_fd) {
+static VALUE io_fd_isatty (la_t *this, VALUE v_fd) {
   ifnot (IS_FILEDES(v_fd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file descriptor");
   return INT(isatty (AS_FILEDES(v_fd)));
 }
@@ -106,7 +106,7 @@ public int __init_io_module__ (la_t *this) {
 
   LaDefCFun lafuns[] = {
     { "io_open",      PTR(io_open), 3 },
-    { "io_isatty",    PTR(io_isatty), 1 },
+    { "io_fd_isatty", PTR(io_fd_isatty), 1 },
     { "io_fd_read",   PTR(io_fd_read), 1 },
     { "io_fd_write",  PTR(io_fd_write), 2 },
     { NULL, NULL_VALUE, 0}
@@ -159,10 +159,10 @@ public int __init_io_module__ (la_t *this) {
   const char evalString[] = EvalString (
     public var Io = {
       open : io_open,
-      isatty : io_isatty,
       fd : {
         read : io_fd_read,
         write : io_fd_write,
+        isatty : io_fd_isatty,
       }
     }
   );

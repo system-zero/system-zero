@@ -1,10 +1,33 @@
 var prog = "File.exists"
 
 import ("file")
+import ("io")
+loadfile ("argparse")
 
-if (__argc is 1) {
-  println (stderr, "${%s, prog}: missing operand")
-  exit (1)
+var argparse = New Argparse (1, 0, prog + " filename")
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var fn = null
+
+if (argparse.argc isnot 1) {
+  if (Io.fd.isatty (STDIN_FILENO)) {
+    println (stderr, "${%s, prog}: filename")
+    exit (0) # just for this program
+  }
+
+  fn = Io.fd.read (STDIN_FILENO)
+
+} else {
+  fn = argparse.argv[0]
 }
 
-exit (File.exists (__argv[1]))
+if (null is fn) {
+  println (stderr, "${%s, prog}: missing filename argument")
+  exit (0)
+}
+
+exit (File.exists (fn))

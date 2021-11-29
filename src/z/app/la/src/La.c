@@ -454,23 +454,22 @@ int main (int argc, char **argv) {
   string_t *evalbuf = NULL;
   la_t *la = NULL;
 
-  ifnot (FdReferToATerminal (STDIN_FILENO)) {
-    evalbuf = String.new (256);
+  ifnot (FdReferToATerminal (STDIN_FILENO) + argc) { // we are in a pipe end
+    evalbuf = String.new (256); // and there is no script to execute -
+    int maxlen = 4095; // though there isn't a certainity, but we do our best for now
 
-    int maxlen = 4095;
     forever {
       char buf[maxlen + 1];
       idx_t nbytes = IO.fd.read (STDIN_FILENO, buf, maxlen);
-      if (NOTOK is nbytes)
-        goto theend;
 
-      ifnot (nbytes) goto eval;
+      if (NOTOK is nbytes) goto theend;
+
+      ifnot (nbytes) break;
 
       String.append_with_len (evalbuf, buf, nbytes);
     }
   }
 
-eval:
   la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
 
   #ifdef REQUIRE_PATH_MODULE

@@ -2759,6 +2759,12 @@ int linenoiseHistoryLoad(const char *filename) {
     while ((sb = sb_getline(fp)) != NULL) {
         /* Take the stringbuf and decode backslash escaped values */
         char *buf = sb_to_string(sb);
+
+        ifnot (bytelen (buf)) { // ADDITION
+          sb_free(sb);
+          continue;
+        }
+
         char *dest = buf;
         const char *src;
 

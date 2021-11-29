@@ -443,9 +443,12 @@ static int sh_parse (sh_t *this, char *buf) {
       }
 
       wordexp_t we;
-      wordexp(buf, &we, 0);
+      int retval = wordexp (buf, &we, 0);
+
+      if (retval isnot 0) goto theerror;
 
       string *command = String.new (8);
+
       for (size_t i = 0; i < we.we_wordc; i++) {
         String.append_with (command, we.we_wordv[i]);
         String.append_byte (command, ' ');
