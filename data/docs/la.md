@@ -2038,21 +2038,10 @@ The return statement
     # StringType    Path.basename_sans_extname (StringTYpe path)
 
   # File Module Interface
-    # IntegerType   File.copy (StringType src, StringType dest; [qualifiers])
-       qualifiers: (they are trying to mimic cp(1) options)
-         force: [0|1], update: [0|1], backup: [0|1], preserve: [0|1|2],
-         recursive: [0|1], dereference  [0|1],
-         interactive: [0|1] if it is set, it turns off `force',
-         verbose: [0|1|2|3] 1: errors 2: like cp(1) 3: with a percent indicator
-         all: same as preserve and recursive
-    # IntegerType   File.remove (StringType file)
-       qualifiers:
-         force: [0|1], recursive: [0|1], interactive: [0|1], verbose: [0|1]
-    # IntegerType   File.rename (StringType src, StringType dest)
-       qualifiers:
-         force: [0|1], interactive: [0|1], verbose: [0|1], backup: [0|1]
+    # IntegerTYpe   File.new (StringType file, IntegerType mode)
     # MapType       File.stat (StringType file)
     # MapType       File.lstat (StringType file)
+    # StringType    File.mode (StringType file)
     # IntegerType   File.size (StringType file)
     # IntegerType   File.chown (StringType file, IntegerType uid, IntegerType gid)
     # IntegerType   File.chmod (StringType file, IntegerType mode)
@@ -2078,6 +2067,19 @@ The return statement
     # StringType    File.type_to_string (IntegerType mode)
     # StringType    File.mode_to_string (IntegerType mode)
     # StringType    File.mode_to_octal_string (IntegerType mode)
+    # IntegerType   File.copy (StringType src, StringType dest; [qualifiers])
+       qualifiers: (they are trying to mimic cp(1) options)
+         force: [0|1], update: [0|1], backup: [0|1], preserve: [0|1|2],
+         recursive: [0|1], dereference  [0|1],
+         interactive: [0|1] if it is set, it turns off `force',
+         verbose: [0|1|2|3] 1: errors 2: like cp(1) 3: with a percent indicator
+         all: same as preserve and recursive
+    # IntegerType   File.remove (StringType file)
+       qualifiers:
+         force: [0|1], recursive: [0|1], interactive: [0|1], verbose: [0|1]
+    # IntegerType   File.rename (StringType src, StringType dest)
+       qualifiers:
+         force: [0|1], interactive: [0|1], verbose: [0|1], backup: [0|1]
 
     # Constants
     # IntegerType   F_OK, X_OK, W_OK, R_OK
@@ -2153,6 +2155,18 @@ The return statement
     # StringType   Io.fd.read (FdType fd)
     # IntegerType  Io.fd.write (FdType fd, StringType buf)
 
+    # Constants:
+    # IntegerType O_RDONLY, O_WRONLY, O_RDWR
+    # IntegerType O_CREAT,  O_APPEND, O_TRUNC
+    # IntegerType O_NOCTTY, O_CLOEXEC, O_NONBLOCK, O_EXCL, O_DIRECTORY, O_NOFOLLOW
+    # and if defined
+    # IntegerType O_LARGEFILE, O_SYNC, O_ASYNC
+
+    # those are defined at file module also
+    # IntegerType S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR,
+    # IntegerType S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP,
+    # IntegerType S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
+
   (notes:
      - most of them are self explanatory, as they correspond to standard C functions
 
@@ -2166,22 +2180,6 @@ The return statement
           this code
 
      - those are all excuses to avoid writting extented documentation
-
-  # Constants:
-    # Exposed by the io module:
-      O_RDONLY, O_WRONLY, O_RDWR
-      O_CREAT,  O_APPEND, O_TRUNC
-      O_NOCTTY, O_CLOEXEC, O_NONBLOCK, O_EXCL, O_DIRECTORY, O_NOFOLLOW
-      # and if defined
-      O_LARGEFILE, O_SYNC, O_ASYNC
-
-      # those are defined at file module also
-      S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR,
-      S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP,
-      S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
-
-    # Exposed by the file module (the S_I* above and):
-      F_OK, X_OK, W_OK, R_OK
 
 # Library
   # Argparse Interface

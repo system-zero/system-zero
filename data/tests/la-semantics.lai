@@ -1492,7 +1492,7 @@ func self_semantics () {
       assert_true ("testing the io module",
           isatty (STDIN_FILENO) and
           isatty (STDOUT_FILENO) and
-          isatty (STDERR_FILENO) and
+          isatty (STDERR_FILENO) and # fails if valgrind invocation redirects to stderr
           is_atty is 0 and
           txt is rf () and
           w_nbts is txtlen)
@@ -1819,6 +1819,23 @@ func self_semantics () {
     mama[0].a[0] += mama[0].i; mama[0].a[0] *= mama[0].a[0]
     assert_true ("testing array and map manipulation", mama[0].i is 3 and
         mama[0].a[0] is 16)
+
+    var
+      empt_s = string[0],
+      empt_i = integer[0],
+      empt_n = number[0],
+      empt_a = array[0],
+      empt_m = map[0],
+      vn_arr = string[2]: lambda (x) {x[0] = "a"; x[1] = "b"; return x } ()
+
+    assert_true ("testing empty arrays",
+        typeof (empt_s) is ArrayType and typeofArray (empt_s) is StringType and empt_s: len () is 0 and
+        typeof (empt_i) is ArrayType and typeofArray (empt_i) is IntegerType and empt_i: len () is 0 and
+        typeof (empt_n) is ArrayType and typeofArray (empt_n) is NumberType and empt_n: len () is 0 and
+        typeof (empt_a) is ArrayType and typeofArray (empt_a) is ArrayType and empt_a: len () is 0 and
+        typeof (empt_m) is ArrayType and typeofArray (empt_m) is MapType and empt_m: len () is 0 and
+        typeof (vn_arr) is ArrayType and typeofArray (vn_arr) is StringType and vn_arr: len () is 2 and vn_arr[0] is "a" and vn_arr[1] is "b")
+
   }
 
   test_array (10)
@@ -2028,13 +2045,13 @@ func self_semantics () {
   test_maps ()
 
   func test_lists () {
-    var l = list_new ()
+    var l = list ()
     list_append (l, 21)
     list_append (l, "12")
     list_prepend(l, 1);
 
-    var v = l: get_at (2)
-    list_set_at (l, 1, "one")
+    var v = l[2]
+    l[1] = "one"
     list_insert_at (l, 0, "two")
     list_insert_at (l, 1, ["11", "131", "24"])
 
@@ -2046,14 +2063,14 @@ func self_semantics () {
     }
 
     var sa = l: pop_at (1)
-    var e = l: get_at (0)
+    var e = l[0]
 
     assert_true ("testing lists",
         sum is 1 and
         sun is "twoone12" and
         v is "12" and
         typeof (sa) is ArrayType and
-        typeof (l: get_at (0)) is StringType and
+        typeof (l[0]) is StringType and
         e is "two")
   }
 
@@ -2099,7 +2116,7 @@ func self_semantics () {
     var l = list ("1", [1, 2], {"k" : 1}, list (0, 1, 2))
     assert_true ("testing list type", typeof (l) is ListType and
         typeAsString (l) is "ListType" and
-        typeAsString (l: get_at (3)) is "ListType")
+        typeAsString (l[3]) is "ListType")
 
     func f (x) {}
     assert_true ("testing function types",
@@ -2110,6 +2127,47 @@ func self_semantics () {
   }
 
   types ()
+
+  func append_builtin () {
+    var key = "key"
+    var m = {}
+    append "x" in m as "k"
+    append "xx" in m as key
+
+    var a = string[0]
+    append "zxc" in a
+
+    var i = 10
+    append 20 in i
+
+    var n = 10.0
+    append 20.0 in n
+
+    var s = "asd"
+    append "fgh" in s
+
+    append "qwe" in "zxc" as v
+
+    var sa = append "asd" in "xcv"
+
+    var l = list ("1")
+    append 2 in l
+    l[-2] = "2"
+
+    assert_true ("testing the append builtin",
+        m.k is "x" and m.key is "xx" and m."key" is "xx" and
+        a[0] is "zxc" and
+        i is 30 and
+        n is 30.0 and
+        s is "asdfgh" and
+        v is "zxcqwe" and
+        sa is "xcvasd" and
+        l[1] is 2 and
+        l[-1] is 2 and
+        l[-2] is "2")
+  }
+
+  append_builtin ()
 
   func chains {
     var sa = ("10": to_integer () * 12 + 52 - 24): to_string (2)

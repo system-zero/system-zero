@@ -1,0 +1,59 @@
+import ("io")
+import ("std")
+import ("path")
+import ("file")
+loadfile ("argparse")
+
+var prog = __file__: path_basename ()
+
+var argparse = New Argparse (3, 0, prog + " filename")
+argparse.add ("mode", 'm', "mode=", "mode in octal (default: 0600)", IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var verbose = argparse.results.verbose
+var mode    = argparse.results.mode
+
+var fnames = null
+
+ifnot (argparse.argc) {
+  if (Io.fd.isatty (STDIN_FILENO)) {
+    println (stderr, "${%s, prog}: filename")
+    exit (0) # just for this program
+  }
+
+  # SYNTAX: do ... if expr
+
+  var std_inp = Io.fd.read (STDIN_FILENO)
+  if null is std_inp then exit (1)
+
+  fnames = std_inp: tokenize (" ")
+
+} else {
+  fnames = string[0]
+  for |v| in argparse.argv append v in fnames
+
+  # or less fancy but without reallocations and so probably faster 
+  # fnames = string[argparse.argc]
+  # for (var i = 0; i < argparse.argc; i++)
+  #   fnames[i] = argparse.argv[i]
+}
+
+ifnot (fnames: len ()) {
+  println (stderr, "${%s, prog}: missing filename argument")
+  exit (0)
+}
+
+var retval
+var exitval
+
+for |v| in fnames {
+  retval = File.new (v, mode; verbose : verbose)
+  exitval = if retval is notok then 1 orelse exitval
+}
+
+return exitval

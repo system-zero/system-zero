@@ -27,6 +27,7 @@ shared: clean-shared\
     file-remove-shared\
     file-rename-shared\
     file-move-shared\
+    file-new-shared\
     install-data
 
 static: clean-static\
@@ -41,6 +42,7 @@ static: clean-static\
     file-remove-static\
     file-rename-static\
     file-move-static\
+    file-new-static\
     install-data
 
 clean-shared:\
@@ -54,7 +56,8 @@ clean-shared:\
     clean-file-chown-shared\
     clean-file-remove-shared\
     clean-file-rename-shared\
-    clean-file-move-shared
+    clean-file-move-shared\
+    clean-file-new-shared
 
 clean-static:\
     clean-file-exists-static\
@@ -67,7 +70,8 @@ clean-static:\
     clean-file-chown-static\
     clean-file-remove-static\
     clean-file-rename-shared\
-    clean-file-move-shared
+    clean-file-move-shared\
+    clean-file-new-shared
 
 install-data:
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_exists)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_exists)
@@ -81,12 +85,14 @@ install-data:
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_remove)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_remove)
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_rename)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_rename)
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_move)     || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_move)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_new)      || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_new)
 
 	@$(CP) $(F_copy)/args   $(Z_SHELL_DATADIR)/commands/$(F_copy)
 	@$(CP) $(F_move)/args   $(Z_SHELL_DATADIR)/commands/$(F_move)
 	@$(CP) $(F_chmod)/args  $(Z_SHELL_DATADIR)/commands/$(F_chmod)
 	@$(CP) $(F_rename)/args $(Z_SHELL_DATADIR)/commands/$(F_rename)
 	@$(CP) $(F_remove)/args $(Z_SHELL_DATADIR)/commands/$(F_remove)
+	@$(CP) $(F_new)/args    $(Z_SHELL_DATADIR)/commands/$(F_new)
 #-----------------------------------------------#
 F_exists = File.exists
 file-exists-shared:
@@ -306,6 +312,26 @@ clean-file-move-shared:
 
 clean-file-move-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_move)-static || $(RM) $(SYSBINDIR)/$(F_move)-static
+
+#-----------------------------------------------#
+F_new = File.new
+file-new-shared:
+	@$(PRINTF) "#!/bin/env La-shared\n\n" > $(SYSBINDIR)/$(F_new)
+	@$(CAT) $(F_new).lai >> $(SYSBINDIR)/$(F_new)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_new)
+	@$(PRINTF) "installing File.new to $(SYSBINDIR)\n"
+
+file-new-static:
+	@$(PRINTF) "#!/bin/env La-static\n\n" > $(SYSBINDIR)/$(F_new)-static
+	@$(CAT) $(F_new).lai >> $(SYSBINDIR)/$(F_new)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_new)-static
+	@$(PRINTF) "installing File.move-static to $(SYSBINDIR)\n"
+
+clean-file-new-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_new) || $(RM) $(SYSBINDIR)/$(F_new)
+
+clean-file-new-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_new)-static || $(RM) $(SYSBINDIR)/$(F_new)-static
 
 #-----------------------------------------------#
 

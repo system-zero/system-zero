@@ -430,6 +430,17 @@ static VALUE file_mode_to_string (la_t *this, VALUE v_mode) {
   return STRING(s);
 }
 
+static VALUE file_mode (la_t *this, VALUE v_file) {
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *file = AS_STRING_BYTES(v_file);
+
+  struct stat st;
+  if (-1 is stat (file, &st))
+    return NULL_VALUE;
+
+  return file_mode_to_string (this, INT(st.st_mode));
+}
+
 static VALUE file_mode_to_octal_string (la_t *this, VALUE v_mode) {
   (void) this;
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
@@ -613,6 +624,50 @@ static VALUE file_append (la_t *this, VALUE v_file, VALUE v_str) {
   return file_write_rout (this, v_file, v_str, "a");
 }
 
+static VALUE file_new (la_t *this, VALUE v_file, VALUE v_mode) {
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  char *file = AS_STRING_BYTES(v_file);
+  mode_t mode = (mode_t) AS_INT(v_mode);
+
+  int verbose = GET_OPT_VERBOSE();
+  FILE *out_fp = GET_OPT_OUT_STREAM();
+  FILE *err_fp = GET_OPT_ERR_STREAM();
+
+  if (File.exists (file)) return OK_VALUE;
+
+  ifnot (mode) mode = 0600;
+
+  La.set.Errno (this, 0);
+
+  int fd = open (file, O_CREAT, mode);
+  if (fd is -1) {
+    La.set.Errno (this, errno);
+    return NOTOK_VALUE;
+  }
+
+  int retval = close (fd);
+  ifnot (retval) {
+    if (verbose and out_fp) {
+      struct stat st;
+      if (-1 is stat (file, &st)) {
+        if (err_fp)
+          fprintf (err_fp, "'%s' file created but stat() failed, probably a race condition\n", file);
+
+        return NOTOK_VALUE;
+
+      } else {
+        char mode_string[12];
+        File.mode.stat_to_string (mode_string, st.st_mode);
+        fprintf (out_fp, "created '%s' with (%s) mode\n", file, mode_string);
+      }
+    }
+  }
+
+  return INT(retval);
+}
+
 static VALUE file_copy (la_t *this, VALUE v_src, VALUE v_dest) {
   ifnot (IS_STRING(v_src)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_dest)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -716,6 +771,7 @@ public int __init_file_module__ (la_t *this) {
   (void) vstringType;
 
   LaDefCFun lafuns[] = {
+    { "file_new",        PTR(file_new), 2 },
     { "file_copy",       PTR(file_copy), 2 },
     { "file_stat",       PTR(file_stat), 1 },
     { "file_size",       PTR(file_size), 1 },
@@ -740,10 +796,11 @@ public int __init_file_module__ (la_t *this) {
     { "file_tmpname",    PTR(file_tmpname), 0 },
     { "file_is_readable",PTR(file_is_readable), 1 },
     { "file_is_writable",PTR(file_is_writable), 1 },
-    { "file_is_executable", PTR(file_is_executable), 1 },
-    { "file_readlines",  PTR(file_readlines), 1 },
-    { "file_writelines", PTR(file_writelines), 2 },
+    { "file_is_executable",  PTR(file_is_executable), 1 },
+    { "file_readlines",      PTR(file_readlines), 1 },
+    { "file_writelines",     PTR(file_writelines), 2 },
     { "file_type_to_string", PTR(file_type_to_string), 1 },
+    { "file_mode",           PTR(file_mode), 1},
     { "file_mode_to_string", PTR(file_mode_to_string), 1 },
     { "file_mode_to_octal_string", PTR(file_mode_to_octal_string), 1 },
     { NULL, NULL_VALUE, 0}
@@ -776,6 +833,7 @@ public int __init_file_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var File = {
+      "new"  : file_new,
       "copy" : file_copy,
       "stat" : file_stat,
       "size" : file_size,
@@ -804,6 +862,7 @@ public int __init_file_module__ (la_t *this) {
       "readlines"     : file_readlines,
       "writelines"    : file_writelines,
       "type_to_string" : file_type_to_string,
+      "mode"           : file_mode,
       "mode_to_string" : file_mode_to_string,
       "mode_to_octal_string" : file_mode_to_octal_string
      }

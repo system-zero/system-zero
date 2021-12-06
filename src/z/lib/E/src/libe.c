@@ -748,8 +748,9 @@ char lai_operators[] = "+-%*^><=/|& .(){}![]:$";
 
 char *lai_keywords[] = {
   "var V", "if I", "ifnot I", "else I", "func I", "is I", "isnot I",
-  "then I", "and I", "end I", "or I", "in I", "this V", "return I",
+  "then I", "and I", "end I", "or I", "this V", "return I",
   "for I", "while I", "break I", "continue I",
+  "in I", "as I", "append I",
   "when I", "orelse I",
   "println F", "format F",
   "null T", "ok T", "notok T", "true T", "false T",

@@ -234,6 +234,7 @@ static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
 
   char *str = AS_STRING_BYTES(v_str);
   char *tok = AS_STRING_BYTES(v_tok);
+
   cstring_tok *ctok = Cstring.tokenize (NULL, str, tok, NULL, NULL);
   if (NULL is ctok)
     return NULL_VALUE;

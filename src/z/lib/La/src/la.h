@@ -17,15 +17,6 @@ typedef double      number;
 typedef ptrdiff_t   integer;
 typedef integer     pointer;
 
-//#define NULL_TYPE      0
-//#define BOOLEAN_TYPE   (1 << 0)
-//#define NUMBER_TYPE    (1 << 1)
-//#define INTEGER_TYPE   (1 << 2)
-//#define CFUNCTION_TYPE (1 << 3)
-//#define UFUNCTION_TYPE (1 << 4)
-//#define STRING_TYPE    (1 << 5)
-//#define ARRAY_TYPE     (1 << 6)
-//#define MAP_TYPE       (1 << 7)
 #define NULL_TYPE      0
 #define BOOLEAN_TYPE   1
 #define INTEGER_TYPE   2
@@ -133,6 +124,39 @@ typedef struct listType listType;
   array_->value = ary_;                                  \
   array_;                                                \
 })
+#define    ARRAY_APPEND(__ar__, __v__) ({                \
+  VALUE ary_ = __ar__->value;                            \
+  int __len__ = __ar__->len + 1;                         \
+  if (__ar__->type == INTEGER_TYPE) {                    \
+    integer *i_ar = (integer *) AS_ARRAY(ary_);          \
+    i_ar = Realloc (i_ar, __len__ * sizeof (integer));   \
+    i_ar[__len__ - 1] = AS_INT(__v__);                   \
+    ary_ = ARRAY(i_ar);                                  \
+  } else if (__ar__->type == NUMBER_TYPE) {              \
+    number *n_ar = (number *) AS_ARRAY(ary_);            \
+    n_ar = Realloc (n_ar, __len__ * sizeof (number));    \
+    n_ar[__len__ - 1] = AS_NUMBER(__v__);                \
+    ary_ = ARRAY(n_ar);                                  \
+  } else if (__ar__->type == STRING_TYPE) {              \
+    string **s_ar = (string **) AS_ARRAY(ary_);          \
+    s_ar = Realloc (s_ar, __len__ * sizeof (string));    \
+    s_ar[__len__ - 1] = AS_STRING(__v__);                \
+    ary_ = ARRAY(s_ar);                                  \
+  } else if (__ar__->type is MAP_TYPE) {                 \
+    Vmap_t **m_ar = (Vmap_t **) AS_ARRAY(ary_);          \
+    m_ar = Realloc (m_ar, __len__ * Vmap.size_of ());    \
+    m_ar[__len__ - 1] = AS_MAP(__v__);                   \
+    ary_ = ARRAY(m_ar);                                  \
+  } else if (__ar__->type is ARRAY_TYPE) {               \
+    ArrayType **a_ar = (ArrayType **) AS_ARRAY(ary_);    \
+    a_ar = Realloc (a_ar, __len__ * sizeof (ArrayType)); \
+    a_ar[__len__ - 1] = (ArrayType *) AS_ARRAY(__v__);   \
+    ary_ = ARRAY(a_ar);                                  \
+  }                                                      \
+  __ar__->value = ary_;                                  \
+  __ar__->len = __len__;                                 \
+  __ar__;                                                \
+})
 
 #define    MAP(__v__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __v__, .refcount = 0, .sym = NULL}
 #define AS_MAP(__v__) (Vmap_t *) AS_PTR(__v__)
@@ -140,8 +164,17 @@ typedef struct listType listType;
 #define    OBJECT(__o__) (VALUE) {.type = OBJECT_TYPE, .asInteger = (pointer) __o__, .refcount = 0, .sym = NULL}
 #define AS_OBJECT(__o__) (object *) AS_PTR(__o__)
 
-#define    LIST(__l__) (VALUE) {.type = LIST_TYPE, .asInteger = (pointer) __l__, .refcount = 0, .sym = NULL}
-#define AS_LIST(__v__) ({                          \
+#define     LIST(__l__) (VALUE) {.type = LIST_TYPE, .asInteger = (pointer) __l__, .refcount = 0, .sym = NULL}
+#define LIST_NEW() ({                                             \
+  listType *_l_ = Alloc (sizeof (listType));                      \
+  _l_->cur_idx = -1;                                              \
+  _l_->num_items = 0;                                             \
+  _l_->head = _l_->tail = _l_->current = NULL;                    \
+  VALUE v_ = LIST(_l_);                                           \
+  object *o = la_object_new (list_release, NULL, "ListType", v_); \
+  LIST(o);                                                        \
+})
+#define  AS_LIST(__v__) ({                         \
   object *_o_ = AS_OBJECT(__v__);                  \
   listType *_l_ = (listType *) AS_PTR(_o_->value); \
   _l_;                                             \

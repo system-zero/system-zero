@@ -206,7 +206,7 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
       while (*sp is ' ') sp++;
       while (*sp) {
         if (*sp is ' ' or *sp is '\n') break;
-        if (*sp is '-') {
+        if (*sp is '-' and (sp is args or *(sp - 1) is ' ')) {
           if (*(sp + 1) isnot '-') {
             if (is_long) {
               sp += 2;

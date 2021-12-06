@@ -84,6 +84,8 @@ int main (int argc, char **argv) {
     mode = (mode & 0) | m;
   }
 
+  int exit_val = 0;
+
   ifnot (FdReferToATerminal (STDIN_FILENO)) {
     char dname[MAXLEN_PATH];
     if (NOTOK is IO.fd.read (STDIN_FILENO, dname, MAXLEN_PATH))
@@ -94,15 +96,20 @@ int main (int argc, char **argv) {
         .msg_cb = dir_make_print
       ));
 
+    if (retval is NOTOK) exit_val = 1;
     goto theend;
   }
 
   CHECK_ARGC;
 
-  retval = fn (argv[0], mode, DirOpts (
-    .msg = verbose,
-    .msg_cb = dir_make_print));
+  for (int i = 0; i < argc; i++) {
+    retval = fn (argv[i], mode, DirOpts (
+      .msg = verbose,
+      .msg_cb = dir_make_print));
+
+    if (retval is NOTOK) exit_val = 1;
+  }
 
 theend:
-  return (retval < 0 ? 1 : 0);
+  return exit_val;
 }

@@ -30,9 +30,9 @@ var exitval = 0
 
 var retval = ok
 
-for (var i = 0; i < argparse.argc; i += 1) {
+for (var i = 0; i < argparse.argc; i++) {
   retval = argparse.argv[i]: file_remove (; qualif)
-  exitval = retval: if x is notok then 1 orelse exitval end
+  exitval = if retval is notok then 1 orelse exitval
 }
 
 exit (exitval)

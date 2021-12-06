@@ -191,9 +191,10 @@ private
        this.results.$(as) = this.input_argv[this.curidx]
     } else if (type is ListType) {
       if this.results.$(as) is null then
-         this.results.$(as) = list_new ()
+         this.results.$(as) = list ()
 
-      list_append (this.results.$(as), this.input_argv[this.curidx])
+      append this.input_argv[this.curidx] in this.results.$(as)
+      # list_append (this.results.$(as), this.input_argv[this.curidx])
     }
 
     return true
