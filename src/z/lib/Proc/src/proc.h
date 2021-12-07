@@ -35,6 +35,7 @@ typedef struct proc_set_self {
     (*pre_fork_cb) (proc_t *, ProcPreFork_cb),
     (*read_stream_cb) (proc_t *, int, ProcRead_cb),
     (*user_data) (proc_t *, void *);
+  //int (*fd_size) (int);
 } proc_set_self;
 
 typedef struct proc_self {

@@ -56,6 +56,7 @@ typedef struct shproc_t {
     stdout_fds[2],
     stderr_fds[2],
     should_exit,
+    should_skip_wait,
     skip_next_proc,
     redir_type,
     redir_streams;
@@ -251,6 +252,7 @@ static int sh_interpret (proc_t *this) {
 
   int retval = 1;
   sh->should_exit = 0;
+  sh->should_skip_wait = 0;
   sh->skip_next_proc = 0;
 
   switch (sh->type) {
@@ -284,6 +286,8 @@ static int sh_interpret (proc_t *this) {
         sh->should_exit = 1;
         break;
       }
+
+      sh->should_skip_wait = 1;
 
       //retval = Proc.wait (this);
       /* allow
@@ -528,7 +532,7 @@ static int sh_exec (sh_t *this, char *buf) {
     if (p isnot NULL)
       p = Proc.get.next (p);
 
-    if (is_pipeline) {
+    if (is_pipeline and 0 is sh->should_skip_wait) {
       proc_t *proc = $my(head);
       while (proc and proc isnot $my(tail)) {
         pid_t pid = Proc.get.pid (proc);

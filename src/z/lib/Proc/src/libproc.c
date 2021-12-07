@@ -1,11 +1,14 @@
 #define LIBRARY "Proc"
 
+//#define REQUIRE_STD_GNU_SOURCE avoid for now (F_[GS]ETPIPE_SZ)
+
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_STDARG
 #define REQUIRE_SYS_STAT
 #define REQUIRE_SYS_TYPES
 #define REQUIRE_SYS_WAIT
+#define REQUIRE_FCNTL
 
 #define REQUIRE_LIST_MACROS
 #define REQUIRE_CSTRING_TYPE DECLARE
@@ -248,6 +251,24 @@ static void proc_close_pipe (int num, ...) {
   va_end (ap);
 }
 
+/* skip for now untill we need it
+static int set_fd_size (int fd) {
+  int max = 1 << 30;
+  int min = 1 << 12;
+  int c = 0;
+  int cap = fcntl (fd, F_SETPIPE_SZ, max);
+  while (-1 is cap) {
+    max >>= c++;
+    cap = fcntl (fd, F_SETPIPE_SZ, max);
+
+    if (max < min)
+      break;
+  }
+
+  return cap;
+}
+*/
+
 static int proc_open (proc_t *this) {
   if (NULL is this) return NOTOK;
   ifnot ($my(argc)) return NOTOK;
@@ -433,7 +454,8 @@ public proc_T __init_proc__ (void) {
         .user_data = proc_set_user_data,
         .at_fork_cb = proc_set_at_fork_cb,
         .pre_fork_cb = proc_set_pre_fork_cb,
-        .read_stream_cb = proc_set_read_stream_cb,
+        .read_stream_cb = proc_set_read_stream_cb
+        // .fd_size = set_fd_size
       },
       .unset = (proc_unset_self) {
         .stdin = proc_unset_stdin
