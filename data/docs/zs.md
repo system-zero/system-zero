@@ -77,14 +77,21 @@ Semantics:
     Generally the tendency is for a bit aggressive interaction.  
   
   Word expansion:  
-    For now expansion happens through wordexp(). This is very convenient but also this  comes  
-    with some caveats, mostly because the implementations across C libraries differ. Most  
-    of them just fork and let "/bin/sh" to do all the expansions, but not glibc and which  
-    its implementation is almost the size of this shell itself. So at some point we should  
-    do the expansion ourselves. In any case probably we might need a "/bin/sh", though  
-    we have the freedom to ignore it, given all the (realized by all) quirks and the fragility  
-    of the language.  
-
+    Tilde expansion:  
+      This expansion is performed when the first char of an argument is a '~', and
+      which it is replaced by the user's home directory.  
+    
+    Environment variable substitution:
+      This expansion is performed on ${env} token, which it is replaced with the
+      value of the environment variable if found, otherwise with an empty string.
+    
+    Command substitution:  
+      This expansion is performed on $(command) token, which it is replaced with the  
+      output of the command.  
+    
+    Pathname expansion:
+      Finally a pathname expansion it is performed using glob().
+   
   Keys:  
     BACKSPACE: remove char at left of cursor  
        DELETE: remove char at right of cursor  
@@ -114,5 +121,28 @@ Semantics:
        CTRL_-: last component completion   
        CTRL_C: interrupts a command if it is running, otherwise it adds a line  
        ESCAPE: on tab completion it restores original line state, otherwise it clears  
-               the line   
+               the line  
+
+  Builtin commands:  
+    cd:
+      Changes the current working directory. Without arguments the user's home directory  
+      is assumed. With an "-" as argument, then it tries to change to the previous  
+      working directory if any. When succesful the value of the current working directory  
+      it is exported in the environment as "PWD".
+   
+   pwd:
+     This prints the current working directory.  
+   
+   exit:  
+     Exits back to the environment.  
+     
+Quirks:  
+  A filename with embedded whitespace should be enclosed into double quotes.  
+  Also in this same case, filename completion stops if the filename is a directory.  
+  
+  When tab completion returns more than one item, a hint that shows the number  
+  of items, is displayed to the right of the cursor. There is no way to display  
+  more than one item at once.  
+
+  There is no job managment.  
 </pre>

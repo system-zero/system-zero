@@ -205,11 +205,11 @@ private
       return notok
     }
 
-    var webarch = this.baseurl + "/" + this.spec.archive
+    var webarch = this.spec.baseurl: path_concat (this.spec.archive)
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
     return ok if 0 is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " +
-        " -o " + archive + " " + webarch)
+        " -O " + archive + " " + webarch)
 
     return notok
   }
@@ -228,8 +228,9 @@ private
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
     ifnot (File.exists (archive)) {
-      println ("fetching sources: hasn't been implemented")
-      return notok
+      return notok if notok is this.fetch ()
+      #println ("fetching sources: hasn't been implemented")
+      #return notok
     }
 
     var retval = this.sh:exec (this.tar_exec + " " + this.tar_args + " " + archive)
@@ -298,7 +299,7 @@ private
     return notok if Dir.change (this.sources_dir) is notok
 
     var retval = this.sh:exec (this.git_exec + " " + this.clone_args + " " +
-      this->spec->repo)
+      this.spec.repo)
 
     return notok if Dir.change (curdir) is notok
 
@@ -316,9 +317,10 @@ private
         println (stderr, "${%s, this.sources_dir}: not a directory")
         return notok
       }
-
-      return notok if this.fetch_sources () is notok
     }
+
+    ifnot (Dir.is_directory (this.spec.sources))
+      return notok if this.fetch_sources () is notok
 
     return this.sources_dir: path_concat (this.spec.sources): file_copy (
        "."; force : 1, recursive : 1, update : 1, verbose : 1)

@@ -20,14 +20,14 @@ typedef struct vmap_self {
 
   int
     (*num_keys) (Vmap_t *),
-    (*key_exists) (Vmap_t *, char *);
+    (*key_exists) (Vmap_t *, const char *);
 
   void
-    *(*pop) (Vmap_t *, char *),
-    *(*get) (Vmap_t *, char *);
+    *(*pop) (Vmap_t *, const char *),
+    *(*get) (Vmap_t *, const char *);
 
   int
-    (*set) (Vmap_t *, char *, void *, VmapRelease_cb, int);
+    (*set) (Vmap_t *, const char *, void *, VmapRelease_cb, int);
 
   string **(*keys) (Vmap_t *);
 

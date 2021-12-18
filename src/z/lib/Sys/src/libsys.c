@@ -35,7 +35,7 @@ static sys_T __SYS__;
 static int is_initialized = 0;
 static int sys_init_environment (sys_env_opts);
 
-static string_t *sys_set_env_as (char *val, char *as, int replace) {
+static string_t *sys_set_env_as (const char *val, const char *as, int replace) {
   if (NULL is __ENV__) sys_init_environment (SysEnvOpts());
 
   string_t *old = Smap.get (__ENV__, as);
@@ -57,12 +57,12 @@ static string_t *sys_set_env_as (char *val, char *as, int replace) {
   return new;
 }
 
-static string_t *sys_get_env (char *as) {
+static string_t *sys_get_env (const char *as) {
   if (NULL is __ENV__) sys_init_environment (SysEnvOpts());
    return Smap.get (__ENV__, as);
 }
 
-static char *sys_get_env_value (char *as) {
+static char *sys_get_env_value (const char *as) {
   string_t *env = sys_get_env (as);
 
   if (NULL is env)
@@ -76,7 +76,7 @@ static char *sys_get_env_value (char *as) {
   return val;
 }
 
-static int sys_get_env_value_as_int (char *as) {
+static int sys_get_env_value_as_int (const char *as) {
   char *val = sys_get_env_value (as);
   if (NULL is val) return 0;
   return atoi (val);
@@ -88,7 +88,7 @@ static long sys_get_clock_sec (clockid_t clock_id) {
   return cspec.tv_sec;
 }
 
-static string_t *sys_which (char *ex, char *path) {
+static string_t *sys_which (const char *ex, const char *path) {
   if (NULL is ex) return NULL;
 
   if (NULL is path)
@@ -468,7 +468,7 @@ static void sys_release_log (void) {
   __LOG__ = NULL;
 }
 
-static void sys_log_append_message (char *msg) {
+static void sys_log_append_message (const char *msg) {
   if (NULL is __LOG__ or NULL is msg) return;
 
   size_t len = bytelen (msg);

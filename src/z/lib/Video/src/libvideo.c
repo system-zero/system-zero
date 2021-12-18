@@ -139,7 +139,7 @@ static void video_draw_all (video_t *this) {
   video_flush (this, this->tmp_render);
 }
 
-static void video_set_row_with (video_t *this, int idx, char *bytes) {
+static void video_set_row_with (video_t *this, int idx, const char *bytes) {
   if (DListSetCurrent (this, idx) is EINDEX) return;
   vstring_t *row = this->current;
   String.replace_with (row->data, bytes);

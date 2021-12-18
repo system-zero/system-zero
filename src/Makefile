@@ -308,9 +308,18 @@ Z_SYSINCDIR  = $(SYSINCDIR)/$(ZNAME)
   BASE_FLAGS    += -DDECLARE=1 -DDONOT_DECLARE=0
 
   # this is for ld --version => 2.36.1 (allow multiply definitions (for AllocErrorHandler in static builds))
-  BASE_FLAGS    += -z muldefs
+  ifneq (-$(CC), -tcc)
+    BASE_FLAGS    += -z muldefs
+  endif
 
   DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
+  DEBUG_FLAGS   += -Werror-implicit-function-declaration -Wsign-compare
+  DEBUG_FLAGS   += -Wpointer-arith -Wreturn-type -Wmissing-declarations -Wwrite-strings
+  DEBUG_FLAGS   += -Wuninitialized
+
+  ifeq (-$(CC), -gcc)
+    DEBUG_FLAGS   += -Wimplicit-fallthrough -Wrestrict
+  endif
 
   ifeq (-$(CC), -clang)
     BASE_FLAGS  +=  -Wno-unused-command-line-argument
@@ -430,10 +439,10 @@ clean-libauth-shared:
 clean-libauth-static:
 	@cd $(Z_AUTH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libproc-shared: Env cenv list libcstring-shared
+libproc-shared: Env cenv list libcstring-shared libsys-shared libstring-shared
 	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libproc-static: Env cenv list libcstring-static
+libproc-static: Env cenv list libcstring-static libsys-static libstring-static
 	@cd $(Z_PROC_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libproc-shared:
@@ -863,10 +872,16 @@ libself-shared: Env cenv libstring-shared libcstring-shared\
                 v-shared
 	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
+libself-only-shared: Env cenv
+	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
 libself-static: Env cenv libstring-static libcstring-static\
                 libvstring-static libdir-static libfile-static\
                 libpath-static libre-static la-static e-static\
                 v-static
+	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+libself-only-static: Env cenv
 	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libself-shared:
@@ -940,6 +955,22 @@ clean-file-shared:
 clean-file-static:
 	@cd $(ZA_FILE_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 
+  #----------------------------------------------------------#
+  # time
+  ZA_TIME             = time
+  ZA_TIME_SRCDIR     := $(Z_SRCAPPDIR)/$(ZA_TIME)/src
+
+time-shared:
+	@cd $(ZA_TIME_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+time-static:
+	@cd $(ZA_TIME_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-time-shared:
+	@cd $(ZA_TIME_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-time-static:
+	@cd $(ZA_TIME_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
   #----------------------------------------------------------#
   # dir
   ZA_DIR             = dir
@@ -1086,7 +1117,7 @@ clean-sys-static:
   ZA_V_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_V)/src
 
 v-shared: cenv libvwm-shared libstring-shared libfile-shared libio-shared libargparse-shared\
-          libterm-shared zs-static libv-shared libla-shared
+          libterm-shared zs-shared libv-shared libla-shared
 	@cd $(ZA_V_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
 v-static: cenv libvwm-static libstring-static libfile-static libio-static libargparse-static\
@@ -1187,7 +1218,7 @@ zero-shared:  Env cenv list\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
-              contain-shared
+              contain-shared time-shared
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv list\
@@ -1202,7 +1233,7 @@ zero-static:  Env cenv list\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
-              contain-static
+              contain-static time-static
 
 clean-shared: zero-clean-shared
 zero-clean-shared:\
@@ -1224,12 +1255,14 @@ zero-clean-shared:\
               clean-libla-shared clean-libv-shared\
               clean-libos-shared clean-libmd5-shared\
               clean-libsha256-shared clean-libsha512-shared\
+              clean-libbase64-shared clean-libbcrypt-shared\
               clean-librandom-shared clean-libcontain-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared clean-v-shared clean-e-shared\
-              clean-path-shared clean-env-shared clean-contain-shared
+              clean-path-shared clean-env-shared clean-contain-shared\
+              clean-time-shared
 
 clean-static: zero-clean-static
 zero-clean-static:\
@@ -1251,12 +1284,14 @@ zero-clean-static:\
               clean-libla-static clean-libv-static\
               clean-libos-static clean-libmd5-static\
               clean-libsha256-static clean-libsha512-static\
+              clean-libbase64-static clean-libbcrypt-static\
               clean-librandom-static clean-libcontain-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
               clean-sys-static clean-v-static clean-e-static\
-              clean-path-static clean-env-static clean-contain-static
+              clean-path-static clean-env-static clean-contain-static\
+              clean-time-static
 
 all: shared static
 

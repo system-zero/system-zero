@@ -656,7 +656,7 @@ typedef struct E_prop {
 #undef MY_CLASSES
 #undef MY_PROPERTIES
 
-static int  win_edit_fname (win_t *, buf_t **, char *, int, int, int, int);
+static int  win_edit_fname (win_t *, buf_t **, const char *, int, int, int, int);
 
 static int  buf_normal_eof (buf_t *, int);
 static int  buf_normal_left (buf_t *, int, int);
@@ -664,23 +664,23 @@ static int  buf_normal_right (buf_t *, int, int);
 static utf8 buf_quest (buf_t *, char *, utf8 *, int);
 static int  buf_normal_down (buf_t *, int, int, int);
 static int  buf_normal_goto_linenr (buf_t *, int, int);
-static int  buf_substitute (buf_t *, char *, char *, int, int, int, int);
-static int  buf_write_to_fname (buf_t *, char *, int, int, int, int, int);
+static int  buf_substitute (buf_t *, const char *, const char *, int, int, int, int);
+static int  buf_write_to_fname (buf_t *, const char *, int, int, int, int, int);
 static int  buf_change (buf_t **, int);
-static int  buf_split (buf_t **, char *);
+static int  buf_split (buf_t **, const char *);
 static int  buf_readline (buf_t **, readline_t *);
 static int  buf_normal_visual_lw (buf_t **);
-static int  buf_enew_fname (buf_t **, char *);
-static int  buf_change_bufname (buf_t **, char *);
+static int  buf_enew_fname (buf_t **, const char *);
+static int  buf_change_bufname (buf_t **, const char *);
 static int  buf_insert_complete_filename (buf_t **);
 static int  buf_grep_on_normal (buf_t **, utf8, int, int);
 static int  buf_open_fname_under_cursor (buf_t **, int, int, int, int);
 
-static void ed_set_lang_mode (ed_t *, char *);
+static void ed_set_lang_mode (ed_t *, const char *);
 static void ed_resume (ed_t *);
 static void ed_suspend (ed_t *);
-static void ed_record (ed_t *, char *, ...);
-static int  ed_win_change (ed_t *, buf_t **, int, char *, int, int);
+static void ed_record (ed_t *, const char *, ...);
+static int  ed_win_change (ed_t *, buf_t **, int, const char *, int, int);
 
 static void readline_error (readline_t *, int);
 static void readline_expr_reg (readline_t *);

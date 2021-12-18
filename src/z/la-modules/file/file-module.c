@@ -353,7 +353,7 @@ static VALUE file_tmpname_release (la_t *this, VALUE v_tmp) {
 static VALUE file_tmpname (la_t *this) {
   (void) this;
   char *dir = Sys.get.env_value ("TMPDIR");
-  char *prefix = "file_tmpname";
+  const char *prefix = "file_tmpname";
 
   tmpfname_t *tmp = File.tmpfname.new (dir, prefix);
   if (NULL is tmp)
@@ -572,7 +572,7 @@ static VALUE file_writelines (la_t *this, VALUE v_file, VALUE v_ar) {
   return OK_VALUE;
 }
 
-static VALUE file_write_rout (la_t *this, VALUE v_file, VALUE v_str, char *mode) {
+static VALUE file_write_rout (la_t *this, VALUE v_file, VALUE v_str, const char *mode) {
   (void) this;
   char *file;
   ifnot (IS_STRING(v_file)) {
@@ -602,7 +602,8 @@ static VALUE file_write_rout (la_t *this, VALUE v_file, VALUE v_str, char *mode)
     return retval;
   }
 
-  int num_written = fprintf (fp, "%s", str->bytes);
+  int num_written = fwrite (str->bytes, 1, str->num_bytes, fp);
+
   if (num_written isnot (int) str->num_bytes) {
     if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
       fprintf (err_fp, "failed to write in %s the requested bytes\n", file);
@@ -756,6 +757,7 @@ static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
 
 #define EvalString(...) #__VA_ARGS__
 
+public int __init_file_module__ (la_t *);
 public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
@@ -873,6 +875,7 @@ public int __init_file_module__ (la_t *this) {
   return LA_OK;
 }
 
+public void __deinit_file_module__ (la_t *);
 public void __deinit_file_module__ (la_t *this) {
   (void) this;
   __deinit_sys__ ();

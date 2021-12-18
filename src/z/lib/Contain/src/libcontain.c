@@ -110,7 +110,7 @@ struct contain_t {
 #define IDNAME(type) ((type) == GID ? "GID" : "UID")
 #define SUBPATH(type) ((type) == GID ? "/etc/subgid" : "/etc/subuid")
 
-static void contain_err (contain_t *cnt, int errnum, char *format, ...) {
+static void contain_err (contain_t *cnt, int errnum, const char *format, ...) {
   va_list args;
 
   va_start(args, format);
@@ -155,7 +155,7 @@ static char *string_append (contain_t *cnt, char **destination, const char *form
 }
 
 static int denysetgroups (contain_t *cnt, pid_t pid) {
-  char *text = "deny";
+  const char *text = "deny";
 
   char *path = string_new (cnt, "/proc/%d/setgroups", pid);
   int fd = open (path, O_WRONLY);
@@ -529,7 +529,7 @@ static int savemode (contain_t *cnt) {
   return OK;
 }
 
-static int setconsole (contain_t *cnt, char *name) {
+static int setconsole (contain_t *cnt, const char *name) {
   setsid ();
 
   int console = open(name, O_RDWR);
@@ -657,7 +657,7 @@ static int supervise (contain_t *cnt) {
   return WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE;
 }
 
-static int bindnode (contain_t *cnt, char *src, char *dst) {
+static int bindnode (contain_t *cnt, const char *src, const char *dst) {
   int fd = open (dst, O_WRONLY | O_CREAT, 0600);
   if (fd >= 0)  close (fd);
 
@@ -964,7 +964,7 @@ static int contain_run (contain_t *cnt) {
   switch (cnt->childPid = fork ()) {
     case -1:
       RETURN_NOTOK_IF(cnt, 1, errno, "fork error", "");
-
+      // fall through
     case 0:
       raise (SIGSTOP);
       if (cnt->uid != 0)
@@ -1046,12 +1046,12 @@ static int contain_run (contain_t *cnt) {
 
       clearenv ();
 
-      putenv ("CONTAINER=1");
-      putenv ("LD_LIBRARY_PATH=/lib:/lib/z");
-      putenv ("TMPDIR=/tmp");
-      putenv ("PATH=/bin");
-      putenv ("SRCDIR=/src");
-      putenv ("SYSDIR=/");
+      putenv ((char *)"CONTAINER=1");
+      putenv ((char *)"LD_LIBRARY_PATH=/lib:/lib/z");
+      putenv ((char *)"TMPDIR=/tmp");
+      putenv ((char *)"PATH=/bin");
+      putenv ((char *)"SRCDIR=/src");
+      putenv ((char *)"SYSDIR=/");
       putenv (STR_FMT("HOME=/home/%s", cnt->user));
       putenv (STR_FMT("DATADIR=/home/%s", cnt->user));
       putenv (STR_FMT("USERNAME=%s", cnt->user));

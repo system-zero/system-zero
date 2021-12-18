@@ -4,16 +4,16 @@
 #define SYSENV_LEN  64
 
 typedef struct sys_set_self {
-  string_t *(*env_as) (char *, char *, int);
+  string_t *(*env_as) (const char *, const char *, int);
 } sys_set_self;
 
 typedef struct sys_get_self {
-  char *(*env_value) (char *);
+  char *(*env_value) (const char *);
 
-  int (*env_value_as_int) (char *);
+  int (*env_value_as_int) (const char *);
 
   string_t
-    *(*env) (char *),
+    *(*env) (const char *),
     *(*error_string) (int),
     *(*battery_info) (void);
 
@@ -24,14 +24,14 @@ typedef struct sys_env_opts {
   int exit_on_error;
   int return_on_error;
   int overwrite;
-  char *username;
-  char *groupname;
-  char *termname;
-  char *home;
-  char *tmpdir;
-  char *datadir;
-  char *sysdir;
-  char *srcdir;
+  const char *username;
+  const char *groupname;
+  const char *termname;
+  const char *home;
+  const char *tmpdir;
+  const char *datadir;
+  const char *sysdir;
+  const char *srcdir;
   int   uid;
   int   gid;
 } sys_env_opts;
@@ -55,7 +55,7 @@ typedef struct sys_env_opts {
 
 typedef struct sys_log_self {
   int (*init) (char *);
-  void (*append_message) (char *);
+  void (*append_message) (const char *);
   string_t *(*messages) (void);
 } sys_log_self;
 
@@ -66,7 +66,7 @@ typedef struct sys_self {
 
   int (*init_environment) (sys_env_opts);
 
-  string_t *(*which) (char *, char *);
+  string_t *(*which) (const char *, const char *);
 
 } sys_self;
 

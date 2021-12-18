@@ -23,7 +23,7 @@ static char *path_basename (char *name) {
   while (p > name and IS_DIR_SEP (*(p - 1))) p--;
   while (p > name and IS_NOT_DIR_SEP (*(p - 1))) --p;
   if (p is name and IS_DIR_SEP (*p))
-    return DIR_SEP_STR;
+    return (char *) DIR_SEP_STR;
   return p;
 }
 
@@ -47,14 +47,14 @@ static char *path_extname (char *name) {
   char *p = Cstring.byte.null_in_str (name);
   if (p is NULL) p = name + bytelen (name) + 1;
   while (p > name and (*(p - 1) isnot '.')) --p;
-  if (p is name) return "";
+  if (p is name) return (char *) "";
   p--;
   return p;
 }
 
 /* as a new c string (null terninated), as a general note any new created
  * C string should be null byte terminated */
-static char *path_dirname (char *name) {
+static char *path_dirname (const char *name) {
   size_t len = bytelen (name);
   char *dname = NULL;
   if (name is NULL or 0 is len) {
@@ -62,7 +62,7 @@ static char *path_dirname (char *name) {
     return dname;
   }
 
-  char *sep = name + len - 1;
+  char *sep = (char *) name + len - 1;
 
   /* trailing slashes */
   while (sep isnot name) {

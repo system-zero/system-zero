@@ -40,7 +40,7 @@ typedef struct cstring_self {
     *(*itoa) (int, char *, int),
     *(*substr) (char *, size_t, char *, size_t, size_t),
     *(*bytes_in_str) (const char *, const char *),
-    *(*extract_word_at) (char *, size_t, char *, size_t, char *, size_t, int, int *, int *);
+    *(*extract_word_at) (const char *, size_t, char *, size_t, const char *, size_t, int, int *, int *);
 
   int
     (*eq) (const char *, const char *),
@@ -50,9 +50,9 @@ typedef struct cstring_self {
   size_t
     (*cp) (char *, size_t, const char *, size_t),
     (*cat) (char *, size_t, const char *),
-    (*cp_fmt) (char *, size_t, char *, ...);
+    (*cp_fmt) (char *, size_t, const char *, ...);
 
-  cstring_tok *(*tokenize) (cstring_tok *, char *, char *, CstringTok_cb, void *);
+  cstring_tok *(*tokenize) (cstring_tok *, const char *, const char *, CstringTok_cb, void *);
 } cstring_self;
 
 typedef struct cstring_T {

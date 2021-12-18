@@ -12,12 +12,12 @@ enum {
 typedef struct v_t v_t;
 typedef struct v_prop v_prop;
 
-typedef int (*PtyOnExecChild_cb) (v_t *, int, char **);
+typedef int (*PtyOnExecChild_cb) (v_t *, int, const char **);
 typedef PtyOnExecChild_cb PtyMain_cb;
 typedef void (*PtyAtExit_cb) (v_t *);
 
 typedef struct v_init_opts {
-  char
+  const char
     *as,
     *data,
     *loadfile,
@@ -65,7 +65,7 @@ typedef struct v_init_self {
   term_t
     *(*term) (v_t *, int *, int *);
 
-  string_t *(*sockname) (v_t *, char *, char *);
+  string_t *(*sockname) (v_t *, char *, const char *);
 } v_init_self;
 
 
@@ -77,7 +77,7 @@ typedef struct v_sock_self {
 } v_sock_self;
 
 typedef struct v_pty_self {
-  int (*main) (v_t *this, int, char **);
+  int (*main) (v_t *this, int, const char **);
 } v_pty_self;
 
 typedef struct v_tty_self {
@@ -125,7 +125,7 @@ typedef struct v_self {
 
   int
     (*main) (v_t *),
-    (*send) (v_t *, char *, char *),
+    (*send) (v_t *, char *, const char *),
     (*save_image) (v_t *, char *);
 
 } v_self;

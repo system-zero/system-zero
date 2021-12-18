@@ -100,7 +100,7 @@ typedef int  (*ProcessInput_cb) (vwm_t *, vwm_win *, vwm_frame *, utf8);
 typedef VwmReadlineArgs  (*VwmReadline_cb) (VwmReadlineArgs);
 
 typedef struct frame_opts {
-  char
+  const char
     **argv,
     *command,
     *logfile;
@@ -247,12 +247,12 @@ typedef struct vwm_frame_get_self {
 typedef struct vwm_frame_set_self {
   void
     (*fd) (vwm_frame *, int),
-    (*argv) (vwm_frame *, int, char **),
-    (*command) (vwm_frame *, char *),
+    (*argv) (vwm_frame *, int, const char **),
+    (*command) (vwm_frame *, const char *),
     (*visibility) (vwm_frame *, int),
     (*unimplemented_cb) (vwm_frame *, FrameUnimplemented_cb);
 
-  int (*log) (vwm_frame *, char *,  int);
+  int (*log) (vwm_frame *, const char *,  int);
 
   FrameProcessOutput_cb (*process_output_cb) (vwm_frame *, FrameProcessOutput_cb);
   FrameAtFork_cb (*at_fork_cb) (vwm_frame *, FrameAtFork_cb);
@@ -340,7 +340,7 @@ typedef struct vwm_win_self {
   vwm_frame
     *(*init_frame) (vwm_win *, frame_opts),
     *(*new_frame) (vwm_win *, frame_opts),
-    *(*add_frame) (vwm_win *, int, char **, int),
+    *(*add_frame) (vwm_win *, int, const char **, int),
     *(*pop_frame_at) (vwm_win *, int);
 } vwm_win_self;
 
@@ -426,8 +426,8 @@ typedef struct vwm_new_self {
 
 typedef struct vwm_readline_self {
   void
-    (*append_command) (vwm_t *, char *, size_t, int),
-    (*append_command_arg) (vwm_t *, char *, char *, size_t);
+    (*append_command) (vwm_t *, const char *, size_t, int),
+    (*append_command_arg) (vwm_t *, const char *, const char *, size_t);
 
   readline_t *(*edit) (vwm_t *, vwm_win *, vwm_frame *, readline_com_t **, int); 
 } vwm_readline_self;

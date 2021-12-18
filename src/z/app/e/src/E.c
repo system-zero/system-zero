@@ -32,6 +32,7 @@
 
 #include <z/cenv.h>
 
+public void sigwinch_handler (int sig);
 public void sigwinch_handler (int sig) {
   signal (sig, sigwinch_handler);
   int cur_idx = E.get.current_idx (__E__);
@@ -68,6 +69,7 @@ public void sigwinch_handler (int sig) {
 #endif
 }
 
+public void sighup_handler (int sig);
 public void sighup_handler (int sig) {
   (void) sig;
   ed_t *ed = E.get.current (__E__);
@@ -81,7 +83,9 @@ public void sighup_handler (int sig) {
 }
 
 mutable public void __alloc_error_handler__ (int err, size_t size,
-                           char *file, const char *func, int line) {
+                           const char *file, const char *func, int line);
+mutable public void __alloc_error_handler__ (int err, size_t size,
+                           const char *file, const char *func, int line) {
   Stderr.print ("MEMORY_ALLOCATION_ERROR\n");
   Stderr.print_fmt ("File: %s\nFunction: %s\nLine: %d\n", file, func, line);
   Stderr.print_fmt ("Size: %zd\n", size);
@@ -359,36 +363,36 @@ static void __ex_add_word_actions__ (ed_t *this) {
   Ed.set.word_actions (this, chars, num_actions, actions, __ex_word_actions_cb__);
 }
 
-char __ex_balanced_pairs[] = "()[]{}";
-char *__ex_NULL_ARRAY[] = {NULL};
+const char __ex_balanced_pairs[] = "()[]{}";
+const char *__ex_NULL_ARRAY[] = {NULL};
 
-char *make_filenames[] = {"Makefile", NULL};
-char *make_extensions[] = {".Makefile", NULL};
-char *make_keywords[] = {
+const char *make_filenames[] = {"Makefile", NULL};
+const char *make_extensions[] = {".Makefile", NULL};
+const char *make_keywords[] = {
   "ifeq I", "ifneq I", "endif I", "else I", "ifdef I", "ifndef I", NULL};
 
-char *sh_extensions[] = {".sh", ".bash", NULL};
-char *sh_shebangs[] = {"#!/bin/sh", "#!/bin/bash", NULL};
-char  sh_operators[] = "+:-%*><=|&()[]{}!$/`?";
-char *sh_keywords[] = {
+const char *sh_extensions[] = {".sh", ".bash", NULL};
+const char *sh_shebangs[] = {"#!/bin/sh", "#!/bin/bash", NULL};
+const char  sh_operators[] = "+:-%*><=|&()[]{}!$/`?";
+const char *sh_keywords[] = {
   "if I", "else I", "elif I", "then I", "fi I", "while I", "for I", "break I",
   "done I", "do I", "case I", "esac I", "in I", "EOF I", NULL};
-char sh_singleline_comment[] = "#";
+const char sh_singleline_comment[] = "#";
 
-char *zig_extensions[] = {".zig", NULL};
-char zig_operators[] = "+:-*^><=|&~.()[]{}/";
-char zig_singleline_comment[] = "//";
-char *zig_keywords[] = {
+const char *zig_extensions[] = {".zig", NULL};
+const char zig_operators[] = "+:-*^><=|&~.()[]{}/";
+const char zig_singleline_comment[] = "//";
+const char *zig_keywords[] = {
   "const V", "@import V", "pub I", "fn I", "void T", "try I",
   "else I", "if I", "while I", "true V", "false V", "Self V", "@This V",
   "return I", "u8 T", "struct T", "enum T", "var V", "comptime T",
   "switch I", "continue I", "for I", "type T", "void T", "defer I",
   "orelse I", "errdefer I", "undefined T", "threadlocal T", NULL};
 
-char *lua_extensions[] = {".lua", NULL};
-char *lua_shebangs[] = {"#!/bin/env lua", "#!/usr/bin/lua", NULL};
-char  lua_operators[] = "+:-*^><=|&~.()[]{}!@/";
-char *lua_keywords[] = {
+const char *lua_extensions[] = {".lua", NULL};
+const char *lua_shebangs[] = {"#!/bin/env lua", "#!/usr/bin/lua", NULL};
+const char  lua_operators[] = "+:-*^><=|&~.()[]{}!@/";
+const char *lua_keywords[] = {
   "do I", "if I", "while I", "else I", "elseif I", "nil I",
   "local I",  "self V", "require V", "return V", "and V",
   "then I", "end I", "function V", "or I", "in V",
@@ -397,14 +401,14 @@ char *lua_keywords[] = {
   "true I", "false I", NULL
 };
 
-char lua_singleline_comment[] = "--";
-char lua_multiline_comment_start[] = "--[[";
-char lua_multiline_comment_end[] = "]]";
+const char lua_singleline_comment[] = "--";
+const char lua_multiline_comment_start[] = "--[[";
+const char lua_multiline_comment_end[] = "]]";
 
-char *dictu_extensions[] = {".du", NULL};
-char *dictu_shebangs[] = {"#!/usr/bin/dictu", NULL};
-char  dictu_operators[] = "+:-*^><=|&~.()[]{}!@/";
-char *dictu_keywords[] = {
+const char *dictu_extensions[] = {".du", NULL};
+const char *dictu_shebangs[] = {"#!/usr/bin/dictu", NULL};
+const char  dictu_operators[] = "+:-*^><=|&~.()[]{}!@/";
+const char *dictu_keywords[] = {
   "beg I", "end I", "if I", "while I", "else I", "for I", "do I", "orelse I",
   "is I", "isnot I", "nil E", "not I", "var V", "const V", "return V", "and I",
   "or I", "self F", "this V", "then I", "def F",  "continue I", "break I", "init I", "class T",
@@ -413,13 +417,13 @@ char *dictu_keywords[] = {
   "use T", "elseif I", "static T",
    NULL};
 
-char dictu_singleline_comment[] = "//";
-char dictu_multiline_comment_start[] = "/*";
-char dictu_multiline_comment_end[] = "*/";
+const char dictu_singleline_comment[] = "//";
+const char dictu_multiline_comment_start[] = "/*";
+const char dictu_multiline_comment_end[] = "*/";
 
-char *md_extensions[] = {".md", NULL};
+const char *md_extensions[] = {".md", NULL};
 
-char *diff_extensions[] = {".diff", ".patch", NULL};
+const char *diff_extensions[] = {".diff", ".patch", NULL};
 
 static char *__ex_diff_syn_parser (buf_t *this, char *line, int len, int idx, row_t *row) {
   (void) idx; (void) row;
@@ -760,7 +764,7 @@ int main (int argc, char **argv) {
   win_t *w = NULL;
 
   if (load_file isnot NULL and getuid ()) {
-    retval = E.load_file (__E__, load_file, argc, argv);
+    retval = E.load_file (__E__, load_file, argc, (const char **) argv);
     ifnot (OK is retval) {
       retval = 1;
       goto theend;

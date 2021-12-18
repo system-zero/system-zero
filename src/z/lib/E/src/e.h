@@ -407,7 +407,7 @@ typedef char *(*InitRecord_cb) (ed_t *);
 
 /* do not change order */
 struct syn_t {
-  char
+  const char
     *filetype,
     **filenames,
     **extensions,
@@ -433,7 +433,7 @@ struct syn_t {
     *keywords_len,
     *keywords_colors;
 
-  char *balanced_pairs;
+  const char *balanced_pairs;
 };
 
 struct ftype_t {
@@ -549,7 +549,7 @@ struct Einfo_t {
 typedef struct buf_opts {
    win_t *win;
 
-   char
+   const char
      *fname,
      *backup_suffix;
 
@@ -586,7 +586,7 @@ struct ed_opts {
     num_win,
     term_flags;
 
-  char
+  const char
     *hs_file,
     *hrl_file;
 
@@ -648,14 +648,14 @@ typedef struct screen_dim_opts {
 
 typedef struct msg_self {
   void
-    (*write) (ed_t *, char *),
-    (*write_fmt) (ed_t *, char *, ...),
-    (*set) (ed_t *, int, int, char *, size_t),
-    (*set_fmt) (ed_t *, int, int, char *, ...),
-    (*line) (ed_t *, int, char *, ...),
-    (*send) (ed_t *, int, char *),
-    (*send_fmt) (ed_t *, int, char *, ...),
-    (*error) (ed_t *, char *, ...);
+    (*write) (ed_t *, const char *),
+    (*write_fmt) (ed_t *, const char *, ...),
+    (*set) (ed_t *, int, int, const char *, size_t),
+    (*set_fmt) (ed_t *, int, int, const char *, ...),
+    (*line) (ed_t *, int, const char *, ...),
+    (*send) (ed_t *, int, const char *),
+    (*send_fmt) (ed_t *, int, const char *, ...),
+    (*error) (ed_t *, const char *, ...);
 
   char *(*fmt) (ed_t *, int, ...);
 } msg_self;
@@ -712,7 +712,7 @@ typedef struct buf_get_self {
     *(*fname) (buf_t *),
     *(*ftype_name) (buf_t *),
     *(*info_string) (buf_t *),
-    *(*current_word) (buf_t *, char *, char *, int, int *, int *);
+    *(*current_word) (buf_t *, char *, const char *, int, int *, int *);
 
   size_t
     (*size) (buf_t *),
@@ -755,16 +755,16 @@ typedef struct buf_set_self {
   bufset_row_self row;
   bufset_normal_self normal;
 
-  int (*fname) (buf_t *, char *);
+  int (*fname) (buf_t *, const char *);
 
   void
-    (*mode) (buf_t *, char *),
+    (*mode) (buf_t *, const char *),
     (*ftype) (buf_t *, int),
-    (*backup) (buf_t *, int, char *),
+    (*backup) (buf_t *, int, const char *),
     (*modified) (buf_t *),
     (*autosave) (buf_t *, long),
     (*autochdir) (buf_t *, int),
-    (*on_emptyline) (buf_t *, char *),
+    (*on_emptyline) (buf_t *, const char *),
     (*video_first_row) (buf_t *, int),
     (*show_statusline) (buf_t *, int);
 
@@ -800,10 +800,10 @@ typedef struct buf_current_self {
     *(*delete) (buf_t *),
     *(*prepend) (buf_t *, row_t *),
     *(*append) (buf_t *, row_t *),
-    *(*append_with) (buf_t *, char *),
-    *(*append_with_len) (buf_t *, char *, size_t),
-    *(*prepend_with) (buf_t *, char *),
-    *(*replace_with) (buf_t *, char *);
+    *(*append_with) (buf_t *, const char *),
+    *(*append_with_len) (buf_t *, const char *, size_t),
+    *(*prepend_with) (buf_t *, const char *),
+    *(*replace_with) (buf_t *, const char *);
 } buf_current_self;
 
 typedef struct buf_release_self {
@@ -993,10 +993,10 @@ typedef struct buf_self {
     (*write) (buf_t *, int),
     (*search) (buf_t *, char, char *, utf8),
     (*indent) (buf_t *, int, utf8),
-    (*substitute) (buf_t *, char *, char *, int, int, int, int),
+    (*substitute) (buf_t *, const char *, const char *, int, int, int, int),
     (*backupfile) (buf_t *);
 
-  ssize_t (*init_fname) (buf_t *, char *);
+  ssize_t (*init_fname) (buf_t *, const char *);
 
   row_t *(*append_with) (buf_t *, char *);
   string_t *(*input_box) (buf_t *, int, int, int, char *);
@@ -1076,7 +1076,7 @@ typedef struct win_self {
     (*draw) (win_t *);
 
   int
-    (*edit_fname)    (win_t *, buf_t **, char *, int, int, int, int),
+    (*edit_fname)    (win_t *, buf_t **, const char *, int, int, int, int),
     (*append_buf)    (win_t *, buf_t *),
     (*prepend_buf)   (win_t *, buf_t *),
     (*insert_buf_at) (win_t *, buf_t *, int);
@@ -1116,7 +1116,7 @@ typedef struct ed_get_self {
     *(*win_head) (ed_t *),
     *(*win_next) (ed_t *, win_t *),
     *(*win_by_idx) (ed_t *, int),
-    *(*win_by_name) (ed_t *, char *, int *);
+    *(*win_by_name) (ed_t *, const char *, int *);
 
   term_t *(*term) (ed_t *);
 
@@ -1124,7 +1124,7 @@ typedef struct ed_get_self {
 
   video_t *(*video) (ed_t *);
 
-  void *(*callback_fun) (ed_t *, char *);
+  void *(*callback_fun) (ed_t *, const char *);
 } ed_get_self;
 
 typedef struct ed_unset_self {
@@ -1146,7 +1146,7 @@ typedef struct ed_set_self {
     (*topline) (ed_t *, buf_t *),
     (*readline_cb) (ed_t *, BufReadline_cb),
     (*lang_map) (ed_t *, int[][26]),
-    (*lang_mode) (ed_t *, char *),
+    (*lang_mode) (ed_t *, const char *),
     (*record_cb) (ed_t *, Record_cb),
     (*at_exit_cb) (ed_t *, EdAtExit_cb),
     (*lang_getkey) (ed_t *, LangGetKey_cb),
@@ -1154,7 +1154,7 @@ typedef struct ed_set_self {
     (*expr_reg_cb) (ed_t *, ExprRegister_cb),
     (*init_record_cb) (ed_t *, InitRecord_cb),
     (*on_normal_g_cb)  (ed_t *, BufNormalOng_cb),
-    (*word_actions) (ed_t *, utf8 *, int, char *, WordActions_cb),
+    (*word_actions) (ed_t *, utf8 *, int, const char *, WordActions_cb),
     (*cw_mode_actions) (ed_t *, utf8 *, int, char *, VisualCwMode_cb),
     (*lw_mode_actions) (ed_t *, utf8 *, int, char *, VisualLwMode_cb),
     (*line_mode_actions) (ed_t *, utf8 *, int, char *, LineMode_cb),
@@ -1166,7 +1166,7 @@ typedef struct ed_set_self {
 
 typedef struct ed_syn_self {
   void (*append) (ed_t *, syn_t);
-  int  (*get_ftype_idx) (ed_t *, char *);
+  int  (*get_ftype_idx) (ed_t *, const char *);
 } ed_syn_self;
 
 typedef struct ed_reg_self {
@@ -1179,13 +1179,13 @@ typedef struct ed_append_self {
   int (*win) (ed_t *, win_t *);
 
   void
-    (*message_fmt) (ed_t *, char *, ...),
-    (*message) (ed_t *, char *),
-    (*toscratch_fmt) (ed_t *, int, char *, ...),
-    (*toscratch) (ed_t *, int, char *),
-    (*command_arg) (ed_t *, char *, char *, size_t),
-    (*readline_commands) (ed_t *, char **, int, int[], int[]),
-    (*readline_command) (ed_t *, char *, int, int);
+    (*message_fmt) (ed_t *, const char *, ...),
+    (*message) (ed_t *, const char *),
+    (*toscratch_fmt) (ed_t *, int, const char *, ...),
+    (*toscratch) (ed_t *, int, const char *),
+    (*command_arg) (ed_t *, const char *, const char *, size_t),
+    (*readline_commands) (ed_t *, const char **, int, int[], int[]),
+    (*readline_command) (ed_t *, const char *, int, int);
 } ed_append_self;
 
 typedef struct ed_readjust_self {
@@ -1199,16 +1199,16 @@ typedef struct ed_readline_self {
 } ed_readline_self;
 
 typedef struct ed_buf_self {
-  int (*change) (ed_t  *, buf_t **, char *, char *);
-  buf_t *(*get) (ed_t  *, char *, char *);
+  int (*change) (ed_t  *, buf_t **, const char *, const char *);
+  buf_t *(*get) (ed_t  *, const char *, const char *);
 } ed_buf_self;
 
 typedef struct ed_win_self {
   win_t
-    *(*new) (ed_t *, char *, int),
-    *(*init) (ed_t *, char *, WinDimCalc_cb),
-    *(*new_special) (ed_t *, char *, int);
-  int (*change) (ed_t *, buf_t **, int, char *, int, int);
+    *(*new) (ed_t *, const char *, int),
+    *(*init) (ed_t *, const char *, WinDimCalc_cb),
+    *(*new_special) (ed_t *, const char *, int);
+  int (*change) (ed_t *, buf_t **, int, const char *, int, int);
 } ed_win_self;
 
 typedef struct ed_menu_self {
@@ -1223,8 +1223,8 @@ typedef struct ed_sh_self {
 
 typedef struct edhistory_set_self {
   string_t
-    *(*readline_file) (ed_t *, char *),
-    *(*search_file) (ed_t *, char *);
+    *(*readline_file) (ed_t *, const char *),
+    *(*search_file) (ed_t *, const char *);
 } edhistory_set_self;
 
 typedef struct edhistory_get_self {
@@ -1268,7 +1268,7 @@ typedef struct ed_self {
   void
     (*release) (ed_t *),
     (*release_info) (ed_t *, edinfo_t **),
-    (*record) (ed_t *, char *, ...),
+    (*record) (ed_t *, const char *, ...),
     (*suspend) (ed_t *),
     (*resume) (ed_t *),
     (*deinit_commands) (ed_t *);
@@ -1369,7 +1369,7 @@ typedef struct E_self {
     (*main) (E_T *, buf_t *),
     (*delete) (E_T *, int, int),
     (*exit_all) (E_T *),
-    (*load_file) (E_T *, char *, int, char **),
+    (*load_file) (E_T *, char *, int, const char **),
     (*save_image) (E_T *, char *);
 
   void
@@ -1391,7 +1391,7 @@ typedef struct E_T {
   this_T *__This__;
 } E_T;
 
-public E_T *__init_ed__ (char *);
+public E_T *__init_ed__ (const char *);
 public void __deinit_ed__ (E_T **);
 
 public mutable size_t tostderr (char *);

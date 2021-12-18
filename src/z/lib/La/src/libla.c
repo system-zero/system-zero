@@ -467,7 +467,7 @@ typedef struct tokenState {
 } while (0)
 
 #define PRINT_ERR_CONSTANT(_e_) do {                                     \
-  char *err_msg_const[] = {                                              \
+  const char *err_msg_const[] = {                                        \
       "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",                     \
       "UNKNOWN TYPE", "TOOMANY FUNCTION ARGUMENTS",                      \
       "NUM FUNCTION ARGUMENTS MISMATCH", "OUT OF BOUNDS",                \
@@ -563,7 +563,7 @@ static int la_parse_func_def (la_t *);
 static int la_eval_file (la_t *, const char *);
 static int la_parse_fmt (la_t *, string *, int);
 static sym_t *la_lookup_symbol (la_t *, la_string);
-static sym_t *la_define_symbol (la_t *, funT *, char *, int, VALUE, int);
+static sym_t *la_define_symbol (la_t *, funT *, const char *, int, VALUE, int);
 static VALUE la_release_val (la_t *, VALUE);
 static VALUE string_release (VALUE);
 static VALUE la_copy_map (VALUE);
@@ -589,14 +589,14 @@ static int la_parse_array_get (la_t *, VALUE *);
 static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static int la_parse_map_get (la_t *, VALUE *);
 static int la_parse_map_set (la_t *);
-static int la_map_set_value (la_t *, Vmap_t *, char *, VALUE, int);
+static int la_map_set_value (la_t *, Vmap_t *, const char *, VALUE, int);
 static int la_parse_loadfile (la_t *);
 static int la_parse_chain (la_t *, VALUE *);
 static void la_set_CFuncError (la_t *, int);
-static void la_set_curMsg (la_t *, char *);
+static void la_set_curMsg (la_t *, const char *);
 static void la_set_Errno (la_t *, int);
 
-static void la_set_message (la_t *this, int append, char *msg) {
+static void la_set_message (la_t *this, int append, const char *msg) {
   if (NULL is msg) return;
   if (append)
     String.append_with (this->message, msg);
@@ -604,7 +604,7 @@ static void la_set_message (la_t *this, int append, char *msg) {
     String.replace_with (this->message, msg);
 }
 
-static void la_set_message_fmt (la_t *this, int append, char *fmt, ...) {
+static void la_set_message_fmt (la_t *this, int append, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
@@ -878,7 +878,7 @@ static void la_get_span (la_t *this, int (*testfn) (int)) {
   if (c isnot TOKEN_EOF) UNGET_BYTE();
 }
 
-static int la_get_opened_block (la_t *this, char *msg) {
+static int la_get_opened_block (la_t *this, const char *msg) {
   int bracket = 1;
   int c;
   int prev_c = 0;
@@ -1067,7 +1067,7 @@ static VALUE la_qualifier_exists (la_t *this, VALUE v_key) {
   return INT(Vmap.key_exists (this->qualifiers, AS_STRING_BYTES(v_key)));
 }
 
-static int la_C_qualifier_exists (la_t *this, char *key) {
+static int la_C_qualifier_exists (la_t *this, const char *key) {
   return Vmap.key_exists (this->qualifiers, key);
 }
 
@@ -1087,7 +1087,7 @@ static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
   return la_copy_value ((*v));
 }
 
-static VALUE la_get_qualifier (la_t *this, char *key, VALUE v_defval) {
+static VALUE la_get_qualifier (la_t *this, const char *key, VALUE v_defval) {
   if (NULL is this->qualifiers)
     return v_defval;
 
@@ -1842,7 +1842,7 @@ static funT *Fun_new (la_t *this, funNewArgs options) {
   return f;
 }
 
-static sym_t *la_define_block_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
+static sym_t *la_define_block_symbol (la_t *this, funT *f, const char *key, int typ, VALUE value, int is_const) {
   (void) this;
   ifnot (key) return NULL;
 
@@ -1861,7 +1861,7 @@ static sym_t *la_define_block_symbol (la_t *this, funT *f, char *key, int typ, V
   return sym;
 }
 
-static sym_t *la_define_symbol (la_t *this, funT *f, char *key, int typ, VALUE value, int is_const) {
+static sym_t *la_define_symbol (la_t *this, funT *f, const char *key, int typ, VALUE value, int is_const) {
   if (this->curState & BLOCK_STATE)
     return la_define_block_symbol (this, f, key, typ, value, is_const);
 
@@ -1892,7 +1892,7 @@ static int la_define_type (la_t *this, const char *key, int typ, VALUE val) {
   return (NULL is sym ? LA_NOTOK : LA_OK);
 }
 
-static inline sym_t *ns_lookup_symbol (funT *scope, char *key) {
+static inline sym_t *ns_lookup_symbol (funT *scope, const char *key) {
   return Vmap.get (scope->symbols, key);
 }
 
@@ -3823,7 +3823,7 @@ static void la_map_release_value (la_t *this, VALUE *v) {
   la_release_map_val (v);
 }
 
-static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int scope) { 
+static int la_map_set_value (la_t *this, Vmap_t *map, const char *key, VALUE v, int scope) { 
   VALUE *val = Alloc (sizeof (VALUE));
   val->refcount = v.refcount;
   val->type = v.type;
@@ -3865,7 +3865,7 @@ static int la_map_set_value (la_t *this, Vmap_t *map, char *key, VALUE v, int sc
   return LA_OK;
 }
 
-static int la_map_reset_value (la_t *this, Vmap_t *map, char *key, VALUE v) {
+static int la_map_reset_value (la_t *this, Vmap_t *map, const char *key, VALUE v) {
   VALUE *val = Vmap.pop (map, key);
   int scope = PUBLIC_SCOPE;
 
@@ -4203,6 +4203,7 @@ static int la_parse_map_members (la_t *this, VALUE map) {
       case TOKEN_PAREN_CLOS:
         if (this->exprList) goto theend;
 
+      // fall through
       default:
         THROW_SYNTAX_ERR(
           "error while getting a map field, awaiting a double quoted string or an identifier token");
@@ -4236,6 +4237,7 @@ static int la_parse_map_members (la_t *this, VALUE map) {
         if (this->exprList)
           goto theend;
 
+      // fall through
       default:
         THROW_SYNTAX_ERR("awaiting a new line or a comma");
     }
@@ -5364,6 +5366,7 @@ static int la_parse_prefix (la_t *this, VALUE *vp, int op_token) {
     }
 
     case TOKEN_ARRAY:
+    // fall through
     case TOKEN_MAP: {
       int token = TOKEN;
       VALUE tokenval = TOKENVAL;
@@ -5460,6 +5463,7 @@ static int la_parse_prefix (la_t *this, VALUE *vp, int op_token) {
           return LA_OK;
       }
     }
+    break;
 
     default:
       THROW_SYNTAX_ERR("awaiting a variable, a map or an array");
@@ -6524,12 +6528,14 @@ next:
         goto next;
       }
 
+    // fall through
     case TOKEN_PAREN_CLOS:
       if (is_paren_open) {
         is_paren_open--;
         goto next;
       }
 
+    // fall through
     case TOKEN_BLOCK:
       ifnot (is_binop)
         break;
@@ -6541,6 +6547,7 @@ next:
         goto next;
       }
 
+    // fall through
     case TOKEN_NL:
       if (is_binop)
         goto next;
@@ -6805,10 +6812,12 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
         ifnot (this->curState & INDEX_STATE)
           break;
 
+      // fall through
       case TOKEN_SEMICOLON:
       case TOKEN_NL:
         if (paren_open) break;
 
+      // fall through
       case TOKEN_EOF:
         if (this->funcState & CHAIN_STATE)
           break;
@@ -9142,6 +9151,7 @@ static int la_parse_print (la_t *this) {
         if (1 is num_iterations)
           break;
 
+      // fall through
       default:
         String.append_with_fmt (str, "%p", AS_PTR(v));
         goto print_str;
@@ -9407,7 +9417,7 @@ theend:
 
 static int la_parse_import (la_t *this) {
   int err;
-  char *err_msg = "";
+  const char *err_msg = "";
 
   NEXT_TOKEN();
   int c = TOKEN;
@@ -10471,7 +10481,7 @@ LaDefCFun la_funs[] = {
   { NULL,               NULL_VALUE, NULL_TYPE},
 };
 
-static int la_def_std (la_t *this, char *name, int type, VALUE v, int is_const) {
+static int la_def_std (la_t *this, const char *name, int type, VALUE v, int is_const) {
   ifnot (is_const) {
     sym_t *sym = la_define_symbol (this, this->std, name, type, v, 0);
     return (sym is NULL ? LA_NOTOK : LA_OK);
@@ -10645,7 +10655,7 @@ static int la_print_byte (FILE *fp, int c) {
   return la_print_fmt_bytes (fp, "%c", c);
 }
 
-static VALUE I_print_bytes (la_t *this, char *bytes) {
+static VALUE I_print_bytes (la_t *this, const char *bytes) {
   VALUE result = INT(this->print_bytes (this->out_fp, bytes));
   return result;
 }
@@ -10884,7 +10894,7 @@ static la_t *la_new (la_T *__la__) {
   return this;
 }
 
-static char *la_name_gen (char *name, int *name_gen, char *prefix, size_t prelen) {
+static char *la_name_gen (char *name, int *name_gen, const char *prefix, size_t prelen) {
   size_t num = (*name_gen / 26) + prelen;
   size_t i = 0;
   for (; i < prelen; i++) name[i] = prefix[i];
@@ -10961,7 +10971,7 @@ static void la_set_CFuncError (la_t *this, int err) {
   this->CFuncError = err;
 }
 
-static void la_set_curMsg (la_t *this, char *msg) {
+static void la_set_curMsg (la_t *this, const char *msg) {
   Cstring.cp (this->curMsg, MAXLEN_MSG + 1, msg, bytelen (msg));
 }
 
@@ -10978,7 +10988,7 @@ static VALUE la_set_errno (la_t *this, VALUE v_err) {
   return v_err;
 }
 
-static void la_set_la_dir (la_t *this, char *fn) {
+static void la_set_la_dir (la_t *this, const char *fn) {
   if (NULL is fn) return;
   size_t len = bytelen (fn);
   String.replace_with_len (this->la_dir, fn, len);
@@ -11155,14 +11165,14 @@ static la_t *la_init_instance (la_T *__la__, la_opts opts) {
   return this;
 }
 
-static int la_loadfile (la_t *this, char *fn) {
+static int la_loadfile (la_t *this, const char *fn) {
   int err = la_eval_file (this, fn);
   if (err is LA_ERR_EXIT)
     return this->exitValue;
   return err;
 }
 
-static int la_load_file (la_T *__la__, la_t *this, char *fn) {
+static int la_load_file (la_T *__la__, la_t *this, const char *fn) {
   if (this is NULL)
     this = la_init_instance (__la__, LaOpts());
 

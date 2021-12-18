@@ -304,8 +304,7 @@ handle_char:
           vcol_pos += (num - vcol_pos);
         }
 
-        //__fallthrough__;
-
+      // fall through
       case ARROW_UP_KEY:
         if (vrow_pos is first_row) {
           ifnot (frow_idx) {
@@ -334,8 +333,7 @@ handle_char:
         cur_idx -= (vcol_pos - 1);
         vcol_pos = 1;
 
-        //__fallthrough__;
-
+      // fall through
       case ARROW_DOWN_KEY:
         if (vrow_pos is this->last_row or (vrow_pos - first_row + 1 is num_rows)) {
           if (cur_idx + (num - vcol_pos) + 1 >= this->list->num_items) {

@@ -157,7 +157,7 @@ static void readline_release_members (readline_t *this) {
   this->cur_idx = 0;
 }
 
-public void readline_release (readline_t *this) {
+static void readline_release (readline_t *this) {
   readline_release_members (this);
   String.release (this->render);
   free (this);
@@ -1088,7 +1088,7 @@ static readline_arg_t *readline_get_arg (readline_t *this, int type) {
   return NULL;
 }
 
-static string_t *readline_get_anytype_arg (readline_t *this, char *argname) {
+static string_t *readline_get_anytype_arg (readline_t *this, const char *argname) {
   readline_arg_t *arg = this->tail;
   while (arg) {
     if (arg->type & READLINE_ARG_ANYTYPE) {
@@ -1113,7 +1113,7 @@ static string_t *readline_get_command (readline_t *this) {
   return str;
 }
 
-static Vstring_t *readline_get_anytype_args (readline_t *this, char *argname) {
+static Vstring_t *readline_get_anytype_args (readline_t *this, const char *argname) {
   Vstring_t *args = NULL;
   readline_arg_t *arg = this->head;
   while (arg) {
@@ -1141,7 +1141,7 @@ static void readline_history_push (readline_t *this) {
   DListPrependCurrent (this->history, hthis);
 }
 
-static int readline_arg_exists (readline_t *this, char *argname) {
+static int readline_arg_exists (readline_t *this, const char *argname) {
   readline_arg_t *arg = this->head;
   while (arg) {
     if (Cstring.eq (arg->argname->bytes, argname)) return 1;

@@ -36,7 +36,8 @@ int main (int argc, char **argv) {
 
   PARSE_ARGS;
 
-  char *vargv[MAX_ARGS]; memset (vargv, 0, MAX_ARGS * sizeof (char *));
+  const char *vargv[MAX_ARGS];
+  memset (vargv, 0, MAX_ARGS * sizeof (char *));
   int vargc = 1;
 
   if (argc) {

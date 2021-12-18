@@ -44,7 +44,22 @@ typedef void(linenoiseFreeHintsCallback)(void *, void *);
 OnInput_cb linenoiseOnInputCallback;
 OnCarriageReturn_cb linenoiseOnCarriageReturnCallback;
 
-int linenoiseHistoryAdd(const char *line);
+int linenoiseHistoryAdd(const char *);
+char **linenoiseHistory(int *);
+int linenoiseHistorySave(const char *);
+int linenoiseHistorySetMaxLen(int);
+int linenoiseHistoryGetMaxLen(void);
+int linenoiseHistoryLoad(const char *);
+int linenoiseHistoryAddAllocated(char *);
+void linenoiseSetHintsCallback(linenoiseHintsCallback *, void *);
+void linenoiseHistoryFree(void);
+void linenoiseClearScreen(void);
+linenoiseCompletionCallback linenoiseSetCompletionCallback(linenoiseCompletionCallback, void *);
+void linenoiseAddCompletion(linenoiseCompletions *, const char *, int);
+void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *);
+void linenoiseSetMultiLine(int);
+char *linenoise(const char *);
+int linenoiseColumns(void);
 
 #ifndef UTF8_UTIL_H
 #define UTF8_UTIL_H
@@ -472,6 +487,7 @@ typedef struct {
  * Allocates and returns a new stringbuf with no elements.
  */
 stringbuf *sb_alloc(void);
+void sb_realloc(stringbuf *, int);
 
 /**
  * Frees a stringbuf.
@@ -2425,6 +2441,7 @@ static int linenoiseEdit(struct currentLine *current) {
                 return -1;
             }
             /* Otherwise fall through to delete char to right of cursor */
+            // fall through
         case SPECIAL_DELETE:
             if (remove_char(current, current->pos) == 1) {
                 refreshLine(current);
@@ -2860,7 +2877,7 @@ static void rline_set_flags (rline_t *this, rlineCompletions *lc, int flags) {
   lc->flags |= flags;
 }
 
-static void rline_set_prompt (rline_t *this, char *prompt) {
+static void rline_set_prompt (rline_t *this, const char *prompt) {
   if (NULL is prompt)
     String.clear ($my(prompt));
   else

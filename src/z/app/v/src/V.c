@@ -9,7 +9,7 @@
 
 #include <z/cenv.h>
 
-int main (int argc, char **argv) {
+int main (int argc, const char **argv) {
   v_opts opts = VOpts(
     .argc = argc,
     .argv = argv

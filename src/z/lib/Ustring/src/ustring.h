@@ -48,7 +48,7 @@ typedef struct ustring_self {
     (*release) (Ustring_t *),
     (*release_members) (Ustring_t *);
 
-  ustring_t *(*encode) (Ustring_t *, char *, size_t, int, int, int);
+  ustring_t *(*encode) (Ustring_t *, const char *, size_t, int, int, int);
 
   char
      *(*character) (utf8, char *, int *),

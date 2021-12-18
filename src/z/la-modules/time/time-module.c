@@ -106,7 +106,7 @@ static VALUE time_to_seconds (la_t *this, VALUE v_tm) {
   ifnot (IS_MAP(v_tm))
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a tm map");
 
-  struct tm tm_p;
+  struct tm tm_p = {0};
   Vmap_t *_tm = AS_MAP (v_tm);
 
   tm_p = map_to_tm (_tm, tm_p);
@@ -127,7 +127,7 @@ static VALUE time_to_seconds (la_t *this, VALUE v_tm) {
 static VALUE time_format (la_t *this, VALUE v_fmt, VALUE v_tm) {
   ifnot (IS_STRING(v_fmt)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
-  struct tm stm;
+  struct tm stm = {0};
 
   ifnot (IS_MAP(v_tm)) {
     ifnot (IS_NULL(v_tm))
@@ -193,6 +193,7 @@ static VALUE time_format (la_t *this, VALUE v_fmt, VALUE v_tm) {
 
 #define EvalString(...) #__VA_ARGS__
 
+public int __init_time_module__ (la_t *this);
 public int __init_time_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(vmap);
@@ -230,6 +231,7 @@ public int __init_time_module__ (la_t *this) {
   return LA_OK;
 }
 
+public void __deinit_time_module__ (la_t *this);
 public void __deinit_time_module__ (la_t *this) {
   (void) this;
   return;

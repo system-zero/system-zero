@@ -46,7 +46,7 @@ typedef struct re_t {
 typedef int  (*ReCompile_cb) (re_t *);
 
 typedef struct re_self {
-  re_t *(*new) (char *, int, int, int (*) (re_t *));
+  re_t *(*new) (const char *, int, int, int (*) (re_t *));
   void
     (*release) (re_t *),
     (*release_captures) (re_t *),
@@ -59,7 +59,7 @@ typedef struct re_self {
     (*compile) (re_t *);
 
   string_t
-    *(*parse_substitute) (re_t *, char *, char *),
+    *(*parse_substitute) (re_t *, const char *, const char *),
     *(*get_match) (re_t *, int);
 } re_self;
 

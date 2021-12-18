@@ -27,9 +27,10 @@ typedef struct proc_unset_self {
 
 typedef struct proc_set_self {
   void
+    (*argv) (proc_t *, int, const char **),
     (*prev) (proc_t *, proc_t *),
     (*next) (proc_t *, proc_t *),
-    (*stdin) (proc_t *, char *, size_t),
+    (*stdin) (proc_t *, const char *, size_t),
     (*dup_stdin) (proc_t *, int),
     (*at_fork_cb) (proc_t *, ProcAtFork_cb),
     (*pre_fork_cb) (proc_t *, ProcPreFork_cb),
@@ -49,11 +50,11 @@ typedef struct proc_self {
     (*release) (proc_t *),
     (*release_argv) (proc_t *);
 
-  char **(*parse) (proc_t *, char *);
+  char **(*parse) (proc_t *, const char *);
 
   int
     (*open) (proc_t *),
-    (*exec) (proc_t *, char *),
+    (*exec) (proc_t *, const char *),
     (*read) (proc_t *);
 
   pid_t (*wait) (proc_t *);

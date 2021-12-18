@@ -470,7 +470,7 @@ int main (int argc, char **argv) {
     }
   }
 
-  la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
+  la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = (const char **) argv));
 
   #ifdef REQUIRE_PATH_MODULE
     __INIT__ (vmap);

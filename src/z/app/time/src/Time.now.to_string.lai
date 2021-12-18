@@ -1,0 +1,5 @@
+import ("time")
+
+println (stdout, Time.to_string (null));
+
+exit (0)

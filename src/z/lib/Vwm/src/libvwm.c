@@ -604,7 +604,7 @@ static void readline_realloc_command_arg (readline_com_t *rlcom, int num) {
     rlcom->args[i] = NULL;
 }
 
-static void vwm_readline_append_command_arg (vwm_t *this, char *com, char *argname, size_t len) {
+static void vwm_readline_append_command_arg (vwm_t *this, const char *com, const char *argname, size_t len) {
   if (len <= 0) len = bytelen (argname);
 
   int i = 0;
@@ -632,7 +632,7 @@ static void vwm_readline_append_command_arg (vwm_t *this, char *com, char *argna
   }
 }
 
-static void vwm_readline_append_command (vwm_t *this, char *command,
+static void vwm_readline_append_command (vwm_t *this, const char *command,
                        size_t command_len, int num_args) {
   int len = $my(num_commands) + 1;
 
@@ -749,7 +749,7 @@ static char *vwm_get_tmpdir (vwm_t *this) {
   ifnot (NULL is $my(tmpdir))
     return $my(tmpdir)->bytes;
 
-  return TMPDIR;
+  return (char *) TMPDIR;
 }
 
 static int vwm_get_num_wins (vwm_t *this) {
@@ -853,7 +853,7 @@ static vframe_info *frame_get_info (vwm_frame *this) {
   finfo->is_visible = this->is_visible;
   finfo->is_current = this->parent->current is this;
   finfo->at_frame = (this->is_visible ? this->at_frame : -1);
-  finfo->logfile = (NULL is this->logfile ? "" : this->logfile->bytes);
+  finfo->logfile = (NULL is this->logfile ? (char *) "" : this->logfile->bytes);
 
   int arg = 0;
   for (; arg < this->argc; arg++)
@@ -892,9 +892,9 @@ static vwm_info *vwm_get_info (vwm_t *this) {
   vinfo->pid = getpid ();
   vinfo->num_win = $my(num_items);
   vinfo->cur_win_idx = $my(cur_idx);
-  vinfo->sequences_fname = (NULL is $my(sequences_fname) ? "" :
+  vinfo->sequences_fname = (NULL is $my(sequences_fname) ? (char *) "" :
       $my(sequences_fname)->bytes);
-  vinfo->unimplemented_fname = (NULL is $my(unimplemented_fname) ? "" :
+  vinfo->unimplemented_fname = (NULL is $my(unimplemented_fname) ? (char *) "" :
       $my(unimplemented_fname)->bytes);
 
   vinfo->wins = Alloc (sizeof (vwin_info *) * $my(num_items));
@@ -1612,6 +1612,8 @@ static string_t *vt_process_m (vwm_frame *frame, string_t *buf, int c) {
 
     case 39:
       c = 30;
+
+    // fall through
     case 30 ... 37:
       vt_setfg (buf, c);
       idx = frame->num_cols - frame->col_pos + 1;
@@ -1623,6 +1625,8 @@ static string_t *vt_process_m (vwm_frame *frame, string_t *buf, int c) {
 
     case 49:
       c = 47;
+
+    // fall through
     case 40 ... 47:
       vt_setbg (buf, c);
       break;
@@ -1813,12 +1817,14 @@ frame->unimplemented_cb (frame, "brace why", c, frame->esc_param[0]);
       frame->esc_param[0] = row;
       frame->esc_param[1] = col;
     }
+      break;
 
     case 'd': /* (vpa - HVP) (ADDITION) */
       frame->unimplemented_cb (frame, "ADDI param[0]", c, frame->esc_param[0]);
       frame->unimplemented_cb (frame, "ADDI param[1]", c, frame->esc_param[1]);
       frame->unimplemented_cb (frame, "ADDI row_pos", c, frame->row_pos);
       frame->unimplemented_cb (frame, "ADDI col_pos", c, frame->col_pos);
+      break;
 
     case 'f':
     case 'H': /* Move cursor to coordinates */
@@ -2425,8 +2431,8 @@ static void frame_release_argv (vwm_frame *this) {
   argv_release (this->argv, &this->argc);
 }
 
-static char **parse_command (char *command, int *argc) {
-  char *sp = command;
+static char **parse_command (const char *command, int *argc) {
+  char *sp = (char *) command;
   char *tokbeg;
   size_t len;
 
@@ -2475,7 +2481,7 @@ theerror:
   return NULL;
 }
 
-static void frame_set_command (vwm_frame *this, char *command) {
+static void frame_set_command (vwm_frame *this, const char *command) {
   if (NULL is command or 0 is bytelen (command))
     return;
 
@@ -2499,7 +2505,7 @@ static void frame_set_visibility (vwm_frame *this, int visibility) {
   this->is_visible = (0 isnot visibility);
 }
 
-static void frame_set_argv (vwm_frame *this, int argc, char **argv) {
+static void frame_set_argv (vwm_frame *this, int argc, const char **argv) {
   if (argc <= 0) return;
 
   self(release_argv);
@@ -2644,7 +2650,7 @@ static void frame_set_unimplemented_cb (vwm_frame *this, FrameUnimplemented_cb c
   this->unimplemented_cb = cb;
 }
 
-static int frame_set_log (vwm_frame *this, char *fname, int remove_log) {
+static int frame_set_log (vwm_frame *this, const char *fname, int remove_log) {
   self(release_log);
 
   if (NULL is fname or fname[0] is '\0') {
@@ -2799,7 +2805,7 @@ static vwm_frame *win_pop_frame_at (vwm_win *this, int idx) {
   return DListPopAt (this, vwm_frame, idx);
 }
 
-static vwm_frame *win_add_frame (vwm_win *this, int argc, char **argv, int draw) {
+static vwm_frame *win_add_frame (vwm_win *this, int argc, const char **argv, int draw) {
   int num_frames = self(get.num_visible_frames);
 
   if (num_frames is this->max_frames) return NULL;
@@ -2956,7 +2962,7 @@ static void win_release_frame_at (vwm_win *this, int idx) {
   free (frame);
 }
 
-static void vwm_make_separator (string_t *render, char *color, int cells, int row, int col) {
+static void vwm_make_separator (string_t *render, const char *color, int cells, int row, int col) {
   vt_goto (render, row, col);
   String.append_with(render, color);
   for (int i = 0; i < cells; i++)
@@ -3414,12 +3420,13 @@ static int frame_edit_log (vwm_frame *frame) {
   return OK;
 }
 
-static char *vwm_name_gen (int *name_gen, char *prefix, size_t prelen) {
+static char *vwm_name_gen (const int *name_gen, const char *prefix, size_t prelen) {
+  char *ng = (char *) name_gen;
   size_t num = (*name_gen / 26) + prelen;
   char *name = Alloc (num * sizeof (char *) + 1);
   size_t i = 0;
   for (; i < prelen; i++) name[i] = prefix[i];
-  for (; i < num; i++) name[i] = 'a' + ((*name_gen)++ % 26);
+  for (; i < num; i++) name[i] = 'a' + ((*ng)++ % 26);
   name[num] = '\0';
   return name;
 }
@@ -4777,7 +4784,9 @@ getc_again:
 }
 
 mutable public void __alloc_error_handler__ (int err, size_t size,
-                           char *file, const char *func, int line) {
+                     const char *file, const char *func, int line);
+mutable public void __alloc_error_handler__ (int err, size_t size,
+                     const char *file, const char *func, int line) {
   Stderr.print ("MEMORY_ALLOCATION_ERROR\n");
   Stderr.print_fmt ("File: %s\nFunction: %s\nLine: %d\n", file, func, line);
   Stderr.print_fmt ("Size: %zd\n", size);

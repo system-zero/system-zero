@@ -79,7 +79,7 @@ static char *vstring_to_cstring (Vstring_t *this, int addnl) {
 }
 
 /* maybe also a vstring_join_u() for characters as separators */
-static string_t *vstring_join_allocated (Vstring_t *this, char *sep, string_t *bytes) {
+static string_t *vstring_join_allocated (Vstring_t *this, const char *sep, string_t *bytes) {
   String.clear (bytes);
 
   vstring_t *it = this->head;
@@ -96,7 +96,7 @@ static string_t *vstring_join_allocated (Vstring_t *this, char *sep, string_t *b
   return bytes;
 }
 
-static string_t *vstring_join (Vstring_t *this, char *sep) {
+static string_t *vstring_join (Vstring_t *this, const char *sep) {
   string_t *bytes = String.new (32);
   return vstring_join_allocated (this, sep, bytes);
 }
@@ -108,19 +108,19 @@ static void vstring_append (Vstring_t *this, vstring_t *new) {
   DListSetCurrent (this, cur_idx);
 }
 
-static void vstring_current_append_with (Vstring_t *this, char *bytes) {
+static void vstring_current_append_with (Vstring_t *this, const char *bytes) {
   vstring_t *vstr = Alloc (sizeof (vstring_t));
   vstr->data = String.new_with (bytes);
   DListAppendCurrent (this, vstr);
 }
 
-static void vstring_current_append_with_len (Vstring_t *this, char *bytes, size_t len) {
+static void vstring_current_append_with_len (Vstring_t *this, const char *bytes, size_t len) {
   vstring_t *vstr = Alloc (sizeof (vstring_t));
   vstr->data = String.new_with_len (bytes, len);
   DListAppendCurrent (this, vstr);
 }
 
-static void vstring_append_with_len (Vstring_t *this, char *bytes, size_t len) {
+static void vstring_append_with_len (Vstring_t *this, const char *bytes, size_t len) {
   int cur_idx = this->cur_idx;
   if (cur_idx isnot this->num_items - 1)
     DListSetCurrent (this, -1);
@@ -129,7 +129,7 @@ static void vstring_append_with_len (Vstring_t *this, char *bytes, size_t len) {
   DListSetCurrent (this, cur_idx);
 }
 
-static void vstring_append_with (Vstring_t *this, char *bytes) {
+static void vstring_append_with (Vstring_t *this, const char *bytes) {
   int cur_idx = this->cur_idx;
   if (cur_idx isnot this->num_items - 1)
     DListSetCurrent (this, -1);
@@ -138,20 +138,20 @@ static void vstring_append_with (Vstring_t *this, char *bytes) {
   DListSetCurrent (this, cur_idx);
 }
 
-static void vstring_append_with_fmt (Vstring_t *this, char *fmt, ...) {
+static void vstring_append_with_fmt (Vstring_t *this, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
   vstring_append_with_len (this, bytes, len);
 }
 
-static void vstring_current_prepend_with (Vstring_t *this, char *bytes) {
+static void vstring_current_prepend_with (Vstring_t *this, const char *bytes) {
   vstring_t *vstr = Alloc (sizeof (vstring_t));
   vstr->data = String.new_with (bytes);
   DListPrependCurrent (this, vstr);
 }
 
-static void vstring_prepend_with (Vstring_t *this, char *bytes) {
+static void vstring_prepend_with (Vstring_t *this, const char *bytes) {
   vstring_t *vstr = Alloc (sizeof (vstring_t));
   vstr->data = String.new_with (bytes);
   DListPrepend (this, vstr);
@@ -171,7 +171,7 @@ static Vstring_t *vstring_dup (Vstring_t *this) {
 }
 
 /* so far, we always want sorted and unique members */
-static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, char *bytes) {
+static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, const char *bytes) {
   vstring_t *vs = Alloc (sizeof (vstring_t));
   vs->data = String.new_with (bytes);
 
@@ -245,7 +245,7 @@ theend:
   return vs;
 }
 
-static void vstring_append_uniq (Vstring_t *this, char *bytes) {
+static void vstring_append_uniq (Vstring_t *this, const char *bytes) {
   vstring_t *it = this->head;
   while (it) {
     if (Cstring.eq (it->data->bytes, bytes)) return;

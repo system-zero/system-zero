@@ -698,7 +698,7 @@ static char *_crypt_gensalt_blowfish_rn(unsigned long count, const char *input, 
 
 #define RANDBYTES 16
 
-int bcrypt_gensalt(int factor, char salt[BCRYPT_HASHSIZE]) {
+static int bcrypt_gensalt(int factor, char salt[BCRYPT_HASHSIZE]) {
   char input[RANDBYTES + 1];
   int workf;
   char *aux;
@@ -715,7 +715,7 @@ int bcrypt_gensalt(int factor, char salt[BCRYPT_HASHSIZE]) {
   return (aux == NULL) ? 1 : 0;
 }
 
-int bcrypt_hashpw (const char *passwd, const char salt[BCRYPT_HASHSIZE], char hash[BCRYPT_HASHSIZE]) {
+static int bcrypt_hashpw (const char *passwd, const char salt[BCRYPT_HASHSIZE], char hash[BCRYPT_HASHSIZE]) {
   char *aux;
   aux = _crypt_blowfish_rn(passwd, salt, hash, BCRYPT_HASHSIZE);
 

@@ -6,7 +6,7 @@ typedef utf8 (*IOGetkey) (int);
 typedef struct io_fd_self {
   idx_t
     (*read) (int, char *, idx_t),
-    (*write) (int, char *, idx_t);
+    (*write) (int, const char *, idx_t);
 } io_fd_self;
 
 typedef struct io_err_self {

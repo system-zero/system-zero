@@ -182,9 +182,9 @@ typedef struct readline_get_self {
   string_t
      *(*line) (readline_t *),
      *(*command) (readline_t *),
-     *(*anytype_arg) (readline_t *, char *);
+     *(*anytype_arg) (readline_t *, const char *);
 
-  Vstring_t *(*anytype_args) (readline_t *, char *);
+  Vstring_t *(*anytype_args) (readline_t *, const char *);
 
   readline_arg_t *(*arg) (readline_t *, int);
 
@@ -196,7 +196,7 @@ typedef struct readline_get_self {
 } readline_get_self;
 
 typedef struct readline_arg_self {
-  int (*exists) (readline_t *, char *);
+  int (*exists) (readline_t *, const char *);
 } readline_arg_self;
 
 typedef struct readline_history_self {

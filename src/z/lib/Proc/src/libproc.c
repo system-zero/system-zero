@@ -9,9 +9,12 @@
 #define REQUIRE_SYS_TYPES
 #define REQUIRE_SYS_WAIT
 #define REQUIRE_FCNTL
+#define REQUIRE_GLOB
 
 #define REQUIRE_LIST_MACROS
 #define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_SYS_TYPE     DECLARE
 #define REQUIRE_PROC_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -73,6 +76,10 @@ struct Proc_t {
 
 #define PIPE_READ_END  0
 #define PIPE_WRITE_END 1
+
+static int proc_exec (proc_t *, const char *);
+static char **proc_parse (proc_t *, const char *);
+static int proc_open (proc_t *);
 
 static int proc_pre_fork_default_cb (proc_t *this) {
   (void) this;
@@ -175,13 +182,158 @@ static int proc_read (proc_t *this) {
   return retval;
 }
 
-static char **proc_parse (proc_t *this, char *com) {
+static int read_output_cb (proc_t *this, FILE *stream, FILE *fp) {
+  (void) stream;
+  string *s = (string *) $my(user_data);
+
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t nread;
+
+  while (-1 isnot (nread = getline (&line, &len, fp)))
+    String.append_with_len (s, line, nread);
+
+  String.trim_end (s, '\n');
+
+  ifnot (NULL is line) free (line);
+  return OK;
+}
+
+static int proc_append_arg (proc_t *this, char *arg, size_t len, int just_append) {
+  string *s = NULL;
+
+  if (just_append) goto append;
+
+  char *p = arg;
+  if (*p is '~') {
+    p++;
+    len--;
+    char *hdir = Sys.get.env_value ("HOME");
+    s = String.new_with (hdir);
+
+    if (len and *p isnot DIR_SEP and *p isnot ' ')
+      String.append_byte (s, DIR_SEP);
+
+    String.append_with_len (s, p, len);
+    int err = proc_append_arg (this, s->bytes, s->num_bytes, 0);
+    String.release (s);
+    return err;
+  }
+
+  char *end = p + len;
+  if (*end is '"' or *end is '\0') { end--; len--; }
+  while (*end is ' ') { end--; len--; }
+
+  s = String.new (len);
+
+  while (p <= end) {
+    if (*p is '$') {
+      if (p + 1 <= end and *(p + 1) is '{') {
+        p += 2;
+        char *startvar = p;
+        while (p < end) {
+          if (*p is '}') break;
+          p++;
+        }
+
+        if (*p isnot '}') return NOTOK;
+
+        if (startvar is p - 1) {
+          p++;
+          continue;
+        }
+
+        size_t nlen = p - startvar;
+        char name[nlen + 1];
+        Cstring.cp (name, nlen + 1, startvar, nlen);
+        char *val = getenv (name);
+        ifnot (NULL is val)
+          String.append_with (s, val);
+
+        p++;
+        continue;
+      }
+
+      if (p + 1 <= end and *(p + 1) is '(') {
+        p += 2;
+        char *startvar = p;
+        while (p < end) {
+          if (*p is ')') break;
+          p++;
+        }
+
+        if (*p isnot ')') return NOTOK;
+
+        if (startvar is p - 1) {
+          p++;
+          continue;
+        }
+
+        size_t clen = p - startvar;
+        char com[clen + 1];
+        Cstring.cp (com, clen + 1, startvar, clen);
+        proc_t *proc = proc_new ();
+        string *sa = String.new (8);
+        proc->prop->user_data = sa;
+        proc->prop->read_stdout = 1;
+        proc->prop->read_stdout_cb = read_output_cb;
+        if (NULL is proc_parse (proc, com)) return NOTOK;
+        if (NOTOK is proc_open (proc)) return NOTOK;
+        proc_read (proc);
+        proc_wait (proc);
+        proc_release (proc);
+        proc_append_arg (this, sa->bytes, sa->num_bytes, 1);
+        String.release (sa);
+        p++;
+        continue;
+      }
+    }
+
+    String.append_byte (s, *p++);
+  }
+
+  ifnot (s->num_bytes) {
+    String.release (s);
+    return OK;
+  }
+
+  glob_t gl;
+
+  int retval = glob (s->bytes, 0, NULL, &gl);
+  ifnot (retval) {
+    for (size_t i = 0; i < gl.gl_pathc; i++)
+      proc_append_arg (this, gl.gl_pathv[i], bytelen (gl.gl_pathv[i]), 1);
+
+    globfree (&gl);
+    String.release (s);
+
+    return OK;
+
+  } else if (retval isnot GLOB_NOMATCH)
+    return NOTOK;
+
+append:
+  $my(argc)++;
+  $my(argv) = Realloc ($my(argv), sizeof (char *) * ($my(argc) + 1));
+
+  if (s is NULL) {
+    $my(argv)[$my(argc)-1] = Cstring.dup (arg, len);
+  } else {
+    $my(argv)[$my(argc)-1] = s->bytes;
+    free (s);
+  }
+
+  $my(argv)[$my(argc)] = (char *) NULL;
+  return OK;
+}
+
+static char **proc_parse (proc_t *this, const char *com) {
   if (NULL is com) return NULL;
 
   size_t len = bytelen (com);
   ifnot (len) return NULL;
 
-  char *sp = com;
+  char *sp = (char *) com;
 
   char *tokbeg;
   $my(argv) = Alloc (sizeof (char *));
@@ -210,6 +362,14 @@ parse_quoted:
       goto add_arg;
     }
 
+    if (*sp is '$' and *(sp + 1) is '(') {
+      sp += 2;
+      while (*sp and *sp isnot ')') sp++;
+      len = (size_t) (sp - tokbeg);
+      sp++;
+      goto add_arg;
+    }
+
     while (*sp and *sp isnot ' ') sp++;
     ifnot (*sp) {
       if (*(sp - 1) is '&') {
@@ -221,15 +381,14 @@ parse_quoted:
     len = (size_t) (sp - tokbeg);
 
 add_arg:
-    $my(argc)++;
-    $my(argv) = Realloc ($my(argv), sizeof (char *) * ($my(argc) + 1));
-    $my(argv)[$my(argc)-1] = Alloc (len + 1);
-    Cstring.cp ($my(argv)[$my(argc)-1], len + 1, tokbeg, len);
+
+    if (NOTOK is proc_append_arg (this, tokbeg, len, 0))
+      goto theerror;
+
     ifnot (*sp) break;
     sp++;
   }
 
-  $my(argv)[$my(argc)] = (char *) NULL;
   return $my(argv);
 
 theerror:
@@ -365,7 +524,7 @@ static void proc_set_prev (proc_t *this, proc_t *node) {
   this->prev = node;
 }
 
-static void proc_set_stdin (proc_t *this, char *buf, size_t size) {
+static void proc_set_stdin (proc_t *this, const char *buf, size_t size) {
   if (NULL is buf) return;
   $my(dup_stdin) = 1;
   $my(stdin_buf) = Alloc (size + 1);
@@ -401,6 +560,18 @@ static void proc_set_read_stream_cb (proc_t *this, int stream_flags, ProcRead_cb
   }
 }
 
+static void proc_set_argv (proc_t *this, int argc, const char **argv) {
+  $my(argv) = Alloc (sizeof (char *) * (argc));
+  for (int i = 0; i < argc; i++) {
+    size_t len = bytelen (argv[i]);
+    $my(argv)[i] = Alloc (len + 1);
+    Cstring.cp ($my(argv)[i], len + 1, argv[i], len);
+  }
+
+  $my(argc) = argc;
+  $my(argv)[$my(argc)] = (char *) NULL;
+}
+
 static proc_t *proc_get_next (proc_t *this) {
   if (NULL is this) return NULL;
   return this->next;
@@ -416,7 +587,7 @@ static void *proc_get_user_data (proc_t *this) {
   return $my(user_data);
 }
 
-static int proc_exec (proc_t *this, char *com) {
+static int proc_exec (proc_t *this, const char *com) {
   int retval = NOTOK;
 
   if (NULL is $my(argv))
@@ -435,7 +606,11 @@ theend:
 }
 
 public proc_T __init_proc__ (void) {
+  __INIT__ (sys);
+  __INIT__ (string);
   __INIT__ (cstring);
+
+  Sys.init_environment (SysEnvOpts());
 
   return (proc_T) {
     .self = (proc_self) {
@@ -447,6 +622,7 @@ public proc_T __init_proc__ (void) {
       .parse = proc_parse,
       .release = proc_release,
       .set = (proc_set_self) {
+        .argv = proc_set_argv,
         .next = proc_set_next,
         .prev = proc_set_prev,
         .stdin = proc_set_stdin,

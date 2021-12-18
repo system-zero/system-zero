@@ -1,0 +1,5 @@
+import ("time")
+
+println (stdout, Time.now ());
+
+exit (0)

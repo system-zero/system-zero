@@ -12,13 +12,13 @@ typedef struct smap_self {
   Smap_t *(*new) (int);
 
   int
-    (*key_exists) (Smap_t *, char *);
+    (*key_exists) (Smap_t *, const char *);
 
   string_t
-    *(*get) (Smap_t *, char *);
+    *(*get) (Smap_t *, const char *);
 
   int
-    (*set) (Smap_t *, char *, string_t *);
+    (*set) (Smap_t *, const char *, string_t *);
 } smap_self;
 
 typedef struct smap_T {

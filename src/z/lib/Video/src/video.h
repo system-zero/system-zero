@@ -28,7 +28,7 @@ typedef struct video_t {
 } video_t;
 
 typedef struct video_set_self {
-  void (*row_with) (video_t *, int, char *);
+  void (*row_with) (video_t *, int, const char *);
 } video_set_self;
 
 typedef struct video_draw_self {
@@ -37,8 +37,6 @@ typedef struct video_draw_self {
     (*row_at) (video_t *, int),
     (*rows_from_to) (video_t *, int, int);
 
-  int
-    (*bytes) (video_t *, char *, size_t);
 } video_draw_self;
 
 typedef struct video_self {

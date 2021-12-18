@@ -46,6 +46,7 @@ static VALUE sh_new (la_t *this) {
 
 #define EvalString(...) #__VA_ARGS__
 
+public int __init_sh_module__ (la_t *this);
 public int __init_sh_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(sh);
@@ -90,6 +91,7 @@ public int __init_sh_module__ (la_t *this) {
   return LA_OK;
 }
 
+public void __deinit_sh_module__ (la_t *this);
 public void __deinit_sh_module__ (la_t *this) {
   (void) this;
   return;

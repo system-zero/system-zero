@@ -57,13 +57,13 @@
 static la_T *__LAPTR__ = NULL;
 
 /* this replaced Cstring.tok() below */
-static Vstring_t *cstring_chop (char *buf, char tok, Vstring_t *tokstr,
+static Vstring_t *cstring_chop (const char *buf, char tok, Vstring_t *tokstr,
                                      StrChop_cb cb, void *obj) {
   Vstring_t *ts = tokstr;
   int ts_isnull = (NULL is ts);
   if (ts_isnull) ts = Vstring.new ();
 
-  char *sp = buf;
+  char *sp = (char *) buf;
   char *p = sp;
 
   int end = 0;
@@ -181,15 +181,17 @@ static string_t *buf_input_box (buf_t *this, int row, int col,
 
   utf8 c;
   for (;;) {
-     c = Readline.edit (rl)->c;
-     switch (c) {
-       case ESCAPE_KEY:
-          if (abort_on_escape) {
-            str = String.new (1);
-            goto theend;
-          }
-       case '\r': str = Readline.get.line (rl); goto theend;
-     }
+    c = Readline.edit (rl)->c;
+    switch (c) {
+      case ESCAPE_KEY:
+        if (abort_on_escape) {
+          str = String.new (1);
+          goto theend;
+        }
+        //continue;
+        // fall through
+      case '\r': str = Readline.get.line (rl); goto theend;
+    }
   }
 
 theend:
@@ -674,12 +676,12 @@ static void buf_Action_set_with (buf_t *this, Action_t *Action,
   ListStackPush (Action, action);
 }
 
-action_t *buf_action_new (buf_t *this) {
+static action_t *buf_action_new (buf_t *this) {
   (void) this;
   return Alloc (sizeof (action_t));
 }
 
-action_t *buf_action_new_with (buf_t *this, int type, int idx, char *bytes, size_t len) {
+static action_t *buf_action_new_with (buf_t *this, int type, int idx, char *bytes, size_t len) {
   action_t *action = self(action.new);
   undo_set (action, type);
   action->idx = idx;
@@ -688,7 +690,7 @@ action_t *buf_action_new_with (buf_t *this, int type, int idx, char *bytes, size
   return action;
 }
 
-void buf_action_release (buf_t *this, action_t *action) {
+static void buf_action_release (buf_t *this, action_t *action) {
   (void) this;
   if (NULL is action) return;
   ifnot (NULL is action->bytes)
@@ -707,10 +709,10 @@ static ftype_t *buf_syn_init (buf_t *);
 static ftype_t *buf_syn_init_c (buf_t *);
 static ftype_t *buf_syn_init_lai (buf_t *);
 
-char *default_extensions[] = {".txt", NULL};
+const char *default_extensions[] = {".txt", NULL};
 
-char *c_extensions[] = {".c", ".h", ".cpp", ".hpp", ".cc", NULL};
-char *c_keywords[] = {
+const char *c_extensions[] = {".c", ".h", ".cpp", ".hpp", ".cc", NULL};
+const char *c_keywords[] = {
     "is I", "isnot I", "or I", "and I", "if I", "for I", "return I", "else I",
     "ifnot I", "NULL K", "self I", "this V",
     "OK K", "NOTOK K", "char T", "int T",
@@ -734,19 +736,19 @@ char *c_keywords[] = {
     NULL
 };
 
-char c_singleline_comment[] = "//";
-char c_multiline_comment_start[] = "/*";
-char c_multiline_comment_end[] = "*/";
-char c_multiline_comment_continuation[] = " * ";
-char c_operators[] = "+:?-%*^><=/|&~.()[]{}!";
-char c_balanced_pairs[] = "[](){}";
+const char c_singleline_comment[] = "//";
+const char c_multiline_comment_start[] = "/*";
+const char c_multiline_comment_end[] = "*/";
+const char c_multiline_comment_continuation[] = " * ";
+const char c_operators[] = "+:?-%*^><=/|&~.()[]{}!";
+const char c_balanced_pairs[] = "[](){}";
 
-char *lai_extensions[] = {".lai", NULL};
-char *lai_shebangs[] = {"#!/bin/env La", "#!/usr/bin/env La",
+const char *lai_extensions[] = {".lai", NULL};
+const char *lai_shebangs[] = {"#!/bin/env La", "#!/usr/bin/env La",
   "#!/usr/bin/emv La-shared", "#!La-static", NULL};
-char lai_operators[] = "+-%*^><=/|& .(){}![]:$";
+const char lai_operators[] = "+-%*^><=/|& .(){}![]:$";
 
-char *lai_keywords[] = {
+const char *lai_keywords[] = {
   "var V", "if I", "ifnot I", "else I", "func I", "is I", "isnot I",
   "then I", "and I", "end I", "or I", "this V", "return I",
   "for I", "while I", "break I", "continue I",
@@ -766,9 +768,9 @@ char *lai_keywords[] = {
    NULL
 };
 
-char lai_singleline_comment[] = "#";
+const char lai_singleline_comment[] = "#";
 
-char *NULL_ARRAY[] = {NULL};
+const char *NULL_ARRAY[] = {NULL};
 
 syn_t HL_DB[] = {
    {
@@ -1318,7 +1320,7 @@ static void buf_ftype_release (buf_t *this) {
   $my(ftype) = NULL;
 }
 
-static int ed_syn_get_ftype_idx (ed_t *this, char *name) {
+static int ed_syn_get_ftype_idx (ed_t *this, const char *name) {
   if (NULL is name) return FTYPE_DEFAULT;
 
   for (int i = 0; i < $my(num_syntaxes); i++) {
@@ -1895,7 +1897,7 @@ static void buf_undo_release (buf_t *this) {
   free ($my(redo));
 }
 
-static int __env_check_directory__ (char *dir, char *dir_descr,
+static int __env_check_directory__ (const char *dir, const char *dir_descr,
                int exit_on_error, int exit_on_warning, int warn) {
   int retval = OK;
 
@@ -2080,22 +2082,22 @@ static row_t *buf_append_with (buf_t *this, char *bytes) {
   return row;
 }
 
-static row_t *buf_current_prepend_with(buf_t *this, char *bytes) {
+static row_t *buf_current_prepend_with(buf_t *this, const char *bytes) {
   row_t *row = self(row.new_with, bytes);
   return DListPrependCurrent (this, row);
 }
 
-static row_t *buf_current_append_with (buf_t *this, char *bytes) {
+static row_t *buf_current_append_with (buf_t *this, const char *bytes) {
   row_t *row = self(row.new_with, bytes);
   return DListAppendCurrent (this, row);
 }
 
-static row_t *buf_current_append_with_len (buf_t *this, char *bytes, size_t len) {
+static row_t *buf_current_append_with_len (buf_t *this, const char *bytes, size_t len) {
   row_t *row = self(row.new_with_len, bytes, len);
   return DListAppendCurrent (this, row);
 }
 
-static row_t *buf_current_replace_with (buf_t *this, char *bytes) {
+static row_t *buf_current_replace_with (buf_t *this, const char *bytes) {
   String.replace_with (this->current->data, bytes);
   return this->current;
 }
@@ -2269,7 +2271,7 @@ static int buf_current_set (buf_t *this, int idx) {
   return DListSetCurrent (this, idx);
 }
 
-static void buf_set_mode (buf_t *this, char *mode) {
+static void buf_set_mode (buf_t *this, const char *mode) {
   Cstring.cp ($my(mode), MAXLEN_MODE, mode, MAXLEN_MODE - 1);
 }
 
@@ -2285,7 +2287,7 @@ static void buf_set_autosave (buf_t *this, long minutes) {
     $my(saved_sec) = Sys.get.clock_sec (DEFAULT_CLOCK);
 }
 
-static void buf_set_on_emptyline (buf_t *this, char *str) {
+static void buf_set_on_emptyline (buf_t *this, const char *str) {
   if (NULL is str) return;
   String.replace_with ($my(ftype)->on_emptyline, str);
 }
@@ -2294,7 +2296,7 @@ static void buf_set_autochdir (buf_t *this, int val) {
   $my(ftype)->autochdir = (val isnot 0);
 }
 
-static void buf_set_backup (buf_t *this, int backup, char *suffix) {
+static void buf_set_backup (buf_t *this, int backup, const char *suffix) {
   if (backup <= 0
       or NULL isnot $my(backupfile)
       or NULL is suffix
@@ -2365,7 +2367,7 @@ static void buf_set_as_pager (buf_t *this) {
   $my(flags) &= BUF_IS_PAGER;
 }
 
-static int buf_set_fname (buf_t *this, char *filename) {
+static int buf_set_fname (buf_t *this, const char *filename) {
   int is_null = (NULL is filename);
   int is_unnamed = (is_null ? 0 : Cstring.eq (filename, UNNAMED));
   size_t len = ((is_null or is_unnamed) ? 0 : bytelen (filename));
@@ -2580,7 +2582,7 @@ theend:
   return t_len;
 }
 
-static ssize_t buf_init_fname (buf_t *this, char *fname) {
+static ssize_t buf_init_fname (buf_t *this, const char *fname) {
   ssize_t retval = buf_set_fname (this, fname);
 //  if (NOTOK is retval) return NOTOK;
 
@@ -3185,7 +3187,7 @@ static dim_t **win_dim_calc (win_t *this) {
   return $my(frames_dim);
 }
 
-static char *ed_name_gen (int *name_gen, char *prefix, size_t prelen) {
+static char *ed_name_gen (int *name_gen, const char *prefix, size_t prelen) {
   size_t num = (*name_gen / 26) + prelen;
   char *name = Alloc (num * sizeof (char *) + 1);
   size_t i = 0;
@@ -3195,7 +3197,7 @@ static char *ed_name_gen (int *name_gen, char *prefix, size_t prelen) {
   return name;
 }
 
-static win_t *ed_win_init (ed_t *ed, char *name, WinDimCalc_cb dim_calc_cb) {
+static win_t *ed_win_init (ed_t *ed, const char *name, WinDimCalc_cb dim_calc_cb) {
   win_t *this = Alloc (sizeof (win_t));
   $myprop = Alloc (sizeof (win_prop));
 
@@ -3237,7 +3239,7 @@ static win_t *ed_win_init (ed_t *ed, char *name, WinDimCalc_cb dim_calc_cb) {
   return this;
 }
 
-static win_t *ed_win_new (ed_t *ed, char *name, int num_frames) {
+static win_t *ed_win_new (ed_t *ed, const char *name, int num_frames) {
   win_t *this = ed_win_init (ed, name, win_dim_calc_cb);
   $my(num_frames) = num_frames;
   self(dim_calc);
@@ -3245,7 +3247,7 @@ static win_t *ed_win_new (ed_t *ed, char *name, int num_frames) {
   return this;
 }
 
-static win_t *ed_win_new_special (ed_t *ed, char *name, int num_frames) {
+static win_t *ed_win_new_special (ed_t *ed, const char *name, int num_frames) {
   win_t *this = ed_win_new (ed, name, num_frames);
   $my(type) = VED_WIN_SPECIAL_TYPE;
   return this;
@@ -3292,7 +3294,7 @@ static void ed_check_msg_status (ed_t *this) {
   }
 }
 
-static buf_t *ed_buf_get (ed_t *this, char *wname, char *bname) {
+static buf_t *ed_buf_get (ed_t *this, const char *wname, const char *bname) {
   int idx;
   win_t *w = self(get.win_by_name, wname, &idx);
   ifnot (w) return NULL;
@@ -3313,12 +3315,12 @@ static void ed_tty_screen (ed_t *this) {
   Win.draw (w);
 }
 
-static int ed_buf_change (ed_t *this, buf_t **thisp, char *wname, char *bname) {
+static int ed_buf_change (ed_t *this, buf_t **thisp, const char *wname, const char *bname) {
   self(win.change, thisp, NO_COMMAND, wname, NO_OPTION, NO_FORCE);
   return buf_change_bufname (thisp, bname);
 }
 
-static buf_t *ed_special_buf (ed_t *this, char *wname, char *bname,
+static buf_t *ed_special_buf (ed_t *this, const char *wname, const char *bname,
     int num_frames, int at_frame) {
   int idx;
   win_t *w = self(get.win_by_name, wname, &idx);
@@ -3361,7 +3363,7 @@ static buf_t *ed_get_scratch_buf (ed_t *this) {
   return ed_special_buf (this, VED_SCRATCH_WIN, VED_SCRATCH_BUF, 1, 0);
 }
 
-static void ed_append_toscratch (ed_t *this, int clear_first, char *bytes) {
+static void ed_append_toscratch (ed_t *this, int clear_first, const char *bytes) {
   buf_t *buf = self(buf.get, VED_SCRATCH_WIN, VED_SCRATCH_BUF);
   if (NULL is buf)
     buf = self(get.scratch_buf);
@@ -3383,7 +3385,7 @@ static void ed_append_toscratch (ed_t *this, int clear_first, char *bytes) {
   Vstring.release (lines);
 }
 
-static void ed_append_toscratch_fmt (ed_t *this, int clear_first, char *fmt, ...) {
+static void ed_append_toscratch_fmt (ed_t *this, int clear_first, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
@@ -3423,14 +3425,14 @@ static int ed_append_message_cb (Vstring_t *str, char *tok, void *obj) {
   return OK;
 }
 
-static void ed_append_message (ed_t *this, char *msg) {
+static void ed_append_message (ed_t *this, const char *msg) {
   buf_t *buf = self(buf.get, VED_MSG_WIN, VED_MSG_BUF);
   ifnot (buf) return;
   Vstring_t unused;
   cstring_chop (msg, '\n', &unused, ed_append_message_cb, (void *) buf);
 }
 
-static void ed_append_message_fmt (ed_t *this, char *fmt, ...) {
+static void ed_append_message_fmt (ed_t *this, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
@@ -3467,7 +3469,7 @@ static char *ed_msg_fmt (ed_t *this, int msgid, ...) {
 }
 
 static int ed_fmt_string_with_numchars (ed_t *this, string_t *dest,
-   int clear_dest, char *src, size_t src_len, int tabwidth, int num_cols) {
+   int clear_dest, const char *src, size_t src_len, int tabwidth, int num_cols) {
 
   int numchars = 0;
   if (clear_dest) String.clear (dest);
@@ -3514,18 +3516,18 @@ thenext_it:
   return numchars;
 }
 
-static void ed_msg_write (ed_t *this, char *msg) {
+static void ed_msg_write (ed_t *this, const char *msg) {
   self(append.message, msg);
 }
 
-static void ed_msg_write_fmt (ed_t *this, char *fmt, ...) {
+static void ed_msg_write_fmt (ed_t *this, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
   ed_msg_write (this, bytes);
 }
 
-static void ed_msg_set (ed_t *this, int color, int msg_flags, char *msg,
+static void ed_msg_set (ed_t *this, int color, int msg_flags, const char *msg,
                                                         size_t maybe_len) {
   int wt_msg = (msg_flags & MSG_SET_TO_MSG_BUF or
                (msg_flags & MSG_SET_TO_MSG_LINE) is UNSET);
@@ -3562,14 +3564,14 @@ static void ed_msg_set (ed_t *this, int color, int msg_flags, char *msg,
   $my(msg_send) = 1;
 }
 
-static void ed_msg_set_fmt (ed_t *this, int color, int msg_flags, char *fmt, ...) {
+static void ed_msg_set_fmt (ed_t *this, int color, int msg_flags, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
   ed_msg_set (this, color, msg_flags, bytes, len);
 }
 
-static void ed_msg_line (ed_t *this, int color, char *fmt, ...) {
+static void ed_msg_line (ed_t *this, int color, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
@@ -3577,18 +3579,18 @@ static void ed_msg_line (ed_t *this, int color, char *fmt, ...) {
   ed_msg_set (this, color, flags, bytes, len);
 }
 
-static void ed_msg_error (ed_t *this, char *fmt, ...) {
+static void ed_msg_error (ed_t *this, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
   ed_msg_set (this, COLOR_ERROR, MSG_SET_DRAW|MSG_SET_COLOR, bytes, len);
 }
 
-static void ed_msg_send (ed_t *this, int color, char *msg) {
+static void ed_msg_send (ed_t *this, int color, const char *msg) {
   ed_msg_set (this, color, MSG_SET_DRAW|MSG_SET_COLOR, msg, -1);
 }
 
-static void ed_msg_send_fmt (ed_t *this, int color, char *fmt, ...) {
+static void ed_msg_send_fmt (ed_t *this, int color, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
@@ -3793,7 +3795,7 @@ theend:
 }
 
 static char *buf_get_current_word (buf_t *this,
-          char *word, char *NotWord, int NotWordlen, int *fidx, int *lidx) {
+  char *word, const char *NotWord, int NotWordlen, int *fidx, int *lidx) {
   return Cstring.extract_word_at ($mycur(data)->bytes, $mycur(data)->num_bytes,
     word, MAXLEN_WORD, NotWord, NotWordlen, $mycur (cur_col_idx), fidx, lidx);
 }
@@ -4205,7 +4207,7 @@ static int buf_grep (buf_t **thisp, char *pat, Vstring_t *fnames) {
   return DONE;
 }
 
-static int buf_substitute (buf_t *this, char *pat, char *sub, int global,
+static int buf_substitute (buf_t *this, const char *pat, const char *sub, int global,
                                      int interactive, int fidx, int lidx) {
   ed_record ($my(root), "buf_substitute (buf, \"%s\", \"%s\", %d, %d, %d, %d)",
     pat, sub, global, interactive, fidx, lidx);
@@ -7764,7 +7766,7 @@ theend:
   return DONE;
 }
 
-static int win_edit_fname (win_t *win, buf_t **thisp, char *fname, int frame,
+static int win_edit_fname (win_t *win, buf_t **thisp, const char *fname, int frame,
                                              int reload, int draw, int reopen) {
   buf_t *this = *thisp;
 
@@ -7934,7 +7936,7 @@ static int buf_open_fname_under_cursor (buf_t **thisp, int frame,
   return DONE;
 }
 
-static int buf_split (buf_t **thisp, char *fname) {
+static int buf_split (buf_t **thisp, const char *fname) {
   buf_t *this = *thisp;
   buf_t *that = this;
 
@@ -7951,7 +7953,7 @@ static int buf_split (buf_t **thisp, char *fname) {
   return DONE;
 }
 
-static int buf_enew_fname (buf_t **thisp, char *fname) {
+static int buf_enew_fname (buf_t **thisp, const char *fname) {
   buf_t *this = *thisp;
   win_t *w = Ed.win.new ($my(root), NULL, 1);
   $my(root)->prev_idx = $my(root)->cur_idx;
@@ -7960,7 +7962,7 @@ static int buf_enew_fname (buf_t **thisp, char *fname) {
   return DONE;
 }
 
-static int ed_win_change (ed_t *this, buf_t **bufp, int com, char *name,
+static int ed_win_change (ed_t *this, buf_t **bufp, int com, const char *name,
                                             int accept_rdonly, int force) {
   if (this->num_items is 1)
     ifnot (force) return NOTHING_TODO;
@@ -8035,7 +8037,7 @@ static int ed_win_delete (ed_t *this, buf_t **thisp, int count_special) {
   return DONE;
 }
 
-static int buf_write_to_fname (buf_t *this, char *fname, int append, int fidx,
+static int buf_write_to_fname (buf_t *this, const char *fname, int append, int fidx,
                                             int lidx, int force, int verbose) {
   if (NULL is fname) return NOTHING_TODO;
   int retval = NOTHING_TODO;
@@ -8262,7 +8264,7 @@ static int buf_read_from_shell (buf_t *this, char *com, int rlcom, int wait_at_e
   return Ed.sh.popen ($my(root), this, com, flags, NULL);
 }
 
-static int buf_change_bufname (buf_t **thisp, char *bufname) {
+static int buf_change_bufname (buf_t **thisp, const char *bufname) {
   buf_t *this = *thisp;
   if (Cstring.eq ($my(fname), bufname)) return NOTHING_TODO;
   int idx;
@@ -8516,7 +8518,7 @@ static int ed_complete_digraph_callback (menu_t *menu) {
     Menu.release_list (menu);
 
   Vstring_t *items = Vstring.new ();
-  char *digraphs[] = {
+  const char *digraphs[] = {
     "167 §",  "169 ©",  "171 «",  "174 ®",  "176 °",  "178 ²",  "179 ³", "183 ·",
     "185 ¹",  "187 »",  "188 ¼",  "189 ½",  "190 ¾",  "215 ×",  "247 ÷", "729 ˙",
     "8212 —", "8220 “", "8230 …", "8304 ⁰", "8308 ⁴", "8309 ⁵", "8310 ⁶",
@@ -9093,7 +9095,7 @@ static void ed_add_command_arg (readline_com_t *rlcom, int flags) {
   if (flags & READLINE_ARG_RECURSIVE) ADD_ARG ("--recursive", 11, i);
 }
 
-static void ed_append_command_arg (ed_t *this, char *com, char *argname, size_t len) {
+static void ed_append_command_arg (ed_t *this, const char *com, const char *argname, size_t len) {
   if (len <= 0) len = bytelen (argname);
 
   int i = 0;
@@ -9121,7 +9123,7 @@ static void ed_append_command_arg (ed_t *this, char *com, char *argname, size_t 
   }
 }
 
-static void ed_append_readline_commands (ed_t *this, char **commands,
+static void ed_append_readline_commands (ed_t *this, const char **commands,
                      int num_commands, int num_args[], int flags[]) {
   int len = $my(num_commands) + num_commands;
 
@@ -9155,8 +9157,8 @@ static void ed_append_readline_commands (ed_t *this, char **commands,
   $my(num_commands) = len;
 }
 
-static void ed_append_readline_command (ed_t *this, char *name, int args, int flags) {
-  char *commands[2] = {name, NULL};
+static void ed_append_readline_command (ed_t *this, const char *name, int args, int flags) {
+  const char *commands[2] = {name, NULL};
   int largs[] = {args, 0};
   int lflags[] = {flags, 0};
   ed_append_readline_commands (this, commands, 1, largs, lflags);
@@ -9292,7 +9294,7 @@ next:
   return retval;
 }
 
-int buf_validate_utf8_lw_mode_cb (buf_t **thisp, int fidx, int lidx,
+static int buf_validate_utf8_lw_mode_cb (buf_t **thisp, int fidx, int lidx,
                              Vstring_t *rows, utf8 c, char *action) {
   (void) action;
   if (c isnot 'v') return NO_CALLBACK_FUNCTION;
@@ -9668,7 +9670,7 @@ static void ed_set_lang_getkey (ed_t *this, LangGetKey_cb cb) {
   $my(lang_getkey) = cb;
 }
 
-static void ed_set_lang_mode (ed_t *this, char *lang_mode) {
+static void ed_set_lang_mode (ed_t *this, const char *lang_mode) {
   size_t len = bytelen (lang_mode);
   if (len > 7) return;
 
@@ -9756,6 +9758,7 @@ redo:
     case VED_COM_WRITE_ALIAS:
       rl->com = VED_COM_WRITE;
 
+    // fall through
     case VED_COM_WRITE_FORCE_FORCE:
     case VED_COM_WRITE_FORCE:
     case VED_COM_WRITE:
@@ -9786,7 +9789,9 @@ redo:
       goto theend;
 
     case VED_COM_EDIT_FORCE_ALIAS:
-      rl->com = VED_COM_EDIT_FORCE; //__fallthrough__;
+      rl->com = VED_COM_EDIT_FORCE;
+
+    // fall through
     case VED_COM_EDIT_FORCE:
     case VED_COM_EDIT:
     case VED_COM_EDIT_ALIAS:
@@ -9805,7 +9810,9 @@ redo:
       goto theend;
 
     case VED_COM_QUIT_FORCE_ALIAS:
-      rl->com = VED_COM_QUIT_FORCE; //__fallthrough__;
+      rl->com = VED_COM_QUIT_FORCE;
+
+    // fall through
     case VED_COM_QUIT_FORCE:
     case VED_COM_QUIT:
     case VED_COM_QUIT_ALIAS:
@@ -9993,7 +10000,9 @@ redo:
       goto theend;
 
     case VED_COM_BUF_CHANGE_PREV_ALIAS:
-      rl->com = VED_COM_BUF_CHANGE_PREV; //__fallthrough__;
+      rl->com = VED_COM_BUF_CHANGE_PREV;
+
+    // fall through
     case VED_COM_BUF_CHANGE_PREV:
       if ($my(flags) & BUF_IS_SPECIAL) goto theend;
       if ($my(is_sticked)) goto theend;
@@ -10001,7 +10010,9 @@ redo:
       goto theend;
 
     case VED_COM_BUF_CHANGE_NEXT_ALIAS:
-      rl->com = VED_COM_BUF_CHANGE_NEXT; //__fallthrough__;
+      rl->com = VED_COM_BUF_CHANGE_NEXT;
+
+    // fall through
     case VED_COM_BUF_CHANGE_NEXT:
       if ($my(flags) & BUF_IS_SPECIAL) goto theend;
       if ($my(is_sticked)) goto theend;
@@ -10009,7 +10020,9 @@ redo:
       goto theend;
 
     case VED_COM_BUF_CHANGE_PREV_FOCUSED_ALIAS:
-      rl->com = VED_COM_BUF_CHANGE_PREV_FOCUSED; //__fallthrough__;
+      rl->com = VED_COM_BUF_CHANGE_PREV_FOCUSED;
+
+    // fall through
     case VED_COM_BUF_CHANGE_PREV_FOCUSED:
       if (is_special_win) goto theend;
       if ($my(is_sticked)) goto theend;
@@ -10017,7 +10030,9 @@ redo:
       goto theend;
 
     case VED_COM_BUF_CHANGE_ALIAS:
-      rl->com = VED_COM_BUF_CHANGE; //__fallthrough__;
+      rl->com = VED_COM_BUF_CHANGE;
+
+    // fall through
     case VED_COM_BUF_CHANGE:
       if ($my(flags) & BUF_IS_SPECIAL) goto theend;
       if ($my(is_sticked)) goto theend;
@@ -10037,25 +10052,33 @@ redo:
       goto theend;
 
     case VED_COM_WIN_CHANGE_PREV_ALIAS:
-      rl->com = VED_COM_WIN_CHANGE_PREV; //__fallthrough__;
+      rl->com = VED_COM_WIN_CHANGE_PREV;
+
+    // fall through
     case VED_COM_WIN_CHANGE_PREV:
       retval = Ed.win.change ($my(root), thisp, rl->com, NULL, 0, NO_FORCE);
       goto theend;
 
     case VED_COM_WIN_CHANGE_NEXT_ALIAS:
-      rl->com = VED_COM_WIN_CHANGE_NEXT; //__fallthrough__;
+      rl->com = VED_COM_WIN_CHANGE_NEXT;
+
+    // fall through
     case VED_COM_WIN_CHANGE_NEXT:
       retval = Ed.win.change ($my(root), thisp, rl->com, NULL, 0, NO_FORCE);
       goto theend;
 
     case VED_COM_WIN_CHANGE_PREV_FOCUSED_ALIAS:
-      rl->com = VED_COM_WIN_CHANGE_PREV_FOCUSED; //__fallthrough__;
+      rl->com = VED_COM_WIN_CHANGE_PREV_FOCUSED;
+
+    // fall through
     case VED_COM_WIN_CHANGE_PREV_FOCUSED:
       retval = Ed.win.change ($my(root), thisp, rl->com, NULL, 0, NO_FORCE);
       goto theend;
 
     case VED_COM_BUF_DELETE_FORCE_ALIAS:
-      rl->com = VED_COM_BUF_DELETE_FORCE; //__fallthrough__;
+      rl->com = VED_COM_BUF_DELETE_FORCE;
+
+    // fall through
     case VED_COM_BUF_DELETE_FORCE:
     case VED_COM_BUF_DELETE_ALIAS:
     case VED_COM_BUF_DELETE:
@@ -10504,7 +10527,7 @@ static int ed_get_current_win_idx (ed_t *this) {
   return this->cur_idx;
 }
 
-static win_t *ed_get_win_by_name (ed_t *this, char *name, int *idx) {
+static win_t *ed_get_win_by_name (ed_t *this, const char *name, int *idx) {
   if (NULL is name) return NULL;
   win_t *it = this->head;
   *idx = 0;
@@ -10533,7 +10556,7 @@ static term_t *ed_get_term (ed_t *this) {
   return $my(term);
 }
 
-static void *ed_get_callback_fun (ed_t *this, char *fun) {
+static void *ed_get_callback_fun (ed_t *this, const char *fun) {
   (void) this;
   if (Cstring.eq (fun, "autoindent_c")) return buf_autoindent_c;
   if (Cstring.eq (fun, "autoindent_default")) return buf_ftype_autoindent;
@@ -10663,7 +10686,7 @@ static string_t *ed_history_get_readline_file (ed_t *this) {
   return $my(hrl_file);
 }
 
-static string_t *ed_history_set_search_file (ed_t *this, char *file) {
+static string_t *ed_history_set_search_file (ed_t *this, const char *file) {
   string_t *hs_file = $my(hs_file);
   ifnot (NULL is file) {
     if (NULL is hs_file)
@@ -10686,7 +10709,7 @@ static string_t *ed_history_set_search_file (ed_t *this, char *file) {
   return $my(hs_file);
 }
 
-static string_t *ed_history_set_readline_file (ed_t *this, char *file) {
+static string_t *ed_history_set_readline_file (ed_t *this, const char *file) {
   string_t *hrl_file = $my(hrl_file);
   ifnot (NULL is file) {
     if (NULL is hrl_file)
@@ -10799,26 +10822,29 @@ static int buf_word_actions_cb (buf_t **thisp, int fidx, int lidx,
     case '*':
       return buf_selection_to_X_word_actions_cb (thisp, fidx, lidx, it, word, c, action);
 
-   case '`':
-     ed_reg_new ($my(root), REG_SHARED);
-     ed_reg_push_with ($my(root), REG_SHARED, CHARWISE,
-         word, NORMAL_ORDER);
-     return DONE;
+    case '`':
+      ed_reg_new ($my(root), REG_SHARED);
+      ed_reg_push_with ($my(root), REG_SHARED, CHARWISE,
+          word, NORMAL_ORDER);
+      return DONE;
 
-   case '~': {
-       size_t len = lidx - fidx + 1;
-       char buf[len+1]; // though it alwars returns ok, this might change in future
-       if (OK isnot Ustring.swap_case (buf, word, len)) // to support malformed wstrings
-         return NOTHING_TODO;
+    case '~': {
+      size_t len = lidx - fidx + 1;
+      char buf[len+1]; // though it alwars returns ok, this might change in future
+      if (OK isnot Ustring.swap_case (buf, word, len)) // to support malformed wstrings
+        return NOTHING_TODO;
 
-       buf[len] = '\0';
-       self(delete.word, REG_UNNAMED);
-       return selfp(insert.mode, 0, buf);
-     }
+      buf[len] = '\0';
+      self(delete.word, REG_UNNAMED);
+      return selfp(insert.mode, 0, buf);
+    }
+      return DONE;
 
-   case 'L':
-     type = TO_LOWER;
-   case 'U': {
+    case 'L':
+      type = TO_LOWER;
+
+    // fall through
+    case 'U': {
       size_t len = lidx - fidx + 1;
       char buf[len+1];
       ifnot (Ustring.change_case (buf, word, len, type))
@@ -10833,7 +10859,7 @@ static int buf_word_actions_cb (buf_t **thisp, int fidx, int lidx,
 }
 
 static void ed_set_word_actions (ed_t *this, utf8 *chars, int len,
-                                  char *actions, WordActions_cb cb) {
+                                  const char *actions, WordActions_cb cb) {
   if (len <= 0) return;
   int tlen = $my(word_actions_chars_len) + len;
 
@@ -11398,6 +11424,7 @@ static int ed_i_record_default (ed_t *this, Vstring_t *rec) {
   if (bytelen (str) is (size_t) $my(record_header_len)) return NOTOK;
 
   la_t *in = La.get.current ($my(__LA__));
+
   ifnot (in)
     in = La.init_instance ($my(__LA__), LaOpts(
       .define_funs_cb = $OurRoots (la_define_funs_cb),
@@ -11427,21 +11454,19 @@ static void ed_record_default (ed_t *this, char *bytes) {
     String.replace_with ($my(records)[NUM_RECORDS]->head->next->data, bytes);
 }
 
-static void ed_record (ed_t *this, char *fmt, ...) {
+static void ed_record (ed_t *this, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len+1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
   $my(record_cb) (this, bytes);
 }
 
-static char *ed_init_record_default (ed_t *);
+static ssize_t __record_header_len__ (const char *header) {
+  char *sp = (char *) header;
 
-static ssize_t __record_header_len__ (ed_t *this) {
-  char *buf = ed_init_record_default (this);
-  char *sp = buf;
+  size_t len = bytelen (header);
 
-  size_t len = bytelen (buf);
-
+  char *buf = NULL;
   while (*sp and (buf = Cstring.byte.in_str (sp, '\n')) isnot NULL) {
     len++;
     sp = buf + 1;
@@ -11453,14 +11478,26 @@ static ssize_t __record_header_len__ (ed_t *this) {
 static char *ed_init_record_default (ed_t *this) {
   if ($my(record_header_len) is -1) {
       $my(record_header_len) = 0;
-      $my(record_header_len) = __record_header_len__ (this);
+    return (char *) "";
   }
 
-  return
-    "var ed = e_get_ed_current ()\n"
-    "var win = ed_get_current_win (ed)\n"
-    "var buf = win_get_current_buf (win)\n"
-    "var draw = 1";
+  ifnot ($my(record_header_len)) {
+  const char *buf =
+      "var ed = e_get_ed_current ()\n"
+      "var win = ed_get_current_win (ed)\n"
+      "var buf = win_get_current_buf (win)\n"
+      "var draw = 1";
+   $my(record_header_len) = __record_header_len__ (buf);
+   return (char *) buf;
+  } else {
+    const char *buf =
+      "ed = e_get_ed_current ()\n"
+      "win = ed_get_current_win (ed)\n"
+      "buf = win_get_current_buf (win)\n"
+      "draw = 1";
+    $my(record_header_len) = __record_header_len__ (buf);
+    return (char *) buf;
+  }
 }
 
 static void ed_init_record (ed_t *this, int idx) {
@@ -11536,6 +11573,7 @@ handle_com:
     case 'q':
       if ($my(flags) & BUF_IS_PAGER) return BUF_QUIT;
 
+    // fall through
     case 'Q':
       if ($from(ed, record))
         ed_deinit_record (ed);
@@ -11654,8 +11692,7 @@ handle_com:
 
       ifnot ($my(ftype)->backspace_on_normal_is_like_insert_mode) break;
 
-      //__fallthrough__;
-
+    // fall through
     case 'X':
        if (DONE is self(normal.left, 1, DONOT_DRAW))
          if (NOTHING_TODO is (retval = self(normal.delete, count, regidx, DRAW)))
@@ -11765,7 +11802,8 @@ handle_com:
       ifnot ($my(ftype)->cr_on_normal_is_like_insert_mode) break;
 
       com = '\n';
-//      __fallthrough__;
+
+    // fall through
     case 'i':
     case 'a':
     case 'A':
@@ -11926,7 +11964,7 @@ static void ed_init_commands (ed_t *this) {
 
   $my(has_ed_readline_commands) = 1;
 
-  char *ed_commands[VED_COM_END + 1] = {
+  const char *ed_commands[VED_COM_END + 1] = {
     [VED_COM_BUF_BACKUP] = "@bufbackup",
     [VED_COM_BUF_CHANGE_NEXT] = "bufnext",
     [VED_COM_BUF_CHANGE_NEXT_ALIAS] = "bn",
@@ -13373,33 +13411,33 @@ static int Ed_init (E_T *__E__, ed_T *this) {
 
 #define LaRoot laroot->self
 
-VALUE la_e_get_ed_num (la_t *this) {
+static VALUE la_e_get_ed_num (la_t *this) {
   E_T *laroot = La.get.user_data (this);
   VALUE r = INT(LaRoot.get.num (laroot));
   return r;
 }
 
-VALUE la_e_set_ed_next (la_t *this) {
+static VALUE la_e_set_ed_next (la_t *this) {
   E_T *laroot = La.get.user_data (this);
   VALUE r = PTR(LaRoot.set.next (laroot));
   return r;
 }
 
-VALUE la_e_set_ed_by_idx (la_t *this, VALUE idxv) {
+static VALUE la_e_set_ed_by_idx (la_t *this, VALUE idxv) {
   int idx = AS_INT(idxv);
   E_T *laroot = La.get.user_data (this);
   VALUE r = PTR(LaRoot.set.current (laroot, idx));
   return r;
 }
 
-VALUE la_e_set_save_image (la_t *this, VALUE val) {
+static VALUE la_e_set_save_image (la_t *this, VALUE val) {
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.save_image (laroot, AS_INT(val));
   VALUE r = INT(LA_OK);
   return r;
 }
 
-VALUE la_e_set_persistent_layout (la_t *this, VALUE valv) {
+static VALUE la_e_set_persistent_layout (la_t *this, VALUE valv) {
   int val = AS_INT(valv);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.persistent_layout (laroot, val);
@@ -13407,7 +13445,7 @@ VALUE la_e_set_persistent_layout (la_t *this, VALUE valv) {
   return r;
 }
 
-VALUE la_e_set_image_name (la_t *this, VALUE namev) {
+static VALUE la_e_set_image_name (la_t *this, VALUE namev) {
   char *name = AS_STRING_BYTES(namev);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.image_name (laroot, name);
@@ -13415,7 +13453,7 @@ VALUE la_e_set_image_name (la_t *this, VALUE namev) {
   return r;
 }
 
-VALUE la_e_set_image_file (la_t *this, VALUE filev) {
+static VALUE la_e_set_image_file (la_t *this, VALUE filev) {
   char *file = AS_STRING_BYTES(filev);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.image_file (laroot, file);
@@ -13423,33 +13461,33 @@ VALUE la_e_set_image_file (la_t *this, VALUE filev) {
   return r;
 }
 
-VALUE la_e_get_ed_current_idx (la_t *this) {
+static VALUE la_e_get_ed_current_idx (la_t *this) {
   E_T *laroot = La.get.user_data (this);
   VALUE r = INT(LaRoot.get.current_idx (laroot));
   return r;
 }
 
-VALUE la_e_get_ed_current (la_t *this) {
+static VALUE la_e_get_ed_current (la_t *this) {
   E_T *laroot = La.get.user_data (this);
   VALUE r = PTR(LaRoot.get.current (laroot));
   return r;
 }
 
-VALUE la_ed_new (la_t *this, VALUE num_winv) {
+static VALUE la_ed_new (la_t *this, VALUE num_winv) {
   int num_win = AS_INT(num_winv);
   E_T *laroot = La.get.user_data (this);
   VALUE r = PTR(LaRoot.new (laroot, EdOpts(.num_win = num_win)));
   return r;
 }
 
-VALUE la_ed_get_num_win (la_t *this, VALUE edv) {
+static VALUE la_ed_get_num_win (la_t *this, VALUE edv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   VALUE r = INT(ed_get_num_win (ed, 0));
   return r;
 }
 
-VALUE la_ed_get_win_next (la_t *this, VALUE edv, VALUE winv) {
+static VALUE la_ed_get_win_next (la_t *this, VALUE edv, VALUE winv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   win_t *win = (win_t *) AS_PTR(winv);
@@ -13457,14 +13495,14 @@ VALUE la_ed_get_win_next (la_t *this, VALUE edv, VALUE winv) {
   return r;
 }
 
-VALUE la_ed_get_current_win (la_t *this, VALUE edv) {
+static VALUE la_ed_get_current_win (la_t *this, VALUE edv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   VALUE r = PTR(ed_get_current_win (ed));
   return r;
 }
 
-VALUE la_ed_set_current_win (la_t *this, VALUE edv, VALUE idxv) {
+static VALUE la_ed_set_current_win (la_t *this, VALUE edv, VALUE idxv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   int idx = AS_INT(idxv);
@@ -13472,7 +13510,7 @@ VALUE la_ed_set_current_win (la_t *this, VALUE edv, VALUE idxv) {
   return r;
 }
 
-VALUE la_buf_init_fname (la_t *this, VALUE bufv, VALUE fnamev) {
+static VALUE la_buf_init_fname (la_t *this, VALUE bufv, VALUE fnamev) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   char *fn = AS_STRING_BYTES(fnamev);
@@ -13480,7 +13518,7 @@ VALUE la_buf_init_fname (la_t *this, VALUE bufv, VALUE fnamev) {
   return r;
 }
 
-VALUE la_buf_set_ftype (la_t *this, VALUE bufv, VALUE ftypev) {
+static VALUE la_buf_set_ftype (la_t *this, VALUE bufv, VALUE ftypev) {
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   char *ftype = AS_STRING_BYTES(ftypev);
   E_T *laroot = La.get.user_data (this);
@@ -13489,7 +13527,7 @@ VALUE la_buf_set_ftype (la_t *this, VALUE bufv, VALUE ftypev) {
   return r;
 }
 
-VALUE la_buf_set_autosave (la_t *this, VALUE bufv, VALUE minutesv) {
+static VALUE la_buf_set_autosave (la_t *this, VALUE bufv, VALUE minutesv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   long minutes = (long) AS_INT(minutesv);
@@ -13498,7 +13536,7 @@ VALUE la_buf_set_autosave (la_t *this, VALUE bufv, VALUE minutesv) {
   return r;
 }
 
-VALUE la_buf_set_row_idx (la_t *this, VALUE bufv, VALUE rowv) {
+static VALUE la_buf_set_row_idx (la_t *this, VALUE bufv, VALUE rowv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int row = AS_INT(rowv);
@@ -13506,7 +13544,7 @@ VALUE la_buf_set_row_idx (la_t *this, VALUE bufv, VALUE rowv) {
   return r;
 }
 
-VALUE la_buf_draw (la_t *this, VALUE bufv) {
+static VALUE la_buf_draw (la_t *this, VALUE bufv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   buf_draw (buf);
@@ -13514,7 +13552,7 @@ VALUE la_buf_draw (la_t *this, VALUE bufv) {
   return r;
 }
 
-VALUE la_buf_substitute (la_t *this, VALUE bufv, VALUE patv, VALUE subv, VALUE globalv,
+static VALUE la_buf_substitute (la_t *this, VALUE bufv, VALUE patv, VALUE subv, VALUE globalv,
                                             VALUE interactivev, VALUE fidxv, VALUE lidxv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
@@ -13531,7 +13569,7 @@ VALUE la_buf_substitute (la_t *this, VALUE bufv, VALUE patv, VALUE subv, VALUE g
   return r;
 }
 
-VALUE la_win_buf_init (la_t *this, VALUE winv, VALUE framev, VALUE flagsv) {
+static VALUE la_win_buf_init (la_t *this, VALUE winv, VALUE framev, VALUE flagsv) {
   (void) this;
   int flags = AS_INT(flagsv);
   int frame = AS_INT(framev);
@@ -13540,7 +13578,7 @@ VALUE la_win_buf_init (la_t *this, VALUE winv, VALUE framev, VALUE flagsv) {
   return r;
 }
 
-VALUE la_win_set_current_buf (la_t *this, VALUE winv, VALUE idxv, VALUE drawv) {
+static VALUE la_win_set_current_buf (la_t *this, VALUE winv, VALUE idxv, VALUE drawv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
   int idx = AS_INT(idxv);
@@ -13549,14 +13587,14 @@ VALUE la_win_set_current_buf (la_t *this, VALUE winv, VALUE idxv, VALUE drawv) {
   return r;
 }
 
-VALUE la_win_get_current_buf (la_t *this, VALUE winv) {
+static VALUE la_win_get_current_buf (la_t *this, VALUE winv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
   VALUE r = PTR(win_get_current_buf (win));
   return r;
 }
 
-VALUE la_win_draw (la_t *this, VALUE winv) {
+static VALUE la_win_draw (la_t *this, VALUE winv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
   win_draw (win);
@@ -13564,7 +13602,7 @@ VALUE la_win_draw (la_t *this, VALUE winv) {
   return r;
 }
 
-VALUE la_win_append_buf (la_t *this, VALUE winv, VALUE bufv) {
+static VALUE la_win_append_buf (la_t *this, VALUE winv, VALUE bufv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
   buf_t *buf = (buf_t *) AS_PTR(bufv);
@@ -13572,7 +13610,7 @@ VALUE la_win_append_buf (la_t *this, VALUE winv, VALUE bufv) {
   return r;
 }
 
-VALUE la_buf_normal_page_down (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
+static VALUE la_buf_normal_page_down (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int count = AS_INT(countv);
@@ -13581,7 +13619,7 @@ VALUE la_buf_normal_page_down (la_t *this, VALUE bufv, VALUE countv, VALUE drawv
   return r;
 }
 
-VALUE la_buf_normal_page_up (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
+static VALUE la_buf_normal_page_up (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int count = AS_INT(countv);
@@ -13590,7 +13628,7 @@ VALUE la_buf_normal_page_up (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) 
   return r;
 }
 
-VALUE la_buf_normal_goto_linenr (la_t *this, VALUE bufv, VALUE linenumv, VALUE drawv) {
+static VALUE la_buf_normal_goto_linenr (la_t *this, VALUE bufv, VALUE linenumv, VALUE drawv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int linenum = AS_INT(linenumv);
@@ -13599,7 +13637,7 @@ VALUE la_buf_normal_goto_linenr (la_t *this, VALUE bufv, VALUE linenumv, VALUE d
   return r;
 }
 
-VALUE la_buf_normal_replace_character_with (la_t *this, VALUE bufv, VALUE cv) {
+static VALUE la_buf_normal_replace_character_with (la_t *this, VALUE bufv, VALUE cv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   utf8 c = AS_INT(cv);
@@ -13607,14 +13645,14 @@ VALUE la_buf_normal_replace_character_with (la_t *this, VALUE bufv, VALUE cv) {
   return r;
 }
 
-VALUE la_buf_normal_change_case (la_t *this, VALUE bufv) {
+static VALUE la_buf_normal_change_case (la_t *this, VALUE bufv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   VALUE r = INT(buf_normal_change_case (buf));
   return r;
 }
 
-VALUE la_buf_insert_string (la_t *this, VALUE bufv, VALUE strv, VALUE drawv) {
+static VALUE la_buf_insert_string (la_t *this, VALUE bufv, VALUE strv, VALUE drawv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   char *str = AS_STRING_BYTES(strv);
@@ -13623,7 +13661,7 @@ VALUE la_buf_insert_string (la_t *this, VALUE bufv, VALUE strv, VALUE drawv) {
   return r;
 }
 
-VALUE la_buf_search (la_t *this, VALUE bufv, VALUE comv, VALUE strv, VALUE cv) {
+static VALUE la_buf_search (la_t *this, VALUE bufv, VALUE comv, VALUE strv, VALUE cv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   char com = AS_INT(comv);
@@ -13695,7 +13733,7 @@ static la_T *__init_this_la__ (E_T *this) {
   return __LAPTR__;
 }
 
-static int E_load_file (E_T *this, char *fn, int argc, char **argv) {
+static int E_load_file (E_T *this, char *fn, int argc, const char **argv) {
   la_t *la = La.init_instance (&__LA__, LaOpts (
     .argc = argc,
     .argv = argv,
@@ -13712,7 +13750,7 @@ static int E_load_file (E_T *this, char *fn, int argc, char **argv) {
   return retval;
 }
 
-public E_T *__init_ed__ (char *name) {
+public E_T *__init_ed__ (const char *name) {
   E_T *this = Alloc (sizeof (E_T));
   this->prop = Alloc (sizeof (E_prop));
 

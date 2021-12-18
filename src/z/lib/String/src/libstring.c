@@ -237,7 +237,7 @@ static string_t *string_replace_numbytes_at_with (
   return string_insert_at_with (this, idx, bytes);
 }
 
-static string_t *string_replace_with (string_t *this, char *bytes) {
+static string_t *string_replace_with (string_t *this, const char *bytes) {
   string_clear (this);
   return string_append_with (this, bytes);
 }

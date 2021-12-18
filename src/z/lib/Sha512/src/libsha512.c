@@ -110,7 +110,7 @@ static void pad (struct sha512 *s) {
   processblock (s, s->buf);
 }
 
-void sha512_init (void *ctx) {
+static void sha512_init (void *ctx) {
   struct sha512 *s = ctx;
   s->len = 0;
   s->h[0] = 0x6a09e667f3bcc908ULL;
@@ -123,7 +123,7 @@ void sha512_init (void *ctx) {
   s->h[7] = 0x5be0cd19137e2179ULL;
 }
 
-void sha512_sum_n (struct sha512 *s, uchar *md, int n) {
+static void sha512_sum_n (struct sha512 *s, uchar *md, int n) {
   int i;
 
   pad (s);
@@ -139,11 +139,11 @@ void sha512_sum_n (struct sha512 *s, uchar *md, int n) {
   }
 }
 
-void sha512_sum (void *ctx, uchar *md) {
+static void sha512_sum (void *ctx, uchar *md) {
   sha512_sum_n ((struct sha512 *) ctx, md, 8);
 }
 
-void sha512_update (void *ctx, const uchar *m, unsigned long len) {
+static void sha512_update (void *ctx, const uchar *m, unsigned long len) {
   struct sha512 *s = ctx;
   const uint8_t *p = m;
   unsigned r = s->len % 128;

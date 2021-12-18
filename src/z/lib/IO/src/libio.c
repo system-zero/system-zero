@@ -59,7 +59,7 @@ static idx_t io_fd_read (int fd, char *buf, idx_t len) {
   return tbts;
 }
 
-static idx_t io_fd_write (int fd, char *buf, idx_t len) {
+static idx_t io_fd_write (int fd, const char *buf, idx_t len) {
   int bts;
   idx_t tbts = len;
 

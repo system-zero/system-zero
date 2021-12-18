@@ -126,7 +126,7 @@ static void re_release (re_t *re) {
   free (re);
 }
 
-static re_t *re_new (char *pat, int flags, int num_caps, ReCompile_cb compile) {
+static re_t *re_new (const char *pat, int flags, int num_caps, ReCompile_cb compile) {
   re_t *re = Alloc (sizeof (re_t));
   re->flags |= flags;
   re->pat = String.new_with (pat);
@@ -587,10 +587,10 @@ theend:
   return re->retval;
 }
 
-static string_t *re_parse_substitute (re_t *re, char *sub, char *replace_buf) {
+static string_t *re_parse_substitute (re_t *re, const char *sub, const char *replace_buf) {
   string_t *substr = String.new (64);
 
-  char *sub_p = sub;
+  char *sub_p = (char *) sub;
   while (*sub_p) {
     switch (*sub_p) {
       case '\\':

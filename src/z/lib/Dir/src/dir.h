@@ -8,10 +8,10 @@ typedef struct dirwalk_t dirwalk_t;
 typedef struct dir_opts  dir_opts;
 
 typedef int (*DirStatFile_cb) (const char *, struct stat *);
-typedef int (*DirProcessDir_cb) (dirwalk_t *, char *, struct stat *);
-typedef int (*DirProcessFile_cb) (dirwalk_t *, char *, struct stat *);
-typedef int (*DirMake) (char *, mode_t, dir_opts);
-typedef int (*DirRm) (char *, dir_opts);
+typedef int (*DirProcessDir_cb) (dirwalk_t *, const char *, struct stat *);
+typedef int (*DirProcessFile_cb) (dirwalk_t *, const char *, struct stat *);
+typedef int (*DirMake) (const char *, mode_t, dir_opts);
+typedef int (*DirRm) (const char *, dir_opts);
 
 typedef int (*PrintMsg_cb) (FILE *fp, const char *fmt, ...);
 typedef       PrintMsg_cb   PrintErr_cb;
@@ -74,7 +74,7 @@ struct dirlist_t {
 typedef struct dir_walk_self {
   dirwalk_t *(*new) (DirProcessDir_cb, DirProcessFile_cb);
   void (*release) (dirwalk_t **);
-  int (*run) (dirwalk_t *, char *);
+  int (*run) (dirwalk_t *, const char *);
 } dir_walk_self;
 
 typedef struct dir_self {
@@ -87,10 +87,10 @@ typedef struct dir_self {
   DirRm   rm;
   DirRm   rm_parents;
   int
-    (*is_directory) (char *),
+    (*is_directory) (const char *),
     (*lnk_is_directory) (const char *);
 
-  dirlist_t *(*list) (char *, int);
+  dirlist_t *(*list) (const char *, int);
 
 } dir_self;
 

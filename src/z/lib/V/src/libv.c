@@ -482,7 +482,7 @@ static int v_tty_main (v_t *this) {
   return (retval is -1 ? 1 : 0);
 }
 
-static int pty_child (v_t *this, int argc, char **argv) {
+static int pty_child (v_t *this, int argc, const char **argv) {
   $my(pty).term = $my(term)->orig_mode;
   memset (&$my(pty).ws, 0, sizeof (struct winsize));
 
@@ -694,7 +694,7 @@ static void pty_client_activity (v_t *this, struct client *p) {
   }
 }
 
-static void pty_process (v_t *this, int s, int argc, char **argv, int statusfd) {
+static void pty_process (v_t *this, int s, int argc, const char **argv, int statusfd) {
   setsid ();
 
   signal (SIGCHLD, pty_die);
@@ -795,7 +795,7 @@ static void pty_process (v_t *this, int s, int argc, char **argv, int statusfd) 
   }
 }
 
-static int v_pty_main (v_t *this, int argc, char **argv) {
+static int v_pty_main (v_t *this, int argc, const char **argv) {
   int s = self(sock.create, $my(sockname));
 
   if (s is NOTOK) {
@@ -862,7 +862,7 @@ static term_t *v_init_term (v_t *this, int *rows, int *cols) {
   return term;
 }
 
-static int v_pty_main_cb (v_t *this, int argc, char **argv) {
+static int v_pty_main_cb (v_t *this, int argc, const char **argv) {
   vwm_t *vwm = $my(user_data)[VWM_OBJECT];
 
   int rows = Vwm.get.lines (vwm);
@@ -954,7 +954,7 @@ theend:
   return args;
 }
 
-static int v_exec_child_cb (v_t *this, int argc, char **argv) {
+static int v_exec_child_cb (v_t *this, int argc, const char **argv) {
   (void) argc; (void) argv;
   Term.orig_mode($my(term));
   Term.raw_mode ($my(term));
@@ -1200,7 +1200,7 @@ static VALUE la_v_new_win (la_t *la, VALUE v_value, VALUE numfr_value, VALUE max
   return v;
 }
 
-static int v_pty_main_void_cb (v_t *this, int argc, char **argv) {
+static int v_pty_main_void_cb (v_t *this, int argc, const char **argv) {
   (void) this; (void) argc; (void) argv;
   return OK;
 }
@@ -1306,7 +1306,7 @@ static int v_la_define_funs_cb (la_t *this) {
   return LA_OK;
 }
 
-static int v_la_loadfile (v_t *this, char *fn, int argc, char **argv) {
+static int v_la_loadfile (v_t *this, char *fn, int argc, const char **argv) {
   la_T *__la__ = (la_T *) $my(user_data)[LA_OBJECT];
 
   if (NULL is $my(la_instance))
@@ -1545,7 +1545,7 @@ static void v_unset_tmp_dir (v_t *this) {
   $my(tmp_dir) = NULL;
 }
 
-static string_t *v_init_sockname (v_t *this, char *sockdir, char *as) {
+static string_t *v_init_sockname (v_t *this, char *sockdir, const char *as) {
   if (NULL is as) return NULL;
 
   ifnot (NULL is Cstring.byte.in_str (as, '\\')) {
@@ -1780,7 +1780,7 @@ static int v_save_image (v_t *this, char *fname) {
   return OK;
 }
 
-static int v_send (v_t *this, char *sockname, char *data) {
+static int v_send (v_t *this, char *sockname, const char *data) {
   int s = self(sock.connect, sockname);
   if (s is NOTOK) return 1;
 
@@ -1791,7 +1791,7 @@ static int v_send (v_t *this, char *sockname, char *data) {
   if (data isnot NULL) {
     size_t len = bytelen (data);
     int num = len;
-    char *sp = data;
+    char *sp = (char *) data;
 
     while (num > 0) {
       size_t n = 0;
@@ -1836,11 +1836,11 @@ static int v_main (v_t *this) {
   v_opts *opts = $my(opts);
 
   int argc = opts->argc;
-  char *sockname = opts->sockname;
-  char *loadfile = opts->loadfile;
-  char **argv = opts->argv;
-  char *as = opts->as;
-  char *data = opts->data;
+  char *sockname = (char *) opts->sockname;
+  char *loadfile = (char *) opts->loadfile;
+  const char **argv = opts->argv;
+  const char *as = opts->as;
+  const char *data = opts->data;
   PtyOnExecChild_cb vexec_child = (opts->at_exec_child is NULL ? v_exec_child_cb : opts->at_exec_child);
   PtyMain_cb vpty_main = (opts->at_pty_main is NULL ? v_pty_main_cb : opts->at_pty_main);
 

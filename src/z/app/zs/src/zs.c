@@ -58,7 +58,10 @@ typedef struct zs_t {
   char command[MAXLEN_COMMAND + 1];
   char hint[MAXLEN_HINT + 1];
 
-  int num_items;
+  int
+    num_items,
+    last_retval,
+    exit_val;
 
   string
     *arg,
@@ -570,10 +573,11 @@ static void init_rline_commands (zs_t *this) {
   comit->next = next;
   comit = next;
 
-  dirlist_t *dlist = Dir.list (this->comdir->bytes, 0);
+  char *flags = NULL;
+  dirlist_t *dlist = NULL; // silence clang
+  dlist = Dir.list (this->comdir->bytes, 0);
   if (NULL is dlist) goto theend;
 
-  char *flags = NULL;
   size_t flagslen = 0;
 
   vstring_t *it = dlist->list->head;
@@ -671,16 +675,30 @@ static zs_t *zs_init_rline (void) {
   return zs;
 }
 
-static int zs_builtins (char *line, Vstring_t *cdpath) {
+static int zs_builtins (zs_t *this, char *line, Vstring_t *cdpath, int *retval) {
+  *retval = 0;
+
   Cstring.trim.end (line, ' ');
 
-  if (Cstring.eq (line, "exit")) {
+  if (Cstring.eq_n (line, "exit", 4)) {
+    char *exit_val = line + 4;
+    if (*exit_val is '\0' or *exit_val isnot ' ')
+      this->exit_val = 0;
+    else {
+      while (*exit_val is ' ') exit_val++;
+      this->exit_val = (*exit_val ? atoi (exit_val) : 0);
+      if (0 > this->exit_val) this->exit_val = 1;
+    }
+
     free (line);
     return ZS_RETURN;
   }
 
   if (Cstring.eq_n (line, "cd", 2)) {
     char *path = line + 2;
+    if (*path is '\0' or *path isnot ' ')
+      return ZS_CONTINUE;
+
     while (*path is ' ') path++;
 
     ifnot (*path) {
@@ -696,8 +714,13 @@ static int zs_builtins (char *line, Vstring_t *cdpath) {
     if (Cstring.eq (path, cdpath->tail->data->bytes))
       return ZS_CONTINUE;
 
-    if (-1 is chdir (path))
+    if (-1 is chdir (path)) {
       Stderr.print_fmt ("cd: %s %s\n", path, Error.errno_string (errno));
+      *retval = 1;
+      return ZS_CONTINUE;
+    }
+
+    setenv ("PWD", path, 1);
 
     Vstring.append_with (cdpath, path);
     return ZS_CONTINUE;
@@ -705,8 +728,10 @@ static int zs_builtins (char *line, Vstring_t *cdpath) {
 
   if (Cstring.eq (line, "pwd")) {
     char *curdir = Dir.current ();
-    if (NULL is curdir)
+    if (NULL is curdir) {
       Stderr.print ("couldn't get current working directory\n");
+      *retval = 1;
+    }
     else {
       Stdout.print_fmt ("%s\n", curdir);
       free (curdir);
@@ -722,15 +747,10 @@ static int zs_interactive (sh_t *this) {
   int retval = OK;
   char *line;
 
-  char *cwd = Dir.current ();
-  if (NULL is cwd) {
-    Stderr.print ("cannot determinate current directory\n");
-    return NOTOK;
-  }
+  char *cwd = getenv ("PWD");
 
   Vstring_t *cdpath = Vstring.new ();
   Vstring.append_with (cdpath, cwd);
-  free (cwd);
   cwd = NULL;
 
   zs_t *zs = zs_init_rline ();
@@ -746,17 +766,21 @@ static int zs_interactive (sh_t *this) {
        break;
     }
 
-    int builtin = zs_builtins (line, cdpath);
+    int rv;
+    int builtin = zs_builtins (zs, line, cdpath, &rv);
     switch (builtin) {
       case ZS_RETURN:
+        retval = zs->exit_val;
         goto theend;
 
       case ZS_CONTINUE:
+        zs->last_retval = rv;
         goto next;
      }
 
     signal (SIGINT, SIG_IGN);
     retval = Sh.exec (this, line);
+    zs->last_retval = retval;
     signal (SIGINT, SIG_DFL);
 
     next:
@@ -800,6 +824,15 @@ int main (int argc, char **argv) {
   argc--; argv++;
 
   int nargc = 0;
+
+  char *curdir = Dir.current ();
+  if (NULL is curdir) {
+    Stderr.print ("cannot determinate current working directory\n");
+    exit (1);
+  } else {
+    setenv ("PWD", curdir, 1);
+    free (curdir);
+  }
 
   for (int i = 0; i < argc; i++) {
     if (Cstring.eq_n (argv[i], "--chdir=", 8)) {

@@ -30,7 +30,7 @@ typedef struct string_self {
     *(*insert_at_with) (string_t *, int, const char *),
     *(*insert_at_with_len) (string_t *, int, const char *, size_t),
     *(*insert_byte_at) (string_t *, char c, int),
-    *(*replace_with) (string_t *, char *),
+    *(*replace_with) (string_t *, const char *),
     *(*replace_with_len) (string_t *, const char *, size_t),
     *(*replace_with_fmt) (string_t *, const char *, ...),
     *(*trim_end) (string_t *, char c),

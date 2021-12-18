@@ -24,7 +24,7 @@ typedef void  (*OnCarriageReturn_cb) (const char *, void *);
 typedef struct rline_set_self {
   void
      (*flags) (rline_t *, rlineCompletions *, int),
-     (*prompt) (rline_t *, char *),
+     (*prompt) (rline_t *, const char *),
      (*curpos) (rline_t *, rlineCompletions *, int),
      (*hints_cb) (rline_t *, RlineHints_cb, void *),
      (*on_input_cb) (rline_t *, OnInput_cb),

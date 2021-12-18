@@ -45,6 +45,7 @@ static VALUE sys_set (la_t *this, VALUE v_key, VALUE v_val, VALUE v_replace) {
 
 #define EvalString(...) #__VA_ARGS__
 
+public int __init_sys_module__ (la_t *this);
 public int __init_sys_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(sys);
@@ -81,6 +82,7 @@ public int __init_sys_module__ (la_t *this) {
   return LA_OK;
 }
 
+public void __deinit_sys_module__ (la_t *this);
 public void __deinit_sys_module__ (la_t *this) {
   (void) this;
   __deinit_sys__ ();

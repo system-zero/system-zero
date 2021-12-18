@@ -3,7 +3,7 @@
 
 typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
 
-typedef int (*FileInteractive) (char *, char *);
+typedef int (*FileInteractive) (const char *, const char *);
 
 typedef struct file_copy_opts {
   int
@@ -19,7 +19,7 @@ typedef struct file_copy_opts {
     dereference,
     interactive;
 
-  char *backup_suffix;
+  const char *backup_suffix;
 
   FILE
     *out_stream,
@@ -83,7 +83,7 @@ typedef struct file_rename_opts {
     verbose,
     interactive;
 
-  char *backup_suffix;
+  const char *backup_suffix;
 
   FILE
     *out_stream,
@@ -109,11 +109,11 @@ typedef struct file_rename_opts {
 
 typedef struct tmpfname_t {
   int fd;
-  string_t *fname;
+  string *fname;
 } tmpfname_t;
 
 typedef struct file_tmpfname_self {
-  tmpfname_t *(*new) (char *, char *);
+  tmpfname_t *(*new) (const char *, const char *);
   void (*release) (tmpfname_t *, int);
 } file_tmpfname_self;
 

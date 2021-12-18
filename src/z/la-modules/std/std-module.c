@@ -361,6 +361,7 @@ static VALUE integer_eq (la_t *this, VALUE v_fint, VALUE v_sint) {
 
 #define EvalString(...) #__VA_ARGS__
 
+public int __init_std_module__ (la_t *this);
 public int __init_std_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(vmap);
@@ -443,6 +444,7 @@ public int __init_std_module__ (la_t *this) {
   return LA_OK;
 }
 
+public void __deinit_std_module__ (la_t *this);
 public void __deinit_std_module__ (la_t *this) {
   (void) this;
   return;

@@ -113,6 +113,7 @@ static VALUE term_get_cols (la_t *this, VALUE v_term) {
 
 #define EvalString(...) #__VA_ARGS__
 
+public int __init_term_module__ (la_t *this);
 public int __init_term_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
@@ -160,6 +161,7 @@ public int __init_term_module__ (la_t *this) {
   return LA_OK;
 }
 
+public void __deinit_term_module__ (la_t *this);
 public void __deinit_term_module__ (la_t *this) {
   (void) this;
   return;

@@ -28,7 +28,7 @@
    - add and expose error
  */
 
-static int dir_is_directory (char *dname) { // -> const
+static int dir_is_directory (const char *dname) { // -> const
   struct stat st;
   if (NOTOK is lstat (dname, &st)) return 0;
   return S_ISDIR (st.st_mode);
@@ -60,7 +60,7 @@ static void dir_list_release (dirlist_t *dlist) {
 }
 
 /* this needs a simplification and enhancement */
-static dirlist_t *dir_list (char *dir, int flags) {
+static dirlist_t *dir_list (const char *dir, int flags) {
   if (NULL is dir) return NULL;
   ifnot (flags & DIRLIST_DONOT_CHECK_DIRECTORY) {
     int isdir = 0;
@@ -136,13 +136,13 @@ static void dir_walk_release (dirwalk_t **thisp) {
   *thisp = NULL;
 }
 
-static int dir_walk_process_dir_def (dirwalk_t *this, char *dir, struct stat *st) {
+static int dir_walk_process_dir_def (dirwalk_t *this, const char *dir, struct stat *st) {
   (void) st;
   Vstring.add.sort_and_uniq (this->files, dir);
   return 1;
 }
 
-static int dir_walk_process_file_def (dirwalk_t *this, char *file, struct stat *st) {
+static int dir_walk_process_file_def (dirwalk_t *this, const char *file, struct stat *st) {
   (void) st;
   Vstring.add.sort_and_uniq (this->files, file);
   return 1;
@@ -161,11 +161,11 @@ static dirwalk_t *dir_walk_new (DirProcessDir_cb process_dir, DirProcessFile_cb 
   return this;
 }
 
-static int __dir_walk_run__ (dirwalk_t *this, char *dir) {
+static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
   if (NOTOK is this->status) return this->status;
 
   int depth = 0;
-  char *sp = dir;
+  char *sp = (char *) dir;
   while (*sp) {
     if (*sp is DIR_SEP) depth++;
     sp++;
@@ -229,12 +229,12 @@ theend:
   return this->status;
 }
 
-static int dir_walk_run (dirwalk_t *this, char *dir) {
+static int dir_walk_run (dirwalk_t *this, const char *dir) {
   if (NULL is this->files)
     this->files = Vstring.new ();
 
   String.replace_with (this->dir, dir);
-  char *sp = dir;
+  char *sp = (char *) dir;
   size_t len = 0;
   while (*sp) {
     len++;
@@ -243,15 +243,16 @@ static int dir_walk_run (dirwalk_t *this, char *dir) {
   }
 
   if (dir[len-1] is DIR_SEP)
-    dir[len-1] = '\0';
+    //dir[len-1] = '\0';
+    String.trim_end (this->dir, DIR_SEP);
   else
     this->orig_depth++;
 
-  __dir_walk_run__ (this, dir);
+  __dir_walk_run__ (this, this->dir->bytes);
   return OK;
 }
 
-static int dir_make (char *dir, mode_t mode, dir_opts opts) {
+static int dir_make (const char *dir, mode_t mode, dir_opts opts) {
   if (NULL is dir) return NOTOK;
 
   if (*dir is '-' or *dir is ' ') {
@@ -260,7 +261,7 @@ static int dir_make (char *dir, mode_t mode, dir_opts opts) {
     return NOTOK;
   }
 
-  char *sp = dir;
+  char *sp = (char *) dir;
   while (*sp) {
     if (' ' > *sp or *sp > 'z' or
         Cstring.byte.in_str (NOT_ALLOWED_IN_A_DIRECTORY_NAME, *sp)) {
@@ -290,8 +291,8 @@ static int dir_make (char *dir, mode_t mode, dir_opts opts) {
   return OK;
 }
 
-static int dir_make_parents (char *, mode_t, dir_opts opts);
-static int dir_make_parents (char *dir, mode_t mode, dir_opts opts) {
+static int dir_make_parents (const char *, mode_t, dir_opts opts);
+static int dir_make_parents (const char *dir, mode_t mode, dir_opts opts) {
   if (Cstring.eq (dir, "."))
     return OK;
 
@@ -324,7 +325,7 @@ theend:
   return retval;
 }
 
-static int dir_rm  (char *dir, dir_opts opts) {
+static int dir_rm  (const char *dir, dir_opts opts) {
   if (dir is NULL) return NOTOK;
   int retval = rmdir (dir);
 
@@ -346,7 +347,7 @@ static int dir_rm  (char *dir, dir_opts opts) {
  * will always do it forever.
  * Small price for an abstraction, and a generous gift. */
 
-static int dir_rm_parents (char *dir, dir_opts opts) {
+static int dir_rm_parents (const char *dir, dir_opts opts) {
   int retval = 0;
 
   Vstring_t *path = Path.split (dir);

@@ -188,6 +188,7 @@ static VALUE os_arch (la_t *this) {
 
 #define EvalString(...) #__VA_ARGS__
 
+public int __init_os_module__ (la_t *this);
 public int __init_os_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(os);
@@ -244,6 +245,7 @@ public int __init_os_module__ (la_t *this) {
   return LA_OK;
 }
 
+public void __deinit_os_module__ (la_t *this);
 public void __deinit_os_module__ (la_t *this) {
   (void) this;
   return;

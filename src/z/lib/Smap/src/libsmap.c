@@ -36,14 +36,14 @@ static Smap_t *smap_new (int num_slots) {
   return MAP_NEW(Smap_t, smap_t, num_slots);
 }
 
-static string_t *smap_get (Smap_t *smap, char *key) {
+static string_t *smap_get (Smap_t *smap, const char *key) {
   uint idx = 0;
   smap_t *item = MAP_GET(smap_t, smap, key, idx);
   ifnot (NULL is item) return item->value;
   return NULL;
 }
 
-static int smap_set (Smap_t *smap, char *key, string_t *value) {
+static int smap_set (Smap_t *smap, const char *key, string_t *value) {
   string_t *old = smap_get (smap, key);
 
   MAP_SET(smap_t, smap, key, value);
@@ -54,7 +54,7 @@ static int smap_set (Smap_t *smap, char *key, string_t *value) {
   return OK;
 }
 
-static int smap_key_exists (Smap_t *smap, char *key) {
+static int smap_key_exists (Smap_t *smap, const char *key) {
   uint idx = 0;
   smap_t *item = MAP_GET(smap_t, smap, key, idx);
   return (NULL isnot item);

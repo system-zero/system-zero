@@ -43,7 +43,7 @@ static Vmap_t *vmap_new (int num_slots) {
   return MAP_NEW(Vmap_t, vmap_t, num_slots);
 }
 
-static void *vmap_pop (Vmap_t *vmap, char *key) {
+static void *vmap_pop (Vmap_t *vmap, const char *key) {
   uint idx = 0;
   vmap_t *item = MAP_POP(vmap_t, vmap, key, idx);
 
@@ -57,14 +57,14 @@ static void *vmap_pop (Vmap_t *vmap, char *key) {
   return NULL;
 }
 
-static void *vmap_get (Vmap_t *vmap, char *key) {
+static void *vmap_get (Vmap_t *vmap, const char *key) {
   uint idx = 0;
   vmap_t *item = MAP_GET(vmap_t, vmap, key, idx);
   ifnot (NULL is item) return item->value;
   return NULL;
 }
 
-static int vmap_set (Vmap_t *vmap, char *key, void *value, VmapRelease_cb cb, int is_constant) {
+static int vmap_set (Vmap_t *vmap, const char *key, void *value, VmapRelease_cb cb, int is_constant) {
   if (NULL is cb) return NOTOK;
 
   uint idx = 0;
@@ -89,7 +89,7 @@ static int vmap_set (Vmap_t *vmap, char *key, void *value, VmapRelease_cb cb, in
   return OK;
 }
 
-static int vmap_key_exists (Vmap_t *vmap, char *key) {
+static int vmap_key_exists (Vmap_t *vmap, const char *key) {
   uint idx = 0;
   vmap_t *item = MAP_GET(vmap_t, vmap, key, idx);
   return (NULL isnot item);

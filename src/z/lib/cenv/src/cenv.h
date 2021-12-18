@@ -257,7 +257,7 @@ typedef unsigned long ulong;
 
        /* Our alloc exits hard */
 /* we set up an informative handler */
-typedef void (*AllocErrorHandlerF) (int, size_t, char *, const char *, int);
+typedef void (*AllocErrorHandlerF) (int, size_t, const char *, const char *, int);
 
 AllocErrorHandlerF AllocErrorHandler;
 
@@ -754,6 +754,15 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_FCNTL
 #endif /* REQUIRE_FCNTL */
+
+#ifdef REQUIRE_GLOB
+  #ifndef GLOB_HDR
+  #define GLOB_HDR
+  #include <glob.h>
+  #endif /* GLOB_HDR */
+
+#undef REQUIRE_GLOB
+#endif /* REQUIRE_GLOB */
 
 #ifdef REQUIRE_TIME
   #ifndef TIME_HDR
@@ -1336,7 +1345,7 @@ typedef ptrdiff_t idx_t;
   #endif
 
   #ifndef SHELL
-  #define SHELL "zs-static"
+  #define SHELL "zs"
   #endif
 
   #ifndef EDITOR
@@ -1867,14 +1876,14 @@ typedef ptrdiff_t idx_t;
  */
 #define __INIT__(_T_) _T_ ## Type = __init_ ## _T_ ## __ ()
 
-#define __INIT_APP__        \
-  __INIT__ (argparse);      \
-  __INIT__ (io);            \
-  int version = 0;          \
-  int retval  = 0;          \
-  char *progname = argv[0]; \
-  int argparse_flags = 0;   \
-  (void) progname;          \
+#define __INIT_APP__                 \
+  __INIT__ (argparse);               \
+  __INIT__ (io);                     \
+  int version = 0;                   \
+  int retval  = 0;                   \
+  char *progname = (char *) argv[0]; \
+  int argparse_flags = 0;            \
+  (void) progname;                   \
   argparse_t argparser
 
 #define PARSE_ARGS                                               \

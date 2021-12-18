@@ -7,7 +7,7 @@ typedef struct path_self {
     *(*basename) (char *),
     *(*basename_sans_extname) (char *),
     *(*extname) (char *),
-    *(*dirname) (char *);
+    *(*dirname) (const char *);
 
   int (*is_absolute) (const char *);
   Vstring_t *(*split) (const char *);

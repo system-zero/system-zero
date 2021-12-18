@@ -83,7 +83,7 @@ typedef struct listType listType;
 #define AS_ARRAY AS_PTR
 #define    ARRAY_NEW(__type__, __len__) ({               \
   ArrayType *array_ = Alloc (sizeof (ArrayType));        \
-  VALUE ary_;                                            \
+  VALUE ary_ = NULL_VALUE;                               \
   array_->type = __type__;                               \
   array_->len  = __len__;                                \
   if (array_->type is INTEGER_TYPE) {                    \
@@ -264,11 +264,11 @@ typedef int (*LaDefineFuns_cb) (la_t *);
 #define LA_CFUNC(x) (((x) << 8) + 'B')
 
 typedef struct la_opts {
-  char  *name;
-  char  *la_dir;
+  const char  *name;
+  const char  *la_dir;
   int    name_gen;
   int    argc;
-  char **argv;
+  const char **argv;
   FILE  *err_fp;
   FILE  *out_fp;
 
@@ -310,7 +310,7 @@ typedef struct la_get_self {
      (*didExit) (la_t *),
      (*current_idx) (la_T *);
 
-   VALUE (*qualifier) (la_t *, char *, VALUE);
+   VALUE (*qualifier) (la_t *, const char *, VALUE);
 
    Vmap_t *(*qualifiers) (la_t *);
 
@@ -322,8 +322,8 @@ typedef struct la_set_self {
 
   void
     (*Errno) (la_t *, int),
-    (*la_dir) (la_t *, char *),
-    (*curMsg) (la_t *, char *),
+    (*la_dir) (la_t *, const char *),
+    (*curMsg) (la_t *, const char *),
     (*user_data) (la_t *, void *),
     (*CFuncError) (la_t *, int),
     (*define_funs_cb) (la_t *, LaDefineFuns_cb);
@@ -340,8 +340,8 @@ typedef struct la_map_self {
     (*release_value) (la_t *, VALUE *);
 
   int
-    (*set_value) (la_t *, Vmap_t *, char *, VALUE, int),
-    (*reset_value) (la_t *, Vmap_t *, char *, VALUE);
+    (*set_value) (la_t *, Vmap_t *, const char *, VALUE, int),
+    (*reset_value) (la_t *, Vmap_t *, const char *, VALUE);
 } la_map_self;
 
 typedef struct la_self {
@@ -362,16 +362,16 @@ typedef struct la_self {
   int
     (*def) (la_t *, const char *, int, VALUE),
     (*init) (la_T *, la_t *, la_opts),
-    (*def_std) (la_t *, char *, int, VALUE, int),
+    (*def_std) (la_t *, const char *, int, VALUE, int),
     (*eval_file) (la_t *, const char *),
     (*eval_expr) (la_t *, const char *, VALUE *),
-    (*load_file) (la_T *, la_t *, char *),
+    (*load_file) (la_T *, la_t *, const char *),
     (*eval_string) (la_t *, const char *),
-    (*qualifier_exists) (la_t *, char *);
+    (*qualifier_exists) (la_t *, const char *);
 
   VALUE
     (*print_byte) (la_t *, char),
-    (*print_bytes) (la_t *, char *);
+    (*print_bytes) (la_t *, const char *);
 
 } la_self;
 

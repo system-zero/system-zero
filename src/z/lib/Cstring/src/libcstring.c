@@ -154,7 +154,7 @@ static size_t cstring_cp (char *dest, size_t dest_len, const char *src, size_t n
   return len;
 }
 
-static size_t cstring_cp_fmt (char *dest, size_t dest_len, char *fmt, ...) {
+static size_t cstring_cp_fmt (char *dest, size_t dest_len, const char *fmt, ...) {
   size_t len = VA_ARGS_FMT_SIZE(fmt);
   char bytes[len + 1];
   VA_ARGS_GET_FMT_STR(bytes, len, fmt);
@@ -231,7 +231,7 @@ static char *cstring_itoa (int value, char *result, int base) {
 }
 
 static char *cstring_extract_word_at (
-char *bytes,  size_t bsize, char *word, size_t wsize, char *Nwtype, size_t Nwsize,
+const char *bytes,  size_t bsize, char *word, size_t wsize, const char *Nwtype, size_t Nwsize,
                                                int cur_idx, int *fidx, int *lidx) {
   if (NULL is bytes or 0 is bsize or (int) bsize <= cur_idx) {
     *lidx = cur_idx;
@@ -286,7 +286,7 @@ static void cstring_tok_release (cstring_tok *this) {
 }
 
 static cstring_tok *cstring_tokenize (cstring_tok *this,
- char *buf, char *tok, CstringTok_cb cb, void *obj) {
+ const char *buf, const char *tok, CstringTok_cb cb, void *obj) {
   if (NULL is tok or *tok is '\0') return this;
 
   size_t toklen = bytelen (tok);
@@ -301,7 +301,7 @@ static cstring_tok *cstring_tokenize (cstring_tok *this,
     ts->length = NULL;
   }
 
-  char *sp = buf;
+  char *sp = (char *) buf;
   char *p = sp;
 
   int end = 0;

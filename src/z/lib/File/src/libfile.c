@@ -37,7 +37,7 @@
 
 static int file_copy (const char *, const char *, file_copy_opts);
 static int file_remove (const char *, file_remove_opts);
-static int file_on_interactive (char *, char *);
+static int file_on_interactive (const char *, const char *);
 
 static int file_is_lnk (const char *fname) {
   struct stat st;
@@ -228,7 +228,7 @@ theend:
   return llines;
 }
 
-static ssize_t __file_write__ (char *fname, char *bytes, ssize_t size, char *mode) {
+static ssize_t __file_write__ (char *fname, char *bytes, ssize_t size, const char *mode) {
   if (size < 0) size = bytelen (bytes);
   if (size <= 0) return NOTOK;
 
@@ -263,8 +263,8 @@ static void file_tmpfname_release (tmpfname_t *this, int flags) {
   free (this);
 }
 
-static tmpfname_t *file_tmpfname_new (char *dirname, char *prefix) {
-  char *dname = dirname;
+static tmpfname_t *file_tmpfname_new (const char *dirname, const char *prefix) {
+  char *dname = (char *) dirname;
   if (NULL is dname or 0 is Dir.is_directory (dname)) return NULL;
 
   tmpfname_t *this = NULL;
@@ -345,7 +345,7 @@ theend:
   return this;
 }
 
-static int file_on_interactive (char *file, char *msg) {
+static int file_on_interactive (const char *file, const char *msg) {
   term_t *term = Term.new ();
   Term.raw_mode (term);
 
