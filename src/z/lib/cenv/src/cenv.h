@@ -719,6 +719,33 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SYS_UNAME
 #endif /* REQUIRE_SYS_UNAME */
 
+#ifdef REQUIRE_ARPA_INET
+  #ifndef ARPA_INET_IN_HDR
+  #define ARPA_INET_IN_HDR
+  #include <arpa/inet.h>
+  #endif /* ARPA_INET_HDR */
+
+#undef REQUIRE_ARPA_INET
+#endif /* REQUIRE_ARPA_INET */
+
+#ifdef REQUIRE_NETINET_IN
+  #ifndef NETINET_IN_HDR
+  #define NETINET_IN_HDR
+  #include <netinet/in.h>
+  #endif /* NETINET_IN_HDR */
+
+#undef REQUIRE_NETINET_IN
+#endif /* REQUIRE_NETINET_IN */
+
+#ifdef REQUIRE_NETDB
+  #ifndef NETDB_HDR
+  #define NETDB_HDR
+  #include <netdb.h>
+  #endif /* NETDB_HDR */
+
+#undef REQUIRE_NETDB
+#endif /* REQUIRE_NETDB */
+
 #ifdef REQUIRE_TERMIOS
   #ifndef TERMIOS_HDR
   #define TERMIOS_HDR
@@ -1470,6 +1497,20 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_CONTAIN_TYPE
 #endif /* REQUIRE_CONTAIN_TYPE */
+
+#ifdef REQUIRE_NET_TYPE
+  #ifndef NET_TYPE_HDR
+  #define NET_TYPE_HDR
+  #include <z/net.h>
+  #endif /* NET_TYPE_HDR */
+
+  #if (REQUIRE_NET_TYPE == DECLARE)
+  static  net_T netType;
+  #define Net   netType.self
+  #endif
+
+#undef REQUIRE_NET_TYPE
+#endif /* REQUIRE_NET_TYPE */
 
 /* Development (ignore this section) */
 

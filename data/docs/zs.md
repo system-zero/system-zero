@@ -64,17 +64,19 @@ Semantics:
       and end of line delimited components of previous command lines.  
   
     - Command completion with the initial character.  
-      This is done automatically if the line is empty.  
+      This is done automatically if the line is empty and the first char is at  
+      the [A-Z] range.  
   
     Note that in the case of multiply completion items, a hint that indicates the number  
     of items is printed right to the cursor. However, in this implementation it is not  
     visually possible to expand all the items in the screen at once.  
+
     The underlying machine is linenoise with UTF-8 support, but in this implementation  
     the API is incompatible, just to support tab completion at any cursor point in the line,  
     and not just at the end of the line. Also there are two more callback functions, one that  
-    is called immediately after a received input and before any processing, and the other  
+    are called immediately after a received input and before any processing, and the other  
     on a carriage return.  
-    Generally the tendency is for a bit aggressive interaction.  
+    Generally speaking, the tendency is for a bit aggressive interaction.  
   
   Word expansion:  
     Tilde expansion:  

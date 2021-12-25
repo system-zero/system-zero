@@ -69,6 +69,14 @@ static VALUE os_setenv (la_t *this, VALUE v_as, VALUE v_val, VALUE v_overwrite) 
   return INT(setenv (as, val, overwrite));
 }
 
+static VALUE os_unsetenv (la_t *this, VALUE v_as) {
+  (void) this;
+  ifnot (IS_STRING(v_as)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  char *as = AS_STRING_BYTES(v_as);
+  return INT(unsetenv (as));
+}
+
 static VALUE os_getpid (la_t *this) {
   (void) this;
   return INT(getpid ());
@@ -204,6 +212,7 @@ public int __init_os_module__ (la_t *this) {
     { "getgid",         PTR(os_getgid), 0 },
     { "getenv",         PTR(os_getenv), 1 },
     { "setenv",         PTR(os_setenv), 3 },
+    { "unsetenv",       PTR(os_unsetenv), 1},
     { "environ",        PTR(os_environ), 0 },
     { "getpwdir",       PTR(os_getpwdir), 1 },
     { "getgrgid",       PTR(os_getgrgid), 1 },
@@ -223,20 +232,21 @@ public int __init_os_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Os = {
-      "sleep" : sleep,
-      "getpid" : getpid,
-      "getuid" : getuid,
-      "getgid" : getgid,
-      "getenv" : getenv,
-      "setenv" : setenv,
-      "environ": environ,
-      "getpwdir" : getpwdir,
-      "getgrgid" : getgrgid,
-      "getgrname" : getgrname,
-      "getpwuid" : getpwuid,
-      "getpwname" : getpwname,
-      "arch"      : os_arch,
-      "platform"  : os_platform
+      sleep     : sleep,
+      getpid    : getpid,
+      getuid    : getuid,
+      getgid    : getgid,
+      getenv    : getenv,
+      setenv    : setenv,
+      unsetenv  : unsetenv,
+      environ   : environ,
+      getpwdir  : getpwdir,
+      getgrgid  : getgrgid,
+      getgrname : getgrname,
+      getpwuid  : getpwuid,
+      getpwname : getpwname,
+      arch      : os_arch,
+      platform  : os_platform
      }
   );
 

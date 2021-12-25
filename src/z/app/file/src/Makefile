@@ -325,7 +325,7 @@ file-new-static:
 	@$(PRINTF) "#!/bin/env La-static\n\n" > $(SYSBINDIR)/$(F_new)-static
 	@$(CAT) $(F_new).lai >> $(SYSBINDIR)/$(F_new)-static
 	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_new)-static
-	@$(PRINTF) "installing File.move-static to $(SYSBINDIR)\n"
+	@$(PRINTF) "installing File.new-static to $(SYSBINDIR)\n"
 
 clean-file-new-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_new) || $(RM) $(SYSBINDIR)/$(F_new)

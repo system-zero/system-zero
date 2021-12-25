@@ -201,6 +201,7 @@ private
   }
 
   parse_long_arg : func (arg) {
+
     if (arg is "--help") {
       if (this.print_and_exit_on_help) {
         this.print_description ()

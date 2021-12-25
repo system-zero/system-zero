@@ -240,6 +240,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Contain_Type       = Contain
     Z_CONTAIN_SRCDIR   = $(Z_SRCLIBDIR)/$(Contain_Type)/src
 
+    # Net Type
+    Net_Type       = Net
+    Z_NET_SRCDIR   = $(Z_SRCLIBDIR)/$(Net_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -464,11 +468,11 @@ clean-librline-static:
 	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libsh-shared: Env cenv libstring-shared libio-shared libcstring-shared\
-                       libproc-shared
+                       libfile-shared libproc-shared
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libsh-static: Env cenv libstring-static libio-static libcstring-static\
-                       libproc-static
+                       libfile-static libproc-static
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libsh-shared:
@@ -863,6 +867,22 @@ clean-libcontain-shared:
 
 clean-libcontain-static:
 	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
+# working library with two interfaces:
+#   - a quite minimal http[s] client that can link against for both openssl and libressl
+#   - a wrapper around libcurl, thus this it can get very rich as we like
+# so the path isn't quite up yet, but the target stays for development reasons.
+libnet-shared: Env cenv
+	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libnet-static: Env cenv
+	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libnet-shared:
+	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libnet-static:
+	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)

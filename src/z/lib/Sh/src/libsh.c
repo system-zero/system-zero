@@ -11,8 +11,10 @@
 #define REQUIRE_SYS_WAIT
 #define REQUIRE_SIGNAL
 
+#define REQUIRE_VSTRING_TYPE DONOT_DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_PROC_TYPE    DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_SH_TYPE      DONOT_DECLARE
@@ -34,8 +36,13 @@ static pid_t CUR_PID = -1;
 #define REDIR_APPEND     2
 #define REDIR_CLOBBER    3
 
+#define SH_NO_BUILTIN    -10
+#define SH_EXIT_NOW      -11
+
 typedef struct sh_prop {
   int saved_stdin;
+  int exit_val;
+  int should_exit;
 
   proc_t *head;
   proc_t *tail;
@@ -51,13 +58,14 @@ struct sh_t {
 typedef struct shproc_t {
   int
     type,
+    exit_val,
+    redir_type,
+    should_exit,
     saved_stderr,
+    skip_next_proc,
+    should_skip_wait,
     stdout_fds[2],
     stderr_fds[2],
-    should_exit,
-    should_skip_wait,
-    skip_next_proc,
-    redir_type,
     redir_streams;
 
   string
@@ -116,6 +124,14 @@ static void sh_release (sh_t *this) {
   free ($myprop);
   free (this);
   this = NULL;
+}
+
+static int sh_get_exit_val (sh_t *this) {
+  return $my(exit_val);
+}
+
+static int sh_should_exit (sh_t *this) {
+  return $my(should_exit);
 }
 
 static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
@@ -244,15 +260,56 @@ static void sh_sigint_handler (int sig) {
   kill (-CUR_PID, SIGINT);
 }
 
+static int sh_builtins (shproc_t *sh, proc_t *this) {
+  int retval = SH_NO_BUILTIN;
+  char **argv = Proc.get.argv (this);
+
+  if (NULL is argv or NULL is argv[0]) return retval;
+
+  if (Cstring.eq (argv[0], "exit")) {
+    sh->should_exit = 1;
+    if (argv[1] isnot NULL)
+      sh->exit_val = atoi (argv[1]);
+    else
+      sh->exit_val  = 0;
+
+    return SH_EXIT_NOW;
+  }
+
+  return retval;
+}
+
 static int sh_interpret (proc_t *this) {
   if (NULL is this) return 1;
 
   shproc_t *sh = (shproc_t *) Proc.get.user_data (this);
 
   int retval = 1;
+  sh->exit_val = 0;
   sh->should_exit = 0;
   sh->should_skip_wait = 0;
   sh->skip_next_proc = 0;
+
+  retval = SH_NO_BUILTIN;
+
+  if (sh->type isnot PIPE_TYPE)
+    retval = sh_builtins (sh, this);
+
+  if (retval isnot SH_NO_BUILTIN) {
+    if (retval is SH_EXIT_NOW) return OK;
+
+    switch (sh->type) {
+      case CONJ_TYPE:
+        sh->skip_next_proc = retval isnot 0;
+        break;
+
+      case DISJ_TYPE:
+        sh->skip_next_proc = retval is 0;
+        break;
+    }
+
+    return retval;
+  }
 
   switch (sh->type) {
     case COMMAND_TYPE:
@@ -308,6 +365,7 @@ static sh_t *sh_new (void) {
   $myprop = Alloc (sizeof (sh_prop));
   $my(head) = $my(tail) = $my(current) = NULL;
   $my(cur_idx) = -1; $my(num_items) = 0;
+  $my(exit_val) = 0;
   return this;
 }
 
@@ -340,6 +398,14 @@ static int sh_parse (sh_t *this, char *buf) {
   int redir_stderr_to_stdout = 0;
 
   while (*sp) {
+    if (*sp is '#') {
+      sp++;
+      while (*sp and *sp isnot '\n')
+        sp++;
+      if (*sp is '\n') sp++;
+      continue;
+    }
+
     if (*sp is '2') {
       if (sp is buf) goto next;
       if (*(sp - 1) isnot ' ' and *(sp - 1) isnot '\t') goto next;
@@ -451,7 +517,7 @@ static int sh_parse (sh_t *this, char *buf) {
         Proc.set.at_fork_cb (p, sh_at_fork_pipeline_cb);
         Proc.set.pre_fork_cb (p, sh_pre_fork_pipeline_cb);
         if (redir_stderr_to_stdout)
-          sh->redir_streams |= PROC_READ_STDERR;
+         sh->redir_streams |= PROC_READ_STDERR;
       } else {
         Proc.set.pre_fork_cb (p, sh_pre_fork_default_cb);
         Proc.set.at_fork_cb (p, sh_at_fork_default_cb);
@@ -493,7 +559,8 @@ static int sh_exec (sh_t *this, char *buf) {
   CUR_PID = -1;
   signal (SIGINT, sh_sigint_handler);
 
-  int retval = 0;
+  int retval = OK;
+
   proc_t *p = $my(head);
 
   shproc_t *sh = (shproc_t *) Proc.get.user_data (p);
@@ -503,6 +570,9 @@ static int sh_exec (sh_t *this, char *buf) {
     retval = sh_interpret (p);
 
     sh = (shproc_t *) Proc.get.user_data (p);
+
+    $my(exit_val) = sh->exit_val;
+    $my(should_exit) = sh->should_exit;
 
     if (sh->should_exit or retval is NOTOK)
       break;
@@ -526,12 +596,61 @@ static int sh_exec (sh_t *this, char *buf) {
 
   dup2 ($my(saved_stdin), STDIN_FILENO);
 
-  return (retval < OK ? 1 : retval);
+  return retval;
+}
+
+static int sh_exec_file (sh_t *this, const char *fname) {
+  ifnot (File.exists (fname))
+    return NOTOK;
+
+  FILE *fp = fopen (fname, "r");
+  if (NULL is fp) return NOTOK;
+
+  int retval = OK;
+
+  char *line = NULL;
+  string *s = String.new (32);
+  size_t len = 0;
+  ssize_t nread  = 0;
+
+  while (-1 isnot (nread  = getline (&line, &len, fp))) {
+    ifnot (nread) continue;
+    if (line[nread - 1] is '\n') nread--;
+    while (nread and
+          (line[nread - 1] is ' ' or
+           line[nread - 1] is '\t'))
+      nread--;
+
+    ifnot (nread) continue;
+
+    if (line[nread - 1] is '\\') {
+      String.append_with_len (s, line, nread - 1);
+      String.append_byte (s, ' ');
+      continue;
+    }
+
+    String.append_with_len (s, line, nread);
+    retval = sh_exec (this, s->bytes);
+    sh_release_list (this);
+    String.clear (s);
+
+    if ($my(should_exit) or retval is NOTOK)
+      break;
+  }
+
+  fclose (fp);
+  ifnot  (NULL is line)
+    free (line);
+
+  String.release (s);
+
+  return retval;
 }
 
 public sh_T __init_sh__ (void) {
   __INIT__ (io);
   __INIT__ (proc);
+  __INIT__ (file);
   __INIT__ (string);
   __INIT__ (cstring);
 
@@ -539,8 +658,13 @@ public sh_T __init_sh__ (void) {
     .self = (sh_self) {
       .new = sh_new,
       .exec = sh_exec,
+      .exec_file = sh_exec_file,
       .release = sh_release,
-      .release_list = sh_release_list
+      .should_exit = sh_should_exit,
+      .release_list = sh_release_list,
+      .get = (sh_get_self) {
+        .exit_val = sh_get_exit_val
+      }
     }
   };
 }

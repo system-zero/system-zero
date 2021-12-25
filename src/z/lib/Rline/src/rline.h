@@ -16,9 +16,11 @@ typedef char *(*RlineHints_cb) (const char *, int *, int *, void *);
 typedef void  (*RlineFreeHints_cb) (void *, void *);
 
 /* ADDITION: if not NULL this is called first before any parsing */
-typedef int   (*OnInput_cb) (const char *, int *, int, rlineCompletions *, void *);
+typedef int   (*OnInput_cb) (const char *, string *, int *, int, rlineCompletions *, void *);
 /* ADDITION: if not NULL this is called when a carriage return is received */
 typedef void  (*OnCarriageReturn_cb) (const char *, void *);
+/* ADDITION: if not NULL this is called on tab completion and there is just one match */ 
+typedef int   (*AcceptOneItem_cb) (const char *, void *);
 
 /* this is our API, a little bit more than merely a wrapper around linenoise */
 typedef struct rline_set_self {
@@ -26,12 +28,18 @@ typedef struct rline_set_self {
      (*flags) (rline_t *, rlineCompletions *, int),
      (*prompt) (rline_t *, const char *),
      (*curpos) (rline_t *, rlineCompletions *, int),
+     (*current) (rline_t *, rlineCompletions *, const char *),
      (*hints_cb) (rline_t *, RlineHints_cb, void *),
      (*on_input_cb) (rline_t *, OnInput_cb),
      (*completion_cb) (rline_t *, RlineCompletion_cb, void *),
      (*release_hints_cb) (rline_t *, RlineFreeHints_cb),
+     (*accept_one_item_cb) (rline_t *, AcceptOneItem_cb),
      (*on_carriage_return_cb) (rline_t *, OnCarriageReturn_cb);
 } rline_set_self;
+
+typedef struct rline_unset_self {
+  void (*flags) (rline_t *, rlineCompletions *, int);
+} rline_unset_self;
 
 typedef struct rline_history_set_self {
   void
@@ -60,6 +68,7 @@ typedef struct rline_history_self {
 
 typedef struct rline_self {
   rline_set_self set;
+  rline_unset_self unset;
   rline_history_self history;
 
   void

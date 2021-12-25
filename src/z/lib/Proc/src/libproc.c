@@ -15,6 +15,7 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_SYS_TYPE     DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_PROC_TYPE    DONOT_DECLARE
 
 #include <z/cenv.h>
@@ -23,11 +24,13 @@ typedef struct proc_prop {
   pid_t  pid;
 
   char
-    *stdin_buf,
-    **argv;
+    **envp,
+    **argv,
+    *stdin_buf;
 
    int
      argc,
+     envc,
      is_bg,
      status,
      retval,
@@ -77,6 +80,8 @@ struct Proc_t {
 #define PIPE_READ_END  0
 #define PIPE_WRITE_END 1
 
+#define COMMENT_CHAR '#'
+
 static int proc_exec (proc_t *, const char *);
 static char **proc_parse (proc_t *, const char *);
 static int proc_open (proc_t *);
@@ -95,14 +100,30 @@ static void proc_release_argv (proc_t *this) {
   if (NULL is $my(argv))
     return;
 
-  for (int i = 0; i <= $my(argc); i++)
-    free ($my(argv)[i]);
+  if ($my(argc))
+    for (int i = 0; i <= $my(argc); i++)
+      free ($my(argv)[i]);
+
   free ($my(argv));
+  $my(argv) = NULL;
+}
+
+static void proc_release_env (proc_t *this) {
+  if (NULL is $my(envp))
+    return;
+
+  for (int i = 0; i < $my(envc); i++)
+    free ($my(envp)[i]);
+
+  free ($my(envp));
+  $my(envp) = NULL;
 }
 
 static void proc_release (proc_t *this) {
   ifnot (this) return;
   proc_release_argv (this);
+  proc_release_env (this);
+
   if (NULL isnot $my(stdin_buf))
     free ($my(stdin_buf));
 
@@ -121,6 +142,16 @@ static int proc_output_to_stream (proc_t *this, FILE *stream, FILE *read_fp) {
   return 0;
 }
 
+static void proc_add_env (proc_t *this, const char *env, size_t len) {
+  if (NULL is $my(envp))
+    $my(envp) = Alloc (sizeof (char *));
+
+  $my(envc)++;
+  $my(envp) = Realloc ($my(envp), sizeof (char *) * ($my(envc)));
+  $my(envp)[$my(envc) - 1] = Alloc (len + 1);
+  Cstring.cp ($my(envp)[$my(envc) - 1], len + 1, env, len);
+}
+
 static proc_t *proc_new (void) {
   proc_t *this = Alloc (sizeof (proc_t));
   $myprop = Alloc (sizeof (proc_prop));
@@ -131,6 +162,8 @@ static proc_t *proc_new (void) {
   $my(read_stderr) = 0;
   $my(argc) = 0;
   $my(argv) = NULL;
+  $my(envc) = 0;
+  $my(envp) = NULL;
   $my(is_bg) = 0;
   $my(setsid) = 0;
   $my(setpgid) = 0;
@@ -199,97 +232,309 @@ static int read_output_cb (proc_t *this, FILE *stream, FILE *fp) {
   return OK;
 }
 
-static int proc_append_arg (proc_t *this, char *arg, size_t len, int just_append) {
+static string *read_from_stdout_proc (const char *com) {
+  proc_t *proc = proc_new ();
+  string *s = String.new (8);
+  proc->prop->user_data = s;
+  proc->prop->read_stdout = 1;
+  proc->prop->read_stdout_cb = read_output_cb;
+  if (NULL is proc_parse (proc, com)) goto theerror;
+  if (NOTOK is proc_open (proc)) goto theerror;
+  proc_read (proc);
+  proc_wait (proc);
+  proc_release (proc);
+
+  return s;
+
+theerror:
+  String.release (s);
+  return NULL;
+}
+
+static int proc_expand_tilde (string **sa, char **bufp) {
+  string *s = *sa;
+  int done_expansion = 0;
+  char *sp = *bufp;
+  if (*sp is '~') {
+    char *hdir = Sys.get.env_value ("HOME");
+    if (s is NULL)
+      s = String.new_with (hdir);
+    else
+      String.append_with (s, hdir);
+
+    sp++;
+
+    if (*sp and *sp isnot DIR_SEP and *sp isnot ' ')
+      String.append_byte (s, DIR_SEP);
+    *sa = s;
+    done_expansion = 1;
+  }
+
+  *bufp = sp;
+  return done_expansion;
+}
+
+static int proc_expand_dollar_brace (string **sa, char **bufp) {
+  char *sp = *bufp;
+
+  if (*sp isnot '$') return 0;
+  if (*(sp + 1) isnot '{') return 0;
+
+  sp += 2;
+
+  ifnot (('A' <= *sp and *sp <= 'Z') or
+         ('a' <= *sp and *sp <= 'z')) {
+    if (*sp isnot '}')
+      return NOTOK;
+    else {
+      *bufp = sp;
+      return 1;
+    }
+  }
+
+  char *startvar = sp;
+
+  while (*sp) {
+    if (*sp is '}')
+      break;
+
+    ifnot (('A' <= *sp and *sp <= 'Z') or
+           ('a' <= *sp and *sp <= 'z') or
+           ('0' <= *sp and *sp <= '9') or
+            *sp is '_')
+    return NOTOK;
+
+    sp++;
+  }
+
+  if (*sp isnot '}') return NOTOK;
+
+  char *endvar = sp;
+
+  size_t nlen = endvar - startvar;
+  char name[nlen + 1];
+  Cstring.cp (name, nlen + 1, startvar, nlen);
+  char *val = getenv (name);
+  ifnot (NULL is val) {
+    string *s = *sa;
+    if (NULL is s)
+      s = String.new_with (val);
+    else
+      String.append_with (s, val);
+    *sa = s;
+  }
+
+  *bufp = sp;
+  return 1;
+}
+
+static int proc_expand_dollar_paren (string **sa, char **bufp) {
+  char *sp = *bufp;
+
+  if (*sp isnot '$') return 0;
+  if (*(sp + 1) isnot '(') return 0;
+
+  sp += 2;
+
+  if (*sp is ')') {
+    *bufp = sp;
+    return 0;
+  }
+
+  char *startvar = sp;
+  while (*sp) {
+    if (*sp is ')') break;
+    sp++;
+  }
+
+  if (*sp isnot ')') return NOTOK;
+
+  size_t clen = sp - startvar;
+  char com[clen + 1];
+  Cstring.cp (com, clen + 1, startvar, clen);
+  string *sout = read_from_stdout_proc (com);
+  if (NULL is sout) return NOTOK;
+
+  string *s = *sa;
+  if (NULL is s)
+    s = sout;
+  else {
+    String.append_with_len (s, sout->bytes, sout->num_bytes);
+    String.release (sout);
+  }
+
+  *sa = s;
+  *bufp = sp;
+  return 1;
+}
+
+static int proc_parse_env (string **sa, char **bufp) {
+  char *sp = *bufp;
+
+  if (*sp isnot '$') return 0;
+
+  sp++;
+
+  if (*sp is '(' or *sp is '{') return 0;
+
+  ifnot (('A' <= *sp and *sp <= 'Z') or ('a' <= *sp and *sp <= 'z'))
+    return NOTOK;
+
+  char *begOfName = sp;
+
+  while (*sp) {
+    if (*sp is '=')
+      break;
+
+    ifnot (('A' <= *sp and *sp <= 'Z') or
+           ('a' <= *sp and *sp <= 'z') or
+           ('_' is *sp) or
+           ('0' <= *sp and *sp <= '9'))
+      return NOTOK;
+
+    sp++;
+  }
+
+  if (*sp isnot '=')
+    return NOTOK;
+
+  size_t nameLen = sp - begOfName;
+  String.append_with_len ((*sa), begOfName, nameLen + 1);
+  //String.append_byte ((*sa), '=');
+
+  int is_in_str = 0;
+
+  sp++;
+
+  if (*sp is '"') {
+    is_in_str = 1;
+    sp++;
+  }
+
+  while (1) {
+    ifnot (*sp) {
+      if (is_in_str)
+        return NOTOK;
+      else
+        break;
+    }
+
+    if (*sp is ' ' or *sp is '\t') {
+      ifnot (is_in_str)
+        break;
+
+      String.append_byte ((*sa), *sp);
+      sp++;
+      continue;
+    }
+
+    if (*sp is '"') {
+      if (is_in_str) {
+        if (*(sp - 1) isnot '\\')
+          break;
+
+        String.append_byte ((*sa), *sp);
+        sp++;
+        continue;
+
+      } else
+        return NOTOK;
+    }
+
+    if (*sp is '$') {
+      if (*(sp + 1) is '(') {
+        int err = proc_expand_dollar_paren (sa, &sp);
+
+        if (NOTOK is err) return NOTOK;
+        sp++;
+        continue;
+      }
+
+      if (*(sp + 1) is '{') {
+        int err = proc_expand_dollar_brace (sa, &sp);
+        if (NOTOK is err) return NOTOK;
+        sp++;
+        continue;
+      }
+    }
+
+    if (is_in_str) {
+      String.append_byte ((*sa), *sp);
+      sp++;
+      continue;
+    }
+
+    ifnot (('A' <= *sp and *sp <= 'Z') or
+           ('a' <= *sp and *sp <= 'z') or
+           ('_' is *sp) or
+           ('0' <= *sp and *sp <= '9') or
+           ('/' is *sp) or
+           ('~' is *sp) or
+           (':' is *sp))
+      return NOTOK;
+
+    String.append_byte ((*sa), *sp);
+    sp++;
+  }
+
+  *bufp = sp;
+  return 1;
+}
+
+static int proc_append_arg (proc_t *this, char **linep, char *arg, size_t len, int just_append) {
   string *s = NULL;
 
   if (just_append) goto append;
 
-  char *p = arg;
-  if (*p is '~') {
-    p++;
-    len--;
-    char *hdir = Sys.get.env_value ("HOME");
-    s = String.new_with (hdir);
+  char *sp = arg;
 
-    if (len and *p isnot DIR_SEP and *p isnot ' ')
-      String.append_byte (s, DIR_SEP);
-
-    String.append_with_len (s, p, len);
-    int err = proc_append_arg (this, s->bytes, s->num_bytes, 0);
+  if (proc_expand_tilde (&s, &sp)) {
+    if (*sp and (*sp isnot ' ' and *sp  isnot '\t' and *sp isnot '\n'))
+      String.append_with (s, sp);
+    int err = proc_append_arg (this, linep, s->bytes, s->num_bytes, 0);
     String.release (s);
     return err;
   }
 
-  char *end = p + len;
+  char *end = sp + len;
   if (*end is '"' or *end is '\0') { end--; len--; }
   while (*end is ' ') { end--; len--; }
 
   s = String.new (len);
 
-  while (p <= end) {
-    if (*p is '$') {
-      if (p + 1 <= end and *(p + 1) is '{') {
-        p += 2;
-        char *startvar = p;
-        while (p < end) {
-          if (*p is '}') break;
-          p++;
-        }
+  while (sp <= end) {
+    if (*sp is '$') {
+      int r = proc_expand_dollar_brace (&s, &sp);
+      if (NOTOK is r) goto theerror;
 
-        if (*p isnot '}') return NOTOK;
-
-        if (startvar is p - 1) {
-          p++;
-          continue;
-        }
-
-        size_t nlen = p - startvar;
-        char name[nlen + 1];
-        Cstring.cp (name, nlen + 1, startvar, nlen);
-        char *val = getenv (name);
-        ifnot (NULL is val)
-          String.append_with (s, val);
-
-        p++;
+      if (r) {
+        sp++;
+        *linep = sp;
         continue;
       }
 
-      if (p + 1 <= end and *(p + 1) is '(') {
-        p += 2;
-        char *startvar = p;
-        while (p < end) {
-          if (*p is ')') break;
-          p++;
-        }
+      r = proc_expand_dollar_paren (&s, &sp);
 
-        if (*p isnot ')') return NOTOK;
+      if (NOTOK is r) goto theerror;
 
-        if (startvar is p - 1) {
-          p++;
-          continue;
-        }
-
-        size_t clen = p - startvar;
-        char com[clen + 1];
-        Cstring.cp (com, clen + 1, startvar, clen);
-        proc_t *proc = proc_new ();
-        string *sa = String.new (8);
-        proc->prop->user_data = sa;
-        proc->prop->read_stdout = 1;
-        proc->prop->read_stdout_cb = read_output_cb;
-        if (NULL is proc_parse (proc, com)) return NOTOK;
-        if (NOTOK is proc_open (proc)) return NOTOK;
-        proc_read (proc);
-        proc_wait (proc);
-        proc_release (proc);
-        proc_append_arg (this, sa->bytes, sa->num_bytes, 1);
-        String.release (sa);
-        p++;
+      if (r) {
+        sp++;
+        *linep = sp;
         continue;
+      }
+
+      r = proc_parse_env (&s, &sp);
+
+      if (r is NOTOK) goto theerror;
+      if (r) {
+        proc_add_env (this, s->bytes, s->num_bytes);
+        *linep = sp;
+        String.release (s);
+        return OK;
       }
     }
 
-    String.append_byte (s, *p++);
+    String.append_byte (s, *sp++);
   }
 
   ifnot (s->num_bytes) {
@@ -302,7 +547,7 @@ static int proc_append_arg (proc_t *this, char *arg, size_t len, int just_append
   int retval = glob (s->bytes, 0, NULL, &gl);
   ifnot (retval) {
     for (size_t i = 0; i < gl.gl_pathc; i++)
-      proc_append_arg (this, gl.gl_pathv[i], bytelen (gl.gl_pathv[i]), 1);
+      proc_append_arg (this, linep, gl.gl_pathv[i], bytelen (gl.gl_pathv[i]), 1);
 
     globfree (&gl);
     String.release (s);
@@ -310,7 +555,7 @@ static int proc_append_arg (proc_t *this, char *arg, size_t len, int just_append
     return OK;
 
   } else if (retval isnot GLOB_NOMATCH)
-    return NOTOK;
+    goto theerror;
 
 append:
   $my(argc)++;
@@ -325,6 +570,10 @@ append:
 
   $my(argv)[$my(argc)] = (char *) NULL;
   return OK;
+
+theerror:
+  String.release (s);
+  return NOTOK;
 }
 
 static char **proc_parse (proc_t *this, const char *com) {
@@ -339,6 +588,16 @@ static char **proc_parse (proc_t *this, const char *com) {
   $my(argv) = Alloc (sizeof (char *));
 
   while (*sp) {
+    while (*sp and *sp is ' ') sp++;
+    if (*sp is COMMENT_CHAR) {
+      sp++;
+      while (*sp and *sp isnot '\n')
+        sp++;
+      ifnot (*sp) break;
+      sp++;
+      continue;
+    }
+
     while (*sp and *sp is ' ') sp++;
     ifnot (*sp) break;
 
@@ -382,7 +641,7 @@ parse_quoted:
 
 add_arg:
 
-    if (NOTOK is proc_append_arg (this, tokbeg, len, 0))
+    if (NOTOK is proc_append_arg (this, &sp, tokbeg, len, 0))
       goto theerror;
 
     ifnot (*sp) break;
@@ -393,6 +652,7 @@ add_arg:
 
 theerror:
   proc_release_argv (this);
+  proc_release_env (this);
   return NULL;
 }
 
@@ -430,7 +690,23 @@ static int set_fd_size (int fd) {
 
 static int proc_open (proc_t *this) {
   if (NULL is this) return NOTOK;
-  ifnot ($my(argc)) return NOTOK;
+
+  ifnot ($my(argc)) {
+    for (int i = 0; i < $my(envc); i++) {
+      /* donot use putenv() here. The strings will be released and
+       * the environment would end up with garbages */
+      char *sp = Cstring.byte.in_str ($my(envp)[i], '=');
+      if (NULL is sp) {
+        setenv ($my(envp)[i], "", 1);
+      } else {
+        *sp = '\0';
+        sp++;
+        setenv ($my(envp)[i], sp, 1);
+      }
+    }
+
+    return OK;
+  }
 
   if ($my(dup_stdin)) {
     if (-1 is pipe ($my(stdin_fds)))
@@ -496,8 +772,13 @@ static int proc_open (proc_t *this) {
     if (NOTOK is $my(at_fork_cb) (this))
       _exit (1);
 
+    for (int i = 0; i < $my(envc); i++)
+      putenv ($my(envp)[i]);
+
     execvp ($my(argv)[0], $my(argv));
+
     $my(sys_errno) = errno;
+    fprintf (stderr, "%s: %s\n", $my(argv)[0], Error.errno_string (errno));
     _exit (1);
   }
 
@@ -572,6 +853,10 @@ static void proc_set_argv (proc_t *this, int argc, const char **argv) {
   $my(argv)[$my(argc)] = (char *) NULL;
 }
 
+static char **proc_get_argv (proc_t *this) {
+  return $my(argv);
+}
+
 static proc_t *proc_get_next (proc_t *this) {
   if (NULL is this) return NULL;
   return this->next;
@@ -596,6 +881,8 @@ static int proc_exec (proc_t *this, const char *com) {
 
   if (NOTOK is proc_open (this)) goto theend;
 
+  ifnot ($my(argc)) return OK;
+
   proc_read (this);
 
   ifnot ($my(is_bg))
@@ -607,6 +894,7 @@ theend:
 
 public proc_T __init_proc__ (void) {
   __INIT__ (sys);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
 
@@ -621,6 +909,7 @@ public proc_T __init_proc__ (void) {
       .exec = proc_exec,
       .parse = proc_parse,
       .release = proc_release,
+      .add_env = proc_add_env,
       .set = (proc_set_self) {
         .argv = proc_set_argv,
         .next = proc_set_next,
@@ -638,6 +927,7 @@ public proc_T __init_proc__ (void) {
       },
       .get = (proc_get_self) {
         .pid = proc_get_pid,
+        .argv = proc_get_argv,
         .next = proc_get_next,
         .user_data = proc_get_user_data
       }

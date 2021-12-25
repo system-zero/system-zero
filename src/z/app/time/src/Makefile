@@ -83,10 +83,10 @@ clean-time-now_to_string-static:
 
 Date = Date
 date-shared: time-now_to_string-shared
-	@$(SYMLNK_V) $(T_now_to_string) $(SYSBINDIR)/$(Date)
+	@$(SYMLNK_V) -f $(T_now_to_string) $(SYSBINDIR)/$(Date)
 
 date-static: time-now_to_string-static
-	@$(SYMLNK_V) $(T_now_to_string)-static $(SYSBINDIR)/$(Date)-static
+	@$(SYMLNK_V) -f $(T_now_to_string)-static $(SYSBINDIR)/$(Date)-static
 
 clean-date-shared:
 	@$(TEST) ! -f $(SYSBINDIR)/$(Date) || $(RM) $(SYSBINDIR)/$(Date)

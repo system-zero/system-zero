@@ -2024,7 +2024,7 @@ The return statement
     # StringType    String.trim_byte_at_end (StringType a, StringType b)
 
     # IntegerType   Integer.eq (IntegerType a, IntegerType b)
-    # StringType    String.char (IntegerType c)
+    # StringType    Integer.char (IntegerType c)
     # StringType    Integer.to_string (IntegerType i, IntegerType base)
 
   # Path Module Interface
@@ -2111,6 +2111,7 @@ The return statement
     # IntegerType   Os.getpid ()
     # IntegerType   Os.setenv (StringType name, StringType value, IntegerType overwrite)
     # StringType    Os.getenv (StringType name)
+    # IntegerType   Os.unsetenv (StringType name)
     # StringType[]  Os.environ ()
     # StringType    Os.getpwdir (IntegerType uid)
     # IntegerType   Os.getgrgid (StringType name)

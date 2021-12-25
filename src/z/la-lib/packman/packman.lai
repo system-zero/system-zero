@@ -138,7 +138,7 @@ private
   verbose     : PACKMAN_VERBOSE
   spec_dir    : Sys.get ("DATADIR") + "/Packman/specs"
   sources_dir : Sys.get ("DATADIR") + "/Packman/sources"
-  build_dir   : Sys.get ("TMPDIR")  + "/Packman"
+  builddir   : Sys.get ("TMPDIR")  + "/Packman"
   platform    : Sys.get ("PLATFORM")
   tmpdir      : Sys.get ("TMPDIR")
   datadir     : Sys.get ("DATADIR")
@@ -168,7 +168,7 @@ private
 
     this.spec_dir = datadir: path_concat ("Packman/specs")
     this.sources_dir = datadir: path_concat ("Packman/sources")
-    this.build_dir = tmpdir: path_concat ("Packman")
+    this.builddir = tmpdir: path_concat ("Packman")
     this.platform = Sys.get ("PLATFORM")
     this.homedir = Sys.get ("HOME")
     this.datadir = datadir
@@ -334,7 +334,7 @@ private
     }
 
     if (Dir.change (this.spec.build_dirname) is notok) {
-      println (stderr, "couldn't change directory to ${%s, this.spec.build_dirname}")
+      println (stderr, "couldn't change directory to ${%s, this.spec.builddirname}")
       return notok
     }
 
@@ -352,7 +352,7 @@ public
     pull_args   : func (args)  this.pull_args = args
     verbose     : func (what)  this.verbose = what
     spec_dir    : func (dir)   this.spec_dir = dir
-    build_dir   : func (dir)   this.build_dir = dir
+    builddir   : func (dir)   this.builddir = dir
     sources_dir : func (dir)   this.sources_dir = dir
     bindir      : func (dir)   this.bindir = dir
     sysdir      : func (dir)   this.sysdir = dir
@@ -362,7 +362,7 @@ public
   get : {
     spec        : func return this.spec
     spec_dir    : func return this.spec_dir
-    build_dir   : func return this.build_dir
+    builddir   : func return this.builddir
     sources_dir : func return this.sources_dir
     bindir      : func return this.bindir
     sysdir      : func return this.sysdir
@@ -397,6 +397,7 @@ public
       "SYSTEM DIRECTORY : " + this.sysdir   + "\n" +
       "BIN    DIRECTORY : " + this.bindir   + "\n" +
       "LIB    DIRECTORY : " + this.libdir   + "\n" +
+      "BUILD  DIRECTORY : " + this.builddir + "\n" +
       "USER             : " + this.user     + "\n" +
       "GROUP            : " + this.group    + "\n"
 
@@ -454,13 +455,13 @@ public
       return notok
     }
 
-    if (this.build_dir is null) {
-      println (stderr, "build_dir property hasn't been set")
+    if (this.builddir is null) {
+      println (stderr, "builddir property hasn't been set")
       return notok
     }
 
-    if (Dir.change (this.build_dir) is notok) {
-      println (stderr, "couldn't change directory to ${%s, this.build_dir}")
+    if (Dir.change (this.builddir) is notok) {
+      println (stderr, "couldn't change directory to ${%s, this.builddir}")
       return notok
     }
 

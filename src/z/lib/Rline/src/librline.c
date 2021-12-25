@@ -3,8 +3,10 @@
 #define REQUIRE_STD_DEFAULT_SOURCE
 #define REQUIRE_UNISTD
 #define REQUIRE_DIRENT
-#define REQUIRE_STRING_TYPE DECLARE
-#define REQUIRE_RLINE_TYPE  DONOT_DECLARE
+
+#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_RLINE_TYPE   DONOT_DECLARE
 
 #include <z/cenv.h>
 
@@ -35,14 +37,13 @@ struct rlineCompletions {
 };
 
 typedef rlineCompletions linenoiseCompletions;
-
 typedef RlineCompletion_cb linenoiseCompletionCallback;
-//typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *, void *);
 typedef char*(linenoiseHintsCallback)(const char *, int *color, int *bold, void *);
 typedef void(linenoiseFreeHintsCallback)(void *, void *);
 
 OnInput_cb linenoiseOnInputCallback;
 OnCarriageReturn_cb linenoiseOnCarriageReturnCallback;
+AcceptOneItem_cb linenoiseAcceptOneItemCallback;
 
 int linenoiseHistoryAdd(const char *);
 char **linenoiseHistory(int *);
@@ -61,38 +62,35 @@ void linenoiseSetMultiLine(int);
 char *linenoise(const char *);
 int linenoiseColumns(void);
 
-#ifndef UTF8_UTIL_H
-#define UTF8_UTIL_H
-
-#define USE_UTF8
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
- * UTF-8 utility functions
- *
+ * UTF-8 utility functions.
+ * A stringbuf is a resizing, null terminated string buffer.
+
  * (c) 2010-2019 Steve Bennett <steveb@workware.net.au>
  *
- * See utf8.c for licence details.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ *
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-
-#ifndef USE_UTF8
-#include <ctype.h>
-
-#define MAX_UTF8_LEN 1
-
-/* No utf-8 support. 1 byte = 1 char */
-#define utf8_strlen(S, B) ((B) < 0 ? (int)strlen(S) : (B))
-#define utf8_strwidth(S, B) utf8_strlen((S), (B))
-#define utf8_tounicode(S, CP) (*(CP) = (unsigned char)*(S), 1)
-#define utf8_index(C, I) (I)
-#define utf8_charlen(C) 1
- #define utf8_width(C) 1
-
-#else
 
 #define MAX_UTF8_LEN 4
 
@@ -164,51 +162,11 @@ int utf8_tounicode(const char *str, int *uc);
  */
 int utf8_width(int ch);
 
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-/**
- * UTF-8 utility functions
- *
- * (c) 2010-2019 Steve Bennett <steveb@workware.net.au>
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * * Redistributions of source code must retain the above copyright notice,
- *   this list of conditions and the following disclaimer.
- *
- * * Redistributions in binary form must reproduce the above copyright notice,
- *   this list of conditions and the following disclaimer in the documentation
- *   and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#ifndef UTF8_UTIL_H
-#include "utf8.h"
-#endif
 
-#ifdef USE_UTF8
 int utf8_fromunicode(char *p, unsigned uc)
 {
     if (uc <= 0x7f) {
@@ -445,22 +403,8 @@ int utf8_width(int ch)
     }
     return 1;
 }
-#endif
-#ifndef STRINGBUF_H
-#define STRINGBUF_H
-/**
- * resizable string buffer
- *
- * (c) 2017-2020 Steve Bennett <steveb@workware.net.au>
- *
- * See utf8.c for licence details.
- */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** @file
- * A stringbuf is a resizing, null terminated string buffer.
  *
  * The buffer is reallocated as necessary.
  *
@@ -474,12 +418,11 @@ extern "C" {
  * The stringbuf structure should not be accessed directly.
  * Use the functions below.
  */
+
 typedef struct {
 	int remaining;	/**< Allocated, but unused space */
 	int last;		/**< Index of the null terminator (and thus the length of the string) */
-#ifdef USE_UTF8
 	int chars;		/**< Count of characters */
-#endif
 	char *data;		/**< Allocated memory containing the string or NULL for empty */
 } stringbuf;
 
@@ -515,11 +458,7 @@ static inline int sb_len(stringbuf *sb) {
  * Returns 0 for both a NULL buffer and an empty buffer.
  */
 static inline int sb_chars(stringbuf *sb) {
-#ifdef USE_UTF8
 	return sb->chars;
-#else
-	return sb->last;
-#endif
 }
 
 /**
@@ -579,32 +518,11 @@ void sb_clear(stringbuf *sb);
  */
 char *sb_to_string(stringbuf *sb);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-/**
- * resizable string buffer
- *
- * (c) 2017-2020 Steve Bennett <steveb@workware.net.au>
- *
- * See utf8.c for licence details.
- */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <assert.h>
-
-#ifndef STRINGBUF_H
-#include "stringbuf.h"
-#endif
-#ifdef USE_UTF8
-#ifndef UTF8_UTIL_H
-#include "utf8.h"
-#endif
-#endif
 
 #define SB_INCREMENT 200
 
@@ -613,9 +531,7 @@ stringbuf *sb_alloc(void)
 	stringbuf *sb = (stringbuf *)malloc(sizeof(*sb));
 	sb->remaining = 0;
 	sb->last = 0;
-#ifdef USE_UTF8
 	sb->chars = 0;
-#endif
 	sb->data = NULL;
 
 	return(sb);
@@ -650,9 +566,7 @@ void sb_append_len(stringbuf *sb, const char *str, int len)
 
 	sb->last += len;
 	sb->remaining -= len;
-#ifdef USE_UTF8
 	sb->chars += utf8_strlen(str, len);
-#endif
 }
 
 char *sb_to_string(stringbuf *sb)
@@ -701,9 +615,7 @@ static void sb_delete_space(stringbuf *sb, int pos, int len)
 	assert(pos < sb->last);
 	assert(pos + len <= sb->last);
 
-#ifdef USE_UTF8
 	sb->chars -= utf8_strlen(sb->data + pos, len);
-#endif
 
 	/* Now move it up */
 	memmove(sb->data + pos, sb->data + pos + len, sb->last - pos - len);
@@ -724,9 +636,7 @@ void sb_insert(stringbuf *sb, int index, const char *str)
 
 		sb_insert_space(sb, index, len);
 		memcpy(sb->data + index, str, len);
-#ifdef USE_UTF8
 		sb->chars += utf8_strlen(str, len);
-#endif
 	}
 }
 
@@ -752,9 +662,7 @@ void sb_clear(stringbuf *sb)
 		/* Null terminate */
 		sb->data[0] = 0;
 		sb->last = 0;
-#ifdef USE_UTF8
 		sb->chars = 0;
-#endif
 	}
 }
 /* linenoise.c -- guerrilla line editing library against the idea that a
@@ -900,14 +808,6 @@ void sb_clear(stringbuf *sb)
 #include <stdlib.h>
 #include <sys/types.h>
 
-//#include "linenoise.h"
-#ifndef STRINGBUF_H
-#include "stringbuf.h"
-#endif
-#ifndef UTF8_UTIL_H
-#include "utf8.h"
-#endif
-
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
 
 #define ctrl(C) ((C) - '@')
@@ -956,16 +856,14 @@ struct currentLine {
     int rows;   /* Screen rows */
     int x;      /* Current column during output */
     int y;      /* Current row */
-#ifdef USE_UTF8
     #define UBUF_MAX_CHARS 132
     WORD ubuf[UBUF_MAX_CHARS + 1];  /* Accumulates utf16 output - one extra for final surrogate pairs */
     int ubuflen;      /* length used in ubuf */
     int ubufcols;     /* how many columns are represented by the chars in ubuf? */
 #endif
-#endif
 };
 
-static int fd_read(struct currentLine *current);
+static int fd_read (currentLine *current);
 static int getWindowSize(struct currentLine *current);
 static void cursorDown(struct currentLine *current, int n);
 static void cursorUp(struct currentLine *current, int n);
@@ -1306,9 +1204,8 @@ static int fd_read_char(int fd, int timeout)
  * Reads a complete utf-8 character
  * and returns the unicode value, or -1 on error.
  */
-static int fd_read(struct currentLine *current)
+static int fd_read(currentLine *current)
 {
-#ifdef USE_UTF8
     char buf[MAX_UTF8_LEN];
     int n;
     int i;
@@ -1329,9 +1226,6 @@ static int fd_read(struct currentLine *current)
     /* decode and return the character */
     utf8_tounicode(buf, &c);
     return c;
-#else
-    return fd_read_char(current->fd, -1);
-#endif
 }
 
 
@@ -1508,17 +1402,10 @@ static void outputControlChar(struct currentLine *current, char ch)
     clearOutputHighlight(current);
 }
 
-#ifndef utf8_getchars
 static int utf8_getchars(char *buf, int c)
 {
-#ifdef USE_UTF8
     return utf8_fromunicode(buf, c);
-#else
-    *buf = c;
-    return 1;
-#endif
 }
-#endif
 
 /**
  * Returns the unicode character at the given offset,
@@ -1570,28 +1457,30 @@ static void freeCompletions(linenoiseCompletions *lc) {
       free (lc->pos);
 }
 
-static int completeLine(struct currentLine *current, int ch) {
+static int completeLine(struct currentLine *current, string *prevLine, int ch) {
     linenoiseCompletions lc = { 0, current, 0, NULL, NULL};
+
     const char *curbuf = sb_str(current->buf);
     int curpos = utf8_index(curbuf, current->pos);
     int c = 0;
     if (ch == 0)
       completionCallback(curbuf, curpos, &lc, completionUserdata);
     else { // ADDITION
-      int r = linenoiseOnInputCallback (curbuf, &ch, curpos, &lc, completionUserdata);
+      int r = linenoiseOnInputCallback (curbuf, prevLine, &ch, curpos, &lc, completionUserdata);
 
       if (r == -1) {
         c = ch;
         goto theend;
       }
 
-      if (r > 0) {
+      if (r != 0) {
         c = r;
         goto theend;
       }
 
-      if (ch is 0)
+      if (ch is 0) {
         ch = '\t';
+      }
     }
 
     if (lc.len == 0) {
@@ -1600,11 +1489,24 @@ static int completeLine(struct currentLine *current, int ch) {
         size_t stop = 0, i = 0;
 
         if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM) { /* ADDITION */
-          set_current(current,lc.cvec[0]);
-          if (lc.pos[0] >= 0)
-            current->pos = lc.pos[0];
-          refreshLine(current);
-          stop = 1;
+          int accept = 1;
+
+          ifnot (NULL is linenoiseAcceptOneItemCallback)
+            accept = linenoiseAcceptOneItemCallback (lc.cvec[0],  completionUserdata);
+
+          if (accept > 0) {
+            set_current (current, lc.cvec[0]);
+            if (lc.pos[0] >= 0)
+              current->pos = lc.pos[0];
+
+            refreshLine (current);
+            stop = 1;
+          }
+
+          if (accept < 0) {
+            c = ch;
+            goto theend;
+          }
         }
 
         while(!stop) {
@@ -1631,7 +1533,7 @@ static int completeLine(struct currentLine *current, int ch) {
                     if (i == lc.len) beep();
                     break;
                 case CHAR_ESCAPE: /* escape */
-                   // if (c == CHAR_ESCAPE)
+                    // if (c == CHAR_ESCAPE)
                     /* Re-show original buffer */
                     if (i < lc.len) {
                         refreshLine(current);
@@ -2067,7 +1969,7 @@ static void refreshLine(struct currentLine *current)
     refreshLineAlt(current, current->prompt, sb_str(current->buf), current->pos);
 }
 
-static void set_current(struct currentLine *current, const char *str)
+static void set_current(currentLine *current, const char *str)
 {
     sb_clear(current->buf);
     sb_append(current->buf, str);
@@ -2096,12 +1998,9 @@ static int remove_char(struct currentLine *current, int pos)
          * - no hints are being shown
          */
         if (current->output && current->pos == pos + 1 && current->pos == sb_chars(current->buf) && pos > 0) {
-#ifdef USE_UTF8
             /* Could implement utf8_prev_len() but simplest just to not optimise this case */
             char last = sb_str(current->buf)[offset];
-#else
-            char last = 0;
-#endif
+
             if (current->colsleft > 0 && (last & 0x80) == 0) {
                 /* Have cols on the left and not a UTF-8 char or continuation */
                 /* Yes, can optimise */
@@ -2362,38 +2261,47 @@ static int linenoiseEdit(struct currentLine *current) {
     set_current(current, "");
     refreshLine(current);
 
+    string *prevLine = String.new_with ("");
+
     while(1) {
         int dir = -1;
         int c = fd_read(current);
-
         if (linenoiseOnInputCallback) {
             if (c == CHAR_ESCAPE)
                 c = check_special(current->fd);
-            c = completeLine(current, c); // ADDITION
+
+            c = completeLine (current, prevLine, c);
+
+            if (c is CHAR_ESCAPE) {
+                set_current (current, prevLine->bytes);
+                String.clear (prevLine);
+                refreshLine (current);
+                continue;
+            }
         }
 
-#ifndef NO_COMPLETION
         /* Only autocomplete when the callback is set. It returns < 0 when
          * there was an error reading from fd. Otherwise it will return the
          * character that should be handled next. */
         //if (c == '\t' && current->pos == sb_chars(current->buf) && completionCallback != NULL) {
         if (c == '\t' && completionCallback != NULL) {
-            c = completeLine(current, 0);
+            c = completeLine(current, prevLine, 0);
         }
-#endif
+
         if (c == ctrl('R')) {
             /* reverse incremental search will provide an alternative keycode or 0 for none */
             c = reverseIncrementalSearch(current);
             /* go on to process the returned char normally */
         }
 
-#ifdef USE_TERMIOS
+//#ifdef USE_TERMIOS
         if (c == CHAR_ESCAPE) {   /* escape sequence */
             c = check_special(current->fd);
         }
-#endif
+//#endif
         if (c == -1) {
             /* Return on errors */
+            String.release (prevLine);
             return sb_len(current->buf);
         }
 
@@ -2413,9 +2321,11 @@ static int linenoiseEdit(struct currentLine *current) {
                 refreshLine(current);
                 showhints = 1;
             }
+            String.release (prevLine);
             return sb_len(current->buf);
         case ctrl('C'):     /* ctrl-c */
             errno = EAGAIN;
+            String.release (prevLine);
             return -1;
         case ctrl('Z'):     /* ctrl-z */
 #ifdef SIGTSTP
@@ -2438,6 +2348,7 @@ static int linenoiseEdit(struct currentLine *current) {
                 /* Empty line, so EOF */
                 history_len--;
                 free(history[history_len]);
+                String.release (prevLine);
                 return -1;
             }
             /* Otherwise fall through to delete char to right of cursor */
@@ -2583,6 +2494,8 @@ history_navigation:
             break;
         }
     }
+
+    String.release (prevLine);
     return sb_len(current->buf);
 }
 
@@ -2862,6 +2775,11 @@ static void rline_set_on_input_cb (rline_t *this, OnInput_cb cb) {
   linenoiseOnInputCallback = cb;
 }
 
+static void rline_set_accept_one_item_cb (rline_t *this, AcceptOneItem_cb cb) {
+  (void) this;
+  linenoiseAcceptOneItemCallback = cb;
+}
+
 static void rline_set_on_carriage_return_cb (rline_t *this, OnCarriageReturn_cb cb) {
   (void) this;
   linenoiseOnCarriageReturnCallback = cb;
@@ -2888,6 +2806,18 @@ static void rline_set_curpos (rline_t *this, rlineCompletions *lc, int pos) {
   (void) this;
   currentLine *current = lc->current;
   current->pos = pos;
+}
+
+static void rline_set_current (rline_t *this, rlineCompletions *lc, const char *buf) {
+  (void) this;
+  currentLine *current = lc->current;
+  set_current (current, buf);
+  lc->current = current;
+}
+
+static void rline_unset_flags (rline_t *this, rlineCompletions *lc, int flags) {
+  (void) this;
+  lc->flags &= ~flags;
 }
 
 static void rline_history_set_file (rline_t *this, char *fname) {
@@ -2932,6 +2862,7 @@ static void rline_history_release (rline_t *this) {
 
 public rline_T __init_rline__ (void) {
   __INIT__ (string);
+  __INIT__ (cstring);
 
   return (rline_T) {
     .self = (rline_self) {
@@ -2943,10 +2874,15 @@ public rline_T __init_rline__ (void) {
         .flags = rline_set_flags,
         .prompt = rline_set_prompt,
         .curpos = rline_set_curpos,
+        .current = rline_set_current,
         .hints_cb = rline_set_hints_cb,
         .on_input_cb = rline_set_on_input_cb,
         .completion_cb = rline_set_completion_cb,
+        .accept_one_item_cb =rline_set_accept_one_item_cb,
         .on_carriage_return_cb = rline_set_on_carriage_return_cb
+      },
+      .unset = (rline_unset_self) {
+        .flags = rline_unset_flags
       },
       .history = (rline_history_self) {
         .add = rline_history_add,

@@ -17,6 +17,8 @@ typedef struct proc_get_self {
   proc_t
     *(*next) (proc_t *);
 
+  char **(*argv) (proc_t *);
+
   void *(*user_data) (proc_t *);
 } proc_get_self;
 
@@ -47,6 +49,7 @@ typedef struct proc_self {
   proc_t *(*new) (void);
 
   void
+    (*add_env) (proc_t *, const char *, size_t),
     (*release) (proc_t *),
     (*release_argv) (proc_t *);
 

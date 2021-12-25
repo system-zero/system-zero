@@ -57,7 +57,7 @@ var p = New Packman ()
 var tmpdir = "TMPDIR": sys_get ()
 if null is tmpdir then tmpdir = "/tmp"
 
-p.set.build_dir (tmpdir)
+p.set.builddir (tmpdir)
 
 var retval = notok
 

@@ -7,17 +7,17 @@
 #define REQUIRE_SYS_STAT
 #define REQUIRE_SIGNAL
 
+#define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
+#define REQUIRE_DIR_TYPE     DECLARE
+#define REQUIRE_SYS_TYPE     DECLARE
+#define REQUIRE_FILE_TYPE    DECLARE
+#define REQUIRE_PATH_TYPE    DECLARE
+#define REQUIRE_RLINE_TYPE   DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
-#define REQUIRE_DIR_TYPE     DECLARE
-#define REQUIRE_FILE_TYPE    DECLARE
-#define REQUIRE_PATH_TYPE    DECLARE
-#define REQUIRE_SH_TYPE      DECLARE
-#define REQUIRE_SYS_TYPE     DECLARE
-#define REQUIRE_RLINE_TYPE   DECLARE
-#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_KEYS_MACROS
 
 #include <z/cenv.h>
@@ -30,11 +30,17 @@
 #define MAXLEN_COMMAND_LINE 8191
 #define MAXLEN_HINT         63
 
-#define ZS_RETURN       -10
+//#define ZS_RETURN       -10
 #define ZS_CONTINUE     -11
 #define ZS_NOTHING_TODO -12
 
 #define ZS_COMMAND_HAS_NO_FILENAME_ARG (1 << 0)
+
+#define ZS_RLINE_ARG_IS_COMMAND        1
+#define ZS_RLINE_ARG_IS_ARG            2
+#define ZS_RLINE_ARG_IS_DIRECTORY      3
+#define ZS_RLINE_ARG_IS_FILENAME       4
+#define ZS_RLINE_ARG_IS_LAST_COMPONENT 5
 
 #define MAXNUM_LAST_COMPONENTS 20
 typedef struct LastComp LastComp;
@@ -59,6 +65,7 @@ typedef struct zs_t {
   char hint[MAXLEN_HINT + 1];
 
   int
+    arg_type,
     num_items,
     last_retval,
     exit_val;
@@ -72,8 +79,8 @@ typedef struct zs_t {
 
 static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, void *userdata) {
   zs_t *zs = (zs_t *) userdata;
-  rline_t *this = zs->rline;
-  Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
+  rline_t *rline = zs->rline;
+  Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
 
   zs->num_items = 0;
   string *arg = zs->arg;
@@ -100,8 +107,8 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
       }
 
       zs->num_items++;
-      Rline.add_completion (this, lc, arg->bytes, -1);
-
+      Rline.add_completion (rline, lc, arg->bytes, -1);
+      zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
       while (it->next) {
         if (Cstring.eq_n (arg->bytes, it->next->name, arg->num_bytes)) {
           it = it->next;
@@ -117,7 +124,7 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
     goto theend;
   }
 
-  if (buf[buflen-1] is '.') {
+  if (buf[buflen-1] is '.') { // adjust code to count if it is really a command and not a hidden file
     Command *it = zs->command_head;
 
     while (it) {
@@ -129,12 +136,13 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
         }
 
         String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+        zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
       }
       it = it->next;
     }
 
-   goto theend;
+    goto theend;
   }
 
   char *ptr = (char *) lptr;
@@ -230,7 +238,8 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
             if (Cstring.eq_n (ptr, arg->bytes + buflen, arglen)) {
               zs->num_items++;
               String.append_with_len (arg, lptr, lptrlen);
-              Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+              Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+              zs->arg_type = ZS_RLINE_ARG_IS_ARG;
             }
 
             String.clear_at (arg, buflen);
@@ -247,7 +256,8 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
         if (Cstring.eq_n (ptr, arg->bytes + buflen, arglen)) {
           zs->num_items++;
           String.append_with_len (arg, lptr, lptrlen);
-          Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+          Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+          zs->arg_type = ZS_RLINE_ARG_IS_ARG;
         }
 
         String.clear_at (arg, buflen);
@@ -287,8 +297,10 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
   if (-1 is ptrlen) {
     Command *it = zs->command_head;
     sp = (char *) buf;
+
     while (*sp) {
-      if (*sp++ is '.') {
+      if (*sp is '.') {
+        sp++;
         while (it) {
           if (Cstring.eq_n (it->name, buf, buflen)) {
             zs->num_items++;
@@ -296,15 +308,18 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
             if (sp - 1 is lptr) {
               lptr++; lptrlen--;
             }
+
             String.append_with_len (arg, lptr, lptrlen);
-            Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+            Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+            zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
           }
 
           it = it->next;
         }
 
-      goto theend;
+        goto theend;
       }
+      sp++;
     }
 
     while (it) {
@@ -316,7 +331,8 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
         }
 
         zs->num_items++;
-        Rline.add_completion (this, lc, arg->bytes, -1);
+        Rline.add_completion (rline, lc, arg->bytes, -1);
+        zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
 
         while (it->next) {
           if (Cstring.eq_n (arg->bytes, it->next->name, arg->num_bytes)) {
@@ -333,7 +349,7 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
     }
 
     goto theend;
- }
+  }
 
   size_t diff = buflen - ptrlen - 1;
   buflen = (buflen - diff);
@@ -353,7 +369,8 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
       zs->num_items++;
       String.append_with_fmt (arg, "%s%c", ptrbuf, DIR_SEP);
       String.append_with_len (arg, lptr, lptrlen);
-      Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+      Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+      zs->arg_type = ZS_RLINE_ARG_IS_DIRECTORY;
       goto theend;
     }
 
@@ -386,7 +403,8 @@ get_current: {}
         zs->num_items++;
         String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
         String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+        zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
         String.clear_at (arg, buflen);
       }
       it = it->next;
@@ -398,7 +416,8 @@ get_current: {}
         String.append_with_fmt (arg, "%s%s%s", ptrbuf,
             (ptrbuf[ptrlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
         String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+        zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
         String.clear_at (arg, buflen);
 
       } else if (Cstring.eq_n (it->data->bytes, basename, bname_len)) {
@@ -410,7 +429,8 @@ get_current: {}
             (dirname[dirlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
 
         String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (this, lc, arg->bytes, arg->num_bytes - lptrlen);
+        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+        zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
         String.clear_at (arg, buflen);
       }
 
@@ -423,31 +443,34 @@ theend:
   ifnot (NULL is dirname) free (dirname);
 }
 
-static int zs_on_input (const char *buf, int *ch, int curpos, rlineCompletions *lc, void *userdata) {
+static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, rlineCompletions *lc, void *userdata) {
   zs_t *zs = (zs_t *) userdata;
+  rline_t *rline = zs->rline;
 
   int c = *ch;
 
   // complete command
   if (0 is curpos and buf[0] is '\0') {
-    if (('A' <= c and c <= 'Z') or ('a' <= c and c <= 'z') or c is '_') {
+    if (('A' <= c and c <= 'Z')) { // or ('a' <= c and c <= 'z') or c is '_') {
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
+      String.replace_with_len (prevLine, newbuf, 1);
       zs_completion (newbuf, 1, lc, userdata);
       ifnot (zs->num_items) return -1;
       *ch = 0;
       return 0;
     }
+
+    return c;
   }
 
-  // escape: clear the line (maybe vi mode?)
+  // escape: (maybe vi mode?)
   if (c is 033)
-    return CTRL('u');
+    return 033;
 
   // CTRL('/') or CTRL('-') instead of ALT('.')
   if (c is 037 and zs->numLastComp) {
-    rline_t *this = zs->rline;
     zs->num_items = 0;
-    Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
+    Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
 
     const char *ptr = buf + curpos;
     size_t ptrlen = bytelen (ptr);
@@ -464,7 +487,8 @@ static int zs_on_input (const char *buf, int *ch, int curpos, rlineCompletions *
       size_t llen = bytelen (it->lastcomp);
       String.append_with_len (arg, it->lastcomp, llen);
       String.append_with_len (arg, ptr, ptrlen);
-      Rline.add_completion (this, lc, arg->bytes, curpos + llen);
+      Rline.add_completion (rline, lc, arg->bytes, curpos + llen);
+      zs->arg_type = ZS_RLINE_ARG_IS_LAST_COMPONENT;
       String.clear_at (arg, len);
       it = it->next;
     }
@@ -477,9 +501,8 @@ static int zs_on_input (const char *buf, int *ch, int curpos, rlineCompletions *
   if (c is '~') {
     if (curpos > 0) {
       if (buf[curpos - 1] is ' ') {
-        rline_t *this = zs->rline;
         zs->num_items = 1;
-        Rline.set.flags (this, lc, RLINE_ACCEPT_ONE_ITEM);
+        Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
         string *arg = zs->arg;
 
         const char *ptr = buf + curpos;
@@ -492,7 +515,8 @@ static int zs_on_input (const char *buf, int *ch, int curpos, rlineCompletions *
         String.append_with_len (arg, home, homlen);
         String.append_byte (arg, DIR_SEP);
         String.append_with_len (arg, ptr, ptrlen);
-        Rline.add_completion (this, lc, arg->bytes, curpos + homlen + 1);
+        Rline.add_completion (rline, lc, arg->bytes, curpos + homlen + 1);
+        zs->arg_type = ZS_RLINE_ARG_IS_DIRECTORY;
         String.clear_at (arg, len);
         return 0;
       }
@@ -500,6 +524,17 @@ static int zs_on_input (const char *buf, int *ch, int curpos, rlineCompletions *
   }
 
   return -1;
+}
+
+static int zs_accept_one_item (const char *buf, void *userdata) {
+  zs_t *zs = (zs_t *) userdata;
+  (void) zs; (void) buf;
+
+//  if (zs->arg_type is ZS_RLINE_ARG_IS_COMMAND)
+//    if ('a' <= *buf and *buf <= 'z')
+//      return -1;
+
+  return 1;
 }
 
 static void zs_on_carriage_return (const char *buf, void *userdata) {
@@ -667,6 +702,7 @@ static zs_t *zs_init_rline (void) {
   Rline.set.completion_cb (this, zs_completion, zs);
   Rline.set.on_input_cb (this, zs_on_input);
   Rline.set.on_carriage_return_cb (this, zs_on_carriage_return);
+  Rline.set.accept_one_item_cb (this, zs_accept_one_item);
 
   zs->rline = this;
 
@@ -675,11 +711,15 @@ static zs_t *zs_init_rline (void) {
   return zs;
 }
 
-static int zs_builtins (zs_t *this, char *line, Vstring_t *cdpath, int *retval) {
+static int zs_builtins (zs_t *this, char **linep, Vstring_t *cdpath, int *retval) {
+  (void) this;
+  char *line = *linep;
+
   *retval = 0;
 
   Cstring.trim.end (line, ' ');
 
+  /* it is handled now by libsh
   if (Cstring.eq_n (line, "exit", 4)) {
     char *exit_val = line + 4;
     if (*exit_val is '\0' or *exit_val isnot ' ')
@@ -693,6 +733,7 @@ static int zs_builtins (zs_t *this, char *line, Vstring_t *cdpath, int *retval) 
     free (line);
     return ZS_RETURN;
   }
+  */
 
   if (Cstring.eq_n (line, "cd", 2)) {
     char *path = line + 2;
@@ -767,11 +808,11 @@ static int zs_interactive (sh_t *this) {
     }
 
     int rv;
-    int builtin = zs_builtins (zs, line, cdpath, &rv);
+    char *save_line = line;
+    int builtin = zs_builtins (zs, &line, cdpath, &rv);
+
     switch (builtin) {
-      case ZS_RETURN:
-        retval = zs->exit_val;
-        goto theend;
+      // case ZS_RETURN: retval = zs->exit_val; goto theend;
 
       case ZS_CONTINUE:
         zs->last_retval = rv;
@@ -780,16 +821,18 @@ static int zs_interactive (sh_t *this) {
 
     signal (SIGINT, SIG_IGN);
     retval = Sh.exec (this, line);
-    zs->last_retval = retval;
     signal (SIGINT, SIG_DFL);
+    zs->last_retval = retval;
+    line = save_line;
 
     next:
     Rline.history.add (rline, line);
     free (line);
     Sh.release_list (this);
+
+    if (Sh.should_exit (this)) break;
   }
 
-theend:
   Vstring.release (cdpath);
   Rline.history.save (rline);
   Rline.history.release (rline);
@@ -819,50 +862,111 @@ int main (int argc, char **argv) {
   Sys.init_environment (SysEnvOpts());
 
   char dir[MAXLEN_DIR + 1]; dir[0] = '\0';
+  char fname[MAXLEN_DIR + 1]; fname[0] = '\0';
   char command[MAXLEN_COMMAND_LINE + 1]; command[0] = '\0';
+
+  int retval = 0;
 
   argc--; argv++;
 
-  int nargc = 0;
-
-  char *curdir = Dir.current ();
-  if (NULL is curdir) {
-    Stderr.print ("cannot determinate current working directory\n");
-    exit (1);
-  } else {
-    setenv ("PWD", curdir, 1);
-    free (curdir);
-  }
+  sh_t *this = NULL;
+  char *curdir = NULL;
+  int is_command = 0;
+  size_t comlen = 0;
+  size_t fnamelen = 0;
 
   for (int i = 0; i < argc; i++) {
-    if (Cstring.eq_n (argv[i], "--chdir=", 8)) {
-      Cstring.cp (dir, MAXLEN_DIR + 1, argv[i] + 8, MAXLEN_DIR);
-      continue;
+    ifnot (is_command) {
+      if (Cstring.eq_n (argv[i], "--chdir=", 8)) {
+        size_t dirlen = bytelen (argv[i] + 8);
+        if (dirlen > MAXLEN_DIR) {
+          Stderr.print_fmt ("--chdir=%s, path name is too long", argv[i] + 8);
+          retval = 1;
+          goto theend;
+        }
+
+        Cstring.cp (dir, MAXLEN_DIR + 1, argv[i] + 8, dirlen);
+        continue;
+      }
+
+      if (Cstring.eq (argv[i], "-c")) {
+        is_command = 1;
+        continue;
+      }
+
+      fnamelen = bytelen (argv[i]);
+      if (fnamelen > MAXLEN_DIR) {
+        Stderr.print_fmt ("%s, path name is too long", argv[i]);
+        retval = 1;
+        goto theend;
+      }
+
+      Cstring.cp (fname, MAXLEN_DIR + 1, argv[i], fnamelen);
+      break;
     }
 
-    nargc++;
-
-    if (1 isnot nargc)
+    if (comlen) {
       Cstring.cat (command, MAXLEN_COMMAND_LINE + 1, " ");
+      comlen++;
+    }
+
+    comlen += bytelen (argv[i]);
+    if (comlen > MAXLEN_COMMAND_LINE) {
+      Stderr.print_fmt ("comands are too long too fit");
+      retval = 1;
+      goto theend;
+    }
 
     Cstring.cat (command, MAXLEN_COMMAND_LINE + 1, argv[i]);
   }
 
-  if (dir[0]) chdir (dir);
+  this = Sh.new ();
 
-  sh_t *this = Sh.new ();
-  int retval = 0;
-
-  ifnot (nargc) {
-    retval = zs_interactive (this);
+  curdir = Dir.current ();
+  if (NULL is curdir) {
+    Stderr.print ("cannot determinate current working directory\n");
+    retval = 1;
     goto theend;
   }
 
-  retval = Sh.exec (this, command);
+  if (dir[0]) {
+    if (chdir (dir) is -1) {
+      Stderr.print_fmt ("%s, can not change to this directory, %s\n",
+          dir, Error.errno_string (errno));
+      retval = 1;
+      goto theend;
+    }
+
+    setenv ("PWD", dir, 1);
+  } else
+    setenv ("PWD", curdir, 1);
+
+  ifnot (comlen + fnamelen) {
+    retval = zs_interactive (this);
+    goto get_exit_val;
+  }
+
+  if (comlen) {
+    retval = Sh.exec (this, command);
+    goto get_exit_val;
+  }
+
+  retval = Sh.exec_file (this, fname);
+
+  get_exit_val:
+  if (retval is NOTOK)
+    retval = 1;
+  else
+    retval = Sh.get.exit_val (this);
 
 theend:
+  ifnot (NULL is curdir)
+    free (curdir);
+
   __deinit_sys__ ();
 
-  Sh.release (this);
+  ifnot (NULL is this)
+    Sh.release (this);
+
   return retval;
 }
