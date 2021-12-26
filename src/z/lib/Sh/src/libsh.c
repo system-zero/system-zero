@@ -11,11 +11,14 @@
 #define REQUIRE_SYS_WAIT
 #define REQUIRE_SIGNAL
 
-#define REQUIRE_VSTRING_TYPE DONOT_DECLARE
+#define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_SYS_TYPE     DECLARE
+#define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_PROC_TYPE    DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_SH_TYPE      DONOT_DECLARE
 
@@ -43,6 +46,9 @@ typedef struct sh_prop {
   int saved_stdin;
   int exit_val;
   int should_exit;
+  int is_a_pipe;
+  string **pipe_output;
+  Vstring_t *cdpath;
 
   proc_t *head;
   proc_t *tail;
@@ -56,6 +62,8 @@ struct sh_t {
 };
 
 typedef struct shproc_t {
+  sh_t *sh;
+
   int
     type,
     exit_val,
@@ -74,6 +82,8 @@ typedef struct shproc_t {
 
   sigset_t mask;
 } shproc_t;
+
+static int sh_pipe_cb (proc_t *, char *, string **);
 
 static int sh_append_proc (sh_t *this, proc_t *proc) {
   if ($my(head) is NULL) {
@@ -120,6 +130,7 @@ static void sh_release (sh_t *this) {
   if (this is NULL) return;
 
   sh_release_list (this);
+  Vstring.release ($my(cdpath));
 
   free ($myprop);
   free (this);
@@ -180,6 +191,35 @@ static int sh_read_stream_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
   ifnot (NULL is line) free (line);
 
   fclose (fp);
+
+  return OK;
+}
+
+static int sh_read_pipe_cb (proc_t *proc, FILE *stream, FILE *read_fp) {
+  (void) stream;
+
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (proc);
+  sh_t *this = sh->sh;
+
+  string *out = NULL;
+
+  out = *$my(pipe_output);
+
+  if (NULL is out)
+    out = String.new (32);
+
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t nread = 0;
+
+  while (-1 isnot (nread = getline (&line, &len, read_fp)))
+    String.append_with_len (out, line, nread);
+
+  String.trim_end (out, '\n');
+
+  ifnot (NULL is line) free (line);
+
+  *$my(pipe_output) = out;
 
   return OK;
 }
@@ -260,9 +300,11 @@ static void sh_sigint_handler (int sig) {
   kill (-CUR_PID, SIGINT);
 }
 
-static int sh_builtins (shproc_t *sh, proc_t *this) {
+static int sh_builtins (shproc_t *sh, proc_t *proc) {
   int retval = SH_NO_BUILTIN;
-  char **argv = Proc.get.argv (this);
+  sh_t *this = sh->sh;
+
+  char **argv = Proc.get.argv (proc);
 
   if (NULL is argv or NULL is argv[0]) return retval;
 
@@ -276,24 +318,81 @@ static int sh_builtins (shproc_t *sh, proc_t *this) {
     return SH_EXIT_NOW;
   }
 
+  if (Cstring.eq (argv[0], "pwd")) {
+    char *curdir = Dir.current ();
+    if (NULL is curdir) {
+      fprintf (stderr, "couldn't get current working directory\n");
+      retval = 1;
+    }  else {
+      fprintf (stdout, "%s\n", curdir);
+      free (curdir);
+      retval = 0;
+    }
+
+    return retval;
+  }
+
+  if (Cstring.eq (argv[0], "cd")) {
+    char *path = argv[1];
+    if (path is NULL) {
+      path = Sys.get.env_value ("HOME");
+    } else if (Cstring.eq (path, "-")) {
+      // handle -1, -2, ...
+      if ($my(cdpath)->tail->prev isnot NULL)
+        path = $my(cdpath)->tail->prev->data->bytes;
+      else
+        return 0;
+    }
+
+    if (Cstring.eq (path, $my(cdpath)->tail->data->bytes))
+      return 0;
+
+    if (-1 is chdir (path)) {
+      fprintf (stderr, "cd: %s %s\n", path, Error.errno_string (errno));
+      return errno;
+    }
+
+    setenv ("PWD", path, 1);
+
+    Vstring.append_with ($my(cdpath), path);
+    return 0;
+  }
+
+  if (Cstring.eq (argv[0], "unsetenv")) {
+    if (argv[1] is NULL) {
+      fprintf (stderr, "unsetenv: awaiting a environment name\n");
+      return 1;
+    }
+
+    retval = unsetenv (argv[1]);
+
+    if (retval isnot 0) {
+      retval = 1;
+      fprintf (stderr, "unsetenv: %s\n", Error.errno_string (errno));
+    }
+
+    return retval;
+  }
+
   return retval;
 }
 
-static int sh_interpret (proc_t *this) {
-  if (NULL is this) return 1;
+static int sh_interpret (proc_t *proc) {
+  if (NULL is proc) return 1;
 
-  shproc_t *sh = (shproc_t *) Proc.get.user_data (this);
+  shproc_t *sh = (shproc_t *) Proc.get.user_data (proc);
 
   int retval = 1;
   sh->exit_val = 0;
   sh->should_exit = 0;
   sh->should_skip_wait = 0;
   sh->skip_next_proc = 0;
+  sh_t *this = sh->sh;
 
   retval = SH_NO_BUILTIN;
 
   if (sh->type isnot PIPE_TYPE)
-    retval = sh_builtins (sh, this);
+    retval = sh_builtins (sh, proc);
 
   if (retval isnot SH_NO_BUILTIN) {
     if (retval is SH_EXIT_NOW) return OK;
@@ -313,21 +412,28 @@ static int sh_interpret (proc_t *this) {
 
   switch (sh->type) {
     case COMMAND_TYPE:
-      retval = Proc.exec (this, NULL);
+      if ($my(is_a_pipe) and Proc.get.next (proc) is NULL)
+        Proc.set.read_stream_cb (proc, PROC_READ_STDOUT, sh_read_pipe_cb);
+
+      retval = Proc.exec (proc, NULL);
+
+      if ($my(is_a_pipe) and Proc.get.next (proc) is NULL)
+        Proc.set.read_stream_cb (proc, PROC_READ_STDOUT, NULL);
+
       break;
 
     case CONJ_TYPE:
-      retval = Proc.exec (this, NULL);
+      retval = Proc.exec (proc, NULL);
       sh->skip_next_proc = retval isnot 0;
       break;
 
     case DISJ_TYPE:
-      retval = Proc.exec (this, NULL);
+      retval = Proc.exec (proc, NULL);
       sh->skip_next_proc = retval is 0;
       break;
 
     case PIPE_TYPE:
-      retval = Proc.open (this);
+      retval = Proc.open (proc);
 
       if (NOTOK is retval) {
         sh->should_exit = 1;
@@ -365,7 +471,14 @@ static sh_t *sh_new (void) {
   $myprop = Alloc (sizeof (sh_prop));
   $my(head) = $my(tail) = $my(current) = NULL;
   $my(cur_idx) = -1; $my(num_items) = 0;
-  $my(exit_val) = 0;
+  $my(exit_val) = 0; $my(is_a_pipe) = 0;
+  $my(pipe_output) = NULL;
+  $my(cdpath) = Vstring.new ();
+
+  char *cwd = getenv ("PWD");
+  ifnot (NULL is cwd)
+    Vstring.append_with ($my(cdpath), cwd);
+
   return this;
 }
 
@@ -397,6 +510,9 @@ static int sh_parse (sh_t *this, char *buf) {
   int redir_stderr = 0;
   int redir_stderr_to_stdout = 0;
 
+  int is_in_dolar_paren = 0;
+  int should_set_pipe_cb = 0;
+
   while (*sp) {
     if (*sp is '#') {
       sp++;
@@ -404,6 +520,20 @@ static int sh_parse (sh_t *this, char *buf) {
         sp++;
       if (*sp is '\n') sp++;
       continue;
+    }
+
+    if (*sp is '$' and *(sp + 1) is '(') {
+      sp++;
+      should_set_pipe_cb = 1;
+      is_in_dolar_paren = 1;
+      goto next;
+    }
+
+    if (*sp is ')') {
+      if (is_in_dolar_paren)
+        is_in_dolar_paren = 0;
+      else
+        goto theerror;
     }
 
     if (*sp is '2') {
@@ -424,6 +554,11 @@ static int sh_parse (sh_t *this, char *buf) {
     }
 
     if (*sp is '|') {
+      if (is_in_dolar_paren) {
+        sp++;
+        continue;
+      }
+
       ifnot (*(sp + 1)) goto theerror;
 
       if (*(sp + 1) is '|') {
@@ -487,6 +622,7 @@ static int sh_parse (sh_t *this, char *buf) {
     add_proc:
       p = Proc.new ();
       sh = Alloc (sizeof (shproc_t));
+      sh->sh = this;
       sh->redir_stdout_file = NULL;
       sh->redir_stderr_file = NULL;
       sh->saved_stderr = STDERR_FILENO;
@@ -511,7 +647,14 @@ static int sh_parse (sh_t *this, char *buf) {
         }
       }
 
+      Proc.set.user_data (p, sh);
+
+      if (should_set_pipe_cb)
+        Proc.set.pipe_cb (p, sh_pipe_cb);
+
       Proc.parse (p, buf);
+
+      Proc.set.pipe_cb (p, NULL);
 
       if (type is PIPE_TYPE) {
         Proc.set.at_fork_cb (p, sh_at_fork_pipeline_cb);
@@ -523,7 +666,6 @@ static int sh_parse (sh_t *this, char *buf) {
         Proc.set.at_fork_cb (p, sh_at_fork_default_cb);
       }
 
-      Proc.set.user_data (p, sh);
       sh_append_proc (this, p);
 
       buf = sp;
@@ -647,12 +789,38 @@ static int sh_exec_file (sh_t *this, const char *fname) {
   return retval;
 }
 
+static int sh_pipe_cb (proc_t *proc, char *com, string **out) {
+  shproc_t *sh = Proc.get.user_data (proc);
+  sh_t *old = sh->sh;
+
+  sh_t *this = sh_new ();
+
+  $my(is_a_pipe) = 1;
+  $my(pipe_output) = out;
+
+  sh->sh = this;
+
+  int retval = sh_exec (this, com);
+
+  out = $my(pipe_output);
+
+  sh_release (this);
+
+  sh->sh = old;
+
+  return retval;
+}
+
 public sh_T __init_sh__ (void) {
   __INIT__ (io);
+  __INIT__ (sys);
+  __INIT__ (dir);
   __INIT__ (proc);
   __INIT__ (file);
+  __INIT__ (error);
   __INIT__ (string);
   __INIT__ (cstring);
+  __INIT__ (vstring);
 
   return (sh_T) {
     .self = (sh_self) {

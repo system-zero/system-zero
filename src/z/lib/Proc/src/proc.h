@@ -7,6 +7,7 @@ typedef struct Proc_t Proc_t;
 typedef int (*ProcRead_cb) (proc_t *, FILE *, FILE *);
 typedef int (*ProcAtFork_cb) (proc_t *);
 typedef int (*ProcPreFork_cb) (proc_t *);
+typedef int (*ProcPipe_cb) (proc_t *, char *, string **);
 
 #define PROC_READ_STDOUT (1 << 1)
 #define PROC_READ_STDERR (1 << 2)
@@ -20,6 +21,7 @@ typedef struct proc_get_self {
   char **(*argv) (proc_t *);
 
   void *(*user_data) (proc_t *);
+  ProcPipe_cb (*pipe_cb) (proc_t *);
 } proc_get_self;
 
 typedef struct proc_unset_self {
@@ -37,8 +39,8 @@ typedef struct proc_set_self {
     (*at_fork_cb) (proc_t *, ProcAtFork_cb),
     (*pre_fork_cb) (proc_t *, ProcPreFork_cb),
     (*read_stream_cb) (proc_t *, int, ProcRead_cb),
-    (*user_data) (proc_t *, void *);
-  //int (*fd_size) (int);
+    (*user_data) (proc_t *, void *),
+    (*pipe_cb) (proc_t *, ProcPipe_cb);
 } proc_set_self;
 
 typedef struct proc_self {

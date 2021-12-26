@@ -30,10 +30,6 @@
 #define MAXLEN_COMMAND_LINE 8191
 #define MAXLEN_HINT         63
 
-//#define ZS_RETURN       -10
-#define ZS_CONTINUE     -11
-#define ZS_NOTHING_TODO -12
-
 #define ZS_COMMAND_HAS_NO_FILENAME_ARG (1 << 0)
 
 #define ZS_RLINE_ARG_IS_COMMAND        1
@@ -711,88 +707,9 @@ static zs_t *zs_init_rline (void) {
   return zs;
 }
 
-static int zs_builtins (zs_t *this, char **linep, Vstring_t *cdpath, int *retval) {
-  (void) this;
-  char *line = *linep;
-
-  *retval = 0;
-
-  Cstring.trim.end (line, ' ');
-
-  /* it is handled now by libsh
-  if (Cstring.eq_n (line, "exit", 4)) {
-    char *exit_val = line + 4;
-    if (*exit_val is '\0' or *exit_val isnot ' ')
-      this->exit_val = 0;
-    else {
-      while (*exit_val is ' ') exit_val++;
-      this->exit_val = (*exit_val ? atoi (exit_val) : 0);
-      if (0 > this->exit_val) this->exit_val = 1;
-    }
-
-    free (line);
-    return ZS_RETURN;
-  }
-  */
-
-  if (Cstring.eq_n (line, "cd", 2)) {
-    char *path = line + 2;
-    if (*path is '\0' or *path isnot ' ')
-      return ZS_CONTINUE;
-
-    while (*path is ' ') path++;
-
-    ifnot (*path) {
-      path = Sys.get.env_value ("HOME");
-    } else  if (Cstring.eq (path, "-")) {
-      // handle -1, -2, ...
-      if (cdpath->tail->prev isnot NULL)
-        path = cdpath->tail->prev->data->bytes;
-      else
-        return ZS_CONTINUE;
-    }
-
-    if (Cstring.eq (path, cdpath->tail->data->bytes))
-      return ZS_CONTINUE;
-
-    if (-1 is chdir (path)) {
-      Stderr.print_fmt ("cd: %s %s\n", path, Error.errno_string (errno));
-      *retval = 1;
-      return ZS_CONTINUE;
-    }
-
-    setenv ("PWD", path, 1);
-
-    Vstring.append_with (cdpath, path);
-    return ZS_CONTINUE;
-  }
-
-  if (Cstring.eq (line, "pwd")) {
-    char *curdir = Dir.current ();
-    if (NULL is curdir) {
-      Stderr.print ("couldn't get current working directory\n");
-      *retval = 1;
-    }
-    else {
-      Stdout.print_fmt ("%s\n", curdir);
-      free (curdir);
-    }
-
-    return ZS_CONTINUE;
-  }
-
-  return ZS_NOTHING_TODO;
-}
-
 static int zs_interactive (sh_t *this) {
   int retval = OK;
   char *line;
-
-  char *cwd = getenv ("PWD");
-
-  Vstring_t *cdpath = Vstring.new ();
-  Vstring.append_with (cdpath, cwd);
-  cwd = NULL;
 
   zs_t *zs = zs_init_rline ();
 
@@ -807,17 +724,7 @@ static int zs_interactive (sh_t *this) {
        break;
     }
 
-    int rv;
     char *save_line = line;
-    int builtin = zs_builtins (zs, &line, cdpath, &rv);
-
-    switch (builtin) {
-      // case ZS_RETURN: retval = zs->exit_val; goto theend;
-
-      case ZS_CONTINUE:
-        zs->last_retval = rv;
-        goto next;
-     }
 
     signal (SIGINT, SIG_IGN);
     retval = Sh.exec (this, line);
@@ -825,7 +732,6 @@ static int zs_interactive (sh_t *this) {
     zs->last_retval = retval;
     line = save_line;
 
-    next:
     Rline.history.add (rline, line);
     free (line);
     Sh.release_list (this);
@@ -833,7 +739,6 @@ static int zs_interactive (sh_t *this) {
     if (Sh.should_exit (this)) break;
   }
 
-  Vstring.release (cdpath);
   Rline.history.save (rline);
   Rline.history.release (rline);
   Rline.release (rline);

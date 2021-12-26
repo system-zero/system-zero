@@ -73,9 +73,11 @@ Semantics:
 
     The underlying machine is linenoise with UTF-8 support, but in this implementation  
     the API is incompatible, just to support tab completion at any cursor point in the line,  
-    and not just at the end of the line. Also there are two more callback functions, one that  
-    are called immediately after a received input and before any processing, and the other  
-    on a carriage return.  
+    and not just at the end of the line.
+   
+    Also there are two more callback functions, one that is called immediately after
+    a received input and before any processing, and the other on a carriage return.  
+
     Generally speaking, the tendency is for a bit aggressive interaction.  
   
   Word expansion:  
@@ -135,9 +137,38 @@ Semantics:
    pwd:
      This prints the current working directory.  
    
+   unsetenv: Deletes the argument `name' from the environment.  
+   
    exit:  
-     Exits back to the environment.  
-     
+     Exits back to the environment. Without argument it exits with a zero value. If
+     the argument is less than zero, it returns 1, otherwise it returns the value
+     of the argument.
+
+  Syntax: 
+  
+    A '#' anywhere it denotes a comment, and all the input until a new line character
+    is consumed.
+    
+    $NAME=VALUE
+      This adds `NAME' to the environment. If `NAME' already exists, the previous
+      value it is overriden.
+    
+      The fist character in the name should be in [a-zA-Z] range. The rest could also
+      be in the 0-9 range or '_'.
+      
+      The `NAME' it should be followed by an '='.  
+
+      The value of `VALUE' starts imediatelly after the '=' and end up to the first
+      encountered space. It should be composed with characters in the [a-zA-z0-9]
+      range or with any of the '_', '/', ':', '~' characters.  
+      It can also be surrounded by a pair of double quotes. In this case it can
+      contain any character included embedded spaces.  
+      The `VALUE' can be also subject for word expansion, like:  
+
+        $name=$(which ls)  
+        $name=$(ls / | grep usr)  
+        $name=${var}/${another_var}  
+      
 Quirks:  
   A filename with embedded whitespace should be enclosed into double quotes.  
   Also in this same case, filename completion stops if the filename is a directory.  
@@ -147,4 +178,6 @@ Quirks:
   more than one item at once.  
 
   There is no job managment.  
+
+  There are should be many unhandled cases.  
 </pre>

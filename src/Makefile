@@ -468,11 +468,13 @@ clean-librline-static:
 	@cd $(Z_RLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 libsh-shared: Env cenv libstring-shared libio-shared libcstring-shared\
-                       libfile-shared libproc-shared
+                       libfile-shared libproc-shared liberror-shared\
+                       libdir-shared libsys-shared
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libsh-static: Env cenv libstring-static libio-static libcstring-static\
-                       libfile-static libproc-static
+                       libfile-static libproc-static liberror-static\
+                       libdir-static libsys-static
 	@cd $(Z_SH_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libsh-shared:

@@ -1,9 +1,8 @@
 ------------------------- [ zero point draft ] -------------------------------
 
-[0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](#ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS).
+[Trunc DeveLopment](#TRUNC)  
+[0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](#ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS).  
 [0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
-
-[Trunc DeveLopment](#TRUNC)
 
 ## Intention
 
@@ -242,7 +241,7 @@ a new code or by modifying the existing.
 Some words from the future (mid++ Octomber raining days and nights of 2021):
 ```C
  /*
-  Later in the code path, we've been implemented a programming languages, that
+  Later in the code path, we've been implemented a programming language, that
   suffers from two things:
     - very high code complexity to handle deallocations
     - there isn't a virtual machine, so optimizations are futile
@@ -263,7 +262,7 @@ Some words from the future (mid++ Octomber raining days and nights of 2021):
 
   But why it ended up to be so bad code (though at the same time clever at places)?
     - I never wrote a programming language before. I'm not even a programmer with
-      common sense, I never was a proper student (again with the common sense) .
+      the common sense, I never was a proper student (again with the common sense).
       I just know enough to develop logic and design what it has to be designed.
 
       And as I can not learn by reading, as I have to be faced with the facts
@@ -302,7 +301,7 @@ Some words from the future (mid++ Octomber raining days and nights of 2021):
   is yet another reason. It is still eighties for us!
 
   For all the cases, mistakes are probably equally useful to be recorded, and
-  it may be proved, that might helps a lot to an understanding. My narrow view
+  it may be proved, that might help a lot to an understanding. My narrow view
   on this, that it might be proved, that all of it has been made because of a
   mistake, as the mistake that happens because of a will of an action, reveals
   a bit, which might sounds like an echo of the beat of the heart and which it
@@ -342,7 +341,7 @@ holds an own wisdom, that it is required to tune and drive this single ship.
 
 In any case, and if we won a tiny and so hard to gain wisdom, then at least we
 should try really really hard to make this a pleasant journey for every single
-participant of the Now. By that desire alone, it is probably enough to attract th
+participant of the Now. By that desire alone, it is probably enough to attract
 the lights of Justice that liberates, even if our convienences will blow up in
 an infinite number of pieces to the space. Then we may feel that we are staring
 our destination. Then it is up to every single existance to walk this last mile
@@ -476,7 +475,7 @@ the name is reffered to a constellation. A really lovely name, if you are going
 to ask my opinion.
 
 In any  case the most important to keep here, is that in our system, we want to
-unify usage and developing, as it is the reality.
+unify usage and developing, as it is the actual reality.
 
 So what to do if we want to extend the `File.size` command to get an attribute,
 so it can print the size in Megabytes? We have two options. The obvious one, is
@@ -487,6 +486,7 @@ usually use for this kind type of arguments, `--blocksize=[SIZE]`, '-bytes`, or
 because Megabytes ended up to refer to 1000 bytes, because it was abused by the
 hard disks manufactures, for marketing reasons, and  this now became a de-facto
 standard.
+
 Or we can use a symbolic link. This will work, because the fist argument in the
 argument list (an array of strings) of the `main` function,  is the name of the
 calling application. So we can develop logic in our code, based on that name and
@@ -495,9 +495,8 @@ concept, in which a function can choose, based on the type of its argument, whic
 function will call for its operation.
 Many famous utilities uses this latter approach, like `busybox`.
 
-Quite convenient mechanisms.
+Quite convenient mechanisms. And some fragile too.
 
-And some fragile too.
 We've also introduced pipelines and also commands that use them. Its not easy to
 make them work reliabe, as there are many side effects:
 ```sh
@@ -513,15 +512,17 @@ make them work reliabe, as there are many side effects:
 But what if we've used `echo` instead of printf? The echo utility it isn't  that
 portable and the usual implementations they print a newline by default.
 And what it determinates that the output of printf will be the input of `Dir.make`?
-We assume it is not an argument. What to do in a case  of an error and we are  in
+
+We assume it is not an argument. What to do in a case of an error and when we are in
 the middle of the pipe, or our second command needs some info from the user (like
-a password). In the latter case, what it determinates that the argunments are for
+a password)? In the latter case, what it determinates that the arguments are for
 the `sudo` utility and not for the command itself?
 
 As a remark, a pipeline it looks like a `function composition`.
 
 ### The argument mechanism.
-Here  we've used  two  arguments  known  in  everyone  that  used  those  tools.
+
+Here  we've used  two  arguments  known  to  everyone  that  used  those  tools.
 The `--verbose` argument  says  to print  the result  to  `standard output`. The.
 `--parents` argument says  to make any intermediate directory  Because they are.
 standardized, we can also use their short version, which is, `-v` for `--verbose`.
@@ -540,11 +541,11 @@ crucial and valid  objection for our system. Since we want to create for  every
 function a matching frontend, so quite verbose, our `$PATH` will be filled rather
 quickly by our functions, so the lookup will be probably slow.
 
-This is the reason, why the a command starts with a `namespace` prefix and that
+This is the reason, why our commands start with a `namespace` prefix and that
 is why they begin with a Capital.
 
 The other advantage is for the developers of this system. Since the name of the
-command indicate an inter connection with a library, it is obvious where to look
+command indicate an inner connection with a library, it is obvious where to look
 for a fix or for further development. And on usual systems, this is  not  always
 an easy fast case, but rather the exception.
 
@@ -643,6 +644,7 @@ In this case `Dir.make()` is our interface,  as it abstracts all the details for
 us, and allows consistency, which is quite important to a system.
 
 ## Interface.
+
 In this  sample system, we are  choosing to implement, a  user interface, that
 will  resemble a  `vi(m)`  like  interface. Because  of  historical reasons  and
 because is  intuitive,  this is  very popular  and already  established, as
@@ -911,8 +913,8 @@ going back from the end, by decrementing the value pointer.  If this  pointer
 meets the symbol pointer, then the system it gets out of memory.
 
 All that all in a little more than a thousand of lines of compact code, to do
-all the required and well defined tasks for an interpreter, such as scanning,  parsing
-and evaluation.
+all the required and well defined tasks for an interpreter, such as scanning,
+parsing and evaluation.
 
 We have used this little machine at the begining, to save and restore  editor
 sessions, and later we applied the same technique and to the virtual terminal
@@ -986,6 +988,7 @@ really cared __that__ much about performance. it is just that happens that C
 offers that performance, but it feels more like a gift! The real priority  and
 desire, was always the most straight access to the kernel, and  with the  most
 simple best expressed method that is provided by the underlying environment.
+
 For POSIX like systens, this is the `shell`. The joke here, is that despite how
 it might looks, it is also and the most intuitive one for a human. It has been
 proved also, that is and a clever investment, because if you learn it once, you
@@ -1002,6 +1005,7 @@ be stable and end up on things with our API, when we reach at this point. If we
 don't do that, we have to be prepared to introduce incompatibilities,  during
 the logical evolution.  This is almost always a frustration for a developer to
 adapt, especially when even point releases introduce such incompatibilities.
+
 C success proves that simple fact, since C nener changes, or it changes in a
 gradual way, leaving a decade between new revisions and standards. However it
 is guarranteed that ANSI C code, will be compiled in every known platform.
@@ -1046,9 +1050,9 @@ hacks though, and quite possible in a such way that it might make this fragile
 code even more complex to maintain and evolve. Not quite possible. For certain.
 
 For this new code, that was placed in a Namespase called `La` (for Language),
-there is a special [test unit](data/tests/la-semantics.i), which is a copy of the old tests,
-plus specific tests, like tests on function pointers and doubles, and as well
-its own [documentation](data/docs/la.md).
+there is a special [test unit](data/tests/la-semantics.lai), which is a copy of
+the old tests, plus specific tests, like tests on function pointers and doubles,
+and as well its own [documentation](data/docs/la.md).
 
 ## 0.0.1 DEVELOPMENT
 
@@ -1158,7 +1162,8 @@ To do that use:
 
  # Implemented:
 
-  - an ala [vim](http://www.vim.org) [editor](data/docs/editor.md) called as:
+  - a visual [editor](data/docs/editor.md) that is a tiny [vim](http://www.vim.org)
+    clone, and which can be invoked as:
 
      E or E-static [options] [filename[s]]  
      E --help  # for a short help
@@ -1169,23 +1174,22 @@ To do that use:
 
    state: rather stable
 
-   maybe_crashed:
-     under circumstances with a series of undo/redos
+   maybe_crashed:  
+     under circumstances with a series of undo/redos  
        reproducible: a bit hard, as it does not happens on continuously
-         undos/redos (without to change the cursor on different line between
-         the two calls, and without to insert new lines).
+       undos/redos and without to change the cursor on different line between
+       the two calls, and without to insert new lines
 
-      cause:  For certain it is the jump code that calculates wrong the line numbers.
+       cause:  For certain it is the jump code that calculates wrong the line numbers.  
+       state: This is good to fix, but since this is not my style to work on an editor, it
+         doesn't happen in the workflow, there is an inclination to devote time.
 
-      state: good to fix, but this is not my style to work, so it doesn't happens.
-
-     under circumstances when writting with characters > ASCII_RANGE
+     under circumstances when writting with characters > ASCII_RANGE  
        reproducible: needs some time but possible. Write some greek and make
          various moves like backspace/delete.
 
-      cause: easy (wrong calculation, when going [for|back]ward)
-
-      state: very good to fix as it is annoying, but need to have time and will
+       cause: easy (wrong calculation, when going [for|back]ward)  
+       state: very good to fix as it is annoying, but need to have time and will
 
   - a [terminal multiplexer] (https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) calles as:
 
@@ -1197,7 +1201,7 @@ To do that use:
    [WM library](src/z/lib/Vwm/src/libvwm.c)  
    [executable](src/z/app/v/src/v.c)  
 
-   state: rather stable
+   state: rather stable  
    crashes: not with current usage, but quite possible there are unhandled cases
 
   - a [programming language](data/docs/la.md) called as:
@@ -1209,15 +1213,15 @@ To do that use:
    [La library](src/z/lib/La/src/libla.c)  
    [executable](src/z/app/v/src/v.c)  
 
-   state: on stabilization. Syntax and semantics are hard to change.
+   state: on stabilization. Syntax and semantics are hard to change.  
    crashes: it is an ongoing work and it is quite fragile, but not
      with current code
 
-  - many libraries
+  - many libraries  
     state:  most of them are mature, used for a couple of years. But
       are unoptimized, and some of them written in the first days of
-      C kindergarden (still in the last grade). But no crashes if the
-      memory serves well
+      C kindergarden (still in the last grade). But no crashes for a
+      long time if the memory serves me well.
 
     sources: (some of them)  
     [String   library](src/z/lib/String/src/libstring.c)  
@@ -1225,12 +1229,12 @@ To do that use:
     [File     library](src/z/lib/File/src/libfile.c)  
    ....
 
-  - applications:
+  - applications:  
     state: mostly basic unix utilities, and it is really an ongoing work,
       (used mostly for testing the development). Many of the usual options
       haven't been implemented.
 
-      update (last days of Octomber): quite some of a basic set of a system
+      update (last days of Octomber): quite bit of the basic set of a system
       command line functionality has been implemented.
 
     sources: (some of them)  
@@ -1238,20 +1242,22 @@ To do that use:
     [File.stat in La](src/z/app/file/src/File.stat.lai)  
     ...
 
-  - a shell
+  - a shell  
     state: don't never tried to work with it, as there are other areas to
       dedicate attention (it is not a priority, as the direction might change)
       updates:
         Sweet November Days and olive season: This is now at least a little bit
         more useful with command, argument, filename, last component completions
         and shell word expansion.
-        
+       
+       End of the year: This is now quite functional and usefull.
+       
     sources:  
     [document](data/docs/zs.md)  
     [Sh   library](src/z/lib/Sh/src/libsh.c)  
     [Proc library](src/z/lib/Proc/src/libproc.c)  
 
-  - an early draft of a sudo like utility
+  - an early draft of a sudo like utility  
     state: audit and careful review it is required. It works for my usage and
     I use it a lot. But there should be unhandled cases. It is just a proof of
     concept mostly and written in the very first days.
@@ -1262,13 +1268,14 @@ To do that use:
 
     notes:  
       - libpam is required (we might use another option one day, like crypt())
-      - likewise the sudo utility, as the executable is installed as setuid root
+      - likewise the sudo utility is required at the build time, as the executable
+        is installed as setuid root, it needs special priviliges.
 
-  - a package manager
+  - a package manager  
     state: really early, but it seems to work with a couple of specs. It builds
-      the static libpam library though. Didn't try the network code!
+      the static libpam library though.
 
-  - a container
+  - a container  
     state: early but it works.
 
     This is an important point at the coding path, because there is now a way
@@ -1282,22 +1289,22 @@ To do that use:
     Usage:
       Contain.new sys/`uname -m`
 
-Requirements:
-  The make utility, a C compiler, a linker, a libc and libpam  as zsu dependemcy
-  (for now (as we  don't really need it at this stage), so it has to be moved
+Requirements:  
+  The make utility, a C compiler, a linker, a libc and libpam  as zsu dependency
+  for now (as we  don't really need it at this stage), so it has to be moved
    from the initialization system state).
 
 ```sh
   cd src
 
-  # note that to clean up previous libraries and utilities, issue:
+  # note that in order to clean up previous libraries and utilities, issue:
     make REV=0 clean-shared
     make REV=0 clean-static
   # or/and
     make REV=1 clean-shared
     make REV=1 clean-static
 
-  # Devel: the above should be one target. Possible a different Makefile.
+  # Development: the above should be one target. Possible a different Makefile.
 
   # shared targets
   make shared && make e-shared && make la-shared && make v-shared
@@ -1305,11 +1312,8 @@ Requirements:
   # static targets
   make static && make e-static && make la-static && make v-static
 
-  # Note, that the installation of the zsu utility requires the
-  # sudo utility, as it has to be installed as setuid root.
-
 ```
-Tested with `gcc` but the targets they should compiled with clang also.
+Tested with `gcc` and clang.
 The compilation should endup without a single warning, even with DEBUG enabled.
 To do that use:
 ```
@@ -1317,6 +1321,8 @@ To do that use:
   # or/and
   make DEBUG=1 static
 ```
+Also the tinycc compiler it builts succesfully the shared targets, but not the
+static targets.
 
 By default libraries and applications are installed in sys/`uname -m` namespace.
 
@@ -1396,10 +1402,10 @@ I started programming around 2010, though actually it was around the winter of
 2012, when some special circumstances and the situationism allowed me to study
 programming, by implementing the first application (a personalized environment
 which was a set of applications with a common interface), written in S-Lang. I
-started with C at my 52, so and according with the gained wisdom, at this time
-of writing (April of 2021), I just graduated from the kindergarden. So this is
-actually and a research that will provide proves and some qualifications!!!  I
-hate to live for just proving, and especially when the proves, prove me wrong.
+started with C at my 52 (in 2019), so and according with the gained wisdom, at
+this time of writing (April of 2021), I just graduated from the kindergarden. So
+this is actually and a research that will provide proves and some qualifications!!!
+I hate to live for just proving, and especially when the proves, prove me wrong.
 Now, on what to do with them! Anyway, almost all the followed code, after this
 first scratch code, it was simply mostly iterations of that same system.
 

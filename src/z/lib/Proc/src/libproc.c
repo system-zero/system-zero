@@ -50,6 +50,7 @@ typedef struct proc_prop {
    ProcRead_cb read_stderr_cb;
    ProcAtFork_cb at_fork_cb;
    ProcPreFork_cb pre_fork_cb;
+   ProcPipe_cb pipe_cb;
 
    void *user_data;
 } proc_prop;
@@ -172,6 +173,7 @@ static proc_t *proc_new (void) {
   $my(read_stderr_cb) = proc_output_to_stream;
   $my(pre_fork_cb) = proc_pre_fork_default_cb;
   $my(at_fork_cb) = proc_at_fork_default_cb;
+  $my(pipe_cb) = NULL;
   return this;
 }
 
@@ -253,6 +255,7 @@ theerror:
 
 static int proc_expand_tilde (string **sa, char **bufp) {
   string *s = *sa;
+
   int done_expansion = 0;
   char *sp = *bufp;
   if (*sp is '~') {
@@ -274,7 +277,8 @@ static int proc_expand_tilde (string **sa, char **bufp) {
   return done_expansion;
 }
 
-static int proc_expand_dollar_brace (string **sa, char **bufp) {
+static int proc_expand_dollar_brace (proc_t *this, string **sa, char **bufp) {
+  (void) this;
   char *sp = *bufp;
 
   if (*sp isnot '$') return 0;
@@ -328,7 +332,7 @@ static int proc_expand_dollar_brace (string **sa, char **bufp) {
   return 1;
 }
 
-static int proc_expand_dollar_paren (string **sa, char **bufp) {
+static int proc_expand_dollar_paren (proc_t *this, string **sa, char **bufp) {
   char *sp = *bufp;
 
   if (*sp isnot '$') return 0;
@@ -342,8 +346,36 @@ static int proc_expand_dollar_paren (string **sa, char **bufp) {
   }
 
   char *startvar = sp;
+  int is_in_str = 0;
+  int is_a_pipe = 0;
+
   while (*sp) {
-    if (*sp is ')') break;
+    if (*sp is ')') {
+      ifnot (is_in_str)
+        break;
+
+      sp++;
+      continue;
+    }
+
+    if (*sp is '"') {
+      if (is_in_str) {
+        if (*(sp - 1) is '\\') {
+          sp++;
+          continue;
+        }
+      }
+
+      is_in_str = 1;
+      sp++;
+      continue;
+    }
+
+    if (*sp is '|') {
+      ifnot (is_in_str)
+        is_a_pipe = 1;
+    }
+
     sp++;
   }
 
@@ -352,7 +384,19 @@ static int proc_expand_dollar_paren (string **sa, char **bufp) {
   size_t clen = sp - startvar;
   char com[clen + 1];
   Cstring.cp (com, clen + 1, startvar, clen);
-  string *sout = read_from_stdout_proc (com);
+
+  string *sout = NULL;
+
+  ifnot (is_a_pipe)
+    sout = read_from_stdout_proc (com);
+  else {
+    if ($my(pipe_cb) isnot NULL) {
+      if (NOTOK is $my(pipe_cb) (this, com, &sout))
+        return NOTOK;
+    } else
+      return NOTOK;
+  }
+
   if (NULL is sout) return NOTOK;
 
   string *s = *sa;
@@ -368,7 +412,7 @@ static int proc_expand_dollar_paren (string **sa, char **bufp) {
   return 1;
 }
 
-static int proc_parse_env (string **sa, char **bufp) {
+static int proc_parse_env (proc_t *this, string **sa, char **bufp) {
   char *sp = *bufp;
 
   if (*sp isnot '$') return 0;
@@ -443,7 +487,7 @@ static int proc_parse_env (string **sa, char **bufp) {
 
     if (*sp is '$') {
       if (*(sp + 1) is '(') {
-        int err = proc_expand_dollar_paren (sa, &sp);
+        int err = proc_expand_dollar_paren (this, sa, &sp);
 
         if (NOTOK is err) return NOTOK;
         sp++;
@@ -451,7 +495,7 @@ static int proc_parse_env (string **sa, char **bufp) {
       }
 
       if (*(sp + 1) is '{') {
-        int err = proc_expand_dollar_brace (sa, &sp);
+        int err = proc_expand_dollar_brace (this, sa, &sp);
         if (NOTOK is err) return NOTOK;
         sp++;
         continue;
@@ -504,7 +548,7 @@ static int proc_append_arg (proc_t *this, char **linep, char *arg, size_t len, i
 
   while (sp <= end) {
     if (*sp is '$') {
-      int r = proc_expand_dollar_brace (&s, &sp);
+      int r = proc_expand_dollar_brace (this, &s, &sp);
       if (NOTOK is r) goto theerror;
 
       if (r) {
@@ -513,7 +557,7 @@ static int proc_append_arg (proc_t *this, char **linep, char *arg, size_t len, i
         continue;
       }
 
-      r = proc_expand_dollar_paren (&s, &sp);
+      r = proc_expand_dollar_paren (this, &s, &sp);
 
       if (NOTOK is r) goto theerror;
 
@@ -523,7 +567,7 @@ static int proc_append_arg (proc_t *this, char **linep, char *arg, size_t len, i
         continue;
       }
 
-      r = proc_parse_env (&s, &sp);
+      r = proc_parse_env (this, &s, &sp);
 
       if (r is NOTOK) goto theerror;
       if (r) {
@@ -817,6 +861,10 @@ static void proc_set_user_data (proc_t *this, void *user_data) {
   $my(user_data) = user_data;
 }
 
+static void proc_set_pipe_cb (proc_t *this, ProcPipe_cb fn) {
+  $my(pipe_cb) = fn;
+}
+
 static void proc_set_pre_fork_cb (proc_t *this, ProcPreFork_cb cb) {
   $my(pre_fork_cb) = cb;
 }
@@ -872,6 +920,11 @@ static void *proc_get_user_data (proc_t *this) {
   return $my(user_data);
 }
 
+static ProcPipe_cb proc_get_pipe_cb (proc_t *this) {
+  if (NULL is this) return NULL;
+  return $my(pipe_cb);
+}
+
 static int proc_exec (proc_t *this, const char *com) {
   int retval = NOTOK;
 
@@ -917,6 +970,7 @@ public proc_T __init_proc__ (void) {
         .stdin = proc_set_stdin,
         .dup_stdin = proc_set_dup_stdin,
         .user_data = proc_set_user_data,
+        .pipe_cb = proc_set_pipe_cb,
         .at_fork_cb = proc_set_at_fork_cb,
         .pre_fork_cb = proc_set_pre_fork_cb,
         .read_stream_cb = proc_set_read_stream_cb
@@ -929,6 +983,7 @@ public proc_T __init_proc__ (void) {
         .pid = proc_get_pid,
         .argv = proc_get_argv,
         .next = proc_get_next,
+        .pipe_cb = proc_get_pipe_cb,
         .user_data = proc_get_user_data
       }
     }
