@@ -1,4 +1,6 @@
 /*
+ https://github.com/wc-duck/url_parse
+
  Simple, STB-style, parser for URL:s as specified by RFC1738 ( http://www.ietf.org/rfc/rfc1738.txt )
 
  version 1.0, June, 2014

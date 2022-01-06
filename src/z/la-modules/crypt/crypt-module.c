@@ -5,17 +5,17 @@
 #define REQUIRE_UNISTD
 #define REQUIRE_FCNTL
 
-#define REQUIRE_VMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_MD5_TYPE      DECLARE
 #define REQUIRE_SHA256_TYPE   DECLARE
 #define REQUIRE_SHA512_TYPE   DECLARE
 #define REQUIRE_BASE64_TYPE   DECLARE
 #define REQUIRE_BCRYPT_TYPE   DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(crypt)
 
 struct MdOpts {
   void
@@ -255,7 +255,6 @@ static VALUE crypt_verify_passwd_hash (la_t *this, VALUE v_passwd, VALUE v_hash)
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_crypt_module__ (la_t *); // -Wmissing-declarations
 public int __init_crypt_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(md5);
@@ -264,9 +263,6 @@ public int __init_crypt_module__ (la_t *this) {
   __INIT__(base64);
   __INIT__(bcrypt);
   __INIT__(error);
-  __INIT__(string);
-
-  (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "crypt_md5sum",         PTR(crypt_md5sum), 1 },
@@ -312,7 +308,6 @@ public int __init_crypt_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_crypt_module__ (la_t *this); // -Wmissing-declarations
 public void __deinit_crypt_module__ (la_t *this) {
   (void) this;
   return;

@@ -115,9 +115,9 @@ private
                   this.input_argv[this.curidx + 1][0] is '-') {
                 if (flags & ARG_VALUE_REQUIRED) {
                   if this.verbose is true then
-                    println (stderr, "error ${%s, arg) argument awaits a value")
+                    println (stderr, "error ${arg} argument awaits a value")
                   orelse
-                    this.err_message = format ("error ${%s, arg) argument awaits a value")
+                    this.err_message = format ("error ${arg} argument awaits a value")
 
                   return notok
                 }
@@ -156,7 +156,7 @@ private
     return retval
   }
 
-  parse_opt_val : func (flags, type, as) {
+  parse_opt_val : func (arg, flags, type, as) {
     if (flags & ARG_VALUE_APPEND) {
       flags &= ~ARG_VALUE_OPTIONAL
       flags |= ARG_VALUE_REQUIRED
@@ -166,9 +166,9 @@ private
        this.input_argv[this.curidx + 1][0] is '-') {
       if (flags & ARG_VALUE_REQUIRED) {
         if this.verbose is true then
-          println (stderr, "error ${arg) argument awaits a value")
+          println (stderr, "error ${arg} argument awaits a value")
         orelse
-          this.err_message = format ("error ${arg) argument awaits a value")
+          this.err_message = format ("error ${arg} argument awaits a value")
 
         return notok
       }
@@ -233,7 +233,7 @@ private
           }
 
           if long[-1] isnot '=' then
-            return this.parse_opt_val (flags, type, as)
+            return this.parse_opt_val (arg, flags, type, as)
 
           var optval = arg: byte_in_str ('=')
           var vallen = optval: len ()
@@ -243,9 +243,9 @@ private
           if (vallen is optval: len ()) {
             if (flags & ARG_VALUE_REQUIRED) {
               if this.verbose is true then
-                println (stderr, "error ${arg) argument requires a value")
+                println (stderr, "error ${arg} argument requires a value")
               orelse
-                this.err_message = format ("error ${arg) requires a value")
+                this.err_message = format ("error ${arg} requires a value")
 
               return notok
 

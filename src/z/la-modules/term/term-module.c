@@ -1,16 +1,16 @@
 #define REQUIRE_STDIO
 #define REQUIRE_TERMIOS
 
-#define REQUIRE_VMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DONOT_DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_TERM_TYPE     DECLARE
 #define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(term)
 
 #define IS_TERM(__v__)({ int _r_ = 0; \
   if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "TermType");}\
@@ -113,15 +113,11 @@ static VALUE term_get_cols (la_t *this, VALUE v_term) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_term_module__ (la_t *this);
 public int __init_term_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
   __INIT__(term);
   __INIT__(cstring);
-
-  (void) vmapType;
-  (void) stringType;
 
   LaDefCFun lafuns[] = {
     { "term_new",         PTR(term_new), 0 },
@@ -161,7 +157,6 @@ public int __init_term_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_term_module__ (la_t *this);
 public void __deinit_term_module__ (la_t *this) {
   (void) this;
   return;

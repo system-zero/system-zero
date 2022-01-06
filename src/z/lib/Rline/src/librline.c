@@ -1,8 +1,16 @@
 #define LIBRARY "Rline"
 
 #define REQUIRE_STD_DEFAULT_SOURCE
+#define REQUIRE_STDIO
+#define REQUIRE_CTYPE
 #define REQUIRE_UNISTD
 #define REQUIRE_DIRENT
+#define REQUIRE_STDARG
+#define REQUIRE_SIGNAL
+#define REQUIRE_TERMIOS
+#define REQUIRE_POLL
+#define REQUIRE_SYS_TYPES
+#define REQUIRE_SYS_IOCTL
 
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
@@ -45,22 +53,18 @@ OnInput_cb linenoiseOnInputCallback;
 OnCarriageReturn_cb linenoiseOnCarriageReturnCallback;
 AcceptOneItem_cb linenoiseAcceptOneItemCallback;
 
-int linenoiseHistoryAdd(const char *);
-char **linenoiseHistory(int *);
-int linenoiseHistorySave(const char *);
-int linenoiseHistorySetMaxLen(int);
-int linenoiseHistoryGetMaxLen(void);
-int linenoiseHistoryLoad(const char *);
-int linenoiseHistoryAddAllocated(char *);
-void linenoiseSetHintsCallback(linenoiseHintsCallback *, void *);
-void linenoiseHistoryFree(void);
-void linenoiseClearScreen(void);
-linenoiseCompletionCallback linenoiseSetCompletionCallback(linenoiseCompletionCallback, void *);
-void linenoiseAddCompletion(linenoiseCompletions *, const char *, int);
-void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *);
-void linenoiseSetMultiLine(int);
-char *linenoise(const char *);
-int linenoiseColumns(void);
+static int linenoiseHistoryAdd(const char *);
+static int linenoiseHistorySave(const char *);
+static int linenoiseHistorySetMaxLen(int);
+static int linenoiseHistoryLoad(const char *);
+static int linenoiseHistoryAddAllocated(char *);
+static void linenoiseSetHintsCallback(linenoiseHintsCallback *, void *);
+static void linenoiseHistoryFree(void);
+static void linenoiseClearScreen(void);
+static linenoiseCompletionCallback linenoiseSetCompletionCallback(linenoiseCompletionCallback, void *);
+static void linenoiseAddCompletion(linenoiseCompletions *, const char *, int);
+static void linenoiseSetMultiLine(int);
+static char *linenoise(rline_t *, const char *);
 
 /**
  * UTF-8 utility functions.
@@ -100,7 +104,7 @@ int linenoiseColumns(void);
  *
  * Returns the number of utf-8 characters
  */
-int utf8_fromunicode(char *p, unsigned uc);
+static int utf8_fromunicode(char *p, unsigned uc);
 
 /**
  * Returns the length of the utf-8 sequence starting with 'c'.
@@ -109,7 +113,7 @@ int utf8_fromunicode(char *p, unsigned uc);
  *
  * Note that charlen=4 is not supported by the rest of the API.
  */
-int utf8_charlen(int c);
+static int utf8_charlen(int c);
 
 /**
  * Returns the number of characters in the utf-8
@@ -122,13 +126,7 @@ int utf8_charlen(int c);
  *
  * Does not support unicode code points > \u1fffff
  */
-int utf8_strlen(const char *str, int bytelen);
-
-/**
- * Calculates the display width of the first 'charlen' characters in 'str'.
- * See utf8_width()
- */
-int utf8_strwidth(const char *str, int charlen);
+static int utf8_strlen(const char *str, int bytelen);
 
 /**
  * Returns the byte index of the given character in the utf-8 string.
@@ -138,7 +136,7 @@ int utf8_strwidth(const char *str, int charlen);
  * This will return the byte length of a utf-8 string
  * if given the char length.
  */
-int utf8_index(const char *str, int charindex);
+static int utf8_index(const char *str, int charindex);
 
 /**
  * Returns the unicode codepoint corresponding to the
@@ -154,20 +152,15 @@ int utf8_index(const char *str, int charindex);
  *
  * Does not support unicode code points > \u1fffff
  */
-int utf8_tounicode(const char *str, int *uc);
+static int utf8_tounicode(const char *str, int *uc);
 
 /**
  * Returns the width (in characters) of the given unicode codepoint.
  * This is 1 for normal letters and 0 for combining characters and 2 for wide characters.
  */
-int utf8_width(int ch);
+static int utf8_width(int ch);
 
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
-int utf8_fromunicode(char *p, unsigned uc)
+static int utf8_fromunicode(char *p, unsigned uc)
 {
     if (uc <= 0x7f) {
         *p = uc;
@@ -194,7 +187,7 @@ int utf8_fromunicode(char *p, unsigned uc)
     }
 }
 
-int utf8_charlen(int c)
+static int utf8_charlen(int c)
 {
     if ((c & 0x80) == 0) {
         return 1;
@@ -212,7 +205,7 @@ int utf8_charlen(int c)
     return -1;
 }
 
-int utf8_strlen(const char *str, int btlen)
+static int utf8_strlen(const char *str, int btlen)
 {
     int charlen = 0;
     if (btlen < 0) {
@@ -228,20 +221,7 @@ int utf8_strlen(const char *str, int btlen)
     return charlen;
 }
 
-int utf8_strwidth(const char *str, int charlen)
-{
-    int width = 0;
-    while (charlen) {
-        int c;
-        int l = utf8_tounicode(str, &c);
-        width += utf8_width(c);
-        str += l;
-        charlen--;
-    }
-    return width;
-}
-
-int utf8_index(const char *str, int index)
+static int utf8_index(const char *str, int index)
 {
     const char *s = str;
     while (index--) {
@@ -251,7 +231,7 @@ int utf8_index(const char *str, int index)
     return s - str;
 }
 
-int utf8_tounicode(const char *str, int *uc)
+static int utf8_tounicode(const char *str, int *uc)
 {
     unsigned const char *s = (unsigned const char *)str;
 
@@ -389,7 +369,7 @@ static int utf8_in_range(const struct utf8range *range, int num, int ch)
     return 0;
 }
 
-int utf8_width(int ch)
+static int utf8_width(int ch)
 {
     /* short circuit for common case */
     if (isascii(ch)) {
@@ -426,28 +406,7 @@ typedef struct {
 	char *data;		/**< Allocated memory containing the string or NULL for empty */
 } stringbuf;
 
-/**
- * Allocates and returns a new stringbuf with no elements.
- */
-stringbuf *sb_alloc(void);
-void sb_realloc(stringbuf *, int);
 
-/**
- * Frees a stringbuf.
- * It is OK to call this with NULL.
- */
-void sb_free(stringbuf *sb);
-
-/**
- * Returns an allocated copy of the stringbuf
- */
-stringbuf *sb_copy(stringbuf *sb);
-
-/**
- * Returns the byte length of the buffer.
- * 
- * Returns 0 for both a NULL buffer and an empty buffer.
- */
 static inline int sb_len(stringbuf *sb) {
 	return sb->last;
 }
@@ -460,20 +419,6 @@ static inline int sb_len(stringbuf *sb) {
 static inline int sb_chars(stringbuf *sb) {
 	return sb->chars;
 }
-
-/**
- * Appends a null terminated string to the stringbuf
- */
-void sb_append(stringbuf *sb, const char *str);
-
-/**
- * Like sb_append() except does not require a null terminated string.
- * The length of 'str' is given as 'len'
- *
- * Note that in utf8 mode, characters will *not* be counted correctly
- * if a partial utf8 sequence is added with sb_append_len()
- */
-void sb_append_len(stringbuf *sb, const char *str, int len);
 
 /**
  * Returns a pointer to the null terminated string in the buffer.
@@ -489,44 +434,9 @@ static inline char *sb_str(const stringbuf *sb)
 	return sb->data;
 }
 
-/**
- * Inserts the given string *before* (zero-based) byte 'index' in the stringbuf.
- * If index is past the end of the buffer, the string is appended,
- * just like sb_append()
- */
-void sb_insert(stringbuf *sb, int index, const char *str);
-
-/**
- * Delete 'len' bytes in the string at the given index.
- *
- * Any bytes past the end of the buffer are ignored.
- * The buffer remains null terminated.
- *
- * If len is -1, deletes to the end of the buffer.
- */
-void sb_delete(stringbuf *sb, int index, int len);
-
-/**
- * Clear to an empty buffer.
- */
-void sb_clear(stringbuf *sb);
-
-/**
- * Return an allocated copy of buffer and frees 'sb'.
- *
- * If 'sb' is empty, returns an allocated copy of "".
- */
-char *sb_to_string(stringbuf *sb);
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <assert.h>
-
 #define SB_INCREMENT 200
 
-stringbuf *sb_alloc(void)
+static stringbuf *sb_alloc (void)
 {
 	stringbuf *sb = (stringbuf *)malloc(sizeof(*sb));
 	sb->remaining = 0;
@@ -537,7 +447,7 @@ stringbuf *sb_alloc(void)
 	return(sb);
 }
 
-void sb_free(stringbuf *sb)
+static void sb_free(stringbuf *sb)
 {
 	if (sb) {
 		free(sb->data);
@@ -545,18 +455,13 @@ void sb_free(stringbuf *sb)
 	free(sb);
 }
 
-void sb_realloc(stringbuf *sb, int newlen)
+static void sb_realloc(stringbuf *sb, int newlen)
 {
 	sb->data = (char *)realloc(sb->data, newlen);
 	sb->remaining = newlen - sb->last;
 }
 
-void sb_append(stringbuf *sb, const char *str)
-{
-	sb_append_len(sb, str, strlen(str));
-}
-
-void sb_append_len(stringbuf *sb, const char *str, int len)
+static void sb_append_len(stringbuf *sb, const char *str, int len)
 {
 	if (sb->remaining < len + 1) {
 		sb_realloc(sb, sb->last + len + 1 + SB_INCREMENT);
@@ -569,7 +474,12 @@ void sb_append_len(stringbuf *sb, const char *str, int len)
 	sb->chars += utf8_strlen(str, len);
 }
 
-char *sb_to_string(stringbuf *sb)
+static void sb_append(stringbuf *sb, const char *str)
+{
+	sb_append_len(sb, str, strlen(str));
+}
+
+static char *sb_to_string(stringbuf *sb)
 {
 	if (sb->data == NULL) {
 		/* Return an allocated empty string, not null */
@@ -592,8 +502,6 @@ char *sb_to_string(stringbuf *sb)
  */
 static void sb_insert_space(stringbuf *sb, int pos, int len)
 {
-	assert(pos <= sb->last);
-
 	/* Make sure there is enough space */
 	if (sb->remaining < len) {
 		sb_realloc(sb, sb->last + len + SB_INCREMENT);
@@ -612,9 +520,6 @@ static void sb_insert_space(stringbuf *sb, int pos, int len)
  */
 static void sb_delete_space(stringbuf *sb, int pos, int len)
 {
-	assert(pos < sb->last);
-	assert(pos + len <= sb->last);
-
 	sb->chars -= utf8_strlen(sb->data + pos, len);
 
 	/* Now move it up */
@@ -625,7 +530,7 @@ static void sb_delete_space(stringbuf *sb, int pos, int len)
 	sb->data[sb->last] = 0;
 }
 
-void sb_insert(stringbuf *sb, int index, const char *str)
+static void sb_insert(stringbuf *sb, int index, const char *str)
 {
 	if (index >= sb->last) {
 		/* Inserting after the end of the list appends. */
@@ -644,7 +549,7 @@ void sb_insert(stringbuf *sb, int index, const char *str)
  * Delete the bytes at index 'index' for length 'len'
  * Has no effect if the index is past the end of the list.
  */
-void sb_delete(stringbuf *sb, int index, int len)
+static void sb_delete(stringbuf *sb, int index, int len)
 {
 	if (index < sb->last) {
 		char *pos = sb->data + index;
@@ -656,7 +561,7 @@ void sb_delete(stringbuf *sb, int index, int len)
 	}
 }
 
-void sb_clear(stringbuf *sb)
+static void sb_clear(stringbuf *sb)
 {
 	if (sb->data) {
 		/* Null terminate */
@@ -776,37 +681,6 @@ void sb_clear(stringbuf *sb)
  * This support based in part on work by Jon Griffiths.
  */
 
-#ifdef _WIN32 /* Windows platform, either MinGW or Visual Studio (MSVC) */
-#include <windows.h>
-#include <fcntl.h>
-#define USE_WINCONSOLE
-#ifdef __MINGW32__
-#define HAVE_UNISTD_H
-#else
-/* Microsoft headers don't like old POSIX names */
-#define strdup _strdup
-#define snprintf _snprintf
-#endif
-#else
-#include <termios.h>
-#include <sys/ioctl.h>
-#include <poll.h>
-#define USE_TERMIOS
-#define HAVE_UNISTD_H
-#endif
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <assert.h>
-#include <errno.h>
-#include <string.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <sys/types.h>
 
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
 
@@ -848,19 +722,7 @@ struct currentLine {
     const char *prompt;
     stringbuf *capture; /* capture buffer, or NULL for none. Always null terminated */
     stringbuf *output;  /* used only during refreshLine() - output accumulator */
-#if defined(USE_TERMIOS)
     int fd;     /* Terminal fd */
-#elif defined(USE_WINCONSOLE)
-    HANDLE outh; /* Console output handle */
-    HANDLE inh; /* Console input handle */
-    int rows;   /* Screen rows */
-    int x;      /* Current column during output */
-    int y;      /* Current row */
-    #define UBUF_MAX_CHARS 132
-    WORD ubuf[UBUF_MAX_CHARS + 1];  /* Accumulates utf16 output - one extra for final surrogate pairs */
-    int ubuflen;      /* length used in ubuf */
-    int ubufcols;     /* how many columns are represented by the chars in ubuf? */
-#endif
 };
 
 static int fd_read (currentLine *current);
@@ -874,7 +736,7 @@ static void setCursorPos(struct currentLine *current, int x);
 static void setOutputHighlight(struct currentLine *current, const int *props, int nprops);
 static void set_current(struct currentLine *current, const char *str);
 
-void linenoiseHistoryFree(void) {
+static void linenoiseHistoryFree(void) {
     if (history) {
         int j;
 
@@ -975,44 +837,10 @@ donedigits:
     return parser->state;
 }
 
-/*#define DEBUG_REFRESHLINE*/
-
-#ifdef DEBUG_REFRESHLINE
-#define DRL(ARGS...) fprintf(dfh, ARGS)
-static FILE *dfh;
-
-static void DRL_CHAR(int ch)
-{
-    if (ch < ' ') {
-        DRL("^%c", ch + '@');
-    }
-    else if (ch > 127) {
-        DRL("\\u%04x", ch);
-    }
-    else {
-        DRL("%c", ch);
-    }
-}
-static void DRL_STR(const char *str)
-{
-    while (*str) {
-        int ch;
-        int n = utf8_tounicode(str, &ch);
-        str += n;
-        DRL_CHAR(ch);
-    }
-}
-#else
 #define DRL(...)
 #define DRL_CHAR(ch)
 #define DRL_STR(str)
-#endif
 
-#if defined(USE_WINCONSOLE)
-#include "linenoise-win32.c"
-#endif
-
-#if defined(USE_TERMIOS)
 static void linenoiseAtExit(void);
 static struct termios orig_termios; /* in order to restore at exit */
 static int rawmode = 0; /* for atexit() function to check if restore is needed*/
@@ -1122,7 +950,6 @@ static void outputFormatted(struct currentLine *current, const char *format, ...
     va_start(args, format);
     n = vsnprintf(buf, sizeof(buf), format, args);
     /* This will never happen because we are sure to use outputFormatted() only for short sequences */
-    assert(n < (int)sizeof(buf));
     va_end(args);
     outputChars(current, buf, n);
 }
@@ -1170,7 +997,7 @@ static void cursorDown(struct currentLine *current, int n)
     }
 }
 
-void linenoiseClearScreen(void)
+static void linenoiseClearScreen(void)
 {
     IGNORE_RC(write(STDOUT_FILENO, "\x1b[H\x1b[2J", 7));
 }
@@ -1237,9 +1064,6 @@ static int queryCursor(struct currentLine *current, int* cols)
 {
     struct esc_parser parser;
     int ch;
-
-    /* Should not be buffering this output, it needs to go immediately */
-    assert(current->output == NULL);
 
     /* control sequence - report cursor location */
     outputChars(current, "\x1b[6n", -1);
@@ -1385,7 +1209,6 @@ static int check_special(int fd)
 
     return SPECIAL_NONE;
 }
-#endif
 
 static void clearOutputHighlight(struct currentLine *current)
 {
@@ -1433,7 +1256,6 @@ static int char_display_width(int ch)
     }
 }
 
-#ifndef NO_COMPLETION
 static linenoiseCompletionCallback completionCallback = NULL;
 static void *completionUserdata = NULL;
 static int showhints = 1;
@@ -1442,10 +1264,8 @@ static linenoiseFreeHintsCallback *freeHintsCallback = NULL;
 static void *hintsUserdata = NULL;
 
 static void beep() {
-#ifdef USE_TERMIOS
     fprintf(stderr, "\x7");
     fflush(stderr);
-#endif
 }
 
 static void freeCompletions(linenoiseCompletions *lc) {
@@ -1457,7 +1277,56 @@ static void freeCompletions(linenoiseCompletions *lc) {
       free (lc->pos);
 }
 
-static int completeLine(struct currentLine *current, string *prevLine, int ch) {
+static int drawCompletions (rline_t *this, linenoiseCompletions *lc, currentLine *current, int curChar) {
+  (void) this;
+  size_t i = 0;
+  int c = 0;
+
+  while (1) {
+    if (i < lc->len) {
+      int chars = (lc->pos[i] >= 0 ? lc->pos[i] : utf8_strlen(lc->cvec[i], -1));
+      refreshLineAlt (current, current->prompt, lc->cvec[i], chars);
+    } else
+      refreshLine (current);
+
+    c = fd_read (current);
+
+    if (c is -1) break;
+
+    if (c is curChar) c = '\t';
+
+    if (c is CHAR_ESCAPE) c = check_special (current->fd);
+
+    switch(c) {
+      case '\t':
+        i = (i + 1) % (lc->len + 1);
+        if (i is lc->len) beep ();
+        break;
+
+      case CHAR_ESCAPE:
+        /* Re-show original buffer */
+        if (i < lc->len)
+          refreshLine (current);
+
+        goto theend;
+
+      default:
+        /* Update buffer and return */
+        if (i < lc->len) {
+          set_current (current, lc->cvec[i]);
+          if (lc->pos[i] >= 0)
+            current->pos = lc->pos[i];
+        }
+
+        goto theend;
+    }
+  }
+
+theend:
+  return c;
+}
+
+static int completeLine (rline_t *this, currentLine *current, string *prevLine, int ch) {
     linenoiseCompletions lc = { 0, current, 0, NULL, NULL};
 
     const char *curbuf = sb_str(current->buf);
@@ -1484,84 +1353,43 @@ static int completeLine(struct currentLine *current, string *prevLine, int ch) {
     }
 
     if (lc.len == 0) {
-        beep();
-    } else {
-        size_t stop = 0, i = 0;
+        beep ();
+        goto theend;
+    }
 
-        if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM) { /* ADDITION */
-          int accept = 1;
+    if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM) { /* ADDITION */
+        int accept = 1;
 
-          ifnot (NULL is linenoiseAcceptOneItemCallback)
+        ifnot (NULL is linenoiseAcceptOneItemCallback)
             accept = linenoiseAcceptOneItemCallback (lc.cvec[0],  completionUserdata);
 
-          if (accept > 0) {
+        if (accept > 0) {
             set_current (current, lc.cvec[0]);
+
             if (lc.pos[0] >= 0)
-              current->pos = lc.pos[0];
+                current->pos = lc.pos[0];
 
             refreshLine (current);
-            stop = 1;
-          }
-
-          if (accept < 0) {
-            c = ch;
             goto theend;
-          }
         }
 
-        while(!stop) {
-            /* Show completion or original buffer */
-            if (i < lc.len) {
-                int chars = (lc.pos[i] >= 0 ? lc.pos[i] : utf8_strlen(lc.cvec[i], -1));
-                refreshLineAlt(current, current->prompt, lc.cvec[i], chars);
-            } else {
-                refreshLine(current);
-            }
-
-            c = fd_read(current);
-            if (c == -1) {
-                break;
-            }
-
-            if (c == ch) c = '\t'; // ADDITION
-            if (c == CHAR_ESCAPE)
-              c = check_special(current->fd);
-
-            switch(c) {
-                case '\t': /* tab */
-                    i = (i+1) % (lc.len+1);
-                    if (i == lc.len) beep();
-                    break;
-                case CHAR_ESCAPE: /* escape */
-                    // if (c == CHAR_ESCAPE)
-                    /* Re-show original buffer */
-                    if (i < lc.len) {
-                        refreshLine(current);
-                    }
-                    stop = 1;
-                    break;
-                default:
-                    /* Update buffer and return */
-                    if (i < lc.len) {
-                        set_current(current,lc.cvec[i]);
-                        if (lc.pos[i] >= 0)
-                          current->pos = lc.pos[i];
-                    }
-                    stop = 1;
-                    break;
-            }
+        if (accept < 0) {
+            c = ch;
+            goto theend;
         }
     }
 
+    c = drawCompletions (this, &lc, current, ch);
+
 theend:
     freeCompletions(&lc);
-    return c; /* Return last read character */
+    return c;
 }
 
 /* Register a callback function to be called for tab-completion.
    Returns the prior callback so that the caller may (if needed)
    restore it when done. */
-linenoiseCompletionCallback linenoiseSetCompletionCallback(linenoiseCompletionCallback fn, void *userdata) {
+static linenoiseCompletionCallback linenoiseSetCompletionCallback(linenoiseCompletionCallback fn, void *userdata) {
     //linenoiseCompletionCallback * old = completionCallback;
     linenoiseCompletionCallback old = completionCallback;
     completionCallback = fn;
@@ -1569,7 +1397,7 @@ linenoiseCompletionCallback linenoiseSetCompletionCallback(linenoiseCompletionCa
     return old;
 }
 
-void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str, int pos) {
+static void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str, int pos) {
     lc->cvec = (char **)realloc(lc->cvec,sizeof(char*)*(lc->len+1));
     lc->cvec[lc->len] = strdup(str);
     lc->pos = (int *)realloc(lc->pos,sizeof(int)*(lc->len+1));
@@ -1577,19 +1405,18 @@ void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str, int pos) 
     lc->len++;
 }
 
-void linenoiseSetHintsCallback(linenoiseHintsCallback *callback, void *userdata)
+static void linenoiseSetHintsCallback(linenoiseHintsCallback *callback, void *userdata)
 {
     hintsCallback = callback;
     hintsUserdata = userdata;
 }
 
-void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *callback)
+/*
+static void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *callback)
 {
     freeHintsCallback = callback;
 }
-
-#endif
-
+*/
 
 static const char *reduceSingleBuf(const char *buf, int availcols, int *cursor_pos)
 {
@@ -1650,7 +1477,7 @@ static const char *reduceSingleBuf(const char *buf, int availcols, int *cursor_p
 
 static int mlmode = 0;
 
-void linenoiseSetMultiLine(int enableml)
+static void linenoiseSetMultiLine(int enableml)
 {
     mlmode = enableml;
 }
@@ -1704,11 +1531,9 @@ static int refreshShowHints(struct currentLine *current, const char *buf, int av
     return rc;
 }
 
-#ifdef USE_TERMIOS
 static void refreshStart(struct currentLine *current)
 {
     /* We accumulate all output here */
-    assert(current->output == NULL);
     current->output = sb_alloc();
 }
 
@@ -1736,7 +1561,6 @@ static void refreshEndChars(struct currentLine *current)
 {
     (void)current;
 }
-#endif
 
 static void refreshLineAlt(struct currentLine *current, const char *prompt, const char *buf, int cursor_pos)
 {
@@ -1751,10 +1575,6 @@ static void refreshLineAlt(struct currentLine *current, const char *prompt, cons
     int cursorrow = 0;
     int hint;
     struct esc_parser parser;
-
-#ifdef DEBUG_REFRESHLINE
-    dfh = fopen("linenoise.debuglog", "a");
-#endif
 
     /* Should intercept SIGWINCH. For now, just get the size every time */
     getWindowSize(current);
@@ -1830,13 +1650,7 @@ static void refreshLineAlt(struct currentLine *current, const char *prompt, cons
             }
 
             DRL_CHAR(ch);
-#ifdef USE_WINCONSOLE
-            if (visible) {
-                outputChars(current, pt, n);
-            }
-#else
             outputChars(current, pt, n);
-#endif
         }
         pt += n;
 
@@ -1958,10 +1772,6 @@ static void refreshLineAlt(struct currentLine *current, const char *prompt, cons
     current->rpos = cursorrow;
 
     refreshEnd(current);
-
-#ifdef DEBUG_REFRESHLINE
-    fclose(dfh);
-#endif
 }
 
 static void refreshLine(struct currentLine *current)
@@ -2175,11 +1985,11 @@ static int reverseIncrementalSearch(struct currentLine *current)
             }
             continue;
         }
-#ifdef USE_TERMIOS
+
         if (c == CHAR_ESCAPE) {
             c = check_special(current->fd);
         }
-#endif
+
         if (c == ctrl('P') || c == SPECIAL_UP) {
             /* Search for the previous (earlier) match */
             if (searchpos > 0) {
@@ -2251,7 +2061,7 @@ static int reverseIncrementalSearch(struct currentLine *current)
     return c;
 }
 
-static int linenoiseEdit(struct currentLine *current) {
+static int linenoiseEdit (rline_t *this, struct currentLine *current) {
     int history_index = 0;
 
     /* The latest history entry is always our current buffer, that
@@ -2270,7 +2080,7 @@ static int linenoiseEdit(struct currentLine *current) {
             if (c == CHAR_ESCAPE)
                 c = check_special(current->fd);
 
-            c = completeLine (current, prevLine, c);
+            c = completeLine (this, current, prevLine, c);
 
             if (c is CHAR_ESCAPE) {
                 set_current (current, prevLine->bytes);
@@ -2285,7 +2095,7 @@ static int linenoiseEdit(struct currentLine *current) {
          * character that should be handled next. */
         //if (c == '\t' && current->pos == sb_chars(current->buf) && completionCallback != NULL) {
         if (c == '\t' && completionCallback != NULL) {
-            c = completeLine(current, prevLine, 0);
+            c = completeLine (this, current, prevLine, 0);
         }
 
         if (c == ctrl('R')) {
@@ -2294,11 +2104,10 @@ static int linenoiseEdit(struct currentLine *current) {
             /* go on to process the returned char normally */
         }
 
-//#ifdef USE_TERMIOS
         if (c == CHAR_ESCAPE) {   /* escape sequence */
             c = check_special(current->fd);
         }
-//#endif
+
         if (c == -1) {
             /* Return on errors */
             String.release (prevLine);
@@ -2499,7 +2308,8 @@ history_navigation:
     return sb_len(current->buf);
 }
 
-int linenoiseColumns(void)
+/*
+static int linenoiseColumns(void)
 {
     struct currentLine current;
     current.output = NULL;
@@ -2508,6 +2318,7 @@ int linenoiseColumns(void)
     disableRawMode (&current);
     return current.cols;
 }
+*/
 
 /**
  * Reads a line from the file handle (without the trailing NL or CRNL)
@@ -2544,7 +2355,7 @@ static stringbuf *sb_getline(FILE *fh)
     return sb;
 }
 
-char *linenoise(const char *prompt)
+static char *linenoise (rline_t *this, const char *prompt)
 {
     int count;
     struct currentLine current;
@@ -2563,7 +2374,7 @@ char *linenoise(const char *prompt)
         current.nrows = 1;
         current.prompt = prompt;
 
-        count = linenoiseEdit(&current);
+        count = linenoiseEdit (this, &current);
 
         disableRawMode(&current);
         printf("\n");
@@ -2579,7 +2390,7 @@ char *linenoise(const char *prompt)
 }
 
 /* Using a circular buffer is smarter, but a bit more complex to handle. */
-int linenoiseHistoryAddAllocated(char *line) {
+static int linenoiseHistoryAddAllocated(char *line) {
 
     if (history_max_len == 0) {
 notinserted:
@@ -2605,15 +2416,17 @@ notinserted:
     return 1;
 }
 
-int linenoiseHistoryAdd(const char *line) {
+static int linenoiseHistoryAdd(const char *line) {
     return linenoiseHistoryAddAllocated(strdup(line));
 }
 
-int linenoiseHistoryGetMaxLen(void) {
+/*
+static int linenoiseHistoryGetMaxLen(void) {
     return history_max_len;
 }
+*/
 
-int linenoiseHistorySetMaxLen(int len) {
+static int linenoiseHistorySetMaxLen(int len) {
     char **newHistory;
 
     if (len < 1) return 0;
@@ -2641,7 +2454,7 @@ int linenoiseHistorySetMaxLen(int len) {
 
 /* Save the history in the specified file. On success 0 is returned
  * otherwise -1 is returned. */
-int linenoiseHistorySave(const char *filename) {
+static int linenoiseHistorySave(const char *filename) {
     FILE *fp = fopen(filename,"w");
     int j;
 
@@ -2726,13 +2539,14 @@ int linenoiseHistoryLoad(const char *filename) {
  *
  * If 'len' is not NULL, the length is stored in *len.
  */
-char **linenoiseHistory(int *len) {
+/*
+static char **linenoiseHistory(int *len) {
     if (len) {
         *len = history_len;
     }
     return history;
 }
-
+*/
 static rline_t *rline_new (void) {
   rline_t *this = Alloc (sizeof (rline_t));
   $myprop = Alloc (sizeof (rline_prop));
@@ -2756,7 +2570,7 @@ static void rline_release (rline_t *this) {
 }
 
 static char *rline_edit (rline_t *this) {
-  return linenoise ($my(prompt)->bytes);
+  return linenoise (this, $my(prompt)->bytes);
 }
 
 static void rline_add_completion (rline_t *this, rlineCompletions *lc, char *item, int pos) {

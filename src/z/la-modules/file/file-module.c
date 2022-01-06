@@ -5,18 +5,18 @@
 #define REQUIRE_UNISTD
 #define REQUIRE_FCNTL
 
+
+#define REQUIRE_STD_MODULE
 #define REQUIRE_IO_TYPE       DECLARE
-#define REQUIRE_VMAP_TYPE     DECLARE
-#define REQUIRE_VSTRING_TYPE  DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_OS_TYPE       DECLARE
 #define REQUIRE_SYS_TYPE      DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(file)
 
 #define IS_TMPNAME(__v__)({ int _r_ = 0; \
   if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "TmpnameType");}\
@@ -757,20 +757,14 @@ static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_file_module__ (la_t *);
 public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
   __INIT__(os);
   __INIT__(sys);
   __INIT__(file);
-  __INIT__(vmap);
   __INIT__(error);
-  __INIT__(string);
-  __INIT__(vstring);
   __INIT__(cstring);
-
-  (void) vstringType;
 
   LaDefCFun lafuns[] = {
     { "file_new",        PTR(file_new), 2 },
@@ -875,7 +869,6 @@ public int __init_file_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_file_module__ (la_t *);
 public void __deinit_file_module__ (la_t *this) {
   (void) this;
   __deinit_sys__ ();

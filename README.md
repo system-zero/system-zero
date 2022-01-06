@@ -1191,7 +1191,7 @@ To do that use:
        cause: easy (wrong calculation, when going [for|back]ward)  
        state: very good to fix as it is annoying, but need to have time and will
 
-  - a [terminal multiplexer] (https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) calles as:
+  - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) calles as:
 
      V or V-static [options] socketname  
      V --help  # for s short help
@@ -1244,8 +1244,9 @@ To do that use:
 
   - a shell  
     state: don't never tried to work with it, as there are other areas to
-      dedicate attention (it is not a priority, as the direction might change)
-      updates:
+      dedicate attention (it is not a priority, as the direction might change) 
+       
+      updates:  
         Sweet November Days and olive season: This is now at least a little bit
         more useful with command, argument, filename, last component completions
         and shell word expansion.
@@ -1300,11 +1301,8 @@ Requirements:
   # note that in order to clean up previous libraries and utilities, issue:
     make REV=0 clean-shared
     make REV=0 clean-static
-  # or/and
-    make REV=1 clean-shared
-    make REV=1 clean-static
-
-  # Development: the above should be one target. Possible a different Makefile.
+  # likewise for other releases
+  # Development note: the above should be one target. Possible a different Makefile.
 
   # shared targets
   make shared && make e-shared && make la-shared && make v-shared
@@ -1313,16 +1311,23 @@ Requirements:
   make static && make e-static && make la-static && make v-static
 
 ```
-Tested with `gcc` and clang.
-The compilation should endup without a single warning, even with DEBUG enabled.
+Tested with `gcc` and clang C compilers.
+Also the tinycc compiler it builts succesfully the shared targets, but not the
+static targets.
+
+The compilation should endup without a single warning, even with the DEBUG flags
+enabled.
 To do that use:
 ```
   make DEBUG=1 shared
   # or/and
   make DEBUG=1 static
 ```
-Also the tinycc compiler it builts succesfully the shared targets, but not the
-static targets.
+  DEBUG_FLAGS:
+     -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
+     -Werror-implicit-function-declaration -Wsign-compare
+     -Wpointer-arith -Wreturn-type -Wmissing-declarations -Wwrite-strings
+     -Wuninitialized
 
 By default libraries and applications are installed in sys/`uname -m` namespace.
 
@@ -1346,6 +1351,7 @@ There is no support for installation to the `/` namespace.
   # Still though the chroot call suffers from what have been described in the
   # Chrooting section in this document, though it is still usefull in cases,
   # so we are in need to find another way.
+
   # Mid days of Octomber: We now use a simple container implementation.
 
 ```
@@ -1388,6 +1394,8 @@ gained consience. Hopefully one day.
 * [PCG Random Number Generation for C.](https://github.com/imneme/pcg-c-basic)
 * [Contain: A simple implementation of containers for Linux.](https://github.com/arachsys/containers)
 * [Linenoise (Steve's Bennet fork)](https://github.com/msteveb/linenoise)
+* [utf8.h](https://github.com/sheredom/utf8.h)
+* [Parse Url.](https://github.com/wc-duck/url_parse)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

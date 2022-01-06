@@ -2,12 +2,12 @@
 #define REQUIRE_UNISTD
 #define REQUIRE_FCNTL
 
-#define REQUIRE_VMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_RANDOM_TYPE   DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(rand)
 
 static VALUE rand_new (la_t *this) {
   (void) this;
@@ -31,13 +31,9 @@ static VALUE rand_get_entropy_bytes (la_t *this, VALUE v_size) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_rand_module__ (la_t *this);
 public int __init_rand_module__ (la_t *this) {
   __INIT_MODULE__(this);
-  __INIT__ (string);
   __INIT__ (random);
-
-  (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "rand_new",  PTR(rand_new), 0 },
@@ -63,7 +59,6 @@ public int __init_rand_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_rand_module__ (la_t *this);
 public void __deinit_rand_module__ (la_t *this) {
   (void) this;
   return;

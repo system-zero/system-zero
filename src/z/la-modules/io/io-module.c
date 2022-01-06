@@ -4,12 +4,12 @@
 #define REQUIRE_SYS_TYPES
 #define REQUIRE_SYS_STAT
 
-#define REQUIRE_VMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_IO_TYPE       DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(io)
 
 static VALUE io_fd_isatty (la_t *this, VALUE v_fd) {
   ifnot (IS_FILEDES(v_fd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file descriptor");
@@ -97,13 +97,9 @@ static VALUE io_open (la_t *this, VALUE v_fname, VALUE v_flags, VALUE v_mode) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_io_module__ (la_t *this);
 public int __init_io_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);
-  __INIT__(string);
-
-  (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "io_open",      PTR(io_open), 3 },
@@ -173,7 +169,6 @@ public int __init_io_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_io_module__ (la_t *this);
 public void __deinit_io_module__ (la_t *this) {
   (void) this;
   return;

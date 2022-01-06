@@ -1,13 +1,12 @@
 #define REQUIRE_STDIO
 
-#define REQUIRE_VMAP_TYPE    DONOT_DECLARE
-#define REQUIRE_VSTRING_TYPE DONOT_DECLARE
-#define REQUIRE_STRING_TYPE  DONOT_DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_SH_TYPE      DECLARE
-#define REQUIRE_LA_TYPE      DECLARE
 
 #include <z/cenv.h>
+
+MODULE(sh)
 
 #define IS_SH(__v__)({ int _r_ = 0; \
   if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "ShType");}\
@@ -46,15 +45,10 @@ static VALUE sh_new (la_t *this) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_sh_module__ (la_t *this);
 public int __init_sh_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(sh);
   __INIT__(cstring);
-
-  (void) vstringType;
-  (void) vmapType;
-  (void) stringType;
 
   LaDefCFun lafuns[] = {
     { "sh_new",             PTR(sh_new), 0 },
@@ -91,8 +85,9 @@ public int __init_sh_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_sh_module__ (la_t *this);
 public void __deinit_sh_module__ (la_t *this) {
   (void) this;
+  sh_T *shp = &shType;
+  __deinit_sh__ (&shp);
   return;
 }

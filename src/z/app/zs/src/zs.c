@@ -39,6 +39,7 @@
 #define ZS_RLINE_ARG_IS_LAST_COMPONENT 5
 
 #define MAXNUM_LAST_COMPONENTS 20
+
 typedef struct LastComp LastComp;
 struct LastComp {
   char *lastcomp;

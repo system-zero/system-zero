@@ -822,6 +822,8 @@ public sh_T __init_sh__ (void) {
   __INIT__ (cstring);
   __INIT__ (vstring);
 
+  Sys.init_environment (SysEnvOpts());
+
   return (sh_T) {
     .self = (sh_self) {
       .new = sh_new,
@@ -838,6 +840,7 @@ public sh_T __init_sh__ (void) {
 }
 
 public void __deinit_sh__ (sh_T **thisp) {
+  __deinit_sys__ ();
   (void) thisp;
   return;
 }

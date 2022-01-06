@@ -2,12 +2,12 @@
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_TYPES
 
-#define REQUIRE_VMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_SYS_TYPE      DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(sys)
 
 static VALUE sys_which (la_t *this, VALUE v_prog) {
   (void) this;
@@ -43,20 +43,24 @@ static VALUE sys_set (la_t *this, VALUE v_key, VALUE v_val, VALUE v_replace) {
   return OK_VALUE;
 }
 
+static VALUE sys_battery_info (la_t *this) {
+  (void) this;
+  string *info = Sys.get.battery_info ();
+  if (NULL is info) return NULL_VALUE;
+  return STRING(info);
+}
+
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_sys_module__ (la_t *this);
 public int __init_sys_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(sys);
-  __INIT__(string);
-
-  (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "sys_set",         PTR(sys_set), 3 },
     { "sys_get",         PTR(sys_get), 1 },
     { "sys_which",       PTR(sys_which), 1 },
+    { "sys_battery_info", PTR(sys_battery_info), 0 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -71,6 +75,7 @@ public int __init_sys_module__ (la_t *this) {
       "set"   : sys_set,
       "get"   : sys_get,
       "which" : sys_which,
+      "battery_info" : sys_battery_info
      }
   );
 
@@ -82,7 +87,6 @@ public int __init_sys_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_sys_module__ (la_t *this);
 public void __deinit_sys_module__ (la_t *this) {
   (void) this;
   __deinit_sys__ ();

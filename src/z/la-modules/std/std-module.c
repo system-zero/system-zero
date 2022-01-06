@@ -1,12 +1,12 @@
 #define REQUIRE_STDIO
 
-#define REQUIRE_VMAP_TYPE     DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_CSTRING_TYPE  DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_USTRING_TYPE  DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(std)
 
 static VALUE map_set (la_t *this, VALUE v_map, VALUE v_key, VALUE v_val) {
   ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
@@ -361,11 +361,8 @@ static VALUE integer_eq (la_t *this, VALUE v_fint, VALUE v_sint) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_std_module__ (la_t *this);
 public int __init_std_module__ (la_t *this) {
   __INIT_MODULE__(this);
-  __INIT__(vmap);
-  __INIT__(string);
   __INIT__(cstring);
   __INIT__(ustring);
 
@@ -444,7 +441,6 @@ public int __init_std_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_std_module__ (la_t *this);
 public void __deinit_std_module__ (la_t *this) {
   (void) this;
   return;

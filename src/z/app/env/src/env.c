@@ -24,6 +24,8 @@ int main (int argc, char **argv) {
     OPT_END()
   };
 
+  argparse_flags |= ARGPARSE_DONOT_EXIT_ON_UNKNOWN;
+
   PARSE_ARGS;
 
   if (unset)

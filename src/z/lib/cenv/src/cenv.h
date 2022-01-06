@@ -548,6 +548,17 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_SIGNAL
 #endif /* REQUIRE_SIGNAL */
 
+#ifdef REQUIRE_STDBOOL
+  #ifndef STDBOOL_HDR
+  #define STDBOOL_HDR
+    #define bool _Bool
+    #define true 1
+    #define false 0
+  #endif /* STDBOOL_HDR */
+
+#undef REQUIRE_STDBOOL
+#endif /* REQUIRE_STDBOOL */
+
 #ifdef REQUIRE_SCHED
   #ifndef SCHED_HDR
   #define SCHED_HDR
@@ -846,6 +857,15 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_PAM
 #endif /* REQUIRE_PAM */
 
+#ifdef REQUIRE_CTYPE
+  #ifndef CTYPE_HDR
+  #define CTYPE_HDR
+  #include <ctype.h>
+  #endif /* CTYPE_HDR */
+
+#undef REQUIRE_CTYPE
+#endif /* REQUIRE_CTYPE */
+
 #ifdef REQUIRE_SYS_IOCTL
   #ifndef IOCTL_HDR
   #define IOCTL_HDR
@@ -863,6 +883,45 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_DLFCN
 #endif /* REQUIRE_DLFCN */
+
+#ifndef DECLARE
+#define DECLARE 1
+#endif
+
+/* modules */
+#ifdef REQUIRE_STD_MODULE
+  #ifndef REQUIRE_VMAP_TYPE
+    #define REQUIRE_VMAP_TYPE    DECLARE
+  #endif
+
+  #ifndef REQUIRE_STRING_TYPE
+    #define REQUIRE_STRING_TYPE  DECLARE
+  #endif
+
+  #ifndef REQUIRE_VSTRING_TYPE
+    #define REQUIRE_VSTRING_TYPE DECLARE
+  #endif
+
+  #ifndef REQUIRE_LA_TYPE
+    #define REQUIRE_LA_TYPE      DECLARE
+  #endif
+
+#undef REQUIRE_STD_MODULE
+#endif
+
+   /* forward declarations for -Wmissing declarations */
+#define MODULE(_name_)                                      \
+  public int __init_ ## _name_ ## _module__ (la_t *);       \
+  public void __deinit_ ## _name_ ## _module__ (la_t *);
+
+  /* this should be called inside of the __init_module__() */
+#define __INIT_MODULE__(__l__)   \
+do {                             \
+  __INIT__(vmap);                \
+  __INIT__(string);              \
+  __INIT__(vstring);             \
+  __LA__ = *la_get_root (__l__); \
+} while (0)
 
   /* types */
 #ifdef APPLICATION
@@ -1498,6 +1557,18 @@ typedef ptrdiff_t idx_t;
 #undef REQUIRE_CONTAIN_TYPE
 #endif /* REQUIRE_CONTAIN_TYPE */
 
+// define it before net
+#ifdef REQUIRE_URL_TYPE
+  #ifndef URL_TYPE_HDR
+  #define URL_TYPE_HDR
+  #include <z/url.h>
+  #endif /* URL_TYPE_HDR */
+
+  /* Do not define any type here. This unit is indepented. */
+
+#undef REQUIRE_URL_TYPE
+#endif /* REQUIRE_URL_TYPE */
+
 #ifdef REQUIRE_NET_TYPE
   #ifndef NET_TYPE_HDR
   #define NET_TYPE_HDR
@@ -1904,13 +1975,6 @@ typedef ptrdiff_t idx_t;
 #ifndef OPT_MAXDEPTH
 #define OPT_MAXDEPTH 1024
 #endif
-
-#ifndef DECLARE
-#define DECLARE 1
-#endif
-
-/* this should be called inside of the __init_module__() */
-#define __INIT_MODULE__(__l__) __LA__ = *la_get_root (__l__)
 
 /* Those application routines are quite the same and is useless
  * to repeat ourselves.

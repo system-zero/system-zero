@@ -1770,6 +1770,7 @@ static void fun_release (funT **thisp) {
   Vmap.release (this->symbols);
   ns_release_malloced_strings (this);
   if (this->modules isnot NULL) {
+
   #ifndef STATIC
     module_so *it = this->modules->head;
     while (it) {
@@ -1781,6 +1782,7 @@ static void fun_release (funT **thisp) {
       it = tmp;
     }
   #endif
+
     free (this->modules);
   }
 
@@ -9356,6 +9358,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   }
 
   void *handle = dlopen (module, RTLD_NOW|RTLD_GLOBAL);
+
   if (handle is NULL) {
     err_msg = dlerror ();
     ifnot (this->curState & LOADFILE_SILENT)
@@ -9366,7 +9369,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   }
 
   size_t len = bytelen (mname) - 7;
-  char tmp[len+1];
+  char tmp[len + 1];
   Cstring.substr (tmp, len, mname, len + 7, 0);
 
   string *init_fun = String.new_with_fmt ("__init_%s_module__", tmp);
@@ -9376,7 +9379,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   ModuleInit init_sym = (ModuleInit) dlsym (handle, init_fun->bytes);
   err_msg = dlerror ();
   if (err_msg isnot NULL) {
-    this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
+    this->print_fmt_bytes (this->err_fp, "import error while getting %s symbol symbol address, %s\n", init_fun->bytes, err_msg);
     err = LA_ERR_DYNLINK;
     goto theend;
   }
@@ -9385,7 +9388,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   ModuleDeinit deinit_sym = (ModuleDeinit) dlsym (handle, deinit_fun->bytes);
   err_msg = dlerror ();
   if (err_msg isnot NULL) {
-    this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
+    this->print_fmt_bytes (this->err_fp, "import error while getting %s symbol symbol address, %s\n", deinit_fun->bytes, err_msg);
     err = LA_ERR_DYNLINK;
     goto theend;
   }

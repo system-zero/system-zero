@@ -4,13 +4,13 @@
 #define REQUIRE_SYS_SELECT
 #define REQUIRE_SYS_UNAME
 
-#define REQUIRE_VMAP_TYPE     DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_OS_TYPE       DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
 
 #include <z/cenv.h>
+
+MODULE(os)
 
 extern char **environ;
 
@@ -196,14 +196,10 @@ static VALUE os_arch (la_t *this) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_os_module__ (la_t *this);
 public int __init_os_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(os);
-  __INIT__(string);
   __INIT__(cstring);
-
-  (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "sleep",          PTR(os_sleep), 1 },
@@ -255,7 +251,6 @@ public int __init_os_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_os_module__ (la_t *this);
 public void __deinit_os_module__ (la_t *this) {
   (void) this;
   return;

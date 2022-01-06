@@ -2,13 +2,12 @@
 #define REQUIRE_STDARG
 #define REQUIRE_UNISTD
 
-#define REQUIRE_VMAP_TYPE    DONOT_DECLARE
-#define REQUIRE_VSTRING_TYPE DECLARE
-#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_DIR_TYPE     DECLARE
-#define REQUIRE_LA_TYPE      DECLARE
 
 #include <z/cenv.h>
+
+MODULE(dir)
 
 static VALUE dir_remove (la_t *this, VALUE v_dir) {
   ifnot (IS_STRING(v_dir))
@@ -119,15 +118,9 @@ static VALUE dir_list (la_t *this, VALUE v_dir) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_dir_module__ (la_t *this);
 public int __init_dir_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(dir);
-  __INIT__(string);
-  __INIT__(vstring);
-
-  (void) vstringType;
-  (void) vmapType;
 
   LaDefCFun lafuns[] = {
     { "dir_make",           PTR(dir_make), 2 },
@@ -165,7 +158,6 @@ public int __init_dir_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_dir_module__ (la_t *this);
 public void __deinit_dir_module__ (la_t *this) {
   (void) this;
   return;

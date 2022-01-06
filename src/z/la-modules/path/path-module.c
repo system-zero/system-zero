@@ -1,14 +1,13 @@
 #define REQUIRE_STDIO
 #define REQUIRE_STDARG
 
-#define REQUIRE_VMAP_TYPE    DONOT_DECLARE
-#define REQUIRE_VSTRING_TYPE DECLARE
-#define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_STD_MODULE
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
-#define REQUIRE_LA_TYPE      DECLARE
 
 #include <z/cenv.h>
+
+MODULE(path)
 
 static VALUE path_basename (la_t *this, VALUE v_path) {
   (void) this;
@@ -118,14 +117,10 @@ static VALUE path_concat (la_t *this, VALUE v_apath, VALUE v_bpath) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_path_module__ (la_t *); //-Wmissing declarations
-
 public int __init_path_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(path);
-  __INIT__(string);
   __INIT__(cstring);
-  __INIT__(vstring);
 
   LaDefCFun lafuns[] = {
     { "path_real",        PTR(path_real), 1 },
@@ -163,7 +158,6 @@ public int __init_path_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_path_module__ (la_t *); // -Wmissing_declarations
 public void __deinit_path_module__ (la_t *this) {
   (void) this;
   return;

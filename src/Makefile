@@ -244,6 +244,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Net_Type       = Net
     Z_NET_SRCDIR   = $(Z_SRCLIBDIR)/$(Net_Type)/src
 
+    # Url Type
+    Url_Type       = Url
+    Z_URL_SRCDIR   = $(Z_SRCLIBDIR)/$(Url_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -886,11 +890,27 @@ clean-libnet-shared:
 clean-libnet-static:
 	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+URL_EXTENTED               := 1
+URL_USE_INTERNAL_FUNCTIONS := 1
+
+URL_FLAGS = URL_EXTENTED=$(URL_EXTENTED) URL_USE_INTERNAL_FUNCTIONS=$(URL_USE_INTERNAL_FUNCTIONS)
+liburl-shared: Env cenv
+	@cd $(Z_URL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $(URL_FLAGS) shared
+
+liburl-static: Env cenv
+	@cd $(Z_URL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $(URL_FLAGS) static
+
+clean-liburl-shared:
+	@cd $(Z_URL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-liburl-static:
+	@cd $(Z_URL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared\
                 libvstring-shared libdir-shared libfile-shared\
-                libpath-shared libre-shared la-shared e-shared\
+                libpath-shared libre-shared e-shared la-shared\
                 v-shared
 	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
@@ -1237,6 +1257,7 @@ zero-shared:  Env cenv list\
               libimap-shared libsmap-shared libvideo-shared\
               libjson-shared libmd5-shared libsha256-shared\
               libsha512-shared librandom-shared libcontain-shared\
+              liburl-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
@@ -1252,6 +1273,7 @@ zero-static:  Env cenv list\
               libimap-static libsmap-static libvideo-static\
               libjson-static libmd5-static libsha256-static\
               libsha512-static librandom-static libcontain-static\
+              liburl-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
@@ -1279,6 +1301,7 @@ zero-clean-shared:\
               clean-libsha256-shared clean-libsha512-shared\
               clean-libbase64-shared clean-libbcrypt-shared\
               clean-librandom-shared clean-libcontain-shared\
+              clean-liburl-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1308,6 +1331,7 @@ zero-clean-static:\
               clean-libsha256-static clean-libsha512-static\
               clean-libbase64-static clean-libbcrypt-static\
               clean-librandom-static clean-libcontain-static\
+              clean-liburl-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\

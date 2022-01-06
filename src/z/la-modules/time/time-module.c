@@ -1,11 +1,11 @@
 #define REQUIRE_STDIO
 #define REQUIRE_TIME
 
-#define REQUIRE_VMAP_TYPE     DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
+#define REQUIRE_STD_MODULE
 
 #include <z/cenv.h>
+
+MODULE(time)
 
 static VALUE time_now (la_t *this) {
   (void) this;
@@ -193,11 +193,8 @@ static VALUE time_format (la_t *this, VALUE v_fmt, VALUE v_tm) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_time_module__ (la_t *this);
 public int __init_time_module__ (la_t *this) {
   __INIT_MODULE__(this);
-  __INIT__(vmap);
-  __INIT__(string);
 
   LaDefCFun lafuns[] = {
     { "time_now",            PTR(time_now), 0 },
@@ -231,7 +228,6 @@ public int __init_time_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_time_module__ (la_t *this);
 public void __deinit_time_module__ (la_t *this) {
   (void) this;
   return;

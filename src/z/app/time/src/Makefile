@@ -5,10 +5,11 @@ THISDIR := $(shell (cd . && pwd))
 SYSARCH       := $(shell uname -m)
 SYS           := $(SYSKERNEL)-$(SYSARCH)
 
-SYSDIR    := $(THISDIR)/../sys
+SYSDIR    := $(THISDIR)/../../../../../sys/$(SYSARCH)
 SYSLIBDIR  = $(SYSDIR)/lib/$(NS)
 SYSBINDIR  = $(SYSDIR)/bin
 SYSTMPDIR  = $(SYSDIR)/tmp
+SYSDATADIR = $(SYSDIR)/../data
 
 Z_SHELL         := zs
 Z_SHELL_DATADIR := $(SYSDATADIR)/$(Z_SHELL)

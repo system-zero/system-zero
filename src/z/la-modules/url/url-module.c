@@ -1,13 +1,11 @@
 #define REQUIRE_STDIO
 
-#define REQUIRE_VSTRING_TYPE  DONOT_DECLARE
-#define REQUIRE_STRING_TYPE   DECLARE
-#define REQUIRE_VMAP_TYPE     DECLARE
-#define REQUIRE_LA_TYPE       DECLARE
-
+#define REQUIRE_STD_MODULE
 #define REQUIRE_URL_TYPE
 
 #include <z/cenv.h>
+
+MODULE(url)
 
 static VALUE url_parse (la_t *this, VALUE v_url) {
   ifnot (IS_STRING(v_url)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -64,11 +62,8 @@ static VALUE url_parse (la_t *this, VALUE v_url) {
 
 #define EvalString(...) #__VA_ARGS__
 
-public int __init_url_module__ (la_t *); //-Wmissing declarations
 public int __init_url_module__ (la_t *this) {
   __INIT_MODULE__(this);
-  __INIT__ (vmap);
-  __INIT__ (string);
 
   LaDefCFun lafuns[] = {
     {"url_parse", PTR(url_parse), 1},
@@ -92,7 +87,6 @@ public int __init_url_module__ (la_t *this) {
   return LA_OK;
 }
 
-public void __deinit_url_module__ (la_t *); //-Wmissing declarations
 public void __deinit_url_module__ (la_t *this) {
   (void) this;
   return;

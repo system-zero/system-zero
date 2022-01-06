@@ -444,7 +444,7 @@ foundbat:;
   status[nread - 1] = '\0';
   fclose (fp);
 
-  info = String.new_with_fmt ("Battery is %s. Remaining %s%%",
+  info = String.new_with_fmt ("battery is %s, remaining %s%%",
         status, cap);
 
 theend:

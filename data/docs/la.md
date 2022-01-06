@@ -2003,7 +2003,7 @@ The return statement
 # in lower case, e.g., import ("path"). Those exposing a public variable of
 # a MapType, that has the exact name but the leading char is capitalized.
 
-  # Std Module Interface
+  # Std Module
     # IntegerType   Map.set (MapType map, StringType key, Value v)
     # ValueType     Map.get (MapType map, StringType key)
     # StringType[]  Map.keys (MapType map)
@@ -2027,7 +2027,7 @@ The return statement
     # StringType    Integer.char (IntegerType c)
     # StringType    Integer.to_string (IntegerType i, IntegerType base)
 
-  # Path Module Interface
+  # Path Module
     # StringType    Path.real (StringType path)
     # StringType[]  Path.split (StringType path)
     # StringType    Path.concat (StringType a, StringType b)
@@ -2037,7 +2037,7 @@ The return statement
     # IntegerType   Path.is_absolute (StringType path)
     # StringType    Path.basename_sans_extname (StringTYpe path)
 
-  # File Module Interface
+  # File Module
     # IntegerTYpe   File.new (StringType file, IntegerType mode)
     # MapType       File.stat (StringType file)
     # MapType       File.lstat (StringType file)
@@ -2087,13 +2087,13 @@ The return statement
     # IntegerType   S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP
     # IntegerType   S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
 
-  # Term Module Interface
+  # Term Module
     # ObjectType    Term.new ()
     # IntegerType   Term.getkey (IntegerType fd)
     # IntegerType   Term.raw_mode (ObjectType term)
     # IntegerType   Term.sane_mode (ObjectType term)
 
-  # Dir Module Interface
+  # Dir Module
     # IntegerType   Dir.make (StringType dir, IntegerType mode)
     # IntegerType   Dir.remove (StringType dir)
     # IntegerType   Dir.change (StringType dir)
@@ -2102,7 +2102,7 @@ The return statement
     # IntegerType   Dir.make_parents (StringType dir, IntegerType mode)
     # IntegerType   Dir.remove_parents (StringType dir)
 
-  # Os Module Interface
+  # Os Module
     # StringType    Os.arch ()
     # StringType    Os.platform ()
     # IntegerType   Os.sleep (NumberType secs)
@@ -2119,12 +2119,12 @@ The return statement
     # StringType    Os.getgrname (IntegerType gid)
     # StringType    Os.getpwname (IntegerType uid)
 
-  # Sys Module Interface
+  # Sys Module
     # StringType    Sys.get (StringType sys_setting)
     # IntegerType   Sys.set (StringType asname, StringType sys_setting, IntegerType replaceanyold) 
     # StringType    Sys.which (StringType exec)
 
-  # Time Module Interface
+  # Time Module
     # IntegerType   Time.now ()                               # time(NULL)
     # MapType       Time.gmt (null or IntegerType time)       # gmtime()
     # MapType       Time.local (null or IntegerType time)     # localtime()
@@ -2132,7 +2132,7 @@ The return statement
     # IntegerType   Time.to_seconds (MapType tm)              # mktime()
     # StringType    Time.format (StringType fmt, null or MapType tm) # strftime()
 
-  # Crypt Module Interface
+  # Crypt Module
     # StringType   Crypt.md5sum (StringType str)
     # StringType   Crypt.sha256sum (StringType str)
     # StringType   Crypt.sha512sum (StringType str)
@@ -2146,11 +2146,11 @@ The return statement
     # StringType   Crypt.hash_passwd (StringType passwd) # Bcrypt implementation
     # IntegerType  Crypt.verify_passwd_hash (StringType passwd, StringType hash)
 
-  # Rand Module Interface
+  # Rand Module
     # IntegerType  Rand.new ()
     # StringType   Rand.get_entropy_bytes (IntegerType size)
 
-  # Io Module Interface
+  # Io Module
     # FdType       Io.open (StringType filename, IntegerType flags, IntegerType mode)
     # IntegerType  Io.isatty (FdType fd)
     # StringType   Io.fd.read (FdType fd)
@@ -2167,6 +2167,9 @@ The return statement
     # IntegerType S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR,
     # IntegerType S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP,
     # IntegerType S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH
+
+  # Url Module
+    # MapType Url.parse (StringType url)
 
   (notes:
      - most of them are self explanatory, as they correspond to standard C functions

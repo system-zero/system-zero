@@ -24,17 +24,18 @@ shared: Env clean-shared path-module-shared file-module-shared\
         std-module-shared term-module-shared dir-module-shared\
         sh-module-shared os-module-shared sys-module-shared\
         time-module-shared crypt-module-shared rand-module-shared\
-        io-module-shared
+        io-module-shared url-module-shared
 
 clean: clean-shared
 
 clean-shared: clean-path-shared clean-file-shared clean-std-shared\
               clean-term-shared clean-dir-shared clean-sh-shared\
               clean-os-shared clean-sys-shared clean-time-shared\
-              clean-crypt-shared clean-rand-shared clean-io-shared
+              clean-crypt-shared clean-rand-shared clean-io-shared\
+              clean-url-shared
 
 #-----------------------------------------------------------
-MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC -lla
+MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC
 DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
 
 DEBUG := 0
@@ -42,10 +43,10 @@ ifneq ($(DEBUG), 0)
   MOD_FLAGS += $(DEBUG_FLAGS)
 endif
 
-SHARED_FLAGS = $(MOD_FLAGS) -shared
-
+SHARED_FLAGS  = $(MOD_FLAGS) -shared
+SHARED_FLAGS += -lla -lstring -lvmap -lvstring
 #-----------------------------------------------------------
-PATH_FLAGS = -lpath -lcstring -lstring
+PATH_FLAGS = -lpath -lcstring
 path-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/path-module.so $(SHARED_FLAGS) $(PATH_FLAGS) path/path-module.c
 
@@ -53,7 +54,7 @@ clean-path-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/path-module.so  || $(RM)  $(SYSMODULEDIR)/path-module.so
 
 #-----------------------------------------------------------
-FILE_FLAGS = -lfile -lvmap -lstring -lvstring -lcstring -los -lerror -lsys
+FILE_FLAGS = -lfile -lcstring -los -lerror -lsys
 file-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/file-module.so $(SHARED_FLAGS) $(FILE_FLAGS) file/file-module.c
 
@@ -61,7 +62,7 @@ clean-file-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/file-module.so  || $(RM)  $(SYSMODULEDIR)/file-module.so
 
 #-----------------------------------------------------------
-STD_FLAGS = -lvmap -lstring -lcstring -lustring
+STD_FLAGS = -lstring -lcstring -lustring
 std-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/std-module.so $(SHARED_FLAGS) $(STD_FLAGS) std/std-module.c
 
@@ -69,7 +70,7 @@ clean-std-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/std-module.so  || $(RM)  $(SYSMODULEDIR)/std-module.so
 
 #-----------------------------------------------------------
-TERM_FLAGS = -lio -lterm -lstring -lvmap -lcstring
+TERM_FLAGS = -lio -lterm -lcstring
 term-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/term-module.so $(SHARED_FLAGS) $(TERM_FLAGS) term/term-module.c
 
@@ -85,35 +86,35 @@ clean-dir-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/dir-module.so  || $(RM)  $(SYSMODULEDIR)/dir-module.so
 
 #-----------------------------------------------------------
-SH_FLAGS = -lvmap -lvstring -lstring -lcstring -lsh
+SH_FLAGS = -lcstring -lsh
 sh-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/sh-module.so $(SHARED_FLAGS) $(SH_FLAGS) sh/sh-module.c
 
 clean-sh-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/sh-module.so  || $(RM)  $(SYSMODULEDIR)/sh-module.so
 #-----------------------------------------------------------
-TIME_FLAGS = -lstring -lvmap
+TIME_FLAGS =
 time-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/time-module.so $(SHARED_FLAGS) $(TIME_FLAGS) time/time-module.c
 
 clean-time-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/time-module.so  || $(RM)  $(SYSMODULEDIR)/time-module.so
 #-----------------------------------------------------------
-OS_FLAGS = -lvmap -lvstring -lstring -los
+OS_FLAGS = -los
 os-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/os-module.so $(SHARED_FLAGS) $(OS_FLAGS) os/os-module.c
 
 clean-os-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/os-module.so  || $(RM)  $(SYSMODULEDIR)/os-module.so
 #-----------------------------------------------------------
-SYS_FLAGS = -lvmap -lstring -lsys
+SYS_FLAGS = -lsys
 sys-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/sys-module.so $(SHARED_FLAGS) $(SYS_FLAGS) sys/sys-module.c
 
 clean-sys-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/sys-module.so  || $(RM)  $(SYSMODULEDIR)/sys-module.so
 #-----------------------------------------------------------
-CRYPT_FLAGS = -lvmap -lstring -lerror -lmd5 -lsha256 -lsha512 -lbase64 -lbcrypt
+CRYPT_FLAGS = -lerror -lmd5 -lsha256 -lsha512 -lbase64 -lbcrypt
 crypt-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/crypt-module.so $(SHARED_FLAGS) $(CRYPT_FLAGS) crypt/crypt-module.c
 
@@ -128,12 +129,20 @@ rand-module-shared:
 clean-rand-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/rand-module.so  || $(RM)  $(SYSMODULEDIR)/rand-module.so
 #-----------------------------------------------------------
-IO_FLAGS = -lvmap -lstring -lio
+IO_FLAGS = -lio
 io-module-shared:
 	$(CC) -o $(SYSMODULEDIR)/io-module.so $(SHARED_FLAGS) $(IO_FLAGS) io/io-module.c
 
 clean-io-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/io-module.so  || $(RM)  $(SYSMODULEDIR)/io-module.so
+
+#-----------------------------------------------------------
+URL_FLAGS = -lpath -lurl
+url-module-shared: Env
+	$(CC) -o $(SYSMODULEDIR)/url-module.so $(SHARED_FLAGS) $(URL_FLAGS) url/url-module.c
+
+clean-url-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/url-module.so  || $(RM)  $(SYSMODULEDIR)/url-module.so
 
 #-----------------------------------------------------------
 makeenv:

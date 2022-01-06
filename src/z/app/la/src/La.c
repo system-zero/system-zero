@@ -66,6 +66,10 @@
 #include "../../../la-modules/io/io-module.c"
 #endif
 
+#ifdef REQUIRE_URL_MODULE
+#include "../../../la-modules/url/url-module.c"
+#endif
+
 const char *keywords[] = {
   "for (", "for |", "exit (", "var ", "import (\"", "if (", "ifnot (",
   "loadfile (\"", "print (", "println (", NULL
@@ -519,6 +523,10 @@ int main (int argc, char **argv) {
 
   #ifdef REQUIRE_IO_MODULE
     __init_io_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_URL_MODULE
+    __init_url_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

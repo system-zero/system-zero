@@ -202,6 +202,12 @@ ifeq ($(IO_MODULE), 1)
   LA_STATIC_FLAGS += -lio-$(VERSION)
 endif
 
+URL_MODULE := 1
+ifeq ($(URL_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_URL_MODULE
+  LA_STATIC_FLAGS += -lurl-$(VERSION)
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(LA)-shared $(SYSBINDIR)/$(LA)
