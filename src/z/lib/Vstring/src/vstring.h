@@ -64,7 +64,9 @@ typedef struct vstring_self {
 
   char **(*shallow_copy) (Vstring_t *, char **);
 
-  vstring_t *(*pop_at) (Vstring_t *, int);
+  vstring_t
+     *(*pop_at) (Vstring_t *, int),
+     *(*append_if_eq_n) (Vstring_t *, const char *, size_t);
 
   string_t
     *(*join) (Vstring_t *, const char *),

@@ -509,6 +509,35 @@ static VALUE file_is_executable (la_t *this, VALUE v_file) {
   return INT(File.is_executable (file));
 }
 
+static VALUE file_read_num_bytes (la_t *this, VALUE v_file, VALUE v_num) {
+  (void) this;
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_num))     THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  char *file = AS_STRING_BYTES(v_file);
+  int num = AS_INT(v_num);
+  if (num < 0) return NULL_VALUE;
+
+  FILE *fp = fopen (file, "r");
+  if (NULL is fp) return NULL_VALUE;
+
+  string *s = String.new (num);
+  int c;
+  while (num-- > 0) {
+    c = fgetc (fp);
+    if (c is EOF) break;
+    if (c < 0) {
+      String.release (s);
+      return NULL_VALUE;
+    }
+
+    String.append_byte (s, c);
+  }
+
+  return STRING(s);
+}
+
+
 static VALUE file_readlines (la_t *this, VALUE v_file) {
   (void) this;
   char *file;
@@ -795,6 +824,7 @@ public int __init_file_module__ (la_t *this) {
     { "file_is_executable",  PTR(file_is_executable), 1 },
     { "file_readlines",      PTR(file_readlines), 1 },
     { "file_writelines",     PTR(file_writelines), 2 },
+    { "file_read_num_bytes", PTR(file_read_num_bytes), 2 },
     { "file_type_to_string", PTR(file_type_to_string), 1 },
     { "file_mode",           PTR(file_mode), 1},
     { "file_mode_to_string", PTR(file_mode_to_string), 1 },
@@ -857,6 +887,7 @@ public int __init_file_module__ (la_t *this) {
       "is_executable" : file_is_executable,
       "readlines"     : file_readlines,
       "writelines"    : file_writelines,
+      "read_num_bytes": file_read_num_bytes,
       "type_to_string" : file_type_to_string,
       "mode"           : file_mode,
       "mode_to_string" : file_mode_to_string,

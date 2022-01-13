@@ -144,6 +144,35 @@ static VALUE array_len (la_t *this, VALUE v_array) {
   return INT(array->len);
 }
 
+static VALUE string_to_array (la_t *this, VALUE v_s) {
+  (void) this;
+  ifnot (IS_STRING(v_s)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *s = AS_STRING(v_s);
+
+  ArrayType *array = ARRAY_NEW(INTEGER_TYPE, (int) s->num_bytes);
+  integer *ar = (integer *) AS_ARRAY(array->value);
+
+  char *sp = s->bytes;
+  for (size_t i = 0; i < s->num_bytes; i++)
+    ar[i] = *sp++;
+
+  return ARRAY(array);
+}
+
+static VALUE string_cmp (la_t *this, VALUE v_sa, VALUE v_sb) {
+  (void) this;
+  ifnot (IS_STRING(v_sa)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_sb)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  char *sa = AS_STRING_BYTES(v_sa);
+  char *sb = AS_STRING_BYTES(v_sb);
+
+  int retval = Cstring.cmp (sa, sb);
+
+  ifnot (retval) return INT(0);
+  if (retval < 0) return INT(-1);
+  return INT(1);
+}
 static VALUE string_cmp_n (la_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
   (void) this;
   ifnot (IS_STRING(v_sa)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -376,9 +405,11 @@ public int __init_std_module__ (la_t *this) {
     { "array_where",        PTR(array_where), 2 },
     { "string_eq",          PTR(string_eq), 2 },
     { "string_eq_n",        PTR(string_eq_n), 3 },
+    { "string_cmp",         PTR(string_cmp), 2 },
     { "string_cmp_n",       PTR(string_cmp_n), 3 },
     { "string_advance",     PTR(string_advance), 2 },
     { "string_bytelen",     PTR(string_bytelen), 1 },
+    { "string_to_array",    PTR(string_to_array), 1},
     { "string_numchars",    PTR(string_numchars), 1 },
     { "string_tokenize",    PTR(string_tokenize), 2 },
     { "string_to_number",   PTR(string_to_number), 1 },
@@ -415,11 +446,13 @@ public int __init_std_module__ (la_t *this) {
     public var String = {
        "eq" : string_eq,
        "eq_n" : string_eq_n,
+       "cmp" : string_cmp,
        "cmp_n" : string_cmp_n,
        "advance" : string_advance,
        "bytelen" : string_bytelen,
        "numchars" : string_numchars,
        "tokenize" : string_tokenize,
+       "to_array" : string_to_array,
        "to_number" : string_to_number,
        "to_integer" : string_to_integer,
        "byte_in_str" : string_byte_in_str,

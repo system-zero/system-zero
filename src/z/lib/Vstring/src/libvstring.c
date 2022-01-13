@@ -183,7 +183,7 @@ static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, const char *bytes)
     goto theend;
   }
 
-  res = strcmp (bytes, this->head->data->bytes);
+  res = Cstring.cmp (bytes, this->head->data->bytes);
 
   ifnot (res) goto theend;
 
@@ -204,7 +204,7 @@ static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, const char *bytes)
     goto theend;
   }
 
-  res = strcmp (bytes, this->tail->data->bytes);
+  res = Cstring.cmp (bytes, this->tail->data->bytes);
 
   if (0 < res) {
     this->tail->next = vs;
@@ -219,7 +219,7 @@ static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, const char *bytes)
   vstring_t *it = this->head->next;
 
   while (it) {
-    res = strcmp (bytes, it->data->bytes);
+    res = Cstring.cmp (bytes, it->data->bytes);
     ifnot (res) goto theend;
 
     if (0 > res) {
@@ -256,6 +256,20 @@ static void vstring_append_uniq (Vstring_t *this, const char *bytes) {
   vs->data = String.new_with (bytes);
 
   DListAppend (this, vs);
+}
+
+static vstring_t *vstring_append_if_eq_n (Vstring_t *this, const char *bytes, size_t n) {
+  vstring_t *it = this->head;
+  while (it) {
+    if (Cstring.eq_n (it->data->bytes, bytes, n)) return it;
+    it = it->next;
+  }
+
+  vstring_t *vs = Alloc (sizeof (vstring_t));
+  vs->data = String.new_with (bytes);
+
+  DListAppend (this, vs);
+  return vs;
 }
 
 static char **vstring_shallow_copy (Vstring_t *vstr, char **array) {
@@ -296,6 +310,7 @@ public vstring_T __init_vstring__ (void) {
       .remove_at = vstring_remove_at,
       .append_with = vstring_append_with,
       .append_uniq = vstring_append_uniq,
+      .append_if_eq_n = vstring_append_if_eq_n,
       .prepend_with = vstring_prepend_with,
       .release_item = vstring_release_item,
       .shallow_copy = vstring_shallow_copy,

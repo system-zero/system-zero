@@ -24,7 +24,7 @@ shared: Env clean-shared path-module-shared file-module-shared\
         std-module-shared term-module-shared dir-module-shared\
         sh-module-shared os-module-shared sys-module-shared\
         time-module-shared crypt-module-shared rand-module-shared\
-        io-module-shared url-module-shared
+        io-module-shared url-module-shared dl-module-shared
 
 clean: clean-shared
 
@@ -32,7 +32,8 @@ clean-shared: clean-path-shared clean-file-shared clean-std-shared\
               clean-term-shared clean-dir-shared clean-sh-shared\
               clean-os-shared clean-sys-shared clean-time-shared\
               clean-crypt-shared clean-rand-shared clean-io-shared\
-              clean-url-shared
+              clean-url-shared clean-dl-shared
+
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC
@@ -143,6 +144,14 @@ url-module-shared: Env
 
 clean-url-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/url-module.so  || $(RM)  $(SYSMODULEDIR)/url-module.so
+
+#-----------------------------------------------------------
+DL_FLAGS = -ldl-$(VERSION)
+dl-module-shared: Env
+	$(CC) -o $(SYSMODULEDIR)/dl-module.so $(SHARED_FLAGS) $(DL_FLAGS) dl/dl-module.c
+
+clean-dl-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/dl-module.so  || $(RM)  $(SYSMODULEDIR)/dl-module.so
 
 #-----------------------------------------------------------
 makeenv:

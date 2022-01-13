@@ -248,6 +248,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Url_Type       = Url
     Z_URL_SRCDIR   = $(Z_SRCLIBDIR)/$(Url_Type)/src
 
+    # Dl Type
+    Dl_Type       = Dl
+    Z_DL_SRCDIR   = $(Z_SRCLIBDIR)/$(Dl_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -906,6 +910,18 @@ clean-liburl-shared:
 clean-liburl-static:
 	@cd $(Z_URL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libdl-shared: Env cenv
+	@cd $(Z_DL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libdl-static: Env cenv
+	@cd $(Z_DL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libdl-shared:
+	@cd $(Z_DL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libdl-static:
+	@cd $(Z_DL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared\
@@ -1257,7 +1273,7 @@ zero-shared:  Env cenv list\
               libimap-shared libsmap-shared libvideo-shared\
               libjson-shared libmd5-shared libsha256-shared\
               libsha512-shared librandom-shared libcontain-shared\
-              liburl-shared\
+              liburl-shared libdl-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
@@ -1273,7 +1289,7 @@ zero-static:  Env cenv list\
               libimap-static libsmap-static libvideo-static\
               libjson-static libmd5-static libsha256-static\
               libsha512-static librandom-static libcontain-static\
-              liburl-static\
+              liburl-static libdl-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
@@ -1301,7 +1317,7 @@ zero-clean-shared:\
               clean-libsha256-shared clean-libsha512-shared\
               clean-libbase64-shared clean-libbcrypt-shared\
               clean-librandom-shared clean-libcontain-shared\
-              clean-liburl-shared\
+              clean-liburl-shared clean-libdl-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1331,7 +1347,7 @@ zero-clean-static:\
               clean-libsha256-static clean-libsha512-static\
               clean-libbase64-static clean-libbcrypt-static\
               clean-librandom-static clean-libcontain-static\
-              clean-liburl-static\
+              clean-liburl-static clean-libdl-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
@@ -1351,7 +1367,9 @@ modules-all:
 modules-shared: libsh-shared libsys-shared libterm-shared\
                 libpath-shared libfile-shared libdir-shared\
                 libmd5-shared libsha256-shared libsha512-shared\
-                librandom-shared
+                librandom-shared libbase64-shared libio-shared\
+                libos-shared libstring-shared liburl-shared\
+                libdl-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
 
 path-module-shared: libpath-shared
@@ -1390,6 +1408,13 @@ rand-module-shared: Env librandom-shared
 
 io-module-shared: Env libio-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) io-module-shared
+
+url-module-shared: Env liburl-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) url-module-shared
+
+dl-module-shared: Env libdl-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) dl-module-shared
+
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 

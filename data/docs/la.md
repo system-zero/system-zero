@@ -2001,7 +2001,7 @@ The return statement
 # They are initialized with the `import` function on shared targets, or as
 # builtins on static targets. When importing a module, the leading char is
 # in lower case, e.g., import ("path"). Those exposing a public variable of
-# a MapType, that has the exact name but the leading char is capitalized.
+# a MapType, that has the exact name, but the leading char is capitalized.
 
   # Std Module
     # IntegerType   Map.set (MapType map, StringType key, Value v)
@@ -2014,10 +2014,12 @@ The return statement
 
     # IntegerType   String.eq (StringType a, StringType b)
     # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
+    # IntegerType   String.cmp (StringType a, StringType b)
     # IntegerType   String.cmp_n (StringType a, StringType b, IntegerType n)
     # StringType    String.advance (StringType str, IntegerType num)
     # StringType[]  String.tokenize (StringType str, StringType token)
     # NumberType    String.to_number (StringType str)
+    # IntegerType[] String.to_array (StringType str)
     # IntegerType   String.to_integer (StringType str)
     # StringType    String.byte_in_str (StringType str, IntegerType byte)
     # StringType    String.advance_on_byte (StringType str, IntegerType c)
@@ -2038,7 +2040,7 @@ The return statement
     # StringType    Path.basename_sans_extname (StringTYpe path)
 
   # File Module
-    # IntegerTYpe   File.new (StringType file, IntegerType mode)
+    # IntegerType   File.new (StringType file, IntegerType mode)
     # MapType       File.stat (StringType file)
     # MapType       File.lstat (StringType file)
     # StringType    File.mode (StringType file)
@@ -2059,6 +2061,7 @@ The return statement
     # IntegerType   File.is_executable (StringType file)
     # StringType[]  File.readlines (StringType file)
     # IntegerType   File.writelines (StringType file, StringType[] array)
+    # StringType    File.read_num_bytes (StringType file, IntegerType num)
     # IntegerType   File.access (StringType file, IntegerType mode)
     # IntegerType   File.mkfifo (StringType file, IntegerType mode)
     # IntegerType   File.symlink (StringType src, StringType dest)
@@ -2170,8 +2173,26 @@ The return statement
 
   # Url Module
     # MapType Url.parse (StringType url)
+      # .scheme   : StringType  f|ht|tp|s
+      # .host     : StringType  host
+      # .path     : StringType  path
+      # .fragment : StringType  #fragment
+      # .query    : StringType  ?query
+      # .user     : StringType  user
+      # .pass     : StringType  passwd
+      # .port     : IntegerType port
 
-  (notes:
+  # Dl Module
+    # MapType Dl.dump_dependencies (StringType object)
+      # .dependencies : StringType[]
+      # .endian       : IntegerType endianess
+      # .bits         : IntegerType (64|32) bits
+    # Constants:
+      # LITTLE_ENDIAN
+      # BIG_ENDIAN
+
+
+  (notes on modules):
      - most of them are self explanatory, as they correspond to standard C functions
 
      - almost all of them are wrappers around the underlying internal libraries
@@ -2339,36 +2360,52 @@ The return statement
 
 # Types (integer type constants)
 
-  NullType    : (void *) 0 (declared as `null`)
-  NumberType  : double
-  IntegerType : integer (wide as ptrdiff_t)
-  StringType  : string type (container that holds C strings)
-  ArrayType   : array
-  MapType     : map
-  ObjectType  : C objects
+  NullType      : (void *) 0 (declared as `null`)
+  NumberType    : double
+  IntegerType   : integer
+  StringType    : string type (container that holds C strings)
+  ArrayType     : array
+  MapType       : map
+  ListType      : list (can hold any type, accessible as an array, implemented as a linked list)
+  FilePtrType   : FILE wrapper type
+  FdType        : FILDES wrapper type
+  BooleanType   : boolean
+  FunctionType  : user defined functions
+  CFunctionType : C functions
+  ObjectType    : C objects
 
 # Aplication Programming Interface.
 
 ```C
   /* the following static variable and the corresponded macro, normally
-   * has been defined by the cenv.h header unit, that is responsible
-   * to create the environment, but is posted here for clarity */
-  static  la_T __LA__;	
-  #define La  __LA__.self
+   * has been defined by the cenv.h header unit, and which is responsible
+   * to create this specific environment, and it is here for just clarity
+   * and not as the only way, it might be as well in function scope, here
+   * it is accessible by the compilation unit */
 
-  la_T *LaN = __init_la__ ();
-  __LA__ = *LaN;                       // assumed a main function here
+  static  la_T __LA__      // holds the instances and expose function pointers
+                           // and s|getters for its properties
+
+  #define La  __LA__.self  // handy
+
+  la_T *LaN = __init_la__ ();  // Interpreter Instantiation
+
+  __LA__ = *LaN;
+
+  // new instance (indepented)
   la_t *la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = argv));
+                                         // assumed a main function here
 
-  char *bytes = "func f (n) {println (\"result is ${n * 2}\")}";
-  int retval = La.eval_string (la, bytes);
+  char *bytes = "println (\"howl unixversion\")";  // evaluation string
+  int retval = La.eval_string (la, bytes);         // for this instance
 
-  __deinit_la__ (&LaN);
+  __deinit_la__ (&LaN); // release all the sources
 ```
 
-  The whole interface is exposed as a structure with function pointers, at the
-  `la.h` unit, that map to their corresponded private functions, as there isn't
-  and probably will never be an API documentation.
+  The whole interface is exposed as a structure with function pointers in the
+  `la.h` unit, that map to their corresponded static declared functions in the
+  `libla.c` unit, as there isn't and probably will never be an API documentation,
+  unless a god exists.
 
 # Quirks.
 
@@ -2662,9 +2699,7 @@ I'm here, you know me, you can use me and if you care you can modify me to fix
 some bugs, or to extend me to with an extented communication protocol, so to try
 to make even more things from them we already can do or to do them with a much
 more efficient way or even with a much more fancy way, or with a more compact
-way, which it can be also a more secure way, or with your own way anyway. At the
-very least i'm trying to make it easier for you to know where to find me, if you
-want and inclined and for any reason anyway.
+way, which it can be also a more secure way, or with your own way anyway.
 
 This care it is believed that slowly connects the source and the exposed end
 execution interface with such way that they can be used interchangeable which
@@ -2674,11 +2709,12 @@ execution environment uses those mechanics to do its thing). Which it is almost
 perfect in my humble opinion, if you ever someone will ever ask me.
 
 Plus this gives confidence to the own being, that is fascinated by the way the
-things works and feels the magic (which is not that magic - it is just mechanics) -
+things works and feels the magic (which is not that magic - it is just mechanics),
 when sees the result of an own code.
 
-Plus the knowledge and the access to open and free bits of the source code, it
-returns a big gift, that is the trust to the system.
+Plus the access to the open in the endless eternity to the forever and ever free
+bits of the source code, it returns an invaluable gift to ever put it in a balance,
+that is the trust to the system.
 
 In any case, the aim is to offer a mechanism that is trying to show the path
 to the user, to find the way into the system that lives and uses.

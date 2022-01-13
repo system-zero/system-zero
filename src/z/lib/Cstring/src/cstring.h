@@ -45,6 +45,7 @@ typedef struct cstring_self {
   int
     (*eq) (const char *, const char *),
     (*eq_n) (const char *, const char *, size_t),
+    (*cmp) (const char *, const char *),
     (*cmp_n) (const char *, const char *, size_t);
 
   size_t

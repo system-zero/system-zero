@@ -1569,6 +1569,17 @@ do {                             \
 #undef REQUIRE_URL_TYPE
 #endif /* REQUIRE_URL_TYPE */
 
+#ifdef REQUIRE_DL_TYPE
+  #ifndef DL_TYPE_HDR
+  #define DL_TYPE_HDR
+  #include <z/dl.h>
+  #endif /* DL_TYPE_HDR */
+
+  /* Do not define any type here. This unit is indepented. */
+
+#undef REQUIRE_DL_TYPE
+#endif /* REQUIRE_DL_TYPE */
+
 #ifdef REQUIRE_NET_TYPE
   #ifndef NET_TYPE_HDR
   #define NET_TYPE_HDR

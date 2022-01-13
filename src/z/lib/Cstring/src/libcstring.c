@@ -28,6 +28,19 @@ static int cstring_cmp_n (const char *sa, const char *sb, size_t n) {
   return 0;
 }
 
+static int cstring_cmp (const char *sa, const char *sb) {
+  const uchar *spa = (const uchar *) sa;
+  const uchar *spb = (const uchar *) sb;
+  for (;; spa++, spb++) {
+    if (*spa != *spb)
+      return (*(uchar *) spa - *(uchar *) spb);
+
+    if (*spa == 0) return 0;
+  }
+
+  return 0;
+}
+
 /* just for clarity */
 static int cstring_eq_n  (const char *sa, const char *sb, size_t n) {
   return (0 == cstring_cmp_n (sa, sb, n));
@@ -364,6 +377,7 @@ public cstring_T __init_cstring__ (void) {
       .dup = cstring_dup,
       .eq_n = cstring_eq_n,
       .itoa = cstring_itoa,
+      .cmp = cstring_cmp,
       .cmp_n = cstring_cmp_n,
       .substr = cstring_substr,
       .cp_fmt = cstring_cp_fmt,

@@ -70,6 +70,10 @@
 #include "../../../la-modules/url/url-module.c"
 #endif
 
+#ifdef REQUIRE_DL_MODULE
+#include "../../../la-modules/dl/dl-module.c"
+#endif
+
 const char *keywords[] = {
   "for (", "for |", "exit (", "var ", "import (\"", "if (", "ifnot (",
   "loadfile (\"", "print (", "println (", NULL
@@ -527,6 +531,10 @@ int main (int argc, char **argv) {
 
   #ifdef REQUIRE_URL_MODULE
     __init_url_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_DL_MODULE
+    __init_dl_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

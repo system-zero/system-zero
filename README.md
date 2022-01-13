@@ -1396,6 +1396,7 @@ gained consience. Hopefully one day.
 * [Linenoise (Steve's Bennet fork)](https://github.com/msteveb/linenoise)
 * [utf8.h](https://github.com/sheredom/utf8.h)
 * [Parse Url.](https://github.com/wc-duck/url_parse)
+* [Libtree - ldd into a tree](https://github.com/haampie/libtree)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me
