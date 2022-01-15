@@ -214,6 +214,12 @@ ifeq ($(DL_MODULE), 1)
   LA_STATIC_FLAGS += -ldl-$(VERSION)
 endif
 
+NET_MODULE := 1
+ifeq ($(NET_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_NET_MODULE
+  LA_STATIC_FLAGS += -lnet-$(VERSION) -lssl -lcrypto -lresolv -lpthread
+endif
+
 la-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(LA)-shared $(SYSBINDIR)/$(LA)

@@ -24,7 +24,8 @@ shared: Env clean-shared path-module-shared file-module-shared\
         std-module-shared term-module-shared dir-module-shared\
         sh-module-shared os-module-shared sys-module-shared\
         time-module-shared crypt-module-shared rand-module-shared\
-        io-module-shared url-module-shared dl-module-shared
+        io-module-shared url-module-shared dl-module-shared\
+        net-module-shared
 
 clean: clean-shared
 
@@ -32,8 +33,7 @@ clean-shared: clean-path-shared clean-file-shared clean-std-shared\
               clean-term-shared clean-dir-shared clean-sh-shared\
               clean-os-shared clean-sys-shared clean-time-shared\
               clean-crypt-shared clean-rand-shared clean-io-shared\
-              clean-url-shared clean-dl-shared
-
+              clean-url-shared clean-dl-shared clean-net-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC
@@ -152,6 +152,14 @@ dl-module-shared: Env
 
 clean-dl-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/dl-module.so  || $(RM)  $(SYSMODULEDIR)/dl-module.so
+
+#-----------------------------------------------------------
+NET_FLAGS = -lstring -lvmap -lpath -lvstring -lerror -lnet -lurl -lssl -lcrypto -lresolv -lpthread
+net-module-shared: Env
+	$(CC) -o $(SYSMODULEDIR)/net-module.so $(SHARED_FLAGS) $(NET_FLAGS) net/net-module.c
+
+clean-net-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/net-module.so  || $(RM)  $(SYSMODULEDIR)/net-module.so
 
 #-----------------------------------------------------------
 makeenv:

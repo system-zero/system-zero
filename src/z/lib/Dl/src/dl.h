@@ -8,7 +8,7 @@ typedef struct dl_t {
   char *unit;
   char **dependencies;
   int num;
- int verbose;
+  int verbose;
   int path;
 } dl_t;
 

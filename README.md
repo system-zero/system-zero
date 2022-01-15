@@ -1393,10 +1393,12 @@ gained consience. Hopefully one day.
 * [Suckless sbase.](https://core.suckless.org/sbase/)
 * [PCG Random Number Generation for C.](https://github.com/imneme/pcg-c-basic)
 * [Contain: A simple implementation of containers for Linux.](https://github.com/arachsys/containers)
-* [Linenoise (Steve's Bennet fork)](https://github.com/msteveb/linenoise)
-* [utf8.h](https://github.com/sheredom/utf8.h)
+* [Linenoise (Steve's Bennet fork).](https://github.com/msteveb/linenoise)
+* [utf8.h.](https://github.com/sheredom/utf8.h)
 * [Parse Url.](https://github.com/wc-duck/url_parse)
-* [Libtree - ldd into a tree](https://github.com/haampie/libtree)
+* [Libtree: ldd into a tree.](https://github.com/haampie/libtree)
+* [Simple TCP.](https://github.com/riyadhar8/TCP-Simple-Server-Client)
+* [Http Status codes.](https://github.com/j-ulrich/http-status-codes-cpp)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

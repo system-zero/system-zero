@@ -1,4 +1,4 @@
-THIS_LIBNAME = url
+THIS_LIBNAME = net
 
 NS      :=
 API     := 0
@@ -83,33 +83,20 @@ ifneq ($(DEBUG), 0)
 endif
 
 LIBFLAGS := -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
+LIBFLAGS += -lssl -lcrypto -lresolv -lpthread -lcstring -lerror -lurl
 
 all: shared static
 
 prereq: Env
 
-URL_EXTENTED               := 1
-URL_USE_INTERNAL_FUNCTIONS := 1
-
-URL_FLAGS :=
-
-ifeq ($(URL_EXTENTED), 1)
-  URL_FLAGS += -DURL_EXTENTED
-endif
-
-ifeq ($(URL_USE_INTERNAL_FUNCTIONS), 1)
-  URL_FLAGS += -DURL_USE_INTERNAL_FUNCTIONS
-endif
-
 shared: prereq header $(THIS_SHAREDLIB)
-
 $(THIS_SHAREDLIB):
-	$(CC) -x c $(THIS_LIBSRC) $(LIBOPTS) $(LIBFLAGS) $(URL_FLAGS) $(SHARED_CFLAGS) -o $(THIS_SHAREDLIB)
+	$(CC) -x c $(THIS_LIBSRC) $(LIBOPTS) $(LIBFLAGS) $(SHARED_CFLAGS) -o $(THIS_SHAREDLIB)
 	@$(LN_S) -vf $(THIS_LIB).so $(SYSLIBDIR)/lib$(THIS_LIBNAME).so
 
 static: prereq header $(THIS_STATICLIB)
 $(THIS_STATICLIB):
-	$(CC) -x c $(THIS_LIBSRC) $(LIBOPTS) $(URL_FLAGS) $(LIBFLAGS) $(STATIC_CFLAGS) -c -o $(THIS_LIB).o
+	$(CC) -x c $(THIS_LIBSRC) $(LIBOPTS) $(LIBFLAGS) $(STATIC_CFLAGS) -c -o $(THIS_LIB).o
 	@$(AR) $(THIS_STATICLIB) $(THIS_LIB).o
 	@$(RM) $(THIS_LIB).o
 

@@ -43,9 +43,12 @@ typedef struct parse_url_ctx
 } parse_url_ctx;
 
 #ifdef URL_USE_INTERNAL_FUNCTIONS
+
+typedef _Bool bool;
+
 /* additions: string functions [ag] */
 static int to_lower (int c) {
-  if ('A' <= c and c <= 'Z')
+  if ('A' <= c && c <= 'Z')
   /* the non magic version */
     return c + ('a' - 'A');
             /* ( c | 32) */
@@ -55,8 +58,8 @@ static int to_lower (int c) {
 #define URL_TOLOWER to_lower
 
 static int str_equal (const char *sa, const char *sb) {
-  const uchar *spa = (const uchar *) sa;
-  const uchar *spb = (const uchar *) sb;
+  const unsigned char *spa = (const unsigned char *) sa;
+  const unsigned char *spb = (const unsigned char *) sb;
   for (; *spa == *spb; spa++, spb++)
     if (*spa == 0) return 1;
 
@@ -88,6 +91,143 @@ static char *url_strpbrk (const char *s, const char *accept) {
 }
 
 #define URL_STRPBRK url_strpbrk
+
+inline size_t bytelen (const char *str) {
+  const char *sp = str;
+  while (*sp) ++sp;
+  return sp - str;
+}
+
+#define URL_STRLEN bytelen
+
+/*-
+ * Copyright (c) 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Chris Torek.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#include <stdint.h>
+
+/*
+ * sizeof(word) MUST BE A POWER OF TWO
+ * SO THAT wmask BELOW IS ALL ONES
+ */
+typedef	int word;		/* "word" used for optimal copy speed */
+
+#define	wsize	sizeof(word)
+#define	wmask	(wsize - 1)
+
+/*
+ * Copy a block of memory, handling overlap.
+ * This is the routine that actually implements
+ * (the portable versions of) bcopy, memcpy, and memmove.
+ */
+
+static void * mem_cpy(void *dst0, const void *src0, size_t length)
+{
+	char *dst = dst0;
+	const char *src = src0;
+	size_t t;
+	
+	if (length == 0 || dst == src)		/* nothing to do */
+		goto done;
+	
+	/*
+	 * Macros: loop-t-times; and loop-t-times, t>0
+	 */
+#define	TLOOP(s) if (t) TLOOP1(s)
+#define	TLOOP1(s) do { s; } while (--t)
+	
+	if ((unsigned long)dst < (unsigned long)src) {
+		/*
+		 * Copy forward.
+		 */
+		t = (uintptr_t)src;	/* only need low bits */
+		if ((t | (uintptr_t)dst) & wmask) {
+			/*
+			 * Try to align operands.  This cannot be done
+			 * unless the low bits match.
+			 */
+			if ((t ^ (uintptr_t)dst) & wmask || length < wsize)
+				t = length;
+			else
+				t = wsize - (t & wmask);
+			length -= t;
+			TLOOP1(*dst++ = *src++);
+		}
+		/*
+		 * Copy whole words, then mop up any trailing bytes.
+		 */
+		t = length / wsize;
+		TLOOP(*(word *)dst = *(word *)src; src += wsize; dst += wsize);
+		t = length & wmask;
+		TLOOP(*dst++ = *src++);
+	} else {
+		/*
+		 * Copy backwards.  Otherwise essentially the same.
+		 * Alignment works as before, except that it takes
+		 * (t&wmask) bytes to align, not wsize-(t&wmask).
+		 */
+		src += length;
+		dst += length;
+		t = (uintptr_t)src;
+		if ((t | (uintptr_t)dst) & wmask) {
+			if ((t ^ (uintptr_t)dst) & wmask || length <= wsize)
+				t = length;
+			else
+				t &= wmask;
+			length -= t;
+			TLOOP1(*--dst = *--src);
+		}
+		t = length / wsize;
+		TLOOP(src -= wsize; dst -= wsize; *(word *)dst = *(word *)src);
+		t = length & wmask;
+		TLOOP(*--dst = *--src);
+	}
+done:
+	return (dst0);
+}
+
+#define URL_MEMCPY mem_cpy
+
+static void *mem_set (void *s, int c, size_t len) {
+  if (s == NULL || len <= 0)
+    return s;
+
+  unsigned char *ptr = s;
+  while (*ptr && len--)
+      *ptr++ = (unsigned char) c;
+
+  return s;
+}
+
+#define URL_MEMSET mem_set
 
 #endif /* URL_USE_INTERNAL_FUNCTIONS */
 
@@ -126,7 +266,7 @@ static char* parse_url_alloc_string( parse_url_ctx* ctx, const char* src, size_t
   char* dst = (char*)parse_url_alloc_mem( ctx, len + 1 );
   if( dst == 0x0 )
     return 0x0;
-  memcpy( dst, src, len );
+  URL_MEMCPY( dst, src, len );
   dst[len] = '\0';
   return dst;
 }
@@ -400,7 +540,7 @@ static parsed_url* parse_url( const char* url, void* usermem, size_t mem_size )
   URL_PARSE_FAIL_IF( out == 0x0 );
 
   // ... set default values ...
-  memset(out, 0x0, sizeof(parsed_url));
+  URL_MEMSET(out, 0x0, sizeof(parsed_url));
   out->host = "localhost";
   out->path = "/";
 
@@ -426,9 +566,11 @@ url_t *UrlParse (void *mem, size_t mem_size, int flags, char *url) {
 #include <stdio.h>
 __attribute__((visibility ("default")))
 url_t *UrlParse (void *mem, size_t mem_size, int flags, char *url) {
+fprintf(stdout, "%s |%s|\n", __func__, url);
   if (NULL == url) return 0x0;
 
   url_t *parsedURL = parse_url (url, mem, mem_size);
+fprintf(stdout, "%s us bu |%d|\n", __func__, parsedURL == 0x0);
 
   if (!parsedURL) return 0x0;
 
@@ -444,7 +586,7 @@ url_t *UrlParse (void *mem, size_t mem_size, int flags, char *url) {
       fprintf (stdout, "Passwd: %s\n", parsedURL->pass);
   }
 
-  if (flags & URL_RELEASE)
+  if (flags & URL_RELEASE) {
     free (parsedURL);
     parsedURL = 0x0;
   }

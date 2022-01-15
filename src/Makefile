@@ -882,10 +882,10 @@ clean-libcontain-static:
 #   - a quite minimal http[s] client that can link against for both openssl and libressl
 #   - a wrapper around libcurl, thus this it can get very rich as we like
 # so the path isn't quite up yet, but the target stays for development reasons.
-libnet-shared: Env cenv
+libnet-shared: Env cenv liburl-shared
 	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libnet-static: Env cenv
+libnet-static: Env cenv liburl-static
 	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libnet-shared:
@@ -1253,6 +1253,22 @@ clean-packman:
 	@cd $(ZA_PACKMAN_SRCDIR) && $(MAKE) $(MARGS) clean
 
 #----------------------------------------------------------#
+  # net
+  ZA_NET              = net
+  ZA_NET_SRCDIR      := $(Z_SRCAPPDIR)/$(ZA_NET)/src
+
+net-shared: cenv libnet-shared
+	@cd $(ZA_NET_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+net-static: cenv libnet-static
+	@cd $(ZA_NET_SRCDIR) && $(MAKE) $(APP_FLAGS) static
+
+clean-net-shared:
+	@cd $(ZA_NET_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+clean-net-static:
+	@cd $(ZA_NET_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
+#------------- ----------------------------------#
 # Development (ignore)
 
 clone-libc:
@@ -1260,7 +1276,7 @@ clone-libc:
 libpam:
 	$(SYSBINDIR)/Packman --install pam
 
-bootstrap: clean-libla-shared la-shared clone-libc libpam clean-libauth-shared zsu-shared
+bootstrap: clean-libla-shared la-shared clone-libc libpam clean-libauth-shared zsu-shared net-shared
 
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
@@ -1414,6 +1430,9 @@ url-module-shared: Env liburl-shared
 
 dl-module-shared: Env libdl-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) dl-module-shared
+
+net-module-shared: Env libnet-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) net-module-shared
 
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)

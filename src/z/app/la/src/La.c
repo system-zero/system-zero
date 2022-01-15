@@ -74,6 +74,10 @@
 #include "../../../la-modules/dl/dl-module.c"
 #endif
 
+#ifdef REQUIRE_NET_MODULE
+#include "../../../la-modules/net/net-module.c"
+#endif
+
 const char *keywords[] = {
   "for (", "for |", "exit (", "var ", "import (\"", "if (", "ifnot (",
   "loadfile (\"", "print (", "println (", NULL
@@ -535,6 +539,10 @@ int main (int argc, char **argv) {
 
   #ifdef REQUIRE_DL_MODULE
     __init_dl_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_NET_MODULE
+    __init_net_module__ (la);
   #endif
 
   if (NULL is evalbuf) {

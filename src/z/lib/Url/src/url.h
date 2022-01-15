@@ -12,6 +12,7 @@
 #endif
 
 #ifndef URL_USE_INTERNAL_FUNCTIONS
+  #include <stdbool.h>
   #include <ctype.h>
   #define URL_TOLOWER tolower
 
@@ -20,10 +21,8 @@
   #define URL_STRCHR strchr
   #define URL_STR_EQUAL(_a_, _b_) (0 == strcmp (_a_, _b_))
   #define URL_STRPBRK strpbrk
-
-  typedef _Bool bool;
-  #define true  1
-  #define false 0
+  #define URL_MEMSET memset
+  #define URL_MEMCPY memcpy
 #endif
 
 /*
