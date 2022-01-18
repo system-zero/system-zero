@@ -2192,6 +2192,12 @@ The return statement
       # BIG_ENDIAN
 
 
+  # Sun Module
+   # StringType Sun.compute ()
+     # qualifiers
+       # verbose : [0|1], year : IntegerType, month : IntegerType,
+       # day : IntegerType, lon : NumberType, lat : NumberType
+
   (notes on modules):
      - most of them are self explanatory, as they correspond to standard C functions
 

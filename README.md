@@ -1399,6 +1399,7 @@ gained consience. Hopefully one day.
 * [Libtree: ldd into a tree.](https://github.com/haampie/libtree)
 * [Simple TCP.](https://github.com/riyadhar8/TCP-Simple-Server-Client)
 * [Http Status codes.](https://github.com/j-ulrich/http-status-codes-cpp)
+* [SunRiseSet.](https://github.com/troglobit/sun)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

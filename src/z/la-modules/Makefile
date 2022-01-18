@@ -24,8 +24,7 @@ shared: Env clean-shared path-module-shared file-module-shared\
         std-module-shared term-module-shared dir-module-shared\
         sh-module-shared os-module-shared sys-module-shared\
         time-module-shared crypt-module-shared rand-module-shared\
-        io-module-shared url-module-shared dl-module-shared\
-        net-module-shared
+        io-module-shared url-module-shared dl-module-shared
 
 clean: clean-shared
 
@@ -33,7 +32,7 @@ clean-shared: clean-path-shared clean-file-shared clean-std-shared\
               clean-term-shared clean-dir-shared clean-sh-shared\
               clean-os-shared clean-sys-shared clean-time-shared\
               clean-crypt-shared clean-rand-shared clean-io-shared\
-              clean-url-shared clean-dl-shared clean-net-shared
+              clean-url-shared clean-dl-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC
@@ -154,8 +153,16 @@ clean-dl-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/dl-module.so  || $(RM)  $(SYSMODULEDIR)/dl-module.so
 
 #-----------------------------------------------------------
+SUN_FLAGS = -lstring -lvmap -lsun -lm
+sun-module-shared: Env
+	$(CC) -o $(SYSMODULEDIR)/sun-module.so $(SHARED_FLAGS) $(SUN_FLAGS) sun/sun-module.c
+
+clean-sun-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/sun-module.so  || $(RM)  $(SYSMODULEDIR)/sun-module.so
+
+#-----------------------------------------------------------
 NET_FLAGS = -lstring -lvmap -lpath -lvstring -lerror -lnet -lurl -lssl -lcrypto -lresolv -lpthread
-net-module-shared: Env
+net-module-shared: Env clean-net-shared
 	$(CC) -o $(SYSMODULEDIR)/net-module.so $(SHARED_FLAGS) $(NET_FLAGS) net/net-module.c
 
 clean-net-shared:

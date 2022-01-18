@@ -214,7 +214,13 @@ ifeq ($(DL_MODULE), 1)
   LA_STATIC_FLAGS += -ldl-$(VERSION)
 endif
 
-NET_MODULE := 1
+SUN_MODULE := 1
+ifeq ($(SUN_MODULE), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_SUN_MODULE
+  LA_STATIC_FLAGS += -lsun-$(VERSION) -lm
+endif
+
+NET_MODULE := 0
 ifeq ($(NET_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_NET_MODULE
   LA_STATIC_FLAGS += -lnet-$(VERSION) -lssl -lcrypto -lresolv -lpthread

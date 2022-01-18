@@ -492,6 +492,28 @@ public la_T *la_get_root (la_t *);
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
   _t_;                                                                    \
 })
+
+#define GET_OPT_YEAR() ({                                                 \
+  VALUE _v_year = La.get.qualifier (this, "year", INT(OPT_NO_YEAR));      \
+  ifnot (IS_INT(_v_year))                                                 \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_year);                                                        \
+})
+
+#define GET_OPT_MONTH() ({                                                \
+  VALUE _v_month = La.get.qualifier (this, "month", INT(OPT_NO_MONTH));   \
+  ifnot (IS_INT(_v_month))                                                \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_month);                                                       \
+})
+
+#define GET_OPT_DAY() ({                                                 \
+  VALUE _v_day = La.get.qualifier (this, "day", INT(OPT_NO_DAY));        \
+  ifnot (IS_INT(_v_day))                                                 \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");        \
+  AS_INT(_v_day);                                                        \
+})
+
 #endif /* WITHOUT_LA_FUNCTIONS */
 
 #endif /* LA_HDR */

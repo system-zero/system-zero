@@ -1987,6 +1987,18 @@ do {                             \
 #define OPT_MAXDEPTH 1024
 #endif
 
+#ifndef OPT_NO_YEAR
+#define OPT_NO_YEAR -1
+#endif
+
+#ifndef OPT_NO_MONTH
+#define OPT_NO_MONTH -1
+#endif
+
+#ifndef OPT_NO_DAY
+#define OPT_NO_DAY -1
+#endif
+
 /* Those application routines are quite the same and is useless
  * to repeat ourselves.
  */

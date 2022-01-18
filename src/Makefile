@@ -252,6 +252,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Dl_Type       = Dl
     Z_DL_SRCDIR   = $(Z_SRCLIBDIR)/$(Dl_Type)/src
 
+    # Sun_Type
+    Sun_Type       = Sun
+    Z_SUN_SRCDIR   = $(Z_SRCLIBDIR)/$(Sun_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -922,6 +926,18 @@ clean-libdl-shared:
 clean-libdl-static:
 	@cd $(Z_DL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libsun-shared: Env cenv
+	@cd $(Z_SUN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libsun-static: Env cenv
+	@cd $(Z_SUN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libsun-shared:
+	@cd $(Z_SUN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libsun-static:
+	@cd $(Z_SUN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared\
@@ -1430,6 +1446,9 @@ url-module-shared: Env liburl-shared
 
 dl-module-shared: Env libdl-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) dl-module-shared
+
+sun-module-shared: Env libsun-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sun-module-shared
 
 net-module-shared: Env libnet-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) net-module-shared

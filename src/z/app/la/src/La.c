@@ -74,6 +74,10 @@
 #include "../../../la-modules/dl/dl-module.c"
 #endif
 
+#ifdef REQUIRE_SUN_MODULE
+#include "../../../la-modules/sun/sun-module.c"
+#endif
+
 #ifdef REQUIRE_NET_MODULE
 #include "../../../la-modules/net/net-module.c"
 #endif
@@ -378,9 +382,12 @@ static int la_interactive (la_t *this) {
       "import (\"sh\"); "
       "import (\"os\"); "
       "import (\"io\"); "
+      "import (\"dl\"); "
       "import (\"std\"); "
       "import (\"dir\"); "
       "import (\"sys\"); "
+      "import (\"sun\"); "
+      "import (\"url\"); "
       "import (\"path\"); "
       "import (\"file\"); "
       "import (\"rand\"); "
@@ -539,6 +546,10 @@ int main (int argc, char **argv) {
 
   #ifdef REQUIRE_DL_MODULE
     __init_dl_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_SUN_MODULE
+    __init_sun_module__ (la);
   #endif
 
   #ifdef REQUIRE_NET_MODULE
