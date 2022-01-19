@@ -8,7 +8,7 @@
 MODULE(sun)
 
 static VALUE sun_compute (la_t *this) {
-  int verbose = GET_OPT_VERBOSE();
+  int verbose = GET_OPT_VERBOSE_WITH(0);
   int year = GET_OPT_YEAR();
   int month = GET_OPT_MONTH();
   int day = GET_OPT_DAY();
@@ -42,6 +42,7 @@ static VALUE sun_compute (la_t *this) {
 
   SunCompute (sun);
   SunToString (sun);
+
   if (verbose and NULL isnot out_fp) {
     fprintf (out_fp, "%s", sun->buf);
     return NULL_VALUE;

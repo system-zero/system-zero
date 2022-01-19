@@ -74,8 +74,9 @@
 #include "../../../la-modules/dl/dl-module.c"
 #endif
 
-#ifdef REQUIRE_SUN_MODULE
+#ifdef REQUIRE_MOON_SUN_MODULES
 #include "../../../la-modules/sun/sun-module.c"
+#include "../../../la-modules/moon/moon-module.c"
 #endif
 
 #ifdef REQUIRE_NET_MODULE
@@ -386,8 +387,9 @@ static int la_interactive (la_t *this) {
       "import (\"std\"); "
       "import (\"dir\"); "
       "import (\"sys\"); "
-      "import (\"sun\"); "
       "import (\"url\"); "
+      "import (\"sun\"); "
+      "import (\"moon\"); "
       "import (\"path\"); "
       "import (\"file\"); "
       "import (\"rand\"); "
@@ -548,8 +550,9 @@ int main (int argc, char **argv) {
     __init_dl_module__ (la);
   #endif
 
-  #ifdef REQUIRE_SUN_MODULE
+  #ifdef REQUIRE_MOON_SUN_MODULES
     __init_sun_module__ (la);
+    __init_moon_module__ (la);
   #endif
 
   #ifdef REQUIRE_NET_MODULE

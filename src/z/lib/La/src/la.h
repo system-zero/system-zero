@@ -427,6 +427,13 @@ public la_T *la_get_root (la_t *);
   AS_INT(_v_verbose);                                                     \
 })
 
+#define GET_OPT_VERBOSE_WITH(_v_) ({                                      \
+  VALUE _v_verbose = La.get.qualifier (this, "verbose", INT(_v_));        \
+  ifnot (IS_INT(_v_verbose))                                              \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_verbose);                                                     \
+})
+
 #define GET_OPT_FORCE() ({                                                \
   VALUE _v_force = La.get.qualifier (this, "force", INT(OPT_NO_FORCE));   \
   ifnot (IS_INT(_v_force))                                                \

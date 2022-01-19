@@ -2196,7 +2196,13 @@ The return statement
    # StringType Sun.compute ()
      # qualifiers
        # verbose : [0|1], year : IntegerType, month : IntegerType,
-       # day : IntegerType, lon : NumberType, lat : NumberType
+       # day : IntegerType, lon : NumberType, lat : NumberType, utc : IntegerType
+
+  # Moon Module
+   # StringType Moon.phase ()
+     # qualifiers
+       # verbose : [0|1], year : IntegerType, month : IntegerType,
+       # day : IntegerType
 
   (notes on modules):
      - most of them are self explanatory, as they correspond to standard C functions

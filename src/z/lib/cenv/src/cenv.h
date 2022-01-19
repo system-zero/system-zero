@@ -1580,6 +1580,28 @@ do {                             \
 #undef REQUIRE_DL_TYPE
 #endif /* REQUIRE_DL_TYPE */
 
+#ifdef REQUIRE_SUN_TYPE
+  #ifndef SUN_TYPE_HDR
+  #define SUN_TYPE_HDR
+  #include <z/sun.h>
+  #endif /* SUN_TYPE_HDR */
+
+  /* Do not define any type here. This unit is indepented. */
+
+#undef REQUIRE_SUN_TYPE
+#endif /* REQUIRE_SUN_TYPE */
+
+#ifdef REQUIRE_MOON_TYPE
+  #ifndef MOON_TYPE_HDR
+  #define MOON_TYPE_HDR
+  #include <z/moon.h>
+  #endif /* MOON_TYPE_HDR */
+
+  /* Do not define any type here. This unit is trying to be indepented. */
+
+#undef REQUIRE_MOON_TYPE
+#endif /* REQUIRE_MOON_TYPE */
+
 #ifdef REQUIRE_NET_TYPE
   #ifndef NET_TYPE_HDR
   #define NET_TYPE_HDR

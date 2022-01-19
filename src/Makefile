@@ -251,6 +251,9 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     # Dl Type
     Dl_Type       = Dl
     Z_DL_SRCDIR   = $(Z_SRCLIBDIR)/$(Dl_Type)/src
+    # Moon_Type
+    Moon_Type       = Moon
+    Z_MOON_SRCDIR   = $(Z_SRCLIBDIR)/$(Moon_Type)/src
 
     # Sun_Type
     Sun_Type       = Sun
@@ -926,6 +929,18 @@ clean-libdl-shared:
 clean-libdl-static:
 	@cd $(Z_DL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libmoon-shared: Env cenv
+	@cd $(Z_MOON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libmoon-static: Env cenv
+	@cd $(Z_MOON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libmoon-shared:
+	@cd $(Z_MOON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libmoon-static:
+	@cd $(Z_MOON_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 libsun-shared: Env cenv
 	@cd $(Z_SUN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
@@ -1306,6 +1321,7 @@ zero-shared:  Env cenv list\
               libjson-shared libmd5-shared libsha256-shared\
               libsha512-shared librandom-shared libcontain-shared\
               liburl-shared libdl-shared\
+              libsun-shared libmoon-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
@@ -1322,6 +1338,7 @@ zero-static:  Env cenv list\
               libjson-static libmd5-static libsha256-static\
               libsha512-static librandom-static libcontain-static\
               liburl-static libdl-static\
+              libsun-static libmoon-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
@@ -1350,6 +1367,7 @@ zero-clean-shared:\
               clean-libbase64-shared clean-libbcrypt-shared\
               clean-librandom-shared clean-libcontain-shared\
               clean-liburl-shared clean-libdl-shared\
+              clean-libmoon-shared clean-libsun-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1380,6 +1398,7 @@ zero-clean-static:\
               clean-libbase64-static clean-libbcrypt-static\
               clean-librandom-static clean-libcontain-static\
               clean-liburl-static clean-libdl-static\
+              clean-libmoon-static clean-libsun-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
@@ -1449,6 +1468,9 @@ dl-module-shared: Env libdl-shared
 
 sun-module-shared: Env libsun-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sun-module-shared
+
+moon-module-shared: Env libmoon-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) moon-module-shared
 
 net-module-shared: Env libnet-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) net-module-shared

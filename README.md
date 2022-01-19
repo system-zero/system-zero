@@ -1,8 +1,52 @@
 ------------------------- [ zero point draft ] -------------------------------
+Status:  
+Implemented and indepented:
+  - a vim like editor
+  - a tiny shell
+  - a scripting language
+  - a terminal multiplexer
+  - a basic set of system utilities
+  - a primitive http[s] client
+  - a rich set of libraries
+  - a package manager
+  - a container
 
-[Trunc DeveLopment](#TRUNC)  
-[0.1 State](#ZERO_POINT_ONE_STATE) and [Install Instructions](#ZERO_POINT_ONE_STATE_INSTALL_INSTRUCTIONS).  
-[0.0 State](#ZERO_POINT_ZERO_STATE) and [Install Instructions](#ZERO_POINT_ZERO_INSTRUCTIONS).
+Most of them need enhancements or their exposing functionality hasn't been used
+fully yet.
+ 
+The sudo replacement requires libpam and the https functionality requires either
+openssl or libressl.
+  
+Unimplemented:  
+For a standalone system:
+  - init command
+  - device managment
+  - network managment
+  - system configuration (timezone/password/groups)
+  - libc/kernel/X installation?
+  
+Functionality:
+  - mail managment
+  - process viewer
+  - probably libcurl
+  - a chat/file-sharing server/client
+  - a gemini server/client
+  
+Development:
+  - scdoc man page generator
+  - SSL library
+  - libgit2
+  - mir or|and tcc or|and probably tagha or|and gcc and a linker
+  
+Interesting to integrate in this system:
+  - very old C codebases
+  - mostly unknown tiny libraries and utilities
+  - all of the kind of specific algorithms
+  
+Written but not still exposed to this system:
+  - an X window manager
+  
+[Trunc Development](#TRUNC)  
 
 ## Intention
 

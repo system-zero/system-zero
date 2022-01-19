@@ -94,21 +94,19 @@ STRING_DECLARED = 0
 #-----------------------------------------------#
 LA = $(NAME)
 
-LA_STATIC_FLAGS  = -DSTATIC -lustring-$(VERSION) -ldir-$(VERSION)
-LA_STATIC_FLAGS += -lpath-$(VERSION) -lvmap-$(VERSION) -limap-$(VERSION)
+LA_STATIC_FLAGS  = -DSTATIC -lustring-$(VERSION)
+LA_STATIC_FLAGS += -lvmap-$(VERSION) -limap-$(VERSION)
 LA_STATIC_FLAGS += -lerror-$(VERSION) -los-$(VERSION)
 
 PATH_MODULE := 1
 ifeq ($(PATH_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_PATH_MODULE
-  LA_STATIC_FLAGS += -lcstring-$(VERSION)
   CSTRING_DECLARED = 1
 endif
 
 FILE_MODULE := 1
 ifeq ($(FILE_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_FILE_MODULE
-  LA_STATIC_FLAGS += -lfile-$(VERSION)
 endif
 
 STD_MODULE := 1
@@ -214,10 +212,10 @@ ifeq ($(DL_MODULE), 1)
   LA_STATIC_FLAGS += -ldl-$(VERSION)
 endif
 
-SUN_MODULE := 1
-ifeq ($(SUN_MODULE), 1)
-  LA_STATIC_FLAGS += -DREQUIRE_SUN_MODULE
-  LA_STATIC_FLAGS += -lsun-$(VERSION) -lm
+MOON_SUN_MODULES := 1
+ifeq ($(MOON_SUN_MODULES), 1)
+  LA_STATIC_FLAGS += -DREQUIRE_MOON_SUN_MODULES
+  LA_STATIC_FLAGS += -lsun-$(VERSION) -lmoon-$(VERSION) -lm
 endif
 
 NET_MODULE := 0
