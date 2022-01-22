@@ -1,22 +1,20 @@
-------------------------- [ zero point draft ] -------------------------------
+[ zero point draft]
+
 Status:  
-Implemented and indepented:
-  - a vim like editor
-  - a tiny shell
-  - a scripting language
-  - a terminal multiplexer
-  - a basic set of system utilities
-  - a primitive http[s] client
+Implemented:
   - a rich set of libraries
+  - a vim like editor
+  - a terminal multiplexer
+  - a scripting language
+  - a basic set of system utilities
+  - a tiny shell
   - a package manager
   - a container
+  - a primitive http[s] client
 
-Most of them need enhancements or their exposing functionality hasn't been used
-fully yet.
- 
-The sudo replacement requires libpam and the https functionality requires either
-openssl or libressl.
-  
+The only requirenment is libc, except that the sudo replacement requires libpam
+and the https functionality requires either openssl or libressl.
+
 Unimplemented:  
 For a standalone system:
   - init command
@@ -42,6 +40,9 @@ Interesting to integrate in this system:
   - very old C codebases
   - mostly unknown tiny libraries and utilities
   - all of the kind of specific algorithms
+ 
+Indepented units:
+  - functions that operate on one thing
   
 Written but not still exposed to this system:
   - an X window manager

@@ -1511,6 +1511,10 @@ static int buf_com_substitute (buf_t *this, readline_t *rl, int *retval) {
     return buf_substitute (this, "\x0d", "", GLOBAL, interactive isnot NULL, rl->range[0], rl->range[1]);
   }
 
+  if (Readline.arg.exists (rl, "interpret-ctrl-backspace")) {
+    return buf_substitute (this, ".\x08", "", GLOBAL, interactive isnot NULL, rl->range[0], rl->range[1]);
+  }
+
   if (pat is NULL or sub is NULL) return *retval;
 
   *retval = buf_substitute (this, pat->argval->bytes, sub->argval->bytes,
@@ -12116,6 +12120,8 @@ static void ed_init_commands (ed_t *this) {
   ed_append_command_arg (this, "s%",         "--remove-tabs", 13);
   ed_append_command_arg (this, "substitute", "--shiftwidth=", 13);
   ed_append_command_arg (this, "s%",         "--shiftwidth=", 13);
+  ed_append_command_arg (this, "substitute", "--interpret-ctrl-backspace", 26);
+  ed_append_command_arg (this, "s%",         "--interpret-ctrl-backspace", 26);
   ed_append_command_arg (this, "@save_image", "--as=", 5);
 
   if (getuid ()) {

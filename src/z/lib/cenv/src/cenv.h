@@ -111,7 +111,7 @@
 
 /* strlen might made sence, but now is confusing for young minds.
  * so dissasociate it violently by forbiding it in the code.
- * Today a standard charlen() might justfied. */
+ * Today a standard charlen() might justified. */
 
 inline size_t bytelen (const char *str) {
   const char *sp = str;
@@ -124,6 +124,8 @@ inline size_t bytelen (const char *str) {
  * https://medium.com/late-night-programming/strlen-buf-29eb94f8441f 
  * we'll do the best to understand the algorithm.
  * But for now, this subtracts clarity.
+ * In fact for short strings <= 1000 bytes at least or even more, it is faster
+ * than optimized libc strlen. Of course it is much slower on large byte arrays.
  */
 
 typedef   signed int  utf8;

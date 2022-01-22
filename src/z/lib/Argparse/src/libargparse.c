@@ -327,19 +327,19 @@ static int argparse_parse (argparse_t *self, int argc, const char **argv) {
 
   for (; self->argc; self->argc--, self->argv++) {
     const char *arg = self->argv[0];
+
     int opt_has_no_dash = 0;
     if (arg[0] != '-' || !arg[1]) {
       if (self->flags & ARGPARSE_STOP_AT_NON_OPTION) {
         goto end;
       }
 
-      if (!arg[1]) {  /* extension */
-        for (int i = 0; self->options[i].type != ARGPARSE_OPT_END; i++) {
-          if (self->options[i].short_name == arg[0] &&
-            self->options[i].flags & SHORT_OPT_HAS_NO_DASH) {
+
+      for (int i = 0; self->options[i].type != ARGPARSE_OPT_END; i++) {
+        if (self->options[i].short_name == arg[0]) {
+          if (self->options[i].flags & SHORT_OPT_HAS_NO_DASH)
             opt_has_no_dash = 1;
-            break;
-          }
+          break;
         }
       }
 

@@ -1,17 +1,12 @@
-This a tiny Programming Language, that has been implement to supply
-this system, with an extension Language that can be used at runtime.
+This a simple made tiny Programming Language, that provides this system a
+scripting mechanism.
 
 The second purpose and a tiny ambition, is through research to understand
 and finally design, a basic Programming Language Interface, that could be
-interpreted by [m]any Programming Language[s].
+easy to interpreted by other Languages, sometimes even without the need of
+a special interpretation.
 
-That means that it should be composed with established concepts, such with
-a familiar syntax, and very well defined semantics, instantly understood by
-any programmer, and easy to interpreted by other Languages, sometimes even
-without the need of a special interpretation, but as is.
-
-The general idea is, that the exact same code, written in a nutreal way, can
-be interpreted by as many offers an implementation.
+That means with well established syntax, concepts, and semantics.
 
 There is a reference implementation, that should obey this basic abstraction.
 
@@ -57,9 +52,9 @@ Comments.
   # or
   var c
   # both are valid. An explicit semicolon, denotes the end of a statement.
-  # A new line also can denote the end of a statement, when they didn't left
-  # any tokens to consume. Thus a statement, and based on the context of the
-  # may span into multiply lines.
+  # A new line can also denote the end of a statement, and when there are no
+  # any tokens to consume. Thus a statement, and based on the context it may
+  # span into multiply lines.
   # Multiply statements in one line without a semicolon at the end, may work
   # or may not work, as there are a couple of obvious ambiquities, so it can
   # not be guarranteed. However this is valid in this specific implementation:
@@ -88,7 +83,7 @@ Comments.
   # uninitialized, untill the first time that will be initialized with a value
   # other than `null`.
 
-  # You may assign multiply variables, as long they are separated by a comma:
+  # You may assign multiply variables, as long they are separated with a comma:
   var xxx,
       yyy,
       ccc;
@@ -148,7 +143,7 @@ Comments.
     return fibo_tail (n - 1, b, a + b)
   }
 
-  println (fibo_tail (92, 0, 1)) # => 7540113804746346429
+  println (fibo_tail (42, 0, 1)) # => 1836311903
 
   # or
 
@@ -160,9 +155,10 @@ Comments.
   println (fibo_recursive (12)) # => 144
   # however the stack can be easily exhausted with some thousands of calls.
   # In the standard own interface, the compiler performs a tail call optimization
-  # if explicitly call itself as `self`. However the return statement should be
-  # a tail call, e.g., the last one in the scope.
-  # In the above case it's not a tail call though, so hypothetically can overflow.
+  # if the function explicitly recall itself as `self`. However the return statement
+  # should be in a tail call, e.g., the last one in the scope.
+
+  # In the above case it's not a tail call though, so it can overflow.
   # But the first form it is a tail call, and so the return statement it could be
   # written as:
   #   return self (n - 1, b, a + b)
@@ -386,7 +382,8 @@ Probably this will be a very messy output."
   println (la[0] == 'l') # => 1
   # Here also we see that individual characters can be enclosed in single quotes,
   # that they should point to the associated integer value, again like C does.
-  # But unlike C, this is not limited to the ascii range. This works the same:
+  # But unlike C, this is not limited to the ascii range. This works the same
+  # in UTF-8 encoding:
 
   println ('α') # => 945
 
