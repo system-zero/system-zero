@@ -1,0 +1,34 @@
+import ("path")
+import ("io");
+import ("man");
+
+loadfile ("argparse")
+
+var prog = __file__: path_basename ()
+
+var argparse = New Argparse (7, 0, prog)
+argparse.add ("section",  0,  "section=",  "set section (default 2)",  StringType, ARG_VALUE_REQUIRED)
+argparse.add ("help", 'h', "help",     "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var section  = argparse.results.section
+var page = null
+
+ifnot (argparse.argc) {
+  if (Io.fd.isatty (STDIN_FILENO)) {
+    println (stderr, "${%s, prog}: [--section=] [-v,--verbose=] man page")
+    exit (1)
+  }
+
+  page = Io.fd.read (STDIN_FILENO)
+  if null is page then exit (1)
+} else {
+  page = argparse.argv[0]
+}
+
+Man.page (page, section; verbose : 1);
+
+exit (0)

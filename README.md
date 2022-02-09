@@ -6,14 +6,15 @@ Implemented:
   - a vim like editor
   - a terminal multiplexer
   - a scripting language
-  - a basic set of system utilities
+  - a basic set of system/core utilities
   - a tiny shell
   - a package manager
   - a container
   - a primitive http[s] client
 
 The only requirenment is libc, except that the sudo replacement requires libpam
-and the https functionality requires either openssl or libressl.
+and the https functionality requires either openssl or libressl. We can do though  
+without libpam, but we have to implement crypt() first.
 
 Unimplemented:  
 For a standalone system:
@@ -26,7 +27,6 @@ For a standalone system:
 Functionality:
   - mail managment
   - process viewer
-  - probably libcurl
   - a chat/file-sharing server/client
   - a gemini server/client
   
@@ -47,7 +47,25 @@ Indepented units:
 Written but not still exposed to this system:
   - an X window manager
   
-[Trunc Development](#TRUNC)  
+See [Trunc Development.](#TRUNC)  
+  
+Briefly, many of them are almost fully functional, but some of them are in a  
+prototype state and with unhandled conditions and unimplemented functionality.  
+And while even now with some few lines of code it will probably can boot and  
+be used as a standalone system - so many little details that need some handling -
+there isn't such a big will to take this path, as I've done it in the past.  
+So the focus seems to be shifted to things I've never deal with them before, as  
+the main intention for this project is to understand the way and the why.  
+
+So we have to move on a bit faster from the zero ('z') namespace, which it was  
+really intented to serve as a prototype, all the way towards the alpha ('a').  
+So we'll have to break our below-mentioned schedule and move to the next why ('y')  
+namespace, which it will serve mostly to understand and implement some bits of a libc,  
+so we can be indepented at some point, though this might looks like an overly ambition  
+for an uneducated yours trully.
+
+What it follows is the original README document, which it is also incomplete and plus  
+needs a serious revision.
 
 ## Intention
 
@@ -1446,6 +1464,11 @@ gained consience. Hopefully one day.
 * [Http Status codes.](https://github.com/j-ulrich/http-status-codes-cpp)
 * [SunRiseSet.](https://github.com/troglobit/sun)
 * [Mini snprintf.](https://github.com/tatetian/mini-snprintf)
+* [A minimal C Runtime.](https://github.com/lpsantil/rt0)
+* [A base system and early userspace for Linux.](https://github.com/arsv/minibase)
+* [Diet Libc.](http://www.fefe.de/dietlibc)
+* [Man utility.](https://github.com/rofl0r/hardcore-utils/blob/master/man.c)
+* [OpenDoas.](https://github.com/Duncaen/OpenDoas)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

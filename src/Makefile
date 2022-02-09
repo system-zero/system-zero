@@ -259,6 +259,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Sun_Type       = Sun
     Z_SUN_SRCDIR   = $(Z_SRCLIBDIR)/$(Sun_Type)/src
 
+    # Man_Type
+    Man_Type       = Man
+    Z_MAN_SRCDIR   = $(Z_SRCLIBDIR)/$(Man_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -953,6 +957,18 @@ clean-libsun-shared:
 clean-libsun-static:
 	@cd $(Z_SUN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libman-shared: Env cenv
+	@cd $(Z_MAN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libman-static: Env cenv
+	@cd $(Z_MAN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libman-shared:
+	@cd $(Z_MAN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libman-static:
+	@cd $(Z_MAN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared\
@@ -1273,6 +1289,17 @@ clean-contain-static:
 	@cd $(ZA_CONTAIN_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 
 #----------------------------------------------------------#
+  # man
+  ZA_MAN          = man
+  ZA_MAN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_MAN)/src
+
+man:
+	@cd $(ZA_MAN_SRCDIR) && $(MAKE) $(MARGS)
+
+clean-man:
+	@cd $(ZA_MAN_SRCDIR) && $(MAKE) $(MARGS) clean
+
+#----------------------------------------------------------#
   # packman
   ZA_PACKMAN          = packman
   ZA_PACKMAN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_PACKMAN)/src
@@ -1322,6 +1349,7 @@ zero-shared:  Env cenv list\
               libsha512-shared librandom-shared libcontain-shared\
               liburl-shared libdl-shared\
               libsun-shared libmoon-shared\
+              libman-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
@@ -1339,6 +1367,7 @@ zero-static:  Env cenv list\
               libsha512-static librandom-static libcontain-static\
               liburl-static libdl-static\
               libsun-static libmoon-static\
+              libman-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
@@ -1368,6 +1397,7 @@ zero-clean-shared:\
               clean-librandom-shared clean-libcontain-shared\
               clean-liburl-shared clean-libdl-shared\
               clean-libmoon-shared clean-libsun-shared\
+              clean-libman-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1399,6 +1429,7 @@ zero-clean-static:\
               clean-librandom-static clean-libcontain-static\
               clean-liburl-static clean-libdl-static\
               clean-libmoon-static clean-libsun-static\
+              clean-libman-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
@@ -1420,7 +1451,7 @@ modules-shared: libsh-shared libsys-shared libterm-shared\
                 libmd5-shared libsha256-shared libsha512-shared\
                 librandom-shared libbase64-shared libio-shared\
                 libos-shared libstring-shared liburl-shared\
-                libdl-shared
+                libdl-shared libman-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
 
 path-module-shared: libpath-shared
@@ -1472,6 +1503,9 @@ sun-module-shared: Env libsun-shared
 moon-module-shared: Env libmoon-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) moon-module-shared
 
+man-module-shared: Env libman-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) man-module-shared
+
 net-module-shared: Env libnet-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) net-module-shared
 
@@ -1491,6 +1525,12 @@ self-shared: cenv libstring-shared libdir-shared libargparse-shared\
              libvui-shared libjson-shared libauth-shared libself-shared
 	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
 
+self-editor-shared: cenv libe-shared
+	@cd $(ZA_SELF_SRCDIR) && $(MAKE) DEBUG=1 $(APP_FLAGS) self-editor-shared
+	
+self-editor-static: cenv libe-static
+	@cd $(ZA_SELF_SRCDIR) && $(MAKE) DEBUG=1 $(APP_FLAGS) self-editor-static
+	
 self-static: cenv libstring-static libdir-static libargparse-static\
              libvstring-static libcstring-static libe-static\
              libvui-static libjson-static libauth-static libself-static

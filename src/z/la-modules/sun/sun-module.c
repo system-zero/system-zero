@@ -23,7 +23,7 @@ static VALUE sun_compute (la_t *this) {
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a number qualifier");
   double lon = AS_NUMBER(v_lon);
 
-  VALUE v_lat = La.get.qualifier (this, "lat", NUMBER(0));
+  VALUE v_lat = La.get.qualifier (this, "lat", NUMBER(0.0));
   ifnot (IS_NUMBER(v_lat))
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a number qualifier");
   double lat = AS_NUMBER(v_lat);
@@ -37,7 +37,7 @@ static VALUE sun_compute (la_t *this) {
   new.utc = utc;
   new.lat = lat;
   new.lon = lon;
-
+  new.tm = NULL;
   sun_t *sun = SunInit (&new);
 
   SunCompute (sun);

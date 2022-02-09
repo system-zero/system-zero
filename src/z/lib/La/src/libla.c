@@ -9793,10 +9793,16 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
     case MAP_TYPE:
       switch (y.type) {
         case NULL_TYPE: return result;
+        case MAP_TYPE: {
+          Vmap_t *xmap = AS_MAP(x);
+          Vmap_t *ymap = AS_MAP(y);
+          return INT (xmap == ymap);
+        }
+
         default:
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
-              "ObjectType == %s is not possible",
+              "MapType == %s is not possible",
               AS_STRING_BYTES(la_typeAsString (this, y)));
           return result;
       }

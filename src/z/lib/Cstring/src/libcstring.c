@@ -68,7 +68,8 @@ static char *cstring_byte_in_str_r (const char *s, int c) {
   return (char *) sp;
 }
 
-/* the same function under a different name is 25-30 times slower */
+/* the same function under a different name is 25-30 times slower
+ * so probably the compiler uses an own implementation */
 char *strstr (const char *str, const char *substr) {
   while (*str != '\0') {
     if (*str == *substr) {

@@ -586,6 +586,7 @@ static int buf_undo_replace_line (buf_t *this, Action_t *redoact, action_t *act)
   self(current.set, act->idx);
 
   action_t *ract = self(action.new);
+
   self(set.row.idx, act->idx, act->row_pos - $my(dim)->first_row, act->col_pos);
   undo_set (ract, REPLACE_LINE);
   ract->idx = this->cur_idx;
@@ -601,7 +602,7 @@ static int buf_undo_replace_line (buf_t *this, Action_t *redoact, action_t *act)
 /* ATTENTION */
 /* generally speaking the undo/redo basic functionality seems to be
  * working. what is not working always perfect, is the state of the
- * screen, i thing on redoing'it, so this has a very serious bug */
+ * screen, i think on redoing'it, so this has a very serious bug */
 static int buf_undo_exec (buf_t *this, utf8 com) {
   Action_t *Action = NULL;
   if (com is 'u')
@@ -2108,7 +2109,6 @@ static row_t *buf_current_replace_with (buf_t *this, const char *bytes) {
 
 static row_t *__buf_current_delete (buf_t *this, row_t **row) {
   if (this->current is NULL) return NULL;
-
   *row = this->current;
 
   if (this->num_items is 1) {
@@ -2145,6 +2145,7 @@ theend:
 
 static row_t *buf_current_delete (buf_t *this) {
   row_t *row = NULL;
+  //row_t *row = this->current;
   __buf_current_delete (this, &row);
 
   if (row isnot NULL) self(release.row, row);
@@ -5414,12 +5415,35 @@ static int buf_insert_new_line (buf_t **thisp, utf8 com) {
   ListStackPush (Action, action);
   self(undo.push, Action);
 
-  if (currow_idx > new_idx) {int t = new_idx; new_idx = currow_idx; currow_idx = t;}
+  if (currow_idx > new_idx) {
+    int t = new_idx;
+    new_idx = currow_idx;
+    currow_idx = t;
+  }
+
   self(adjust.marks, INSERT_LINE, currow_idx, new_idx);
 
   $my(flags) |= BUF_IS_MODIFIED;
   self(draw);
-  return selfp(insert.mode, com, NULL);
+  int retval = selfp(insert.mode, com, NULL);
+
+#if 0
+  Action_t *Laction = $my(undo)->head;
+  action_t *laction = Laction->head;
+  while (laction->next)
+    laction = laction->next;
+  laction->prev = NULL;
+  Laction->num_items--;
+  self(action.release, laction);
+
+
+  Action_t *Laction = self(undo.pop);
+  action_t *laction = Laction->head->next;
+  ListStackPush (Action, Laction->head);
+  free (Laction);
+  free (BAction);
+#endif
+  return retval;
 }
 
 static int buf_normal_join (buf_t *this, int draw) {

@@ -79,6 +79,10 @@
 #include "../../../la-modules/moon/moon-module.c"
 #endif
 
+#ifdef REQUIRE_MAN_MODULE
+#include "../../../la-modules/man/man-module.c"
+#endif
+
 #ifdef REQUIRE_NET_MODULE
 #include "../../../la-modules/net/net-module.c"
 #endif
@@ -553,6 +557,10 @@ int main (int argc, char **argv) {
   #ifdef REQUIRE_MOON_SUN_MODULES
     __init_sun_module__ (la);
     __init_moon_module__ (la);
+  #endif
+
+  #ifdef REQUIRE_MAN_MODULE
+    __init_man_module__ (la);
   #endif
 
   #ifdef REQUIRE_NET_MODULE
