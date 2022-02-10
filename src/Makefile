@@ -263,6 +263,10 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Man_Type       = Man
     Z_MAN_SRCDIR   = $(Z_SRCLIBDIR)/$(Man_Type)/src
 
+    # Sudoku_Type
+    Sudoku_Type       = Sudoku
+    Z_SUDOKU_SRCDIR   = $(Z_SRCLIBDIR)/$(Sudoku_Type)/src
+
     # though not a type, this is a rich double linked list which is implemented
     # with macros, to gain abstraction.
     # A compatible container should include:
@@ -969,6 +973,18 @@ clean-libman-shared:
 clean-libman-static:
 	@cd $(Z_MAN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+libsudoku-shared: Env cenv
+	@cd $(Z_SUDOKU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
+
+libsudoku-static: Env cenv
+	@cd $(Z_SUDOKU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
+
+clean-libsudoku-shared:
+	@cd $(Z_SUDOKU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-libsudoku-static:
+	@cd $(Z_SUDOKU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+#----------------------------------------------------------#
 
 # Development and personal stuff (ignore this section)
 libself-shared: Env cenv libstring-shared libcstring-shared\
@@ -1311,6 +1327,17 @@ clean-packman:
 	@cd $(ZA_PACKMAN_SRCDIR) && $(MAKE) $(MARGS) clean
 
 #----------------------------------------------------------#
+  # sudoku
+  ZA_SUDOKU          = sudoku
+  ZA_SUDOKU_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SUDOKU)/src
+
+sudoku:
+	@cd $(ZA_SUDOKU_SRCDIR) && $(MAKE) $(MARGS)
+
+clean-sudoku:
+	@cd $(ZA_SUDOKU_SRCDIR) && $(MAKE) $(MARGS) clean
+
+#----------------------------------------------------------#
   # net
   ZA_NET              = net
   ZA_NET_SRCDIR      := $(Z_SRCAPPDIR)/$(ZA_NET)/src
@@ -1508,6 +1535,9 @@ man-module-shared: Env libman-shared
 
 net-module-shared: Env libnet-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) net-module-shared
+
+sudoku-module-shared: Env libsudoku-shared
+	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sudoku-module-shared
 
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)

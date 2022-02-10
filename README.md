@@ -49,20 +49,20 @@ Written but not still exposed to this system:
   
 See [Trunc Development.](#TRUNC)  
   
-Briefly, many of them are almost fully functional, but some of them are in a  
-prototype state and with unhandled conditions and unimplemented functionality.  
-And while even now with some few lines of code it will probably can boot and  
+Briefly, many of them are almost fully functional, but some of them are in a
+prototype state and with unhandled conditions and unimplemented functionality.
+And while even now with some few lines of code it will probably can boot and
 be used as a standalone system - so many little details that need some handling -
-there isn't such a big will to take this path, as I've done it in the past.  
-So the focus seems to be shifted to things I've never deal with them before, as  
-the main intention for this project is to understand the way and the why.  
+there isn't such a big will to take this path, as I've done it in the past.
+So the focus seems to be shifted to things I've never deal with them before, as
+the main intention for this project is to understand the way and the why.
 
-So we have to move on a bit faster from the zero ('z') namespace, which it was  
-really intented to serve as a prototype, all the way towards the alpha ('a').  
-So we'll have to break our below-mentioned schedule and move to the next why ('y')  
-namespace, which it will serve mostly to understand and implement some bits of a libc,  
-so we can be indepented at some point, though this might looks like an overly ambition  
-for an uneducated yours trully.
+So we have to move on a bit faster from the zero ('z') namespace, which it was
+really intented to serve as a prototype, all the way towards the alpha ('a').
+So we'll have to break our below-mentioned schedule and move to the next why ('y')
+namespace, which it will serve mostly to understand and implement some bits of a libc,
+so we can be indepented at some point, though this might looks like an overly ambition
+for an uneducated.
 
 What it follows is the original README document, which it is also incomplete and plus  
 needs a serious revision.
@@ -1469,6 +1469,7 @@ gained consience. Hopefully one day.
 * [Diet Libc.](http://www.fefe.de/dietlibc)
 * [Man utility.](https://github.com/rofl0r/hardcore-utils/blob/master/man.c)
 * [OpenDoas.](https://github.com/Duncaen/OpenDoas)
+* [Sudoku in C with classes!](https://github.com/vaithak/Sudoku-Generator)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

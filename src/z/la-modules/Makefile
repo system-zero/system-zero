@@ -179,6 +179,14 @@ clean-man-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/man-module.so  || $(RM)  $(SYSMODULEDIR)/man-module.so
 
 #-----------------------------------------------------------
+SUDOKU_FLAGS = -lsudoku
+sudoku-module-shared: Env
+	$(CC) -o $(SYSMODULEDIR)/sudoku-module.so $(SHARED_FLAGS) $(SUDOKU_FLAGS) sudoku/sudoku-module.c
+
+clean-sudoku-shared:
+	@$(TEST) ! -f $(SYSMODULEDIR)/sudoku-module.so  || $(RM)  $(SYSMODULEDIR)/sudoku-module.so
+
+#-----------------------------------------------------------
 NET_FLAGS = -lstring -lvmap -lpath -lvstring -lerror -lnet -lurl -lssl -lcrypto -lresolv -lpthread
 net-module-shared: Env clean-net-shared
 	$(CC) -o $(SYSMODULEDIR)/net-module.so $(SHARED_FLAGS) $(NET_FLAGS) net/net-module.c
