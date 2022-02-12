@@ -1238,7 +1238,7 @@ To do that use:
    state: rather stable
 
    maybe_crashed:  
-     under circumstances with a series of undo/redos  
+     - under circumstances with a series of undo/redos  
        reproducible: a bit hard, as it does not happens on continuously
        undos/redos and without to change the cursor on different line between
        the two calls, and without to insert new lines
@@ -1246,15 +1246,29 @@ To do that use:
        cause:  For certain it is the jump code that calculates wrong the line numbers.  
        state: This is good to fix, but since this is not my style to work on an editor, it
          doesn't happen in the workflow, there is an inclination to devote time.
+       [update at 12 of February: I was able to reliably reproduce it, and commited
+         a fix (88cea19a0b75ca4598db3ff313a71567acc9e7ce), which fixed the case
+         i could reproduce, and it seems that this is also the underlying bug;
+         but time will tell though.]
 
-     under circumstances when writting with characters > ASCII_RANGE  
+     - under circumstances when writting with characters > ASCII_RANGE  
        reproducible: needs some time but possible. Write some greek and make
          various moves like backspace/delete.
 
        cause: easy (wrong calculation, when going [for|back]ward)  
+
        state: very good to fix as it is annoying, but need to have time and will
 
-  - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) calles as:
+       [update: it happens also and with lines with tab characters (Makefiles),
+         (it doesn't crash but it produces and renders unexpected results).
+         It is annoying and should be fixed, though i still have to find the will.
+
+    - not a crash but a visual thing. Sometimes in a combination of operations
+      the cursor is not visible in insert mode. The fix should be a simple refresh
+      but i have to reproduce when happens and never tried that hard.
+      
+
+  - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [with window managment and [dea]ttach capabilities](data/docs/v.md) called as:
 
      V or V-static [options] socketname  
      V --help  # for s short help
@@ -1279,6 +1293,10 @@ To do that use:
    state: on stabilization. Syntax and semantics are hard to change.  
    crashes: it is an ongoing work and it is quite fragile, but not
      with current code
+     [update: crashes in recursive functions and when there two consecutive
+       calls to itself. This bug still exists. Really i almost never use
+       recursive functions, and when i do, i use return statements in tail call
+       position. And really this language is intented for internal use.]
 
   - many libraries  
     state:  most of them are mature, used for a couple of years. But
@@ -1298,7 +1316,7 @@ To do that use:
       haven't been implemented.
 
       update (last days of Octomber): quite bit of the basic set of a system
-      command line functionality has been implemented.
+      command line functionality (core utilities) has been implemented.
 
     sources: (some of them)  
     [Dir.make in C](src/z/app/dir/src/Dir.make.c)  
@@ -1490,6 +1508,7 @@ this is actually and a research that will provide proves and some qualifications
 I hate to live for just proving, and especially when the proves, prove me wrong.
 Now, on what to do with them! Anyway, almost all the followed code, after this
 first scratch code, it was simply mostly iterations of that same system.
+
 
 My interest is about primitive systems, that can use the most straight and the
 most economical access to the underlying machine, with a standardized (through

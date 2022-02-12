@@ -546,6 +546,7 @@ static int buf_undo_insert (buf_t *this, Action_t *redoact, action_t *act) {
 static int buf_undo_delete_line (buf_t *this, Action_t *redoact, action_t *act) {
   action_t *ract = self(action.new);
   row_t *row = self(row.new_with, act->bytes);
+
   if (this->num_items) {
     if (act->idx >= this->num_items) {
       self(current.set, this->num_items - 1);
@@ -560,9 +561,11 @@ static int buf_undo_delete_line (buf_t *this, Action_t *redoact, action_t *act) 
       self(current.prepend, row);
       ract->idx = this->cur_idx;
     }
+
     ListStackPush (redoact, ract);
     self(adjust.marks, INSERT_LINE, act->idx, act->idx + 1);
     undo_restore (act);
+
   } else {
     this->head = row;
     this->tail = row;
@@ -572,12 +575,7 @@ static int buf_undo_delete_line (buf_t *this, Action_t *redoact, action_t *act) 
     self(adjust.view);
     undo_set (ract, INSERT_LINE);
     ListStackPush (redoact, ract);
-    //  $my(video_first_row_idx) = this->cur_idx;
-    //  self(current.append, row);
   }
-
-  if ($my(video_first_row_idx) is this->cur_idx)
-    $my(video_first_row) = this->current;
 
   return DONE;
 }
@@ -2145,7 +2143,6 @@ theend:
 
 static row_t *buf_current_delete (buf_t *this) {
   row_t *row = NULL;
-  //row_t *row = this->current;
   __buf_current_delete (this, &row);
 
   if (row isnot NULL) self(release.row, row);
@@ -4660,9 +4657,37 @@ static void buf_draw_current_row (buf_t *this) {
 }
 
 static void buf_to_video (buf_t *this) {
-  row_t *row = $my(video_first_row);
-  int idx = $my(video_first_row_idx);
   char line[MAXLEN_LINE];
+  int cur_idx = this->cur_idx;
+  int idx = $my(video_first_row_idx);
+
+  row_t *row = this->current;
+  row_t *current = row;
+
+  /* this is started actually as a workaround to fix the undo/redo
+   * when the video_first_line property ended up with a free'd row
+   * by a delete operation. Studing a bit the mechanism and based
+   * on the algorithm which is weak, we either should try to (at least)
+   * check all the rows on the undo/redo structs - but even then
+   * there wasn't a guarrantee that after an opossite operation
+   * the structures wouldn't end up as dangling pointers. Plus we 
+   * had to check in every place (at least two) where is a delete
+   * operation of this kind. So instead of complicating the code
+   * considerable, maybe is better to be safe and do it only in
+   * this block of code. Actually this is place where we can set
+   * and adjust the right row pointer to this property. Though i
+   * suspect that we might be doing without this just fine.
+   */
+  do {  // we know some details which the abstraction needs to check
+    if (idx is cur_idx) break;  // so we can optimize a bit
+
+    if (idx < cur_idx)
+      for (int i = idx; i < cur_idx; i++) row = row->prev;
+    else
+      for (int i = idx; row->next and i < cur_idx; i++) row = row->next;
+  } while (0);
+
+  $my(video_first_row) = row;
 
   int i;
   for (i = $my(dim)->first_row - 1; i < $my(statusline_row) - 1; i++) {
@@ -4671,6 +4696,8 @@ static void buf_to_video (buf_t *this) {
     Video.set.row_with ($my(video), i, line);
     row = row->next;
   }
+
+  this->current = current;
 
   while (i < $my(statusline_row) - 1)
     Video.set.row_with ($my(video), i++, $my(ftype)->on_emptyline->bytes);
@@ -5399,11 +5426,6 @@ static int buf_insert_new_line (buf_t **thisp, utf8 com) {
     String.clear ($mycur(data));
     action->idx = this->cur_idx;
 
-    if ($my(video_first_row_idx) is this->cur_idx and 0 is this->cur_idx) {
-      $my(video_first_row_idx)--;
-      $my(video_first_row) = $my(video_first_row)->prev;
-    }
-
     this->current = this->current->next;
     this->cur_idx++;
     if ($my(video)->row_pos isnot $my(dim)->first_row)
@@ -5425,25 +5447,7 @@ static int buf_insert_new_line (buf_t **thisp, utf8 com) {
 
   $my(flags) |= BUF_IS_MODIFIED;
   self(draw);
-  int retval = selfp(insert.mode, com, NULL);
-
-#if 0
-  Action_t *Laction = $my(undo)->head;
-  action_t *laction = Laction->head;
-  while (laction->next)
-    laction = laction->next;
-  laction->prev = NULL;
-  Laction->num_items--;
-  self(action.release, laction);
-
-
-  Action_t *Laction = self(undo.pop);
-  action_t *laction = Laction->head->next;
-  ListStackPush (Action, Laction->head);
-  free (Laction);
-  free (BAction);
-#endif
-  return retval;
+  return  selfp(insert.mode, com, NULL);
 }
 
 static int buf_normal_join (buf_t *this, int draw) {
@@ -6276,8 +6280,6 @@ static int buf_delete_line (buf_t *this, int count, int regidx) {
   if (count > this->num_items - this->cur_idx)
     count = this->num_items - this->cur_idx;
 
-  int currow_idx = this->cur_idx;
-
   int nth = THIS_LINE_PTR_IS_AT_NTH_POS;
   int isatend = $my(state) & PTR_IS_AT_EOL;
 
@@ -6329,21 +6331,10 @@ static int buf_delete_line (buf_t *this, int count, int regidx) {
   if (this->num_items is 1 and $my(cur_video_row) isnot $my(dim)->first_row)
     $my(video)->row_pos = $my(cur_video_row) = $my(dim)->first_row;
 
-  if (this->cur_idx is currow_idx) {
-    if ($my(video_first_row_idx) < fidx) {
-       goto theend;
-    } else {
-      $my(video_first_row) = this->current;
-      $my(video_first_row_idx) = this->cur_idx;
-      goto theend;
-    }
-  }
-
   if ($my(video_first_row_idx) > this->cur_idx or
       $my(video_first_row_idx) < this->cur_idx)
     self(adjust.view);
 
-theend:
   $my(flags) |= BUF_IS_MODIFIED;
   if (perfom_reg) {
     if (reg_append) {
@@ -6610,9 +6601,6 @@ static int buf_normal_put (buf_t *this, int regidx, utf8 com) {
       this->current = currow;
       this->cur_idx = currow_idx;
     } else {
-      if ($my(video_first_row_idx) is this->cur_idx)
-        $my(video_first_row) = this->current;
-
       $mycur(cur_col_idx) = rg->cur_col_idx;
       $mycur(first_col_idx) = rg->first_col_idx;
       $my(video)->col_pos = $my(cur_video_col) = rg->col_pos;
