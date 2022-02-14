@@ -6280,6 +6280,8 @@ static int buf_delete_line (buf_t *this, int count, int regidx) {
   if (count > this->num_items - this->cur_idx)
     count = this->num_items - this->cur_idx;
 
+  int currow_idx = this->cur_idx;
+
   int nth = THIS_LINE_PTR_IS_AT_NTH_POS;
   int isatend = $my(state) & PTR_IS_AT_EOL;
 
@@ -6331,9 +6333,13 @@ static int buf_delete_line (buf_t *this, int count, int regidx) {
   if (this->num_items is 1 and $my(cur_video_row) isnot $my(dim)->first_row)
     $my(video)->row_pos = $my(cur_video_row) = $my(dim)->first_row;
 
-  if ($my(video_first_row_idx) > this->cur_idx or
-      $my(video_first_row_idx) < this->cur_idx)
-    self(adjust.view);
+  if (this->cur_idx is currow_idx) {
+    if ($my(video_first_row_idx) > fidx)
+      $my(video_first_row_idx) = this->cur_idx;
+  } else {
+    if ($my(video_first_row_idx) isnot this->cur_idx)
+      self(adjust.view);
+  }
 
   $my(flags) |= BUF_IS_MODIFIED;
   if (perfom_reg) {
