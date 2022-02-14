@@ -194,6 +194,8 @@
 #define TOKEN_MINUS_MINUS 1010
 #define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
 
+#define TOKEN_INCLUDE     10000
+
 typedef struct la_string {
   uint len;
   const char *ptr;
@@ -8781,6 +8783,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
   int c;
 
   for (;;) {
+    get_byte:
     c = GET_BYTE();
 
     if (c is TOKEN_EOF and break_at_eof)
@@ -8797,11 +8800,23 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
     }
 
     if (c is TOKEN_ESCAPE_CHR) {
-      if (pc is TOKEN_ESCAPE_CHR or PEEK_NTH_BYTE(0) isnot '$') {
+      if (pc is TOKEN_ESCAPE_CHR) {
         pc = str->bytes[str->num_bytes - 1];
         String.append_byte (str, TOKEN_ESCAPE_CHR);
-      } else
-        pc = TOKEN_ESCAPE_CHR;
+      } else {
+        switch (PEEK_NTH_BYTE(0)) {
+          case 'a' : String.append_byte (str, '\a'); GET_BYTE(); pc = 0;  goto get_byte;
+          case 'b' : String.append_byte (str, '\b'); GET_BYTE(); pc = 0;  goto get_byte;
+          case 'f' : String.append_byte (str, '\f'); GET_BYTE(); pc = 0;  goto get_byte;
+          case 't' : String.append_byte (str, '\t'); GET_BYTE(); pc = 0;  goto get_byte;
+          case 'r' : String.append_byte (str, '\r'); GET_BYTE(); pc = 0;  goto get_byte;
+          case 'n' : String.append_byte (str, '\n'); GET_BYTE(); pc = 0;  goto get_byte;
+          case 'v' : String.append_byte (str, '\v'); GET_BYTE(); pc = 0;  goto get_byte;
+          case 'e' : String.append_byte (str,  033); GET_BYTE(); pc = 0;  goto get_byte;
+          default:
+            pc = TOKEN_ESCAPE_CHR;
+        }
+      }
 
       c = GET_BYTE();
     }
@@ -9219,6 +9234,7 @@ print_str:
   if (num_bts < 0) {
     this->print_bytes (this->err_fp, "error while printing string\n");
     fprintf (this->err_fp, "%s\n", str->bytes);
+    fprintf (this->err_fp, "%s|n", Error.errno_string (errno));
     goto theend;
   }
 
@@ -10387,6 +10403,7 @@ static struct def {
   { "return",  TOKEN_RETURN,   PTR(la_parse_return) },
   { "import",  TOKEN_IMPORT,   PTR(la_parse_import) },
   { "loadfile",TOKEN_LOADFILE, PTR(la_parse_loadfile) },
+  { "include", TOKEN_INCLUDE,  PTR(la_parse_loadfile) },
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
   { "New",     TOKEN_NEW,      NULL_VALUE },
   { "Type",    TOKEN_TYPE,     PTR(la_parse_type) },
@@ -10645,10 +10662,11 @@ static int la_std_def (la_t *this, la_opts opts) {
 
 static int la_print_bytes (FILE *fp, const char *bytes) {
   if (NULL is bytes) return 0;
-  string *parsed = IO.parse_escapes ((char *)bytes);
-  if (NULL is parsed) return LA_NOTOK;
-  int nbytes = fprintf (fp, "%s", parsed->bytes);
-  String.release (parsed);
+  //string *parsed = IO.parse_escapes ((char *)bytes);
+  //if (NULL is parsed) return LA_NOTOK;
+  //int nbytes = fprintf (fp, "%s", parsed->bytes);
+  //String.release (parsed);
+  int nbytes = fprintf (fp, "%s", bytes);
   fflush (fp);
   return nbytes;
 }

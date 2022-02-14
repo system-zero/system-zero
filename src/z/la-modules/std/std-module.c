@@ -173,6 +173,7 @@ static VALUE string_cmp (la_t *this, VALUE v_sa, VALUE v_sb) {
   if (retval < 0) return INT(-1);
   return INT(1);
 }
+
 static VALUE string_cmp_n (la_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
   (void) this;
   ifnot (IS_STRING(v_sa)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -227,12 +228,26 @@ static VALUE string_byte_in_str (la_t *this, VALUE v_str, VALUE v_byte) {
   return STRING(result);
 }
 
+static VALUE string_bytes_in_str (la_t *this, VALUE v_str, VALUE v_bytes) {
+  (void) this;
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_bytes)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  char *str = AS_STRING_BYTES(v_str);
+  char *bytes = AS_STRING_BYTES(v_bytes);
+  char *new = Cstring.bytes_in_str (str, bytes);
+  if (NULL is new)
+    return NULL_VALUE;
+  string *result = String.new_with (new);
+  return STRING(result);
+}
+
 static VALUE string_advance_on_byte (la_t *this, VALUE v_str, VALUE v_byte) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_byte)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   char *str = AS_STRING_BYTES(v_str);
   int byte = AS_INT(v_byte);
+  if (byte < 0 or byte > 255)  THROW(LA_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
 
   char *sp = Cstring.byte.in_str (str, byte);
   if (NULL is sp) return NULL_VALUE;
@@ -311,11 +326,30 @@ static VALUE string_numchars (la_t *this, VALUE v_str) {
   return INT(Ustring.char_num (s->bytes, s->num_bytes)); // a small disharmony here
 }
 
+static VALUE string_to_upper (la_t *this, VALUE v_str) {
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *s = AS_STRING(v_str);
+  char buf[s->num_bytes + 1];
+  Ustring.change_case (buf, s->bytes, s->num_bytes, TO_UPPER);
+  s = String.new_with (buf);
+  return STRING(s);
+}
+
+static VALUE string_to_lower (la_t *this, VALUE v_str) {
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  string *s = AS_STRING(v_str);
+  char buf[s->num_bytes + 1];
+  Ustring.change_case (buf, s->bytes, s->num_bytes, TO_LOWER);
+  s = String.new_with (buf);
+  return STRING(s);
+}
+
 static VALUE string_trim_byte_at_end (la_t *this, VALUE v_str, VALUE v_byte) {
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_byte))   THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   string *s = AS_STRING(v_str);
   int byte = AS_INT(v_byte);
+  if (byte < 0 or byte > 255)  THROW(LA_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
   string *new = String.dup (s);
   String.trim_end (new, byte);
   return STRING(new);
@@ -411,10 +445,13 @@ public int __init_std_module__ (la_t *this) {
     { "string_bytelen",     PTR(string_bytelen), 1 },
     { "string_to_array",    PTR(string_to_array), 1},
     { "string_numchars",    PTR(string_numchars), 1 },
+    { "string_to_upper",    PTR(string_to_upper), 1 },
+    { "string_to_lower",    PTR(string_to_lower), 1 },
     { "string_tokenize",    PTR(string_tokenize), 2 },
     { "string_to_number",   PTR(string_to_number), 1 },
     { "string_to_integer",  PTR(string_to_integer), 1 },
     { "string_byte_in_str", PTR(string_byte_in_str), 2 },
+    { "string_bytes_in_str", PTR(string_bytes_in_str), 2 },
     { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
     { "string_trim_byte_at_end", PTR(string_trim_byte_at_end), 2},
     { "integer_eq",         PTR(integer_eq), 2},
@@ -452,10 +489,13 @@ public int __init_std_module__ (la_t *this) {
        "bytelen" : string_bytelen,
        "numchars" : string_numchars,
        "tokenize" : string_tokenize,
+       "to_upper" : string_to_upper,
+       "to_lower" : string_to_lower,
        "to_array" : string_to_array,
        "to_number" : string_to_number,
        "to_integer" : string_to_integer,
        "byte_in_str" : string_byte_in_str,
+       "bytes_in_str" : string_bytes_in_str,
        "advance_on_byte" : string_advance_on_byte,
        "trim_byte_at_end" : string_trim_byte_at_end
      };

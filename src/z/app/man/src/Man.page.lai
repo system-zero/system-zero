@@ -6,7 +6,7 @@ loadfile ("argparse")
 
 var prog = __file__: path_basename ()
 
-var argparse = New Argparse (7, 0, prog)
+var argparse = New Argparse (2, 0, prog)
 argparse.add ("section",  0,  "section=",  "set section (default 2)",  StringType, ARG_VALUE_REQUIRED)
 argparse.add ("help", 'h', "help",     "show this message", BooleanType, 0)
 
