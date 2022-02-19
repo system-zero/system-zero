@@ -194,7 +194,7 @@
 #define TOKEN_MINUS_MINUS 1010
 #define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
 
-#define TOKEN_INCLUDE     10000
+#define TOKEN_INCLUDE     89000
 
 typedef struct la_string {
   uint len;
@@ -1210,7 +1210,7 @@ static VALUE list_set (la_t *this, VALUE v_list, VALUE v_item, int what) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   listType *list = AS_LIST(v_list);
 
-  listNode *node = Alloc(sizeof (listNode));
+  listNode *node = Alloc (sizeof (listNode));
 
   VALUE v;
   if (v_item.sym isnot NULL)
@@ -2768,6 +2768,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       continue;
     }
 
+    //if ((c is TOKEN_COMMA or c is TOKEN_NL) and 0 is instr and 0 is inmap and 0 is inar)
     if (c is TOKEN_COMMA and 0 is instr and 0 is inmap and 0 is inar)
       num_elem++;
   }
@@ -3021,6 +3022,7 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
 
     idx++;
   } while (TOKEN is TOKEN_COMMA);
+  // } while (TOKEN is TOKEN_COMMA or (TOKEN is TOKEN_NL and PEEK_NTH_TOKEN(0) isnot TOKEN_INDEX_CLOS));
 
   if (idx - 1 isnot last_idx)
     THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
@@ -3856,8 +3858,16 @@ static int la_map_set_value (la_t *this, Vmap_t *map, const char *key, VALUE v, 
       }
     break;
 
+
     case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
     case NULL_TYPE  : val->asNull    = v.asNull;    break;
+    case MAP_TYPE:
+      if (v.sym isnot NULL) {
+        val->asInteger = (pointer) AS_MAP(la_copy_map (v));
+        break;
+      }
+      // fall through
+
     default:          val->asInteger = v.asInteger; break;
   }
 
@@ -5315,6 +5325,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
       CFunc op = (CFunc) AS_PTR(sym->value);
       TOKENARGS = (sym->type >> 8) & 0xff;
       err = la_parse_func_call (this, vp, op, NULL, val);
+
       if (save_v.type is MAP_TYPE or save_v.refcount is ARRAY_LITERAL)
         save_v.refcount--;
     }
@@ -6345,7 +6356,7 @@ static int la_parse_stmt (la_t *this) {
       if (token is TOKEN_ASSIGN) {
         switch (symbol->value.type) {
           case STRING_TYPE:
-            if (Cstring.eq (symbol->scope->funname, scope->funname))
+            //if (Cstring.eq (symbol->scope->funname, scope->funname))
               la_release_val (this, symbol->value);
             break;
 
@@ -7531,12 +7542,12 @@ static int la_parse_foreach (la_t *this) {
   const char *tmp_ptr = GETSTRPTR(PARSEPTR);
 
   char *ptr = find_end_bar_ident (this, tmp_ptr);
+
   if (NULL is ptr)
     THROW_SYNTAX_ERR("error while parsing for[each] loop, awaiting |");
   integer ident_len = ptr - tmp_ptr;
   char ident[ident_len + 1];
   Cstring.cp (ident, ident_len + 1, tmp_ptr, ident_len);
-
   ptr++;
   while (is_space (*ptr)) ptr++;
 
@@ -8804,37 +8815,37 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
         pc = str->bytes[str->num_bytes - 1];
         String.append_byte (str, TOKEN_ESCAPE_CHR);
       } else {
-        switch (PEEK_NTH_BYTE(0)) {
-          case 'a' : String.append_byte (str, '\a'); GET_BYTE(); pc = 0;  goto get_byte;
-          case 'b' : String.append_byte (str, '\b'); GET_BYTE(); pc = 0;  goto get_byte;
-          case 'f' : String.append_byte (str, '\f'); GET_BYTE(); pc = 0;  goto get_byte;
-          case 't' : String.append_byte (str, '\t'); GET_BYTE(); pc = 0;  goto get_byte;
-          case 'r' : String.append_byte (str, '\r'); GET_BYTE(); pc = 0;  goto get_byte;
-          case 'n' : String.append_byte (str, '\n'); GET_BYTE(); pc = 0;  goto get_byte;
-          case 'v' : String.append_byte (str, '\v'); GET_BYTE(); pc = 0;  goto get_byte;
-          case 'e' : String.append_byte (str,  033); GET_BYTE(); pc = 0;  goto get_byte;
+        int cc = PEEK_NTH_BYTE(0);
+        switch (cc) {
+          case 'a' : String.append_byte (str, '\a'); break;
+          case 'b' : String.append_byte (str, '\b'); break;
+          case 'f' : String.append_byte (str, '\f'); break;
+          case 't' : String.append_byte (str, '\t'); break;
+          case 'r' : String.append_byte (str, '\r'); break;
+          case 'n' : String.append_byte (str, '\n'); break;
+          case 'v' : String.append_byte (str, '\v'); break;
+          case 'e' : String.append_byte (str,  033); break;
+          case '$' :
+            if (PEEK_NTH_BYTE(1) is TOKEN_BLOCK_OPEN) {
+              String.append_byte (str, '$');
+              break;
+            }
+            // fall through
+
           default:
-            pc = TOKEN_ESCAPE_CHR;
+            String.append_byte (str, TOKEN_ESCAPE_CHR);
+            String.append_byte (str, cc);
         }
+
+        GET_BYTE(); pc = 0;
+        goto get_byte;
       }
 
       c = GET_BYTE();
     }
 
-    if (c is '$') {
-      if (pc is TOKEN_ESCAPE_CHR) {
-        String.append_byte (str, '$');
-        pc = '$';
-        continue;
-      }
-
+    if (c is '$' and PEEK_NTH_BYTE(0) is TOKEN_BLOCK_OPEN) {
       c = GET_BYTE();
-      if (c isnot TOKEN_BLOCK_OPEN) {
-        this->print_bytes (this->err_fp, "string fmt error, awaiting {\n");
-        la_err_ptr (this, LA_NOTOK);
-        err = LA_ERR_SYNTAX;
-        goto theend;
-      }
 
       pc = c;
       NEXT_TOKEN();

@@ -2016,10 +2016,13 @@ The return statement
     # StringType    String.advance (StringType str, IntegerType num)
     # StringType[]  String.tokenize (StringType str, StringType token)
     # NumberType    String.to_number (StringType str)
+    # StringType    String.to_upper (StringType str)
+    # StringType    String.to_lower (StringType str)
     # IntegerType[] String.to_array (StringType str)
     # IntegerType   String.to_integer (StringType str)
     # StringType    String.byte_in_str (StringType str, IntegerType byte)
     # StringType    String.advance_on_byte (StringType str, IntegerType c)
+    # StringType    String.advance_after_bytes (StringType str, StringType bytes, IntegerType repeat)
     # StringType    String.trim_byte_at_end (StringType a, StringType b)
 
     # IntegerType   Integer.eq (IntegerType a, IntegerType b)

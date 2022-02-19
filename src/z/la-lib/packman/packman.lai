@@ -352,7 +352,7 @@ public
     pull_args   : func (args)  this.pull_args = args
     verbose     : func (what)  this.verbose = what
     spec_dir    : func (dir)   this.spec_dir = dir
-    builddir   : func (dir)   this.builddir = dir
+    builddir    : func (dir)   this.builddir = dir
     sources_dir : func (dir)   this.sources_dir = dir
     bindir      : func (dir)   this.bindir = dir
     sysdir      : func (dir)   this.sysdir = dir
@@ -362,7 +362,7 @@ public
   get : {
     spec        : func return this.spec
     spec_dir    : func return this.spec_dir
-    builddir   : func return this.builddir
+    builddir    : func return this.builddir
     sources_dir : func return this.sources_dir
     bindir      : func return this.bindir
     sysdir      : func return this.sysdir

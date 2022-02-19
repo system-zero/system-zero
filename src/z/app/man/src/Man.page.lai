@@ -2,7 +2,7 @@ import ("path")
 import ("io");
 import ("man");
 
-loadfile ("argparse")
+include ("argparse")
 
 var prog = __file__: path_basename ()
 

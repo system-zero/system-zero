@@ -1095,7 +1095,7 @@ func self_semantics () {
   fmt = format ("${%s, load_va} ${%s, load_vd}")
   assert_true ("testing format function", fmt is "string is 6 bytes length")
 
-  var dollars = "$$$$$$ $$$$$$ are 12 dollars"
+  var dollars = "$$$$$$$$$$$${ are 12 dollars and {"
   assert_true ("testing format function with escaped characters", load_vf is dollars)
 
   var fmtexp = format ("${10 * 100 / 2 - 500 + 100 - [1, 2, 50][2] - 8}")
@@ -1312,6 +1312,16 @@ func self_semantics () {
       var strc = "asdfg"
       var strd = String.byte_in_str (strc, 'f')
       assert_true ("testing the byte_in_str method", strd is "fg")
+
+      var stre = String.advance_after_bytes ("123asdf123asdfok", "asdf", 2)
+      assert_true ("testing the advance_after_bytes method",
+        stre is "ok")
+
+      assert_true ("testing the to_upper method",
+          String.to_upper ("uPper") is "UPPER")
+
+      assert_true ("testing the to_lower method",
+          String.to_lower ("LoWER") is "lower")
 
       var si = "1234"
       var sf = "1234.1234"

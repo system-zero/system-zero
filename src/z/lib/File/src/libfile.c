@@ -345,6 +345,7 @@ theend:
   return this;
 }
 
+/* enhance the question with [a]ll */
 static int file_on_interactive (const char *file, const char *msg) {
   term_t *term = Term.new ();
   Term.raw_mode (term);

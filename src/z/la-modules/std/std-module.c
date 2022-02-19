@@ -241,6 +241,50 @@ static VALUE string_bytes_in_str (la_t *this, VALUE v_str, VALUE v_bytes) {
   return STRING(result);
 }
 
+/* this function serves as a prototype and it'll be used in the 'y' namespace */
+
+// name: we may leave this unimplemented for the parser (but see this as one
+//       token as we may use the space after as a delimeter for multiply statements)
+// return: "null or string" (probably (") as a open/close delimeter to mean
+//            specific things based on this specific context )
+// does: advance the beginning of a string after the last found byte of the
+//       given byte sequence, after repeated "nth" times the search
+// when: hasn't been found returns null, if found and the last found byte + 1
+//       is the NUL byte ('\0') then returns an empty string,
+//       likewise for the case the length of the source string is zero length
+// else: returns the string advanced after the last found byte of the sequence  
+static VALUE string_advance_after_bytes (la_t *this, VALUE v_str, VALUE v_bytes, VALUE v_repeat) {
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_bytes)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_INT(v_repeat)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  char *str = AS_STRING_BYTES(v_str);
+  string *s = AS_STRING(v_bytes);
+  char *bytes = s->bytes;
+  size_t len = s->num_bytes;
+  ifnot (len) return STRING_NEW("");
+
+  int repeat = AS_INT(v_repeat);
+  ifnot (repeat) return NULL_VALUE;
+
+  char *src = str;
+  char *sp = NULL;
+  int num = 0;
+  while (num < repeat) {
+    sp = Cstring.bytes_in_str (src, bytes);
+    if (NULL is sp)
+      return NULL_VALUE;
+
+    num++;
+    src = sp + len;
+
+    if (*src is '\0')
+      return STRING_NEW("");
+  }
+
+  return STRING_NEW(src);
+}
+
 static VALUE string_advance_on_byte (la_t *this, VALUE v_str, VALUE v_byte) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -261,10 +305,12 @@ static VALUE string_advance (la_t *this, VALUE v_str, VALUE v_n) {
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_n)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   string *str = AS_STRING(v_str);
-  int n = AS_INT(v_n);
+  ifnot (str->num_bytes) return STRING_NEW("");
 
-  if (n < 1) return STRING(str);
-  if (n >= (int) str->num_bytes) n = str->num_bytes - 1;
+  int n = AS_INT(v_n);
+  if (n < 0) return STRING_NEW("");
+
+  if (n > (int) str->num_bytes) return NULL_VALUE;
 
   string *new = String.new_with_len (str->bytes + n, str->num_bytes - n);
 
@@ -329,19 +375,21 @@ static VALUE string_numchars (la_t *this, VALUE v_str) {
 static VALUE string_to_upper (la_t *this, VALUE v_str) {
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   string *s = AS_STRING(v_str);
+  ifnot (s->num_bytes) return STRING_NEW("");
+
   char buf[s->num_bytes + 1];
   Ustring.change_case (buf, s->bytes, s->num_bytes, TO_UPPER);
-  s = String.new_with (buf);
-  return STRING(s);
+  return STRING(String.new_with (buf));
 }
 
 static VALUE string_to_lower (la_t *this, VALUE v_str) {
   ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   string *s = AS_STRING(v_str);
+  ifnot (s->num_bytes) return STRING_NEW("");
+
   char buf[s->num_bytes + 1];
   Ustring.change_case (buf, s->bytes, s->num_bytes, TO_LOWER);
-  s = String.new_with (buf);
-  return STRING(s);
+  return STRING(String.new_with (buf));
 }
 
 static VALUE string_trim_byte_at_end (la_t *this, VALUE v_str, VALUE v_byte) {
@@ -453,6 +501,7 @@ public int __init_std_module__ (la_t *this) {
     { "string_byte_in_str", PTR(string_byte_in_str), 2 },
     { "string_bytes_in_str", PTR(string_bytes_in_str), 2 },
     { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
+    { "string_advance_after_bytes", PTR(string_advance_after_bytes), 3},
     { "string_trim_byte_at_end", PTR(string_trim_byte_at_end), 2},
     { "integer_eq",         PTR(integer_eq), 2},
     { "integer_char",       PTR(integer_char), 1 },
@@ -497,6 +546,7 @@ public int __init_std_module__ (la_t *this) {
        "byte_in_str" : string_byte_in_str,
        "bytes_in_str" : string_bytes_in_str,
        "advance_on_byte" : string_advance_on_byte,
+       "advance_after_bytes" : string_advance_after_bytes,
        "trim_byte_at_end" : string_trim_byte_at_end
      };
 

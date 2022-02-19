@@ -2,9 +2,9 @@
 #define STRINGT_HDR
 
 typedef struct string_t {
+    char *bytes;
   size_t  num_bytes;
   size_t  mem_size;
-    char *bytes;
 } string_t;
 
 typedef struct string_self {

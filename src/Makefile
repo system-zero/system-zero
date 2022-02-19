@@ -1478,7 +1478,8 @@ modules-shared: libsh-shared libsys-shared libterm-shared\
                 libmd5-shared libsha256-shared libsha512-shared\
                 librandom-shared libbase64-shared libio-shared\
                 libos-shared libstring-shared liburl-shared\
-                libdl-shared libman-shared
+                libdl-shared libman-shared libsun-shared\
+                libmoon-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
 
 path-module-shared: libpath-shared
