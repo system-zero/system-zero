@@ -1,0 +1,87 @@
+/**
+ * Copyright (C) 2019 Miroslaw Toton, mirtoto@gmail.com
+ * Unix snprintf() implementation.
+ * @version 2.3
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * Revision History:
+ *
+ * @version 2.3
+ * @author Miroslaw Toton (mirtoto), mirtoto@gmail.com
+ *  - support NULL as output buffer to calculate size of output string
+ *  - fix 0 precision for 0 value integers
+ *
+ * @version 2.2
+ * @author Miroslaw Toton (mirtoto), mirtoto@gmail.com
+ *  - fix precision for integers
+ *  - remove global buffers and unnecessary copying & lookin through srings
+ *  - cleanup code and add Doxygen style comments
+ *
+ * @version 2.1
+ * @author Miroslaw Toton (mirtoto), mirtoto@gmail.com
+ *  - fix problem with very big and very low "long long" values
+ *  - change exponent width from 3 to 2
+ *  - fix zero value for floating
+ *  - support for "p" (%p)
+ *
+ * @version 2.0
+ * @author Miroslaw Toton (mirtoto), mirtoto@gmail.com
+ *  - move all defines & macros from header to codefile
+ *  - support for "long long" (%llu, %lld, %llo, %llx)
+ *  - fix for interpreting precision in some situations
+ *  - fix unsigned (%u) for negative input
+ *  - fix h & hh length of input number specifier
+ *  - fix Clang linter warnings
+ *
+ * @version 1.1
+ * @author Alain Magloire, alainm@rcsm.ee.mcgill.ca
+ *  - added changes from Miles Bader
+ *  - corrected a bug with %f
+ *  - added support for %#g
+ *  - added more comments :-)
+ *
+ * @version 1.0
+ * @author Alain Magloire, alainm@rcsm.ee.mcgill.ca
+ *  - supporting must ANSI syntaxic_sugars (see below)
+ *
+ * @version 0.0
+ * @author Alain Magloire, alainm@rcsm.ee.mcgill.ca
+ *  - suppot %s %c %d
+ *
+ * For the floating point format the challenge was finding a way to
+ * manipulate the Real numbers without having to resort to mathematical
+ * function (it would require to link with -lm) and not going down
+ * to the bit pattern (not portable).
+ *
+ * So a number, a real is:
+ *
+ *    real = integral + fraction
+ *
+ *    integral = ... + a(2)*10^2 + a(1)*10^1 + a(0)*10^0
+ *    fraction = b(1)*10^-1 + b(2)*10^-2 + ...
+ *
+ *    where:
+ *      0 <= a(i) => 9
+ *      0 <= b(i) => 9
+ *
+ *   from then it was simple math
+ *
+ * THANKS (for the patches and ideas):
+ *  - Miles Bader
+ *  - Cyrille Rustom
+ *  - Jacek Slabocewiz
+ *  - Mike Parker (mouse)
+ */

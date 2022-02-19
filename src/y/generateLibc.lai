@@ -1,0 +1,285 @@
+var me = __file__
+
+import ("io")
+import ("dir")
+import ("std")
+import ("file")
+import ("path")
+
+include ("argparse")
+
+var
+  is_directory   = dir_is_directory,
+  extname        = path_extname,
+  dirname        = path_dirname,
+  concat_with    = path_concat,
+  basename       = path_basename,
+  basename_without_extname = path_basename_sans_extname,
+  filelines      = file_readlines,
+  make_directory = dir_make,
+  provide_str    = " provides: ",
+  depends_str    = "// depends: "
+
+    func libc_generate (argc, argv) {
+
+  var
+    thisDir      = __file__: dirname (),
+    prog         = __file__: basename (),
+    libcDir      = thisDir + "/libc",
+    default      = {
+      dirname    :  "generatedLibc"
+      libname    :  "libc"
+    }
+
+  var argparse = New Argparse (4, 0, prog)
+  argparse.add ("outputName",  0,  "outputName=",  "set output file name (default libc)",  StringType, ARG_VALUE_REQUIRED)
+  argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default gen$(outputName)", StringType, ARG_VALUE_REQUIRED)
+  argparse.add ("verbose", 'v', "verbose=", "set verbosity", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
+  argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
+
+  return notok ifnot ok is argparse.process (__argv, 1)
+  return ok if argparse.exit is true
+
+  var verbose = argparse.results.verbose
+
+  var outputName =
+    argparse.results.outputName: if x is null then default.libname orelse x end
+  var directoryName =
+    argparse.results.outputDir:  if x is null then default.dirname orelse x end
+
+  var outputDir  = thisDir: concat_with (directoryName)
+  ifnot (outputDir: file_exists  ()) then make_directory (outputDir, 0755)
+  ifnot outputDir: is_directory () {
+    if verbose then println (stderr, "${outputDir}: is not a directory")
+    return notok
+  }
+
+  var outputFile = outputDir: concat_with (outputName + ".c")
+
+  var dotsToLibc = lambda (d) {
+    var s = ""
+    var p = d: tokenize ("/")
+    for (var i = 0; i < p: len (); i++) {
+      if i append "/" in s
+      append ".." in s
+    }
+
+    append "/libc" in s
+    return s
+  } (directoryName);
+
+  var string[8] dirs = [
+    "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd"]
+
+  var funcSigns = "/* Function Signatures */\n"
+  var libcFuns  = "\n"
+  var libcTypes = "\n    /* Types */\n"
+  var licenses  = "\n    /* LICENSES */\n#if 0\n"
+  var libcHdrs  =
+   `/* Amalgamation oversimplified tiny libc for x86 and x86_64 */
+    /* You get only what you only want, without magic code. */
+
+    #ifndef LIBC_HDR
+    #define LIBC_HDR
+
+    #ifdef REQUIRE_STD
+      #ifndef REQUIRE_NULL_H
+      #define REQUIRE_NULL_H
+      #endif
+
+      #ifndef REQUIRE_SIZE_T_H
+      #define REQUIRE_SIZE_T_H
+      #endif
+
+      #ifndef REQUIRE_ERRNO_H
+      #define REQUIRE_ERRNO_H
+      #endif
+    #endif
+
+    /* Tracking Dependencies */
+
+  `S4
+
+  var filelist = {}
+
+  Type Func {
+    abspath
+    header
+    basedir
+    endidx
+    exttype
+    funname
+    depends
+    init : func (abspath, header, basedir, endidx, exttype, funname) {
+      this.abspath = abspath
+      this.header  = header
+      this.basedir = basedir
+      this.endidx  = endidx
+      this.exttype = exttype
+      this.funname = funname
+      this.depends = string[0]
+    }
+  } 
+
+  for |v| in dirs {
+    if v isnot "syscall" append format ("/* ${v} */") in libcFuns
+
+    var dir = libcDir: concat_with (v)
+    var arr = dir: dir_list ()
+
+    for |f| in arr {
+      var fn = dir: concat_with (f)
+      var lines = fn: filelines ()
+
+      if f: eq_n ("LICENSE_", 8) {
+        var sp = f: advance_after_bytes ("LICENSE_", 1)
+        append format ("/* ${sp} License */\n") in licenses
+        for |line| in lines append line + "\n" in licenses
+        append "\n" in licenses
+        continue
+      }
+
+      if "syscall.c" is f {
+        append "/* Syscalls Implementation */\n" in libcFuns
+
+         # so we can open it with 'gf'
+        append "/* " + (dotsToLibc: concat_with ("syscall/syscall.c")) + " */\n" in libcFuns
+
+        for |line| in lines append line + '\n' in libcFuns
+        append "\n" in libcFuns
+        append "/* Function Implementation */\n" in libcFuns
+        continue
+      }
+
+      var f_ext = f: extname (): to_upper (): advance (1)
+      var f_hdr = f: basename_without_extname (): to_upper ()
+
+      var idx = 0;
+      var num_found = 0
+
+      if "C" is f_ext {
+        for (var i = idx; i < lines: len (); i++) {
+          var line = lines[idx]
+          var sp = line: bytes_in_str (provide_str)
+
+          ifnot null is sp {
+            num_found++
+            # id[0]:  sometime we need a "break that works for if's"
+            #         else the logic may lost a bit, just because of
+            #           the error conditional checks
+
+            sp = sp: advance_after_bytes (provide_str, 1)
+
+            ifnot (sp: len ()) {
+              if verbose then println (stderr, "${v}/${f}: missing function signature")
+            } else {
+              append format ("\n#ifdef REQUIRE_${f_hdr}\n") in funcSigns
+              append sp + ";\n" in funcSigns
+              append "#endif\n" in funcSigns
+            }
+            idx++
+
+          } else {
+            ifnot (num_found)
+              if verbose then println (stderr, "${v}/${f}: missing ' provides: ' token")
+          }
+        }
+      }
+
+      num_found = 0
+
+      for (var i = idx; i < lines: len (); i++) {
+        var line = lines[idx]
+        var sp = line: bytes_in_str (depends_str)
+        break if (null is sp)
+
+        sp = sp: advance_after_bytes (depends_str, 1)
+        var tok = sp: tokenize ("/")
+        if (tok: len () < 1) break;
+
+        var unit = tok[-1]
+        var ext = unit: extname (): to_upper (): advance (1)
+        var hdr = unit: basename_without_extname () : to_upper ()
+
+        var is_type_unit = "H" is ext
+
+        ifnot num_found {
+          append format ("#ifdef REQUIRE_${f_hdr}") in libcHdrs
+          if "H" is f_ext then append "_H" in libcHdrs
+          append "\n" in libcHdrs
+        }
+
+        append format ("  #ifndef REQUIRE_${hdr}") in libcHdrs
+        if is_type_unit then append "_H" in libcHdrs
+        append "\n" in libcHdrs
+        append format ("  #define REQUIRE_${hdr}") in libcHdrs
+        if is_type_unit then append "_H" in libcHdrs
+        append "\n  #endif\n" in libcHdrs
+        idx++
+        num_found++
+      }
+
+      if num_found then append "#endif\n\n" in libcHdrs
+
+      for (var i = idx; i < lines: len (); i++) {
+        break if lines[i]: len ()
+        idx++
+      }
+
+      if num_found and "H" is f_ext { # handle only types as functions have been forward declared
+        var new = New Func (fn, f_hdr, v, idx, f_ext, f)
+        append new in filelist as f
+        continue
+      }
+
+      if "H" is f_ext {
+        append format ("\n#ifdef REQUIRE_${f_hdr}") in libcTypes
+        append "_H\n" in libcTypes
+        append format ("/* ${dotsToLibc}/${v}/${f} */\n") in libcTypes
+
+        for (var i = idx; i < lines: len (); i++)
+          append lines[i] + '\n' in libcTypes
+
+        append "#endif\n" in libcTypes
+      } else {
+        append format ("\n#ifdef REQUIRE_${f_hdr}\n") in libcFuns
+        append format ("/* ${dotsToLibc}/${v}/${f} */\n") in libcFuns
+
+        for (var i = idx; i < lines: len (); i++)
+          append lines[i] + '\n' in libcFuns
+
+        append "#endif\n" in libcFuns
+      }
+    }
+
+    if v isnot "syscall" append format ("/* ${v} */\n\n") in libcFuns
+  }
+
+  for |k, v| in filelist {
+    var lines = v.abspath: filelines ()
+    var idx = v.endidx
+
+    append format ("\n#ifdef REQUIRE_${v.header}") in libcTypes
+    append "_H\n" in libcTypes
+    append format ("/* ${dotsToLibc}/${v.basedir}/${v.funname} */\n") in libcTypes
+
+    for (var i = idx; i < lines: len (); i++)
+      append lines[i] + '\n' in libcTypes
+
+    append "#endif\n" in libcTypes
+  }
+
+  append "#endif /* LICENSES */\n" in licenses
+  append "#endif /* LIBC_HDR */\n" in libcFuns
+
+  File.write (outputFile,
+    libcHdrs + funcSigns + libcTypes + libcFuns + licenses)
+
+#for |k, v| in filelist {
+#  println (k)
+#  println (v.abspath)
+#  println (v.endidx)
+#}
+}
+
+libc_generate (__argc, __argv)
