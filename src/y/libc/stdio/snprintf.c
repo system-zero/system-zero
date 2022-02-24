@@ -1,4 +1,4 @@
-// depends: stdio/vsnprintf.c
+// requires: stdio/vsnprintf.c
 
  __attribute__((format(printf, 3, 0)))
 int snprintf (char *str, size_t size, const char *fmt, ...) {

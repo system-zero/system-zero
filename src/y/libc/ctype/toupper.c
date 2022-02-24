@@ -1,4 +1,5 @@
-// depends: ctype/islower.c
+// provides: int toupper (int)
+// requires: ctype/islower.c
 
 int toupper (int c) {
   if (islower (c))

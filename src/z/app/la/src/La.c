@@ -393,6 +393,8 @@ static int la_interactive (la_t *this) {
       "import (\"sys\"); "
       "import (\"url\"); "
       "import (\"sun\"); "
+      "import (\"man\"); "
+      "import (\"net\"); "
       "import (\"moon\"); "
       "import (\"path\"); "
       "import (\"file\"); "
@@ -414,7 +416,7 @@ static int la_interactive (la_t *this) {
 
   len = 0;
 
-  fprintf (stdout, "language interpreter (%s), type CTRL-d to exit\n", VERSION_STRING);
+  fprintf (stdout, "language interpreter (%s), type CTRL-d or exit (v) to exit\n", VERSION_STRING);
 
   Rline.set.prompt (rline, "");
 

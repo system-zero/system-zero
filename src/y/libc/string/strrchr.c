@@ -1,5 +1,5 @@
 // provides: char *strrchr (const char *, int)
-// depends: string/strchr.c
+// requires: string/strchr.c
 
 char *strrchr (const char *s, int c) {
   const char *sp = strchr (s, 0);

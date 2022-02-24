@@ -1,4 +1,4 @@
-// depends: stdio/FILE.h
+// requires: stdio/FILE.h
 
 #ifndef BUFSZ
 #define BUFSZ 1024

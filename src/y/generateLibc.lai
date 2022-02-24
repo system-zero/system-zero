@@ -1,4 +1,4 @@
-var me = __file__
+var __me__ = __file__
 
 import ("io")
 import ("dir")
@@ -18,13 +18,13 @@ var
   filelines      = file_readlines,
   make_directory = dir_make,
   provide_str    = " provides: ",
-  depends_str    = "// depends: "
+  require_str    = "// requires: "
 
-    func libc_generate (argc, argv) {
+public func libc_generate (argc, argv) {
 
   var
-    thisDir      = __file__: dirname (),
-    prog         = __file__: basename (),
+    thisDir      = __me__: dirname (),
+    prog         = __me__: basename (),
     libcDir      = thisDir + "/libc",
     default      = {
       dirname    :  "generatedLibc"
@@ -181,7 +181,8 @@ var
 
           } else {
             ifnot (num_found)
-              if verbose then println (stderr, "${v}/${f}: missing ' provides: ' token")
+              if verbose then println (stderr, "${v}/${f}: is missing a '// provides: ' token")
+            break
           }
         }
       }
@@ -190,10 +191,10 @@ var
 
       for (var i = idx; i < lines: len (); i++) {
         var line = lines[idx]
-        var sp = line: bytes_in_str (depends_str)
+        var sp = line: bytes_in_str (require_str)
         break if (null is sp)
 
-        sp = sp: advance_after_bytes (depends_str, 1)
+        sp = sp: advance_after_bytes (require_str, 1)
         var tok = sp: tokenize ("/")
         if (tok: len () < 1) break;
 
@@ -237,16 +238,20 @@ var
         append "_H\n" in libcTypes
         append format ("/* ${dotsToLibc}/${v}/${f} */\n") in libcTypes
 
-        for (var i = idx; i < lines: len (); i++)
+        for (var i = idx; i < lines: len (); i++) {
+          break if lines[i]: eq_n ("// end", 6)
           append lines[i] + '\n' in libcTypes
+        }
 
         append "#endif\n" in libcTypes
       } else {
         append format ("\n#ifdef REQUIRE_${f_hdr}\n") in libcFuns
         append format ("/* ${dotsToLibc}/${v}/${f} */\n") in libcFuns
 
-        for (var i = idx; i < lines: len (); i++)
+        for (var i = idx; i < lines: len (); i++) {
+          break if lines[i]: eq_n ("// end", 6)
           append lines[i] + '\n' in libcFuns
+        }
 
         append "#endif\n" in libcFuns
       }
@@ -263,8 +268,10 @@ var
     append "_H\n" in libcTypes
     append format ("/* ${dotsToLibc}/${v.basedir}/${v.funname} */\n") in libcTypes
 
-    for (var i = idx; i < lines: len (); i++)
+    for (var i = idx; i < lines: len (); i++) {
+      break if lines[i]: eq_n ("// end", 6)
       append lines[i] + '\n' in libcTypes
+    }
 
     append "#endif\n" in libcTypes
   }
@@ -274,12 +281,16 @@ var
 
   File.write (outputFile,
     libcHdrs + funcSigns + libcTypes + libcFuns + licenses)
-
-#for |k, v| in filelist {
-#  println (k)
-#  println (v.abspath)
-#  println (v.endidx)
-#}
 }
 
 libc_generate (__argc, __argv)
+
+func generatedLibc_help () {
+  println (`Reserved tokens
+
+// provides: [function signature], it is required when the unit is a function, and should be at the first line only
+// requires: [dir/unit]
+// end [ends the interpretation]`)
+}
+
+#generatedLibc_help ()

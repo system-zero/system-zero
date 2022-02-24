@@ -1,5 +1,5 @@
-// depends: unistd/write.c
-// depends: stdio/vsnprintf.c
+// requires: unistd/write.c
+// requires: stdio/vsnprintf.c
 
 int fprintf (FILE *fp, const char *fmt, ...) {
   size_t size = STRING_FORMAT_SIZE(fmt);

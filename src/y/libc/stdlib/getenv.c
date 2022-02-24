@@ -1,8 +1,8 @@
 // provides: char *getenv (const char *)
-// depends: string/strlen.c
-// depends: string/str_eq_n.c
-// depends: std/NULL.h
-// depends: std/environ.h
+// requires: string/strlen.c
+// requires: string/str_eq_n.c
+// requires: std/NULL.h
+// requires: std/environ.h
 
 char *getenv (const char *s) {
   if (!environ || !s) return NULL;

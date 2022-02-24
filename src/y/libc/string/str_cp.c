@@ -1,5 +1,5 @@
 // provides: size_t str_cp (char *, size_t, const char *, size_t)
-// depends: string/str_byte_cp.c
+// requires: string/str_byte_cp.c
 
 size_t str_cp (char *dest, size_t dest_len, const char *src, size_t nelem) {
   size_t num = (nelem > (dest_len - 1) ? dest_len - 1 : nelem);

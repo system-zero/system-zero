@@ -1,6 +1,6 @@
 // provides: size_t cstring_cp_fmt (char *, size_t, const char *, ...)
-// depends: stdio/vsnprintf.c
-// depends: string/str_cp.c
+// requires: stdio/vsnprintf.c
+// requires: string/str_cp.c
 
 size_t cstring_cp_fmt (char *dest, size_t dest_len, const char *fmt, ...) {
   size_t len = STRING_FORMAT_SIZE(fmt);

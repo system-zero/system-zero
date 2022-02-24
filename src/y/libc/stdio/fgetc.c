@@ -1,4 +1,4 @@
-// depends: unistd/read.c
+// requires: unistd/read.c
 
 static int ic (FILE *fp) {
 	if (fp->back != EOF) {

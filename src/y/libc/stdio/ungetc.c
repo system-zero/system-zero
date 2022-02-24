@@ -1,4 +1,4 @@
-// depends: stdio/EOF.h
+// requires: stdio/EOF.h
 
 int ungetc (int c, FILE *fp) {
   if (fp->back == EOF)

@@ -37,55 +37,57 @@
 
 #define SYSCALL_OUTPUT_OPERAND(__r__) "=a" (__r__)
 
-#define SYSCALL_SET_RETVAL_ERRNO(__r__)              \
-   __r__ = ( 0 > __r__ ? errno = -__r__, -1 : __r__)
+#define SYSCALL_SET_RETVAL_ERRNO(__r__)   \
+   __r__ = (0 > __r__ ? errno = -__r__, -1 : __r__)
 
 #if defined(__i386__) || defined(__i386)
 
 #define SYSCALL_INSTRUCTION    "int $0x80"
 #define SYSCALL_CLOBBERS       "memory"
 
-#define SYSCALL_PREAMBLE()             \
+#define SYSCALL_PREAMBLE()                \
   register long ebp __asm__("ebp") = a5
-#define SYSCALL_INPUT_REGISTERS(__n__)  \
-  "a" (__n__),                          \
-  "b" (a0), "c" (a1),                   \
-  "d" (a2), "S" (a3),                   \
+
+#define SYSCALL_INPUT_REGISTERS(__n__)    \
+  "a" (__n__),                            \
+  "b" (a0), "c" (a1),                     \
+  "d" (a2), "S" (a3),                     \
   "D" (a4), "r" (ebp)
 
 #define SYSCALL_PREAMBLE5()
-#define SYSCALL_INPUT_REGISTERS5(__n__) \
-  "a" (__n__),                          \
-  "b" (a0),                             \
-  "c" (a1), "d" (a2),                   \
+
+#define SYSCALL_INPUT_REGISTERS5(__n__)   \
+  "a" (__n__),                            \
+  "b" (a0),                               \
+  "c" (a1), "d" (a2),                     \
   "S" (a3), "D" (a4)
 
 #define SYSCALL_PREAMBLE4()
-#define SYSCALL_INPUT_REGISTERS4(__n__) \
-  "a" (__n__),                          \
-  "b" (a0),                             \
-  "c" (a1), "d" (a2),                   \
+#define SYSCALL_INPUT_REGISTERS4(__n__)   \
+  "a" (__n__),                            \
+  "b" (a0),                               \
+  "c" (a1), "d" (a2),                     \
   "S" (a3)
 
 #define SYSCALL_PREAMBLE3()
-#define SYSCALL_INPUT_REGISTERS3(__n__) \
-  "a" (__n__),                          \
-  "b" (a0),                             \
+#define SYSCALL_INPUT_REGISTERS3(__n__)   \
+  "a" (__n__),                            \
+  "b" (a0),                               \
   "c" (a1), "d" (a2)
 
 #define SYSCALL_PREAMBLE2()
-#define SYSCALL_INPUT_REGISTERS2(__n__) \
-  "a" (__n__),                          \
-  "b" (a0),                             \
+#define SYSCALL_INPUT_REGISTERS2(__n__)   \
+  "a" (__n__),                            \
+  "b" (a0),                               \
   "c" (a1)
 
 #define SYSCALL_PREAMBLE1()
-#define SYSCALL_INPUT_REGISTERS1(__n__) \
-  "a" (__n__),                          \
+#define SYSCALL_INPUT_REGISTERS1(__n__)   \
+  "a" (__n__),                            \
   "b" (a0)
 
 #define SYSCALL_PREAMBLE0()
-#define SYSCALL_INPUT_REGISTERS0(__n__) \
+#define SYSCALL_INPUT_REGISTERS0(__n__)   \
   "a" (__n__)
 
 #elif defined(__x86_64__) || defined(__amd64__) || defined(__amd64)
@@ -93,55 +95,55 @@
 #define SYSCALL_INSTRUCTION    "syscall"
 #define SYSCALL_CLOBBERS       "rcx", "r11", "memory"
 
-#define SYSCALL_PREAMBLE()              \
-  register long                         \
-     r10 __asm__("r10") = a3,           \
-     r08 __asm__("r8")  = a4,           \
+#define SYSCALL_PREAMBLE()                \
+  register long                           \
+     r10 __asm__("r10") = a3,             \
+     r08 __asm__("r8")  = a4,             \
      r09 __asm__("r9")  = a5
-#define SYSCALL_INPUT_REGISTERS(__n__)  \
-  "a" (__n__),                          \
-  "D" (a0),                             \
-  "S" (a1), "d" (a2),                   \
+#define SYSCALL_INPUT_REGISTERS(__n__)    \
+  "a" (__n__),                            \
+  "D" (a0),                               \
+  "S" (a1), "d" (a2),                     \
   "r" (r08), "r" (r09), "r" (r10)
 
-#define SYSCALL_PREAMBLE5()             \
-  register long                         \
-    r10 __asm__("r10") = a3,            \
+#define SYSCALL_PREAMBLE5()               \
+  register long                           \
+    r10 __asm__("r10") = a3,              \
     r08 __asm__("r8")  = a4
-#define SYSCALL_INPUT_REGISTERS5(__n__) \
-  "a" (__n__),                          \
-  "D" (a0),                             \
-  "S" (a1),  "d" (a2),                  \
+#define SYSCALL_INPUT_REGISTERS5(__n__)   \
+  "a" (__n__),                            \
+  "D" (a0),                               \
+  "S" (a1),  "d" (a2),                    \
   "r" (r08), "r" (r10)
 
-#define SYSCALL_PREAMBLE4()             \
-  register long                         \
+#define SYSCALL_PREAMBLE4()               \
+  register long                           \
     r10 __asm__("r10") = a3
-#define SYSCALL_INPUT_REGISTERS4(__n__) \
-  "a" (__n__),                          \
-  "D" (a0),                             \
-  "S" (a1), "d" (a2),                   \
+#define SYSCALL_INPUT_REGISTERS4(__n__)   \
+  "a" (__n__),                            \
+  "D" (a0),                               \
+  "S" (a1), "d" (a2),                     \
   "r" (r10)
 
 #define SYSCALL_PREAMBLE3()
-#define SYSCALL_INPUT_REGISTERS3(__n__) \
-  "a" (__n__),                          \
-  "D" (a0),                             \
+#define SYSCALL_INPUT_REGISTERS3(__n__)   \
+  "a" (__n__),                            \
+  "D" (a0),                               \
   "S" (a1), "d" (a2)
 
 #define SYSCALL_PREAMBLE2()
-#define SYSCALL_INPUT_REGISTERS2(__n__) \
-  "a"(__n__),                           \
-  "D" (a0),                             \
+#define SYSCALL_INPUT_REGISTERS2(__n__)   \
+  "a"(__n__),                             \
+  "D" (a0),                               \
   "S" (a1)
 
 #define SYSCALL_PREAMBLE1()
-#define SYSCALL_INPUT_REGISTERS1(__n__) \
-  "a" (__n__),                          \
+#define SYSCALL_INPUT_REGISTERS1(__n__)   \
+  "a" (__n__),                            \
   "D" (a0)
 
 #define SYSCALL_PREAMBLE0()
-#define SYSCALL_INPUT_REGISTERS0(__n__) \
+#define SYSCALL_INPUT_REGISTERS0(__n__)   \
   "a" (__n__)
 
 #else

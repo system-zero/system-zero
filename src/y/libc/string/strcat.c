@@ -1,5 +1,5 @@
 // provides: size_t strcat (char *, size_t, const char *)
-// depends: string/strchr.c
+// requires: string/strchr.c
 
 size_t strcat (char *dest, size_t dest_sz, const char *src) {
   char *sp = strchr(dest, 0);
