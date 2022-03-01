@@ -1,9 +1,6 @@
 // provides: int toupper (int)
-// requires: ctype/islower.c
 
+/* diet and neat implementation */
 int toupper (int c) {
-  if (islower (c))
-    return c & 0x5f;
-
-  return c;
+  return (unsigned int) (c - 'a') < 26u ? c + ('A' - 'a') : c;
 }

@@ -5,7 +5,9 @@ int atoi (const char *s) {
 
   switch (*s) {
     case '-': has_neg_sign = 1;
+    // fallthrough
     case '+': s++;
+    // fallthrough
     default:
       break;
   }

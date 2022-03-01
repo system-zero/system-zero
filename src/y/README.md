@@ -11,27 +11,44 @@ So it is mainly for inner development without caring much to expose functionalit
 other than low level programming tools that explore and assist development, so
 in other words mostly boring stuff.
 
-First we introduce an oversimplified libc for x86 and x86_64, based on syscalls.
-The syscalls implementation is based on [rto project](https://github.com/lpsantil/rt0), with some bits from
-[minibase](https://github.com/arsv/minibase) and [neatlibc](https://github.com/aligrudi/neatlibc).
+First we instantaniated a tiny [libc](libc/README.md) (and an endless project...).
+We used a script (implemented in our programming Language) which collects functions,
+structures, constants and macros, and then it generates a single file libc. We've
+faced with conditions which can easily fail and unhandled cases (like handling
+a failure during a function sequence), it has a been a bit of pleasure to work
+and express :)(yea it really should be, as we choosed the way!). Anyway, it is
+an intention to humanize this language even more, with more expressions.
 
-This is actually a forever project, so we started with few functions and we will
-add more as we need them. Functions belongs to a namespace which is based on the
-standard header. The top line provides the function signature and which it should
-correspond to the standard implementation. The following lines can declare the
-dependencies, either other functions or types.
+And because we want to offer some kind of special treatment to this environment,
+we will probably do it with some specialized code, which it might be an outer loop
+which it might also give us a chance to escape from some bad code (though it is
+not a high priority to fix (as long the job is done it is ok)).
 
-Our intention for this project is to create a single file libc, so we've used
-our programming language to collect the functions and autogenerate this unit.
-During the development we've faced with conditions, that can easily fail and
-are not handled currently. For instance when we are using function sequences,
-something may fail in the middle, and not all of the modules can handle some
-unexpected input, neither the underlying mechanism knows what to do in those
-cases.
+Will be smart also to do the same with our editor, by using even more modes than
+quite many they already are.
 
-Yet it was a been a bit of pleasure to program in this quite expressive way.
-And it is an intention to humanize this language even more. And also to add
-more specialized code, that will handle specific cases for this environment,
-as we are not upstream for noone, so we can be as flexible we like, without
-really caring to be political correct. And yes we know, that the machine is
-quite weak that can easily break, but it is ok if we write in known ways.
+Our second step was to introduce a C [preprocessor](lib/fcpp/README) (for internal development reasons)
+and which is also exposed as a library for reuse by others. It is some very old
+code from the early nineties, but that looks that for the moment it does best its
+destined job. Many thanks for this, as it is always a pleasure to see such a good
+old C code to compiles (often without modifications or just some to silence some
+warnings when we enable our debug C flags) cleanly by modern compilers, and this is
+an admirable C property. In this distribution we already happily using code that
+it was first written at 1988.
+
+## Acknowledgements, References, Algorithms, Libraries:
+
+* [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
+
+C libraries:
+* [A minimal C Runtime.](https://github.com/lpsantil/rt0)
+* [A base system and early userspace for Linux.](https://github.com/arsv/minibase)
+* [Diet Libc.](http://www.fefe.de/dietlibc)
+* [Neat Libc.](https://github.com/aligrudi/neatlibc)
+* [Embedded Artistry libc.](https://github.com/embeddedartistry/libc)
+* [Mlibc.](https://github.com/managarm/mlibc)
+And the big two:
+* [musl standard C library.](https://musl.libc.org)
+* [glibc](https://www.gnu.org/software/libc/) and which is the one who owe most (the world wouldn't be the same without GNU and their essential for the developement and the runtime products). I do not think that will ever be again such a dominant and trustworthy platform, which also set the highest development and practical philosophical standards, and which I believe is the real treasure and which belongs to all of us humans.
+
+

@@ -59,7 +59,7 @@ the main intention for this project is to understand the way and the why.
 
 So we have to move on a bit faster from the zero ('z') namespace, which it was
 really intented to serve as a prototype, all the way towards the alpha ('a').
-So we'll have to break our below-mentioned schedule and move to the next why ('y')
+So we'll have to break our below-mentioned schedule and move to the next why ('y')[src/y/README.md]
 namespace, which it will serve mostly to understand and implement some bits of a libc,
 so we can be indepented at some point, though this might looks like an overly ambition
 for an uneducated.
@@ -1482,12 +1482,17 @@ gained consience. Hopefully one day.
 * [Http Status codes.](https://github.com/j-ulrich/http-status-codes-cpp)
 * [SunRiseSet.](https://github.com/troglobit/sun)
 * [Mini snprintf.](https://github.com/tatetian/mini-snprintf)
-* [A minimal C Runtime.](https://github.com/lpsantil/rt0)
-* [A base system and early userspace for Linux.](https://github.com/arsv/minibase)
 * [Diet Libc.](http://www.fefe.de/dietlibc)
 * [Man utility.](https://github.com/rofl0r/hardcore-utils/blob/master/man.c)
 * [OpenDoas.](https://github.com/Duncaen/OpenDoas)
 * [Sudoku in C with classes!](https://github.com/vaithak/Sudoku-Generator)
+* [A minimal C Runtime.](https://github.com/lpsantil/rt0)
+* [A base system and early userspace for Linux.](https://github.com/arsv/minibase)
+* [Diet Libc.](http://www.fefe.de/dietlibc)
+* [Neat Libc.](https://github.com/aligrudi/neatlibc)
+* [Embedded Artistry libc.](https://github.com/embeddedartistry/libc)
+* [Mlibc.](https://github.com/managarm/mlibc)
+* [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me
