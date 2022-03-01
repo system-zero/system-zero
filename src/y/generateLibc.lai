@@ -18,7 +18,8 @@ var
   filelines      = file_readlines,
   make_directory = dir_make,
   provide_str    = " provides: ",
-  require_str    = "// requires: "
+  require_str    = "// requires: ",
+  comment_str    = "// comment: "
 
 public func libc_generate (argc, argv) {
 
@@ -68,21 +69,31 @@ public func libc_generate (argc, argv) {
     return s
   } (directoryName);
 
-  var string[8] dirs = [
-    "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd"]
+  var string[9] dirs = [
+    "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
+    "time"]
 
   var funcSigns = "/* Function Signatures */\n"
   var libcFuns  = "\n"
   var libcTypes = "\n    /* Types */\n"
   var licenses  = "\n    /* LICENSES */\n#if 0\n"
+  var comments  = "\n    /* Comments */\n#if 0\n"
   var libcHdrs  =
    `/* Amalgamation oversimplified tiny libc for x86 and x86_64 */
-    /* You get only what you only want, without magic code. */
+    /* You get only what you only want, with a without magic code. */
 
     #ifndef LIBC_HDR
     #define LIBC_HDR
 
+    #ifndef REQUIRE_ERRNO_H
+    #define REQUIRE_ERRNO_H
+    #endif
+
     #ifdef REQUIRE_STD
+      #ifndef REQUIRE_STDINT
+      #define REQUIRE_STDINT
+      #endif
+
       #ifndef REQUIRE_NULL_H
       #define REQUIRE_NULL_H
       #endif
@@ -94,6 +105,10 @@ public func libc_generate (argc, argv) {
       #ifndef REQUIRE_ERRNO_H
       #define REQUIRE_ERRNO_H
       #endif
+    #endif
+
+    #ifdef REQUIRE_STDINT
+    #include <stdint.h>
     #endif
 
     /* Tracking Dependencies */
@@ -140,6 +155,14 @@ public func libc_generate (argc, argv) {
       }
 
       if "syscall.c" is f {
+        append "long syscall0 (long);\n" in funcSigns
+        append "long syscall1 (long, long);\n" in funcSigns
+        append "long syscall2 (long, long, long);\n" in funcSigns
+        append "long syscall3 (long, long, long, long);\n" in funcSigns
+        append "long syscall4 (long, long, long, long, long);\n" in funcSigns
+        append "long syscall5 (long, long, long, long, long, long);\n" in funcSigns
+        append "long syscall6 (long, long, long, long, long, long, long);\n" in funcSigns
+
         append "/* Syscalls Implementation */\n" in libcFuns
 
          # so we can open it with 'gf'
@@ -173,9 +196,9 @@ public func libc_generate (argc, argv) {
             ifnot (sp: len ()) {
               if verbose then println (stderr, "${v}/${f}: missing function signature")
             } else {
-              append format ("\n#ifdef REQUIRE_${f_hdr}\n") in funcSigns
-              append sp + ";\n" in funcSigns
-              append "#endif\n" in funcSigns
+              ifnot num_found - 1 then
+                append format ("\n#ifdef REQUIRE_${f_hdr}\n") in funcSigns
+              append sp + if sp: eq_n ("#define ", 8) then "\n" orelse ";\n" end in funcSigns
             }
             idx++
 
@@ -185,6 +208,8 @@ public func libc_generate (argc, argv) {
             break
           }
         }
+
+        if num_found then append "#endif\n" in funcSigns
       }
 
       num_found = 0
@@ -221,6 +246,15 @@ public func libc_generate (argc, argv) {
       }
 
       if num_found then append "#endif\n\n" in libcHdrs
+
+      for (var i = idx; i < lines: len (); i++) {
+        var line = lines[idx]
+        var sp = line: bytes_in_str (comment_str)
+        break if (null is sp)
+        sp = sp: advance_after_bytes (comment_str, 1)
+        append sp + "\n" in comments
+        idx++
+      }
 
       for (var i = idx; i < lines: len (); i++) {
         break if lines[i]: len ()
@@ -278,9 +312,10 @@ public func libc_generate (argc, argv) {
 
   append "#endif /* LICENSES */\n" in licenses
   append "#endif /* LIBC_HDR */\n" in libcFuns
+  append "#endif /* Comments */\n" in comments
 
   File.write (outputFile,
-    libcHdrs + funcSigns + libcTypes + libcFuns + licenses)
+    libcHdrs + comments + libcTypes + funcSigns + libcFuns + licenses)
 }
 
 libc_generate (__argc, __argv)
@@ -290,6 +325,7 @@ func generatedLibc_help () {
 
 // provides: [function signature], it is required when the unit is a function, and should be at the first line only
 // requires: [dir/unit]
+// comment: 
 // end [ends the interpretation]`)
 }
 
