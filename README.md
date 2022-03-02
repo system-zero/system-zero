@@ -59,7 +59,7 @@ the main intention for this project is to understand the way and the why.
 
 So we have to move on a bit faster from the zero ('z') namespace, which it was
 really intented to serve as a prototype, all the way towards the alpha ('a').
-So we'll have to break our below-mentioned schedule and move to the next why (y)[src/y/README.md]
+So we'll have to break our below-mentioned schedule and move to the next why ['y'](src/y/README.md)
 namespace, which it will serve mostly to understand and implement some bits of a libc,
 so we can be indepented at some point, though this might looks like an overly ambition
 for an uneducated.
@@ -1423,7 +1423,7 @@ to your shell environment file.
 
 There is no support for installation to the `/` namespace.
 
-# [Current development](src/y/README.md)
+[Current development](src/y/README.md)
 
 ## License:
 I  understand the UNLICENSE license  kind of thought. We  do not need laws and

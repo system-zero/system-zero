@@ -1,0 +1,38 @@
+#!/bin/env La
+
+import ("sh")
+import ("path")
+include ("argparse")
+
+var argparse = New Argparse (4, 0, __argv[0]: path_basename () + " options file")
+argparse.add ("pattern", 0, "pat=", "pattern", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("subst", 0, "sub=", "substitution", StringType, ARG_VALUE_REQUIRED) 
+argparse.add ("interactive", 'i', "interactive", "interactive", BooleanType, 0) 
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+ifnot argparse.argc {
+  argparse.usage ()
+  exit (1)
+}
+
+var file        = argparse.argv[0]
+var pattern     = argparse.results.pattern
+var subst       = argparse.results.subst
+var interactive =
+  if argparse.results.interactive then "::--interactive" orelse ""
+
+if null is pattern or null is subst {
+  argparse.usage ()
+  exit (1)
+}
+
+const zs = New Shell ()
+
+var com = "A --exec-com=s%::--pat=" + pattern + "::--sub=" + subst +
+ interactive + "::--global --exit " + file
+
+zs.exec (com)

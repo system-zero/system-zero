@@ -49,6 +49,4 @@ C libraries:
 * [Mlibc.](https://github.com/managarm/mlibc)
 And the big two:
 * [musl standard C library.](https://musl.libc.org)
-* [glibc](https://www.gnu.org/software/libc/) and which is the one who owe most (the world wouldn't be the same without GNU and their essential for the developement and the runtime products). I do not think that will ever be again such a dominant and trustworthy platform, which also set the highest development and practical philosophical standards, and which I believe is the real treasure and which belongs to all of us humans.
-
-
+* [glibc](https://www.gnu.org/software/libc/) and which is the one who owe most (the world wouldn't be the same without GNU and their essential for the developement and the runtime products). I do not think that will ever be again such a dominant and trustworthy platform, which also set the highest development and practical philosophical standards, and which I believe is the real treasure that belongs to all of us humans.

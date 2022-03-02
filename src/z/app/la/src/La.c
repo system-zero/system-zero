@@ -18,16 +18,14 @@
 
 #include <z/cenv.h>
 
+#include "../../../la-modules/std/std-module.c"
+
 #ifdef REQUIRE_PATH_MODULE
 #include "../../../la-modules/path/path-module.c"
 #endif
 
 #ifdef REQUIRE_FILE_MODULE
 #include "../../../la-modules/file/file-module.c"
-#endif
-
-#ifdef REQUIRE_STD_MODULE
-#include "../../../la-modules/std/std-module.c"
 #endif
 
 #ifdef REQUIRE_TERM_MODULE
@@ -499,6 +497,8 @@ int main (int argc, char **argv) {
 
   la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = (const char **) argv));
 
+  __init_std_module__ (la);
+
   #ifdef REQUIRE_PATH_MODULE
     __INIT__ (vmap);
     __init_path_module__ (la);
@@ -506,10 +506,6 @@ int main (int argc, char **argv) {
 
   #ifdef REQUIRE_FILE_MODULE
     __init_file_module__ (la);
-  #endif
-
-  #ifdef REQUIRE_STD_MODULE
-    __init_std_module__ (la);
   #endif
 
   #ifdef REQUIRE_TERM_MODULE

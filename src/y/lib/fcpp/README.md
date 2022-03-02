@@ -70,3 +70,9 @@
   */
 
 ```
+Build:
+```sh
+  make shared && make main-shared
+  make static && make main-static
+```
+

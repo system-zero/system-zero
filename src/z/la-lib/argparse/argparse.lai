@@ -277,27 +277,6 @@ private
     return found
   }
 
-public
-
-  add : func (as, short, long, descr, type, flags) {
-    this.idx++
-    this.shortopts[this.idx] = short
-    this.longopts[this.idx]  = long
-    this.as[this.idx]        = as
-    this.types[this.idx]     = type
-    this.flags[this.idx]     = flags
-    this.descr[this.idx]     = descr
-
-    this.results.$(as) =
-      if type is IntegerType or type is BooleanType
-        then false orelse null
-
-    ifnot (null is long) {
-      var llen = long: len ()
-      if llen > this.maxlen then this.maxlen = llen
-    }
-  }
-
   print_description : func {
     var msg = format ("Usage: ${%s, this.message} \n\n")
     var arlen = this.shortopts: len ()
@@ -346,6 +325,26 @@ public
     }
 
     println (msg)
+  }
+
+public
+  add : func (as, short, long, descr, type, flags) {
+    this.idx++
+    this.shortopts[this.idx] = short
+    this.longopts[this.idx]  = long
+    this.as[this.idx]        = as
+    this.types[this.idx]     = type
+    this.flags[this.idx]     = flags
+    this.descr[this.idx]     = descr
+
+    this.results.$(as) =
+      if type is IntegerType or type is BooleanType
+        then false orelse null
+
+    ifnot (null is long) {
+      var llen = long: len ()
+      if llen > this.maxlen then this.maxlen = llen
+    }
   }
 
   process : func (argv, start) {
@@ -409,5 +408,9 @@ public
     }
 
     return ok
+  }
+
+  usage : func {
+    this.print_description ()
   }
 }

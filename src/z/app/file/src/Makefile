@@ -28,6 +28,7 @@ shared: clean-shared\
     file-rename-shared\
     file-move-shared\
     file-new-shared\
+    file-sed-shared\
     install-data
 
 static: clean-static\
@@ -43,6 +44,7 @@ static: clean-static\
     file-rename-static\
     file-move-static\
     file-new-static\
+    file-sed-static\
     install-data
 
 clean-shared:\
@@ -57,7 +59,8 @@ clean-shared:\
     clean-file-remove-shared\
     clean-file-rename-shared\
     clean-file-move-shared\
-    clean-file-new-shared
+    clean-file-new-shared\
+    clean-file-sed-shared
 
 clean-static:\
     clean-file-exists-static\
@@ -69,9 +72,10 @@ clean-static:\
     clean-file-chmod-static\
     clean-file-chown-static\
     clean-file-remove-static\
-    clean-file-rename-shared\
-    clean-file-move-shared\
-    clean-file-new-shared
+    clean-file-rename-static\
+    clean-file-move-static\
+    clean-file-new-static\
+    clean-file-sed-static
 
 install-data:
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_exists)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_exists)
@@ -86,6 +90,7 @@ install-data:
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_rename)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_rename)
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_move)     || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_move)
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_new)      || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_new)
+	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(F_sed)      || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(F_sed)
 
 	@$(CP) $(F_copy)/args   $(Z_SHELL_DATADIR)/commands/$(F_copy)
 	@$(CP) $(F_move)/args   $(Z_SHELL_DATADIR)/commands/$(F_move)
@@ -93,6 +98,8 @@ install-data:
 	@$(CP) $(F_rename)/args $(Z_SHELL_DATADIR)/commands/$(F_rename)
 	@$(CP) $(F_remove)/args $(Z_SHELL_DATADIR)/commands/$(F_remove)
 	@$(CP) $(F_new)/args    $(Z_SHELL_DATADIR)/commands/$(F_new)
+	@$(CP) $(F_sed)/args    $(Z_SHELL_DATADIR)/commands/$(F_sed)
+
 #-----------------------------------------------#
 F_exists = File.exists
 file-exists-shared:
@@ -332,6 +339,26 @@ clean-file-new-shared:
 
 clean-file-new-static:
 	@$(TEST) ! -f $(SYSBINDIR)/$(F_new)-static || $(RM) $(SYSBINDIR)/$(F_new)-static
+
+#-----------------------------------------------#
+F_sed = File.sed
+file-sed-shared:
+	@$(PRINTF) "#!/bin/env La-shared\n\n" > $(SYSBINDIR)/$(F_sed)
+	@$(CAT) $(F_sed).lai >> $(SYSBINDIR)/$(F_sed)
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_sed)
+	@$(PRINTF) "installing File.sed to $(SYSBINDIR)\n"
+
+file-sed-static:
+	@$(PRINTF) "#!/bin/env La-static\n\n" > $(SYSBINDIR)/$(F_sed)-static
+	@$(CAT) $(F_sed).lai >> $(SYSBINDIR)/$(F_sed)-static
+	@$(CHMOD) 0755 $(SYSBINDIR)/$(F_sed)-static
+	@$(PRINTF) "installing File.sed-static to $(SYSBINDIR)\n"
+
+clean-file-sed-shared:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_sed) || $(RM) $(SYSBINDIR)/$(F_sed)
+
+clean-file-sed-static:
+	@$(TEST) ! -f $(SYSBINDIR)/$(F_sed)-static || $(RM) $(SYSBINDIR)/$(F_sed)-static
 
 #-----------------------------------------------#
 

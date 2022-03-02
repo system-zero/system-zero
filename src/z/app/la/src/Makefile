@@ -109,17 +109,14 @@ ifeq ($(FILE_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_FILE_MODULE
 endif
 
-STD_MODULE := 1
-ifeq ($(STD_MODULE), 1)
-  LA_STATIC_FLAGS += -DREQUIRE_STD_MODULE
-  ifeq ($(STRING_DECLARED), 0)
-    LA_STATIC_FLAGS += -lstring-$(VERSION)
-    STRING_DECLARED = 1
-  endif
-  ifeq ($(CSTRING_DECLARED), 0)
-    LA_STATIC_FLAGS += -lcstring-$(VERSION)
-    CSTRING_DECLARED = 1
-  endif
+# Enable std module by default
+ifeq ($(STRING_DECLARED), 0)
+  LA_STATIC_FLAGS += -lstring-$(VERSION)
+  STRING_DECLARED = 1
+endif
+ifeq ($(CSTRING_DECLARED), 0)
+  LA_STATIC_FLAGS += -lcstring-$(VERSION)
+  CSTRING_DECLARED = 1
 endif
 
 TERM_MODULE := 1
