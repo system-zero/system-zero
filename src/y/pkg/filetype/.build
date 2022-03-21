@@ -1,0 +1,11 @@
+var libfiletype = New Make (__file__)
+
+libfiletype.main = func {
+  this.install.header ()
+  this.make.shared.library ()
+  this.make.shared.module ()
+  this.make.static.library ()
+  this.install.script ()
+}
+
+return libfiletype

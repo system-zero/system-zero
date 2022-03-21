@@ -405,11 +405,13 @@ Type Make {
 
     script : func {
       return notok if notok is this.change_to_build_directory ()
+      return ok if null is this.script_sources
 
-      this.record (this.script_sources)
+      var sources = list ()
+      for |v| in this.script_sources append v + ".lai" in sources
+      this.record (sources)
 
       return ok if false is this.install_script
-      return ok if null is this.script_sources
 
       var targets = list ()
 
@@ -418,15 +420,14 @@ Type Make {
         append this.bindir: concat_with (v) + "-static" in targets
       }
 
-      return ok if this.should_make (targets, this.script_sources, this.force_script) is false
+      return ok if this.should_make (targets, sources, this.force_script) is false
 
       var r = notok
       var idx = 0
-      for |v| in this.script_sources {
-        var s = v + ".lai"
-        continue ifnot s: exists ()
+      for |v| in sources {
+        continue ifnot v: exists ()
 
-        var read_fd = open (s, O_RDONLY, 0)
+        var read_fd = open (v, O_RDONLY, 0)
         continue if null is read_fd
         var script = read (read_fd)
 
@@ -528,8 +529,10 @@ Type Make {
 
         var to = this.bindir: concat_with (this.execoutput)
 
-        if ok is r
+        if ok is r {
           symlink (this.execoutput + "-shared", to; verbose : this.verbose + 1, force : 1)
+          this.install_data (this.execoutput)
+        }
 
         this.make_shared_executable = false
         return this.endbuild (r)
@@ -639,6 +642,9 @@ Type Make {
         if this.verbose then println (com) orelse println ("make static executable")
 
         var r = this.sh: exec (com)
+        if r is ok
+          this.install_data (output)
+
         this.make_static_executable = false
         return this.endbuild (r)
       }

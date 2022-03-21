@@ -1563,6 +1563,15 @@ Y_MAKE_SRCDIR       = $(Y_SRCPKGDIR)/$(YMake)
 y-make: l-shared
 	@cd $(Y_MAKE_SRCDIR) && La Make.lai install-script -v
 
+Filetype_Type       = filetype
+Y_FILETYPE_SRCDIR   = $(Y_SRCPKGDIR)/$(Filetype_Type)
+
+libfiletype-shared: Env y-make
+	@cd $(Y_FILETYPE_SRCDIR) && Make shared --force
+
+libfiletype-static: Env y-make
+	@cd $(Y_FILETYPE_SRCDIR) && Make static
+
 #-----------------------------------------------#
 # Development and personal stuff (ignore this section)
   ZA_SELF          = self

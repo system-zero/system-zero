@@ -1,0 +1,14 @@
+import ("path")
+import ("filetype")
+
+var me = __argv[0]: path_basename ()
+ifnot __argc - 1 {
+  println ("${me} file")
+  exit (1)
+}
+
+var file = __argv[1]
+var s = filetype (file)
+println ("${file}: ${s}")
+
+exit (if s is null then 1 orelse 0)
