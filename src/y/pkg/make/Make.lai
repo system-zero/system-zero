@@ -1,0 +1,662 @@
+#!/bin/env La
+
+# an oversimplified and specific for this environment, make like utility
+
+import ("io")
+import ("sh")
+import ("sys")
+import ("dir")
+import ("file")
+import ("path")
+import ("crypt")
+
+include ("argparse")
+
+var argparse = New Argparse (21, 0, "Make option[s] [directory]")
+argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
+argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
+argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
+argparse.add ("shared_executable", 0, "shared-executable", "make shared executable", BooleanType, ARG_LITERAL)
+argparse.add ("shared_module", 0, "shared-module", "make shared module", BooleanType, ARG_LITERAL)
+argparse.add ("static_library", 0, "static-library", "make static library", BooleanType, ARG_LITERAL) 
+argparse.add ("static_executable", 0, "static-executable", "make static executable", BooleanType, ARG_LITERAL)
+argparse.add ("install_header", 0, "install-header", "install header", BooleanType, ARG_LITERAL)
+argparse.add ("install_script", 0, "install-script", "install script", BooleanType, ARG_LITERAL)
+argparse.add ("all", 0, "all", "make all targets", BooleanType, ARG_LITERAL)
+argparse.add ("force", 0, "force", "force making targets", BooleanType, 0)
+argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)
+argparse.add ("version", 0, "version=", "set version", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("march", 0, "march=", "set march (default native)", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("optimization", 0, "optimization=", "set optimization (default -O2)", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("cc", 0, "cc=", "set cc (default gcc)", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("std", 0, "std=", "set C standard (default c11)", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("no_rpath", 0, "unset-rpath", "unset rpath", BooleanType, 0)
+argparse.add ("no_debug", 0, "unset-debug", "unset debug C flags (default on)", BooleanType, 0)
+argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+const open          = io_open
+const read          = io_fd_read
+const write         = io_fd_write
+const stat          = file_stat
+const copy          = file_copy
+const clear         = list_clear
+const mkdir         = dir_make
+const change        = dir_change
+const isdirectory   = dir_is_directory
+const concat_with   = path_concat
+const exists        = file_exists
+const remove        = file_remove
+const symlink       = file_symlink
+const dirname       = path_dirname
+const basename      = path_basename
+const key_exists    = map_key_exists
+const base64_encode = crypt_base64_encode_file
+const char          = integer_char
+const advance       = string_advance
+
+const VERSION       = "0.3"
+const CC            = "gcc"
+const STD11         = "c11"
+const STD99         = "c99"
+const STDANSI       = "c90"
+const OPTIMIZATION  = "-O2"
+const MARCH         = "-march=native"
+const SYSDIR        = Sys.get ("SYSDIR")
+const LIBDIR        = SYSDIR: concat_with ("lib")
+const BINDIR        = SYSDIR: concat_with ("bin")
+const INCDIR        = SYSDIR: concat_with ("include")
+const ZLIBDIR       = LIBDIR: concat_with ("z")
+const ZINCDIR       = INCDIR: concat_with ("z")
+const SYSDATADIR    = Sys.get ("DATADIR")
+const SHELL         = "zs"
+const SHELLDATADIR  = SYSDATADIR: concat_with (SHELL + "/commands")
+const DEBUG         = true
+const NODEBUG       = false
+const VERBOSE       = true
+const NOVERBOSE     = false
+const RPATH         = true
+const NORPATH       = false
+const SPEC          = ".build"
+const CACHED        = ".cached"
+
+Type Make {
+  private
+    sh                        : New Shell ()
+    bindir                    : BINDIR
+    libdir                    : ZLIBDIR
+    incdir                    : ZINCDIR
+    shelldatadir              : SHELLDATADIR
+    make_shared_library       : false
+    make_shared_module        : false
+    make_shared_executable    : false
+    make_static_library       : false
+    make_static_executable    : false
+    install_header            : false
+    install_script            : false
+    force_shared_library      : false
+    force_shared_module       : false
+    force_shared_executable   : false
+    force_static_library      : false
+    force_static_executable   : false
+    force_header              : false
+    force_script              : false
+    verbose                   : false
+    version                   : null
+    cc                        : null
+    std                       : null
+    builddir                  : null
+    header                    : null
+    libname                   : null
+    liboutput                 : null
+    execoutput                : null
+    curdir                    : null
+    cached_file               : null
+    cached                    : null
+    recorded                  : null
+    optimization              : null
+    march                     : null
+    retval                    : ok
+    debug                     : DEBUG
+    rpath                     : RPATH
+    libdirs                   : list (ZLIBDIR, LIBDIR)
+    includedirs               : list (ZINCDIR, INCDIR)
+    linkagainst               : list ()
+    shared_library_sources    : list ()
+    shared_module_sources     : list ()
+    shared_executable_sources : list ()
+    static_library_sources    : list ()
+    static_executable_sources : list ()
+    script_sources            : list ()
+    cflags                    : list ()
+
+  init_cflags : func {
+    for |v| in this.includedirs append "-I" + v      in this.cflags
+    for |v| in this.libdirs     append "-L" + v      in this.cflags
+
+    append "-Wall"                                   in this.cflags
+    append "-fdollars-in-identifiers"                in this.cflags
+
+
+    if this.cc is "clang" {
+      append "-Wno-override-init"                    in this.cflags
+      append "-Wno-unused-command-line-argument"     in this.cflags
+    }
+
+    if this.cc is "gcc" {
+      append "-Wimplicit-fallthrough"                in this.cflags
+      append "-Wrestrict"                            in this.cflags
+    }
+
+    if this.debug is DEBUG {
+      append "-g"                                    in this.cflags
+      append "-Wextra"                               in this.cflags
+      append "-Wshadow"                              in this.cflags
+      append "-Wunused-result"                       in this.cflags
+      append "-Wunused-function"                     in this.cflags
+      append "-Wunused-macros"                       in this.cflags
+      append "-Wsign-compare"                        in this.cflags
+      append "-Wpointer-arith"                       in this.cflags
+      append "-Wreturn-type"                         in this.cflags
+      append "-Wwrite-strings"                       in this.cflags
+      append "-Wuninitialized"                       in this.cflags
+      append "-Wmissing-declarations"                in this.cflags
+      append "-Werror-implicit-function-declaration" in this.cflags
+    }
+  }
+
+  change_to_build_directory : func {
+    return ok if null is this.builddir
+    this.retval = this.builddir: change ()
+    return this.retval
+  }
+
+  set_options : func {
+    this.make_shared_library       = argparse.results.shared_library
+    this.make_shared_module        = argparse.results.shared_module
+    this.make_shared_executable    = argparse.results.shared_executable
+    this.make_static_library       = argparse.results.static_library
+    this.make_static_executable    = argparse.results.static_executable
+    this.install_header            = argparse.results.install_header
+    this.install_script            = argparse.results.install_script
+
+    if argparse.results.shared or argparse.results.all {
+      this.make_shared_library    = true
+      this.make_shared_executable = true
+      this.make_shared_module     = true
+    }
+
+    if argparse.results.static or argparse.results.all {
+      this.make_static_library    = true
+      this.make_static_executable = true
+    }
+
+    if argparse.results.shared_module or argparse.results.shared_executable then
+      this.make_shared_library = true
+
+    if argparse.results.static_executable then
+      this.make_static_library = true
+
+    if argparse.results.shared_library or argparse.results.static_library then
+      this.install_header = true
+
+    ifnot null is argparse.results.version then this.version = argparse.results.version
+
+    if argparse.results.remove_cache then
+      if this.cached_file: exists () then
+        remove (this.cached_file)
+
+    this.verbose = argparse.results.verbose
+
+    this.cc           = if argparse.results.cc           isnot null then argparse.results.cc  orelse CC
+    this.std          = if argparse.results.std          isnot null then argparse.results.std orelse STD11
+    this.march        = if argparse.results.march        isnot null then argparse.results.march orelse MARCH
+    this.optimization = if argparse.results.optimization isnot null then "-" + argparse.results.optimization orelse OPTIMIZATION
+    this.version      = if argparse.results.version      isnot null then argparse.results.version orelse VERSION
+    this.debug        = if argparse.results.no_debug     then NODEBUG orelse DEBUG
+    this.rpath        = if argparse.results.no_rpath     then NORPATH orelse RPATH
+
+    if this.install_script is false and argparse.results.all then this.install_script = true
+
+    return ifnot argparse.results.force
+
+    if argparse.results.shared or argparse.results.shared_library    or argparse.results.all then this.force_shared_library = true
+    if argparse.results.shared or argparse.results.shared_module     or argparse.results.all then this.force_shared_module = true
+    if argparse.results.shared or argparse.results.shared_executable or argparse.results.all then this.force_shared_executable = true
+    if argparse.results.static or argparse.results.static_library    or argparse.results.all then this.force_static_library = true
+    if argparse.results.static or argparse.results.static_executable or argparse.results.all then this.force_static_executable = true
+    if argparse.results.shared or argparse.results.static            or argparse.results.install_header or argparse.results.all then this.force_header = true
+    if argparse.results.all    or argparse.results.install_script    then this.force_script = true
+  }
+
+  record : func (sources) {
+    if this.recorded is null then this.recorded = {}
+
+    for |v| in sources {
+      continue if key_exists (this.recorded, v)
+      continue ifnot v: exists ()
+      var st = v: stat ()
+      var base = base64_encode (v)
+      this.recorded.$(v) = { mtime : st.st_mtime, base : base }
+    }
+  }
+
+  read_cached_file : func {
+    if this.cached is null {
+      var fd = open (this.cached_file, O_RDONLY, 0)
+      return true if fd is null
+      var s = read (fd)
+      eval (s)
+    }
+
+    return false
+  }
+
+  should_make : func (target, sources, force) {
+    if force then return true
+
+    var type = target: typeof ()
+    if type is ArrayType or type is ListType {
+      for |v| in target ifnot v: exists () return true
+    } else {
+      ifnot target: exists () then return true
+    }
+
+    ifnot this.cached_file: exists () then return true
+
+    return true if this.read_cached_file () is true
+
+    for |v| in sources {
+      ifnot   this.cached: key_exists (v) then return true
+      ifnot this.recorded: key_exists (v) then return true
+
+      if this.cached.$(v).mtime isnot this.recorded.$(v).mtime then return true
+      if this.cached.$(v).base  isnot this.recorded.$(v).base  then return true
+    }
+
+    return false
+  }
+
+  install_data : func (exec) {
+    return if null is exec
+    if notok is this.change_to_build_directory () return
+
+    var targetdir = this.shelldatadir: concat_with (exec)
+    ifnot targetdir: exists () then mkdir (targetdir, 0644)
+    ifnot targetdir: isdirectory () {
+      println ("${targetdir}: not a directory")
+      return
+    }
+
+    var args = exec: concat_with ("args")
+    if args: exists () then
+      copy (args, targetdir; verbose : this.verbose + 1, force : 1)
+
+    var flags = exec: concat_with ("flags")
+    if flags: exists () then
+      copy (flags, targetdir; verbose : this.verbose + 1, force : 1)
+  }
+
+  endbuild : func (retval) {
+    change (this.curdir)
+    this.retval = retval
+    return retval
+  }
+
+  init : func (unit) {
+    var dir  = unit : dirname ()
+    var name =   dir: basename ()
+
+    this.curdir = Dir.current ()
+
+    this.set.libname                  (name)
+    this.set.liboutput                (name)
+    this.set.builddir                 (dir)
+    this.set.header                   (name + ".h")
+    this.set.cached_file              (this.builddir: concat_with (CACHED))
+    this.set.shared_library_source    ("lib" + name + ".c")
+    this.set.shared_module_source     (name + "-module.c")
+    this.set.static_library_source    ("lib" + name + ".c")
+    this.set.execoutput               (char (name[0] - ('a' - 'A')) + advance (name, 1))
+    this.set.linkagainst              (name + "-" + this.version)
+    this.set.script_source            (char (name[0] - ('a' - 'A')) + advance (name, 1))
+    this.set.shared_executable_source (name + "_main.c")
+    this.set.static_executable_source (name + "_main.c")
+
+    this.set_options ()
+    this.init_cflags ()
+  }
+
+  public
+  main
+  write_record : func {
+    return if null is this.recorded
+
+    var fd = open (this.cached_file, O_WRONLY|O_CREAT, S_IWUSR|S_IRUSR)
+    return if fd is null
+
+    write (fd, "this.cached = {\n")
+
+    for |k, v| in this.recorded {
+      write (fd, "  \"" + k + "\" : {\n    mtime : ")
+      write (fd, format ("${v.mtime}"))
+      write (fd, "\n    base : \"" + v.base + "\"\n")
+      write (fd, "  }\n")
+    }
+
+    write (fd, "}")
+  }
+
+  get : {
+    version : func return this.version
+    retval  : func return this.retval
+  }
+
+  set : {
+    cc                       : func (c) ifnot null is c this.cc = c
+    std                      : func (s) ifnot null is s this.std = s
+    march                    : func (m) ifnot null is m this.march = m
+    version                  : func (v) ifnot null is v this.version = v
+    libname                  : func (l) ifnot null is l this.libname = l
+    liboutput                : func (o) ifnot null is o this.liboutput = "lib" + o + "-" + this.version
+    execoutput               : func (o) ifnot null is o this.execoutput = o
+    optimization             : func (o) ifnot null is o this.optimization = o
+    header                   : func (h) ifnot null is h this.header = h
+    cached_file              : func (c) ifnot null is c this.cached_file = c
+    linkagainst              : func (l) ifnot null is l append "-l" + l in this.linkagainst
+    cflag                    : func (f) ifnot null is f append f in this.cflags
+    shared_library_source    : func (s) ifnot null is s append s in this.shared_library_sources
+    shared_module_source     : func (s) ifnot null is s append s in this.shared_module_sources
+    shared_executable_source : func (s) ifnot null is s append s in this.shared_executable_sources
+    static_library_source    : func (s) ifnot null is s append s in this.static_library_sources
+    static_executable_source : func (s) ifnot null is s append s in this.static_executable_sources
+    script_source            : func (s) ifnot null is s append s in this.script_sources
+    builddir                 : func (d) this.builddir = d
+  }
+
+  unset : {
+    rpath                     : func this.rpath = NORPATH
+    cflags                    : func clear (this.cflags)
+    linkagainst               : func clear (this.linkagainst)
+    shared_library_sources    : func clear (this.shared_library_sources)
+    shared_module_sources     : func clear (this.shared_module_sources)
+    shared_executable_sources : func clear (this.shared_executable_sources)
+    static_library_sources    : func clear (this.static_library_sources)
+    static_executable_sources : func clear (this.static_executable_sources)
+  }
+
+  install : {
+    header : func {
+      return notok if notok is this.change_to_build_directory ()
+
+      this.record ([this.header])
+
+      return ok if false is this.install_header
+      return ok if null is this.header
+
+      var to = ZINCDIR: concat_with (this.header);
+
+      return ok if this.should_make (to, [this.header], this.force_header) is false
+
+      var r = copy (this.header, to; verbose : this.verbose + 1, force : 1)
+      this.install_header = false
+      return this.endbuild (r)
+    }
+
+    script : func {
+      return notok if notok is this.change_to_build_directory ()
+
+      this.record (this.script_sources)
+
+      return ok if false is this.install_script
+      return ok if null is this.script_sources
+
+      var targets = list ()
+
+      for |v| in this.script_sources {
+        append this.bindir: concat_with (v)             in targets
+        append this.bindir: concat_with (v) + "-static" in targets
+      }
+
+      return ok if this.should_make (targets, this.script_sources, this.force_script) is false
+
+      var r = notok
+      var idx = 0
+      for |v| in this.script_sources {
+        var s = v + ".lai"
+        continue ifnot s: exists ()
+
+        var read_fd = open (s, O_RDONLY, 0)
+        continue if null is read_fd
+        var script = read (read_fd)
+
+        var output = targets[idx++]
+        var write_fd = open (output, O_WRONLY|O_CREAT, S_IRWXU);
+        ifnot null is write_fd { 
+          if this.verbose then println ("install ${output}")
+          write (write_fd, "#!/bin/env La-shared\n\n")
+          write (write_fd, script)
+          r = ok
+        }
+
+        output = targets[idx++]
+        write_fd  = open (output, O_WRONLY|O_CREAT, S_IRWXU)
+        ifnot null is write_fd {
+          if this.verbose then println ("install ${output}")
+          write (write_fd, "#!/bin/env La-static\n\n")
+          write (write_fd, script)
+          r = ok
+        }
+      }
+
+      if r is ok then
+        for |v| in this.script_sources
+          this.install_data (v)
+
+      return this.endbuild (r)
+    }
+  }
+
+  make : {
+    shared : {
+      library : func {
+        return notok if notok is this.change_to_build_directory ()
+
+        this.record (this.shared_library_sources)
+
+        return ok if false is this.make_shared_library
+
+        var output = this.libdir: concat_with (this.liboutput + ".so")
+
+        return ok if this.should_make (output, this.shared_library_sources, this.force_shared_library) is false
+
+        var com = this.cc + " -std=" + this.std
+
+        append " " + this.march        in com
+        append " " + this.optimization in com
+
+        for |v| in this.cflags       if v isnot null append " " + v in com
+        for |v| in this.linkagainst  if v isnot null append " " + v in com
+
+        if this.rpath then append " -Wl,-rpath=" + this.libdir      in com
+
+        append " -shared -fPIC" in com
+        append " -o " + output  in com
+
+        for |v| in this.shared_library_sources if v isnot null then append " " + v in com
+
+        if this.verbose then println (com) orelse println ("make shared library")
+
+        var r = this.sh: exec (com)
+
+        var to = this.libdir: concat_with ("lib" + this.libname + ".so")
+        if ok is r then
+          symlink (this.liboutput + ".so", to; verbose : this.verbose + 1, force : 1)
+
+        this.make_shared_library = false
+        return this.endbuild (r)
+      }
+
+      executable: func {
+        return notok if notok is this.change_to_build_directory ()
+
+        this.record (this.shared_executable_sources)
+
+        return ok if false is this.make_shared_executable
+
+        var output = this.bindir: concat_with (this.execoutput + "-shared")
+
+        return ok if this.should_make (output, this.shared_executable_sources, this.force_shared_executable) is false
+
+        var com = this.cc + " -std=" + this.std
+
+        append " " + this.march        in com
+        append " " + this.optimization in com
+
+        for |v| in this.cflags       if v isnot null append " " + v in com
+        for |v| in this.linkagainst  if v isnot null append " " + v in com
+
+        if this.rpath then append " -Wl,-rpath=" + this.libdir in com
+
+        append " -o " + output in com
+
+        for |v| in this.shared_executable_sources if v isnot null then append " " + v in com
+
+        if this.verbose then println (com) orelse println ("make shared executable")
+
+        var r = this.sh: exec (com)
+
+        var to = this.bindir: concat_with (this.execoutput)
+
+        if ok is r
+          symlink (this.execoutput + "-shared", to; verbose : this.verbose + 1, force : 1)
+
+        this.make_shared_executable = false
+        return this.endbuild (r)
+      }
+
+      module : func {
+        return notok if notok is this.change_to_build_directory ()
+
+        this.record (this.shared_module_sources)
+
+        return ok if false is this.make_shared_module
+
+        var output = this.libdir: concat_with ("la-modules/" + this.libname + "-module.so")
+
+        return ok if this.should_make (output, this.shared_module_sources, this.force_shared_module) is false
+
+        var com = this.cc + " -std=" + this.std
+
+        append " " + this.march        in com
+        append " " + this.optimization in com
+
+        for |v| in this.cflags       if v isnot null append " " + v in com
+        for |v| in this.linkagainst  if v isnot null append " " + v in com
+
+        append " -shared -fPIC" in com
+        append " -lla -lstring -lvmap -lvstring" in com
+        append " -o " + output in com
+
+        for |v| in this.shared_module_sources if v isnot null then append " " + v in com
+
+        if this.verbose then println (com) orelse println ("make shared module")
+
+        var r = this.sh: exec (com)
+
+        this.make_shared_module = false
+        return this.endbuild (r)
+      }
+    }
+
+    static : {
+      library : func {
+        return notok if notok is this.change_to_build_directory ()
+
+        this.record (this.static_library_sources)
+
+        return ok if false is this.make_static_library
+
+        var output = this.libdir: concat_with (this.liboutput + ".a")
+
+        return ok if this.should_make (output, this.static_library_sources, this.force_static_library) is false
+
+        var com = this.cc + " -std=" + this.std
+
+        for |v| in this.static_library_sources if v isnot null then append " " + v in com
+
+        append " " + this.march        in com
+        append " " + this.optimization in com
+
+        if this.cc isnot "tcc" then append " -z muldefs" in com
+
+        for |v| in this.cflags        if v isnot null append " " + v in com
+        for |v| in this.linkagainst   if v isnot null append " " + v in com
+
+        append " -static -c" in com
+        append " -o " + this.liboutput + ".o" in com
+
+        if this.verbose then println (com) orelse println ("make static library")
+
+        var r = this.sh: exec (com)
+
+        if ok is r {
+          com = "ar rs " + output
+          append " " + this.liboutput + ".o" in com
+          if this.verbose then println (com)
+          r = this.sh: exec (com)
+          remove (this.liboutput + ".o")
+        }
+
+        this.make_static_library = false
+        return this.endbuild (r)
+      }
+
+      executable: func {
+        return notok if notok is this.change_to_build_directory ()
+
+        this.record (this.static_executable_sources)
+
+        return ok if false is this.make_static_executable
+
+        var output = this.bindir: concat_with (this.execoutput + "-static")
+
+        return ok if this.should_make (output, this.static_executable_sources, this.force_static_executable) is false
+
+        var com = this.cc + " -std=" + this.std
+
+        for |v| in this.static_executable_sources if v isnot null then append " " + v in com
+
+        append " " + this.march        in com
+        append " " + this.optimization in com
+        append " -static"              in com
+
+        for |v| in this.cflags       if v isnot null append " " + v in com
+        for |v| in this.linkagainst  if v isnot null append " " + v in com
+
+        append " -o " + output in com
+
+        if this.verbose then println (com) orelse println ("make static executable")
+
+        var r = this.sh: exec (com)
+        this.make_static_executable = false
+        return this.endbuild (r)
+      }
+    }
+  }
+}
+
+public func make (argc, argv) {
+  ifnot ok is argparse.process (argv, 1) then return notok
+  if argparse.exit is true then return ok
+
+  var f = ifnot argparse.argc then SPEC orelse argparse.argv[0]: concat_with (SPEC)
+  return notok ifnot f: exists ()
+
+  var s = evalfile (f)
+  s.main ()
+  s.write_record ()
+  return s.get.retval ()
+}
+
+exit (if make (__argc, __argv) is ok then 0 orelse 1)

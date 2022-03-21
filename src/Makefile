@@ -1546,6 +1546,23 @@ LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 la-library:
 	@cd $(Z_SRCLALIBDIR) && make $(LALIB_ARGS)
 
+#----------------- [ y ] -----------------------#
+Y_SRCDIR     := $(SRCDIR)/y
+Y_SRCPKGDIR  := $(Y_SRCDIR)/pkg
+
+l-shared: libargparse-shared librline-shared libla-shared
+	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) la-shared
+
+generate-libc: l-shared
+	@cd $(Y_SRCDIR) && La generateLibc
+
+#-#
+YMake               = make
+Y_MAKE_SRCDIR       = $(Y_SRCPKGDIR)/$(YMake)
+
+y-make: l-shared
+	@cd $(Y_MAKE_SRCDIR) && La Make.lai install-script -v
+
 #-----------------------------------------------#
 # Development and personal stuff (ignore this section)
   ZA_SELF          = self
