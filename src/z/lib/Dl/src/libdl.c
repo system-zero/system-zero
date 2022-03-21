@@ -108,7 +108,7 @@ int DlDumpDependencies (dl_t *dl, const char *object) {
   s.verbosity = dl->verbose;
   s.path = dl->path;
 
-  // now we try to preserve the code logic
+  // now try to preserve the code logic
   // - no need to ask why, as either way we get what we really want
   struct utsname uname_val;
   if (uname (&uname_val) isnot 0)
@@ -120,7 +120,7 @@ int DlDumpDependencies (dl_t *dl, const char *object) {
 
   s.LIB = (char *) "lib";
 
-  /* here it our tiny intervention */
+  /* here it is our tiny intervention */
 
   size_t len = bytelen (object);
   dl->unit = Alloc (len + 1);

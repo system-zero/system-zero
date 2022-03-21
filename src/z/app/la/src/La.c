@@ -18,7 +18,9 @@
 
 #include <z/cenv.h>
 
+#ifdef STATIC
 #include "../../../la-modules/std/std-module.c"
+#endif
 
 #ifdef REQUIRE_PATH_MODULE
 #include "../../../la-modules/path/path-module.c"
@@ -497,7 +499,9 @@ int main (int argc, char **argv) {
 
   la = La.init_instance (LaN, LaOpts(.argc = argc, .argv = (const char **) argv));
 
-  __init_std_module__ (la);
+  #ifdef STATIC
+    __init_std_module__ (la);
+  #endif
 
   #ifdef REQUIRE_PATH_MODULE
     __INIT__ (vmap);

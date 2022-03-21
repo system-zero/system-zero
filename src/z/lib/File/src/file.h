@@ -2,7 +2,6 @@
 #define FILE_HDR
 
 typedef int (*FileReadLines_cb) (Vstring_t *, char *, size_t, int, void *);
-
 typedef int (*FileInteractive) (const char *, const char *);
 
 typedef struct file_copy_opts {

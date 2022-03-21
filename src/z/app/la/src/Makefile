@@ -70,8 +70,8 @@ endif
 
 FLAGS += -DVERSION=$(VERSION) -DVERSION_STRING='"$(VERSION)"'
 FLAGS += -DDATADIR='"$(SYSDATADIR)"'
-FLAGS += -lla-$(VERSION) -lio-$(VERSION) -largparse-$(VERSION)
-FLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lvstring-$(VERSION)
+FLAGS += -lla-$(VERSION) -lio-$(VERSION) -largparse-$(VERSION) -lvmap-$(VERSION)
+FLAGS += -lfile-$(VERSION) -lstring-$(VERSION) -lvstring-$(VERSION) -lustring-$(VERSION)
 FLAGS += -lterm-$(VERSION) -lcstring-$(VERSION) -lrline-$(VERSION)
 FLAGS += -lrandom-$(VERSION) -ldir-$(VERSION) -lpath-$(VERSION)
 
@@ -227,7 +227,9 @@ ifeq ($(NET_MODULE), 1)
   LA_STATIC_FLAGS += -lnet-$(VERSION) -lssl -lcrypto -lresolv -lpthread
 endif
 
-la-shared:
+la-shared:$(SYSBINDIR)/$(LA)-shared
+
+$(SYSBINDIR)/$(LA)-shared:
 	$(CC) $(LA).c $(FLAGS) -ldl -o $(SYSBINDIR)/$(LA)-shared
 	@$(LN_S) -vf $(LA)-shared $(SYSBINDIR)/$(LA)
 

@@ -1654,4 +1654,5 @@ int main(int argc, char **argv) {
     return print_tree(positional, argv, &s);
 }
 #endif
+
 #include "libdl.c" /* ADDITION */

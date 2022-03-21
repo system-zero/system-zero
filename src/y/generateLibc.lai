@@ -19,7 +19,8 @@ var
   make_directory = dir_make,
   provide_str    = " provides: ",
   require_str    = "// requires: ",
-  comment_str    = "// comment: "
+  comment_str    = "// comment: ",
+  end_str        = "// end"
 
 public func libc_generate (argc, argv) {
 
@@ -55,7 +56,9 @@ public func libc_generate (argc, argv) {
     return notok
   }
 
-  var outputFile = outputDir: concat_with (outputName + ".c")
+  var outputFile  = outputDir: concat_with (outputName + ".c")
+  var licenceFile = outputDir: concat_with ("LICENSES")
+  var commentFile = outputDir: concat_with ("comments")
 
   var dotsToLibc = lambda (d) {
     var s = ""
@@ -76,8 +79,8 @@ public func libc_generate (argc, argv) {
   var funcSigns = "/* Function Signatures */\n"
   var libcFuns  = "\n"
   var libcTypes = "\n    /* Types */\n"
-  var licenses  = "\n    /* LICENSES */\n#if 0\n"
-  var comments  = "\n    /* Comments */\n#if 0\n"
+  var licenses  = "\n    /* LICENSES */\n\n"
+  var comments  = "\n    /* Comments */\n\n"
   var libcHdrs  =
    `/* Amalgamation oversimplified tiny libc for x86 and x86_64 */
     /* You get only what you only want, with a without magic code. */
@@ -85,26 +88,20 @@ public func libc_generate (argc, argv) {
     #ifndef LIBC_HDR
     #define LIBC_HDR
 
-    #ifndef REQUIRE_ERRNO_H
-    #define REQUIRE_ERRNO_H
+    #ifndef REQUIRE_STDINT
+    #define REQUIRE_STDINT
     #endif
 
-    #ifdef REQUIRE_STD
-      #ifndef REQUIRE_STDINT
-      #define REQUIRE_STDINT
-      #endif
+    #ifndef REQUIRE_NULL_H
+    #define REQUIRE_NULL_H
+    #endif
 
-      #ifndef REQUIRE_NULL_H
-      #define REQUIRE_NULL_H
-      #endif
+    #ifndef REQUIRE_SIZE_T_H
+    #define REQUIRE_SIZE_T_H
+    #endif
 
-      #ifndef REQUIRE_SIZE_T_H
-      #define REQUIRE_SIZE_T_H
-      #endif
-
-      #ifndef REQUIRE_ERRNO_H
-      #define REQUIRE_ERRNO_H
-      #endif
+    #ifndef REQUIRE_ERRNO_H
+    #define REQUIRE_ERRNO_H
     #endif
 
     #ifdef REQUIRE_STDINT
@@ -187,7 +184,7 @@ public func libc_generate (argc, argv) {
 
           ifnot null is sp {
             num_found++
-            # id[0]:  sometime we need a "break that works for if's"
+            # id[0]:  sometimes we need a "break that works for if's"
             #         else the logic may lost a bit, just because of
             #           the error conditional checks
 
@@ -303,19 +300,18 @@ public func libc_generate (argc, argv) {
     append format ("/* ${dotsToLibc}/${v.basedir}/${v.funname} */\n") in libcTypes
 
     for (var i = idx; i < lines: len (); i++) {
-      break if lines[i]: eq_n ("// end", 6)
+      break if lines[i]: eq_n (end_str, 6)
       append lines[i] + '\n' in libcTypes
     }
 
     append "#endif\n" in libcTypes
   }
 
-  append "#endif /* LICENSES */\n" in licenses
   append "#endif /* LIBC_HDR */\n" in libcFuns
-  append "#endif /* Comments */\n" in comments
 
-  File.write (outputFile,
-    libcHdrs + comments + libcTypes + funcSigns + libcFuns + licenses)
+  File.write (outputFile, libcHdrs + libcTypes + funcSigns + libcFuns)
+  File.write (commentFile, comments)
+  File.write (licenceFile, licenses)
 }
 
 libc_generate (__argc, __argv)

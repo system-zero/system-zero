@@ -336,7 +336,7 @@ again:
 
 theerror:
   ifnot (NULL is this) {
-    file_tmpfname_release (this, FILE_TMPFNAME_UNLINK_FILE| FILE_TMPFNAME_CLOSE_FD);
+    file_tmpfname_release (this, FILE_TMPFNAME_UNLINK_FILE|FILE_TMPFNAME_CLOSE_FD);
     this = NULL;
   }
 

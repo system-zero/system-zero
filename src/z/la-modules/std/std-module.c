@@ -474,6 +474,7 @@ static VALUE integer_eq (la_t *this, VALUE v_fint, VALUE v_sint) {
 
 public int __init_std_module__ (la_t *this) {
   __INIT_MODULE__(this);
+  __INIT__(vstring);
   __INIT__(cstring);
   __INIT__(ustring);
 

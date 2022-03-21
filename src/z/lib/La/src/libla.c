@@ -1397,6 +1397,24 @@ static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
   return OK_VALUE;
 }
 
+static VALUE list_clear (la_t *this, VALUE v_list) {
+  ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
+
+  listType *list = AS_LIST(v_list);
+
+  listNode *node = NULL;
+  while (1) {
+    node = DListPopTail(list, listNode);
+    if (NULL == node)
+      break;
+
+    la_release_val (this, *node->value);
+    free (node->value);
+    free (node);
+  }
+
+  return OK_VALUE;
+}
 static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
@@ -9579,17 +9597,17 @@ theload:
   err = la_import_file (this, fname->bytes, err_msg);
 
 theend:
-  this->curScope = prev_ns;
-  String.release (fname);
-  String.release (fn);
-  String.release (ns);
-
   if (err isnot LA_OK) {
     if (err isnot LA_ERR_DYNLINK)
       err = LA_ERR_IMPORT;
 
-    this->print_fmt_bytes (this->err_fp, "import error: %s\n", err_msg);
+    this->print_fmt_bytes (this->err_fp, "[%s] import error: %s\n", fname->bytes, err_msg);
   }
+
+  this->curScope = prev_ns;
+  String.release (fname);
+  String.release (fn);
+  String.release (ns);
 
   return err;
 }
@@ -9622,6 +9640,9 @@ static int la_parse_loadfile (la_t *this) {
       String.release (tmp);
   }
 
+  if (File.exists (fname->bytes) and File.is_reg (fname->bytes))
+    goto loadfile;
+
   char *extname = Path.extname (fname->bytes);
 
   size_t exlen = bytelen (extname);
@@ -9638,6 +9659,8 @@ static int la_parse_loadfile (la_t *this) {
     String.append_byte (fname, '.');
 
   String.append_with (fname, LA_EXTENSION);
+
+loadfile: {}
 
   string *ns = NULL;
   funT *load_ns = this->curScope;
@@ -10515,6 +10538,7 @@ LaDefCFun la_funs[] = {
   { "list_prepend",     PTR(list_prepend), 2},
   { "list_delete_at",   PTR(list_delete_at), 2},
   { "list_insert_at",   PTR(list_insert_at), 3},
+  { "list_clear",       PTR(list_clear), 1},
   { NULL,               NULL_VALUE, NULL_TYPE},
 };
 

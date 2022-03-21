@@ -13,7 +13,7 @@ in other words mostly boring stuff.
 
 First we instantaniated a tiny [libc](libc/README.md) (and an endless project...).
 We used a script (implemented in our programming Language) which collects functions,
-structures, constants and macros, and then it generates a single file libc. We've
+structures, constants and macros, and then it generates a single file libc. Amd while, we've
 faced with conditions which can easily fail and unhandled cases (like handling
 a failure during a function sequence), it has a been a bit of pleasure to work
 and express :)(yea it really should be, as we choosed the way!). Anyway, it is
@@ -31,7 +31,7 @@ Our second step was to introduce a C [preprocessor](lib/fcpp/README) (for intern
 and which is also exposed as a library for reuse by others. It is some very old
 code from the early nineties, but that looks that for the moment it does best its
 destined job. Many thanks for this, as it is always a pleasure to see such a good
-old C code to compiles (often without modifications or just some to silence some
+old C code to compiles (often without modifications or few, just to silence some
 warnings when we enable our debug C flags) cleanly by modern compilers, and this is
 an admirable C property. In this distribution we already happily using code that
 it was first written at 1988.

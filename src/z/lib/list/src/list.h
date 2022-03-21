@@ -6,6 +6,7 @@
 ({                                                       \
   if ((list_)->head == NULL) {                           \
     (list_)->head = (node_);                             \
+    (list_)->head->prev = NULL;                          \
     (list_)->tail = (node_);                             \
     (list_)->current = (list_)->head;                    \
     (list_)->cur_idx = 0;                                \
@@ -73,10 +74,16 @@ type_ *node_ = NULL;                                    \
 do {                                                    \
   if ((list_)->tail == NULL) break;                     \
   node_ = (list_)->tail;                                \
+  if (1 == (list_)->num_items) {                        \
+    (list_)->head = NULL;                               \
+    (list_)->tail = NULL;                               \
+    (list_)->current = NULL;                            \
+    break;                                              \
+  }                                                     \
   (list_)->tail->prev->next = NULL;                     \
   (list_)->tail = (list_)->tail->prev;                  \
-  (list_)->num_items--;                                 \
 } while (0);                                            \
+  if ((list_)->num_items) (list_)->num_items--;         \
   node_;                                                \
 })
 #endif /* DListPopTail */

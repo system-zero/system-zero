@@ -12,7 +12,7 @@ static VALUE dl_dump_dependencies (la_t *this, VALUE v_file) {
   char *file = AS_STRING_BYTES(v_file);
 
   dl_t dl;
-  dl.verbose = 0;
+  dl.verbose =  GET_OPT_VERBOSE_WITH(0);
   dl.path = 0;
   int retval = DlDumpDependencies (&dl, file);
   if (retval is NOTOK) return NULL_VALUE;
