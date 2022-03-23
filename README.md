@@ -1481,6 +1481,7 @@ gained consience. Hopefully one day.
 * [Embedded Artistry libc.](https://github.com/embeddedartistry/libc)
 * [Mlibc.](https://github.com/managarm/mlibc)
 * [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
+* [UUID generator.](https://github.com/rxi/uuid4)
 
 ## About
 This isnot just a proof of concept, though it might feels that way. It took me

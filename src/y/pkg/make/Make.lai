@@ -1,6 +1,6 @@
 #!/bin/env La
 
-# an oversimplified and specific for this environment, make like utility
+# an oversimplified and very specific for this environment, make like utility
 
 import ("io")
 import ("sh")
@@ -129,6 +129,7 @@ Type Make {
     static_executable_sources : list ()
     script_sources            : list ()
     cflags                    : list ()
+    dependensies              : list ()
 
   init_cflags : func {
     for |v| in this.includedirs append "-I" + v      in this.cflags
@@ -372,6 +373,7 @@ Type Make {
     static_executable_source : func (s) ifnot null is s append s in this.static_executable_sources
     script_source            : func (s) ifnot null is s append s in this.script_sources
     builddir                 : func (d) this.builddir = d
+    dependency               : func (d) ifnot null is d append d in this.dependensies
   }
 
   unset : {
