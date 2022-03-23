@@ -79,7 +79,7 @@ through analyzing and will, leads and to the actual implementation. Perhaps it
 is that journey that really matters at the end. The hope and the only  ambition
 is that this material will offer some value, though there isn't an expectation.
 
-It is written without a well defined sense of time, but it might be fitted best
+It is written without [a well defined sense of time](#About), but it might be fitted best
 probably at the middle of eighties, so we are probably a bit late. But a system
 is about mechanics, and the procedure to demystification it's not about current
 only relative terms.
@@ -1483,7 +1483,7 @@ gained consience. Hopefully one day.
 * [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
 * [UUID generator.](https://github.com/rxi/uuid4)
 
-## About
+## About the Motivation
 This isnot just a proof of concept, though it might feels that way. It took me
 fifty something years, and as looking back in time, to realize that  there  is
 a big possibility that every single breath had to prove something.
