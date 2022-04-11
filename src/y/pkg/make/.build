@@ -1,7 +1,1 @@
-var make = New Make (__file__)
-
-make.main = func {
-  this.install.script ()
-}
-
-return make
+return New Make (__file__, SCRIPT)

@@ -1,8 +1,1 @@
-var uuid = New Make (__file__)
-
-uuid.main = func {
-  this.unset.linkagainst ()
-  this.make.shared.module ()
-}
-
-return uuid
+return New Make (__file__, MODULE)

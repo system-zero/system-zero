@@ -1,7 +1,7 @@
 /* Derived from the Tinyscript project at:
  * https://github.com/totalspectrum/ (see LICENSE included in this directory)
  *
- * See data/docs/la.md and data/tests/la-semantics.i
+ * See data/docs/la.md and data/tests/la-semantics.lai
  * for details about syntax and semantics.
  */
 
@@ -167,6 +167,7 @@
 #define TOKEN_DOT        '.'
 #define TOKEN_COLON      ':'
 #define TOKEN_SEMICOLON  ';'
+#define TOKEN_AT         '@'
 #define TOKEN_SQUOTE     '\''
 #define TOKEN_INDEX_OPEN '['
 #define TOKEN_SLASH      '\\'
@@ -195,6 +196,7 @@
 #define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
 
 #define TOKEN_INCLUDE     89000
+#define TOKEN_ANNOTATION  128
 
 typedef struct la_string {
   uint len;
@@ -584,6 +586,7 @@ static VALUE la_bnot (la_t *, VALUE, VALUE);
 static VALUE la_bitxor (la_t *, VALUE, VALUE);
 static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
+static int la_parse_annotation (la_t *, VALUE *);
 static int la_array_set_as_array (la_t *, VALUE, integer, integer, integer);
 static int la_array_assign (la_t *, VALUE *, VALUE, VALUE, int);
 static int la_parse_array_def (la_t *, VALUE *, int);
@@ -680,6 +683,7 @@ static void la_print_current_line (la_t *this, const char *msg, FILE *fp) {
       0 is Cstring.byte.in_str (";\n", *(sp - 1)) and
       *(sp - 1) >= ' ')
     sp--;
+
   while (*end) {
     if (*(end + 1))
       if (Cstring.byte.in_str (";\n", *(end + 1)))
@@ -1303,8 +1307,7 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
     *vp = *val;
     if (vp->type is STRING_TYPE)
       vp->refcount++;
-  }
-  else
+  } else
     *vp = la_copy_value (*val);
 
   NEXT_TOKEN();
@@ -1372,6 +1375,26 @@ static int la_parse_list_set (la_t *this) {
   }
 
   return LA_OK;
+}
+
+static VALUE list_copy (VALUE v) {
+  listType *list = AS_LIST(v);
+  int num = list->num_items;
+
+  VALUE v_list = LIST_NEW();
+  listType *l_new = AS_LIST(v_list);
+
+  for (int i = 0; i < num; i++) {
+    listNode *new = Alloc (sizeof (listNode));
+    listNode *node = DListGetAt(list, listNode, i);
+    VALUE *vp = Alloc (sizeof (VALUE));
+    VALUE cpv = la_copy_value (*node->value);
+    *vp = cpv;
+    new->value = vp;
+    DListAppend(l_new, new);
+  }
+
+  return v_list;
 }
 
 static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
@@ -1489,6 +1512,7 @@ static int la_parse_append (la_t *this, VALUE *vp) {
     THROW_SYNTAX_ERR("error parsing append, awaiting in");
 
   NEXT_TOKEN();
+
   err = la_parse_expr (this, vp);
   THROW_ERR_IF_ERR(err);
 
@@ -1499,6 +1523,12 @@ static int la_parse_append (la_t *this, VALUE *vp) {
       ArrayType *array = (ArrayType *) AS_ARRAY((*vp));
       if (v.type isnot array->type)
         THROW_SYNTAX_ERR("value type and array type are not the same");
+      if (v.type is STRING_TYPE)
+        if (v.refcount is MALLOCED_STRING) {
+          VALUE t = la_copy_value (v);
+          v = t;
+        }
+
       array = ARRAY_APPEND(array, v);
       *vp = ARRAY(array);
       break;
@@ -2267,19 +2297,84 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   return LA_OK;
 }
 
+static int la_get_annotated_block (la_t *this, string *s) {
+  int c = GET_BYTE();
+
+  THROW_SYNTAX_ERR_IF(c isnot ' ' and c isnot TOKEN_NL, "error while getting annotated block: awaiting a space");
+
+  int prevc;
+
+  while (1) {
+    prevc = c;
+    c = GET_BYTE();
+    THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "unended annotated block");
+
+    if (c is TOKEN_COMMENT and prevc is TOKEN_NL)
+      break;
+
+    if (s)
+      String.append_byte (s, c);
+  }
+
+  c = GET_BYTE();
+
+  if (c is ' ') {
+    int orig_len = GETSTRLEN(PARSEPTR);
+    const char *ptr = GETSTRPTR(PARSEPTR);
+
+    if (Cstring.eq_n (ptr, "as ", 3)) {
+      const char *p = ptr + 3;
+      int idx = 0;
+      while (is_identifier (*p)) {
+        if (idx++ is MAXLEN_SYMBOL)
+          THROW_SYNTAX_ERR("annotated identifier exceeded maximum length");
+
+        p++;
+        if (*p is ' ') {
+          while (*p isnot TOKEN_NL) p++;
+          THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "unended annotated block");
+          break;
+        }
+
+        if (*p is TOKEN_NL) break;
+      }
+
+      if (s and idx)
+        for (int i = 0; i < idx + 3; i++)
+          String.append_byte (s, ptr[i]);
+
+      SETSTRPTR(PARSEPTR, p);
+      SETSTRLEN(PARSEPTR, orig_len - (p - ptr));
+    }
+  }
+
+  return c;
+}
+
 static int la_do_next_token (la_t *this, int israw) {
   int err;
 
   TOKENSYM = NULL;
-
-  int token =  TOKEN;
+  int token = TOKEN;
 
   RESET_TOKEN;
 
   int c = la_ignore_ws (this);
 
-  if (c is '#') {
-    do c = GET_BYTE(); while (c >= 0 and c isnot TOKEN_NL);
+  if (c is TOKEN_COMMENT) {
+    c = GET_BYTE();
+
+    if (c is TOKEN_AT) {
+
+      c = la_get_annotated_block (this, NULL);
+      THROW_ERR_IF_ERR(c);
+
+      return la_do_next_token (this, israw);
+    }
+
+    while (c >= 0 and c isnot TOKEN_NL)
+      c = GET_BYTE();
+
     TOKEN = c;
     return TOKEN;
   }
@@ -2461,6 +2556,10 @@ static VALUE la_copy_value (VALUE v) {
       new = la_copy_map (v);
       break;
 
+    case LIST_TYPE:
+      new = list_copy (v);
+      break;
+
     default:
       new = v;
   }
@@ -2477,6 +2576,10 @@ static void *la_clone_sym_item (void *item, void *obj) {
   new->type = sym->type;
   new->is_const = sym->is_const;
 
+  new->value = la_copy_value (sym->value);
+  return new;
+
+#if 0
   if ((new->type & 0xff) is ARRAY_TYPE) {
     VALUE ar = sym->value;
     ArrayType *array = (ArrayType *) AS_ARRAY(ar);
@@ -2492,12 +2595,14 @@ static void *la_clone_sym_item (void *item, void *obj) {
 
   new->value = sym->value;
   return new;
+#endif
 }
 
-static void la_symbol_stack_push (la_t *this, Vmap_t *symbols) {
+static Vmap_t *la_symbol_stack_push (la_t *this, Vmap_t *symbols) {
   symbolstack_t *item = Alloc (sizeof (symbolstack_t));
   item->symbols = Vmap.clone (symbols, la_clone_sym_item, NULL);
   ListStackPush (this->symbolstack, item);
+  return item->symbols;
 }
 
 static Vmap_t *la_symbol_stack_pop (la_t *this) {
@@ -4093,6 +4198,7 @@ static void *la_copy_map_cb (void *value, void *mapval) {
 
   switch (val->type) {
     case MAP_TYPE   :
+    case LIST_TYPE  :
     case ARRAY_TYPE : val->asInteger = AS_PTR(la_copy_value (*v));    break;
     case STRING_TYPE: val->asString  = AS_STRING(la_copy_value (*v)); break;
     case NUMBER_TYPE: val->asNumber  = v->asNumber;                   break;
@@ -4319,7 +4425,9 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   }
 
   err = 0;
+  TOKENVAL = m;
   VALUE map_par = TOKENVAL;
+
   int submap = 0;
 
   redo: {}
@@ -4402,7 +4510,9 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
         k[idx++] = *ptr;
         ptr++;
       }
+
       k[idx] = '\0';
+
       Vmap_t *vmap = AS_MAP((*v));
       ifnot (Vmap.key_exists (vmap, k))
         goto theend;
@@ -4704,6 +4814,8 @@ static int la_parse_type (la_t *this) {
   return LA_OK;
 }
 
+static char EXPR_NAMES[20][128];
+
 static int la_parse_expr_list (la_t *this) {
   int err;
   la_string saved_ptr;
@@ -4719,6 +4831,14 @@ static int la_parse_expr_list (la_t *this) {
   do {
     this->curState |= MALLOCED_STRING_STATE;
     this->exprList++;
+
+    la_string tokenstr = TOKENSTR;
+    int len = GETSTRLEN(tokenstr);
+    if (len < 10) {
+      char *key = sym_key (this, TOKENSTR);
+      Cstring.cp (EXPR_NAMES[this->argCount], 128, key, len);
+    }
+
     err = la_parse_expr (this, &v);
     this->exprList--;
     THROW_ERR_IF_ERR(err);
@@ -4885,6 +5005,8 @@ static void la_fun_refcount_decr (int *count) {
 }
 
 static void la_fun_release_symbols (funT *uf, int clear, int is_method) {
+  if (NULL is uf->symbols) return;
+
   if (is_method) {
     sym_t *sym = Vmap.pop (uf->symbols, "this");
     free (sym);
@@ -4896,6 +5018,31 @@ static void la_fun_release_symbols (funT *uf, int clear, int is_method) {
   }
 
   Vmap.release (uf->symbols);
+}
+
+static void la_fun_release_symbols_only (funT *uf, int is_method) {
+  if (NULL is uf->symbols) return;
+
+  if (is_method) {
+    sym_t *sym = Vmap.pop (uf->symbols, "this");
+    free (sym);
+  }
+
+  string **keys = Vmap.keys (uf->symbols);
+  int num_keys  = Vmap.num_keys (uf->symbols);
+  for (int i = 0; i < num_keys; i++) {
+    sym_t *sym = Vmap.pop (uf->symbols, keys[i]->bytes);
+    if (sym->type is STRING_TYPE) { // or sym->type is ARRAY_TYPE) {
+      VALUE v = sym->value;
+      if (0 is v.refcount or v.refcount is MALLOCED_STRING)
+        String.release (AS_STRING(v));
+    }
+    free (sym);
+  }
+
+  for (int i = 0; i < num_keys; i++)
+    String.release (keys[i]);
+  free (keys);
 }
 
 static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE value) {
@@ -4959,8 +5106,15 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   if (uf) {
     int refcount = Imap.set_by_callback (this->funRefcount, uf->funname, la_fun_refcount_incr);
     if (refcount > 1) {
-      la_symbol_stack_push (this, this->curScope->symbols);
-      la_fun_release_symbols (uf, 1, is_method);
+      if (Cstring.eq (this->curScope->funname, uf->funname))
+        la_symbol_stack_push (this, this->curScope->symbols);
+      else
+        la_symbol_stack_push (this, uf->symbols);
+
+      for (int i = 0; i < expectargs; i++)
+        this->funArgs[i] = la_copy_value (this->funArgs[i]);
+
+      la_fun_release_symbols_only (uf, is_method);
     }
 
     sym_t *uf_argsymbols[expectargs];
@@ -5083,6 +5237,7 @@ again:
     }
 
     for (int i = 0; i < expectargs; i++) {
+      if (refcount > 0) continue;
       VALUE v = this->funArgs[i];
       if (v.type >= UFUNCTION_TYPE) {
         sym_t *uf_sym = uf_argsymbols[i];
@@ -5112,7 +5267,11 @@ again:
       la_fun_release_symbols (uf, 1, is_method);
     else {
       la_fun_release_symbols (uf, 0, is_method);
-      this->curScope->symbols = la_symbol_stack_pop (this);
+
+      if (Cstring.eq (this->curScope->funname, uf->funname))
+        this->curScope->symbols = la_symbol_stack_pop (this);
+      else
+        uf->symbols = la_symbol_stack_pop (this);
     }
 
     *vp = uf->result;
@@ -5871,6 +6030,9 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     case TOKEN_APPEND:
       return la_parse_append (this, vp);
 
+    case TOKEN_ANNOTATION:
+      return la_parse_annotation (this, vp);
+
     case TOKEN_EVALFILE: {
       this->funcState |= EVAL_UNIT_STATE;
       err = la_parse_loadfile (this);
@@ -6388,7 +6550,7 @@ static int la_parse_stmt (la_t *this) {
             la_release_val (this, symbol->value);
         }
 
-        if ((val.type is STRING_TYPE or val.type is ARRAY_TYPE) and
+        if ((val.type is STRING_TYPE or val.type is ARRAY_TYPE or val.type is LIST_TYPE) and
              val.sym isnot NULL) {
           VALUE v = val;
           val = la_copy_value (v);
@@ -9612,6 +9774,130 @@ theend:
   return err;
 }
 
+static int la_search_for_annotation (la_t *this, string *evalbuf, VALUE *vp) {
+  ifnot (evalbuf->num_bytes) {
+    *vp = NULL_VALUE;
+    return 0;
+  }
+
+  int c;
+
+again:
+  while ((c = GET_BYTE()))
+    if (c is TOKEN_COMMENT or c <= 0)
+      break;
+
+  if (c isnot TOKEN_COMMENT) {
+    *vp = NULL_VALUE;
+    return 0;
+  }
+
+  c = GET_BYTE();
+
+  if (c isnot TOKEN_AT) {
+    if (c > 0)
+      goto again;
+    else {
+      *vp = NULL_VALUE;
+      return c;
+    }
+  }
+
+  return 1;
+}
+
+static int la_parse_annotation (la_t *this, VALUE *vp) {
+  int c = GET_BYTE();
+  THROW_SYNTAX_ERR_IF(c isnot ' ', "parsing annotation: awaiting a space");
+
+  c = GET_BYTE();
+
+  switch (c) {
+    case 'g':
+      c = GET_BYTE();
+      switch (c) {
+        case 'e':
+          c = GET_BYTE();
+          THROW_SYNTAX_ERR_IF(c isnot 't', "parsing annotation: awaiting get");
+          break;
+
+        default:
+          THROW_SYNTAX_ERR("parsing annotation: unknown method");
+      }
+      break;
+
+    default:
+      THROW_SYNTAX_ERR("parsing annotation: unknown method");
+  }
+
+  NEXT_TOKEN();
+
+  VALUE v;
+  int err = la_parse_expr (this, &v);
+  THROW_SYNTAX_ERR_IF_ERR(err, "error while parsing annotation, awaiting an expression");
+
+  THROW_SYNTAX_ERR_IF (v.type isnot STRING_TYPE,
+    "error while parsing annotation, awaiting a string");
+
+  string *evalbuf = AS_STRING(v);
+
+  la_string saved_ptr = PARSEPTR;
+  PARSEPTR = StringNewLen (evalbuf->bytes, evalbuf->num_bytes);
+
+  err = la_search_for_annotation (this, evalbuf, vp);
+  THROW_ERR_IF_ERR(err);
+
+  ifnot (err) {
+    *vp = NULL_VALUE;
+    return LA_OK;
+  }
+
+  string *s = String.new (32);
+
+  c = la_get_annotated_block (this, s);
+  THROW_ERR_IF_ERR(c);
+
+  *vp = STRING(s);
+
+  PARSEPTR = saved_ptr;
+
+  return c;
+}
+
+static VALUE la_annotate_get (la_t *this, VALUE v_buf) {
+  ifnot (IS_STRING(v_buf))  C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  string *buf = AS_STRING(v_buf);
+
+  la_string saved_ptr = PARSEPTR;
+  PARSEPTR = StringNewLen (buf->bytes, buf->num_bytes);
+
+  VALUE v;
+
+  int err = la_search_for_annotation (this, buf, &v);
+
+  if (err < 0)
+    C_THROW(err, "error while getting annotation");
+
+  ifnot (err) {
+    PARSEPTR = saved_ptr;
+    return STRING_NEW ("");
+  }
+
+  string *s = String.new (32);
+
+  err = la_get_annotated_block (this, s);
+
+  PARSEPTR = saved_ptr;
+
+  if (err < 0) {
+    String.release (s);
+    C_THROW(err, "error while getting annotation");
+  }
+
+  return STRING(s);
+}
+
 static int la_parse_loadfile (la_t *this) {
   NEXT_TOKEN();
   int c = TOKEN;
@@ -10438,6 +10724,7 @@ static struct def {
   { "import",  TOKEN_IMPORT,   PTR(la_parse_import) },
   { "loadfile",TOKEN_LOADFILE, PTR(la_parse_loadfile) },
   { "include", TOKEN_INCLUDE,  PTR(la_parse_loadfile) },
+  { "Annotation", TOKEN_ANNOTATION, NULL_VALUE },
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
   { "New",     TOKEN_NEW,      NULL_VALUE },
   { "Type",    TOKEN_TYPE,     PTR(la_parse_type) },
@@ -10526,6 +10813,7 @@ LaDefCFun la_funs[] = {
   { "set_errno",        PTR(la_set_errno), 1},
   { "errno_name",       PTR(la_errno_name), 1},
   { "errno_string",     PTR(la_errno_string), 1},
+  { "annotate_get",     PTR(la_annotate_get), 1},
   { "typeof",           PTR(la_typeof), 1},
   { "typeAsString",     PTR(la_typeAsString), 1},
   { "typeofArray",      PTR(la_typeofArray), 1},

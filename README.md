@@ -1483,7 +1483,8 @@ gained consience. Hopefully one day.
 * [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
 * [UUID generator.](https://github.com/rxi/uuid4)
 
-## About the Motivation
+## About
+Inner will and Motivation.  
 This isnot just a proof of concept, though it might feels that way. It took me
 fifty something years, and as looking back in time, to realize that  there  is
 a big possibility that every single breath had to prove something.
@@ -1502,7 +1503,6 @@ this is actually and a research that will provide proves and some qualifications
 I hate to live for just proving, and especially when the proves, prove me wrong.
 Now, on what to do with them! Anyway, almost all the followed code, after this
 first scratch code, it was simply mostly iterations of that same system.
-
 
 My interest is about primitive systems, that can use the most straight and the
 most economical access to the underlying machine, with a standardized (through
@@ -1536,4 +1536,4 @@ summer sun eating watermelons, under some grass roofs into the canals,  having
 around some millions of frogs, producing their pretty loud amazing paradoxical
 music at the silent nights of the full of energy valley.
 
-Yours trully, agathoklis (laki).
+agathoklis (laki)

@@ -1,11 +1,1 @@
-var libfiletype = New Make (__file__)
-
-libfiletype.main = func {
-  return notok if notok is this.install.header ()
-  return notok if notok is this.make.shared.library ()
-  return notok if notok is this.make.shared.module ()
-  return notok if notok is this.make.static.library ()
-  this.install.script ()
-}
-
-return libfiletype
+return New Make (__file__, SHARED|STATIC_LIBRARY|MODULE|SCRIPT)

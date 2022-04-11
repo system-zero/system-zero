@@ -156,9 +156,9 @@ Comments.
   # however the stack can be easily exhausted with some thousands of calls.
   # In the standard own interface, the compiler performs a tail call optimization
   # if the function explicitly recall itself as `self`. However the return statement
-  # should be in a tail call, e.g., the last one in the scope.
+  # should be in a tail call position.
 
-  # In the above case it's not a tail call though, so it can overflow.
+  # In the above case it's not in a tail position, so it can overflow.
   # But the first form it is a tail call, and so the return statement it could be
   # written as:
   #   return self (n - 1, b, a + b)

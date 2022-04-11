@@ -2080,6 +2080,7 @@ func self_semantics () {
         sun is "twoone12" and
         v is "12" and
         typeof (sa) is ArrayType and
+        typeof (e) is StringType and
         typeof (l[0]) is StringType and
         e is "two")
   }

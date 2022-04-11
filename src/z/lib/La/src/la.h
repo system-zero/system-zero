@@ -199,7 +199,7 @@ typedef struct listType listType;
 
 #define AS_VOID_PTR(__v__) (void *) AS_PTR(__v__)
 #define AS_FUNC_PTR(__v__) (funT *) AS_PTR(__v__)
-#define AS_NULL(__v__) __v__.asNull
+#define     AS_NULL(__v__) __v__.asNull
 
 #define  TRUE_VALUE INT(1)
 #define FALSE_VALUE INT(0)
