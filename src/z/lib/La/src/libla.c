@@ -75,6 +75,7 @@
 #define FUNC_OVERRIDE                 (1 << 4)
 #define LHS_STRING_RELEASED           (1 << 5)
 #define RHS_STRING_RELEASED           (1 << 6)
+#define ANNON_ARRAY                   (1 << 7)
 
 #define ARRAY_IS_REASSIGNMENT         (1 << 0)
 #define ARRAY_IS_MAP_MEMBER           (1 << 1)
@@ -82,10 +83,10 @@
 #define PRIVATE_SCOPE                 0
 #define PUBLIC_SCOPE                  1
 
-#define STRING_LITERAL                -2000
-#define ARRAY_LITERAL                 -3000
-#define MAP_LITERAL                   -4000
-#define MALLOCED_STRING               -5000
+#define ARRAY_LITERAL                 -10000
+#define MAP_LITERAL                   -110000
+#define MALLOCED_STRING               -310000
+#define STRING_LITERAL                -210000
 #define UNDELETABLE                   -100000
 #define UNCHANGEABLE                  -200000
 
@@ -1523,11 +1524,15 @@ static int la_parse_append (la_t *this, VALUE *vp) {
       ArrayType *array = (ArrayType *) AS_ARRAY((*vp));
       if (v.type isnot array->type)
         THROW_SYNTAX_ERR("value type and array type are not the same");
-      if (v.type is STRING_TYPE)
-        if (v.refcount is MALLOCED_STRING) {
+
+      if (v.type is STRING_TYPE or v.sym isnot NULL) {
+        if (v.refcount is STRING_LITERAL)
+          v.refcount = 0;
+        else {
           VALUE t = la_copy_value (v);
           v = t;
         }
+      }
 
       array = ARRAY_APPEND(array, v);
       *vp = ARRAY(array);
@@ -2909,7 +2914,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   VALUE v;
   this->curState |= MALLOCED_STRING_STATE;
   NEXT_TOKEN();
-  err = la_parse_primary (this, &v);
+  err = la_parse_expr (this, &v);
   this->curState &= ~MALLOCED_STRING_STATE;
   THROW_ERR_IF_ERR(err);
 
@@ -2925,6 +2930,14 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       string *item = s_ar[0];
       string *val = AS_STRING(v);
       String.replace_with_len (item, val->bytes, val->num_bytes);
+
+      if (v.sym is NULL and
+          v.refcount isnot MALLOCED_STRING and
+          0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
+        la_release_val (this, v);
+        this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
+      }
+
       break;
     }
 
@@ -2954,8 +2967,11 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   }
 
   *vp = ary;
-  if (this->exprList)
+
+  if (this->exprList) {
     vp->refcount = ARRAY_LITERAL;
+    this->objectState |= ANNON_ARRAY;
+  }
 
   VALUE fidx = INT(1);
   VALUE lidx = INT(num_elem - 1);
@@ -4830,6 +4846,7 @@ static int la_parse_expr_list (la_t *this) {
   this->exprList++;
   do {
     this->curState |= MALLOCED_STRING_STATE;
+    this->objectState &= ~ANNON_ARRAY;
     this->exprList++;
 
     la_string tokenstr = TOKENSTR;
@@ -4843,6 +4860,16 @@ static int la_parse_expr_list (la_t *this) {
     this->exprList--;
     THROW_ERR_IF_ERR(err);
 
+    if (v.refcount is STRING_LITERAL and v.sym isnot NULL) {
+      VALUE t = la_copy_value (v);
+      v = t;
+      v.refcount--;
+    }
+
+    if (v.refcount is ARRAY_LITERAL)
+      ifnot (this->objectState & ANNON_ARRAY)
+        v.refcount--;
+
     if (this->curState & FUNC_CALL_RESULT_IS_MMT)
       if (v.sym is NULL)
         if (v.refcount > -1)
@@ -4855,6 +4882,7 @@ static int la_parse_expr_list (la_t *this) {
     c = TOKEN;
 
     if (c is TOKEN_COMMA) {
+      this->objectState &= ~ANNON_ARRAY;
       this->curState |= MALLOCED_STRING_STATE;
       NEXT_TOKEN();
     }
@@ -4862,7 +4890,7 @@ static int la_parse_expr_list (la_t *this) {
 
   this->exprList--;
 
-  this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
+  this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|ANNON_ARRAY);
 
   if (c is TOKEN_SEMICOLON) {
 parse_qualifiers:
@@ -5224,8 +5252,7 @@ again:
       sym_t *sym = uf->result.sym;
       this->curState |= FUNC_CALL_RESULT_IS_MMT;
       ifnot (NULL is sym) {
-        VALUE none = NULL_VALUE;
-        sym->value = none;
+        sym->value = NULL_VALUE;
         uf->result.sym = NULL;
       } else {
         ifnot (this->exprList)
@@ -5246,17 +5273,12 @@ again:
 
         if (sym isnot NULL and uf_sym->scope isnot sym->scope) {
           sym->value = uf_val;
-          VALUE non = NULL_VALUE;
-          uf_sym->value = non;
+          uf_sym->value = NULL_VALUE;
         } else {
-          if (v.type is STRING_TYPE and
-              v.refcount <= MALLOCED_STRING) {
-            VALUE non = NULL_VALUE;
-            uf_sym->value = non;
-          } else if  (v.type is MAP_TYPE and v.sym isnot NULL) {
-            VALUE non = NULL_VALUE;
-            uf_sym->value = non;
-          }
+          if (v.type is STRING_TYPE and v.refcount <= MALLOCED_STRING)
+            uf_sym->value = NULL_VALUE;
+          else if  (v.type is MAP_TYPE and v.sym isnot NULL)
+            uf_sym->value = NULL_VALUE;
         }
       }
     }
@@ -5673,9 +5695,13 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       ifnot (this->curState & INDEX_STATE) {
         err = la_get_anon_array (this, vp);
         if (err is LA_OK) {
-          c = TOKEN;
-          if (c isnot TOKEN_INDEX_CLOS)
-            THROW_SYNTAX_ERR("array expression, awaiting ]");
+
+          if (TOKEN isnot TOKEN_INDEX_CLOS) {
+            if (TOKEN isnot TOKEN_NL)
+              THROW_SYNTAX_ERR("array expression, awaiting ]");
+            else
+              GET_BYTE();
+          }
 
           c = NEXT_BYTE_NOWS_NONL();
 

@@ -17,7 +17,7 @@ import ("crypt")
 include ("argparse")
 
 func argparseNew () {
-  var argparse = New Argparse (27, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (28, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -43,6 +43,7 @@ func argparseNew () {
   argparse.add ("moddir", 0, "moddir=", "set module directory",  StringType, ARG_VALUE_REQUIRED)
   argparse.add ("no_rpath", 0, "unset-rpath", "unset rpath", BooleanType, 0)
   argparse.add ("no_debug", 0, "unset-debug", "unset debug C flags (default on)", BooleanType, 0)
+  argparse.add ("no_local_env", 0, "no-local-env", "do not add local env in cflags ", BooleanType, 0)
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
   return argparse
@@ -78,6 +79,9 @@ const OPTIMIZATION      = "-O2"
 const MARCH             = "-march=native"
 const SYSDIR            = Sys.get ("SYSDIR")
 const SYSDATADIR        = Sys.get ("DATADIR")
+const SRCDIR            = Sys.get ("SRCDIR")
+const Z_SRCDIR          = SRCDIR:  concat_with ("z")
+const Y_SRCDIR          = SRCDIR:  concat_with ("y")
 const LIBDIR            = SYSDIR:  concat_with ("lib")
 const BINDIR            = SYSDIR:  concat_with ("bin")
 const INCDIR            = SYSDIR:  concat_with ("include")
@@ -93,7 +97,9 @@ const NOVERBOSE         = false
 const RPATH             = true
 const NORPATH           = false
 const SPEC              = ".build"
-const CACHED            = ".cached"
+const LOCAL_SPEC        = ".l.build"
+const CACHED            = ".cached.build"
+const LOCAL_CACHED      = ".l.cached.build"
 
 const ALL               = (1 << 1)
 const SHARED_LIBRARY    = (1 << 2)
@@ -117,6 +123,7 @@ Type Make {
   moddir                    : MODDIR
   datadir                   : SYSDATADIR
   shelldatadir              : SHELLDATADIR
+  local_cflags              : true
   make_shared_library       : false
   make_shared_module        : false
   make_shared_executable    : false
@@ -158,7 +165,28 @@ Type Make {
   static_executable_sources : list ()
   script_sources            : list ()
   cflags                    : list ()
-  linkagainst : {
+
+  shared_library    : {
+    cflags                  : list ()
+  }
+
+  shared_module     : {
+    cflags                  : list ()
+  }
+
+  shared_executable : {
+    cflags                  : list ()
+  }
+
+  static_library    : {
+    cflags                  : list ()
+  }
+
+  static_executable : {
+    cflags                  : list ()
+  }
+
+  linkagainst       : {
     shared_library          : list ()
     shared_executable       : list ()
     shared_module           : list ()
@@ -168,16 +196,19 @@ Type Make {
 
   targets                   : 0
 
+  init_local_cflags : func {
+    return if this.local_cflags is false
+    append "-DYNS"                                   in this.cflags
+  }
+
   init_cflags : func {
     for |v| in this.includedirs append "-I" + v      in this.cflags
     for |v| in this.libdirs     append "-L" + v      in this.cflags
 
     append "-Wall"                                   in this.cflags
-    append "-fdollars-in-identifiers"                in this.cflags
-
+    append "-Wno-override-init"                      in this.cflags
 
     if this.cc is "clang" {
-      append "-Wno-override-init"                    in this.cflags
       append "-Wno-unused-command-line-argument"     in this.cflags
     }
 
@@ -201,6 +232,8 @@ Type Make {
       append "-Wmissing-declarations"                in this.cflags
       append "-Werror-implicit-function-declaration" in this.cflags
     }
+
+    append "-fdollars-in-identifiers"                in this.cflags
   }
 
   change_to_build_directory : func {
@@ -263,6 +296,8 @@ Type Make {
       this.set.datadir (ARGPARSE.results.datadir)
       this.set.shelldatadir (ARGPARSE.results.datadir: concat_with (SHELL + "/commands"))
     }
+
+    if ARGPARSE.results.no_local_env is true then this.set.local_env (false)
 
     return ifnot ARGPARSE.results.force
 
@@ -368,14 +403,14 @@ Type Make {
 
     this.set_options ()
 
-    if this.targets & SHARED_LIBRARY or this.targets & SHARED then
-      this.set.shared.library.to_linkagainst (this.name + "-" + this.version)
+    # if this.targets & SHARED_LIBRARY or this.targets & SHARED then
+    #  this.set.shared.library.to_linkagainst (this.name + "-" + this.version)
 
     if this.targets & SHARED_EXECUTABLE or this.targets & SHARED then
       this.set.shared.executable.to_linkagainst (this.name + "-" + this.version)
 
-    if this.targets & STATIC_LIBRARY or this.targets & STATIC then
-      this.set.static.library.to_linkagainst (this.name + "-" + this.version)
+    #if this.targets & STATIC_LIBRARY or this.targets & STATIC then
+    #  this.set.static.library.to_linkagainst (this.name + "-" + this.version)
 
     if this.targets & STATIC_EXECUTABLE or this.targets & STATIC then
       this.set.static.executable.to_linkagainst (this.name + "-" + this.version)
@@ -388,17 +423,27 @@ Type Make {
     this.set.builddir                         (dir)
     this.set.header                           (name + ".h")
     this.set.cached_file                      (this.builddir: concat_with (CACHED))
-    this.set.shared_library_source            ("lib" + name + ".c")
-    this.set.shared_module_source             (name + "-module.c")
-    this.set.static_library_source            ("lib" + name + ".c")
+    this.set.shared.library.source            ("lib" + name + ".c")
+    this.set.shared.module.source             (name + "-module.c")
+    this.set.static.library.source            ("lib" + name + ".c")
     this.set.execoutput                       (char (name[0] - ('a' - 'A')) + advance (name, 1))
-    this.set.script_source                    (char (name[0] - ('a' - 'A')) + advance (name, 1))
-    this.set.shared_executable_source         (name + "_main.c")
-    this.set.static_executable_source         (name + "_main.c")
+    this.set.script.source                    (char (name[0] - ('a' - 'A')) + advance (name, 1))
+    this.set.shared.executable.source         (name + "_main.c")
+    this.set.static.executable.source         (name + "_main.c")
+
+    this.init_local_cflags ()
 
     this.init_cflags ()
   }
 
+  append_value : func (v, l) {
+    return if null is v
+    var t =  v: typeof ()
+    if t is ArrayType then
+      for |f| in v append f in l
+    orelse
+      if t is StringType then append v in l
+  }
 
   public
   main : func {
@@ -446,10 +491,10 @@ Type Make {
   }
 
   get : {
-    version     : func return this.version
-    retval      : func return this.retval
-    dependencie : func return this.dependencies
-    name        : func return this.name
+    version                  : func return this.version
+    retval                   : func return this.retval
+    dependencies             : func return this.dependencies
+    name                     : func return this.name
   }
 
   set : {
@@ -463,13 +508,6 @@ Type Make {
     optimization             : func (o) ifnot null is o this.optimization = o
     header                   : func (h) ifnot null is h this.header = h
     cached_file              : func (c) ifnot null is c this.cached_file = c
-    cflag                    : func (f) ifnot null is f append f in this.cflags
-    shared_library_source    : func (s) ifnot null is s append s in this.shared_library_sources
-    shared_module_source     : func (s) ifnot null is s append s in this.shared_module_sources
-    shared_executable_source : func (s) ifnot null is s append s in this.shared_executable_sources
-    static_library_source    : func (s) ifnot null is s append s in this.static_library_sources
-    static_executable_source : func (s) ifnot null is s append s in this.static_executable_sources
-    script_source            : func (s) ifnot null is s append s in this.script_sources
     builddir                 : func (d) ifnot null is d this.builddir = d
     bindir                   : func (d) ifnot null is d this.bindir = d
     libdir                   : func (d) ifnot null is d this.libdir = d
@@ -477,59 +515,125 @@ Type Make {
     moddir                   : func (d) ifnot null is d this.moddir = d
     datadir                  : func (d) ifnot null is d this.datadir = d
     shelldatadir             : func (d) ifnot null is d this.shelldatadir = d
+    local_env                : func (b) this.local_env = b
+
+    cflags                   : func (v) this.append_value (v, this.cflags)
 
     shared : {
       library : {
         to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.shared_library
+        cflag                : func (v) this.append_value (v, this.shared_library.cflags)
+        source               : func (v) this.append_value (v, this.shared_library_sources)
       }
+
       executable : {
         to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.shared_executable
+        cflag                : func (v) this.append_value (v, this.shared_executable.cflags)
+        source               : func (v) this.append_value (v, this.shared_executable_sources)
       }
+
       module : {
         to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.shared_module
+        cflag                : func (v) this.append_value (v, this.shared_module.cflags)
+        source               : func (v) this.append_value (v, this.shared_module_sources)
+      }
+
+      cflags                 : func (v) {
+        this.set.shared.library.cflag (v) this.set.shared.executable.cflag (v)
       }
     }
 
     static : {
       library : {
         to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.static_library
+        cflag                : func (v) this.append_value (v, this.static_library.cflags)
+        source               : func (v) this.append_value (v, this.static_library_sources)
       }
+
       executable : {
         to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.static_executable
+        cflag                : func (v) this.append_value (v, this.static_executable.cflags)
+        source               : func (v) this.append_value (v, this.static_executable_sources)
+      }
+
+      cflags                 : func (v) {
+        this.set.static.library.cflag (v) this.set.static.executable.cflag (v)
+      }
+    }
+
+    script : {
+      source                 : func (v) this.append_value (v, this.script_sources)
+    }
+
+    library : {
+      cflag                  : func (v) {
+        this.set.shared.library.cflag (v) this.set.static.library.cflag (v)
+      }
+    }
+
+    executable : {
+      cflags                 : func (v) {
+        this.set.shared.executable.cflag (v) this.set.static.executable.cflag (v)
+      }
+    }
+
+  }
+
+  reset : {
+    executable : {
+      sources : {
+        with                 : func (v) {
+          ifnot null is v {
+            this.clear.shared.executable.sources ()
+            this.clear.static.executable.sources ()
+            this.set.shared.executable.source (v)
+            this.set.static.executable.source (v)
+          }
+        }
       }
     }
   }
 
   clear : {
-    cflags                    : func clear (this.cflags)
-    shared_library_sources    : func clear (this.shared_library_sources)
-    shared_module_sources     : func clear (this.shared_module_sources)
-    shared_executable_sources : func clear (this.shared_executable_sources)
-    static_library_sources    : func clear (this.static_library_sources)
-    static_executable_sources : func clear (this.static_executable_sources)
+    cflags                   : func clear (this.cflags)
+
     shared : {
       library : {
-        to_linkagainst        : func clear (this.linkagainst.shared_library)
+        to_linkagainst       : func clear (this.linkagainst.shared_library)
+        cflags               : func clear (this.shared_library.cflags)
+        sources              : func clear (this.shared_library_sources)
       }
-      executable : {
-        to_linkagainst        : func clear (this.linkagainst.shared_executable)
-      }
+
       module : {
-        to_linkagainst        : func clear (this.linkagainst.shared_module)
+        to_linkagainst       : func clear (this.linkagainst.shared_module)
+        cflags               : func clear (this.shared_module.cflags)
+        sources              : func clear (this.shared_module_sources)
+      }
+
+      executable : {
+        to_linkagainst       : func clear (this.linkagainst.shared_executable)
+        cflags               : func clear (this.shared_executable.cflags)
+        sources              : func clear (this.shared_executable_sources)
       }
     }
+
     static : {
       library : {
-        to_linkagainst        : func clear (this.linkagainst.static_library)
+        to_linkagainst       : func clear (this.linkagainst.static_library)
+        cflags               : func clear (this.static_library.cflags)
+        sources              : func clear (this.static_library_sources)
       }
+
       executable : {
-        to_linkagainst        : func clear (this.linkagainst.static_executable)
+        to_linkagainst       : func clear (this.linkagainst.static_executable)
+        cflags               : func clear (this.static_executable.cflags)
+        sources              : func clear (this.static_executable_sources)
       }
     }
   }
 
   unset : {
-    rpath                     : func this.rpath = NORPATH
+    rpath                    : func this.rpath = NORPATH
   }
 
   install : {
@@ -649,6 +753,7 @@ Type Make {
         append " " + this.optimization in com
 
         for |v| in this.cflags                      if v isnot null append " " + v in com
+        for |v| in this.shared_library.cflags       if v isnot null append " " + v in com
         for |v| in this.linkagainst.shared_library  if v isnot null append " " + v in com
 
         if this.rpath then append " -Wl,-rpath=" + this.libdir      in com
@@ -699,6 +804,7 @@ Type Make {
         append " " + this.optimization in com
 
         for |v| in this.cflags                         if v isnot null append " " + v in com
+        for |v| in this.shared_executable.cflags       if v isnot null append " " + v in com
         for |v| in this.linkagainst.shared_executable  if v isnot null append " " + v in com
 
         if this.rpath then append " -Wl,-rpath=" + this.libdir in com
@@ -751,6 +857,7 @@ Type Make {
         append " " + this.optimization in com
 
         for |v| in this.cflags                     if v isnot null append " " + v in com
+        for |v| in this.shared_module.cflags       if v isnot null append " " + v in com
         for |v| in this.linkagainst.shared_module  if v isnot null append " " + v in com
 
         append " -shared -fPIC" in com
@@ -802,9 +909,11 @@ Type Make {
         if this.cc isnot "tcc" then append " -z muldefs" in com
 
         for |v| in this.cflags                     if v isnot null append " " + v in com
+        for |v| in this.static_library.cflags      if v isnot null append " " + v in com
         for |v| in this.linkagainst.static_library if v isnot null append " " + v in com
 
-        append " -static -c" in com
+        append " -DSTATIC"                    in com
+        append " -static -c"                  in com
         append " -o " + this.liboutput + ".o" in com
 
         if this.verbose then println (com) orelse println ("  making the static library")
@@ -852,9 +961,11 @@ Type Make {
 
         append " " + this.march        in com
         append " " + this.optimization in com
+        append " -DSTATIC"             in com
         append " -static"              in com
 
         for |v| in this.cflags                        if v isnot null append " " + v in com
+        for |v| in this.static_executable.cflags      if v isnot null append " " + v in com
         for |v| in this.linkagainst.static_executable if v isnot null append " " + v in com
 
         append " -o " + output in com

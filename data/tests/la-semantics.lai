@@ -1846,6 +1846,39 @@ func self_semantics () {
         typeof (empt_m) is ArrayType and typeofArray (empt_m) is MapType and empt_m: len () is 0 and
         typeof (vn_arr) is ArrayType and typeofArray (vn_arr) is StringType and vn_arr: len () is 2 and vn_arr[0] is "a" and vn_arr[1] is "b")
 
+    func x (s, a) {
+      if s: typeof () is StringType then
+        append s in a
+      orelse
+        for |v| in s append v in a
+    }
+
+    var axar = ["a", "b"]
+
+    func xx (s) {
+      x (s, axar)
+    }
+
+    xx (["c", "d"])
+
+    var axc = null
+    var axd = null
+
+    if axar: len () is 4 {
+      axc = axar[2]
+      axd = axar[3]
+    }
+
+    xx ("e")
+
+    var axe = null
+    if (axar: len () is 5) then axe = axar[4]
+
+    assert_true ("testing array manipulation through function calls",
+        axar: len () is 5 and
+        axc is "c" and
+        axd is "d" and
+        axe is "e")
   }
 
   test_array (10)
@@ -2050,6 +2083,16 @@ func self_semantics () {
         mi.key is 1 and
         mi.f () is 2 and
         mi."!@#$%^&**()_++1;'" is 11)
+
+    func manip (ar) {
+      append 3 in ar
+    }
+
+    var marray = { ar : [0, 1, 2] }
+    manip (marray.ar)
+    assert_true ("testing manipulate a map array field, through a function call",
+    marray.ar: len () is 4 and
+    marray.ar[-1] is 3)
   }
 
   test_maps ()
@@ -2148,6 +2191,10 @@ func self_semantics () {
     var a = string[0]
     append "zxc" in a
 
+    var ar = [["a"]]
+    append ["b", "c"] in ar
+    append a in ar
+
     var i = 10
     append 20 in i
 
@@ -2175,7 +2222,9 @@ func self_semantics () {
         sa is "xcvasd" and
         l[1] is 2 and
         l[-1] is 2 and
-        l[-2] is "2")
+        l[-2] is "2" and
+        ar[1][0] is "b" and
+        ar[2][0] is "zxc")
   }
 
   append_builtin ()
