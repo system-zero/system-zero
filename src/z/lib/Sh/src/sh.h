@@ -1,9 +1,13 @@
 #ifndef SH_HDR
 #define SH_HDR
 
+#define SH_MAXLEN_ERROR 255
+
 typedef struct sh_t sh_t;
 
 typedef struct sh_get_self {
+  char *(*error) (sh_t *);
+
   int
     (*exit_val) (sh_t *);
 } sh_get_self;

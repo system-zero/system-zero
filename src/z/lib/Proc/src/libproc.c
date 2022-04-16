@@ -28,6 +28,8 @@ typedef struct proc_prop {
     **argv,
     *stdin_buf;
 
+  char error[PROC_MAXLEN_ERROR + 1];
+
    int
      argc,
      envc,
@@ -168,6 +170,7 @@ static proc_t *proc_new (void) {
   $my(is_bg) = 0;
   $my(setsid) = 0;
   $my(setpgid) = 0;
+  $my(error)[0] = '\0';
 
   $my(read_stdout_cb) = proc_output_to_stream;
   $my(read_stderr_cb) = proc_output_to_stream;
@@ -284,19 +287,30 @@ static int proc_expand_dollar_brace (proc_t *this, string **sa, char **bufp) {
   if (*sp isnot '$') return 0;
   if (*(sp + 1) isnot '{') return 0;
 
+  char *startvar = sp + 1;
+
   sp += 2;
+
+  if ('?' is *sp) {
+    sp++;  startvar++;
+    if (Cstring.eq_n (sp, ".to_string}", 11))
+      sp += 10;
+
+    goto get_value;
+  }
 
   ifnot (('A' <= *sp and *sp <= 'Z') or
          ('a' <= *sp and *sp <= 'z')) {
-    if (*sp isnot '}')
+    if (*sp isnot '}') {
+      Cstring.cp ($my(error), PROC_MAXLEN_ERROR + 1, "unterminated variable expansion, awaiting }", PROC_MAXLEN_ERROR);
       return NOTOK;
-    else {
+    } else {
       *bufp = sp;
       return 1;
     }
   }
 
-  char *startvar = sp;
+  startvar = sp;
 
   while (*sp) {
     if (*sp is '}')
@@ -305,13 +319,19 @@ static int proc_expand_dollar_brace (proc_t *this, string **sa, char **bufp) {
     ifnot (('A' <= *sp and *sp <= 'Z') or
            ('a' <= *sp and *sp <= 'z') or
            ('0' <= *sp and *sp <= '9') or
-            *sp is '_')
-    return NOTOK;
+            *sp is '_') {
+      Cstring.cp_fmt ($my(error), PROC_MAXLEN_ERROR + 1, "illegal identifier '%c'", *sp);
+      return NOTOK;
+    }
 
     sp++;
   }
 
-  if (*sp isnot '}') return NOTOK;
+get_value:
+  if (*sp isnot '}') {
+    Cstring.cp ($my(error), PROC_MAXLEN_ERROR + 1, "unterminated variable expansion, awaiting }", PROC_MAXLEN_ERROR);
+    return NOTOK;
+  }
 
   char *endvar = sp;
 
@@ -379,7 +399,10 @@ static int proc_expand_dollar_paren (proc_t *this, string **sa, char **bufp) {
     sp++;
   }
 
-  if (*sp isnot ')') return NOTOK;
+  if (*sp isnot ')') {
+    Cstring.cp ($my(error), PROC_MAXLEN_ERROR + 1, "unterminated expression expansion, awaiting )", PROC_MAXLEN_ERROR);
+    return NOTOK;
+  }
 
   size_t clen = sp - startvar;
   char com[clen + 1];
@@ -421,8 +444,10 @@ static int proc_parse_env (proc_t *this, string **sa, char **bufp) {
 
   if (*sp is '(' or *sp is '{') return 0;
 
-  ifnot (('A' <= *sp and *sp <= 'Z') or ('a' <= *sp and *sp <= 'z'))
+  ifnot (('A' <= *sp and *sp <= 'Z') or ('a' <= *sp and *sp <= 'z')) {
+    Cstring.cp_fmt ($my(error), PROC_MAXLEN_ERROR + 1, "illegal identifier '%c'", *sp);
     return NOTOK;
+  }
 
   char *begOfName = sp;
 
@@ -433,14 +458,18 @@ static int proc_parse_env (proc_t *this, string **sa, char **bufp) {
     ifnot (('A' <= *sp and *sp <= 'Z') or
            ('a' <= *sp and *sp <= 'z') or
            ('_' is *sp) or
-           ('0' <= *sp and *sp <= '9'))
+           ('0' <= *sp and *sp <= '9')) {
+      Cstring.cp_fmt ($my(error), PROC_MAXLEN_ERROR + 1, "illegal identifier '%c'", *sp);
       return NOTOK;
+    }
 
     sp++;
   }
 
-  if (*sp isnot '=')
+  if (*sp isnot '=') {
+    Cstring.cp ($my(error), PROC_MAXLEN_ERROR + 1, "unterminated variable declaration, awaiting =", PROC_MAXLEN_ERROR);
     return NOTOK;
+  }
 
   size_t nameLen = sp - begOfName;
   String.append_with_len ((*sa), begOfName, nameLen + 1);
@@ -457,9 +486,10 @@ static int proc_parse_env (proc_t *this, string **sa, char **bufp) {
 
   while (1) {
     ifnot (*sp) {
-      if (is_in_str)
+      if (is_in_str) {
+        Cstring.cp ($my(error), PROC_MAXLEN_ERROR + 1, "unterminated statement", PROC_MAXLEN_ERROR);
         return NOTOK;
-      else
+      } else
         break;
     }
 
@@ -481,8 +511,10 @@ static int proc_parse_env (proc_t *this, string **sa, char **bufp) {
         sp++;
         continue;
 
-      } else
+      } else {
+        Cstring.cp ($my(error), PROC_MAXLEN_ERROR + 1, "syntax error, unexpected token '\"'", PROC_MAXLEN_ERROR);
         return NOTOK;
+      }
     }
 
     if (*sp is '$') {
@@ -514,8 +546,10 @@ static int proc_parse_env (proc_t *this, string **sa, char **bufp) {
            ('0' <= *sp and *sp <= '9') or
            ('/' is *sp) or
            ('~' is *sp) or
-           (':' is *sp))
+           (':' is *sp)) {
+      Cstring.cp_fmt ($my(error), PROC_MAXLEN_ERROR + 1, "illegal identifier '%c'", *sp);
       return NOTOK;
+    }
 
     String.append_byte ((*sa), *sp);
     sp++;
@@ -658,7 +692,11 @@ static char **proc_parse (proc_t *this, const char *com) {
 
 parse_quoted:
       while (*sp and *sp isnot '"') sp++;
-      ifnot (*sp) goto theerror;
+      ifnot (*sp) {
+        Cstring.cp ($my(error), PROC_MAXLEN_ERROR + 1, "unterminated quoted string", PROC_MAXLEN_ERROR);
+        goto theerror;
+      }
+
       if (*(sp - 1) is '\\') goto parse_quoted;
       len = (size_t) (sp - tokbeg);
       sp++;
@@ -920,6 +958,10 @@ static void *proc_get_user_data (proc_t *this) {
   return $my(user_data);
 }
 
+static char *proc_get_error (proc_t *this) {
+  return $my(error);
+}
+
 static ProcPipe_cb proc_get_pipe_cb (proc_t *this) {
   if (NULL is this) return NULL;
   return $my(pipe_cb);
@@ -983,6 +1025,7 @@ public proc_T __init_proc__ (void) {
         .pid = proc_get_pid,
         .argv = proc_get_argv,
         .next = proc_get_next,
+        .error = proc_get_error,
         .pipe_cb = proc_get_pipe_cb,
         .user_data = proc_get_user_data
       }

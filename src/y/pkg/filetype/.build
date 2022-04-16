@@ -1,1 +1,1 @@
-return New Make (__file__, SHARED|STATIC_LIBRARY|MODULE|SCRIPT)
+return New Make (__file__, SHARED|STATIC|MODULE|SCRIPT)

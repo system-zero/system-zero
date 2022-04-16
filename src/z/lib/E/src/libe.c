@@ -742,9 +742,13 @@ const char c_multiline_comment_continuation[] = " * ";
 const char c_operators[] = "+:?-%*^><=/|&~.()[]{}!";
 const char c_balanced_pairs[] = "[](){}";
 
-const char *lai_extensions[] = {".lai", NULL};
-const char *lai_shebangs[] = {"#!/bin/env La", "#!/usr/bin/env La",
-  "#!/usr/bin/emv La-shared", "#!La-static", NULL};
+const char *lai_extensions[] = {".lai", ".build", NULL};
+const char *lai_shebangs[] = {
+  "#!/bin/env La", "#!/bin/env La-shared",
+  "#!/bin/env La-static", "#!La-static",
+  "#!/bin/env L", "#!L-static", NULL
+};
+
 const char lai_operators[] = "+-%*^><=/|& .(){}![]:$";
 
 const char *lai_keywords[] = {

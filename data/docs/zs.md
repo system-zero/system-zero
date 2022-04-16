@@ -1,8 +1,9 @@
 This is a quite minimal shell implementation, at very early stage of development,
-that does just the basics.  
+that does just the basics with a decent interactivity.  
   
+
+## Semantics: 
 <pre>
-Semantics:  
   Shell functionality:  
   
     - short-Circuit Operators “&&” and “||” AND-OR operators.  
@@ -13,8 +14,7 @@ Semantics:
   
       test -d /tmp/dir || mkdir -v /tmp/dir && cp -v somefile /tmp/dir  
   
-      Note that quite possible there are combinations that maybe violate  
-      those semantics.  
+      Note that possible exist combinations that might violate those semantics.  
   
     - pipes:  
   
@@ -68,8 +68,7 @@ Semantics:
       the [A-Z] range.  
   
     Note that in the case of multiply completion items, a hint that indicates the number  
-    of items is printed right to the cursor. However, in this implementation it is not  
-    visually possible to expand all the items in the screen at once.  
+    of items is printed right to the cursor.
 
     The underlying machine is linenoise with UTF-8 support, but in this implementation  
     the API is incompatible, just to support tab completion at any cursor point in the line,  
@@ -89,6 +88,10 @@ Semantics:
       This expansion is performed on ${env} token, which it is replaced with the
       value of the environment variable if found, otherwise with an empty string.
     
+      Special environment variables:  
+        ${?}           : exit value from the last command  
+        ${?.to_string} : string represantation of the last exit value  
+
     Command substitution:  
       This expansion is performed on $(command) token, which it is replaced with the  
       output of the command.  
@@ -109,7 +112,7 @@ Semantics:
            UP:  
        CTRL_P: previous item in history  
        CTRL_R: reverse incremental search  
-         HOME: move cursor to the start of line  
+         HOME:
        CTRL_A: move cursor to the start of line  
           END:  
        CTRL_E: move cursor at the end of line  
@@ -128,13 +131,13 @@ Semantics:
                the line  
 
   Builtin commands:  
-    cd:
+    cd:  
       Changes the current working directory. Without arguments the user's home directory  
-      is assumed. With an "-" as argument, then it tries to change to the previous  
-      working directory if any. When succesful the value of the current working directory  
+      is assumed. With a "-[digit*]" as argument, then it tries to change to the given
+      depth of previously working directories. When succesful the value of the current working directory  
       it is exported in the environment as "PWD".
    
-   pwd:
+   pwd:  
      This prints the current working directory.  
    
    unsetenv: Deletes the argument `name' from the environment.  
@@ -144,8 +147,8 @@ Semantics:
      the argument is less than zero, it returns 1, otherwise it returns the value
      of the argument.
 
-  Syntax: 
-  
+  Syntax:  
+   
     A '#' anywhere it denotes a comment, and all the input until a new line character
     is consumed.
     
@@ -155,10 +158,10 @@ Semantics:
     
       The fist character in the name should be in [a-zA-Z] range. The rest could also
       be in the 0-9 range or '_'.
-      
+    
       The `NAME' it should be followed by an '='.  
 
-      The value of `VALUE' starts imediatelly after the '=' and end up to the first
+      The value of `VALUE' starts imediatelly after the '=' and ends up to the first
       encountered space. It should be composed with characters in the [a-zA-z0-9]
       range or with any of the '_', '/', ':', '~' characters.  
       It can also be surrounded by a pair of double quotes. In this case it can
@@ -168,16 +171,18 @@ Semantics:
         $name=$(which ls)  
         $name=$(ls / | grep usr)  
         $name=${var}/${another_var}  
-      
+    
 Quirks:  
   A filename with embedded whitespace should be enclosed into double quotes.  
   Also in this same case, filename completion stops if the filename is a directory.  
   
   When tab completion returns more than one item, a hint that shows the number  
   of items, is displayed to the right of the cursor. There is no way to display  
-  more than one item at once.  
+  more than one item at once. This is a crucial missing feature!  
 
   There is no job managment.  
 
+  There is no language.  
+  
   There are should be many unhandled cases.  
 </pre>

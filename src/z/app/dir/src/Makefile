@@ -101,7 +101,7 @@ install-data:
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(D_MAKE)   || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(D_MAKE)
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(D_REMOVE) || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(D_REMOVE)
 	@$(CP) $(D_MAKE)/args   $(Z_SHELL_DATADIR)/commands/$(D_MAKE)
-	@$(CP) $(D_REMOVE)/args $(Z_SHELL_DATADIR)/commands/$(D_MAKE)
+	@$(CP) $(D_REMOVE)/args $(Z_SHELL_DATADIR)/commands/$(D_REMOVE)
 #-----------------------------------------------#
 D_MAKE = $(NAME).make
 

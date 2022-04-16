@@ -12,13 +12,17 @@ typedef int (*ProcPipe_cb) (proc_t *, char *, string **);
 #define PROC_READ_STDOUT (1 << 1)
 #define PROC_READ_STDERR (1 << 2)
 
+#define PROC_MAXLEN_ERROR 255
+
 typedef struct proc_get_self {
   pid_t (*pid) (proc_t *);
 
   proc_t
     *(*next) (proc_t *);
 
-  char **(*argv) (proc_t *);
+  char
+    **(*argv) (proc_t *),
+    *(*error) (proc_t *);
 
   void *(*user_data) (proc_t *);
   ProcPipe_cb (*pipe_cb) (proc_t *);

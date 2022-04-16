@@ -18,6 +18,7 @@
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_PROC_TYPE    DECLARE
+#define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_SH_TYPE      DONOT_DECLARE
@@ -43,6 +44,7 @@ static pid_t CUR_PID = -1;
 #define SH_EXIT_NOW      -11
 
 typedef struct sh_prop {
+  char error[SH_MAXLEN_ERROR];
   int saved_stdin;
   int exit_val;
   int should_exit;
@@ -139,6 +141,10 @@ static void sh_release (sh_t *this) {
 
 static int sh_get_exit_val (sh_t *this) {
   return $my(exit_val);
+}
+
+static char *sh_get_error (sh_t *this) {
+  return $my(error);
 }
 
 static int sh_should_exit (sh_t *this) {
@@ -333,28 +339,71 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
   }
 
   if (Cstring.eq (argv[0], "cd")) {
+    char *sp = NULL;
     char *path = argv[1];
+
     if (path is NULL) {
       path = Sys.get.env_value ("HOME");
-    } else if (Cstring.eq (path, "-")) {
-      // handle -1, -2, ...
-      if ($my(cdpath)->tail->prev isnot NULL)
-        path = $my(cdpath)->tail->prev->data->bytes;
+    } else if (*path is '-') {
+      int depth = 0;
+      ifnot (*(path + 1))
+        depth++;
       else
-        return 0;
-    }
+        depth = atoi (path + 1);
 
-    if (Cstring.eq (path, $my(cdpath)->tail->data->bytes))
-      return 0;
+      if (depth is 0 or depth >= $my(cdpath)->num_items)
+        return 1;
 
-    if (-1 is chdir (path)) {
+      vstring_t *it = $my(cdpath)->tail;
+      for (int i = 0; i < depth; i++) {
+        if (it is NULL) return 1;
+        it = it->prev;
+      }
+
+      if (it is NULL) return 1;
+      ifnot (it->data->num_bytes) return 1;
+
+      sp = it->data->bytes;
+      goto change_dir;
+
+    } else
+      ifnot (Dir.is_directory (path)) {
+        errno = ENOTDIR;
+        fprintf (stderr, "cd: %s %s\n", path, Error.errno_string (errno));
+        return errno;
+      }
+
+    char p[PATH_MAX + 1];
+    sp = Path.real (path, p);
+
+    if (sp is NULL) {
       fprintf (stderr, "cd: %s %s\n", path, Error.errno_string (errno));
       return errno;
     }
 
-    setenv ("PWD", path, 1);
+    change_dir: {}
 
-    Vstring.append_with ($my(cdpath), path);
+    char *curdir = Dir.current ();
+    if (NULL is curdir) {
+      fprintf (stderr, "couldn't get current working directory\n");
+      return 1;
+    }  else {
+      if (Cstring.eq (curdir, sp)) { //$my(cdpath)->tail->data->bytes)) {
+        free (curdir);
+        return 0;
+      }
+
+      free (curdir);
+    }
+
+    if (-1 is chdir (sp)) {
+      fprintf (stderr, "cd: %s %s\n", sp, Error.errno_string (errno));
+      return errno;
+    }
+
+    setenv ("PWD", sp, 1);
+
+    Vstring.append_with ($my(cdpath), sp);
     return 0;
   }
 
@@ -490,7 +539,10 @@ static sh_t *sh_new (void) {
  *  - ...
  */
 static int sh_parse (sh_t *this, char *buf) {
-  if (NULL is buf) return NOTOK;
+  if (NULL is buf) {
+    Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "INTERNAL ERROR, got NULL string", SH_MAXLEN_ERROR);
+    return NOTOK;
+  }
 
   size_t len = bytelen (buf);
   ifnot (len) return NOTOK;
@@ -532,8 +584,10 @@ static int sh_parse (sh_t *this, char *buf) {
     if (*sp is ')') {
       if (is_in_dolar_paren)
         is_in_dolar_paren = 0;
-      else
+      else {
+        Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "parsing error, illegal token ')'", SH_MAXLEN_ERROR);
         goto theerror;
+      }
     }
 
     if (*sp is '2') {
@@ -559,10 +613,16 @@ static int sh_parse (sh_t *this, char *buf) {
         continue;
       }
 
-      ifnot (*(sp + 1)) goto theerror;
+      ifnot (*(sp + 1)) {
+        Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "unterminated command, found end of file", SH_MAXLEN_ERROR);
+        goto theerror;
+      }
 
       if (*(sp + 1) is '|') {
-        ifnot (*(sp + 2)) goto theerror;
+        ifnot (*(sp + 2)) {
+          Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "parsing error, illegal token '|'", SH_MAXLEN_ERROR);
+          goto theerror;
+        }
 
         type = DISJ_TYPE;
         *sp = '\0';
@@ -577,11 +637,20 @@ static int sh_parse (sh_t *this, char *buf) {
     }
 
     if (*sp is '&') {
-      ifnot (*(sp + 1)) goto theerror;
+      ifnot (*(sp + 1)) {
+        Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "unterminated command, found end of file", SH_MAXLEN_ERROR);
+        goto theerror;
+      }
 
-      if (*(sp + 1) isnot '&') goto theerror;
+      if (*(sp + 1) isnot '&') {
+        Cstring.cp_fmt ($my(error), SH_MAXLEN_ERROR + 1, "parsing error, illegal token '%c', awaiting '&'", *(sp + 1));
+        goto theerror;
+      }
 
-      ifnot (*(sp + 2)) goto theerror;
+      ifnot (*(sp + 2)) {
+        Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "unterminated command, found end of file", SH_MAXLEN_ERROR);
+        goto theerror;
+      }
 
       type = CONJ_TYPE;
       *sp = '\0';
@@ -593,7 +662,10 @@ static int sh_parse (sh_t *this, char *buf) {
     if (*sp is '>') {
       *sp++ = '\0';
 
-      ifnot (*sp) goto theerror;
+      ifnot (*sp) {
+        Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "unterminated command, found end of file", SH_MAXLEN_ERROR);
+        goto theerror;
+      }
 
       redir_type = REDIR_NOCLOBBER;
 
@@ -612,7 +684,10 @@ static int sh_parse (sh_t *this, char *buf) {
       }
 
       while (*sp is ' ' or *sp is '\t') sp++;
-      ifnot (*sp) goto theerror;
+      ifnot (*sp) {
+        Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "unterminated command, found end of file", SH_MAXLEN_ERROR);
+        goto theerror;
+      }
 
       goto add_proc;
     }
@@ -652,7 +727,12 @@ static int sh_parse (sh_t *this, char *buf) {
       if (should_set_pipe_cb)
         Proc.set.pipe_cb (p, sh_pipe_cb);
 
-      Proc.parse (p, buf);
+      if (NULL is Proc.parse (p, buf)) {
+        char *err = Proc.get.error (p);
+        if (*err)
+          Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, err, SH_MAXLEN_ERROR);
+        goto theerror;
+      }
 
       Proc.set.pipe_cb (p, NULL);
 
@@ -675,7 +755,8 @@ static int sh_parse (sh_t *this, char *buf) {
       redir_stderr = 0;
       redir_stderr_to_stdout = 0;
 
-      ifnot (*sp) goto theend;
+      ifnot (*sp)
+        goto theend;
 
     next: sp++;
   }
@@ -691,7 +772,12 @@ theerror:
 }
 
 static int sh_exec (sh_t *this, char *buf) {
-  if (NULL is this) return NOTOK;
+  $my(error)[0] = '\0';
+
+  if (NULL is this) {
+    Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "INTERNAL ERROR, got NULL shell instance", SH_MAXLEN_ERROR);
+    return NOTOK;
+  }
 
   if (NOTOK is sh_parse (this, buf))
     return NOTOK;
@@ -703,6 +789,9 @@ static int sh_exec (sh_t *this, char *buf) {
 
   int retval = OK;
 
+  setenv ("?", "0", 1);
+  setenv ("?.to_string", "", 1);
+
   proc_t *p = $my(head);
 
   shproc_t *sh = (shproc_t *) Proc.get.user_data (p);
@@ -710,6 +799,17 @@ static int sh_exec (sh_t *this, char *buf) {
 
   while (p) {
     retval = sh_interpret (p);
+
+    char s[32];
+    Cstring.itoa ((retval is NOTOK ? 1 : retval), s, 10);
+    setenv ("?", s, 1);
+
+    if (retval > 0)
+      setenv ("?.to_string", Error.errno_string (retval), 1);
+    else if (retval is NOTOK)
+      setenv ("?.to_string", "shell internal error", 1);
+    else
+      setenv ("?.to_string", "", 1);
 
     sh = (shproc_t *) Proc.get.user_data (p);
 
@@ -742,11 +842,18 @@ static int sh_exec (sh_t *this, char *buf) {
 }
 
 static int sh_exec_file (sh_t *this, const char *fname) {
-  ifnot (File.exists (fname))
+  $my(error)[0] = '\0';
+
+  ifnot (File.exists (fname)) {
+    Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "file does not exist", SH_MAXLEN_ERROR);
     return NOTOK;
+  }
 
   FILE *fp = fopen (fname, "r");
-  if (NULL is fp) return NOTOK;
+  if (NULL is fp) {
+    Cstring.cp_fmt ($my(error), SH_MAXLEN_ERROR + 1, Error.errno_string (errno), SH_MAXLEN_ERROR);
+    return NOTOK;
+  }
 
   int retval = OK;
 
@@ -816,6 +923,7 @@ public sh_T __init_sh__ (void) {
   __INIT__ (sys);
   __INIT__ (dir);
   __INIT__ (proc);
+  __INIT__ (path);
   __INIT__ (file);
   __INIT__ (error);
   __INIT__ (string);
@@ -833,6 +941,7 @@ public sh_T __init_sh__ (void) {
       .should_exit = sh_should_exit,
       .release_list = sh_release_list,
       .get = (sh_get_self) {
+        .error = sh_get_error,
         .exit_val = sh_get_exit_val
       }
     }

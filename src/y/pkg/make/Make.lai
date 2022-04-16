@@ -17,7 +17,7 @@ import ("crypt")
 include ("argparse")
 
 func argparseNew () {
-  var argparse = New Argparse (28, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (29, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -44,6 +44,7 @@ func argparseNew () {
   argparse.add ("no_rpath", 0, "unset-rpath", "unset rpath", BooleanType, 0)
   argparse.add ("no_debug", 0, "unset-debug", "unset debug C flags (default on)", BooleanType, 0)
   argparse.add ("no_local_env", 0, "no-local-env", "do not add local env in cflags ", BooleanType, 0)
+  argparse.add ("dump_commands", 0, "dump-commands", "dump commands only", BooleanType, 0)
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
   return argparse
@@ -138,6 +139,7 @@ Type Make {
   force_static_executable   : false
   force_header              : false
   force_script              : false
+  dump_commands             : false
   verbose                   : false
   version                   : null
   cc                        : null
@@ -298,6 +300,7 @@ Type Make {
     }
 
     if ARGPARSE.results.no_local_env is true then this.set.local_env (false)
+    if ARGPARSE.results.dump_commands is true then this.set.dump_commands (true)
 
     return ifnot ARGPARSE.results.force
 
@@ -375,7 +378,9 @@ Type Make {
       return notok
     }
 
-    ifnot this.verbose then println ("  install data")
+    ifnot this.verbose then
+      ifnot this.dump_commands then
+        println ("  install data")
 
     var args = exec: concat_with ("args")
     if args: exists () then
@@ -383,7 +388,11 @@ Type Make {
 
     var flags = exec: concat_with ("flags")
     if flags: exists () then
-      return copy (flags, targetdir; verbose : this.verbose + 1, force : 1)
+      copy (flags, targetdir; verbose : this.verbose + 1, force : 1)
+
+    var literal_args = exec: concat_with ("literal_args")
+    if literal_args: exists () then
+      copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
   }
 
   endbuild : func (retval) {
@@ -516,6 +525,7 @@ Type Make {
     datadir                  : func (d) ifnot null is d this.datadir = d
     shelldatadir             : func (d) ifnot null is d this.shelldatadir = d
     local_env                : func (b) this.local_env = b
+    dump_commands            : func (v) this.dump_commands = v
 
     cflags                   : func (v) this.append_value (v, this.cflags)
 
@@ -638,7 +648,7 @@ Type Make {
 
   install : {
     header : func {
-      return notok if notok is this.change_to_build_directory ()
+      return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
       this.record ([this.header])
 
@@ -647,8 +657,10 @@ Type Make {
 
       ifnot this.incdir: exists () then mkdir (this.incdir, 0755; verbose : this.verbose + 1)
       ifnot this.incdir: isdirectory () {
-        println ("${this.incdir}: is not a directory")
-        return notok
+        if false is this.dump_commands {
+          println ("${this.incdir}: is not a directory")
+          return notok
+        }
       }
 
       var to = this.incdir: concat_with (this.header);
@@ -657,12 +669,20 @@ Type Make {
       return notok if r is notok
       return ok if r is false
 
+      if this.dump_commands {
+        var ver = "-v "
+        println ("# installing C header")
+        println ("cp ${%s, this.verbose: if v is 1 then ver orelse `` end}--force ${this.header} ${to}")
+        return ok
+      }
+
       r = copy (this.header, to; verbose : this.verbose + 1, force : 1)
       this.install_header = false
       return this.endbuild (r)
     }
 
     script : func {
+      return ok if this.dump_commands
       return notok if notok is this.change_to_build_directory ()
       return ok if null is this.script_sources
 
@@ -675,8 +695,10 @@ Type Make {
 
       ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
       ifnot this.bindir: isdirectory () {
-        println ("${this.bindir}: is not a directory")
-        return notok
+        if false is this.dump_commands {
+          println ("${this.bindir}: is not a directory")
+          return notok
+        }
       }
 
       var targets = list ()
@@ -729,7 +751,7 @@ Type Make {
   make : {
     shared : {
       library : func {
-        return notok if notok is this.change_to_build_directory ()
+        return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
         this.record (this.shared_library_sources)
 
@@ -737,8 +759,10 @@ Type Make {
 
         ifnot this.libdir: exists () then mkdir (this.libdir, 0755; verbose : this.verbose + 1)
         ifnot this.libdir: isdirectory () {
-          println ("${this.libdir}: is not a directory")
-          return notok
+          if false is this.dump_commands {
+            println ("${this.libdir}: is not a directory")
+            return notok
+          }
         }
 
         var output = this.libdir: concat_with (this.liboutput + ".so")
@@ -763,6 +787,12 @@ Type Make {
 
         for |v| in this.shared_library_sources if v isnot null then append " " + v in com
 
+        if this.dump_commands {
+          println ("# making the shared library")
+          println (com)
+          return ok
+        }
+
         if this.verbose then println (com) orelse println ("  making the shared library")
 
         r = this.sh: exec (com)
@@ -779,8 +809,8 @@ Type Make {
         return this.endbuild (r)
       }
 
-      executable: func {
-        return notok if notok is this.change_to_build_directory ()
+      executable : func {
+        return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
         this.record (this.shared_executable_sources)
 
@@ -788,8 +818,10 @@ Type Make {
 
         ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
         ifnot this.bindir: isdirectory () {
-          println ("${this.bindir}: is not a directory")
-          return notok
+          if false is this.dump_commands {
+            println ("${this.bindir}: is not a directory")
+            return notok
+          }
         }
 
         var output = this.bindir: concat_with (this.execoutput + "-shared")
@@ -813,6 +845,12 @@ Type Make {
 
         for |v| in this.shared_executable_sources if v isnot null then append " " + v in com
 
+        if this.dump_commands {
+          println ("# making the shared executable")
+          println (com)
+          return ok
+        }
+
         if this.verbose then println (com) orelse println ("  making the shared executable")
 
         r = this.sh: exec (com)
@@ -833,7 +871,7 @@ Type Make {
       }
 
       module : func {
-        return notok if notok is this.change_to_build_directory ()
+        return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
         this.record (this.shared_module_sources)
 
@@ -841,8 +879,10 @@ Type Make {
 
         ifnot this.moddir: exists () then mkdir (this.moddir, 0755; verbose : this.verbose + 1)
         ifnot this.moddir: isdirectory () {
-          println ("${this.moddir}: is not a directory")
-          return notok
+          if false is this.dump_commands {
+            println ("${this.moddir}: is not a directory")
+            return notok
+          }
         }
 
         var output = this.libdir: concat_with ("la-modules/" + this.libname + "-module.so")
@@ -866,6 +906,12 @@ Type Make {
 
         for |v| in this.shared_module_sources if v isnot null then append " " + v in com
 
+        if this.dump_commands {
+          println ("# making the shared module")
+          println (com)
+          return ok
+        }
+
         if this.verbose then println (com) orelse println ("  making the shared module")
 
         r = this.sh: exec (com)
@@ -881,7 +927,7 @@ Type Make {
 
     static : {
       library : func {
-        return notok if notok is this.change_to_build_directory ()
+        return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
         this.record (this.static_library_sources)
 
@@ -889,8 +935,10 @@ Type Make {
 
         ifnot this.libdir: exists () then mkdir (this.libdir, 0755; verbose : this.verbose + 1)
         ifnot this.libdir: isdirectory () {
-          println ("${this.libdir}: is not a directory")
-          return notok
+          if false is this.dump_commands {
+            println ("${this.libdir}: is not a directory")
+            return notok
+          }
         }
 
         var output = this.libdir: concat_with (this.liboutput + ".a")
@@ -916,6 +964,12 @@ Type Make {
         append " -static -c"                  in com
         append " -o " + this.liboutput + ".o" in com
 
+        if this.dump_commands {
+          println ("# making the static library")
+          println (com)
+          return ok
+        }
+
         if this.verbose then println (com) orelse println ("  making the static library")
 
         r = this.sh: exec (com)
@@ -937,7 +991,7 @@ Type Make {
       }
 
       executable: func {
-        return notok if notok is this.change_to_build_directory ()
+        return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
         this.record (this.static_executable_sources)
 
@@ -945,8 +999,10 @@ Type Make {
 
         ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
         ifnot this.bindir: isdirectory () {
-          println ("${this.bindir}: is not a directory")
-          return notok
+          if false is this.dump_commands {
+            println ("${this.bindir}: is not a directory")
+            return notok
+          }
         }
 
         var output = this.bindir: concat_with (this.execoutput + "-static")
@@ -969,6 +1025,12 @@ Type Make {
         for |v| in this.linkagainst.static_executable if v isnot null append " " + v in com
 
         append " -o " + output in com
+
+        if this.dump_commands {
+          println ("# making the static executable")
+          println (com)
+          return ok
+        }
 
         if this.verbose then println (com) orelse println ("  making the static executable")
 
@@ -1140,14 +1202,15 @@ func get_dependencies (dir) {
     init_argparse_results (DEPENDENCIES.$(v).targets, is_the_last)
 
     if i then println ("")
-    println ("Making: [ ${dirname (v): basename ()} ]")
+    println ("# Making: [ ${dirname (v): basename ()} ]")
 
     var s = evalfile (v)
 
     var r =  s.main ()
 
-    if r isnot ok then println ("failed") orelse
-      ifnot (verbose) then println ("done")
+    if r isnot ok then println (" failed") orelse
+      ifnot (verbose)
+        ifnot this.dump_commands then println ("done")
 
     return notok if r is notok
 

@@ -1,0 +1,10 @@
+shared
+static
+shared-library
+shared-executable
+shared-module
+static-library
+static-executable
+install-header
+install-script
+all

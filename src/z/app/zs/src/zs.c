@@ -31,6 +31,7 @@
 #define MAXLEN_HINT         63
 
 #define ZS_COMMAND_HAS_NO_FILENAME_ARG (1 << 0)
+#define ZS_COMMAND_HAS_LITERAL_ARG     (1 << 1)
 
 #define ZS_RLINE_ARG_IS_COMMAND        1
 #define ZS_RLINE_ARG_IS_ARG            2
@@ -182,10 +183,57 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
         if (it->flags & ZS_COMMAND_HAS_NO_FILENAME_ARG) {
           is_arg = 1;
           buflen = ptr - buf;
+          break;
+        }
+
+        if (it->flags & ZS_COMMAND_HAS_LITERAL_ARG) {
+          size_t lbuflen = ptr - buf;
+
+          size_t filelen = zs->comdir->num_bytes + 1 + comlen + sizeof ("/literal_args");
+          char file[filelen + 1];
+          Cstring.cp_fmt (file, filelen + 1, "%s/%s/literal_args", zs->comdir->bytes, com);
+
+          if (-1 is access (file, F_OK|R_OK))
+            break;
+
+          FILE *fp = fopen (file, "r");
+          if (NULL is fp) break;
+
+          char *args = NULL;
+          size_t argslen;
+          ssize_t nread;
+          String.append_with_len (arg, buf, lbuflen);
+
+          while (-1 isnot (nread = getline (&args, &argslen, fp))) {
+            args[nread - 1] = '\0';
+            sp = args;
+
+            while (*sp is ' ') sp++;
+            while (*sp) {
+              if (*sp is ' ' or *sp is '\n') break;
+              String.append_byte (arg, *sp++);
+            }
+
+            if (arg->num_bytes > lbuflen) {
+              if (Cstring.eq_n (ptr, arg->bytes + lbuflen, arglen)) {
+                zs->num_items++;
+                String.append_with_len (arg, lptr, lptrlen);
+                Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+                zs->arg_type = ZS_RLINE_ARG_IS_ARG;
+              }
+
+              String.clear_at (arg, lbuflen);
+            }
+          }
+
+          fclose (fp);
+          ifnot (NULL is args)
+            free (args);
         }
 
         break;
       }
+
       it = it->next;
     }
   }
@@ -211,6 +259,7 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
     while (-1 isnot (nread = getline (&args, &argslen, fp))) {
       args[nread - 1] = '\0';
       sp = args;
+
       while (*sp is ' ') sp++;
       while (*sp) {
         if (*sp is ' ' or *sp is '\n') break;
@@ -729,6 +778,11 @@ static int zs_interactive (sh_t *this) {
 
     signal (SIGINT, SIG_IGN);
     retval = Sh.exec (this, line);
+    if (retval < 0) {
+      char *err = Sh.get.error (this);
+      if (*err) fprintf (stderr, "%s\n", err);
+    }
+
     signal (SIGINT, SIG_DFL);
     zs->last_retval = retval;
     line = save_line;
@@ -858,6 +912,11 @@ int main (int argc, char **argv) {
   }
 
   retval = Sh.exec_file (this, fname);
+
+  if (retval is NOTOK) {
+    char *err = Sh.get.error (this);
+    if (*err) fprintf (stderr, "%s\n", err);
+  }
 
   get_exit_val:
   if (retval is NOTOK)

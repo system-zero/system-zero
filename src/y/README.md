@@ -36,6 +36,18 @@ warnings when we enable our debug C flags) cleanly by modern compilers, and this
 an admirable C property. In this distribution we already happily using code that
 it was first written at 1988.
 
+We continued with a rather oversimplified `make' like utility, rather specific
+for this environment and its development flow. This script stressed the machine
+a bit more than any other code so far (1000++ rather complicated lines of code),
+and which revealed more than a couple memory issues with the hand written memory
+managment mechanism. Most were fixed, and at least in one case to avoid a memory
+leak (when we had no other choise than to use function recursively), we've used
+a workaround. Instead of storing the object into the function, we used a nested
+function to handle the encapsulated object, which it is released when exiting from
+the function environment.  
+So yes, it is more like a big hack, than any real proper mechanism, that quite
+strangely still is going on though. This seeks for an explanation!
+
 ## Acknowledgements, References, Algorithms, Libraries:
 
 * [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
