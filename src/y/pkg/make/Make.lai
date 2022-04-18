@@ -15,9 +15,10 @@ import ("path")
 import ("crypt")
 
 include ("argparse")
+include ("packman")
 
 func argparseNew () {
-  var argparse = New Argparse (29, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (30, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -28,7 +29,7 @@ func argparseNew () {
   argparse.add ("install_header", 0, "install-header", "install header", BooleanType, ARG_LITERAL)
   argparse.add ("install_script", 0, "install-script", "install script", BooleanType, ARG_LITERAL)
   argparse.add ("all", 0, "all", "make all targets", BooleanType, ARG_LITERAL)
-  argparse.add ("force", 0, "force", "force making targets", BooleanType, 0)
+  argparse.add ("force", 'f', "force", "force making targets", BooleanType, 0)
   argparse.add ("recursive", 'R', "recursive", "apply the 'force' option recursively", BooleanType, 0)
   argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)
   argparse.add ("version", 0, "version=", "set version", StringType, ARG_VALUE_REQUIRED)
@@ -45,6 +46,7 @@ func argparseNew () {
   argparse.add ("no_debug", 0, "unset-debug", "unset debug C flags (default on)", BooleanType, 0)
   argparse.add ("no_local_env", 0, "no-local-env", "do not add local env in cflags ", BooleanType, 0)
   argparse.add ("dump_commands", 0, "dump-commands", "dump commands only", BooleanType, 0)
+  argparse.add ("namespace", 0, "namespace=", "namespace (default z)", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
   return argparse
@@ -71,6 +73,8 @@ const base64_encode     = crypt_base64_encode_file
 const char              = integer_char
 const advance           = string_advance
 
+const Z                 = "z"
+const Y                 = "y"
 const VERSION           = "0.3"
 const CC                = "gcc"
 const STD11             = "c11"
@@ -81,26 +85,31 @@ const MARCH             = "-march=native"
 const SYSDIR            = Sys.get ("SYSDIR")
 const SYSDATADIR        = Sys.get ("DATADIR")
 const SRCDIR            = Sys.get ("SRCDIR")
-const Z_SRCDIR          = SRCDIR:  concat_with ("z")
-const Y_SRCDIR          = SRCDIR:  concat_with ("y")
+const TMPDIR            = Sys.get ("TMPDIR")
+const ZSRCDIR           = SRCDIR:  concat_with (Z)
+const YSRCDIR           = SRCDIR:  concat_with (Y)
 const LIBDIR            = SYSDIR:  concat_with ("lib")
 const BINDIR            = SYSDIR:  concat_with ("bin")
 const INCDIR            = SYSDIR:  concat_with ("include")
-const ZLIBDIR           = LIBDIR:  concat_with ("z")
-const ZINCDIR           = INCDIR:  concat_with ("z")
-const MODDIR            = ZLIBDIR: concat_with ("la-modules")
+const ZLIBDIR           = LIBDIR:  concat_with (Z)
+const ZINCDIR           = INCDIR:  concat_with (Z)
+const ZMODDIR           = ZLIBDIR: concat_with ("la-modules")
+const YLIBDIR           = LIBDIR:  concat_with (Y)
+const YINCDIR           = INCDIR:  concat_with (Y)
+const YMODDIR           = YLIBDIR: concat_with ("l-modules")
 const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
-const DEBUG             = true
-const NODEBUG           = false
-const VERBOSE           = true
-const NOVERBOSE         = false
 const RPATH             = true
 const NORPATH           = false
 const SPEC              = ".build"
 const LOCAL_SPEC        = ".l.build"
 const CACHED            = ".cached.build"
 const LOCAL_CACHED      = ".l.cached.build"
+
+const DEBUG             = true
+const NODEBUG           = false
+const VERBOSE           = true
+const NOVERBOSE         = false
 
 const ALL               = (1 << 1)
 const SHARED_LIBRARY    = (1 << 2)
@@ -111,6 +120,7 @@ const STATIC_EXECUTABLE = (1 << 6)
 const STATIC            = (1 << 7)
 const MODULE            = (1 << 8)
 const SCRIPT            = (1 << 9)
+const PACKAGE           = (1 << 10)
 
 const ARGPARSE          = null
 
@@ -121,9 +131,10 @@ Type Make {
   bindir                    : BINDIR
   libdir                    : ZLIBDIR
   incdir                    : ZINCDIR
-  moddir                    : MODDIR
+  moddir                    : ZMODDIR
   datadir                   : SYSDATADIR
   shelldatadir              : SHELLDATADIR
+  local_env                 : true
   local_cflags              : true
   make_shared_library       : false
   make_shared_module        : false
@@ -132,6 +143,7 @@ Type Make {
   make_static_executable    : false
   install_header            : false
   install_script            : false
+  install_package           : false
   force_shared_library      : false
   force_shared_module       : false
   force_shared_executable   : false
@@ -140,6 +152,8 @@ Type Make {
   force_header              : false
   force_script              : false
   dump_commands             : false
+  namespace                 : Z
+  modulesdirname            : "la-modules"
   verbose                   : false
   version                   : null
   cc                        : null
@@ -158,8 +172,8 @@ Type Make {
   retval                    : ok
   debug                     : DEBUG
   rpath                     : RPATH
-  libdirs                   : list (ZLIBDIR, LIBDIR)
-  includedirs               : list (ZINCDIR, INCDIR)
+  libdirs                   : list (YLIBDIR, ZLIBDIR, LIBDIR)
+  includedirs               : list (YINCDIR, ZINCDIR, INCDIR)
   shared_library_sources    : list ()
   shared_module_sources     : list ()
   shared_executable_sources : list ()
@@ -245,6 +259,10 @@ Type Make {
   }
 
   set_options : func {
+    if ARGPARSE.results.no_local_env is true then this.set.local_env (false)
+
+    this.set.namespace (ARGPARSE.results.namespace)
+
     this.make_shared_library       = ARGPARSE.results.shared_library
     this.make_shared_module        = ARGPARSE.results.shared_module
     this.make_shared_executable    = ARGPARSE.results.shared_executable
@@ -299,7 +317,6 @@ Type Make {
       this.set.shelldatadir (ARGPARSE.results.datadir: concat_with (SHELL + "/commands"))
     }
 
-    if ARGPARSE.results.no_local_env is true then this.set.local_env (false)
     if ARGPARSE.results.dump_commands is true then this.set.dump_commands (true)
 
     return ifnot ARGPARSE.results.force
@@ -402,24 +419,27 @@ Type Make {
   }
 
   init : func (unit, targets) {
+    var is_z_ns = qualifier_exists ("from_z_namespace")
+
     this.targets = targets
 
-    var dir  = unit : dirname ()
-    var name =   dir: basename ()
+    var dir = unit: dirname ()
+    var name
+
+    if this.local_env and is_z_ns {
+      var base_name = dir: dirname (): basename ()
+      name = (char (base_name[0] + ('a' - 'A')) + advance (base_name, 1)
+    } else {
+      name =  dir: basename ()
+    }
 
     this.name = name
     this.curdir = Dir.current ()
 
     this.set_options ()
 
-    # if this.targets & SHARED_LIBRARY or this.targets & SHARED then
-    #  this.set.shared.library.to_linkagainst (this.name + "-" + this.version)
-
     if this.targets & SHARED_EXECUTABLE or this.targets & SHARED then
       this.set.shared.executable.to_linkagainst (this.name + "-" + this.version)
-
-    #if this.targets & STATIC_LIBRARY or this.targets & STATIC then
-    #  this.set.static.library.to_linkagainst (this.name + "-" + this.version)
 
     if this.targets & STATIC_EXECUTABLE or this.targets & STATIC then
       this.set.static.executable.to_linkagainst (this.name + "-" + this.version)
@@ -456,6 +476,13 @@ Type Make {
 
   public
   main : func {
+    if this.targets & PACKAGE {
+      var p = New Packman ()
+      p.set.builddir (TMPDIR)
+      p.new.spec (this.name)
+      return notok if notok is p.build ()
+    }
+
     if this.targets & SHARED_LIBRARY or this.targets & SHARED or
        this.targets & STATIC_LIBRARY or this.targets & STATIC
       return notok if this.install.header () is notok
@@ -524,8 +551,32 @@ Type Make {
     moddir                   : func (d) ifnot null is d this.moddir = d
     datadir                  : func (d) ifnot null is d this.datadir = d
     shelldatadir             : func (d) ifnot null is d this.shelldatadir = d
-    local_env                : func (b) this.local_env = b
+
     dump_commands            : func (v) this.dump_commands = v
+
+    local_env                : func (b) {
+      this.local_env = b
+      if this.local_env is false then this.local_cflags = false
+    }
+
+    modulesdirname           : func (n) {
+      return if null is n
+      if this.local_env is false then this.modulesdirname = n
+      orelse
+        if Y is n then this.modulesdirname = "l-modules"
+        orelse
+          if  Z is n then this.modulesdirname = "la-modules"
+          orelse this.modulesdirname = n
+    }
+
+    namespace                : func (n) {
+      return if null is n
+      return if this.namespace is n
+      this.namespace = n
+      this.set.libdir (LIBDIR: concat_with (this.namespace))
+      this.set.incdir (INCDIR: concat_with (this.namespace))
+      this.set.modulesdirname (n)
+    }
 
     cflags                   : func (v) this.append_value (v, this.cflags)
 
@@ -885,7 +936,16 @@ Type Make {
           }
         }
 
-        var output = this.libdir: concat_with ("la-modules/" + this.libname + "-module.so")
+        var instdir = this.libdir: concat_with (this.modulesdirname)
+        ifnot instdir: exists () then mkdir (instdir, 0755; verbose : this.verbose + 1)
+        ifnot instdir: isdirectory () {
+          if false is this.dump_commands {
+            println ("${this.moddir}: is not a directory")
+            return notok
+          }
+        }
+
+        var output = instdir: concat_with (this.libname + "-module.so")
 
         var r = this.should_make (output, this.shared_module_sources, this.force_shared_module)
         return notok if r is notok
@@ -1054,9 +1114,20 @@ const Dependencies = {}
 const TARGETS      = {}
 
 func get_dependencies (dir) {
-  return notok ifnot dir: exists ()
+  ifnot dir: exists () {
+    var n = YSRCDIR: concat_with ("pkg"): concat_with (dir)
+    ifnot n: exists () {
+      n = ZSRCDIR: concat_with ("lib"): concat_with (dir): concat_with ("src")
+      return notok ifnot n: exists ()
+    }
 
-  var file = if dir: isdirectory () then dir: concat_with (SPEC): realpath () orelse dir: realpath ()
+    dir = n
+  }
+
+  var file = if dir: isdirectory () then dir: concat_with (SPEC): realpath ()
+             orelse dir: realpath ()
+
+  return notok ifnot file: exists ()
 
   return ok if DEPENDENCIES: key_exists (file)
 
@@ -1126,7 +1197,7 @@ func get_dependencies (dir) {
   return notok ifnot ok is ARGPARSE.process (argv, 1)
   return ok if ARGPARSE.exit is true
 
-  var f = ifnot ARGPARSE.argc then SPEC orelse ARGPARSE.argv[0]: concat_with (SPEC)
+  var f = ifnot ARGPARSE.argc then Dir.current () orelse ARGPARSE.argv[0]
 
   var FORCE       = ARGPARSE.results.force
   var RECUR       = ARGPARSE.results.recursive
@@ -1208,8 +1279,8 @@ func get_dependencies (dir) {
 
     var r =  s.main ()
 
-    if r isnot ok then println (" failed") orelse
-      ifnot (verbose)
+    if r isnot ok then println ("failed") orelse
+      ifnot (verbose) then
         ifnot this.dump_commands then println ("done")
 
     return notok if r is notok

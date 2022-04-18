@@ -13,7 +13,7 @@
 
 typedef struct net_t net_t;
 
-typedef int (*NetOutputCallback) (net_t *, void *, char *, size_t);
+typedef int (*NetOutputCallback) (net_t *, FILE *, char *, size_t, size_t, size_t);
 
 typedef struct netOptions {
   const char *outputFile;
@@ -30,7 +30,7 @@ typedef struct netOptions {
   .outputToFile = 1,                   \
   .outputCallback = NULL,              \
   .outputToCallback = 0,               \
-  .verbose = 1,                        \
+  .verbose = 0,                        \
   __VA_ARGS__                          \
 }
 

@@ -12,9 +12,10 @@ static VALUE net_fetch (la_t *this, VALUE v_url) {
   ifnot (IS_STRING(v_url)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *url = AS_STRING_BYTES(v_url);
+  char *as = GET_OPT_AS();
 
   int verbose = GET_OPT_VERBOSE();
-  net_t *net = Net.new (NetOptions (.verbose = verbose));
+  net_t *net = Net.new (NetOptions (.verbose = verbose, .outputFile = as));
 
   int retval = Net.fetch (net, url);
 

@@ -4,8 +4,9 @@ loadfile ("argparse")
 
 var prog = __file__: path_basename ()
 
-var argparse = New Argparse (2, 0, prog + " [option[s]] url")
-argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
+var argparse = New Argparse (3, 0, prog + " [option[s]] url")
+argparse.add ("verbose", 'v', "verbose=", "set verbosity", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
+argparse.add ("output",  'o', "output=", "save to file", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 ifnot ok is argparse.process (__argv, 1) then exit (1)
@@ -13,11 +14,12 @@ ifnot ok is argparse.process (__argv, 1) then exit (1)
 if argparse.exit is true then exit (0)
 
 var verbose = argparse.results.verbose
+var output  = argparse.results.output
 
-ifnot (argparse.argc)
-  exit (0)
+ifnot (argparse.argc) exit (0)
 
 var url = argparse.argv[0]
-var retval = Net.fetch (url; verbose : verbose)
+
+var retval = Net.fetch (url; verbose : verbose, as : output)
 
 exit (if retval < 0 then 1)

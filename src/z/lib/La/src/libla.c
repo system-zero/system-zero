@@ -41,8 +41,8 @@
 #define NS_LOOP_BLOCK_LEN  14
 #define NS_IF_BLOCK        "__block_if__"
 #define NS_IF_BLOCK_LEN    12
-#define NS_WHEN_BLOCK      "__when_block__"
-#define NS_WHEN_BLOCK_LEN  14
+#define NS_CHAIN_BLOCK      "__chain_block__"
+#define NS_CHAIN_BLOCK_LEN  15
 #define NS_ANON            "anonymous"
 #define LA_EXTENSION       "lai"
 #define LA_STRING_NS       "__string__"
@@ -895,8 +895,32 @@ static int la_get_opened_block (la_t *this, const char *msg) {
   while (bracket > 0) {
     c = GET_BYTE();
 
-    if (c is LA_NOTOK or c is TOKEN_EOF)
+    if (c is LA_NOTOK or c is TOKEN_EOF) {
+      const char *keep = GETSTRPTR(PARSEPTR);
+      size_t len = GETSTRLEN(PARSEPTR);
+
+      char *sp = (char *) keep;
+      while (sp > this->script_buffer) sp--;
+      size_t n_len = (keep - sp);
+
+      size_t n = 0;
+      for (n = 0; n < 256 and n < n_len; n++)
+        UNGET_BYTE();
+
+      fprintf (this->err_fp, "unended %s block\n",
+          ((Cstring.eq_n (this->curScope->funname, NS_IF_BLOCK, NS_IF_BLOCK_LEN))
+            ? "if" :
+            (Cstring.eq_n (this->curScope->funname, NS_LOOP_BLOCK, NS_LOOP_BLOCK_LEN))
+              ? "loop" :
+              this->curScope->funname));
+
+      for (size_t i = 0; i < n; i++)
+        fprintf (this->err_fp, "%c", GET_BYTE());
+
+      SETSTRPTR(PARSEPTR, keep);
+      SETSTRLEN(PARSEPTR, len);
       THROW_SYNTAX_ERR(msg);
+    }
 
     if (c is TOKEN_COMMENT) {
       ifnot (in_str) {
@@ -6929,12 +6953,12 @@ static int la_parse_block (la_t *this, const char *descr) {
     return LA_OK;
 
   if (TOKEN is TOKEN_EOF)
-    THROW_SYNTAX_ERR(STR_FMT("%s: not a string", descr));
+    THROW_SYNTAX_ERR(STR_FMT("unended %s block", descr));
 
   if (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
   THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL,
-    STR_FMT("%s: expecting a string, found a new line\n", descr));
+    STR_FMT("%s: expecting a block, found two consecutive new lines\n", descr));
 
   int parens = 0;
   int in_str = 0;
@@ -6994,14 +7018,14 @@ static int la_consume_ifelse (la_t *this) {
     c = TOKEN;
 
     if (c is TOKEN_EOF)
-      THROW_SYNTAX_ERR("unended conditional");
+      THROW_SYNTAX_ERR("unended conditional block");
 
     while ((c = GET_BYTE())) {
       if (c is TOKEN_EOF)
-        THROW_SYNTAX_ERR("unended conditional");
+        THROW_SYNTAX_ERR("unended conditional block");
 
       if (c is TOKEN_BLOCK_OPEN) {
-        err = la_get_opened_block (this, "unended conditional");
+        err = la_get_opened_block (this, "unended conditional block");
         THROW_ERR_IF_ERR(err);
 
         NEXT_TOKEN();
@@ -7253,7 +7277,6 @@ static int la_parse_if (la_t *this) {
 
   err = la_parse_block (this, "if");
   THROW_ERR_IF_ERR(err);
-  //THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_BLOCK, "parsing if, not a block string");
 
   la_string ifpart = TOKENSTR;
   la_string elsepart;
@@ -7355,7 +7378,7 @@ static int la_parse_if_in_chain (la_t *this, VALUE *vp) {
     THROW_SYNTAX_ERR("can not redefine a standard symbol");
 
   funT *fun = Fun_new (this, funNew (
-    .name = NS_WHEN_BLOCK, .namelen = NS_WHEN_BLOCK_LEN, .parent = this->curScope
+    .name = NS_CHAIN_BLOCK, .namelen = NS_CHAIN_BLOCK_LEN, .parent = this->curScope
   ));
 
   funT *save_scope = this->curScope;
@@ -7462,7 +7485,7 @@ static int la_parse_while (la_t *this) {
   SETSTRLEN(PARSEPTR, orig_len - cond_len - 1);
 
   NEXT_TOKEN();
-  err = la_parse_block (this, "while statement");
+  err = la_parse_block (this, "while");
   THROW_ERR_IF_ERR(err);
 
   int is_single = TOKEN isnot TOKEN_BLOCK;
@@ -7558,7 +7581,7 @@ static int la_parse_do (la_t *this) {
   this->loopCount++;
 
   NEXT_TOKEN();
-  err = la_parse_block (this, "do/while statement");
+  err = la_parse_block (this, "do/while");
   THROW_ERR_IF_ERR(err);
 
   integer bodylen = GETSTRLEN(TOKENSTR);
@@ -7830,7 +7853,7 @@ static int la_parse_foreach (la_t *this) {
   SETSTRLEN(PARSEPTR, p_len - (ptr - tmp_ptr));
 
   NEXT_TOKEN();
-  err = la_parse_block (this, "for statement");
+  err = la_parse_block (this, "for");
   THROW_ERR_IF_ERR(err);
 
   size_t len = GETSTRLEN(TOKENSTR);
@@ -8479,7 +8502,7 @@ static int la_parse_for (la_t *this) {
 
   NEXT_TOKEN();
 
-  err = la_parse_block (this, "for statement");
+  err = la_parse_block (this, "for");
   THROW_ERR_IF_ERR(err);
 
   int is_single = TOKEN isnot TOKEN_BLOCK;
@@ -8654,7 +8677,7 @@ static int la_parse_loop (la_t *this) {
 
   integer num = AS_INT(v);
 
-  err = la_parse_block (this, "loop statement");
+  err = la_parse_block (this, "loop");
   THROW_ERR_IF_ERR(err);
 
   int is_single = TOKEN isnot TOKEN_BLOCK;
@@ -8767,7 +8790,7 @@ static int la_parse_forever (la_t *this) {
     c = TOKEN;
   }
 
-  err = la_parse_block (this, "forever statement");
+  err = la_parse_block (this, "forever");
   THROW_ERR_IF_ERR(err);
 
   int is_single = TOKEN isnot TOKEN_BLOCK;
@@ -8972,7 +8995,7 @@ static int la_parse_func_def (la_t *this) {
     NEXT_TOKEN();
   }
 
-  int err = la_parse_block (this, STR_FMT("function `%s'", uf->funname));
+  int err = la_parse_block (this, STR_FMT("`%s' function", uf->funname));
   THROW_ERR_IF_ERR(err);
 
   uf->body = TOKENSTR;
@@ -9700,6 +9723,9 @@ static int la_parse_import (la_t *this) {
   funT *load_ns = this->curScope;
   funT *prev_ns = load_ns;
 
+  while (load_ns and Cstring.eq_n (load_ns->funname, "__block_", 8))
+    load_ns = load_ns->prev;
+
   if (TOKEN is TOKEN_COMMA) {
     NEXT_TOKEN();
     err = la_parse_expr (this, &v);
@@ -9977,6 +10003,9 @@ loadfile: {}
   string *ns = NULL;
   funT *load_ns = this->curScope;
   funT *prev_ns = load_ns;
+
+  while (load_ns and Cstring.eq_n (load_ns->funname, "__block_", 8))
+    load_ns = load_ns->prev;
 
   if (TOKEN is TOKEN_COMMA) {
     NEXT_TOKEN();

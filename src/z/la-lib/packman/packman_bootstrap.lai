@@ -5,6 +5,7 @@ import ("sys")
 import ("file")
 import ("path")
 import ("crypt")
+import ("net")
 
 const PACKMAN_NO_VERBOSE         = 0
 const PACKMAN_VERBOSE            = 1
@@ -184,8 +185,6 @@ private
 
       ifnot null is this.fetch_exec then
         this.fetch_args = "-L"
-      orelse
-        println (stderr, "neither wget nor curl has been found")
     }
   }
 
@@ -200,18 +199,14 @@ private
       return notok
     }
 
-    if (this.fetch_exec is null) {
-      println (stderr, "fetching executable hasn't been set or couldn't been found")
-      return notok
-    }
-
     var webarch = this.spec.baseurl: path_concat (this.spec.archive)
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    return ok if 0 is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " +
-        " -O " + archive + " " + webarch)
-
-    return notok
+    if notok is Net.fetch (webarch; as : archive) then
+      if this.fetch_exec isnot null then
+        return ok if 0 is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " + " -O " + archive + " " + webarch)
+      orelse
+        return notok
   }
 
   extract : func {
@@ -449,6 +444,7 @@ public
 
   build : func {
     var retval = notok
+
     if (this.spec is null) {
       println (stderr, "spec hasn't been set")
       return notok

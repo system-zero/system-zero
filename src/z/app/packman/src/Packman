@@ -6,14 +6,14 @@
 import ("sys")
 
 loadfile ("argparse")
-loadfile ("packman")
 
-var argparse = New Argparse (7, 0, "Packman option[s] package")
+var argparse = New Argparse (8, 0, "Packman option[s] package")
 argparse.add ("install", 0, "install", "install package", BooleanType, ARG_LITERAL)
 argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, ARG_LITERAL) 
 argparse.add ("spec_info", 0, "spec-info", "spec information", BooleanType, ARG_LITERAL)
 argparse.add ("settings", 0, "settings", "general settings", BooleanType, ARG_LITERAL)
 argparse.add ("list_specs", 0, "list-specs", "list available specs", BooleanType, ARG_LITERAL)
+argparse.add ("bootstrap", 0, "bootstrap", "bootstrap", BooleanType, ARG_LITERAL)
 argparse.add ("force", 'f', "force", "force", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
@@ -27,19 +27,34 @@ var spec_info   = argparse.results.spec_info
 var settings    = argparse.results.settings
 var list_specs  = argparse.results.list_specs
 var force       = argparse.results.force
+var bootstrap   = argparse.results.bootstrap
 
-var package = lambda {
-  ifnot (argparse.argc) {
-    if ((settings is false and list_specs is false) or spec_info is true) {
-      println (stderr, "No package has been specified")
-      exit (1)
+var package = null
+
+if bootstrap is true {
+   loadfile ("packman_bootstrap")
+   package = "curl"
+   install = true
+   spec_info = false
+   update_repo = false
+   settings = false
+   list_specs = false
+   force = false
+} else {
+  loadfile ("packman")
+  package = lambda {
+    ifnot (argparse.argc) {
+      if ((settings is false and list_specs is false) or spec_info is true) {
+        println (stderr, "No package has been specified")
+        exit (1)
+      }
+
+      return null
     }
 
-    return null
-  }
-
-  return argparse.argv[0]
-} ()
+    return argparse.argv[0]
+  } ()
+}
 
 ifnot (install + update_repo + spec_info + settings + list_specs) {
   println ("no action has been specified in the command line" +

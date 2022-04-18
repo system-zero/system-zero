@@ -19,6 +19,7 @@ all: Env
 	@$(CP) argparse/argparse.lai $(SYSSCRIPTDIR)
 	@$(PRINTF) "installing packman to $(SYSSCRIPTDIR)\n"
 	@$(CP) packman/packman.lai   $(SYSSCRIPTDIR)
+	@$(CP) packman/packman_bootstrap.lai $(SYSSCRIPTDIR)
 
 Env: makeenv checkenv
 makeenv:

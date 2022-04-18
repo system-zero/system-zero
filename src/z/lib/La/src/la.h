@@ -514,11 +514,21 @@ public la_T *la_get_root (la_t *);
   AS_INT(_v_month);                                                       \
 })
 
-#define GET_OPT_DAY() ({                                                 \
-  VALUE _v_day = La.get.qualifier (this, "day", INT(OPT_NO_DAY));        \
-  ifnot (IS_INT(_v_day))                                                 \
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");        \
-  AS_INT(_v_day);                                                        \
+#define GET_OPT_DAY() ({                                                  \
+  VALUE _v_day = La.get.qualifier (this, "day", INT(OPT_NO_DAY));         \
+  ifnot (IS_INT(_v_day))                                                  \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_day);                                                         \
+})
+
+#define GET_OPT_AS() ({                                                   \
+  char * _as_ = NULL;                                                     \
+  VALUE _v_as = La.get.qualifier (this, "as", NULL_VALUE);                \
+  if (IS_STRING(_v_as))                                                   \
+    _as_ = AS_STRING_BYTES(_v_as);                                        \
+  else if (IS_NULL(_v_as) == 0)                                           \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+  _as_;                                                                   \
 })
 
 #endif /* WITHOUT_LA_FUNCTIONS */

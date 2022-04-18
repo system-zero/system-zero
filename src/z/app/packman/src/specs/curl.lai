@@ -1,0 +1,40 @@
+var name = "curl"
+var archive = name
+var version = "7.82.0"
+var spec = New PackmanSpec (name)
+spec.set.descr ("libcurl is a multiprotocol file transfer library")
+spec.set.md ("40f840b3be2281f5878b125968542a4d")
+spec.set.baseurl ("https://curl.se/download")
+spec.set.version (version)
+spec.set.build_dirname (archive + "-" + version)
+spec.set.extension ("tar.gz")
+spec.set.archive (spec.get.build_dirname () + "." + spec.get.extension ())
+spec.set.license ("MIT")
+
+#var map[1] build = [
+#  New PackmanBuild (null, PACKMAN_BUILD_MD_CHECK, null)
+#]
+
+var map[4] build = [
+  New PackmanBuild (null, PACKMAN_BUILD_EXTRACT, null),
+  New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE,
+      "--prefix=${%s, this.get.sysdir ()} --disable-ares " +
+      "--disable-ech --disable-ech --enable-static=no " +
+      "--disable-ldap --disable-ldaps " +
+      "--disable-rtsp --disable-proxy --disable-dict " +
+      "--disable-telnet --disable-tftp --disable-smb " +
+      "--disable-mqtt --disable-manual " +
+      "--disable-sspi --disable-ntlm --disable-ntlm-wb " +
+      "--disable-doh --disable-netrc --disable-alt-svc " +
+      "--without-hyper --without-brotli --without-zstd " +
+      "--without-libpsl --without-libgsasl --without-librtmp " +
+      "--without-winidn --without-libidn2 --without-nghttp2 " +
+      "--without-ngtcp2 --without-nghttp3 --without-quiche " +
+      "--with-openssl"),
+  New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null),
+  New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, null)
+]
+
+spec.set.build (build)
+
+return spec

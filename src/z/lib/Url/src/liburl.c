@@ -360,7 +360,7 @@ static char* parse_url_unescape_percent_encoding( char* str )
       ++read;
       if(!parse_url_is_hex_char(*read))
         return 0x0;
-      char v1 = parse_url_hex_char_value(*read); 
+      char v1 = parse_url_hex_char_value(*read);
 
       ++read;
       if(!parse_url_is_hex_char(*read))
@@ -543,6 +543,10 @@ static parsed_url* parse_url( const char* url, void* usermem, size_t mem_size )
   URL_MEMSET(out, 0x0, sizeof(parsed_url));
   out->host = "localhost";
   out->path = "/";
+  out->scheme = "";
+  out->pass = "";
+  out->fragment = "";
+  out->query = "";
 
   url = parse_url_parse_scheme   ( url, &ctx, out ); URL_PARSE_FAIL_IF( url == 0x0 );
   url = parse_url_parse_user_pass( url, &ctx, out ); URL_PARSE_FAIL_IF( url == 0x0 );
@@ -566,11 +570,9 @@ url_t *UrlParse (void *mem, size_t mem_size, int flags, char *url) {
 #include <stdio.h>
 __attribute__((visibility ("default")))
 url_t *UrlParse (void *mem, size_t mem_size, int flags, char *url) {
-fprintf(stdout, "%s |%s|\n", __func__, url);
   if (NULL == url) return 0x0;
 
   url_t *parsedURL = parse_url (url, mem, mem_size);
-fprintf(stdout, "%s us bu |%d|\n", __func__, parsedURL == 0x0);
 
   if (!parsedURL) return 0x0;
 

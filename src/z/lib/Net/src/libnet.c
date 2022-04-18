@@ -98,17 +98,14 @@ static int net_parse_url (net_t *this) {
 
   this->parsedURL = parsedURL;
 
-  #if 0
   if (this->verbose > NET_VERBOSE_LEVEL_TWO) {
     fprintf (stdout, "Protocol: %s\n", parsedURL->scheme);
     fprintf (stdout, "  Domain: %s\n", parsedURL->host);
     fprintf (stdout, "Fragment: %s\n", parsedURL->fragment);
     fprintf (stdout, "   Query: %s\n", parsedURL->query);
     fprintf (stdout, "    Path: %s\n", parsedURL->path);
-    ifnot (NULL is this->outputFile)
-      fprintf (stdout, "  Output: %s\n", this->outputFile);
+    fprintf (stdout, "  Output: %s\n", this->outputFile);
   }
-  #endif
 
   return OK;
 }
@@ -119,7 +116,7 @@ static int net_assign_output_filename (net_t *this) {
     if ((1 is len and *this->parsedURL->path is '/') or
          0 is len) {
       Cstring.cp (this->errorMsg, MAXLEN_ERROR_MSG + 1,
-        "nothing to fetch", MAXLEN_ERROR_MSG);
+        "nothing to fetch because of empty path in the url", MAXLEN_ERROR_MSG);
       return NOTOK;
     }
 
@@ -378,11 +375,24 @@ static int net_fetch_from_http (net_t *this) {
       goto theend;
     }
 
-    ifnot (NULL is this->outputFile) {
-      fwrite (recvb, 1, nread, fp);
-    } else
-      this->outputCallback (this, NULL, recvb, nread);
+    ifnot (nread) break;
 
+    if (this->verbose is NET_VERBOSE_LEVEL_ONE) {
+      ifnot (NULL is this->outputCallback) {
+        if (NOTOK is this->outputCallback (this, fp, recvb, nread, num_bytes, contentLength)) {
+           fclose (fp);
+           retval = NOTOK;
+           goto theend;
+        }
+
+        goto next;
+      }
+    }
+
+    ifnot (NULL is this->outputFile)
+      fwrite (recvb, 1, nread, fp);
+
+next:
     num_bytes += nread;
 
     if (num_bytes is contentLength) break;
@@ -477,15 +487,24 @@ static int net_fetch_from_https (net_t *this) {
       goto theend;
     }
 
-    //fprintf (stdout, "nread: %d, total %ld contentlne %ld\n", nread, num_bytes,
-    //    contentLength);
     ifnot (nread) break;
+
+    if (this->verbose is NET_VERBOSE_LEVEL_ONE) {
+      ifnot (NULL is this->outputCallback) {
+        if (NOTOK is this->outputCallback (this, fp, recvb, nread, num_bytes, contentLength)) {
+           fclose (fp);
+           retval = NOTOK;
+           goto theend;
+        }
+
+        goto next;
+      }
+    }
 
     ifnot (NULL is this->outputFile)
       fwrite (recvb, 1, nread, fp);
-    else
-      this->outputCallback (this, NULL, recvb, nread);
 
+next:
     num_bytes += nread;
     memset (recvb, 0, 3000);
     if (num_bytes is contentLength) break;
@@ -555,16 +574,29 @@ static void net_release (net_t **thisp) {
   *thisp = NULL;
 }
 
+static int net_default_output_callback (net_t *this, FILE *fp, char *recvb, size_t nread, size_t num_bytes, size_t contentLength) {
+  (void) this;
+
+  if (NULL is fp) return NOTOK;
+
+   if (nread isnot fwrite (recvb, 1, nread, fp))
+     return NOTOK;
+
+   ulong fractiondownloaded = (ulong) (((ulong) (num_bytes + nread) * 100) / (ulong) contentLength);
+   fprintf (stdout, "%luKB (%lu%%) of %luKB\r", (num_bytes + nread) / 1024, fractiondownloaded,
+        contentLength / 1024);
+   return OK;
+}
+
 static net_t *net_new (netOptions opts) {
   net_t *this = Alloc (sizeof (net_t));
   this->url = NULL;
   this->outputFile = (NULL is opts.outputFile
     ? NULL : Cstring.dup (opts.outputFile, bytelen (opts.outputFile)));
   this->outputToFile = opts.outputToFile;
-  this->outputCallback = opts.outputCallback;
+  this->outputCallback = (NULL is opts.outputCallback ? net_default_output_callback : opts.outputCallback);
   this->outputToCallback = opts.outputToCallback;
-  this->verbose = NET_VERBOSE_LEVEL_THREE + 1;
-  //opts.verbose;
+  this->verbose = opts.verbose;
   this->statusCode = HttpStatus_OK;
   this->contentLength = 0;
   this->socketFD = -1;
