@@ -1357,11 +1357,12 @@ clean-net-static:
 # Development (ignore)
 
 clone-libc:
-	$(SYSBINDIR)/Packman --install clone_libc
+	$(SYSBINDIR)/Packman install clone_libc
 libpam:
-	$(SYSBINDIR)/Packman --install pam
+	@$(SYSBINDIR)/Packman install pam
 
-bootstrap: clean-libla-shared la-shared clone-libc libpam clean-libauth-shared zsu-shared net-shared
+bootstrap: net-shared la-shared
+	@$(SYSBINDIR)/Packman bootstrap
 
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared

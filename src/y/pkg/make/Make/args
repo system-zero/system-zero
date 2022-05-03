@@ -15,5 +15,6 @@
 --unset-debug
 --no-local-env
 --dump-commands
+--namespace=
 -v,--verbose
 -h,--help

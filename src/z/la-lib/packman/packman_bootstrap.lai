@@ -39,7 +39,7 @@ Type PackmanBuild {
 }
 
 Type PackmanSpec {
-private
+  private
   name
   home
   type
@@ -57,7 +57,7 @@ private
 
   init : func (name) this.name = name
 
-public
+  public
   set : {
     home      : func (home)    this.home = home
     repo      : func (repo)    this.repo = repo
@@ -110,9 +110,9 @@ public
         if x is null then ""
         orelse x +
           if (packman.get.sources_dir () + "/" + this.archive): file_exists ()
-            then " exists in the filesystem"
-          orelse " doesn't exists in the filesystem" end + "\n" +
-      "MESSAGE DIGEST   : " + this.md:
+              then " exists in the filesystem"
+            orelse " doesn't exists in the filesystem" end +
+      "\n" + "MESSAGE DIGEST   : " + this.md:
         if x is null then "NONE" orelse x end
 
     return msg ifnot verb
@@ -121,7 +121,7 @@ public
 }
 
 Type Packman {
-private
+  private
   spec
   sh
   curdir
@@ -140,7 +140,6 @@ private
   spec_dir    : Sys.get ("DATADIR") + "/Packman/specs"
   sources_dir : Sys.get ("DATADIR") + "/Packman/sources"
   builddir    : Sys.get ("TMPDIR")  + "/Packman"
-  platform    : Sys.get ("PLATFORM")
   tmpdir      : Sys.get ("TMPDIR")
   datadir     : Sys.get ("DATADIR")
   homedir     : Sys.get ("HOME")
@@ -148,6 +147,8 @@ private
   bindir      : Sys.get ("SYSDIR") + "/bin"
   libdir      : Sys.get ("SYSDIR") + "/lib"
   path        : Sys.get ("PATH")
+  platform    : Os.platform ()
+  arch        : Os.arch ()
 
   init : func {
     this.sh = New Shell ()
@@ -210,25 +211,23 @@ private
   }
 
   extract : func {
-    if (null is this.tar_exec) {
+    if null is this.tar_exec {
       println (stderr, "the tar executable couln't been found")
       return notok
     }
 
-    if (null is this.spec.archive) {
+    if null is this.spec.archive {
       println (stderr, "archive property hasn't been set")
       return notok
     }
 
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    ifnot (File.exists (archive)) {
+    ifnot archive: file_exists () then
       return notok if notok is this.fetch ()
-      #println ("fetching sources: hasn't been implemented")
-      #return notok
-    }
 
-    var retval = this.sh:exec (this.tar_exec + " " + this.tar_args + " " + archive)
+    var com = this.tar_exec + " " + this.tar_args + " " + archive
+    var retval = this.sh:exec (com)
     return if retval is notok or retval > ok then notok orelse ok
   }
 
@@ -301,25 +300,24 @@ private
     return if retval then notok orelse ok
   }
 
-  copy_sources : func () {
-    if (null is this.spec.sources) {
+  copy_sources : func {
+    if null is this.spec.sources {
       println (stderr, "sources property hasn't been set")
       return notok
     }
 
-    ifnot (Dir.is_directory (this.sources_dir)) {
-      if (File.exists (this.sources_dir)) {
+    ifnot this.sources_dir: Dir.is_directory () {
+      if this.sources_dir: file_exists () (
         println (stderr, "${%s, this.sources_dir}: not a directory")
         return notok
       }
     }
 
-    ifnot (Dir.is_directory (this.spec.sources))
+    ifnot this.spec.sources: dir_is_directory () then
       return notok if this.fetch_sources () is notok
 
     return this.sources_dir: path_concat (this.spec.sources): file_copy (
        "."; force : 1, recursive : 1, update : 1, verbose : 1)
-
   }
 
   change_to_build_dirname : func {
@@ -329,7 +327,7 @@ private
     }
 
     if (Dir.change (this.spec.build_dirname) is notok) {
-      println (stderr, "couldn't change directory to ${%s, this.spec.builddirname}")
+      println (stderr, "couldn't change directory to ${%s, this.spec.build_dirname}")
       return notok
     }
 
@@ -389,6 +387,7 @@ public
   info : func {
     var msg =
       "PLATFORM         : " + this.platform + "\n" +
+      "ARCHITECTURE     : " + this.arch     + "\n" +
       "SYSTEM DIRECTORY : " + this.sysdir   + "\n" +
       "BIN    DIRECTORY : " + this.bindir   + "\n" +
       "LIB    DIRECTORY : " + this.libdir   + "\n" +
@@ -492,8 +491,7 @@ public
         if (action.type is PACKMAN_BUILD_MD_CHECK) {
           var r = this.md_check (; verbose : 1)
           break 2 if notok is r
-          ifnot r then
-            break 2 ifnot null is this.spec.md
+          ifnot r then break 2 ifnot null is this.spec.md
           continue
         }
 
@@ -539,7 +537,7 @@ public
         continue if action.command is null
 
         if (action.type is PACKMAN_BUILD_EVAL) {
-          break 2 ifnot 0 is (action.command: eval ())
+          break 2 ifnot ok is action.command: eval ()
           continue
         }
 

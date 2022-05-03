@@ -1482,6 +1482,7 @@ gained consience. Hopefully one day.
 * [Mlibc.](https://github.com/managarm/mlibc)
 * [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
 * [UUID generator.](https://github.com/rxi/uuid4)
+* [Bootstrapping an Operating System.](https://gitlab.com/giomasce/asmc)
 
 ## About
 Inner will and Motivation.  

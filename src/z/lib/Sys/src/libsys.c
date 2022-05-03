@@ -378,10 +378,13 @@ static int sys_init_environment (sys_env_opts opts) {
   }
 
   struct utsname u;
-  if (-1 is uname (&u))
+  if (-1 is uname (&u)) {
     sys_set_env_as ("unknown", "PLATFORM", opts.overwrite);
-  else
+    sys_set_env_as ("unknown", "ARCH", opts.overwrite);
+  } else {
     sys_set_env_as (u.sysname, "PLATFORM", opts.overwrite);
+    sys_set_env_as (u.machine, "ARCH", opts.overwrite);
+  }
 
   return OK;
 }

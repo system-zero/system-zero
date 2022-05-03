@@ -11,15 +11,11 @@ spec.set.extension ("tar.gz")
 spec.set.archive (spec.get.build_dirname () + "." + spec.get.extension ())
 spec.set.license ("MIT")
 
-#var map[1] build = [
-#  New PackmanBuild (null, PACKMAN_BUILD_MD_CHECK, null)
-#]
-
 var map[4] build = [
   New PackmanBuild (null, PACKMAN_BUILD_EXTRACT, null),
   New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE,
       "--prefix=${%s, this.get.sysdir ()} --disable-ares " +
-      "--disable-ech --disable-ech --enable-static=no " +
+      "--disable-ech --enable-static=no " +
       "--disable-ldap --disable-ldaps " +
       "--disable-rtsp --disable-proxy --disable-dict " +
       "--disable-telnet --disable-tftp --disable-smb " +

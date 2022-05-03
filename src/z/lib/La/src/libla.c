@@ -196,6 +196,11 @@
 #define TOKEN_MINUS_MINUS 1010
 #define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
 
+#define TOKEN_D_DEFINE    1011
+#define TOKEN_D_UNDEF     1012
+#define TOKEN_D_ISDEFINED 1013
+#define TOKEN_D_GET       1014
+
 #define TOKEN_INCLUDE     89000
 #define TOKEN_ANNOTATION  128
 
@@ -309,6 +314,7 @@ struct la_t {
   funT *function;
   funT *std;
   funT *datatypes;
+  funT *macros;
   funT *curScope;
 
   fun_stack funstack[1];
@@ -470,6 +476,17 @@ typedef struct tokenState {
     "type mismatch, got %d, awaiting %s\n", _g_, _m_);      \
   return la_err_ptr (this, LA_ERR_TYPE_MISMATCH);           \
 } while (0)
+#define THROW_SYNTAX_ERR_IF_STD_SYM_EXISTS(_n_)             \
+do {                                                        \
+  THROW_SYNTAX_ERR_FMT_IF(                                  \
+    (NULL isnot ns_lookup_symbol (this->std, _n_)),         \
+    "%s: can not redefine a standard symbol", _n_);         \
+} while (0)
+#define THROW_SYNTAX_ERR_IF_SYM_NAME_EXCEEDS_LEN(_n_, _l_)  \
+do {                                                        \
+  THROW_SYNTAX_ERR_FMT_IF(_l_ > MAXLEN_SYMBOL,              \
+   "%s: symbol name exceeded maximum length %d", _n_, _l_); \
+} while (0)
 
 #define PRINT_ERR_CONSTANT(_e_) do {                                     \
   const char *err_msg_const[] = {                                        \
@@ -480,6 +497,7 @@ typedef struct tokenState {
       "IMPORT ERROR", "DYNAMIC LINKING ERROR"};                          \
   this->print_fmt_bytes (this->err_fp, "%s\n", err_msg_const[-_e_ - 2]); \
 } while (0)
+
 #define SAVE_TOKENSTATE() la_save_token_state (this)
 #define RESTORE_TOKENSTATE(_s_) do {la_restore_token_state (this, _s_);} while (0)
 
@@ -507,11 +525,12 @@ typedef struct tokenState {
   IGNORE_LAST_TOKEN;                            \
 } while (0)
 
-#define PEEK_NTH_BYTE(_n_) la_peek_byte (this, _n_)
 #define PEEK_NTH_TOKEN(_n_) la_peek_token (this, _n_)
-#define NEXT_BYTE_NOWS_INLINE_N(_n_) la_next_byte_nows_inline_n (this, _n_)
+#define PEEK_NTH_BYTE(_n_) la_peek_nth_byte (this, _n_)
+#define PEEK_NTH_BYTE_NOWS_NONL(_n_) la_peek_nth_byte_nows_nonl (this, _n_)
+#define PEEK_NTH_BYTE_NOWS_INLINE(_n_) la_peek_nth_byte_nows_inline (this, _n_)
 #define NEXT_BYTE_NOWS_NONL() la_next_byte_nows_nonl (this)
-#define NEXT_BYTE_NOWS_NONL_N(_n_) la_peek_byte_nows_nonl_n (this, _n_)
+#define NEXT_BYTE_NOWS() la_next_byte_nows (this)
 
 #define IGNORE_NEXT_BYTE do {                   \
   SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + 1); \
@@ -601,6 +620,7 @@ static int la_parse_chain (la_t *, VALUE *);
 static void la_set_CFuncError (la_t *, int);
 static void la_set_curMsg (la_t *, const char *);
 static void la_set_Errno (la_t *, int);
+static int la_peek_nth_byte_nows_inline (la_t *, uint *);
 
 static void la_set_message (la_t *this, int append, const char *msg) {
   if (NULL is msg) return;
@@ -810,7 +830,7 @@ static int la_peek_token (la_t *this, uint n) {
   return retval;
 }
 
-static int la_peek_byte (la_t *this, uint n) {
+static int la_peek_nth_byte (la_t *this, uint n) {
   if (GETSTRLEN(PARSEPTR) <= n) return TOKEN_EOF;
   return *(GETSTRPTR(PARSEPTR) + n);
 }
@@ -846,7 +866,7 @@ static int la_ignore_ws (la_t *this) {
   return c;
 }
 
-static int la_peek_byte_nows_nonl_n (la_t *this, uint *n) {
+static int la_peek_nth_byte_nows_nonl (la_t *this, uint *n) {
   int c;
   while (1) {
     c = PEEK_NTH_BYTE(*n);
@@ -862,10 +882,15 @@ static int la_peek_byte_nows_nonl_n (la_t *this, uint *n) {
 
 static int la_next_byte_nows_nonl (la_t *this) {
   uint n = 0;
-  return NEXT_BYTE_NOWS_NONL_N(&n);
+  return PEEK_NTH_BYTE_NOWS_NONL(&n);
 }
 
-static int la_next_byte_nows_inline_n (la_t *this, uint *n) {
+static int la_next_byte_nows (la_t *this) {
+  uint n = 0;
+  return PEEK_NTH_BYTE_NOWS_INLINE (&n);
+}
+
+static int la_peek_nth_byte_nows_inline (la_t *this, uint *n) {
   int c;
   while (1) {
     c = PEEK_NTH_BYTE(*n);
@@ -907,7 +932,7 @@ static int la_get_opened_block (la_t *this, const char *msg) {
       for (n = 0; n < 256 and n < n_len; n++)
         UNGET_BYTE();
 
-      fprintf (this->err_fp, "unended %s block\n",
+      this->print_fmt_bytes (this->err_fp, "unended %s block\n",
           ((Cstring.eq_n (this->curScope->funname, NS_IF_BLOCK, NS_IF_BLOCK_LEN))
             ? "if" :
             (Cstring.eq_n (this->curScope->funname, NS_LOOP_BLOCK, NS_LOOP_BLOCK_LEN))
@@ -915,7 +940,7 @@ static int la_get_opened_block (la_t *this, const char *msg) {
               this->curScope->funname));
 
       for (size_t i = 0; i < n; i++)
-        fprintf (this->err_fp, "%c", GET_BYTE());
+        this->print_byte (this->err_fp, GET_BYTE());
 
       SETSTRPTR(PARSEPTR, keep);
       SETSTRLEN(PARSEPTR, len);
@@ -1706,7 +1731,8 @@ theend:
     this->fmtState |= FMT_LITERAL;
   else
     if (this->exprList)
-      vp->refcount = STRING_LITERAL;
+      vp->refcount = -1;
+// CHANGE      vp->refcount = STRING_LITERAL;
 
   return LA_OK;
 }
@@ -2326,6 +2352,108 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   return LA_OK;
 }
 
+static int la_parse_directive (la_t *this, VALUE *vp, int tok) {
+  int err;
+
+  this->curState |= MALLOCED_STRING_STATE;
+  NEXT_TOKEN();
+  if (TOKEN is TOKEN_PAREN_OPEN)
+    NEXT_TOKEN();
+  this->curState &= ~MALLOCED_STRING_STATE;
+
+  VALUE v;
+  err = la_parse_expr (this, &v);
+  if (TOKEN is TOKEN_PAREN_CLOS)
+    NEXT_TOKEN();
+
+  THROW_ERR_IF_ERR(err);
+
+  switch (tok) {
+    case TOKEN_D_ISDEFINED:
+      THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
+        "error while parsing is defined directive: awaiting a string");
+      *vp = INT(NULL isnot ns_lookup_symbol (this->macros, AS_STRING_BYTES(v)));
+      return OK;
+
+    case TOKEN_D_DEFINE:
+      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_AS,
+        "error while parsing define directive: awaiting as");
+
+      this->curState |= MALLOCED_STRING_STATE;
+      NEXT_TOKEN();
+      this->curState &= ~MALLOCED_STRING_STATE;
+
+      VALUE as;
+      err = la_parse_expr (this, &as);
+      THROW_ERR_IF_ERR(err);
+      THROW_SYNTAX_ERR_IF(as.type isnot STRING_TYPE,
+        "error while parsing is defined directive: awaiting a string");
+      THROW_SYNTAX_ERR_FMT_IF(NULL isnot ns_lookup_symbol (this->macros, AS_STRING_BYTES(as)),
+        "error while parsing define directive: %s, is already defined", AS_STRING_BYTES(as));
+      THROW_SYNTAX_ERR_FMT_IF(NULL is la_define_symbol (this, this->macros, AS_STRING_BYTES(as), v.type, v, 1),
+        "error while parsing define directive: %s, cannot define", AS_STRING_BYTES(as));
+      return OK;
+
+    case TOKEN_D_UNDEF: {
+      THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
+        "error while parsing undef directive: awaiting a string");
+
+      sym_t *sym = Vmap.pop (this->macros->symbols, AS_STRING_BYTES(v));
+      THROW_SYNTAX_ERR_FMT_IF(NULL is sym,
+        "error while parsing is undef directive: %s, is not defined", AS_STRING_BYTES(v));
+      la_release_sym (sym);
+      return OK;
+    }
+
+    case TOKEN_D_GET: {
+      THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
+        "error while parsing get directive: awaiting a string");
+
+      sym_t *sym = ns_lookup_symbol (this->macros, AS_STRING_BYTES(v));
+      if (NULL is sym) {
+        *vp = NULL_VALUE;
+        return OK;
+      }
+
+      *vp = la_copy_value (sym->value);
+
+      switch (TOKEN) {
+        case TOKEN_INDEX_OPEN:
+          switch (vp->type) {
+            case STRING_TYPE:
+              TOKEN = TOKEN_STRING;
+              TOKENVAL = *vp;
+              UNGET_BYTE();
+              return la_parse_primary (this, vp);
+
+            case ARRAY_TYPE:
+              TOKEN = TOKEN_ARRAY;
+              TOKENVAL = *vp;
+              UNGET_BYTE();
+              return la_parse_primary (this, vp);
+
+            default:
+              THROW_SYNTAX_ERR("unexpected open index");
+          }
+
+        case TOKEN_DOT:
+          THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE, "awaiting a map");
+          TOKENVAL = *vp;
+          TOKEN = TOKEN_MAP;
+          UNGET_BYTE();
+          return la_parse_primary (this, vp);
+      }
+
+      return OK;
+    }
+
+    default:
+      THROW_SYNTAX_ERR("unknown directive");
+  }
+
+  return OK;
+}
+
 static int la_get_annotated_block (la_t *this, string *s) {
   int c = GET_BYTE();
 
@@ -2393,14 +2521,44 @@ static int la_do_next_token (la_t *this, int israw) {
   if (c is TOKEN_COMMENT) {
     c = GET_BYTE();
 
-    if (c is TOKEN_AT) {
+    switch (c) {
+      case TOKEN_AT:
+        c = la_get_annotated_block (this, NULL);
+        THROW_ERR_IF_ERR(c);
+        return la_do_next_token (this, israw);
 
-      c = la_get_annotated_block (this, NULL);
-      THROW_ERR_IF_ERR(c);
+      case 'i':
+      case 'd':
+      case 'u':
+      case 'g': {
+        char *sp = (char *) GETSTRPTR(PARSEPTR) - 1;
+        int tok = 0;
+        int n = 0;
 
-      return la_do_next_token (this, israw);
+        if (Cstring.eq_n (sp, "isdefined ", 10)) {
+          tok = TOKEN_D_ISDEFINED;
+          n = 9;
+        } else if (Cstring.eq_n (sp, "define ", 7)) {
+          tok = TOKEN_D_DEFINE;
+          n = 6;
+        } else if (Cstring.eq_n (sp, "undef ", 6)) {
+          tok = TOKEN_D_UNDEF;
+          n = 5;
+        } else if (Cstring.eq_n (sp, "get ", 4)) {
+          tok = TOKEN_D_GET;
+          n = 3;
+        }
+
+        ifnot (n) goto consume_comment;
+
+        for (int i = 0; i < n; i++) GET_BYTE();
+
+        TOKEN = tok;
+        return tok;
+      }
     }
 
+    consume_comment:
     while (c >= 0 and c isnot TOKEN_NL)
       c = GET_BYTE();
 
@@ -2867,7 +3025,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   int num_elem = 1;
 
   uint n = 0;
-  if (NEXT_BYTE_NOWS_NONL_N(&n) is TOKEN_INDEX_OPEN)
+  if (PEEK_NTH_BYTE_NOWS_NONL(&n) is TOKEN_INDEX_OPEN)
     is_array_of_array = 1;
 
   n = 0;
@@ -3400,7 +3558,7 @@ static int la_parse_array_set (la_t *this) {
 
   if (is_index) {
     uint n = 0;
-    c = NEXT_BYTE_NOWS_NONL_N(&n);
+    c = PEEK_NTH_BYTE_NOWS_NONL(&n);
     if (c is TOKEN_STAR) {
       for (uint i = 0; i <= n; i++)
         IGNORE_NEXT_BYTE;
@@ -3625,7 +3783,7 @@ static int la_parse_array_set (la_t *this) {
       }
 
       default:
-        THROW_A_TYPE_MISMATCH(array->type, "is not allowd for a binaty operation");
+        THROW_A_TYPE_MISMATCH(array->type, "is not allowd for a binary operation");
     }
 
     VALUE result;
@@ -4859,13 +5017,15 @@ static char EXPR_NAMES[20][128];
 static int la_parse_expr_list (la_t *this) {
   int err;
   la_string saved_ptr;
-  int c = TOKEN;
   int count = this->argCount;
   this->argCount = 0;
   VALUE v;
 
-  if (c is TOKEN_SEMICOLON)
+  int c = TOKEN;
+  if (c is TOKEN_SEMICOLON) {
+    if (NEXT_BYTE_NOWS() is TOKEN_NL) NEXT_TOKEN();
     goto parse_qualifiers;
+  }
 
   this->exprList++;
   do {
@@ -4875,20 +5035,23 @@ static int la_parse_expr_list (la_t *this) {
 
     la_string tokenstr = TOKENSTR;
     int len = GETSTRLEN(tokenstr);
-    if (len < 10) {
+    if (len < 128) {
       char *key = sym_key (this, TOKENSTR);
       Cstring.cp (EXPR_NAMES[this->argCount], 128, key, len);
     }
 
     err = la_parse_expr (this, &v);
+
     this->exprList--;
     THROW_ERR_IF_ERR(err);
 
-    if (v.refcount is STRING_LITERAL and v.sym isnot NULL) {
-      VALUE t = la_copy_value (v);
-      v = t;
-      v.refcount--;
-    }
+    if (v.refcount is STRING_LITERAL)
+      // if (v.sym isnot NULL and 0 is (this->funcState & MAP_METHOD_STATE)) {
+      if (v.sym isnot NULL) {
+        VALUE t = la_copy_value (v);
+        v = t;
+        v.refcount--;
+      }
 
     if (v.refcount is ARRAY_LITERAL)
       ifnot (this->objectState & ANNON_ARRAY)
@@ -4916,20 +5079,33 @@ static int la_parse_expr_list (la_t *this) {
 
   this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER|ANNON_ARRAY);
 
-  if (c is TOKEN_SEMICOLON) {
+  if (c isnot TOKEN_PAREN_CLOS) {
+    ifnot (c is TOKEN_SEMICOLON) {
+      ifnot (NEXT_BYTE_NOWS_NONL() is TOKEN_SEMICOLON)
+        goto theend;
+
+      NEXT_TOKEN();
+      if (TOKEN is TOKEN_NL)
+        NEXT_TOKEN();
+
+    } else
+      if (NEXT_BYTE_NOWS() is TOKEN_NL)
+        NEXT_TOKEN();
+
 parse_qualifiers:
     saved_ptr = PARSEPTR;
 
     NEXT_TOKEN();
-    c = TOKEN;
 
-    if (c is TOKEN_BLOCK) {
+    THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL, "error while parsing qualifiers of an expression list, found two consecutive new lines");
+
+    if (TOKEN is TOKEN_BLOCK) {
       err = la_parse_map (this, &v);
       THROW_ERR_IF_ERR(err);
 
       la_set_qualifiers (this, v);
 
-    } else if (c is TOKEN_MAP) {
+    } else if (TOKEN is TOKEN_MAP) {
       this->exprList++;
       err = la_parse_map_get (this, &v);
       this->exprList--;
@@ -4970,6 +5146,7 @@ parse_qualifiers:
     }
   }
 
+theend:
   return count;
 }
 
@@ -5800,11 +5977,11 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
               return LA_OK;
             }
             else
-              THROW_SYNTAX_ERR("awaiting then");
+              THROW_SYNTAX_ERR("if expression: awaiting then");
           } else
             NEXT_TOKEN();
         } else
-          THROW_SYNTAX_ERR("awaiting then");
+          THROW_SYNTAX_ERR("if expression: awaiting then");
       }
 
       return la_parse_iforelse (this, AS_INT(CONDVAL), vp);
@@ -6009,8 +6186,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         }
       }
 
-      if (TOKEN isnot TOKEN_COLON or
-          (this->curState & INDEX_STATE))
+      if (TOKEN isnot TOKEN_COLON or (this->curState & INDEX_STATE))
         return LA_OK;
 
       return la_parse_chain (this, vp);
@@ -6082,6 +6258,10 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     case TOKEN_ANNOTATION:
       return la_parse_annotation (this, vp);
+
+    case TOKEN_D_ISDEFINED:
+    case TOKEN_D_GET:
+      return la_parse_directive (this, vp, c);
 
     case TOKEN_EVALFILE: {
       this->funcState |= EVAL_UNIT_STATE;
@@ -6322,11 +6502,10 @@ static int la_handle_break (la_t *this) {
   int c;
   uint nth = 0;
   int level = 0;
-  int num = NEXT_BYTE_NOWS_NONL_N(&nth);
+  int num = PEEK_NTH_BYTE_NOWS_NONL(&nth);
   if ('1' <= num and num <= '9') {
     nth++;
-    c = NEXT_BYTE_NOWS_INLINE_N(&nth);
-
+    c = PEEK_NTH_BYTE_NOWS_INLINE(&nth);
 
     if (c isnot TOKEN_SEMICOLON and c isnot TOKEN_NL and
         c isnot TOKEN_BLOCK_CLOS and c isnot TOKEN_EOF and
@@ -6369,6 +6548,7 @@ static int la_parse_stmt (la_t *this) {
     case TOKEN_CONTINUE:
       ifnot (this->curState & LOOP_STATE)
         THROW_SYNTAX_ERR("continue is not in a loop");
+
       return la_parse_boolean_stmt (this, LA_ERR_CONTINUE);
 
     case TOKEN_VARDEF:
@@ -6412,7 +6592,7 @@ static int la_parse_stmt (la_t *this) {
 
         if (TOKEN is TOKEN_COMMA) {
           uint n = 0;
-          c = NEXT_BYTE_NOWS_INLINE_N(&n);
+          c = PEEK_NTH_BYTE_NOWS_INLINE(&n);
           if (c is TOKEN_NL) {
             for (uint i = 0; i <= n; i++)
               IGNORE_NEXT_BYTE;
@@ -6645,7 +6825,7 @@ static int la_parse_stmt (la_t *this) {
 
       if (TOKEN is TOKEN_COMMA) {
         uint n = 0;
-        c = NEXT_BYTE_NOWS_INLINE_N(&n);
+        c = PEEK_NTH_BYTE_NOWS_INLINE(&n);
         if (c is TOKEN_NL) {
           for (uint i = 0; i <= n; i++)
             IGNORE_NEXT_BYTE;
@@ -6720,6 +6900,12 @@ static int la_parse_stmt (la_t *this) {
     case TOKEN_PLUS_PLUS: {
       VALUE v;
       return la_parse_prefix (this, &v, c);
+    }
+
+    case TOKEN_D_DEFINE:
+    case TOKEN_D_UNDEF: {
+      VALUE v;
+      return la_parse_directive (this, &v, c);
     }
 
     case TOKEN_COMMA:
@@ -6810,8 +6996,6 @@ next:
   return LA_OK;
 }
 
-// parse a level n expression
-// level 0 is the lowest level (highest precedence)
 static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
   int err;
   int c = TOKEN;
@@ -6944,7 +7128,6 @@ static int la_parse_expr (la_t *this, VALUE *vp) {
   THROW_ERR_IF_ERR(err);
 
   err = la_parse_expr_level (this, MAX_EXPR_LEVEL, vp);
-
   return err;
 }
 
@@ -8907,40 +9090,36 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
   c = TOKEN;
 
   for (;;) {
-    if (c is TOKEN_SYMBOL) {
-      la_string name = TOKENSTR;
+    if (c is TOKEN_PAREN_CLOS) break;
 
-      if (nargs >= MAX_BUILTIN_PARAMS)
-        THROW_TOOMANY_FUNCTION_ARGS();
+    THROW_SYNTAX_ERR_IF(c isnot TOKEN_SYMBOL, "argument list definition, awaiting a symbol name");
 
-      size_t len = GETSTRLEN(name);
-      if (len >= MAXLEN_SYMBOL)
-        THROW_SYNTAX_ERR("argument name exceeded maximum length (64)");
+    la_string name = TOKENSTR;
 
-      const char *ptr = GETSTRPTR(name);
-      Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL, ptr, len);
+    if (nargs >= MAX_BUILTIN_PARAMS)
+      THROW_TOOMANY_FUNCTION_ARGS();
 
-      nargs++;
+    const char *ptr = GETSTRPTR(name);
+    size_t len = GETSTRLEN(name);
+    Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL, ptr, len);
 
-      NEXT_TOKEN();
-      c = TOKEN;
+    THROW_SYNTAX_ERR_IF_SYM_NAME_EXCEEDS_LEN(uf->argName[nargs], len);
 
-      if (c is TOKEN_PAREN_CLOS) break;
+    nargs++;
 
-      if (c is TOKEN_COMMA) {
+    NEXT_TOKEN();
+    c = TOKEN;
+
+    if (c is TOKEN_COMMA) {
+      NEXT_RAW_TOKEN();
+      if (TOKEN is TOKEN_NL)
         NEXT_RAW_TOKEN();
-        if (TOKEN is TOKEN_NL)
-          NEXT_RAW_TOKEN();
-        THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL or TOKEN is TOKEN_COMMA,
+
+      THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL or TOKEN is TOKEN_COMMA,
           "awaiting a symbol, while parsing argument list");
 
-        c = TOKEN;
-      }
-
-    } else if (c is TOKEN_PAREN_CLOS)
-      break;
-    else
-      THROW_SYNTAX_ERR("argument list definition, awaiting a symbol name");
+      c = TOKEN;
+    }
   }
 
   uf->nargs = nargs;
@@ -8957,21 +9136,18 @@ static int la_parse_func_def (la_t *this) {
   ifnot (this->curFunName[0]) {
     NEXT_RAW_TOKEN();
 
-    if (TOKEN isnot TOKEN_SYMBOL)
-      THROW_SYNTAX_ERR("function definition, not a symbol");
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_SYMBOL,
+      "function definition, not a symbol");
 
     name = TOKENSTR;
     len = GETSTRLEN(name);
     fn = sym_key (this, name);
-    sym_t *sym = ns_lookup_symbol (this->std, fn);
-    ifnot (NULL is sym)
-      THROW_SYNTAX_ERR("can not redefine a standard function");
+    THROW_SYNTAX_ERR_IF_STD_SYM_EXISTS(fn);
 
   } else {
     name = StringNew (this->curFunName);
     len = bytelen (this->curFunName);
-    if (len >= MAXLEN_SYMBOL)
-      THROW_SYNTAX_ERR("function name exceeded maximum length (64)");
+    THROW_SYNTAX_ERR_IF_SYM_NAME_EXCEEDS_LEN(name, len);
     fn = this->curFunName;
   }
 
@@ -9473,8 +9649,8 @@ print_str:
   int num_bts = this->print_bytes (fp, str->bytes);
   if (num_bts < 0) {
     this->print_bytes (this->err_fp, "error while printing string\n");
-    fprintf (this->err_fp, "%s\n", str->bytes);
-    fprintf (this->err_fp, "%s|n", Error.errno_string (errno));
+    this->print_fmt_bytes (this->err_fp, "%s\n", str->bytes);
+    this->print_fmt_bytes (this->err_fp, "%s|n", Error.errno_string (errno));
     goto theend;
   }
 
@@ -9517,12 +9693,13 @@ static int la_parse_return (la_t *this) {
 
   NEXT_TOKEN();
 
-  if (TOKEN is TOKEN_SEMICOLON or
-      TOKEN is TOKEN_NL or
-      TOKEN is TOKEN_EOF) {
-    HASTORETURN = 1;
-    RESET_PARSEPTR;
-    return LA_OK;
+  switch (TOKEN) {
+    case TOKEN_SEMICOLON:
+    case       TOKEN_EOF:
+    case        TOKEN_NL:
+      HASTORETURN = 1;
+      RESET_PARSEPTR;
+      return LA_OK;
   }
 
   while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
@@ -9559,14 +9736,13 @@ static int la_parse_return (la_t *this) {
     goto check_value;
   }
 
-  if (TOKEN is TOKEN_USRFUNC) {
+  if (TOKEN is TOKEN_USRFUNC)
     if (Cstring.eq ("self", sym_key (this, TOKENSTR)))
       return LA_ERR_TCALLREC;
-  }
 
   HASTORETURN = 1;
-  this->funcState |= RETURN_STATE;
 
+  this->funcState |= RETURN_STATE;
   err = la_parse_expr (this, &scope->result);
   this->funcState &= ~RETURN_STATE;
   THROW_ERR_IF_ERR(err);
@@ -9723,9 +9899,6 @@ static int la_parse_import (la_t *this) {
   funT *load_ns = this->curScope;
   funT *prev_ns = load_ns;
 
-  while (load_ns and Cstring.eq_n (load_ns->funname, "__block_", 8))
-    load_ns = load_ns->prev;
-
   if (TOKEN is TOKEN_COMMA) {
     NEXT_TOKEN();
     err = la_parse_expr (this, &v);
@@ -9779,7 +9952,6 @@ theload:
       this->curState &= ~LOADFILE_SILENT;
       if (err is LA_OK or err is LA_ERR_DYNLINK)
         goto theend;
-
     }
 
     this->curState |= LOADFILE_SILENT;
@@ -10743,9 +10915,17 @@ theend:
 static VALUE la_eval (la_t *this, VALUE v_str) {
   ifnot (IS_STRING(v_str)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *str = AS_STRING_BYTES (v_str);
+
+  sym_t *sym = ns_lookup_symbol (this->std, "__retval");
+  sym->value = INT(UNCHANGEABLE);
+
   int retval = la_eval_string (this, str);
+
   if (retval < LA_NOTOK)
     C_THROW(retval, "eval() error");
+
+  if (AS_INT(sym->value) isnot UNCHANGEABLE)
+    return sym->value;
 
   return INT(retval);
 }
@@ -10765,7 +10945,7 @@ static struct def {
   { "then",    TOKEN_THEN,     NULL_VALUE },
   { "end",     TOKEN_END,      NULL_VALUE },
   { "in",      TOKEN_IN,       NULL_VALUE },
-  //{ "as",      TOKEN_AS,       NULL_VALUE }, should reserve this keyword?
+  { "as",      TOKEN_AS,       NULL_VALUE }, //should reserve this keyword?
   { "do",      TOKEN_DO,       PTR(la_parse_do) },
   { "for",     TOKEN_FOR,      PTR(la_parse_for) },
   { "loop",    TOKEN_LOOP,     PTR(la_parse_loop) },
@@ -11026,6 +11206,10 @@ static int la_std_def (la_t *this, la_opts opts) {
   err = la_define (this, "errno", INTEGER_TYPE, v);
   if (err) return LA_NOTOK;
 
+  v = INT(0);
+  if (NULL is la_define_symbol (this, this->std, "__retval", INTEGER_TYPE, v, 0))
+    return LA_NOTOK;
+
   funT *uf = Fun_new (this, funNew (
     .name = "self", .namelen = 4, .parent = this->function, .nargs = 0));
 
@@ -11040,10 +11224,6 @@ static int la_std_def (la_t *this, la_opts opts) {
 
 static int la_print_bytes (FILE *fp, const char *bytes) {
   if (NULL is bytes) return 0;
-  //string *parsed = IO.parse_escapes ((char *)bytes);
-  //if (NULL is parsed) return LA_NOTOK;
-  //int nbytes = fprintf (fp, "%s", parsed->bytes);
-  //String.release (parsed);
   int nbytes = fprintf (fp, "%s", bytes);
   fflush (fp);
   return nbytes;
@@ -11280,8 +11460,11 @@ static void la_release (la_t **thisp) {
   Imap.release   (this->funRefcount);
   Vmap.release   (this->units);
   Vmap.release   (this->types);
+
   fun_release (&this->function);
   fun_release (&this->datatypes);
+  fun_release (&this->macros);
+
   la_release_stdns (this);
   la_release_qualifiers (this);
 
@@ -11507,6 +11690,9 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
 
   this->datatypes = fun_new (
       funNew (.name = "__types__", .namelen = 9, .num_symbols = 256));
+
+  this->macros = fun_new (
+      funNew (.name = "__macros__", .namelen = 10, .num_symbols = 256));
 
   Fun_new (this,
       funNew (.name = NS_GLOBAL, .namelen = NS_GLOBAL_LEN, .num_symbols = 256));

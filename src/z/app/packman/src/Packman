@@ -32,16 +32,13 @@ var bootstrap   = argparse.results.bootstrap
 var package = null
 
 if bootstrap is true {
-   loadfile ("packman_bootstrap")
-   package = "curl"
+  #define  1 as "BOOTSTRAP"
    install = true
-   spec_info = false
-   update_repo = false
-   settings = false
-   list_specs = false
-   force = false
-} else {
-  loadfile ("packman")
+} 
+
+loadfile ("packman")
+
+if false is bootstrap {
   package = lambda {
     ifnot (argparse.argc) {
       if ((settings is false and list_specs is false) or spec_info is true) {
@@ -76,7 +73,14 @@ p.set.builddir (tmpdir)
 
 var retval = notok
 
-if (list_specs is true) {
+if bootstrap is true {
+  p.new.spec ("clone_libc")
+  return notok if notok is p.build ()
+  p.new.spec ("curl")
+  return if notok is p.build () then notok orelse ok
+}
+
+if list_specs is true {
   p.list.specs ()
   exit (0)
 }

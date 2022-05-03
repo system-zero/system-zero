@@ -22,6 +22,7 @@ typedef struct netOptions {
   NetOutputCallback outputCallback;
   int outputToCallback;
   int verbose;
+  int debug;
 } netOptions;
 
 #define NetOptions(...) (netOptions) { \
@@ -31,6 +32,7 @@ typedef struct netOptions {
   .outputCallback = NULL,              \
   .outputToCallback = 0,               \
   .verbose = 0,                        \
+  .debug = 0,                          \
   __VA_ARGS__                          \
 }
 

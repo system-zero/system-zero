@@ -346,7 +346,7 @@ func zero_semantics () {
     }
 
     func f2 (i, ia, f, f1) {
-      return (i * 2) + f (ia, f1, f5);
+      return (i * 2) + f (ia, f1, f5)
     }
 
     var r = f1 (f2, 20, 30, f3, f4)
@@ -387,7 +387,7 @@ func zero_semantics () {
   assert_not_equal ("testing string equality", astr, bstr)
   assert_equal ("testing string equality", bstr, cstr)
 
-  retval = len (astr);
+  retval = len (astr)
   assert_true ("testing string length", retval == 16)
 
   var str = "asdf"
@@ -573,7 +573,7 @@ func self_semantics () {
     var i = 1
     while (i) {
       break if (i is limit)
-      i += 1;
+      i += 1
     }
 
     return i
@@ -1411,8 +1411,8 @@ func self_semantics () {
       var inp = Time.now ()
       var now = Time.now ()
       if now - inp is 1 then inp += 1
-      var res = inp:time_local (): time_to_seconds ();
-      assert_true ("testing the time module", res is now);
+      var res = inp:time_local (): time_to_seconds ()
+      assert_true ("testing the time module", res is now)
     }
 
     time_module ()
@@ -1427,7 +1427,7 @@ func self_semantics () {
       var s512 = Crypt.sha512sum (s)
 
       File.write (f, s)
-      File.append (f, "\n");
+      File.append (f, "\n")
 
       var md5f = Crypt.md5sum_file (f)
       var s256f = Crypt.sha256sum_file (f)
@@ -1563,6 +1563,7 @@ func self_semantics () {
 
     func qqq (x) return x * (qualifier_exists ("key") + 9)
     func qqqq (x) return qqq (x; qualifiers ())
+    func qqqqq () return qualifier ("key", 100)
 
     var m = {"key" : 1000}
     var qa = q (10)
@@ -1572,6 +1573,13 @@ func self_semantics () {
     var qe = qqq (10; m)
     var qf = qqqq (10)
     var qg = qqqq (10; m)
+    var qj = q (10
+      ;key : 100)
+    var qk = q (10;
+      key : 100)
+    var qo  = qqqqq (;
+      key : 100000)
+    var qp = qqqqq (;key : 100000)
 
     assert_true ("testing qualifiers",
         qa is 100 and
@@ -1580,7 +1588,11 @@ func self_semantics () {
         qd is 90 and
         qe is 100 and
         qf is 90 and
-        qg is 100)
+        qg is 100 and
+        qj is 1000 and
+        qk is 1000 and
+        qo is 100000 and
+        qp is 100000)
 
     func q_fun (x) {
       var y = qualifier ("y", 100)
@@ -2101,7 +2113,7 @@ func self_semantics () {
     var l = list ()
     list_append (l, 21)
     list_append (l, "12")
-    list_prepend(l, 1);
+    list_prepend(l, 1)
 
     var v = l[2]
     l[1] = "one"
@@ -2181,6 +2193,41 @@ func self_semantics () {
   }
 
   types ()
+
+  func test_directives () {
+
+    var isdef = 0
+    #define "asd" as "vaa"
+
+    if #isdefined "vaa" then isdef = 1
+
+    var v = "vaa"
+    var g1 = #get v
+
+    #undef v
+    var g2 = #isdefined v
+
+    #define "asdf" as v
+    var g3 = #get v
+
+    #undef v
+
+    #define [1, 2, 3] as "ar"
+    var g4 =  (#get "ar")[2]
+
+    #define {m : "m", n : 11} as v
+    var g5 = (#get v).m
+
+    assert_true ("testing directives",
+      isdef is 1 and
+      g1 is "asd" and
+      g2 is 0 and
+      g3 is "asdf" and
+      g4 is 3 and
+      g5 is "m")
+  }
+
+  test_directives()
 
   func append_builtin () {
     var key = "key"
@@ -2397,7 +2444,7 @@ if (run_valgrind_tests) {
 func invalid_memory_read_tests {
   func invalid_memory_read_tests1 {
     func fff () {
-      return fopen ("/tmp/la_test_fopen", "w");
+      return fopen ("/tmp/la_test_fopen", "w")
     }
 
     func p (fp) {
@@ -2410,7 +2457,7 @@ func invalid_memory_read_tests {
 
   func invalid_memory_read_tests2 {
     func fff () {
-      return fopen ("/tmp/la_test_fopen", "w");
+      return fopen ("/tmp/la_test_fopen", "w")
     }
 
     func p (fp) {
@@ -2422,7 +2469,7 @@ func invalid_memory_read_tests {
 
   func invalid_memory_read_tests3 {
     func fff () {
-      var fp = fopen ("/tmp/la_test_fopen", "w");
+      var fp = fopen ("/tmp/la_test_fopen", "w")
       return fp
     }
 
@@ -2435,7 +2482,7 @@ func invalid_memory_read_tests {
 
   func invalid_memory_read_tests4 {
     func fff () {
-      var fp = fopen ("/tmp/la_test_fopen", "w");
+      var fp = fopen ("/tmp/la_test_fopen", "w")
       return fp
     }
 

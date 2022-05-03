@@ -12,10 +12,12 @@ static VALUE net_fetch (la_t *this, VALUE v_url) {
   ifnot (IS_STRING(v_url)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *url = AS_STRING_BYTES(v_url);
-  char *as = GET_OPT_AS();
 
   int verbose = GET_OPT_VERBOSE();
-  net_t *net = Net.new (NetOptions (.verbose = verbose, .outputFile = as));
+  int debug = GET_OPT_DEBUG();
+  char *as = GET_OPT_AS();
+
+  net_t *net = Net.new (NetOptions (.verbose = verbose, .debug = debug, .outputFile = as));
 
   int retval = Net.fetch (net, url);
 
@@ -44,7 +46,7 @@ public int __init_net_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Net = {
-      fetch : net_fetch,
+      fetch : net_fetch
     }
   );
 

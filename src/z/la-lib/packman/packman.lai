@@ -6,6 +6,11 @@ import ("file")
 import ("path")
 import ("crypt")
 
+if #isdefined "BOOTSTRAP"
+  import ("net")
+
+const PACKMAN                    = "Packman"
+
 const PACKMAN_NO_VERBOSE         = 0
 const PACKMAN_VERBOSE            = 1
 
@@ -21,8 +26,11 @@ const PACKMAN_BUILD_MAKE_INSTALL = 5
 const PACKMAN_BUILD_MD_CHECK     = 6
 const PACKMAN_BUILD_USER_COM     = 7
 const PACKMAN_BUILD_EVAL         = 8
+var LAST_BUILD_TYPE              = PACKMAN_BUILD_EVAL
 
-var LAST_BUILD_TYPE = PACKMAN_BUILD_EVAL
+const PACKMAN_DATADIR            = Sys.get ("DATADIR"): path_concat (PACKMAN)
+const PACKMAN_SYSDIR             = Sys.get ("SYSDIR")
+const PACKMAN_TMPDIR             = Sys.get ("TMPDIR")
 
 const MD5TYPE                    = 1
 const SHA256TYPE                 = 2
@@ -38,7 +46,7 @@ Type PackmanBuild {
 }
 
 Type PackmanSpec {
-private
+  private
   name
   home
   type
@@ -56,7 +64,7 @@ private
 
   init : func (name) this.name = name
 
-public
+  public
   set : {
     home      : func (home)    this.home = home
     repo      : func (repo)    this.repo = repo
@@ -109,9 +117,9 @@ public
         if x is null then ""
         orelse x +
           if (packman.get.sources_dir () + "/" + this.archive): file_exists ()
-            then " exists in the filesystem"
-          orelse " doesn't exists in the filesystem" end + "\n" +
-      "MESSAGE DIGEST   : " + this.md:
+              then " exists in the filesystem"
+            orelse " doesn't exists in the filesystem" end +
+      "\n" + "MESSAGE DIGEST   : " + this.md:
         if x is null then "NONE" orelse x end
 
     return msg ifnot verb
@@ -120,7 +128,7 @@ public
 }
 
 Type Packman {
-private
+  private
   spec
   sh
   curdir
@@ -136,17 +144,19 @@ private
   clone_args  : "clone"
   pull_args   : "pull"
   verbose     : PACKMAN_VERBOSE
-  spec_dir    : Sys.get ("DATADIR") + "/Packman/specs"
-  sources_dir : Sys.get ("DATADIR") + "/Packman/sources"
-  builddir    : Sys.get ("TMPDIR")  + "/Packman"
-  platform    : Sys.get ("PLATFORM")
-  tmpdir      : Sys.get ("TMPDIR")
-  datadir     : Sys.get ("DATADIR")
+  datadir     : PACKMAN_DATADIR
+  spec_dir    : PACKMAN_DATADIR: path_concat ("specs")
+  sources_dir : PACKMAN_DATADIR: path_concat ("sources")
+  pkg_data_dir: PACKMAN_DATADIR: path_concat ("data")
+  tmpdir      : PACKMAN_TMPDIR
+  builddir    : PACKMAN_TMPDIR:  path_concat (PACKMAN)
+  sysdir      : PACKMAN_SYSDIR
+  bindir      : PACKMAN_SYSDIR:  path_concat ("bin")
+  libdir      : PACKMAN_SYSDIR:  path_concat ("lib")
   homedir     : Sys.get ("HOME")
-  sysdir      : Sys.get ("SYSDIR")
-  bindir      : Sys.get ("SYSDIR") + "/bin"
-  libdir      : Sys.get ("SYSDIR") + "/lib"
   path        : Sys.get ("PATH")
+  platform    : Os.platform ()
+  arch        : Os.arch ()
 
   init : func {
     this.sh = New Shell ()
@@ -179,76 +189,75 @@ private
     this.path = Sys.get ("PATH")
 
     this.curdir = Dir.current ()
-    if (this.fetch_exec is null) {
+    if this.fetch_exec is null {
       this.fetch_exec = Sys.which ("curl")
 
       ifnot null is this.fetch_exec then
         this.fetch_args = "-L"
-      orelse
-        println (stderr, "neither wget nor curl has been found")
     }
   }
 
   fetch : func {
-    if (this.spec.archive is null) {
+    if this.spec.archive is null {
       println (stderr, "archive property hasn't been set")
       return notok
     }
 
-    if (this.spec.baseurl is null) {
+    if this.spec.baseurl is null {
       println (stderr, "baseurl property hasn't been set")
-      return notok
-    }
-
-    if (this.fetch_exec is null) {
-      println (stderr, "fetching executable hasn't been set or couldn't been found")
       return notok
     }
 
     var webarch = this.spec.baseurl: path_concat (this.spec.archive)
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    return ok if 0 is this.sh:exec (this.fetch_exec + " " + this.fetch_args + " " +
-        " -O " + archive + " " + webarch)
+    if #isdefined "BOOTSTRAP" then
+      if ok is Net.fetch (webarch; as : archive) then
+        return ok
 
-    return notok
+    if this.fetch_exec is null {
+      println (stderr, "neither wget nor curl has been found")
+      return notok
+    }
+
+    var com = this.fetch_exec + " " + this.fetch_args + " " + " -O " + archive + " " + webarch
+
+    return if ok is this.sh:exec (com) then ok orelse notok
   }
 
   extract : func {
-    if (null is this.tar_exec) {
+    if null is this.tar_exec {
       println (stderr, "the tar executable couln't been found")
       return notok
     }
 
-    if (null is this.spec.archive) {
+    if null is this.spec.archive {
       println (stderr, "archive property hasn't been set")
       return notok
     }
 
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    ifnot (File.exists (archive)) {
+    ifnot archive: file_exists () then
       return notok if notok is this.fetch ()
-      #println ("fetching sources: hasn't been implemented")
-      #return notok
-    }
 
-    var retval = this.sh:exec (this.tar_exec + " " + this.tar_args + " " + archive)
+    var com = this.tar_exec + " " + this.tar_args + " " + archive
+    var retval = this.sh:exec (com)
     return if retval is notok or retval > ok then notok orelse ok
   }
 
   md_check :  func {
-    if (this.spec is null) {
+    if this.spec is null {
       println (stderr, "spec hasn't been set")
       return notok
     }
 
-    if (this.spec.archive is null) {
+    if this.spec.archive is null {
       println (stderr, "archive property hasn't been set")
       return notok
     }
 
-    return 0 if this.spec.md is null
+    return ok if this.spec.md is null
 
     var md_type = if this.spec.md_type is null then MD5TYPE
                   orelse this.spec.md_type
@@ -279,17 +288,17 @@ private
   }
 
   fetch_sources : func {
-    if (this.spec.sources is null) {
+    if this.spec.sources is null {
       println (stderr, "sources property hasn't been set")
       return notok
     }
 
-    if (this.spec.repo is null) {
+    if this.spec.repo is null {
       println (stderr, "repo property hasn't been set")
       return notok
     }
 
-    if (this.git_exec is null) {
+    if this.git_exec is null {
       println (stderr, "git executable couldn't been found")
       return notok
     }
@@ -298,50 +307,53 @@ private
 
     return notok if Dir.change (this.sources_dir) is notok
 
-    var retval = this.sh:exec (this.git_exec + " " + this.clone_args + " " +
-      this.spec.repo)
-
-    return notok if Dir.change (curdir) is notok
-
-    return if retval then notok orelse ok
+    var com = this.git_exec + " " + this.clone_args + " " + this.spec.repo
+    var retval = this.sh:exec (com)
+    return notok if retval isnot ok
+    return Dir.change (curdir)
   }
 
-  copy_sources : func () {
-    if (null is this.spec.sources) {
+  copy_sources : func {
+    if null is this.spec.sources {
       println (stderr, "sources property hasn't been set")
       return notok
     }
 
-    ifnot (Dir.is_directory (this.sources_dir)) {
-      if (File.exists (this.sources_dir)) {
+    ifnot this.sources_dir: dir_is_directory () {
+      if this.sources_dir: file_exists () {
         println (stderr, "${%s, this.sources_dir}: not a directory")
         return notok
       }
     }
 
-    ifnot (Dir.is_directory (this.spec.sources))
+    return notok if this.sources_dir: dir_change () is notok
+
+    ifnot this.spec.sources: dir_is_directory () then
       return notok if this.fetch_sources () is notok
 
-    return this.sources_dir: path_concat (this.spec.sources): file_copy (
-       "."; force : 1, recursive : 1, update : 1, verbose : 1)
+    return notok if notok is this.builddir: dir_change ()
+
+    return notok if this.sources_dir: path_concat (this.spec.sources): file_copy (
+       "."; force : 1, recursive : 1, update : 1, verbose : 2) is notok
+
 
   }
 
   change_to_build_dirname : func {
-    if (this.spec.build_dirname is null) {
+    if this.spec.build_dirname is null {
       println (stderr, "build_dirname property hasn't been set")
       return notok
     }
 
-    if (Dir.change (this.spec.build_dirname) is notok) {
-      println (stderr, "couldn't change directory to ${%s, this.spec.builddirname}")
+    if this.spec.build_dirname: dir_change () is notok {
+      println (stderr, "couldn't change directory to ${%s, this.spec.build_dirname}")
       return notok
     }
 
     return ok
   }
 
-public
+  public
   set : {
     spec        : func (spec)  this.spec = spec
     patch_exec  : func (patch) this.patch_exec = patch
@@ -352,6 +364,7 @@ public
     pull_args   : func (args)  this.pull_args = args
     verbose     : func (what)  this.verbose = what
     spec_dir    : func (dir)   this.spec_dir = dir
+    pkg_data_dir: func (dir)   this.pkg_data_dir = dir
     builddir    : func (dir)   this.builddir = dir
     sources_dir : func (dir)   this.sources_dir = dir
     bindir      : func (dir)   this.bindir = dir
@@ -362,6 +375,7 @@ public
   get : {
     spec        : func return this.spec
     spec_dir    : func return this.spec_dir
+    pkg_data_dir: func return this.pkg_data_dir
     builddir    : func return this.builddir
     sources_dir : func return this.sources_dir
     bindir      : func return this.bindir
@@ -394,6 +408,7 @@ public
   info : func {
     var msg =
       "PLATFORM         : " + this.platform + "\n" +
+      "ARCHITECTURE     : " + this.arch     + "\n" +
       "SYSTEM DIRECTORY : " + this.sysdir   + "\n" +
       "BIN    DIRECTORY : " + this.bindir   + "\n" +
       "LIB    DIRECTORY : " + this.libdir   + "\n" +
@@ -415,22 +430,22 @@ public
   }
 
   update_repo : func {
-    if (this.spec is null) {
+    if this.spec is null {
       println (stderr, "spec hasn't been set")
       return notok
     }
 
-    if (this.spec.sources is null) {
+    if this.spec.sources is null {
       println (stderr, "sources property hasn't been set")
       return notok
     }
 
-    if (this.spec.repo is null) {
+    if this.spec.repo is null {
       println (stderr, "repo property hasn't been set")
       return notok
     }
 
-    if (this.git_exec is null) {
+    if this.git_exec is null {
       println (stderr, "git executable couldn't been found")
       return notok
     }
@@ -440,31 +455,32 @@ public
     return notok if notok is Dir.change (
       this.sources_dir: path_concat (this.spec.sources)
 
-    var retval = this.sh:exec (this.git_exec + " " + this.pull_args)
+    var com = this.git_exec + " " + this.pull_args
+    var retval = this.sh:exec (com)
+    return notok if retval isnot ok
+    return Dir.change (curdir)
 
-    return notok if Dir.change (curdir) is notok
-
-    return if retval is 0 then ok orelse notok
   }
 
   build : func {
     var retval = notok
-    if (this.spec is null) {
+
+    if this.spec is null {
       println (stderr, "spec hasn't been set")
       return notok
     }
 
-    if (this.builddir is null) {
+    if this.builddir is null {
       println (stderr, "builddir property hasn't been set")
       return notok
     }
 
-    if (Dir.change (this.builddir) is notok) {
+    if this.builddir: dir_change () is notok {
       println (stderr, "couldn't change directory to ${%s, this.builddir}")
       return notok
     }
 
-    if (this.verbose is true) {
+    if this.verbose is true {
       println ("Building " + this.spec.name)
       if this.spec.descr isnot null then println (this.spec.descr)
     }
@@ -474,34 +490,31 @@ public
         if this.verbose is true then
           ifnot null is action.msg then println (action.msg)
 
-        if (action.type is null or
-            action.type < 0 or
-            action.type > LAST_BUILD_TYPE) {
+        if action.type is null or action.type < 0 or action.type > LAST_BUILD_TYPE {
           println (stderr, "the spec build type, hasn't been set properly")
           break 2
         }
 
-        if (action.type is PACKMAN_BUILD_EXTRACT) {
+        if action.type is PACKMAN_BUILD_EXTRACT {
           break 2 if notok is this.extract ()
           break 2 if notok is this.change_to_build_dirname ()
           continue
         }
 
-        if (action.type is PACKMAN_BUILD_COPY) {
+        if action.type is PACKMAN_BUILD_COPY {
           break 2 if notok is this.copy_sources ()
           break 2 if notok is this.change_to_build_dirname ()
           continue
         }
 
-        if (action.type is PACKMAN_BUILD_MD_CHECK) {
+        if action.type is PACKMAN_BUILD_MD_CHECK {
           var r = this.md_check (; verbose : 1)
           break 2 if notok is r
-          ifnot r then
-            break 2 ifnot null is this.spec.md
+          ifnot r then break 2 ifnot null is this.spec.md
           continue
         }
 
-        if (action.type is PACKMAN_BUILD_CONFIGURE) {
+        if action.type is PACKMAN_BUILD_CONFIGURE {
           var com = "./configure"
           ifnot (null is action.command) then
             com += format (" ${%s, format (action.command)}")
@@ -514,12 +527,12 @@ public
           continue
         }
 
-        if (action.type is PACKMAN_BUILD_MAKE) {
+        if action.type is PACKMAN_BUILD_MAKE {
           var com = this.make_exec;
           ifnot (null is action.command) then
             com += format (" ${%s, format (action.command)}")
 
-          if (this.sh:exec (com) isnot 0) {
+          if this.sh:exec (com) isnot 0 {
             println (stderr, "error while executing command: ${%s, com}")
             break 2
           }
@@ -527,12 +540,12 @@ public
           continue
         }
 
-        if (action.type is PACKMAN_BUILD_MAKE_INSTALL) {
+        if action.type is PACKMAN_BUILD_MAKE_INSTALL {
           var com = this.make_exec + " install";
           ifnot (null is action.command) then
             com += format (" ${%s, format (action.command)}")
 
-          if (this.sh:exec (com) isnot 0) {
+          if this.sh:exec (com) isnot ok {
             println (stderr, "error while executing command: ${%s, com}")
             break 2
           }
@@ -542,13 +555,18 @@ public
 
         continue if action.command is null
 
-        if (action.type is PACKMAN_BUILD_EVAL) {
-          break 2 ifnot 0 is (action.command: eval ())
+        if action.type is PACKMAN_BUILD_EVAL {
+          println (Dir.current ());
+          println (            action.command);
+          var com = action.command
+          __retval =  eval (com)
+          println (__retval)
+          #break 2 ifnot ok is action.command: eval ()
           continue
         }
 
         var com = format ("${%s, format (action.command)}")
-        if (this.sh:exec (com) isnot 0) {
+        if this.sh:exec (com) isnot ok {
           println (stderr, "error while executing command: ${%s, com}")
           break 2
         }

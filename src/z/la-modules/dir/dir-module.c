@@ -72,10 +72,50 @@ static VALUE dir_change (la_t *this, VALUE v_dir) {
   return INT(retval);
 }
 
+static VALUE dir_list_recursive (la_t *this, VALUE v_dir, VALUE v_depth) {
+  ifnot (IS_STRING(v_dir))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  ifnot (IS_INT(v_depth))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  char *dir = AS_STRING_BYTES (v_dir);
+  int depth = AS_INT(v_depth);
+
+  if (depth < 0) depth = DIRWALK_MAX_DEPTH;
+
+  dirwalk_t *dw = NULL;
+
+  dw = Dir.walk.new (NULL, NULL);
+  dw->depth = depth;
+  Dir.walk.run (dw, dir);
+
+  ArrayType *array = ARRAY_NEW(STRING_TYPE, dw->files->num_items);
+  string **ar = (string **) AS_ARRAY(array->value);
+
+  vstring_t *it = dw->files->head;
+
+  int idx = 0;
+  while (it) {
+    String.replace_with_len (ar[idx++], it->data->bytes, it->data->num_bytes);
+    it = it->next;
+  }
+
+  Dir.walk.release (&dw);
+  return ARRAY(array);
+}
+
 /* temporarly method, as it needs a serious revision, so ignore */
 static VALUE dir_list (la_t *this, VALUE v_dir) {
   ifnot (IS_STRING(v_dir))
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  int recursive = GET_OPT_RECURSIVE();
+  if (recursive) {
+    int depth = GET_OPT_DEPTH();
+    ifnot (depth) depth = -1;
+    return dir_list_recursive (this, v_dir, INT(depth));
+  }
 
   char *dir = AS_STRING_BYTES (v_dir);
 

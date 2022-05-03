@@ -25,13 +25,18 @@ Z_SHELL_DATADIR := $(SYSDATADIR)/$(Z_SHELL)
 
 packman: Env install-data
 	@$(PRINTF) "installing $(NAME) to $(SYSBINDIR)\n"
-	@$(CP) $(NAME) $(SYSBINDIR)
-	@$(CHMOD) 755  $(SYSBINDIR)/$(NAME)
-	@$(CP) specs/* $(SYSDATADIR)/$(NAME)/specs
+	@$(CP) $(NAME)    $(SYSBINDIR)
+	@$(CHMOD) 755     $(SYSBINDIR)/$(NAME)
+	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/specs  || $(MKDIR) $(SYSDATADIR)/$(NAME)/specs
+	@$(CP) specs/*    $(SYSDATADIR)/$(NAME)/specs
+	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/data   || $(MKDIR) $(SYSDATADIR)/$(NAME)/data
+	@$(CP_R)  data/*  $(SYSDATADIR)/$(NAME)/data
+	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/db     || $(MKDIR) $(SYSDATADIR)/$(NAME)/db
 
 clean:
-	@$(TEST) ! -x $(SYSBINDIR)/$(NAME)        || $(RM) $(SYSBINDIR)/$(NAME)
-	@$(TEST) ! -d $(SYSDATADIR)/$(NAME)/specs || $(RM_R) $(SYSDATADIR)/${NAME)/specs
+	@$(TEST) ! -x $(SYSBINDIR)/$(NAME)        || $(RM)   $(SYSBINDIR)/$(NAME)
+	@$(TEST) ! -d $(SYSDATADIR)/$(NAME)/specs || $(RM_R) $(SYSDATADIR)/$(NAME)/specs
+	@$(TEST) ! -d $(SYSDATADIR)/$(NAME)/data  || $(RM_R) $(SYSDATADIR)/$(NAME)/data
 
 install-data:
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(NAME)    || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(NAME)

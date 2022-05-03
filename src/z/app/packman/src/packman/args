@@ -1,6 +1,1 @@
-install           install package
-update-repo       update repository
-spec-info         spec information
-settings          general settings
-list-specs        list available specs
 -f,--force        force

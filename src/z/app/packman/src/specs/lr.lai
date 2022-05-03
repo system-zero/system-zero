@@ -1,6 +1,3 @@
-import ("path")
-import ("file")
-
 var name = __file__: path_basename_sans_extname ()
 
 var spec = New PackmanSpec (name)

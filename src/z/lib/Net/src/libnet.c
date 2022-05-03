@@ -43,6 +43,7 @@ struct net_t {
   int socketFD;
   int protoType; // is better fitted in url.h, and when setting default port num
   int verbose;
+  int debug;
 
   NetOutputCallback outputCallback;
   int outputToCallback;
@@ -57,24 +58,37 @@ struct net_t {
   struct sockaddr_in server_addr;
 };
 
+static void net_clear (net_t *);
+static int net_fetch (net_t *, char *);
+
 static struct openSSL *init_openssl (net_t *this, struct openSSL *openssl) {
   OpenSSL_add_all_algorithms ();
   SSL_load_error_strings ();
   SSL_library_init ();
 
-  SSL_CTX *ctx = SSL_CTX_new (SSLv23_client_method ());
+  //SSL_CTX *ctx = SSL_CTX_new (SSLv23_client_method ());
+  SSL_CTX *ctx = SSL_CTX_new (TLS_client_method ());
   SSL* conn = SSL_new (ctx);
   SSL_set_fd (conn, this->socketFD);
 
   int err = SSL_connect (conn);
 
-  if (err isnot 1) {
-    Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
-      "SSL: could not connect, %s", SSL_get_error (conn, err));
+  if (err <= 0) {
+    int sslerr = SSL_get_error (conn, err);
+    if (sslerr is SSL_ERROR_SSL) {
+      char msg[1024];
+      ERR_error_string_n(ERR_get_error(), msg, sizeof(msg));
+      Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
+        "SSL: could not connect, %s", msg);
+    } else
+      Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
+        "SSL: could not connect, %d", SSL_get_error (conn, err));
+
+    fprintf (stderr, "%s\n", this->errorMsg);
     return NULL;
   }
 
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE)
+  if (this->debug)
     fprintf (stdout, "Connected\n");
 
   openssl->ctx = ctx;
@@ -98,7 +112,7 @@ static int net_parse_url (net_t *this) {
 
   this->parsedURL = parsedURL;
 
-  if (this->verbose > NET_VERBOSE_LEVEL_TWO) {
+  if (this->debug) {
     fprintf (stdout, "Protocol: %s\n", parsedURL->scheme);
     fprintf (stdout, "  Domain: %s\n", parsedURL->host);
     fprintf (stdout, "Fragment: %s\n", parsedURL->fragment);
@@ -153,6 +167,7 @@ static int net_new_socket (net_t *this, int port) {
   if ((sockfd = socket (AF_INET, SOCK_STREAM, 0)) is -1){
     Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
        "Fail to create socket creation, %s", Error.errno_string (errno));
+    fprintf (stderr, "%s\n", this->errorMsg);
     return NOTOK;
   }
 
@@ -165,6 +180,7 @@ static int net_new_socket (net_t *this, int port) {
   if (he is NULL) {
     Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
         "%s, Unreachable or wrong URL, %s", this->url, Error.errno_string (errno));
+    fprintf (stderr, "%s\n", this->errorMsg);
     return NOTOK;
   }
 
@@ -178,7 +194,7 @@ static int net_new_socket (net_t *this, int port) {
     break;
    }
 
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE)
+  if (this->debug)
     fprintf (stdout, "     Ip: %s\n", this->ip);
 
   struct sockaddr_in server_addr;
@@ -194,12 +210,13 @@ static int net_new_socket (net_t *this, int port) {
 static int net_connect_to_socket (net_t *this) {
   if (this->socketFD is -1) return NOTOK;
 
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE)
+  if (this->debug)
     fprintf (stdout, "Connecting ...\n");
 
   if (connect (this->socketFD, (struct sockaddr *) &this->server_addr, sizeof(struct sockaddr)) is -1){
     Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
       "failed to connect to socket, %s", Error.errno_string (errno));
+    fprintf (stderr, "%s\n", this->errorMsg);
     return NOTOK;
   }
 
@@ -223,14 +240,17 @@ static int net_read_statusCode (net_t *this) {
     ifnot (nread) break;
 
     if (nread is -1) {
-      ifnot (is_ssl)
+      ifnot (is_ssl) {
         Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
-          "error while reading HTTP status, %s", Error.errno_string (errno));
-      else
+          "error while reading http status, %s", Error.errno_string (errno));
+      } else {
+        char msg[1024];
+        ERR_error_string_n(ERR_get_error(), msg, sizeof(msg));
         Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
-          "error while reading HTTPS status, %s",
-            SSL_get_error (this->sslConnection, nread));
+        "error while reading https status, %s", msg);
+      }
 
+      fprintf (stderr, "%s\n", this->errorMsg);
       return -1;
     }
 
@@ -243,29 +263,164 @@ static int net_read_statusCode (net_t *this) {
 
   int bytes_received = ptr - buf;
 
-  if (this->verbose > NET_VERBOSE_LEVEL_TWO)
-    fprintf (stdout, "HTTP%s: header bytes received: %d\n", (is_ssl ? "S" : ""),
-       bytes_received);
+  ifnot (bytes_received) return 0;
 
-  ifnot (bytes_received) return -1;
+  if (this->debug) {
+    size_t len = bytelen (buf + 1) - 2;
+    char out[len + 1];
+    Cstring.cp (out, len + 1, buf + 1, len);
+    fprintf(stdout, "Getting status code ...\n%s\n", out);
+  }
 
   ptr = buf + 1;
 
-  this->statusCode = NOTOK;
+  this->statusCode = 0;
 
   if (EOF is sscanf (ptr, "%*s %d ", &this->statusCode)) {
     Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
       "error while scanning HTTP header, %s", Error.errno_string (errno));
-    return NOTOK;
+    fprintf (stderr, "%s\n", this->errorMsg);
+    return 0;
   }
 
-  if (this->verbose > NET_VERBOSE_LEVEL_THREE)
-    fprintf (stdout, "%s, StatusCode: %d\nPtr\n|%s|\n", __func__, this->statusCode, ptr);
+  if (this->debug)
+    fprintf (stdout, "StatusCode: %d\n", this->statusCode);
 
   return this->statusCode;
 }
 
 static long net_parse_header (net_t *this) {
+  char buf[MAXLEN_HEADER_MSG];
+  char *ptr = buf + 4;
+
+  int is_ssl = this->sslConnection isnot NULL;
+  int nread = 0;
+
+  while (1) {
+    ifnot (is_ssl)
+      nread = recv (this->socketFD, ptr, 1, 0);
+    else
+      nread = SSL_read (this->sslConnection, ptr, 1);
+
+    ifnot (nread) break;
+
+    if (nread is -1) {
+      ifnot (is_ssl)
+        Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
+            "error while parsing HTTP header, %s", Error.errno_string (errno));
+      else
+        Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
+          "error while parsing HTTPS header, %d",
+            SSL_get_error (this->sslConnection, nread));
+
+      return -1;
+    }
+
+    if (*(ptr - 3) is '\r' and *(ptr - 2) is '\n' and
+        *(ptr - 1) is '\r' and *ptr  is '\n')
+      break;
+
+    ptr++;
+  }
+
+  *(ptr + 1) = '\0';
+
+  if (this->debug) {
+    size_t len = bytelen (buf + 4) - 4;
+    char out[len + 1];
+    Cstring.cp (out, len + 1, buf + 4, len);
+    fprintf(stdout, "Getting headers ...\n%s\n", out);
+  }
+
+  long bytes_received = ptr - buf - 3;
+
+  ifnot (bytes_received) return 0;
+
+  ptr = Cstring.bytes_in_str (buf + 4, "Content-Length:");
+  if (NULL is ptr) return -1;
+
+  sscanf (ptr, "%*s %ld", &bytes_received);
+
+  if (this->outputToFile) {
+    const char disp[] = "content-disposition: attachment; filename=";
+    ptr = Cstring.bytes_in_str (buf + 4, disp);
+    ifnot (NULL is ptr) {
+      ifnot (NULL is this->outputFile) free (this->outputFile);
+      char *fname = ptr + sizeof (disp) - 1;
+      ptr = fname;
+      while (*(ptr + 1) isnot '\r') ptr++;
+      size_t len = ptr - fname + 1;
+      this->outputFile = Alloc (len + 1);
+      Cstring.cp (this->outputFile, len + 1, fname, len);
+      if (this->debug)
+        fprintf (stdout, "Saving as %s\n", this->outputFile);
+    }
+  }
+
+  return bytes_received ;
+}
+
+static int net_send_request (net_t *this, const char *path, const char *host) {
+  char sendb[4096];
+  Cstring.cp_fmt (sendb, sizeof (sendb),
+      "GET %s%s HTTP/1.1\r\n"
+      "Host: %s\r\nUser-Agent: libnet\r\n"
+      "Accept-Language: en-us\r\n"
+      "Accept-Charset: ISO-8859-1,utf-8\r\n"
+      "Accept: */*\r\n"
+      "Connection: Keep-Alive\r\n"
+      "Accept-Encoding: identity\r\n\r\n",
+      *path == '/' ? "" : "/", path, host);
+
+ //   "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8\r\n"
+ //   "Connection: close"
+
+  if (this->debug) {
+    size_t len = bytelen (sendb) - 4;
+    char buf[len + 1];
+    Cstring.cp (buf, len + 1, sendb, len);
+    fprintf(stdout, "Sending request ...\n%s\n", buf);
+  }
+
+  int is_ssl = this->sslConnection isnot NULL;
+  int err = OK;
+
+  if (is_ssl) {
+    if ((err = SSL_write (this->sslConnection, sendb, bytelen (sendb))) is -1) {
+      char msg[1024];
+      ERR_error_string_n(ERR_get_error(), msg, sizeof(msg));
+      Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
+        "Failed to send request, %s", msg);
+    }
+
+  } else {
+    if ((err = send (this->socketFD, sendb, bytelen (sendb), 0)) is -1) {
+      Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
+        "Failed to send request, %s", Error.errno_string (errno));
+    }
+  }
+
+  if (err is -1)
+    fprintf (stderr, "%s\n", this->errorMsg);
+
+  return err;
+}
+
+static int net_handle_badrequest (net_t *this) {
+  size_t path_len  = bytelen (this->parsedURL->path);
+  ifnot (path_len) return NOTOK;
+  size_t query_len = bytelen (this->parsedURL->query);
+  ifnot (query_len) return NOTOK;
+  char path[path_len + query_len + 2];
+  char *ptr = Cstring.bytes_in_str (this->url, this->parsedURL->query);
+  char sep = *(ptr - 1);
+  Cstring.cp_fmt (path, path_len + query_len + 2, "%s%c%s",
+    this->parsedURL->path, sep, this->parsedURL->query);
+
+  return net_send_request (this, path, this->parsedURL->host);
+}
+
+static int net_parse_redirection_url (net_t *this) {
   char buf[MAXLEN_HEADER_MSG];
   char *ptr = buf + 4;
 
@@ -301,20 +456,23 @@ static long net_parse_header (net_t *this) {
 
   *(ptr + 1) = '\0';
 
-  long bytes_received = ptr - buf - 3;
+  if (this->debug) {
+    size_t len = bytelen (buf + 4) - 4;
+    char out[len + 1];
+    Cstring.cp (out, len + 1, buf + 4, len);
+    fprintf(stdout, "Getting headers ...\n%s\n", out);
+  }
 
-  if (this->verbose > NET_VERBOSE_LEVEL_TWO)
-    fprintf (stdout, "HTTP%s: header bytes received: %ld\n", (is_ssl ? "s" : ""),
-       bytes_received);
+  ptr = Cstring.bytes_in_str (buf + 4, "Location:");
+  if (NULL is ptr) return NOTOK;
 
-  ifnot (bytes_received) return 0;
-
-  ptr = Cstring.bytes_in_str (buf + 4, "Content-Length:");
-  if (NULL is ptr) return -1;
-
-  sscanf (ptr, "%*s %ld", &bytes_received);
-
-  return bytes_received ;
+  char *location = ptr += 10;
+  while (*(ptr + 1) isnot '\r') ptr++;
+  size_t len = ptr - location + 1;
+  char url[len + 1];
+  Cstring.cp (url, len + 1, location, len);
+  net_clear (this);
+  return net_fetch (this, url);
 }
 
 static int net_fetch_from_http (net_t *this) {
@@ -322,32 +480,22 @@ static int net_fetch_from_http (net_t *this) {
 
   url_t *url = this->parsedURL;
 
-  char sendb[3000];
-  char recvb[1024];
-
-  Cstring.cp_fmt (sendb, sizeof (sendb),
-      "GET /%s HTTP/1.1\r\nHost: %s\r\nUser-Agent: libnet\r\n"
-      "Accept: text/xml,application/xml,application/xhtml+xml,text/html*/*\r\n"
-      "Accept-Language: en-us\r\n"
-      "Accept-Charset: ISO-8859-1,utf-8\r\n"
-      "Connection: close\r\n\r\n",
-      url->path, url->host);
-
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE)
-    fprintf (stdout, "Sending data ...\n");
-
-  if(send (this->socketFD, sendb, bytelen (sendb), 0) is -1) {
-    Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
-        "Failed to send data, %s", Error.errno_string (errno));
+  if (NOTOK is net_send_request (this, url->path, url->host))
     goto theend;
-  }
 
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE) {
-    fprintf (stdout, "Data sent\n");
-    fprintf (stdout, "Receiving data ...\n");
-  }
+  int status = 0;
+  ifnot ((status = net_read_statusCode (this))) goto theend;
 
-  ifnot (net_read_statusCode (this)) goto theend;
+  switch (status) {
+    case HttpStatus_Found:
+      return net_parse_redirection_url (this);
+
+    case HttpStatus_BadRequest:
+      if (NOTOK is net_handle_badrequest (this))
+        goto theend;
+
+      ifnot ((status = net_read_statusCode (this))) goto theend;
+  }
 
   int contentLength = net_parse_header (this);
   ifnot (contentLength) goto theend;
@@ -367,6 +515,7 @@ static int net_fetch_from_http (net_t *this) {
     }
   }
 
+  char recvb[4096];
   while ((nread = recv (this->socketFD, recvb, 1024, 0))) {
     if (nread is -1) {
       Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
@@ -380,9 +529,9 @@ static int net_fetch_from_http (net_t *this) {
     if (this->verbose is NET_VERBOSE_LEVEL_ONE) {
       ifnot (NULL is this->outputCallback) {
         if (NOTOK is this->outputCallback (this, fp, recvb, nread, num_bytes, contentLength)) {
-           fclose (fp);
-           retval = NOTOK;
-           goto theend;
+          fclose (fp);
+          retval = NOTOK;
+          goto theend;
         }
 
         goto next;
@@ -398,7 +547,7 @@ next:
     if (num_bytes is contentLength) break;
   }
 
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE)
+  if (this->debug)
     fprintf (stdout, "Saving data\n");
 
   ifnot (NULL is this->outputFile)
@@ -416,51 +565,33 @@ theend:
 
 static int net_fetch_from_https (net_t *this) {
   int retval = NOTOK;
+
   struct openSSL openssl = {NULL, NULL};
+  if (NULL is init_openssl (this, &openssl)) goto theend;
+  this->sslConnection = openssl.conn;
 
   url_t *url = this->parsedURL;
 
-  if (NULL is init_openssl (this, &openssl)) goto theend;
-
-  char sendb[3000];
-  char recvb[3000];
-
-  Cstring.cp_fmt (sendb, sizeof (sendb),
-      "GET /%s HTTP/1.1\r\n"
-      "Host: %s\r\nUser-Agent: libnet\r\n"
-      "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8\r\n"
-      "Accept-Language: en-us\r\n"
-      "Accept-Charset: ISO-8859-1,utf-8\r\n"
-      "Connection: close"
-      "\r\n\r\n",
-      url->path, url->host);
-
-  this->sslConnection = openssl.conn;
-  int err;
-
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE)
-    fprintf (stdout, "Sending data ...\n");
-
-  if ((err = SSL_write (this->sslConnection, sendb, bytelen (sendb))) is -1) {
-    Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
-        "SSL: Failed to send data, %s", SSL_get_error (this->sslConnection, err));
+  if (NOTOK is net_send_request (this, url->path, url->host))
     goto theend;
-  }
-
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE) {
-    fprintf (stdout, "SSL: Data sent\n");
-    fprintf (stdout, "SSL: Receiving data ...\n");
-  }
 
   int status = 0;
+
   ifnot ((status = net_read_statusCode (this))) goto theend;
 
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE) {
-    fprintf (stdout, "SSL status: %d\n", status);
+  switch (status) {
+    case HttpStatus_Found:
+      return net_parse_redirection_url (this);
+
+    case HttpStatus_BadRequest:
+      if (NOTOK is net_handle_badrequest (this))
+        goto theend;
+
+      ifnot ((status = net_read_statusCode (this))) goto theend;
   }
 
   long contentLength = net_parse_header (this);
-  ifnot (contentLength) goto theend;
+  if (contentLength <= 0) goto theend;
 
   FILE* fp = NULL;
 
@@ -477,11 +608,14 @@ static int net_fetch_from_https (net_t *this) {
   long num_bytes = 0;
   int nread;
 
+  char recvb[4096];
+
   while ((nread = SSL_read (this->sslConnection, recvb, 3000))) {
     if (nread is -1) {
+      char msg[1024];
+      ERR_error_string_n(ERR_get_error(), msg, sizeof(msg));
       Cstring.cp_fmt (this->errorMsg, MAXLEN_ERROR_MSG + 1,
-        "SSL: Error receiving data, %s",
-        SSL_get_error (this->sslConnection, nread));
+        "Error receiving data, %s", msg);
 
       ifnot (NULL is fp) fclose (fp);
       goto theend;
@@ -510,7 +644,7 @@ next:
     if (num_bytes is contentLength) break;
   }
 
-  if (this->verbose > NET_VERBOSE_LEVEL_ONE)
+  if (this->debug)
     fprintf (stdout, "Saving data\n");
 
   ifnot (NULL is this->outputFile)
@@ -562,14 +696,29 @@ theend:
   return retval;
 }
 
+static void net_clear (net_t *this) {
+  if (NULL is this) return;
+  ifnot (NULL is this->url) {
+    free (this->url); this->url = NULL;
+  }
+
+  ifnot (NULL is this->parsedURL) {
+    free (this->parsedURL); this->parsedURL = NULL;
+  }
+
+  ifnot (NULL is this->outputFile) {
+    free (this->outputFile); this->outputFile = NULL;
+  }
+
+  if (this->socketFD isnot -1) {
+    close (this->socketFD);
+    this->socketFD = -1;
+  }
+}
+
 static void net_release (net_t **thisp) {
   net_t *this = *thisp;
-  if (NULL is this) return;
-
-  ifnot (NULL is this->url) free (this->url);
-  ifnot (NULL is this->parsedURL) free (this->parsedURL);
-  ifnot (NULL is this->outputFile) free (this->outputFile);
-
+  net_clear (this);
   free (this);
   *thisp = NULL;
 }
@@ -583,7 +732,7 @@ static int net_default_output_callback (net_t *this, FILE *fp, char *recvb, size
      return NOTOK;
 
    ulong fractiondownloaded = (ulong) (((ulong) (num_bytes + nread) * 100) / (ulong) contentLength);
-   fprintf (stdout, "%luKB (%lu%%) of %luKB\r", (num_bytes + nread) / 1024, fractiondownloaded,
+   fprintf (stdout, "%luKB (%lu%%) of %luMB\r", (num_bytes + nread) / 1024, fractiondownloaded,
         contentLength / 1024);
    return OK;
 }
@@ -597,6 +746,7 @@ static net_t *net_new (netOptions opts) {
   this->outputCallback = (NULL is opts.outputCallback ? net_default_output_callback : opts.outputCallback);
   this->outputToCallback = opts.outputToCallback;
   this->verbose = opts.verbose;
+  this->debug = opts.debug;
   this->statusCode = HttpStatus_OK;
   this->contentLength = 0;
   this->socketFD = -1;
