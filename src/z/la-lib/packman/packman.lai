@@ -6,8 +6,8 @@ import ("file")
 import ("path")
 import ("crypt")
 
-if #isdefined "BOOTSTRAP"
-  import ("net")
+#if #isdefined "BOOTSTRAP"
+import ("net")
 
 const PACKMAN                    = "Packman"
 
@@ -26,7 +26,8 @@ const PACKMAN_BUILD_MAKE_INSTALL = 5
 const PACKMAN_BUILD_MD_CHECK     = 6
 const PACKMAN_BUILD_USER_COM     = 7
 const PACKMAN_BUILD_EVAL         = 8
-var LAST_BUILD_TYPE              = PACKMAN_BUILD_EVAL
+const PACKMAN_BUILD_USER_COM_IF  = 9
+var LAST_BUILD_TYPE              = PACKMAN_BUILD_USER_COM_IF
 
 const PACKMAN_DATADIR            = Sys.get ("DATADIR"): path_concat (PACKMAN)
 const PACKMAN_SYSDIR             = Sys.get ("SYSDIR")
@@ -59,6 +60,7 @@ Type PackmanSpec {
   baseurl
   version
   archive
+  webarchive
   build_dirname
   extension
 
@@ -66,17 +68,18 @@ Type PackmanSpec {
 
   public
   set : {
+    md        : func (md)      this.md = md
     home      : func (home)    this.home = home
     repo      : func (repo)    this.repo = repo
     type      : func (type)    this.type = type
     descr     : func (descr)   this.descr = descr
-    md        : func (md)      this.md = md
     md_type   : func (type)    this.md_type = type
     build     : func (build)   this.build = build
     license   : func (lic)     this.license = lic
     baseurl   : func (url)     this.baseurl = url
     version   : func (vers)    this.version = vers
     archive   : func (arch)    this.archive = arch
+    webarchive: func (arch)    this.webarchive = arch
     sources   : func (src)     this.sources = src
     extension : func (ext)     this.extension = ext
     build_dirname : func (dir) this.build_dirname = dir
@@ -95,6 +98,7 @@ Type PackmanSpec {
     baseurl   : func return this.baseurl
     version   : func return this.version
     archive   : func return this.archive
+    webarchive: func return this.webarchive
     sources   : func return this.sources
     extension : func return this.extension
     build_dirname : func return this.build_dirname
@@ -198,8 +202,8 @@ Type Packman {
   }
 
   fetch : func {
-    if this.spec.archive is null {
-      println (stderr, "archive property hasn't been set")
+    if this.spec.webarchive is null {
+      println (stderr, "webarchive property hasn't been set")
       return notok
     }
 
@@ -208,12 +212,10 @@ Type Packman {
       return notok
     }
 
-    var webarch = this.spec.baseurl: path_concat (this.spec.archive)
+    var webarch = this.spec.baseurl: path_concat (this.spec.webarchive)
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    if #isdefined "BOOTSTRAP" then
-      if ok is Net.fetch (webarch; as : archive) then
-        return ok
+    if ok is Net.fetch (webarch; as : archive, verbose : 1) return ok
 
     if this.fetch_exec is null {
       println (stderr, "neither wget nor curl has been found")
@@ -238,8 +240,12 @@ Type Packman {
 
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    ifnot archive: file_exists () then
+    ifnot archive: file_exists () {
+      var curdir = Dir.current ()
+      return notok if notok is Dir.change (this.sources_dir)
       return notok if notok is this.fetch ()
+      return notok if notok is Dir.change (curdir)
+    }
 
     var com = this.tar_exec + " " + this.tar_args + " " + archive
     var retval = this.sh:exec (com)
@@ -321,7 +327,7 @@ Type Packman {
 
     ifnot this.sources_dir: dir_is_directory () {
       if this.sources_dir: file_exists () {
-        println (stderr, "${%s, this.sources_dir}: not a directory")
+        println (stderr, "${this.sources_dir}: not a directory")
         return notok
       }
     }
@@ -346,7 +352,7 @@ Type Packman {
     }
 
     if this.spec.build_dirname: dir_change () is notok {
-      println (stderr, "couldn't change directory to ${%s, this.spec.build_dirname}")
+      println (stderr, "couldn't change directory to ${this.spec.build_dirname}")
       return notok
     }
 
@@ -470,19 +476,25 @@ Type Packman {
       return notok
     }
 
+    if this.spec.build is null {
+      println (stderr, "build spec property hasn't been set")
+      return notok
+    }
+
     if this.builddir is null {
       println (stderr, "builddir property hasn't been set")
       return notok
     }
 
     if this.builddir: dir_change () is notok {
-      println (stderr, "couldn't change directory to ${%s, this.builddir}")
+      println (stderr, "couldn't change directory to ${this.builddir}")
       return notok
     }
 
     if this.verbose is true {
       println ("Building " + this.spec.name)
       if this.spec.descr isnot null then println (this.spec.descr)
+      if this.spec.license isnot null then println ("License: ${this.spec.license}")
     }
 
     loop (1) {
@@ -491,7 +503,7 @@ Type Packman {
           ifnot null is action.msg then println (action.msg)
 
         if action.type is null or action.type < 0 or action.type > LAST_BUILD_TYPE {
-          println (stderr, "the spec build type, hasn't been set properly")
+          println (stderr, "type build spec property, hasn't been set properly")
           break 2
         }
 
@@ -515,12 +527,13 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_CONFIGURE {
-          var com = "./configure"
+          var com = "./configure --prefix=" + this.sysdir
+
           ifnot (null is action.command) then
-            com += format (" ${%s, format (action.command)}")
+            com += format (" ${format (action.command)}")
 
           if (this.sh:exec (com) isnot 0) {
-            println (stderr, "error while executing command: ${%s, com}")
+            println (stderr, "error while executing command: ${com}")
             break 2
           }
 
@@ -530,10 +543,10 @@ Type Packman {
         if action.type is PACKMAN_BUILD_MAKE {
           var com = this.make_exec;
           ifnot (null is action.command) then
-            com += format (" ${%s, format (action.command)}")
+            com += format (" ${format (action.command)}")
 
           if this.sh:exec (com) isnot 0 {
-            println (stderr, "error while executing command: ${%s, com}")
+            println (stderr, "error while executing command: ${com}")
             break 2
           }
 
@@ -543,10 +556,10 @@ Type Packman {
         if action.type is PACKMAN_BUILD_MAKE_INSTALL {
           var com = this.make_exec + " install";
           ifnot (null is action.command) then
-            com += format (" ${%s, format (action.command)}")
+            com += format (" ${format (action.command)}")
 
           if this.sh:exec (com) isnot ok {
-            println (stderr, "error while executing command: ${%s, com}")
+            println (stderr, "error while executing command: ${com}")
             break 2
           }
 
@@ -556,20 +569,35 @@ Type Packman {
         continue if action.command is null
 
         if action.type is PACKMAN_BUILD_EVAL {
-          println (Dir.current ());
-          println (            action.command);
           var com = action.command
-          __retval =  eval (com)
-          println (__retval)
-          #break 2 ifnot ok is action.command: eval ()
+          __retval = eval (com)
+          break 2 ifnot ok is __retval
           continue
         }
 
-        var com = format ("${%s, format (action.command)}")
-        if this.sh:exec (com) isnot ok {
-          println (stderr, "error while executing command: ${%s, com}")
-          break 2
+        if action.type is PACKMAN_BUILD_USER_COM_IF {
+          var com =  action.command[0]
+          var c   =  action.command[1]
+          var r = true
+          var cond =
+            `r = if ` + format (format (c)) + ` then true orelse false end `
+          __retval = eval (cond)
+          break 2 ifnot ok is __retval
+          continue if r is false
+          action.command = com
+          action.type = PACKMAN_BUILD_USER_COM
         }
+
+        if action.type is PACKMAN_BUILD_USER_COM {
+          var com = format ("${format (action.command)}")
+          if this.sh:exec (com) isnot ok {
+            println (stderr, "error while executing command: ${com}")
+            break 2
+          }
+
+          continue
+        }
+
       }
 
       retval = ok
@@ -577,5 +605,111 @@ Type Packman {
 
     Dir.change (this.curdir)
     return retval
+  }
+}
+
+func packman_make
+  return New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null)
+func packman_make_with (x)
+  return New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, x)
+func packman_extract
+  return New PackmanBuild ("[extracting]", PACKMAN_BUILD_EXTRACT, null)
+func packman_install
+  return New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, null)
+func packman_install_with (x)
+  return New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, x)
+func packman_configure ()
+  return New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE, null)
+func packman_configure_with (x)
+  return New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE, x)
+func packman_command (m, com)
+  return New PackmanBuild (if m is null then "[command]" orelse m end, PACKMAN_BUILD_USER_COM, com)
+func packman_command_if (m, com, cond)
+  return New PackmanBuild (if m is null then "[conditional command]" orelse m end, PACKMAN_BUILD_USER_COM_IF, [com, cond])
+func packman_copy_sources
+  return New PackmanBuild ("[copying sources]", PACKMAN_BUILD_COPY, null)
+func packman_eval (m, s)
+  return New PackmanBuild (if m is null then "[expression]" orelse m end, PACKMAN_BUILD_EVAL, s)
+func packman_eval_if (m, s, x)
+  return New PackmanBuild (if m is null then "[conditional expression]" orelse m end, PACKMAN_BUILD_EVAL, [s, x])
+
+public const Packman = {
+  make           : packman_make
+  make_with      : packman_make_with
+  eval           : packman_eval
+  eval_if        : packman_eval_if
+  extract        : packman_extract
+  install        : packman_install
+  install_with   : packman_install_with
+  configure      : packman_configure
+  configure_with : packman_configure_with
+  copy_sources   : packman_copy_sources
+  command        : packman_command
+  command_if     : packman_command_if
+  new            : {
+    spec : func (s) {
+      var haskey = map_key_exists
+      var to_string = integer_to_string
+
+      ifnot s: haskey ("name") {
+        println (stderr, "name field is required")
+        return null
+      }
+
+      var specnew = New PackmanSpec (s.name)
+
+      if s: haskey ("md")            then specnew.set.md (s.md)
+      if s: haskey ("home")          then specnew.set.home (s.home)
+      if s: haskey ("repo")          then specnew.set.repo (s.repo)
+      if s: haskey ("descr")         then specnew.set.descr (s.descr)
+      if s: haskey ("md_type")       then specnew.set.md_type (s.md_type)
+      if s: haskey ("build")         then specnew.set.build (s.build)
+      if s: haskey ("sources")       then specnew.set.sources (s.sources)
+      if s: haskey ("version")       then specnew.set.version (s.version)
+      if s: haskey ("license")       then specnew.set.license (s.license)
+      if s: haskey ("build_dirname") then specnew.set.build_dirname (s.build_dirname)
+      if s: haskey ("baseurl")       then specnew.set.baseurl (s.baseurl)
+      if s: haskey ("extension")     then specnew.set.extension (s.extension)
+      if s: haskey ("archive")       then specnew.set.archive (s.archive)
+      if s: haskey ("webarchive")    then specnew.set.webarchive (s.webarchive)
+
+      if s: haskey ("build") {
+        if s.build: len () {
+          if typeof (s.build) is MapType {
+            if s.build: haskey ("1") {
+              var map[0] build
+
+              var i = 1
+              var k = i: to_string (10)
+              do {
+                append s.build.$(k) in build
+                i++
+                k = i: to_string (10)
+              } while (s.build: haskey (k))
+
+              specnew.set.build (build)
+
+            } else {
+              println ("awaiting an inline map, with 1 as a key")
+              return null
+            }
+
+          } else if typeof (s.build) is ListType {
+            var map[0] build
+            for |v| in s.build
+              append v in build
+
+            specnew.set.build (build)
+          } else if typeof (s.build) isnot ArrayType {
+            println (stderr, "awaiting an ArrayType with build instructions");
+            return null
+          } else {
+            specnew.set.build (s.build)
+          }
+        }
+      }
+
+      return specnew
+    }
   }
 }

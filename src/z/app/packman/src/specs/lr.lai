@@ -1,29 +1,18 @@
 var name = __file__: path_basename_sans_extname ()
 
-var spec = New PackmanSpec (name)
-
-spec.set.version ("c3f0e7052453fed04a696535145d40dfd2a3b6a3")
-spec.set.repo ("https://github.com/leahneukirchen/lr")
-spec.set.home ("https://github.com/leahneukirchen/lr")
-spec.set.descr ("lr is a tool for generating file listings")
-spec.set.build_dirname (name)
-spec.set.sources (name)
-spec.set.license ("MIT")
-
-# database
-# allow null for first field and command if they are standard
-# probably a default const
-# license - database with licenses
-# roll back based on the information in database, marked "known good"
-# add a json dump lib
-
-var map[3] build = [
-  New PackmanBuild (null, PACKMAN_BUILD_COPY, null),
-  New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null),
-  New PackmanBuild ("[install]", PACKMAN_BUILD_EVAL,
-     `File.copy (this.spec.name, this.bindir; {"verbose": 2, "force" : 1})`)
-]
-
-spec.set.build (build)
-
-return spec
+return Packman.new.spec ({
+  name          : name
+  version       : "c3f0e7052453fed04a696535145d40dfd2a3b6a3"
+  repo          : "https://github.com/leahneukirchen/lr"
+  home          : "https://github.com/leahneukirchen/lr"
+  descr         : "lr is a tool for generating file listings"
+  build_dirname : name
+  sources       : name
+  license       : "MIT"
+  build         : [
+    Packman.copy_sources (),
+    Packman.make (),
+    Packman.eval ("[install]",
+      `File.copy (this.spec.name, this.bindir; {"verbose": 2, "force" : 1})`)
+  ] 
+})

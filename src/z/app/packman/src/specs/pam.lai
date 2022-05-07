@@ -1,27 +1,25 @@
-import ("path")
 
 var name = __file__: path_basename_sans_extname ()
-
 var archive = "Linux-PAM"
 var version = "1.5.1"
-var spec = New PackmanSpec (name)
-spec.set.descr ("Pluggable Authentication Modules Library")
-spec.set.version (version)
-spec.set.build_dirname (archive + "-" + version)
-spec.set.extension ("tar.xz")
-spec.set.archive (spec.get.build_dirname () + "." + spec.get.extension ())
-spec.set.license ("GPL2")
 
-var map[4] build = [
-  New PackmanBuild (null, PACKMAN_BUILD_EXTRACT, null),
-  New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE,
-     `--prefix=${%s, this.get.sysdir ()} --enable-shared
-      --enable-static --enable-db=no --disable-regenerate-docu
-      --disable-nis --disable-selinux --disable-audit`S4),
-  New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null),
-  New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, null)
-]
-
-spec.set.build (build)
-
-return spec
+return Packman.new.spec ({
+  name          : name
+  descr         : "Pluggable Authentication Modules Library"
+  version       : version
+  build_dirname : archive + "-" + version
+  extension     : "tar.xz"
+  archive       : archive + "-" + version + ".tar.xz"
+  license       : "GPL2"
+  build         : [
+    Packman.extract (),
+    Packman.configure_with (
+      "--enable-shared " +
+      "--enable-static " +
+      "--enable-db=no " +
+      "--disable-regenerate-docu " +
+      "--disable-nis --disable-selinux --disable-audit"),
+    Packman.make (),
+    Packman.install ()
+  ]
+})

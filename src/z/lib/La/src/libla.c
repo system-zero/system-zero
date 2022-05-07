@@ -2415,7 +2415,7 @@ static int la_parse_directive (la_t *this, VALUE *vp, int tok) {
         return OK;
       }
 
-      *vp = la_copy_value (sym->value);
+      *vp = sym->value;
 
       switch (TOKEN) {
         case TOKEN_INDEX_OPEN:
@@ -2433,16 +2433,19 @@ static int la_parse_directive (la_t *this, VALUE *vp, int tok) {
               return la_parse_primary (this, vp);
 
             default:
+              la_release_val (this, *vp);
               THROW_SYNTAX_ERR("unexpected open index");
           }
 
         case TOKEN_DOT:
           THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE, "awaiting a map");
-          TOKENVAL = *vp;
           TOKEN = TOKEN_MAP;
+          TOKENVAL = *vp;
           UNGET_BYTE();
           return la_parse_primary (this, vp);
       }
+
+      *vp = la_copy_value (sym->value);
 
       return OK;
     }
@@ -3020,6 +3023,8 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   int inmap = 0;
   int indtokopen = 1;
   int indtokclos = 0;
+  int parenopen = 0;
+  int inparen = 0;
   int inar = 0;
   int is_array_of_array = 0;
   int num_elem = 1;
@@ -3036,7 +3041,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
 
     THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "unended array");
 
-    if (c is TOKEN_INDEX_CLOS and 0 is instr) {
+    if (c is TOKEN_INDEX_CLOS and 0 is instr + inparen) {
       if (inmap)
         continue;
 
@@ -3051,7 +3056,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       continue;
     }
 
-    if (c is TOKEN_INDEX_OPEN and 0 is instr) {
+    if (c is TOKEN_INDEX_OPEN and 0 is instr + inparen) {
       if (inmap)
         continue;
 
@@ -3063,23 +3068,41 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
      continue;
     }
 
-    if (c is TOKEN_DQUOTE and pc isnot TOKEN_ESCAPE_CHR) {
+    if (c is TOKEN_PAREN_OPEN) {
+      if (instr)
+        continue;
+
+      parenopen++;
+      inparen = 1;
+      continue;
+    }
+
+    if (c is TOKEN_PAREN_CLOS) {
+      if (instr)
+        continue;
+
+      parenopen--;
+      inparen = parenopen;
+      continue;
+    }
+
+    if (0 is inparen and ((c is TOKEN_DQUOTE and pc isnot TOKEN_ESCAPE_CHR) or c is TOKEN_BQUOTE)) {
       if (instr) instr = 0; else instr = 1;
       continue;
     }
 
-    if (c is TOKEN_MAP_OPEN and 0 is instr) {
+    if (c is TOKEN_MAP_OPEN and 0 is instr + inparen) {
       inmap++;
       continue;
     }
 
-    if (c is TOKEN_MAP_CLOS and 0 is instr) {
+    if (c is TOKEN_MAP_CLOS and 0 is instr + inparen) {
       inmap--;
       continue;
     }
 
     //if ((c is TOKEN_COMMA or c is TOKEN_NL) and 0 is instr and 0 is inmap and 0 is inar)
-    if (c is TOKEN_COMMA and 0 is instr and 0 is inmap and 0 is inar)
+    if (c is TOKEN_COMMA and 0 is instr + inmap + inar + inparen)
       num_elem++;
   }
 
@@ -3285,6 +3308,9 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
 
   if (idx - 1 isnot last_idx)
     THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
+
+  if (TOKEN is TOKEN_NL and PEEK_NTH_TOKEN(0) is TOKEN_INDEX_CLOS)
+    NEXT_TOKEN();
 
   return LA_OK;
 }
@@ -4177,8 +4203,7 @@ static int la_map_set_value (la_t *this, Vmap_t *map, const char *key, VALUE v, 
           val->refcount = 0;
         }
       }
-    break;
-
+      break;
 
     case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
     case NULL_TYPE  : val->asNull    = v.asNull;    break;
@@ -4350,6 +4375,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
     sym_t *sym = TOKENSYM;
     v =  ARRAY(array_copy ((ArrayType *) AS_ARRAY(sym->value)));
     NEXT_TOKEN();
+
     goto assign;
   }
 
@@ -4360,7 +4386,13 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
 
   assign:
 
-  return la_map_set_value (this, map, key, v, scope);
+  err = la_map_set_value (this, map, key, v, scope);
+  THROW_ERR_IF_ERR(err);
+
+  if (v.type is ARRAY_TYPE and TOKEN is TOKEN_INDEX_CLOS)
+    NEXT_TOKEN();
+
+  return err;
 }
 
 static VALUE map_release (VALUE value) {
@@ -5319,9 +5351,18 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
 
   this->curState &= ~(MALLOCED_STRING_STATE);
 
-  if (c isnot TOKEN_PAREN_CLOS)
-    THROW_SYNTAX_ERR("expected closed parentheses");
+  do {
+    if (c isnot TOKEN_PAREN_CLOS) {
+      if (c is TOKEN_NL) {
+        if (PEEK_NTH_TOKEN(0) is TOKEN_PAREN_CLOS) {
+          NEXT_TOKEN();
+          break;
+        }
+      }
 
+      THROW_SYNTAX_ERR("error while parsing expression list: expected closed parentheses");
+    }
+  } while (0);
   if (expectargs isnot paramCount)
     THROW_NUM_FUNCTION_ARGS_MISMATCH(expectargs, paramCount);
 
@@ -10366,6 +10407,16 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
           this->CFuncError = LA_ERR_TYPE_MISMATCH;
           Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
               "MapType == %s is not possible",
+              AS_STRING_BYTES(la_typeAsString (this, y)));
+          return result;
+      }
+
+    case LIST_TYPE:
+      switch (y.type) {
+        case NULL_TYPE: return FALSE_VALUE;
+        default:
+          Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1,
+              "ListType == %s is not possible",
               AS_STRING_BYTES(la_typeAsString (this, y)));
           return result;
       }
