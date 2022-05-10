@@ -1731,7 +1731,8 @@ theend:
     this->fmtState |= FMT_LITERAL;
   else
     if (this->exprList)
-      vp->refcount = -1;
+      vp->refcount = STRING_LITERAL;
+//     vp->refcount = -1;
 // CHANGE      vp->refcount = STRING_LITERAL;
 
   return LA_OK;
@@ -4758,12 +4759,16 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   }
 
   if (TOKEN is TOKEN_INDEX_OPEN) {
-    if (v->type isnot ARRAY_TYPE)
-      THROW_SYNTAX_ERR("not an array");
+    if (v->type isnot ARRAY_TYPE and v->type isnot LIST_TYPE)
+      THROW_SYNTAX_ERR("not an array nor a list");
 
     TOKENVAL = *v;
     UNGET_BYTE();
-    return la_parse_array_get (this, vp);
+
+    if (v->type is ARRAY_TYPE)
+      return la_parse_array_get (this, vp);
+
+    return la_parse_list_get (this, vp);
   }
 
   if (TOKEN is TOKEN_PAREN_OPEN) {
@@ -7839,35 +7844,68 @@ static int la_parse_do (la_t *this) {
   if (c isnot TOKEN_WHILE)
     THROW_SYNTAX_ERR("error while parsing do/while loop, awaiting while");
 
-  NEXT_TOKEN();
-  c = TOKEN;
+  const char *orig_ptr = GETSTRPTR(PARSEPTR);
+  tmp_ptr = orig_ptr;
 
-  if (c isnot TOKEN_PAREN_OPEN)
-    THROW_SYNTAX_ERR("error while parsing do/while loop, awaiting (");
+  integer orig_len = GETSTRLEN(PARSEPTR);
 
-  tmp_ptr = GETSTRPTR(PARSEPTR);
+  int is_paren_open = PEEK_NTH_TOKEN(0) is TOKEN_PAREN_OPEN;
+  int has_a_nl = 0;
+  if (is_paren_open) {
+    while (*tmp_ptr isnot TOKEN_PAREN_OPEN) tmp_ptr++;
+    tmp_ptr++;
+  } else {
+    while (*tmp_ptr is ' ') tmp_ptr++;
+    if (*tmp_ptr is TOKEN_NL) {
+      tmp_ptr++;
+      has_a_nl = 1;
+    }
+  }
+
   const char *ptr = tmp_ptr;
 
-  int parenopen = 1;
+  int parenopen = is_paren_open;
+  int in_str = 0;
+  int prevc = *ptr;
+
+  THROW_SYNTAX_ERR_IF(has_a_nl and *ptr is TOKEN_NL, "error while parsing do/while condition: found two consecutive new lines");
+
   while (*ptr) {
     if (*ptr is TOKEN_NL) {
-      ptr++;
-      continue;
+      if (is_paren_open or in_str)
+        goto next;
+
+      break;
     }
 
-    if (*ptr is TOKEN_PAREN_OPEN) {
+    if (*ptr is TOKEN_SEMICOLON) {
+      if (is_paren_open or in_str)
+        goto next;
+
+      break;
+    }
+
+    if (*ptr is TOKEN_PAREN_OPEN and 1 is in_str + is_paren_open) {
       parenopen++;
-      ptr++;
-      continue;
+      goto next;
     }
 
-    if (*ptr is TOKEN_PAREN_CLOS) {
+    if (*ptr is TOKEN_PAREN_CLOS and 1 is in_str + is_paren_open) {
       parenopen--;
       ifnot (parenopen)
         break;
+
+      goto next;
     }
 
-    ptr++;
+    if ((*ptr is TOKEN_DQUOTE or *ptr is TOKEN_BQUOTE) and prevc isnot TOKEN_ESCAPE_CHR) {
+      if (in_str)
+        in_str--;
+      else
+        in_str++;
+    }
+
+    next: prevc = *ptr; ptr++;
   }
 
   ifnot (*ptr)
@@ -7875,7 +7913,6 @@ static int la_parse_do (la_t *this) {
 
   TOKEN = TOKEN_PAREN_OPEN;
 
-  integer orig_len = GETSTRLEN(PARSEPTR);
   integer cond_len = ptr - tmp_ptr;
 
   char cond[cond_len + 3];
@@ -7898,10 +7935,7 @@ static int la_parse_do (la_t *this) {
   this->curScope = fun;
 
   SETSTRPTR(PARSEPTR, ptr + 1);
-  SETSTRLEN(PARSEPTR, orig_len - cond_len - 1);
-
-  NEXT_TOKEN();
-  c = TOKEN;
+  SETSTRLEN(PARSEPTR, orig_len - ((ptr + 1) - orig_ptr));
 
   la_string savepc = PARSEPTR;
 
@@ -8388,15 +8422,70 @@ static int la_parse_foreach (la_t *this) {
 
   } else if (v.type is LIST_TYPE) {
     ptr = ident;
-    while (*ptr) ptr++;
+    int is_comma = 0;
+
+    while (*ptr) {
+      if (*ptr is TOKEN_COMMA) {
+        is_comma = 1;
+        break;
+      }
+
+      ptr++;
+    }
+
     len = ptr - ident;
-    while (is_space (ident[len-1])) len--;
-    ifnot (len) THROW_SYNTAX_ERR("empty for[each] identifier");
+
     if (len >= MAXLEN_SYMBOL)
       THROW_SYNTAX_ERR("identifier exceeded maximum length");
 
-    char elem[len + 1];
-    Cstring.cp (elem, len + 1, ident, len);
+    size_t orig_len = len + 1;
+
+    while (is_space (ident[len-1])) len--;
+    ifnot (len) THROW_SYNTAX_ERR("empty for[each] identifier");
+
+    char a_ident[len + 1];
+    Cstring.cp (a_ident, len + 1, ident, len);
+
+    char *index = NULL;
+    char *elem = NULL;
+
+    len = 0;
+    if (is_comma) {
+      index = a_ident;
+      ptr++;
+      while (*ptr and is_space (*ptr)) { ptr++; orig_len++;}
+
+      if (*ptr is TOKEN_EOF)
+        THROW_SYNTAX_ERR("awaiting a list element identifier");
+
+      while (*ptr) {
+        ptr++; len++;
+      }
+
+      ifnot (len) THROW_SYNTAX_ERR("empty list element identifier");
+    } else {
+      elem = a_ident;
+      len++;
+    }
+
+    if (len >= MAXLEN_SYMBOL)
+      THROW_SYNTAX_ERR("identifier exceeded maximum length");
+
+    char b_ident[len + 1];
+    if (elem is NULL) {
+      Cstring.cp (b_ident, len + 1, ident + orig_len, len);
+      elem = b_ident;
+    } else {
+      b_ident[0] = '_'; b_ident[1] = '\0';
+      index = b_ident;
+    }
+
+    if (*ptr isnot '\0')
+      THROW_SYNTAX_ERR("trailing identifiers");
+
+    VALUE vidx = INT(-1);
+    sym_t *index_sym = la_define_block_symbol (this, fun, index, INTEGER_TYPE, vidx, 0);
+
     VALUE elem_value = NULL_VALUE;
 
     listType *list = AS_LIST(v);
@@ -8407,7 +8496,13 @@ static int la_parse_foreach (la_t *this) {
     la_string body_str = StringNew (body);
 
     for (int i = 0; i < num; i++) {
-      listNode *node = DListGetAt(list, listNode, i);
+      integer v_idx = AS_INT(index_sym->value);
+      v_idx++;
+      if (v_idx >= num) break;
+      index_sym->value = INT(v_idx);
+
+      listNode *node = DListGetAt(list, listNode, v_idx);
+
       elem_value = *node->value;
       elem_sym->value = elem_value;
       elem_value.refcount++;
@@ -8636,7 +8731,7 @@ static char *find_end_for_stmt (const char *str) {
       goto next;
     }
 
-    if (*ptr is TOKEN_DQUOTE and prev_c isnot TOKEN_ESCAPE_CHR) {
+    if ((*ptr is TOKEN_DQUOTE or *ptr is TOKEN_BQUOTE) and prev_c isnot TOKEN_ESCAPE_CHR) {
       if (in_str)
         in_str--;
       else

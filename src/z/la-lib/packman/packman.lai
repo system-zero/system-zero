@@ -685,7 +685,7 @@ public const Packman = {
                 append s.build.$(k) in build
                 i++
                 k = i: to_string (10)
-              } while (s.build: haskey (k))
+              } while s.build: haskey (k)
 
               specnew.set.build (build)
 

@@ -906,7 +906,7 @@ func self_semantics () {
     do {
       s += i
       i += 1
-    } while (i < 100)
+    } while i < 100
 
     return s
    } ()
@@ -921,7 +921,8 @@ func self_semantics () {
       if (i is 10) { i += 1; continue }
       s += i
       i += 1
-    } while (i < 100)
+    } while (
+      i < 100) # testing condition within parens
     return s
    } ()
 
@@ -933,7 +934,7 @@ func self_semantics () {
       break if (i is 10)
       s += i
       i += 1
-    } while (i < 100)
+    } while i < 100; # testing condition ending with a semicolon
     return s
    } ()
 
@@ -945,7 +946,8 @@ func self_semantics () {
       s += i
       i += 1
       if i is 10 then return s
-    } while (i < 100)
+    } while
+       i < 100 # testing condition in the next line
     return s
    } ()
 
