@@ -1,6 +1,11 @@
-A free form nice syntax with the flexibility of common established semantics by now
+
+A free form nice syntax with the flexibility of common established semantics by now.
 [a bad implementation with a bit of clever in places code - and an ugly first draft
-of the current document].
+of this current document]
+
+The code that should support the below claims with accuracy lies at [language/l-semantics.](language/l-semantics.lai)
+[Note that probably needs a consideration and minor revisions to match the exact latest
+develpment and decisions]
 
 Basic DataTypes:
 
@@ -1487,5 +1492,18 @@ library unit, as there isn't and probably will never be an API documentation,
 unless a god exists.
 
 [Note that this a copy of the previous document, which it was under heavy for
-quite some time, development, and which is located in data/docs/la.md at the
+quite some time development, and which is located in data/docs/la.md at the
 root of the distribution].
+
+[Excuses: It was written without a prior knowledge of how to write a programming
+language. Still there isn't, as still cannot implement a couple of common things.
+But it was never the purpose to learn about the low level mechanics. Just enough
+to understand the concepts. The aim was just to code the implementation, and to
+adjust it to our scripting requirenments. The code is awful at places. Normally
+it should be rewritten but there is no time for that. The original driver while
+developing is to achieve the needed functionality and not how to do it with the
+best way. The memory managment is terrible, but still all the known code by now
+pass valgrind tough debugging.
+I have never really started the elementary education in my youth. I started C
+at 52 while I'm walking at fifty six at the time of writting, are some of other
+excuses. I also had to raise four kids at the forests for some quite some time.
