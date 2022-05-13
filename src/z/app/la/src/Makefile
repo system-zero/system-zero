@@ -221,7 +221,7 @@ ifeq ($(MAN_MODULE), 1)
   LA_STATIC_FLAGS += -lman-$(VERSION)
 endif
 
-NET_MODULE := 1
+NET_MODULE := 0
 ifeq ($(NET_MODULE), 1)
   LA_STATIC_FLAGS += -DREQUIRE_NET_MODULE
   LA_STATIC_FLAGS += -lnet-$(VERSION) -lssl -lcrypto -lresolv -lpthread

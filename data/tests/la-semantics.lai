@@ -1,3 +1,8 @@
+# Those tests should all pass other than an expected failure on a double operation
+# until commit ab0affa4b836b1c8a5830b1c3786c80b01318020. The test suite moved
+# to src/data/semantics/language/l-semantics.lai unit, and which it is the one
+# that follows development.
+
 loadfile ("argparse")
 
 var argparse = New Argparse (5, 0, "La data/tests/la-semantics.lai [options]")

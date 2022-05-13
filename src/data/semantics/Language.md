@@ -1,4 +1,3 @@
-
 A free form nice syntax with the flexibility of common established semantics by now.
 [a bad implementation with a bit of clever in places code - and an ugly first draft
 of this current document]
@@ -23,75 +22,77 @@ Basic DataTypes:
   - CFunctionType : C functions
   - ObjectType    : C objects
 
-keywords and Operators (reserved keywords):
-  var         -  variable definition
-  const       -  constant definition
-  func        -  function definition
-  lambda      -  lambda function
-  Type        -  user defined type
-  New         -  initializer for user defined types
-  if          -  if conditional
-  ifnot       -  ifnot conditional
-  else        -  else clause
-  else if     -  else if clause
-  else ifnot  -  else ifnot clause
-  then/orelse -  control single conditional statements and expressions
-  while       -  while loop
-  for         -  for loop
-  loop        -  loop loop
-  forever     -  forever loop
-  repeat/until-  repeat/until loop
-  return      -  return statement
-  break       -  break statement
-  continue    -  continue statement
-  override    -  overriding attribute
-  *           -  multiplication
-  /           -  division
-  %           -  modulo
-  +           -  addition
-                 for strings this is a concatenation operator. In that case
-                 an integer operand, it has the value of the string representation
-                 and may be valid, if it is in the UTF8 range. If it is not
-                 the result is unspecified.
-  -           -  subtract
-  &           -  bit and
-  |           -  bit or
-  ^           -  bit xor
-  >>          -  shift right
-  <<          -  shift left
-  and         -  logical and
-  &&          -  likewise
-  or          -  logical or
-  ||          -  likewise
-  is          -  equal
-  ==          -  likewise
-  isnot       -  not equal
-  !=          -  likewise
-  <           -  less than
-  <=          -  less or equal than
-  >           -  greater
-  >=          -  greater or equal than
-  +=          -  increment variable value and assign the result
-                 if the first operand is a string then:
-                   if the second operand is a string then appends this string
-                   else if the second operand is an integer type, then it
-                   appends a byte if it is within the ascii range or else a
-                   multibyte sequence to form the character
-  -=          -  decrement variable and assign the result
-  *=          -  multiply          -||-
-  /=          -  divide            -||-
-  %=          -  modulo            -||-
-  |=          -  bit or            -||-
-  &=          -  bit and           -||-
-  ^=          -  bit xor           -||-
-  ok          - 0
-  notok       - -1
-  true        - 1
-  false       - 0
-
+keywords and Operators (reserved keywords):  
+```sh
+#  var         -  variable definition
+#  const       -  constant definition
+#  func        -  function definition
+#  lambda      -  lambda function
+#  Type        -  user defined type
+#  New         -  initializer for user defined types
+#  if          -  if conditional
+#  ifnot       -  ifnot conditional
+#  else        -  else clause
+#  else if     -  else if clause
+#  else ifnot  -  else ifnot clause
+#  then/orelse -  control single conditional statements and expressions
+#  while       -  while loop
+#  for         -  for loop
+#  forever     -  forever loop
+#  repeat/until-  repeat/until loop
+#  return      -  return statement
+#  break       -  break statement
+#  continue    -  continue statement
+#  override    -  overriding attribute
+#  *           -  multiplication
+#  /           -  division
+#  %           -  modulo
+#  +           -  addition
+#                 for strings this is a concatenation operator. In that case
+#                 an integer operand, it has the value of the string representation
+#                 and may be valid, if it is in the UTF8 range. If it is not
+#                 the result is unspecified.
+#  -           -  subtract
+#  &           -  bit and
+#  |           -  bit or
+#  ^           -  bit xor
+#  >>          -  shift right
+#  <<          -  shift left
+#  and         -  logical and
+#  &&          -  likewise
+#  or          -  logical or
+#  ||          -  likewise
+#  is          -  equal
+#  ==          -  likewise
+#  isnot       -  not equal
+#  !=          -  likewise
+#  <           -  less than
+#  <=          -  less or equal than
+#  >           -  greater
+#  >=          -  greater or equal than
+#  +=          -  increment variable value and assign the result
+#                 if the first operand is a string then:
+#                   if the second operand is a string then appends this string
+#                   else if the second operand is an integer type, then it
+#                   appends a byte if it is within the ascii range or else a
+#                   multibyte sequence to form the character
+#  -=          -  decrement variable and assign the result
+#  *=          -  multiply          -||-
+#  /=          -  divide            -||-
+#  %=          -  modulo            -||-
+#  |=          -  bit or            -||-
+#  &=          -  bit and           -||-
+#  ^=          -  bit xor           -||-
+#  ok          - 0
+#  notok       - -1
+#  true        - 1
+#  false       - 0
+```
 Comments.
+
   Single line comments that start with ('# ') and end up to the end of the line.
-  The space after the hash symbol it is siginificant.
+  The space after the hash symbol it is siginificant as there is code that uses
+  comments to parse applications annotations or macros, so it can be misinterpreted.
 
 ```js
   # Variable declaration:
@@ -179,9 +180,9 @@ Comments.
   # Functions can call themeselves:
 
   func fibo_tail (n, a, b) {
-    ifnot (n) return a
+    return a ifnot n
 
-    if (n == 1) return b
+    return b if n is 1
 
     return fibo_tail (n - 1, b, a + b)
   }
@@ -189,7 +190,7 @@ Comments.
   # or
 
   func fibo_recursive (n) {
-    if (n < 2) return n
+    return n if n < 2
     return fibo_recursive (n - 1) + fibo_recursive (n - 2)
   }
 
@@ -209,7 +210,7 @@ Comments.
   return fibo_tail (n - 1, b, a + b)
 
   # Functions always return a value and functions that don't return a value.
-  # This value is `null` by default. For C functionsthis is guarranteed by the
+  # This value is `null` by default. For C functions this is guarranteed by the
   # function signature, which is always a VALUE type.
 
   # Functions can be anonymous.
@@ -249,9 +250,9 @@ Comments.
 
   # if/else if/else
   func ifelseif (x) {
-    if x == "x" {
+    if x is "x" {
       return "x"
-    } else if x == "y" {
+    } else if x is "y" {
       return "y"
     } else {
       return "xy"
@@ -268,34 +269,29 @@ Comments.
   # for
   var sum = 1
   func forfun (x) {
-    for var i = 0; i < x; i += 1 {
+    for (var i = 1; i <= x; i++) {
       sum += i
     }
+    return sum
   }
 
-  println (forfun (10)) # this it will print (null) as the function it
-  # didn't return a value.
+  println (forfun (10)) # 55
 
   # likewise with a while:
 
-  sum = 1
+  sum = 0
   func forwhile (x) {
-    var i = 0
-    while i < x {
+    var i = 1
+    while i <= x {
       sum += i
-      i += 1
+      i++
     }
   }
 
-  println (sum) # => 46
+  # for nth times { block }
 
-  # loop (loop for nth times):
-
-  # loop num iterations { block }
-
-  # alternatively
-
-  # loop (init_statement[[s], ...]; num iterations) { block }
+  sum = 1
+  for 10 times { sum *= 2; println (sum) } # 1024
 
   # forever loop (like a for (;;) or while (true) in C):
 
@@ -303,16 +299,14 @@ Comments.
 
   # alternatively
 
-  #  forever (init_statement[[s], ...]) { block }
-
-  # repeat/untiil loop (do/while in C)
+  # do/while loop
 
   func forwhiledo (x) {
     var i = 0
-    repeat {
+    do {
       sum += i
-      i += 1
-    }  until (i < x)
+      i++
+    }  while i < x
   }
 
   print ("all the results should be ${sum}\n")
@@ -320,7 +314,7 @@ Comments.
   # For all the cases the pair of '{}' braces are mandatory, unless their
   # body consists of a single statement, or expression, so this is valid:
 
-  for var i = 0; i < 10; i++ println (i)
+  for (var i = 0; i < 10; i++) println (i)
 
   # Above we saw that the print functions can use interpolation syntax
   # for formated strings, By default it determinates the convertion based
@@ -390,7 +384,7 @@ Comments.
   }
 
   # Testing for string equality for a public property.
-  println (dadamap."again visible" == "Visibility it is public by default.") # => 1
+  println (dadamap."again visible" is "Visibility it is public by default.") # => 1
 
   # But this will raises an error:
     # println (dadamap.back_to_privacy)
@@ -492,7 +486,7 @@ Probably this will be a very messy output."
   # byte semantics, that means it points to the underlying byte.
 
   var la = "la"
-  println (la[0] == 'l') # => 1
+  println (la[0] is 'l') # => 1
 
   # Here also we see that individual characters can be enclosed in single quotes,
   # that they should point to the associated integer value, again like C does.
@@ -1506,4 +1500,4 @@ best way. The memory managment is terrible, but still all the known code by now
 pass valgrind tough debugging.
 I have never really started the elementary education in my youth. I started C
 at 52 while I'm walking at fifty six at the time of writting, are some of other
-excuses. I also had to raise four kids at the forests for some quite some time.
+excuses. We also had to raise four kids at the forests for some quite some time.

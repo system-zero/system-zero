@@ -2,8 +2,6 @@ var name = __file__: path_basename_sans_extname ()
 var version = "1.4.3"
 var spec = New PackmanSpec (name)
 
-this.libgit2_prefix = this.get.sysdir ()
-
 return Packman.new.spec ({
   name          : name
   descr         : "libgit2 is a portable, pure C implementation of the Git core"
@@ -18,7 +16,7 @@ return Packman.new.spec ({
     Packman.extract (),
     Packman.eval (null, `Dir.make ("build", 0755); Dir.change ("build")`),
     Packman.command ("[generating cmakefiles]",
-      "cmake .. -DCMAKE_INSTALL_PREFIX=" + this.libgit2_prefix +
+      "cmake .. -DCMAKE_INSTALL_PREFIX=" + this.get.sysdir () +
       " -DCMAKE_BUILD_TYPE=Release" +
       " -DBUILD_TESTS=OFF"),
     Packman.command ("[cmake build]", "cmake --build . --target install")

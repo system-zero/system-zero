@@ -232,6 +232,7 @@ static video_t *video_paint_rows_with (video_t *this, int row, int f_col, int l_
   video_flush (this, this->tmp_render);
   return this;
 }
+
 public video_T __init_video__ (void) {
   __INIT__ (string);
   __INIT__ (cstring);

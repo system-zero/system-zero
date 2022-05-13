@@ -893,10 +893,6 @@ clean-libcontain-shared:
 clean-libcontain-static:
 	@cd $(Z_CONTAIN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-# working library with two interfaces:
-#   - a quite minimal http[s] client that can link against for both openssl and libressl
-#   - a wrapper around libcurl, thus this it can get very rich as we like
-# so the path isn't quite up yet, but the target stays for development reasons.
 libnet-shared: Env cenv liburl-shared
 	@cd $(Z_NET_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
@@ -1377,7 +1373,7 @@ zero-shared:  Env cenv list\
               libsha512-shared librandom-shared libcontain-shared\
               liburl-shared libdl-shared\
               libsun-shared libmoon-shared\
-              libman-shared\
+              libman-shared libnet-shared\
               zs-shared zsu-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
@@ -1395,7 +1391,7 @@ zero-static:  Env cenv list\
               libsha512-static librandom-static libcontain-static\
               liburl-static libdl-static\
               libsun-static libmoon-static\
-              libman-static\
+              libman-static libnet-static\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
@@ -1425,7 +1421,7 @@ zero-clean-shared:\
               clean-librandom-shared clean-libcontain-shared\
               clean-liburl-shared clean-libdl-shared\
               clean-libmoon-shared clean-libsun-shared\
-              clean-libman-shared\
+              clean-libman-shared clean-libnet-shared\
               clean-zs-shared clean-zsu-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
@@ -1457,7 +1453,7 @@ zero-clean-static:\
               clean-librandom-static clean-libcontain-static\
               clean-liburl-static clean-libdl-static\
               clean-libmoon-static clean-libsun-static\
-              clean-libman-static\
+              clean-libman-static clean-libnet-static\
               clean-zs-static clean-zsu-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\

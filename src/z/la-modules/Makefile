@@ -25,7 +25,8 @@ shared: Env clean-shared path-module-shared file-module-shared\
         sh-module-shared os-module-shared sys-module-shared\
         time-module-shared crypt-module-shared rand-module-shared\
         io-module-shared url-module-shared dl-module-shared\
-        sun-module-shared moon-module-shared man-module-shared
+        sun-module-shared moon-module-shared man-module-shared\
+        net-module-shared
 
 clean: clean-shared
 
@@ -34,7 +35,8 @@ clean-shared: clean-path-shared clean-file-shared clean-std-shared\
               clean-os-shared clean-sys-shared clean-time-shared\
               clean-crypt-shared clean-rand-shared clean-io-shared\
               clean-url-shared clean-dl-shared\
-              clean-sun-shared clean-moon-shared clean-man-shared
+              clean-sun-shared clean-moon-shared clean-man-shared\
+              clean-net-shared
 
 #-----------------------------------------------------------
 MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC

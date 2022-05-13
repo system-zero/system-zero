@@ -68,39 +68,39 @@ Type PackmanSpec {
 
   public
   set : {
-    md        : func (md)      this.md = md
-    home      : func (home)    this.home = home
-    repo      : func (repo)    this.repo = repo
-    type      : func (type)    this.type = type
-    descr     : func (descr)   this.descr = descr
-    md_type   : func (type)    this.md_type = type
-    build     : func (build)   this.build = build
-    license   : func (lic)     this.license = lic
-    baseurl   : func (url)     this.baseurl = url
-    version   : func (vers)    this.version = vers
-    archive   : func (arch)    this.archive = arch
-    webarchive: func (arch)    this.webarchive = arch
-    sources   : func (src)     this.sources = src
-    extension : func (ext)     this.extension = ext
-    build_dirname : func (dir) this.build_dirname = dir
+    md            : func (md)    this.md = md
+    home          : func (home)  this.home = home
+    repo          : func (repo)  this.repo = repo
+    type          : func (type)  this.type = type
+    descr         : func (descr) this.descr = descr
+    md_type       : func (type)  this.md_type = type
+    build         : func (build) this.build = build
+    license       : func (lic)   this.license = lic
+    baseurl       : func (url)   this.baseurl = url
+    version       : func (vers)  this.version = vers
+    archive       : func (arch)  this.archive = arch
+    webarchive    : func (arch)  this.webarchive = arch
+    sources       : func (src)   this.sources = src
+    extension     : func (ext)   this.extension = ext
+    build_dirname : func (dir)  this.build_dirname = dir
   }
 
   get : {
-    name      : func return this.name
-    home      : func return this.home
-    repo      : func return this.repo
-    type      : func return this.type
-    descr     : func return this.descr
-    md        : func return this.md
-    md_type   : func return this.md_type
-    build     : func return this.build
-    license   : func return this.license
-    baseurl   : func return this.baseurl
-    version   : func return this.version
-    archive   : func return this.archive
-    webarchive: func return this.webarchive
-    sources   : func return this.sources
-    extension : func return this.extension
+    name          : func return this.name
+    home          : func return this.home
+    repo          : func return this.repo
+    type          : func return this.type
+    descr         : func return this.descr
+    md            : func return this.md
+    md_type       : func return this.md_type
+    build         : func return this.build
+    license       : func return this.license
+    baseurl       : func return this.baseurl
+    version       : func return this.version
+    archive       : func return this.archive
+    webarchive    : func return this.webarchive
+    sources       : func return this.sources
+    extension     : func return this.extension
     build_dirname : func return this.build_dirname
   }
 
@@ -253,6 +253,9 @@ Type Packman {
   }
 
   md_check :  func {
+    var verb = qualifier ("verbose", 0)
+    var fp = qualifier ("out_stream", stdout) 
+
     if this.spec is null {
       println (stderr, "spec hasn't been set")
       return notok
@@ -267,9 +270,6 @@ Type Packman {
 
     var md_type = if this.spec.md_type is null then MD5TYPE
                   orelse this.spec.md_type
-
-    var verb = qualifier ("verbose", 0)
-    var fp = qualifier ("out_stream", stdout) 
 
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
@@ -341,8 +341,6 @@ Type Packman {
 
     return notok if this.sources_dir: path_concat (this.spec.sources): file_copy (
        "."; force : 1, recursive : 1, update : 1, verbose : 2) is notok
-
-
   }
 
   change_to_build_dirname : func {
@@ -408,10 +406,14 @@ Type Packman {
       return ar ifnot verb
       for |v| in ar
         println (fp, v)
+      return ar
     }
   }
 
   info : func {
+    var verb = qualifier ("verbose", 1)
+    var fp = qualifier ("out_stream", stdout)
+
     var msg =
       "PLATFORM         : " + this.platform + "\n" +
       "ARCHITECTURE     : " + this.arch     + "\n" +
@@ -421,9 +423,6 @@ Type Packman {
       "BUILD  DIRECTORY : " + this.builddir + "\n" +
       "USER             : " + this.user     + "\n" +
       "GROUP            : " + this.group    + "\n"
-
-    var verb = qualifier ("verbose", 1)
-    var fp = qualifier ("out_stream", stdout)
 
     if verb then println (fp, msg)
 
@@ -497,7 +496,7 @@ Type Packman {
       if this.spec.license isnot null then println ("License: ${this.spec.license}")
     }
 
-    loop (1) {
+    for 1 time {
       for |action| in this.spec.build {
         if this.verbose is true then
           ifnot null is action.msg then println (action.msg)
@@ -597,7 +596,6 @@ Type Packman {
 
           continue
         }
-
       }
 
       retval = ok
