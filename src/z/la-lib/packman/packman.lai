@@ -401,10 +401,10 @@ Type Packman {
       var fp = qualifier ("out_stream", stdout) 
       var ar = this.spec_dir: dir_list ()
       return null if null is ar
-      for |i, v| in ar
+      for i, v in ar
         ar[i] = v: path_basename_sans_extname ()
       return ar ifnot verb
-      for |v| in ar
+      for v in ar
         println (fp, v)
       return ar
     }
@@ -497,7 +497,7 @@ Type Packman {
     }
 
     for 1 time {
-      for |action| in this.spec.build {
+      for action in this.spec.build {
         if this.verbose is true then
           ifnot null is action.msg then println (action.msg)
 
@@ -694,7 +694,7 @@ public const Packman = {
 
           } else if typeof (s.build) is ListType {
             var map[0] build
-            for |v| in s.build
+            for v in s.build
               append v in build
 
             specnew.set.build (build)

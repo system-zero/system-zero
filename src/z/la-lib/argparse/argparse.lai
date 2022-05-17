@@ -40,10 +40,10 @@ Type Argparse {
     this.message   = message
     this.types     = integer[num_options]
     this.flags     = integer[num_options]
-    this.name        = string[num_options]
     this.shortopts = integer[num_options]
-    this.longopts  = string[num_options]
-    this.descr     = string[num_options]
+    this.name       = string[num_options]
+    this.longopts   = string[num_options]
+    this.descr      = string[num_options]
     this.verbose                = (flags & ARGPARSE_NO_VERBOSE is 0)
     this.exit_on_unknown        = (flags & ARGPARSE_DONOT_EXIT_ON_UNKNOWN is 0)
     this.print_and_exit_on_help = (flags & ARGPARSE_DONOT_PRINT_AND_EXIT_ON_HELP is 0)
@@ -52,7 +52,7 @@ Type Argparse {
   }
 
   parse_literal_arg : func (arg) {
-    for |j, opt| in this.longopts {
+    for j, opt in this.longopts {
       if (null isnot opt and opt: len ()) {
         if (opt: eq (arg)) {
           var type = this.types[j]
@@ -79,7 +79,7 @@ Type Argparse {
 
     var retval = false
 
-    for |c| in arg {
+    for c in arg {
       if (c is 'h') {
         if (this.short_h_is_help) {
           if (this.print_and_exit_on_help) {
@@ -91,29 +91,29 @@ Type Argparse {
       }
 
       retval = false
-      for |j, opt| in this.shortopts {
-        if (opt) {
-          continue if (c isnot opt)
+      for j, opt in this.shortopts {
+        if opt {
+          continue if c isnot opt
 
           retval = true
           var type = this.types[j]
           var name = this.name[j]
           var flags = this.flags[j]
 
-          if (type is IntegerType and flags & ARG_VALUE_APPEND) {
+          if type is IntegerType and flags & ARG_VALUE_APPEND {
             this.results.$(name)++
             # or more verbose
             # Map.set (this.results, name, this.results: get (name) + 1);
             break
           }
 
-          if (type is BooleanType) {
+          if type is BooleanType {
             this.results.$(name) = true
           } else {
-            if (flags & (ARG_VALUE_REQUIRED|ARG_VALUE_OPTIONAL)) {
-              if (this.curidx is this.input_argc - 1 or
-                  this.input_argv[this.curidx + 1][0] is '-') {
-                if (flags & ARG_VALUE_REQUIRED) {
+            if flags & (ARG_VALUE_REQUIRED|ARG_VALUE_OPTIONAL) {
+              if this.curidx is this.input_argc - 1 or
+                  this.input_argv[this.curidx + 1][0] is '-' {
+                if flags & ARG_VALUE_REQUIRED {
                   if this.verbose is true then
                     println (stderr, "error ${arg} argument awaits a value")
                   orelse
@@ -141,9 +141,9 @@ Type Argparse {
         }
       }
 
-      if (retval is false) {
-        if (this.exit_on_unknown) {
-          if (this.verbose) {
+      if retval is false {
+        if this.exit_on_unknown {
+          if this.verbose {
             println ("-${c: char ()}: unknown argument")
             this.print_description ()
           }
@@ -157,14 +157,14 @@ Type Argparse {
   }
 
   parse_opt_val : func (arg, flags, type, name) {
-    if (flags & ARG_VALUE_APPEND) {
+    if flags & ARG_VALUE_APPEND {
       flags &= ~ARG_VALUE_OPTIONAL
       flags |= ARG_VALUE_REQUIRED
     }
 
-    if (this.curidx is this.input_argc - 1 or
-       this.input_argv[this.curidx + 1][0] is '-') {
-      if (flags & ARG_VALUE_REQUIRED) {
+    if this.curidx is this.input_argc - 1 or
+       this.input_argv[this.curidx + 1][0] is '-' {
+      if flags & ARG_VALUE_REQUIRED {
         if this.verbose is true then
           println (stderr, "error ${arg} argument awaits a value")
         orelse
@@ -182,28 +182,26 @@ Type Argparse {
 
     this.curidx++
 
-    if (type is IntegerType) {
+    if type is IntegerType {
       this.results.$(name) = this.input_argv[this.curidx]: to_integer ()
-    } else if (type is BooleanType) {
+    } else if type is BooleanType {
       this.results.$(name) = this.input_argv[this.curidx]:
           to_integer (): if x < 0 or x > 1 then false orelse true end
-    } else if (type is StringType) {
+    } else if type is StringType {
        this.results.$(name) = this.input_argv[this.curidx]
-    } else if (type is ListType) {
+    } else if type is ListType {
       if this.results.$(name) is null then
          this.results.$(name) = list ()
 
       append this.input_argv[this.curidx] in this.results.$(name)
-      # list_append (this.results.$(name), this.input_argv[this.curidx])
     }
 
     return true
   }
 
   parse_long_arg : func (arg) {
-
-    if (arg is "--help") {
-      if (this.print_and_exit_on_help) {
+    if arg is "--help" {
+      if this.print_and_exit_on_help {
         this.print_description ()
         this.exit = true
         return 1
@@ -211,20 +209,20 @@ Type Argparse {
     }
 
     var found = false
-    for |j, opt| in this.longopts {
-      if (null isnot opt and opt: len ()) {
+    for j, opt in this.longopts {
+      if null isnot opt and opt: len () {
         var long = "--" + opt
         var long_len = long: len ()
 
-        if (long: eq_n (arg, long_len)) {
+        if long: eq_n (arg, long_len) {
           var type = this.types[j]
           var name = this.name[j]
           var flags = this.flags[j]
 
-          continue if (flags & ARG_LITERAL)
+          continue if flags & ARG_LITERAL
 
           found = true
-          ifnot (flags) {
+          ifnot flags {
             this.results.$(name) = 
               if type is IntegerType or type is BooleanType then true
               orelse if type is StringType then ""
@@ -240,15 +238,14 @@ Type Argparse {
 
           optval = String.advance (optval, 1);
 
-          if (vallen is optval: len ()) {
-            if (flags & ARG_VALUE_REQUIRED) {
+          if vallen is optval: len () {
+            if flags & ARG_VALUE_REQUIRED {
               if this.verbose is true then
                 println (stderr, "error ${arg} argument requires a value")
               orelse
                 this.err_message = format ("error ${arg} requires a value")
 
               return notok
-
             }
 
             this.results.$(name) = 
@@ -272,7 +269,7 @@ Type Argparse {
       }
     }
 
-    if (found is false) then this.argv[this.argc++] = arg
+    if found is false then this.argv[this.argc++] = arg
 
     return found
   }
@@ -285,9 +282,9 @@ Type Argparse {
       var slen = 0
       var is_short = 0
 
-      if (this.shortopts[i]) {
-        msg += "  -" + this.shortopts[i]
-        slen += 2
+      if this.shortopts[i] {
+        append "  -" + this.shortopts[i] in msg
+        append 2 in slen
         is_short = 1
       }
 
@@ -295,39 +292,39 @@ Type Argparse {
       var llen = 0
       var is_literal = 0
 
-      if (null isnot this.longopts[i]) {
+      if null isnot this.longopts[i] {
         llen = this.longopts[i]: len ()
-        if (llen) {
+        if llen {
           is_long = 1
           is_literal = this.flags[i] & ARG_LITERAL
 
-          if (is_short) {
+          if is_short {
             ifnot is_literal then msg += ",--" orelse msg += ","
             slen++
           } else {
             ifnot is_literal then msg += "  --" orelse msg += "  "
           }
 
-          msg += this.longopts[i]
+          append this.longopts[i] in msg
         }
       }
 
-      continue ifnot (is_short + is_long)
+      continue ifnot is_short + is_long
 
       var first = this.maxlen + 5
       var num_spaces = first - (llen + slen)
 
       if llen then ifnot is_literal then num_spaces -= 2
 
-      loop (num_spaces) msg += ' '
+      for num_spaces times append " " in msg
 
-      msg += "  " + this.descr[i] + "\n"
+      append "  " + this.descr[i] + "\n" in msg
     }
 
     println (msg)
   }
 
-public
+  public
   add : func (name, short, long, descr, type, flags) {
     this.idx++
     this.shortopts[this.idx] = short
@@ -341,7 +338,7 @@ public
       if type is IntegerType or type is BooleanType
         then false orelse null
 
-    ifnot (null is long) {
+    ifnot null is long {
       var llen = long: len ()
       if llen > this.maxlen then this.maxlen = llen
     }
@@ -357,18 +354,18 @@ public
     var retval = false
 
     for (this.curidx = 0; this.curidx < argc; this.curidx++) {
-      continue if (this.curidx < start)
+      continue if this.curidx < start
 
       var arg = argv[this.curidx]
 
-      if (arg is "--") {
+      if arg is "--" {
         for (var j = this.curidx + 1; j < argc; j++)
           this.argv[this.argc++] = this.input_argv[j]
 
         return ok
       }
 
-      if (arg[0] isnot '-') {
+      if arg[0] isnot '-' {
         continue if true is this.parse_literal_arg (arg)
 
         this.argv[this.argc++] = arg
@@ -393,9 +390,9 @@ public
 
       return notok if retval is notok
 
-      if (retval is false) {
-        if (this.exit_on_unknown) {
-          if (this.verbose) {
+      if retval is false {
+        if this.exit_on_unknown {
+          if this.verbose {
             println ("${%s, arg}: unknown argument")
             this.print_description ()
           }

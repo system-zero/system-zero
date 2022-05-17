@@ -577,18 +577,18 @@ func self_semantics () {
   var bar = [4, 5, 6]
   var car = [7, 8, 9]
 
-  for |v| in aar {
-    for |i, va| in bar {
-      for |ii, vaa| in car {
-        tsum += vaa
+  for v in aar {
+    for i, va in bar {
+      for ii, vaa in car {
+        append vaa in tsum
         break 1 if ii is 1
       }
 
-      tsum += va
+      append va in tsum
       break 1 if i is 1
     }
 
-    tsum += v
+    append v in tsum
   }
 
   var first_sum = tsum
@@ -596,53 +596,53 @@ func self_semantics () {
 
   tsum = 0
 
-  for |v| in aar {
-    for |i, j| in bar {
-      for |ii, k| in car {
-        tsum += k
+  for v in aar {
+    for i, j in bar {
+      for ii, k in car {
+        append k in tsum
         break 3 if ii is 2
       }
 
-      tsum += j
+      append j in tsum
       break 2 if i is 1
     }
 
-    tsum += v
+    append v in tsum
   }
 
   var second_sum = tsum
   var second_sum_should_be = 24
 
-  for |v| in aar {
-    for |i, j| in bar {
-      for |ii, k| in car {
-        tsum += k
+  for v in aar {
+    for i, j in bar {
+      for ii, k in car {
+        append k in tsum
         break 1 if ii is 1
       }
 
-      tsum += j
+      append j in tsum
       break 2 if i is 1
     }
 
-    tsum += v
+    append v in tsum
   }
 
   var third_sum = tsum
   var third_sum_should_be = 63
 
   tsum = 0
-  for |v| in aar {
-    for |i, j| in bar {
-      for |ii, k| in car {
-        tsum += k
+  for v in aar {
+    for i, j in bar {
+      for ii, k in car {
+        append k in tsum
         break 2 if ii is 1
       }
 
-      tsum += j
+      append j in tsum
       break 2 if i is 1
     }
 
-    tsum += v
+    append v in tsum
   }
 
   var fourth_sum = tsum
@@ -656,9 +656,9 @@ func self_semantics () {
 
   var bifnotsum = 0
   var aa = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-  for |v| in aa {
+  for v in aa {
     break ifnot v < 7
-    bifnotsum += v
+    append v in bifnotsum
   }
 
   var ifnotsum1 = 0
@@ -666,20 +666,20 @@ func self_semantics () {
   while iex < 10 {
     iex++
     break ifnot iex < 7
-    ifnotsum1 += iex
+    append iex in ifnotsum1
   }
 
   iex = -1
   var ifnotsum2 = 0
   do {
     break ifnot ++iex < 7
-    ifnotsum2 += iex
+    append iex in ifnotsum2
   } while iex < 10
 
   var ifnotsum3 = 0
   for (var i = 0; i < 10; i++) {
     break ifnot i < 7
-    ifnotsum3 += i
+    append i in ifnotsum3
   }
 
   assert_true ("testing boolean break",
@@ -695,7 +695,7 @@ func self_semantics () {
       var ign = 0
       var ign_str = "a"
       if i is 2 { i++; continue }
-      sum += ar[i]
+      append ar[i] in sum
       i++;
     }
 
@@ -710,21 +710,21 @@ func self_semantics () {
   var ifsum = 0
   for (var i = 0; i < 10; i++) {
     continue if i is 1 or i is 3 or i is 9
-    ifsum += i
+    append i in ifsum
   }
 
   var ifnotsum = 0
   for (var i = 0; i < 10; i++) {
     continue ifnot i is 2 or i is 4 or i is 8 or i is 9
-    ifnotsum += i
+    append i in ifnotsum
   }
 
   var aaa = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   var ifsum1 = 0
-  for |i| in aaa {
+  for i in aaa {
     continue if i is 7
     break if i is 8
-    ifsum1 += i
+    append i in ifsum1
   }
 
   assert_true ("testing boolean continue",
@@ -749,7 +749,7 @@ func self_semantics () {
   var rval = 20
   func rfunc (x) {
     return if x is 10
-    rval += x
+    append x in rval
   }
 
   rfunc (100)
@@ -930,15 +930,15 @@ func self_semantics () {
   assert_true ("testing `do/while` loop return statement", sum is 45)
 
   var map_sum = {
-    "res" : 0
-    "ara" : [1, 2, 3]
-    "arb" : [1, 2, 3]
-    "arc" : [1, 2, 3]
-    "calc" : func (v) {
+    res  : 0
+    ara  : [1, 2, 3]
+    arb  : [1, 2, 3]
+    arc  : [1, 2, 3]
+    calc : func (v) {
       this.res = v
-      for |i| in this.ara {
-        for |j| in this.arb {
-          for |k| in this.arc {
+      for i in this.ara {
+        for j in this.arb {
+          for k in this.arc {
             continue if i is 3 or j is 3 or k is 3
             this.res += (i + j + k)
           }
@@ -1032,7 +1032,7 @@ func self_semantics () {
   var s_iter = ""
   var n_chars = 0
 
-  for |c, v, w| in str_iter {
+  for c, v, w in str_iter {
     sum_i += c
     s_iter += v
     width += w
@@ -1046,7 +1046,7 @@ func self_semantics () {
   sum_i = 0
   var s_b = "asdf"
   var s_c = ""
-  for |c| in s_b {
+  for c in s_b {
     n_bytes++
     sum_i += c
     s_c += c
@@ -1778,11 +1778,11 @@ func self_semantics () {
     var ara = [1, 2, 3, 4, 5, 6]
 
     var sum_a = 0
-    for |v| in ara
+    for v in ara
       sum_a += v
 
     var sum_b = 0
-    for |i, v| in ara {
+    for i, v in ara {
       sum_b += v
       i++
     }
@@ -1790,20 +1790,20 @@ func self_semantics () {
     var str_ar = ["1", "2", "3", "4", "5", "6"]
     var str_a = ""
 
-    for |v| in str_ar
+    for v in str_ar
       str_a += v
 
     var array[1] x
     x[0] = [1, 2, 3]
     var sum_c = 0
-    for |v| in x[0]
+    for v in x[0]
       sum_c += v
 
     var mm = {
       "ar" : [1, 2, 3]
     }
     var sum_d = 0
-    for |v| in mm.ar
+    for v in mm.ar
       sum_d += v
 
     assert_true ("testing array iteration",
@@ -1840,7 +1840,7 @@ func self_semantics () {
       if s: typeof () is StringType then
         append s in a
       orelse
-        for |v| in s append v in a
+        for v in s append v in a
     }
 
     var axar = ["a", "b"]
@@ -1907,67 +1907,67 @@ func self_semantics () {
 
     assert_true ("testing map as a function argument", x (mapa) is 2 and x (mapa) is mapa.two)
 
-    func mapfa () return {"11" : 11, "12" : 12}
+    func mapfa () return {11 : 11, 12 : 12}
 
     var el = mapfa () 
     assert_true ("testing returning anonymous map from a function", el.11 is 11)
 
     func x (a) return a.key
 
-    assert_true ("testing anonymous map", x ({"key" : 22, "aa" : 2}) is 22)
+    assert_true ("testing anonymous map", x ({key : 22, aa : 2}) is 22)
 
-    var k = {"key" : 'k', "aa" : 2}.key
+    var k = {key : 'k', aa : 2}.key
     assert_true ("testing getting key from an anonymous map", k is 'k' and
        typeof (k) is IntegerType)
 
-    var s = {"key" : "string"}.key
+    var s = {key : "string"}.key
 
     assert_true ("testing getting string key from an anonymous map", s is "string" and
        typeof (s) is StringType)
 
-    var a = {"key" : ["string", "a", "z"]}.key
+    var a = {key : ["string", "a", "z"]}.key
     assert_true ("testing getting string array key from an anonymous map", a[0] is "string" and
        typeof (a) is ArrayType)
 
-    var maa = {"next" : {"next" : {"a" : "a"}}}
+    var maa = {next : {next : {a : "a"}}}
     var maaa = maa.next.next;
     assert_true ("testing assignment to a map subtype", maaa.a is "a")
 
-    var mb = {"next" : {"next" : {"a" : "aa"}}}.next.next
+    var mb = {next : {next : {a : "aa"}}}.next.next
     assert_true ("testing assignment to a direct map subtype", mb.a is "aa")
 
-    var mc = {"l" : 1, "next" : {"next" : {"key" : 1}}}
+    var mc = {l : 1, next : {next : {key : 1}}}
     mc.next.next.key = 2
     assert_true ("testing setting map value in arbitrary depth",
         mc.next.next.key is 2)
 
-    mc.next.next.next = {"next" : {"key" : "string"}}
+    mc.next.next.next = {next : {key : "string"}}
     assert_true ("testing setting map value in arbitrary depth as a new map",
         mc.next.next.next.next.key is "string")
 
     var mm = {
-      "a" : 11,
-      "b" : 22,
-      "c" : 33
+      a : 11,
+      b : 22,
+      c : 33
     }
 
     var sum = 0
-    for |k, v| in mm {
+    for k, v in mm {
       var ign = 0
       var ign_str = "a"
       continue if k is "c"
-      sum += v
+      append v in sum
     }
 
     var mmm = {
-      "ar" : integer[3],
-      "ara" : integer[3] = [4, 5, 6]
+      ar : integer[3],
+      ara : integer[3] = [4, 5, 6]
     }
     mmm.ar[0:] = [1, 2, 3]
     var sum_a = 0
 
-    for |v| in mmm.ar sum_a += v
-    for |v| in mmm.ara sum_a += v
+    for v in mmm.ar append v in sum_a
+    for v in mmm.ara append v in sum_a
 
     assert_true ("testing map iteration", sum is 33 and sum_a is 21)
 
@@ -1975,34 +1975,29 @@ func self_semantics () {
     var sum_pa = 0
     var mmmm = {
     private
-      "k" : 10,
+      k : 10
 
     public
-      "ka" : 10,
-      "kb" : 11,
-      # FIX: we can not put a comment after the func definition
-      "f"  : func
-        for |k, v| in this ifnot String.eq  (k, "f") then sum_p += v
-        # this reveals a tiny visual issue, as the connection is missing
-        # while reading the statement (you can feel it a small stop), so
-        # probably a `do` keyword it is justified.
-        # We can not also split the `for' tokens with the `for' body in a
-        # new line. This is because the function definition awaits one line
-        # of code. If we delimit the function body with braces, then we can
-        # split the statement, and then the block it makes sence.
+      ka : 10
+      kb : 11
+
+      f  : func {
+        for k, v in this
+          ifnot String.eq  (k, "f") then append v in sum_p
+      }
     }    
 
     mmmm.f ()
 
-    for |k, v| in mmmm
-      ifnot String.eq (k, "f") then sum_pa += v
+    for k, v in mmmm
+      ifnot String.eq (k, "f") then append v in sum_pa
 
     assert_true ("testing map iteration with members with private scope",
         sum_p is 31 and sum_pa is 21)
 
     var mapp = {
-      "i" : 1,
-      "a" : integer[2] = [0, 1]
+      i : 1,
+      a : integer[2] = [0, 1]
     }
 
     mapp.i += 19
@@ -2017,21 +2012,22 @@ func self_semantics () {
         mapp.a[0] is 10) 
 
     var subm = {
-      "k" : 11
-      "f" : func return this.k
+      k : 11
+      f : func return this.k
     }
 
     var parm = {
-      "k" : 22
-      "submap" : subm
+      k : 22
+      submap : subm
     }
 
     assert_true ("testing submap accessors", parm.submap.f () is 22 and
        parm.submap:f () is 11)
 
     var mmma = {
-      "f" : func return 1
+      f : func return 1
     }
+
     var res = mmma.f ()
     func t return 11
     override mmma.f = t
@@ -2039,7 +2035,7 @@ func self_semantics () {
     assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
 
     var crzy = "key"
-    var dmap = {$(crzy) : 1, "submap" : {"skey" : 2}}
+    var dmap = {$(crzy) : 1, submap : {skey : 2}}
     var new = "new"
     var submp = "submap"
     dmap.$("new") = 10
@@ -2098,9 +2094,9 @@ func self_semantics () {
 
     var sum = 0
     var sun = ""
-    for |v| in l {
-      if typeof (v) is StringType then sun += v
-      if typeof (v) is IntegerType then sum += v
+    for v in l {
+      if typeof (v) is StringType then append v in sun
+      if typeof (v) is IntegerType then append v in sum
     }
 
     var sa = l: pop_at (1)
@@ -2269,9 +2265,9 @@ func self_semantics () {
     var sc = "${%s, sb}"
     var ff = "${%s, sc}": format (): format ()
     var xa = [1, 2, 3]: len ()
-    var xm = {"k" : 1, "l" : 2, "sub" : {"ka" : 1, "ar" : [1, 1, 3] } }
+    var xm = {k : 1, l : 2, sub : {ka : 1, ar : [1, 1, 3] } }
     var xk = xm:keys (): len ()
-    var mx = {"k" : 1, "l" : 2}: len ()
+    var mx = {k : 1, l : 2}: len ()
     var ll = 12342: lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
     var ms = xm.sub: keys (): len ()
     var mp = xm.sub.ar: where (1): len ()

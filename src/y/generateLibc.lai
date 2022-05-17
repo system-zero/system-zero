@@ -50,7 +50,7 @@ public func libc_generate (argc, argv) {
     argparse.results.outputDir:  if x is null then default.dirname orelse x end
 
   var outputDir  = thisDir: concat_with (directoryName)
-  ifnot (outputDir: file_exists  ()) then make_directory (outputDir, 0755)
+  ifnot outputDir: file_exists  () then make_directory (outputDir, 0755)
   ifnot outputDir: is_directory () {
     if verbose then println (stderr, "${outputDir}: is not a directory")
     return notok
@@ -76,7 +76,7 @@ public func libc_generate (argc, argv) {
     "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
     "time"]
 
-  var funcSigns = "/* Function Signatures */\n"
+  var funcSigns = "\n/* Function Signatures */\n"
   var libcFuns  = "\n"
   var libcTypes = "\n    /* Types */\n"
   var licenses  = "\n    /* LICENSES */\n\n"
@@ -133,20 +133,20 @@ public func libc_generate (argc, argv) {
     }
   } 
 
-  for |v| in dirs {
+  for v in dirs {
     if v isnot "syscall" append format ("/* ${v} */") in libcFuns
 
     var dir = libcDir: concat_with (v)
     var arr = dir: dir_list ()
 
-    for |f| in arr {
+    for f in arr {
       var fn = dir: concat_with (f)
       var lines = fn: filelines ()
 
       if f: eq_n ("LICENSE_", 8) {
         var sp = f: advance_after_bytes ("LICENSE_", 1)
         append format ("/* ${sp} License */\n") in licenses
-        for |line| in lines append line + "\n" in licenses
+        for line in lines append line + "\n" in licenses
         append "\n" in licenses
         continue
       }
@@ -165,7 +165,7 @@ public func libc_generate (argc, argv) {
          # so we can open it with 'gf'
         append "/* " + (dotsToLibc: concat_with ("syscall/syscall.c")) + " */\n" in libcFuns
 
-        for |line| in lines append line + '\n' in libcFuns
+        for line in lines append line + '\n' in libcFuns
         append "\n" in libcFuns
         append "/* Function Implementation */\n" in libcFuns
         continue
@@ -200,7 +200,7 @@ public func libc_generate (argc, argv) {
             idx++
 
           } else {
-            ifnot (num_found)
+            ifnot num_found
               if verbose then println (stderr, "${v}/${f}: is missing a '// provides: ' token")
             break
           }
@@ -214,11 +214,11 @@ public func libc_generate (argc, argv) {
       for (var i = idx; i < lines: len (); i++) {
         var line = lines[idx]
         var sp = line: bytes_in_str (require_str)
-        break if (null is sp)
+        break if null is sp
 
         sp = sp: advance_after_bytes (require_str, 1)
         var tok = sp: tokenize ("/")
-        if (tok: len () < 1) break;
+        break if tok: len () < 1
 
         var unit = tok[-1]
         var ext = unit: extname (): to_upper (): advance (1)
@@ -247,7 +247,7 @@ public func libc_generate (argc, argv) {
       for (var i = idx; i < lines: len (); i++) {
         var line = lines[idx]
         var sp = line: bytes_in_str (comment_str)
-        break if (null is sp)
+        break if null is sp
         sp = sp: advance_after_bytes (comment_str, 1)
         append sp + "\n" in comments
         idx++
@@ -291,7 +291,7 @@ public func libc_generate (argc, argv) {
     if v isnot "syscall" append format ("/* ${v} */\n\n") in libcFuns
   }
 
-  for |k, v| in filelist {
+  for k, v in filelist {
     var lines = v.abspath: filelines ()
     var idx = v.endidx
 

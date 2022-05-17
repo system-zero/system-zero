@@ -246,8 +246,8 @@ Type Make {
   }
 
   init_cflags : func {
-    for |v| in this.includedirs append "-I" + v      in this.cflags
-    for |v| in this.libdirs     append "-L" + v      in this.cflags
+    for v in this.includedirs append "-I" + v      in this.cflags
+    for v in this.libdirs     append "-L" + v      in this.cflags
 
     append "-Wall"                                   in this.cflags
     append "-Wno-override-init"                      in this.cflags
@@ -361,7 +361,7 @@ Type Make {
   record : func (sources) {
     if this.recorded is null then this.recorded = {}
 
-    for |v| in sources {
+    for v in sources {
       continue if key_exists (this.recorded, v)
       continue ifnot v: exists ()
       var st = v: stat ()
@@ -390,7 +390,7 @@ Type Make {
 
     var type = target: typeof ()
     if type is ArrayType or type is ListType {
-      for |v| in target ifnot v: exists () return true
+      for v in target return true ifnot v: exists ()
     } else {
       return true ifnot target: exists ()
     }
@@ -401,7 +401,7 @@ Type Make {
     return notok if r is notok
     return true  if r is true
 
-    for |v| in sources {
+    for v in sources {
       return true ifnot   this.cached: key_exists (v)
       return true ifnot this.recorded: key_exists (v)
 
@@ -501,7 +501,7 @@ Type Make {
     return if null is v
     var t =  v: typeof ()
     if t is ArrayType then
-      for |f| in v append f in l
+      for f in v append f in l
     orelse
       if t is StringType then append v in l
   }
@@ -526,13 +526,13 @@ Type Make {
     append " " + this.march        in com
     append " " + this.optimization in com
 
-    for |v| in this.cflags if v isnot null append " " + v in com
+    for v in this.cflags if v isnot null append " " + v in com
 
     append " -shared -fPIC" in com
 
     var string[this.shared_library_sources: len ()] objects
 
-    for |i, v| in this.shared_library_sources {
+    for i, v in this.shared_library_sources {
       var oo = "build/" + v: path_basename_sans_extname () + ".o"
       objects[i] = oo
     }
@@ -540,7 +540,7 @@ Type Make {
     var n = 0
 
     var r
-    for |i, v| in objects {
+    for i, v in objects {
       r = this.should_make (v, [this.shared_library_sources[i]], this.force_shared_library)
       return notok if r is notok
       continue if r is false
@@ -564,12 +564,12 @@ Type Make {
 
     return ok ifnot n
 
-    for |v| in this.shared_library.cflags       if v isnot null append " " + v in com
-    for |v| in this.linkagainst.shared_library  if v isnot null append " " + v in com
+    for v in this.shared_library.cflags       if v isnot null append " " + v in com
+    for v in this.linkagainst.shared_library  if v isnot null append " " + v in com
 
     if this.rpath then append " -Wl,-rpath=" + this.libdir in com
 
-    for |v| in objects append " " + v in com
+    for v in objects append " " + v in com
 
     var output = this.libdir: concat_with (this.liboutput + ".so")
     append " -o " + output in com
@@ -596,7 +596,7 @@ Type Make {
 
     if this.cc isnot "tcc" then append " -z muldefs" in com
 
-    for |v| in this.cflags if v isnot null append " " + v  in com
+    for v in this.cflags if v isnot null append " " + v  in com
     if this.rpath then append " -Wl,-rpath=" + this.libdir in com
     append " -DSTATIC -static" in com
 
@@ -604,7 +604,7 @@ Type Make {
 
     var string[this.static_library_sources: len ()] objects
 
-    for |i, v| in this.static_library_sources {
+    for i, v in this.static_library_sources {
       var oo = "build/" + (v: path_basename_sans_extname ()) + ".o"
       objects[i] = oo
     }
@@ -612,7 +612,7 @@ Type Make {
     var n = 0
 
     var r
-    for |i, v| in objects {
+    for i, v in objects {
       r = this.should_make (v, [this.static_library_sources[i]], this.force_static_library)
       return notok if r is notok
       continue if r is false
@@ -640,7 +640,7 @@ Type Make {
 
     com = "ar rs " + output
 
-    for |v| in objects append " " + v in com
+    for v in objects append " " + v in com
 
     if this.verbose then println (com)
     r = this.sh: exec (com)
@@ -699,7 +699,7 @@ Type Make {
 
     return notok if notok is write (fd, "this.cached = {\n")
 
-    for |k, v| in this.recorded {
+    for k, v in this.recorded {
       return notok if notok is write (fd, "  \"" + k + "\" : {\n    mtime : ")
       return notok if notok is write (fd, format ("${v.mtime}"))
       return notok if notok is write (fd, "\n    base : \"" + v.base + "\"\n")
@@ -924,7 +924,7 @@ Type Make {
       return ok if null is this.script_sources
 
       var sources = list ()
-      for |v| in this.script_sources append v + ".lai" in sources
+      for v in this.script_sources append v + ".lai" in sources
 
       this.record (sources)
 
@@ -940,7 +940,7 @@ Type Make {
 
       var targets = list ()
 
-      for |v| in this.script_sources {
+      for v in this.script_sources {
         append this.bindir: concat_with (v)             in targets
         append this.bindir: concat_with (v) + "-static" in targets
       }
@@ -951,7 +951,7 @@ Type Make {
 
       r = notok
       var idx = 0
-      for |v| in sources {
+      for v in sources {
         continue ifnot v: exists ()
 
         var read_fd = open (v, O_RDONLY, 0)
@@ -979,7 +979,7 @@ Type Make {
       }
 
       if r is ok then
-        for |v| in this.script_sources this.install_data (v)
+        for v in this.script_sources this.install_data (v)
 
       return this.endbuild (r)
     }
@@ -1019,16 +1019,16 @@ Type Make {
         append " " + this.march        in com
         append " " + this.optimization in com
 
-        for |v| in this.cflags                      if v isnot null append " " + v in com
-        for |v| in this.shared_library.cflags       if v isnot null append " " + v in com
-        for |v| in this.linkagainst.shared_library  if v isnot null append " " + v in com
+        for v in this.cflags                      if v isnot null append " " + v in com
+        for v in this.shared_library.cflags       if v isnot null append " " + v in com
+        for v in this.linkagainst.shared_library  if v isnot null append " " + v in com
 
         if this.rpath then append " -Wl,-rpath=" + this.libdir      in com
 
         append " -shared -fPIC" in com
         append " -o " + output  in com
 
-        for |v| in this.shared_library_sources if v isnot null then append " " + v in com
+        for v in this.shared_library_sources if v isnot null then append " " + v in com
 
         if this.dump_commands {
           println ("# making the shared library")
@@ -1078,15 +1078,15 @@ Type Make {
         append " " + this.march        in com
         append " " + this.optimization in com
 
-        for |v| in this.cflags                         if v isnot null append " " + v in com
-        for |v| in this.shared_executable.cflags       if v isnot null append " " + v in com
-        for |v| in this.linkagainst.shared_executable  if v isnot null append " " + v in com
+        for v in this.cflags                         if v isnot null append " " + v in com
+        for v in this.shared_executable.cflags       if v isnot null append " " + v in com
+        for v in this.linkagainst.shared_executable  if v isnot null append " " + v in com
 
         if this.rpath then append " -Wl,-rpath=" + this.libdir in com
 
         append " -o " + output in com
 
-        for |v| in this.shared_executable_sources if v isnot null then append " " + v in com
+        for v in this.shared_executable_sources if v isnot null then append " " + v in com
 
         if this.dump_commands {
           println ("# making the shared executable")
@@ -1148,15 +1148,15 @@ Type Make {
         append " " + this.march        in com
         append " " + this.optimization in com
 
-        for |v| in this.cflags                     if v isnot null append " " + v in com
-        for |v| in this.shared_module.cflags       if v isnot null append " " + v in com
-        for |v| in this.linkagainst.shared_module  if v isnot null append " " + v in com
+        for v in this.cflags                     if v isnot null append " " + v in com
+        for v in this.shared_module.cflags       if v isnot null append " " + v in com
+        for v in this.linkagainst.shared_module  if v isnot null append " " + v in com
 
         append " -shared -fPIC" in com
         append " -lla -lstring -lvmap -lvstring" in com
         append " -o " + output in com
 
-        for |v| in this.shared_module_sources if v isnot null then append " " + v in com
+        for v in this.shared_module_sources if v isnot null then append " " + v in com
 
         if this.dump_commands {
           println ("# making the shared module")
@@ -1207,16 +1207,16 @@ Type Make {
 
         var com = this.cc + " -std=" + this.std
 
-        for |v| in this.static_library_sources if v isnot null then append " " + v in com
+        for v in this.static_library_sources if v isnot null then append " " + v in com
 
         append " " + this.march        in com
         append " " + this.optimization in com
 
         if this.cc isnot "tcc" then append " -z muldefs" in com
 
-        for |v| in this.cflags                     if v isnot null append " " + v in com
-        for |v| in this.static_library.cflags      if v isnot null append " " + v in com
-        for |v| in this.linkagainst.static_library if v isnot null append " " + v in com
+        for v in this.cflags                     if v isnot null append " " + v in com
+        for v in this.static_library.cflags      if v isnot null append " " + v in com
+        for v in this.linkagainst.static_library if v isnot null append " " + v in com
 
         append " -DSTATIC"                    in com
         append " -static -c"                  in com
@@ -1271,7 +1271,7 @@ Type Make {
 
         var com = this.cc + " -std=" + this.std
 
-        for |v| in this.static_executable_sources if v isnot null then append " " + v in com
+        for v in this.static_executable_sources if v isnot null then append " " + v in com
 
         append " " + this.march        in com
         append " " + this.optimization in com
@@ -1280,9 +1280,9 @@ Type Make {
 
         if this.cc isnot "tcc" then append " -z muldefs" in com
 
-        for |v| in this.cflags                        if v isnot null append " " + v in com
-        for |v| in this.static_executable.cflags      if v isnot null append " " + v in com
-        for |v| in this.linkagainst.static_executable if v isnot null append " " + v in com
+        for v in this.cflags                        if v isnot null append " " + v in com
+        for v in this.static_executable.cflags      if v isnot null append " " + v in com
+        for v in this.linkagainst.static_executable if v isnot null append " " + v in com
 
         append " -o " + output in com
 
@@ -1364,8 +1364,8 @@ func get_dependencies (dir) {
     }
 
     ifnot null is dep {
-      for |k, v| in Dependencies {
-        for |d| in v.deps {
+      for k, v in Dependencies {
+        for d in v.deps {
           if dep is d {
             append_target (d)
             return ok
@@ -1383,7 +1383,7 @@ func get_dependencies (dir) {
 
   return ok ifnot len (Dependencies.$(file).deps)
 
-  for |d| in Dependencies.$(file).deps {
+  for d in Dependencies.$(file).deps {
     if d isnot null then
       return notok if notok is get_dependencies (d)
   }
@@ -1461,11 +1461,11 @@ func get_dependencies (dir) {
   var dlen = DEPENDENCIES: len ()
   var deps = string[dlen]
 
-  for |k, v| in DEPENDENCIES deps[dlen - v.id] = k
+  for k, v in DEPENDENCIES deps[dlen - v.id] = k
 
   var retval = ok
 
-  for |i, v| in deps {
+  for i, v in deps {
     return notok ifnot v: exists ()
 
     var is_the_last = i is (dlen - 1)

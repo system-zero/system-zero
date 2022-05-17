@@ -424,7 +424,7 @@ Comments.
 
   # There is a convienent way to loop over a map:
 
-  for |key, value| in dadamap println ("${key} : ${value}")
+  for key, value in dadamap println ("${key} : ${value}")
   # The private fields, should not be printed in this case.
 
   # Strings
@@ -454,20 +454,20 @@ Comments.
 
   # First form is iteration over the bytes:
 
-  # for |c| in str { block }
+  # for c in str { block }
 
   var byte_semantics = "byte samantics"
-  for |c| in byte_semantics println (c)
+  for c in byte_semantics println (c)
 
   # in this case 'c' holds the integer value of the underlying byte.
 
   # Second form is iteration over the characters:
 
-  # for |c, b, w| in str { block }
+  # for c, b, w in str { block }
 
   var aristofanis = "Βρεκεκεκὲξ κοὰξ κοάξ"
 
-  for |c, v, w| in aristofanis
+  for c, v, w in aristofanis
     println ("character integer represantion |${c}|, as string |${v}|, cell width ${w}")
 
   # in this case 'c' holds the integer value of the underlying byte,
@@ -576,11 +576,11 @@ Probably this will be a very messy output."
 
   # The same can be written more compactly like:
 
-  for |v| in int_ar println (v)
+  for v in int_ar println (v)
 
   # if we need the index too, then:
 
-  for |i, v| in int_ar println ("${i} : ${v}")
+  for i, v in int_ar println ("${i} : ${v}")
 
   # This is an array declaration and assignment syntax with a predefined length
   # and type at the same time. This should execute faster, as the parser do not
