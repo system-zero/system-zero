@@ -17,17 +17,18 @@ const PACKMAN_VERBOSE            = 1
 const PACKMAN_SOURCE_ARCHIVE     = 0
 const PACKMAN_SOURCE_REPO        = 1
 
-const PACKMAN_BUILD_EXTRACT      = 0
-const PACKMAN_BUILD_COPY         = 1
-const PACKMAN_BUILD_PATCH        = 2
-const PACKMAN_BUILD_CONFIGURE    = 3
-const PACKMAN_BUILD_MAKE         = 4
-const PACKMAN_BUILD_MAKE_INSTALL = 5
-const PACKMAN_BUILD_MD_CHECK     = 6
-const PACKMAN_BUILD_USER_COM     = 7
-const PACKMAN_BUILD_EVAL         = 8
-const PACKMAN_BUILD_USER_COM_IF  = 9
-var LAST_BUILD_TYPE              = PACKMAN_BUILD_USER_COM_IF
+const PACKMAN_BUILD_EXTRACT          = 1
+const PACKMAN_BUILD_COPY             = 2
+const PACKMAN_BUILD_PATCH            = 3
+const PACKMAN_BUILD_CONFIGURE        = 4
+const PACKMAN_BUILD_MAKE             = 5
+const PACKMAN_BUILD_MAKE_INSTALL     = 6
+const PACKMAN_BUILD_MD_CHECK         = 7
+const PACKMAN_BUILD_USER_COM         = 8
+const PACKMAN_BUILD_EVAL             = 9
+const PACKMAN_BUILD_USER_COM_IF      = 10
+const PACKMAN_BUILD_MKDIR            = 11
+var LAST_BUILD_TYPE                  = PACKMAN_BUILD_MKDIR
 
 const PACKMAN_DATADIR            = Sys.get ("DATADIR"): path_concat (PACKMAN)
 const PACKMAN_SYSDIR             = Sys.get ("SYSDIR")
@@ -575,6 +576,9 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_USER_COM_IF {
+          break 2 if action.command: typeof () isnot ArrayType and
+                     action.command: typeof () isnot ListType
+          break 2 if action.command: len () isnot 2
           var com =  action.command[0]
           var c   =  action.command[1]
           var r = true
@@ -592,6 +596,45 @@ Type Packman {
           if this.sh:exec (com) isnot ok {
             println (stderr, "error while executing command: ${com}")
             break 2
+          }
+
+          continue
+        }
+
+        if action.type is PACKMAN_BUILD_MKDIR {
+          var d
+          var m = 0755
+          var switch = false
+          if action.command: typeof () is ListType {
+            break 2 if action.command: len () isnot 2
+            d = action.command[0]
+            m = action.command[1]
+            switch = action.command[2]
+          } else if (action.command: typeof () is MapType {
+            break 2 ifnot action.command: key_exists("dir")
+            d = action.command.dir
+            if action.command: key_exists ("mode") m = action.command.mode
+            if action.command: key_exists ("switch") switch = action.command.switch
+          } else if (action.command: typeof () is StringType {
+            d = action.command
+          } else {
+            println (stderr, "packman mkdir unexpected datatype: ${action.command: typeAsString ()}")
+            break 2
+          }
+
+          ifnot d: file_exists () {
+            var r = d: dir_make (d, m; err : 1)
+            break 2 if r is notok
+          }
+
+          ifnot d: dir_is_directory () {
+            println (stderr, "${d}: not a directory")
+            break 2
+          }
+
+          if switch {
+            var r = Dir.change (d)
+            break 2 if r is notok
           }
 
           continue
@@ -630,6 +673,8 @@ func packman_eval (m, s)
   return New PackmanBuild (if m is null then "[expression]" orelse m end, PACKMAN_BUILD_EVAL, s)
 func packman_eval_if (m, s, x)
   return New PackmanBuild (if m is null then "[conditional expression]" orelse m end, PACKMAN_BUILD_EVAL, [s, x])
+func packman_mkdir (d)
+  return New PackmanBuild ("[making directory]", PACKMAN_BUILD_MKDIR, d)
 
 public const Packman = {
   make           : packman_make
@@ -644,6 +689,7 @@ public const Packman = {
   copy_sources   : packman_copy_sources
   command        : packman_command
   command_if     : packman_command_if
+  mkdir          : packman_mkdir
   new            : {
     spec : func (s) {
       var haskey = map_key_exists

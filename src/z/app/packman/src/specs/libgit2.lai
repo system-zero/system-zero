@@ -14,7 +14,7 @@ return Packman.new.spec ({
   license       : "GPLv2"
   build         : [
     Packman.extract (),
-    Packman.eval (null, `Dir.make ("build", 0755); Dir.change ("build")`),
+    Packman.mkdir ({dir : "build", switch : true}),
     Packman.command ("[generating cmakefiles]",
       "cmake .. -DCMAKE_INSTALL_PREFIX=" + this.get.sysdir () +
       " -DCMAKE_BUILD_TYPE=Release" +

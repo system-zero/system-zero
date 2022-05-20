@@ -89,7 +89,7 @@
 #define MALLOCED_STRING               -310000
 #define STRING_LITERAL                -210000
 #define UNDELETABLE                   -100000
-#define UNCHANGEABLE                  -200000
+#define IS_UNCHANGEABLE               -200000
 
 #define BINOP(x) (((x) << 8) + BINOP_TYPE)
 #define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
@@ -182,8 +182,9 @@
 #define TOKEN_BLOCK_CLOS '}'
 #define TOKEN_MAP_CLOS   TOKEN_BLOCK_CLOS
 #define TOKEN_UNARY      '~'
-#define TOKEN_LIST_ANON   127
-#define TOKEN_ANNOTATION  128
+#define TOKEN_LIST_FUN    127
+#define TOKEN_LIST_NEW    128
+#define TOKEN_ANNOTATION  129
 
 //#define TOKEN_NULL       '0'
 #define TOKEN_ASSIGN      1000
@@ -434,6 +435,8 @@ typedef struct tokenState {
   do { if (_e_ < 0) THROW_SYNTAX_ERR(_msg_); } while (0)
 #define THROW_SYNTAX_ERR_IF(_cond_, _msg_) \
   do { if (_cond_) THROW_SYNTAX_ERR(_msg_); } while (0)
+#define THROW_SYNTAX_ERR_IFNOT(_cond_, _msg_) \
+  do { ifnot (_cond_) THROW_SYNTAX_ERR(_msg_); } while (0)
 #define THROW_SYNTAX_ERR_FMT_IF(_cond_,_fmt_, ...) \
   do { if (_cond_) return la_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
 #define THROW_SYNTAX_ERR_FMT(_fmt_, ...) \
@@ -533,6 +536,7 @@ do {                                                        \
 #define PEEK_NTH_BYTE_NOWS_INLINE(_n_) la_peek_nth_byte_nows_inline (this, _n_)
 #define NEXT_BYTE_NOWS_NONL() la_next_byte_nows_nonl (this)
 #define NEXT_BYTE_NOWS() la_next_byte_nows (this)
+#define IS_NEXT_BYTE( _c_) (*GETSTRPTR(PARSEPTR) == _c_)
 
 #define IGNORE_NEXT_BYTE do {                   \
   SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + 1); \
@@ -1332,7 +1336,11 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
   int c = TOKEN;
 
   if (c isnot TOKEN_INDEX_OPEN) {
-    *vp = v_list;
+    if (this->exprList and this->objectState & MAP_ASSIGNMENT)
+      *vp = la_copy_value (v_list);
+    else
+      *vp = v_list;
+
     return LA_OK;
   }
 
@@ -1516,20 +1524,32 @@ static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
   return v;
 }
 
-static int la_parse_list (la_t *this, VALUE *vp) {
+static int la_parse_list (la_t *this, VALUE *vp, int is_fun) {
   int err;
 
   NEXT_TOKEN();
-
-  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_OPEN,  "parsing list: awaiting (");
+  ifnot (is_fun)
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_OPEN,  "parsing list: awaiting [");
+  else
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_OPEN,  "parsing list: awaiting (");
 
   VALUE v_list = LIST_NEW();
+  if (this->exprList)
+      v_list.refcount--;
 
   NEXT_TOKEN();
   if (TOKEN is TOKEN_PAREN_CLOS) {
+    THROW_SYNTAX_ERR_IFNOT(is_fun, "parsing list: unexpected token )");
     *vp = v_list;
-     NEXT_TOKEN ();
-     return LA_OK;
+    NEXT_TOKEN ();
+    return LA_OK;
+  } else if (TOKEN is TOKEN_INDEX_CLOS) {
+    THROW_SYNTAX_ERR_IF(is_fun, "parsing list: unxpected token ]");
+    *vp = v_list;
+    NEXT_RAW_TOKEN ();
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_BLOCK_CLOS, "parsing list: awaiting }");
+    NEXT_TOKEN ();
+    return LA_OK;
   }
 
   while (1) {
@@ -1547,9 +1567,16 @@ static int la_parse_list (la_t *this, VALUE *vp) {
     break;
   }
 
-  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,  "parsing list: awaiting )");
-
   *vp = v_list;
+
+  if (is_fun) {
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,  "parsing list: awaiting )");
+  } else {
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS,  "parsing list: awaiting ]");
+    NEXT_RAW_TOKEN();
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_BLOCK_CLOS, "parsing list: awaiting }");
+  }
+
   NEXT_TOKEN();
 
   return LA_OK;
@@ -2651,6 +2678,11 @@ static int la_do_next_token (la_t *this, int israw) {
   }
 
   if (c is TOKEN_BLOCK_OPEN) {
+    if (IS_NEXT_BYTE(TOKEN_INDEX_OPEN)) {
+      TOKEN = TOKEN_LIST_NEW;
+      return TOKEN;
+    }
+
     RESET_TOKEN;
     err = la_get_opened_block (this, "unended opened block");
     THROW_ERR_IF_ERR(err);
@@ -4385,7 +4417,6 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   }
 
   this->objectState |= MAP_ASSIGNMENT;
-
   err = la_parse_expr (this, &v);
   this->objectState &= ~MAP_ASSIGNMENT;
   THROW_ERR_IF_ERR(err);
@@ -4422,9 +4453,8 @@ theend:
 static void *la_copy_map_cb (void *value, void *mapval) {
   Vmap_t *map = (Vmap_t *) mapval;
   VALUE *v = (VALUE *) value;
-
   VALUE *val = Alloc (sizeof (VALUE));
-  val->refcount = v->refcount;
+  val->refcount = 0;  // v->refcount;
   val->type = v->type;
 
   sym_t *sym = Alloc (sizeof (sym_t));
@@ -6462,8 +6492,9 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
       return err;
 
-    case TOKEN_LIST_ANON:
-      err = la_parse_list (this, vp);
+    case TOKEN_LIST_NEW:
+    case TOKEN_LIST_FUN:
+      err = la_parse_list (this, vp, c is TOKEN_LIST_FUN);
       THROW_ERR_IF_ERR(err);
 
       if (TOKEN is TOKEN_COLON) {
@@ -6788,12 +6819,12 @@ static int la_parse_stmt (la_t *this) {
           break;
       }
 
-      val.refcount = UNCHANGEABLE;
+      val.refcount = IS_UNCHANGEABLE;
       err = la_parse_expr (this, &val);
       THROW_ERR_IF_ERR(err);
 
       switch (val.refcount) {
-        case UNCHANGEABLE:
+        case IS_UNCHANGEABLE:
           return LA_OK;
         case STRING_LITERAL:
           val.refcount = 0;
@@ -10765,14 +10796,14 @@ static VALUE la_eval (la_t *this, VALUE v_str) {
   char *str = AS_STRING_BYTES (v_str);
 
   sym_t *sym = ns_lookup_symbol (this->std, "__retval");
-  sym->value = INT(UNCHANGEABLE);
+  sym->value = INT(IS_UNCHANGEABLE);
 
   int retval = la_eval_string (this, str);
 
   if (retval < LA_NOTOK)
     C_THROW(retval, "eval() error");
 
-  if (AS_INT(sym->value) isnot UNCHANGEABLE)
+  if (AS_INT(sym->value) isnot IS_UNCHANGEABLE)
     return sym->value;
 
   return INT(retval);
@@ -10813,7 +10844,7 @@ static struct def {
   { "New",     TOKEN_NEW,      NULL_VALUE },
   { "Type",    TOKEN_TYPE,     PTR(la_parse_type) },
   { "override",TOKEN_OVERRIDE, NULL_VALUE },
-  { "list",    TOKEN_LIST_ANON,NULL_VALUE },
+  { "list",    TOKEN_LIST_FUN, NULL_VALUE },
   { "append",  TOKEN_APPEND,   NULL_VALUE },
   { "print",   TOKEN_PRINT,    PTR(la_parse_print) },
   { "format",  TOKEN_FORMAT,   NULL_VALUE },

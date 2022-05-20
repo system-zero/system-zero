@@ -2021,7 +2021,8 @@ func self_semantics () {
       submap : subm
     }
 
-    assert_true ("testing submap accessors", parm.submap.f () is 22 and
+    assert_true ("testing submap accessors",
+       parm.submap.f () is 22 and
        parm.submap:f () is 11)
 
     var mmma = {
@@ -2110,6 +2111,18 @@ func self_semantics () {
         typeof (e) is StringType and
         typeof (l[0]) is StringType and
         e is "two")
+
+    var la = {[1, "one"]}
+    var la_l = la: len ()
+    var laa_l = {[1, "one"]}: len ()
+
+    func lx (xl) return xl[0] - xl: len()
+    var lax = lx ({[50, "el"]})
+
+    assert_true ("testing {[]} lists",
+        la: typeof() is ListType and
+        la_l is 2 and laa_l is 2 and
+        lax is 48)
   }
 
   test_lists ()
