@@ -482,7 +482,7 @@ func self_semantics () {
       rbae is ok and
       is_blues is ok)
 
-  var pm_map = {"key" : 1}
+  var pm_map = {key : 1}
   func p_m (x) {
     if x is 10 {
       return x++
@@ -533,7 +533,7 @@ func self_semantics () {
   var dady = ++didy
   var dar = [2, 3]
   var dard = --dar[0]
-  var dardi = {"k" : 3}
+  var dardi = {k : 3}
   var dardilada = --dardi.k
   assert_true ("testing prefix --,++ operators for expressions",
       dady is 4 and
@@ -895,7 +895,7 @@ func self_semantics () {
       var ign = 0
       var ign_str = "a"
       if i is 10 { i++; continue }
-      s += i
+      append i in s
       i++
     } while (
       i < 100) # testing condition within parens
@@ -908,7 +908,7 @@ func self_semantics () {
     var s = 0; var i = 0
     do {
       break if i is 10
-      s += i
+      append i in s
       i++
     } while i < 100; # testing condition ending with a semicolon
     return s
@@ -919,7 +919,7 @@ func self_semantics () {
   sum = lambda {
     var s = 0; var i = 0;
     do {
-      s += i
+      append i in s
       i++
       return s if i is 10
     } while
@@ -1494,12 +1494,12 @@ func self_semantics () {
   import_test ()
 
   func reassingment_and_multiline_assignments () {
-    var s = {"1" : 1}
+    var s = {1 : 1}
 
     s = 2
     assert_true ("testing reassingment map to integer", s is 2)
 
-    s = {"k" : 3}
+    s = {k : 3}
     assert_true ("testing reassingment integer to map", s.k is 3)
 
     s = [4]
@@ -1508,7 +1508,7 @@ func self_semantics () {
     s = "string"
     assert_true ("testing reassingment array to string", s is "string")
 
-    s = {"k" : "stringkey"}
+    s = {k : "stringkey"}
     assert_true ("testing reassingment string to map", s.k is "stringkey")
 
     var v1 = 1, v2 = 2, v3 = "s", v4 = null,
@@ -1541,11 +1541,17 @@ func self_semantics () {
 
     func qqq (x) return x * (qualifier_exists ("key") + 9)
     func qqqq (x) return qqq (x; qualifiers ())
-    func qqqqq () return qualifier ("key", 100)
+    func qqqqq return qualifier ("key", 100)
+    func qrf {
+      var k = qualifier ("key", 10)
+      var s = qqqqq (;key : 100000)
+      var kk = qualifier ("key", 10)
+      return k is 100 and k is kk and s is 100000
+    }
 
-    var m = {"key" : 1000}
+    var m = {key : 1000}
     var qa = q (10)
-    var qb = q (10; {"key" : 100})
+    var qb = q (10; {key : 100})
     var qc = q (10; m)
     var qd = qqq (10)
     var qe = qqq (10; m)
@@ -1558,6 +1564,7 @@ func self_semantics () {
     var qo  = qqqqq (;
       key : 100000)
     var qp = qqqqq (;key : 100000)
+    var qr = qrf (;key : 100)
 
     assert_true ("testing qualifiers",
         qa is 100 and
@@ -1570,7 +1577,8 @@ func self_semantics () {
         qj is 1000 and
         qk is 1000 and
         qo is 100000 and
-        qp is 100000)
+        qp is 100000 and
+        qr is 1)
 
     func q_fun (x) {
       var y = qualifier ("y", 100)
@@ -1585,12 +1593,13 @@ func self_semantics () {
         q_fun (10; {key : 9900}) is 100000 and
         q_fun (10; qm) is 20000 and
         q_fun (10; fm ()) is 30000)
+
   }
 
   test_qualifiers ()
 
-  var sa = [{"l" : 1, "k" : [1, 2, 3, 4], "lk" : {"ka" : 1, "kka" : {"a" : 2,
-      "b" : ["av", "sb", "fg"]}}}]
+  var sa = [{l : 1, k : [1, 2, 3, 4], lk : {ka : 1, kka : {a : 2,
+      b : ["av", "sb", "fg"]}}}]
 
   assert_true ("testing getting consecutive container types",
       sa[0].lk.kka.b[0][0] is 'a')
@@ -1620,7 +1629,7 @@ func self_semantics () {
        null isnot 1 and
        null isnot 1.1 and
        null isnot [1] and
-       null isnot {"1" : 1} and
+       null isnot {1 : 1} and
        null isnot "string")
   }
 
@@ -1720,24 +1729,24 @@ func self_semantics () {
     i_ar[*] = 31
     assert_equal ("testing array set '*' operator", ar_sum (i_ar), 124)
 
-    var m_ar = [{"t" : 11}, {"s" : 2}]
-    m_ar[*] = {"sa" : 11, "tt" : 4, "a" : 5}
+    var m_ar = [{t : 11}, {s : 2}]
+    m_ar[*] = {sa : 11, tt : 4, a : 5}
     assert_true ("testing array set '*' operator for maps",
         m_ar[1].sa is 11)
 
-    var am = {"sa" : 22, "sb" : 33}
+    var am = {sa : 22, sb : 33}
     m_ar[*] = am
     assert_true ("testing array set '*' operator for maps from a symbol",
         m_ar[1].sa is 22)
 
-    var mar = [{"k" : "K", "l" : "L"}, {"A" : "a", "V" : "v"}]
+    var mar = [{k : "K", l : "L"}, {A : "a", V : "v"}]
     assert_true ("testing array maps", typeof (mar) is ArrayType and
         typeArrayAsString (mar) is "MapType")
 
     var mak = mar[0].k
     assert_true ("testing array map access", mak is "K")
 
-    var map[3] marnil = [{"A" : 1}, null, {"b" : 3}]
+    var map[3] marnil = [{A : 1}, null, {b : 3}]
     assert_true ("testing map array with a null element",
         marnil[1] is null and typeof (marnil[1]) is NullType)
 
@@ -1778,33 +1787,29 @@ func self_semantics () {
     var ara = [1, 2, 3, 4, 5, 6]
 
     var sum_a = 0
-    for v in ara
-      sum_a += v
+    for v in ara append v in sum_a
 
     var sum_b = 0
     for i, v in ara {
-      sum_b += v
+      append v in sum_b
       i++
     }
 
     var str_ar = ["1", "2", "3", "4", "5", "6"]
     var str_a = ""
 
-    for v in str_ar
-      str_a += v
+    for v in str_ar append v in str_a
 
     var array[1] x
     x[0] = [1, 2, 3]
     var sum_c = 0
-    for v in x[0]
-      sum_c += v
+    for v in x[0] append v in sum_c
 
     var mm = {
-      "ar" : [1, 2, 3]
+      ar : [1, 2, 3]
     }
     var sum_d = 0
-    for v in mm.ar
-      sum_d += v
+    for v in mm.ar append v in sum_d
 
     assert_true ("testing array iteration",
         sum_a is 21 and sum_b is 9 and str_a is "123456" and
@@ -1814,7 +1819,7 @@ func self_semantics () {
     aaa[0] += 9; aaa[0] *= aaa[1]; aaa[0] /= aaa[2]; aaa[0] -= 5
     assert_true ("testing array manipulation", aaa[0] is 5)
 
-    var map[1] mama = [{"i" : 1, "a" : integer[2] = [1, 2]}]
+    var map[1] mama = [{i : 1, a : integer[2] = [1, 2]}]
     mama[0].i += mama[0].a[1]
     mama[0].a[0] += mama[0].i; mama[0].a[0] *= mama[0].a[0]
     assert_true ("testing array and map manipulation", mama[0].i is 3 and
@@ -2240,7 +2245,7 @@ func self_semantics () {
 
     var sa = append "asd" in "xcv"
 
-    var l = list ("1")
+    var l = {["1"]}
     append 2 in l
     l[-2] = "2"
 
@@ -2369,14 +2374,14 @@ func valgrind_tests () {
   var sab = "z" + 'x' + 'c' + 'v'
 
   var ma = {
-    "f" : func return 0
+    f : func return 0
   }
   ma.f ()
   ma.f ()
 
   var arr = ["a", "b"]
   var mb = {
-    "f" : func {
+    f : func {
       if (arr[0] is "a")
         var nar = ["c", "d"]
     }

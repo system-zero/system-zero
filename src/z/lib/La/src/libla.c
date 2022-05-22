@@ -91,8 +91,8 @@
 #define UNDELETABLE                   -100000
 #define IS_UNCHANGEABLE               -200000
 
-#define BINOP(x) (((x) << 8) + BINOP_TYPE)
-#define CFUNC(x) (((x) << 8) + CFUNC_TYPE)
+#define BINOP(_x_) (((_x_) << 8) + BINOP_TYPE)
+#define CFUNC(_x_) (((_x_) << 8) + CFUNC_TYPE)
 
 #define IS_UFUNC(_t_) ((_t_ & 0xff) == UFUNC_TYPE)
 #define IS_CFUNC(_t_) ((_t_ & 0xff) == CFUNC_TYPE)
@@ -313,6 +313,18 @@ struct la_prop {
   int current_idx;
 };
 
+typedef struct qualifier_t qualifier_t;
+
+struct qualifier_t {
+  char name[MAXLEN_SYMBOL + 1];
+  Vmap_t *qualifiers;
+  qualifier_t *next;
+};
+
+typedef struct qualifier_stack {
+  qualifier_t *head;
+} qualifier_stack;
+
 struct la_t {
   funT *function;
   funT *std;
@@ -322,10 +334,10 @@ struct la_t {
 
   fun_stack funstack[1];
   symbol_stack symbolstack[1];
+  qualifier_stack qualifiers_stack[1];
   Imap_t *funRefcount;
   Vmap_t *units;
   Vmap_t *types;
-  Vmap_t *qualifiers;
 
   char name[32];
   const char *script_buffer;
@@ -333,6 +345,7 @@ struct la_t {
   char symKey[MAXLEN_SYMBOL + 1];
   char curMapKey[MAXLEN_SYMBOL + 1];
   char curFunName[MAXLEN_SYMBOL + 1];
+  char curCFunName[MAXLEN_SYMBOL + 1];
   char curMsg[MAXLEN_MSG + 1];
 
   funT *curFunDef;
@@ -537,6 +550,7 @@ do {                                                        \
 #define NEXT_BYTE_NOWS_NONL() la_next_byte_nows_nonl (this)
 #define NEXT_BYTE_NOWS() la_next_byte_nows (this)
 #define IS_NEXT_BYTE( _c_) (*GETSTRPTR(PARSEPTR) == _c_)
+#define ISNOT_NEXT_BYTE( _c_) (*GETSTRPTR(PARSEPTR) != _c_)
 
 #define IGNORE_NEXT_BYTE do {                   \
   SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + 1); \
@@ -733,6 +747,11 @@ static void la_print_current_line (la_t *this, const char *msg, FILE *fp) {
 static int la_syntax_error (la_t *this, const char *msg) {
   this->print_fmt_bytes (this->err_fp, "%s\n", msg);
   return la_err_ptr (this, LA_ERR_SYNTAX);
+}
+
+static inline char *c_funname (la_t *this, la_string x) {
+  Cstring.cp (this->curCFunName, MAXLEN_SYMBOL + 1, GETSTRPTR(x), GETSTRLEN(x));
+  return this->curCFunName;
 }
 
 static int la_syntax_error_fmt (la_t *this, const char *fmt, ...) {
@@ -1082,82 +1101,135 @@ static VALUE la_typeArrayAsString (la_t *this, VALUE value) {
   return la_typeAsString (this, v);
 }
 
-static void la_release_qualifiers (la_t *this) {
-  ifnot (NULL is this->qualifiers) {
-    if (this->qualifierCount) {
-      this->qualifierCount--;
-      return;
-    }
-
-    map_release (MAP(this->qualifiers));
-  }
-
-  this->qualifiers = NULL;
-}
-
-static VALUE la_set_qualifiers (la_t *this, VALUE v_qual) {
+static VALUE la_set_qualifiers (la_t *this, VALUE v_qual, funT *uf) {
   ifnot (IS_MAP(v_qual)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map as qualifiers");
-  la_release_qualifiers (this);
-  this->qualifiers = AS_MAP(v_qual);
+
+  qualifier_t *q = Alloc (sizeof (qualifier_t));
+  q->qualifiers = AS_MAP(v_qual);
+  if (uf)
+    Cstring.cp (q->name, MAXLEN_SYMBOL + 1, uf->funname, bytelen (uf->funname));
+  else
+    Cstring.cp (q->name, MAXLEN_SYMBOL + 1, this->curCFunName, bytelen (this->curCFunName));
+
+  ListStackPush (this->qualifiers_stack, q);
+
   return OK_VALUE;
 }
 
+static void la_release_qualifiers (la_t *this, char *name) {
+  qualifier_t *tmp = NULL;
+  qualifier_t *it = this->qualifiers_stack->head;
+  while (it) {
+    if (Cstring.eq (it->name, name)) {
+      map_release (MAP(it->qualifiers));
+      if (tmp)
+        tmp->next = it->next;
+      else
+        this->qualifiers_stack->head = it->next;
+
+      free (it);
+      break;
+    }
+
+    tmp = it;
+    it = it->next;
+  }
+}
+
 static VALUE la_qualifiers (la_t *this) {
-  if (NULL is this->qualifiers)
-    return NULL_VALUE;
+  funT *scope = this->curScope;
+  while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
+    scope = scope->prev;
+  char *funname = scope->funname;
 
-  this->qualifierCount++;
+  qualifier_t *it = this->qualifiers_stack->head;
+  while (it) {
+    if (Cstring.eq (it->name, funname))
+      return la_copy_map (MAP(it->qualifiers));
+    it = it->next;
+  }
 
-  VALUE val = la_copy_map (MAP(this->qualifiers));
-  return val;
+  return NULL_VALUE;
 }
 
 static Vmap_t *la_get_qualifiers (la_t *this) {
-  VALUE v = la_qualifiers (this);
-  if (IS_NULL(v)) return NULL;
-  this->qualifierCount--;
-  return AS_MAP(v);
+  qualifier_t *it = this->qualifiers_stack->head;
+  while (it) {
+    if (Cstring.eq (it->name, this->curCFunName))
+      return it->qualifiers;
+    it = it->next;
+  }
+
+  return NULL;
 }
 
 static VALUE la_qualifier_exists (la_t *this, VALUE v_key) {
-  if (NULL is this->qualifiers)
-    return FALSE_VALUE;
-
-  this->qualifierCount++;
-
   ifnot (IS_STRING(v_key)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
-  return INT(Vmap.key_exists (this->qualifiers, AS_STRING_BYTES(v_key)));
+  funT *scope = this->curScope;
+  while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
+    scope = scope->prev;
+  char *funname = scope->funname;
+
+  qualifier_t *it = this->qualifiers_stack->head;
+  while (it) {
+    if (Cstring.eq (it->name, funname))
+      return INT(Vmap.key_exists (it->qualifiers, AS_STRING_BYTES(v_key)));
+
+    it = it->next;
+  }
+
+  return FALSE_VALUE;
 }
 
 static int la_C_qualifier_exists (la_t *this, const char *key) {
-  return Vmap.key_exists (this->qualifiers, key);
+  qualifier_t *it = this->qualifiers_stack->head;
+  while (it) {
+    if (Cstring.eq (it->name, this->curCFunName))
+      return Vmap.key_exists (it->qualifiers, key);
+
+    it = it->next;
+  }
+
+  return 0;
 }
 
 static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
-  if (NULL is this->qualifiers)
-    return la_copy_value (v_defval);
-
-  this->qualifierCount++;
-
   ifnot (IS_STRING(v_key)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
-  VALUE *v = (VALUE *) Vmap.get (this->qualifiers, AS_STRING_BYTES(v_key));
+  funT *scope = this->curScope;
+  while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
+    scope = scope->prev;
+  char *funname = scope->funname;
 
-  if (v is NULL)
-    return la_copy_value (v_defval);
+  qualifier_t *it = this->qualifiers_stack->head;
+  while (it) {
+    if (Cstring.eq (it->name, funname)) {
+      VALUE *v = (VALUE *) Vmap.get (it->qualifiers, AS_STRING_BYTES(v_key));
+      if (v is NULL)
+        return la_copy_value (v_defval);
+      return la_copy_value ((*v));
+    }
 
-  return la_copy_value ((*v));
+    it = it->next;
+  }
+
+  return v_defval;
 }
 
 static VALUE la_get_qualifier (la_t *this, const char *key, VALUE v_defval) {
-  if (NULL is this->qualifiers)
-    return v_defval;
+  qualifier_t *it = this->qualifiers_stack->head;
+  while (it) {
+    if (Cstring.eq (it->name, this->curCFunName)) {
+      VALUE *v = (VALUE *) Vmap.get (it->qualifiers, key);
+      if (NULL is v)  return v_defval;
+      return *v;
+    }
 
-  VALUE *v = (VALUE *) Vmap.get (this->qualifiers, key);
-  if (NULL is v)
-    return v_defval;
-  return *v;
+    it = it->next;
+  }
+
+  return v_defval;
 }
 
 static object *la_object_new (ObjectRelease o_release, ObjectToString o_tostr, const char *name, VALUE value) {
@@ -2079,8 +2151,8 @@ static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
   funT *lambda = this->curFunDef;
   TOKENARGS = lambda->nargs;
 
-  if (TOKEN isnot TOKEN_PAREN_OPEN)
-    THROW_SYNTAX_ERR("lambda error, awaiting (");
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_PAREN_OPEN,
+    "lambda error, awaiting (");
 
   UNGET_BYTE();
 
@@ -2700,10 +2772,10 @@ static int la_do_next_token (la_t *this, int israw) {
   if (c is TOKEN_SQUOTE) {
     c = GET_BYTE();
     if (c is TOKEN_ESCAPE_CHR) {
-      if (PEEK_NTH_BYTE(0) is 'x') {
+      if (IS_NEXT_BYTE('x')) {
         GET_BYTE();
 
-        THROW_SYNTAX_ERR_IF(PEEK_NTH_BYTE(0) isnot '{',
+        THROW_SYNTAX_ERR_IF(ISNOT_NEXT_BYTE('{'),
           "error while parsing char, awaiting {");
 
         GET_BYTE();
@@ -2711,7 +2783,7 @@ static int la_do_next_token (la_t *this, int israw) {
 
         la_get_span (this, is_hexchar);
         c = GET_BYTE();
-        THROW_SYNTAX_ERR_IF(c isnot '}', "error while parsing char, awaiting }");
+        THROW_SYNTAX_ERR_IFNOT(c is '}', "error while parsing char, awaiting }");
 
         IGNORE_LAST_TOKEN;
 
@@ -2855,8 +2927,7 @@ static VALUE la_string_to_dec (la_string s) {
 
   if (is_sign) r = -r;
 
-  VALUE result = INT(r);
-  return result;
+  return INT(r);
 }
 
 static VALUE la_HexStringToNum (la_string s) {
@@ -2875,8 +2946,7 @@ static VALUE la_HexStringToNum (la_string s) {
       r = 16 * r + (c - 'a' + 10);
   }
 
-  VALUE result = INT(r);
-  return result;
+  return INT(r);
 }
 
 static VALUE la_OctalStringToNum (la_string s) {
@@ -2889,8 +2959,7 @@ static VALUE la_OctalStringToNum (la_string s) {
     r = 8 * r + (c - '0');
   }
 
-  VALUE result = INT(r);
-  return result;
+  return INT(r);
 }
 
 static VALUE la_BinaryStringToNum (la_string s) {
@@ -2904,8 +2973,7 @@ static VALUE la_BinaryStringToNum (la_string s) {
     r = 2 * r + (c - '0');
   }
 
-  VALUE result = INT(r);
-  return result;
+  return INT(r);
 }
 
 static int  la_string_get (la_t *this, VALUE *vp) {
@@ -2923,15 +2991,15 @@ static int  la_string_get (la_t *this, VALUE *vp) {
     this->curState &= ~INDEX_STATE;
     THROW_ERR_IF_ERR(err);
 
-    if (v.type isnot INTEGER_TYPE)
-      THROW_SYNTAX_ERR("awaiting an integer expression, when getting string index");
+    THROW_SYNTAX_ERR_IFNOT(v.type is INTEGER_TYPE,
+      "awaiting an integer expression, when getting string index");
 
     integer idx = AS_INT(v);
 
     if (0 > idx) idx += str->num_bytes;
 
     if (idx < 0 or (size_t) idx >= str->num_bytes)
-      THROW_OUT_OF_BOUNDS("index %d >= than %d length, or less than zero", idx, str->num_bytes);
+      THROW_OUT_OF_BOUNDS("string index %d >= than %d length, or less than zero", idx, str->num_bytes);
 
     *vp = INT(str->bytes[idx]);
 
@@ -2951,8 +3019,7 @@ static int  la_string_get (la_t *this, VALUE *vp) {
 static int la_string_set_char (la_t *this, VALUE value, int is_const) {
   int err;
 
-  if (is_const)
-    THROW_SYNTAX_ERR("can not modify constant string");
+  THROW_SYNTAX_ERR_IF(is_const, "can not modify constant string");
 
   string *str = AS_STRING(value);
 
@@ -2965,23 +3032,23 @@ static int la_string_set_char (la_t *this, VALUE value, int is_const) {
   this->curState &= ~INDEX_STATE;
   THROW_ERR_IF_ERR(err);
 
-  THROW_SYNTAX_ERR_IF(v.type isnot INTEGER_TYPE,
+  THROW_SYNTAX_ERR_IFNOT(v.type is INTEGER_TYPE,
     "awaiting an integer expression, when setting string index");
 
   integer idx = AS_INT(v);
 
   if (0 > idx) idx += str->num_bytes;
   if (idx < 0 or (size_t) idx >= str->num_bytes)
-    THROW_OUT_OF_BOUNDS("index %d >= than %d length, or less than zero", idx, str->num_bytes);
+    THROW_OUT_OF_BOUNDS("string index %d >= than %d length, or less than zero", idx, str->num_bytes);
 
-  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_ASSIGN,
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_ASSIGN,
     "syntax error while setting string, awaiting =");
 
   NEXT_TOKEN();
   err = la_parse_expr (this, &v);
   THROW_ERR_IF_ERR(err);
 
-  THROW_SYNTAX_ERR_IF(v.type isnot INTEGER_TYPE,
+  THROW_SYNTAX_ERR_IFNOT(v.type is INTEGER_TYPE,
     "awaiting an integer expression, when setting string index");
 
   integer chr = AS_INT(v);
@@ -3292,7 +3359,7 @@ static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+      THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
         idx, len, idx, last_idx);
 
     NEXT_TOKEN();
@@ -3300,8 +3367,8 @@ static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx
     err = la_parse_expr (this, &val);
     THROW_ERR_IF_ERR(err);
 
-    if (val.type isnot ARRAY_TYPE and val.type isnot NULL_TYPE)
-      THROW_SYNTAX_ERR("error while setting Array of an array, awaiting an array or null");
+    THROW_SYNTAX_ERR_IF(val.type isnot ARRAY_TYPE and val.type isnot NULL_TYPE,
+      "error while setting Array of an array, awaiting an array or null");
 
     if (a_ar[idx] isnot NULL)
       array_release (val);
@@ -3315,7 +3382,7 @@ static int la_array_set_as_array (la_t *this, VALUE ar, integer len, integer idx
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
+    THROW_OUT_OF_BOUNDS("array index %d - 1 isnot last index %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -3328,7 +3395,7 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+      THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
          idx, len, idx, last_idx);
 
     NEXT_TOKEN();
@@ -3336,15 +3403,15 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
     err = la_parse_expr (this, &val);
     THROW_ERR_IF_ERR(err);
 
-    if (val.type isnot MAP_TYPE and val.type isnot NULL_TYPE)
-      THROW_SYNTAX_ERR("error while setting Map array, awaiting a map or null");
+    THROW_SYNTAX_ERR_IF(val.type isnot MAP_TYPE and val.type isnot NULL_TYPE,
+      "error while setting Map array, awaiting a map or null");
 
     m_ar[idx] = (val.type is MAP_TYPE) ? AS_MAP(val) : NULL;
     idx++;
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
+    THROW_OUT_OF_BOUNDS("array index %d - 1 isnot last index %d", idx - 1, last_idx);
 
   if (TOKEN is TOKEN_NL and PEEK_NTH_TOKEN(0) is TOKEN_INDEX_CLOS)
     NEXT_TOKEN();
@@ -3360,7 +3427,7 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+      THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
         idx, len, idx, last_idx);
 
     this->curState |= MALLOCED_STRING_STATE;
@@ -3409,7 +3476,7 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
   // } while (TOKEN is TOKEN_COMMA or (TOKEN is TOKEN_NL and PEEK_NTH_TOKEN(0) isnot TOKEN_INDEX_CLOS));
 
   if (idx - 1 isnot last_idx)
-    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
+    THROW_OUT_OF_BOUNDS("array index %d - 1 isnot last index %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -3422,7 +3489,7 @@ static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer id
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+      THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
         idx, len, idx, last_idx);
 
     NEXT_TOKEN();
@@ -3436,7 +3503,7 @@ static int la_array_set_as_number (la_t *this, VALUE ar, integer len, integer id
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
+    THROW_OUT_OF_BOUNDS("array index %d - 1 isnot last index %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -3449,7 +3516,7 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx, 
 
   do {
     if (idx < 0 or idx >= len or idx > last_idx)
-      THROW_OUT_OF_BOUNDS("index %d >= than %d length, less than zero or %d > than %d",
+      THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
         idx, len, idx, last_idx);
 
     NEXT_TOKEN();
@@ -3463,7 +3530,7 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx, 
   } while (TOKEN is TOKEN_COMMA);
 
   if (idx - 1 isnot last_idx)
-    THROW_OUT_OF_BOUNDS("index %d - 1 isnot %d", idx - 1, last_idx);
+    THROW_OUT_OF_BOUNDS("array index %d - 1 isnot last index %d", idx - 1, last_idx);
 
   return LA_OK;
 }
@@ -3484,7 +3551,7 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
     last_idx += len;
 
   if (last_idx < 0 or last_idx >= len)
-    THROW_OUT_OF_BOUNDS("index %d >= %d len, or less than zero", last_idx, len);
+    THROW_OUT_OF_BOUNDS("array index %d >= %d len, or less than zero", last_idx, len);
 
   VALUE ary = array->value;
 
@@ -3521,7 +3588,7 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
     if (TOKEN is TOKEN_NL)
       NEXT_TOKEN();
 
-    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS,
+    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS,
       "array assignment: awaiting ]");
 
     NEXT_TOKEN();
@@ -3536,7 +3603,7 @@ static int la_parse_array_def (la_t *this, VALUE *vp, int flags) {
 
   NEXT_TOKEN();
 
-  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_OPEN,
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_OPEN,
     "array assignment: awaiting [");
 
   int c = TOKEN;
@@ -3546,9 +3613,9 @@ static int la_parse_array_def (la_t *this, VALUE *vp, int flags) {
   VALUE len;
   err = la_parse_expr (this, &len);
   THROW_ERR_IF_ERR(err);
-  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS,
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS,
     "array assignment: awaiting ]");
-  THROW_SYNTAX_ERR_IF(len.type isnot INTEGER_TYPE,
+  THROW_SYNTAX_ERR_IFNOT(len.type is INTEGER_TYPE,
     "awaiting an integer expression, when getting array length");
 
   NEXT_TOKEN();
@@ -3927,7 +3994,7 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
       for (size_t i = 0; i < ary->len; i++) {
         size_t idx = x_ar[i];
         if (idx >= src_ar->len)
-          THROW_OUT_OF_BOUNDS("index %d >= than %d length", idx, src_ar->len);
+          THROW_OUT_OF_BOUNDS("array index %d >= than %d length", idx, src_ar->len);
 
         String.replace_with_len (s_ar[i], s_ar_src[idx]->bytes, s_ar_src[idx]->num_bytes);
       }
@@ -3940,7 +4007,7 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
       for (size_t i = 0; i < ary->len; i++) {
         size_t idx = x_ar[i];
         if (idx >= src_ar->len)
-          THROW_OUT_OF_BOUNDS("index %d >= than %d length", idx, src_ar->len);
+          THROW_OUT_OF_BOUNDS("array index %d >= than %d length", idx, src_ar->len);
 
         i_ar[i] = i_ar_src[idx];
       }
@@ -3953,7 +4020,7 @@ static int la_array_from_array (la_t *this, ArrayType *src_ar, VALUE v_iar, VALU
       for (size_t i = 0; i < ary->len; i++) {
         size_t idx = x_ar[i];
         if (idx >= src_ar->len)
-          THROW_OUT_OF_BOUNDS("index %d >= than %d length", idx, src_ar->len);
+          THROW_OUT_OF_BOUNDS("array index %d >= than %d length", idx, src_ar->len);
 
         d_ar[i] = d_ar_src[idx];
       }
@@ -4021,7 +4088,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     idx += len;
 
   if (idx <= -1 or idx >= len)
-    THROW_OUT_OF_BOUNDS("index %d >= than %d length, or less or equal than -1",
+    THROW_OUT_OF_BOUNDS("array index %d >= than %d length, or less or equal than -1",
         idx, len);
 
   switch (array->type) {
@@ -4841,6 +4908,8 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     } else {
       CFunc op = (CFunc) AS_PTR((*v));
       TOKENARGS = ((*v).type >> 8) & 0xff;
+      size_t len = bytelen (key);
+      Cstring.cp (this->curCFunName, MAXLEN_SYMBOL + 1, key, len);
       err = la_parse_func_call (this, vp, op, NULL, *v);
     }
 
@@ -4944,6 +5013,8 @@ static int la_parse_map_set (la_t *this) {
     } else {
       CFunc op = (CFunc) AS_PTR((*v));
       TOKENARGS = ((*v).type >> 8) & 0xff;
+      size_t len = bytelen (key);
+      Cstring.cp (this->curCFunName, MAXLEN_SYMBOL + 1, key, len);
       VALUE vp;
       err = la_parse_func_call (this, &vp, op, NULL, *v);
     }
@@ -5090,7 +5161,7 @@ static int la_parse_type (la_t *this) {
 
 static char EXPR_NAMES[20][128];
 
-static int la_parse_expr_list (la_t *this) {
+static int la_parse_expr_list (la_t *this, funT *uf) {
   int err;
   la_string saved_ptr;
   int count = this->argCount;
@@ -5179,7 +5250,7 @@ parse_qualifiers:
       err = la_parse_map (this, &v);
       THROW_ERR_IF_ERR(err);
 
-      la_set_qualifiers (this, v);
+      la_set_qualifiers (this, v, uf);
 
     } else if (TOKEN is TOKEN_MAP) {
       this->exprList++;
@@ -5190,7 +5261,7 @@ parse_qualifiers:
       VALUE val = la_copy_map (v);
       v = val;
 
-      la_set_qualifiers (this, v);
+      la_set_qualifiers (this, v, uf);
 
     } else {
       if (PEEK_NTH_TOKEN(0) is TOKEN_COLON) {
@@ -5206,7 +5277,7 @@ parse_qualifiers:
         THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,
           "error while getting qualifiers, awaiting )");
 
-        la_set_qualifiers (this, MAP(map));
+        la_set_qualifiers (this, MAP(map), uf);
 
       } else {
         this->exprList++;
@@ -5215,7 +5286,7 @@ parse_qualifiers:
         THROW_ERR_IF_ERR(err);
 
         if (v.type is MAP_TYPE)
-          la_set_qualifiers (this, v);
+          la_set_qualifiers (this, v, uf);
         else if (v.type isnot NULL_TYPE)
           THROW_SYNTAX_ERR("awaiting a map as qualifiers");
       }
@@ -5383,7 +5454,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   c = TOKEN;
 
   if (c isnot TOKEN_PAREN_CLOS) {
-    paramCount = la_parse_expr_list (this);
+    paramCount = la_parse_expr_list (this, uf);
 
     c = TOKEN;
     if (paramCount < 0)
@@ -5474,7 +5545,7 @@ again:
 
       this->curState |= MALLOCED_STRING_STATE;
       NEXT_TOKEN();
-      paramCount = la_parse_expr_list (this);
+      paramCount = la_parse_expr_list (this, uf);
       this->curState &= ~MALLOCED_STRING_STATE;
 
       THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,
@@ -5531,7 +5602,7 @@ again:
 
     HASTORETURN = hastoreturn;
 
-    la_release_qualifiers (this);
+    la_release_qualifiers (this, uf->funname);
 
     this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
     if (uf->result.type >= UFUNCTION_TYPE) {
@@ -5612,9 +5683,10 @@ again:
       la_release_val (this, v);
   }
 
-  la_release_qualifiers (this);
+  la_release_qualifiers (this, this->curCFunName);
 
   this->curState &= ~FUNC_CALL_RESULT_IS_MMT;
+
   if (vp->type >= UFUNCTION_TYPE)
     this->curState |= FUNC_CALL_RESULT_IS_MMT;
 
@@ -5689,14 +5761,16 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
     sym = ns_lookup_symbol (this->std, method);
 
-    if (sym is NULL)
-      sym = ns_lookup_symbol (this->std, key);
+    if (sym is NULL) {
+      Cstring.cp (method, MAXLEN_SYMBOL + 1, key, bytelen (key));
+      sym = ns_lookup_symbol (this->std, method);
+    }
 
     if (sym is NULL or sym->value.type is 0) {
       sym = la_lookup_symbol (this, TOKENSTR);
 
       if (sym is NULL)
-        THROW_SYNTAX_ERR_FMT("%s|%s: unknown function", method, key);
+        THROW_SYNTAX_ERR_FMT("%s: unknown function", method);
 
       switch (sym->type) {
         case TOKEN_LAMBDA:
@@ -5750,13 +5824,11 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
           NEXT_TOKEN();
           c = TOKEN;
 
-          if (c isnot TOKEN_PAREN_OPEN)
-            THROW_SYNTAX_ERR("awaiting (");
+          THROW_SYNTAX_ERR_IFNOT(c is TOKEN_PAREN_OPEN, "awaiting (");
 
           NEXT_TOKEN();
           c = TOKEN;
-          if (c isnot TOKEN_PAREN_CLOS)
-            THROW_SYNTAX_ERR("awaiting )");
+          THROW_SYNTAX_ERR_IFNOT(c is TOKEN_PAREN_CLOS, "awaiting )");
           NEXT_TOKEN();
           goto release_value;
         }
@@ -5765,7 +5837,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
           if (IS_UFUNC(sym->type) or IS_CFUNC(sym->type))
             break;
 
-          THROW_SYNTAX_ERR_FMT("%s|%s: unknown function", method, key);
+          THROW_SYNTAX_ERR_FMT("%s: unknown function", method);
       }
     }
 
@@ -5817,6 +5889,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
     } else {
       CFunc op = (CFunc) AS_PTR(sym->value);
       TOKENARGS = (sym->type >> 8) & 0xff;
+      Cstring.cp (this->curCFunName, MAXLEN_SYMBOL + 1, method, bytelen (method));
       err = la_parse_func_call (this, vp, op, NULL, val);
 
       if (save_v.type is MAP_TYPE or save_v.refcount is ARRAY_LITERAL)
@@ -6297,31 +6370,34 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         return err;
       }
 
-      if (vp->type isnot MAP_TYPE)
-        THROW_SYNTAX_ERR("not a map");
+      THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE,
+        "awaiting a map type");
 
       UNGET_BYTE();
       TOKENVAL = *vp;
       /* fall through */
 
-    case TOKEN_MAP: {
+    case TOKEN_MAP:
       err = la_parse_map_get (this, vp);
       THROW_ERR_IF_ERR(err);
 
+      /* UNUSED
       int type;
       if (vp->type & UFUNCTION_TYPE)
         type = UFUNCTION_TYPE;
       else if (IS_CFUNC(vp->type))
         type = CFUNCTION_TYPE;
       else {
-        if (TOKEN is TOKEN_COLON) {
-          TOKENVAL = *vp;
-          return la_parse_chain (this, vp);
-        }
-
-        break;
+      */
+      if (TOKEN is TOKEN_COLON) {
+        TOKENVAL = *vp;
+        return la_parse_chain (this, vp);
       }
 
+      break;
+
+#if 0
+      /* probably unused code, but leave it here for a while in case */
       ifnot (TOKEN is TOKEN_PAREN_OPEN)
         break;
 
@@ -6340,7 +6416,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
         TOKENARGS = ((*vp).type >> 8) & 0xff;
         return la_parse_func_call (this, vp, op, NULL, *vp);
       }
-    }
+#endif
 
     case TOKEN_PLUS_PLUS:
     case TOKEN_MINUS_MINUS:
@@ -6378,8 +6454,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     case TOKEN_USRFUNC: {
       sym_t *symbol = TOKENSYM;
-      ifnot (symbol)
-        THROW_SYNTAX_ERR("user defined function, not declared");
+      THROW_SYNTAX_ERR_IF(NULL is symbol, "user defined function, not declared");
 
       funT *uf = AS_FUNC_PTR(symbol->value);
 
@@ -6399,6 +6474,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     case TOKEN_BUILTIN: {
       CFunc op = (CFunc) AS_PTR(TOKENVAL);
+      c_funname (this, TOKENSTR);
       err = la_parse_func_call (this, vp, op, NULL, TOKENSYM->value);
       THROW_ERR_IF_ERR(err);
 
@@ -6666,14 +6742,13 @@ static int la_parse_stmt (la_t *this) {
 
       name = TOKENSTR;
 
-      ifnot (GETSTRLEN(name))
-        THROW_SYNTAX_ERR("unknown symbol");
+      THROW_SYNTAX_ERR_IFNOT(GETSTRLEN(name), "empty length symbol name");
 
       char *key = sym_key (this, name);
 
       sym_t *sym = ns_lookup_symbol (this->std, key);
-      ifnot (NULL is sym)
-        THROW_SYNTAX_ERR("can not redefine a standard symbol");
+      THROW_SYNTAX_ERR_IFNOT(NULL is sym,
+        "can not redefine a standard symbol");
 
       sym = ns_lookup_symbol (this->datatypes, key);
 
@@ -6703,15 +6778,14 @@ static int la_parse_stmt (la_t *this) {
 
       sym = ns_lookup_symbol (scope, key);
 
-      ifnot (NULL is sym)
-        THROW_SYNTAX_ERR("can not redeclare a symbol in this scope");
+      THROW_SYNTAX_ERR_IFNOT(NULL is sym,
+        "can not redeclare a symbol in this scope");
 
       VALUE v = NULL_VALUE;
 
       TOKENSYM = la_define_symbol (this, scope, key, v.type, v, is_const);
 
-      if (NULL is TOKENSYM)
-        THROW_SYNTAX_ERR("unknown error on declaration");
+      THROW_SYNTAX_ERR_IF(NULL is TOKENSYM, "unknown error on declaration");
 
       int token = PEEK_NTH_TOKEN(0);
       if (token isnot TOKEN_ASSIGN) {
@@ -6733,7 +6807,7 @@ static int la_parse_stmt (la_t *this) {
     }
 
     case TOKEN_STRING:
-      if (PEEK_NTH_BYTE(0) is TOKEN_INDEX_OPEN) {
+      if (IS_NEXT_BYTE(TOKEN_INDEX_OPEN)) {
         sym_t *symbol = TOKENSYM;
         return la_string_set_char (this, symbol->value, symbol->is_const);
       }
@@ -6790,14 +6864,13 @@ static int la_parse_stmt (la_t *this) {
             return LA_OK;
 
           default:
-            THROW_SYNTAX_ERR_IF(val.type isnot INTEGER_TYPE or val.type isnot NUMBER_TYPE,
-              "awaiting an integer or a number");
+            THROW_SYNTAX_ERR("awaiting an integer or a number");
         }
       }
 
       if (symbol->is_const)
-        if (symbol->value.type isnot NULL_TYPE)
-          THROW_SYNTAX_ERR("can not reassign to a constant");
+        THROW_SYNTAX_ERR_IFNOT(symbol->value.type is NULL_TYPE,
+          "can not reassign to a constant");
 
       NEXT_TOKEN();
 
@@ -6861,7 +6934,7 @@ static int la_parse_stmt (la_t *this) {
         switch (symbol->value.type) {
           case STRING_TYPE:
             //if (Cstring.eq (symbol->scope->funname, scope->funname))
-              la_release_val (this, symbol->value);
+            la_release_val (this, symbol->value);
             break;
 
           default:
@@ -6969,8 +7042,9 @@ static int la_parse_stmt (la_t *this) {
       NEXT_TOKEN();
       c = TOKEN;
 
-      if (c isnot TOKEN_MAP)
-        THROW_SYNTAX_ERR("override works only for maps");
+      THROW_SYNTAX_ERR_IFNOT(c is TOKEN_MAP,
+        "override works only for maps");
+
       this->objectState |= FUNC_OVERRIDE;
       TOKEN = TOKEN_MAP;
       goto do_token;
@@ -11346,7 +11420,6 @@ static void la_release (la_t **thisp) {
   fun_release (&this->macros);
 
   la_release_stdns (this);
-  la_release_qualifiers (this);
 
   free (this);
   *thisp = NULL;
@@ -11618,7 +11691,6 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->funRefcount = Imap.new (256);
   this->units = Vmap.new (32);
   this->types = Vmap.new (32);
-  this->qualifiers = NULL;
   this->evalFile = String.new (128);
 
   la_append_instance (interp, this);

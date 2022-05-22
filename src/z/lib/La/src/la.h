@@ -328,7 +328,7 @@ typedef struct la_set_self {
     (*CFuncError) (la_t *, int),
     (*define_funs_cb) (la_t *, LaDefineFuns_cb);
 
-  VALUE (*qualifiers) (la_t *, VALUE);
+  VALUE (*qualifiers) (la_t *, VALUE, funT *);
 } la_set_self;
 
 typedef struct la_object_self {

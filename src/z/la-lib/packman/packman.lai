@@ -6,7 +6,6 @@ import ("file")
 import ("path")
 import ("crypt")
 
-#if #isdefined "BOOTSTRAP"
 import ("net")
 
 const PACKMAN                    = "Packman"
@@ -17,18 +16,18 @@ const PACKMAN_VERBOSE            = 1
 const PACKMAN_SOURCE_ARCHIVE     = 0
 const PACKMAN_SOURCE_REPO        = 1
 
-const PACKMAN_BUILD_EXTRACT          = 1
-const PACKMAN_BUILD_COPY             = 2
-const PACKMAN_BUILD_PATCH            = 3
-const PACKMAN_BUILD_CONFIGURE        = 4
-const PACKMAN_BUILD_MAKE             = 5
-const PACKMAN_BUILD_MAKE_INSTALL     = 6
-const PACKMAN_BUILD_MD_CHECK         = 7
-const PACKMAN_BUILD_USER_COM         = 8
-const PACKMAN_BUILD_EVAL             = 9
-const PACKMAN_BUILD_USER_COM_IF      = 10
-const PACKMAN_BUILD_MKDIR            = 11
-var LAST_BUILD_TYPE                  = PACKMAN_BUILD_MKDIR
+const PACKMAN_BUILD_EXTRACT      = 1
+const PACKMAN_BUILD_COPY         = 2
+const PACKMAN_BUILD_PATCH        = 3
+const PACKMAN_BUILD_CONFIGURE    = 4
+const PACKMAN_BUILD_MAKE         = 5
+const PACKMAN_BUILD_MAKE_INSTALL = 6
+const PACKMAN_BUILD_MD_CHECK     = 7
+const PACKMAN_BUILD_USER_COM     = 8
+const PACKMAN_BUILD_EVAL         = 9
+const PACKMAN_BUILD_USER_COM_IF  = 10
+const PACKMAN_BUILD_MKDIR        = 11
+var LAST_BUILD_TYPE              = PACKMAN_BUILD_MKDIR
 
 const PACKMAN_DATADIR            = Sys.get ("DATADIR"): path_concat (PACKMAN)
 const PACKMAN_SYSDIR             = Sys.get ("SYSDIR")
@@ -39,7 +38,9 @@ const SHA256TYPE                 = 2
 const SHA512TYPE                 = 3
 
 Type PackmanBuild {
+  public
   msg, type, command
+  private
   init : func (msg, type, com) {
     this.msg = msg
     this.type = type
@@ -189,8 +190,8 @@ Type Packman {
     this.datadir = datadir
     this.tmpdir = tmpdir
     this.sysdir = sysdir
-    this.bindir = sysdir: path_concat ("/bin")
-    this.libdir = sysdir: path_concat ("/lib")
+    this.bindir = sysdir: path_concat ("bin")
+    this.libdir = sysdir: path_concat ("lib")
     this.path = Sys.get ("PATH")
 
     this.curdir = Dir.current ()
@@ -427,10 +428,8 @@ Type Packman {
 
     if verb then println (fp, msg)
 
-    msg += 
-      if this.spec isnot null then
-        "\n" + this.spec:info (this; qualifiers ())
-      orelse ""
+    if this.spec isnot null then
+      append "\n" + this.spec:info (this; qualifiers ()) in msg
 
     return msg ifnot verb
   }
@@ -530,7 +529,7 @@ Type Packman {
           var com = "./configure --prefix=" + this.sysdir
 
           ifnot (null is action.command) then
-            com += format (" ${format (action.command)}")
+            append format (" ${format (action.command)}") in com
 
           if (this.sh:exec (com) isnot 0) {
             println (stderr, "error while executing command: ${com}")
@@ -543,7 +542,7 @@ Type Packman {
         if action.type is PACKMAN_BUILD_MAKE {
           var com = this.make_exec;
           ifnot (null is action.command) then
-            com += format (" ${format (action.command)}")
+            append format (" ${format (action.command)}") in com
 
           if this.sh:exec (com) isnot 0 {
             println (stderr, "error while executing command: ${com}")
@@ -556,7 +555,7 @@ Type Packman {
         if action.type is PACKMAN_BUILD_MAKE_INSTALL {
           var com = this.make_exec + " install";
           ifnot (null is action.command) then
-            com += format (" ${format (action.command)}")
+            append format (" ${format (action.command)}") in com
 
           if this.sh:exec (com) isnot ok {
             println (stderr, "error while executing command: ${com}")
