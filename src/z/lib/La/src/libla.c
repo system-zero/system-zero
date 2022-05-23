@@ -1,4 +1,4 @@
-/* Derived from the Tinyscript project at:
+/* The first thousand lines derived from the Tinyscript project at:
  * https://github.com/totalspectrum/ (see LICENSE included in this directory)
  *
  * See data/docs/la.md and data/tests/la-semantics.lai
@@ -390,6 +390,7 @@ struct la_t {
     parsePtr;
 
   VALUE
+    appendValue,
     condValue,
     tokenVal,
     funArgs[MAX_BUILTIN_PARAMS];
@@ -438,6 +439,7 @@ typedef struct tokenState {
 #define TOKENARGS   this->tokenArgs
 #define TOKENSTR    this->tokenStr
 #define CONDVAL     this->condValue
+#define APPENDVAL   this->appendValue
 #define PARSEPTR    this->parsePtr
 #define PREVTOKEN   this->prevToken
 #define HASTORETURN this->hasToReturn
@@ -1432,18 +1434,82 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
   THROW_OUT_OF_BOUNDS_IF(idx <= -1 or idx >= list->num_items, "list index [%d] is out of bounds [%d]", idx, list->num_items);
 
   listNode *node = DListGetAt(list, listNode, idx);
-  //if (NULL is node) return LA_NOTOK;
 
   VALUE *val = node->value;
+
+  NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_PLUS_PLUS or TOKEN is TOKEN_MINUS_MINUS) {
+    int peek = PEEK_NTH_BYTE(0);
+    switch (peek) {
+      case TOKEN_INDEX_CLOS:
+      case TOKEN_SEMICOLON:
+      case TOKEN_PAREN_CLOS:
+      case TOKEN_NL:
+      case TOKEN_COLON:
+      case ' ':
+      case '\t':
+      case TOKEN_EOF:
+        break;
+
+      default:
+        THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+          (TOKEN is TOKEN_PLUS_PLUS ? "++" : "--"));
+    }
+
+    *vp = *val; // get current value
+    switch (val->type) {
+      case INTEGER_TYPE: {
+        AS_INT((*val)) = AS_INT((*val)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+      }
+
+      case NUMBER_TYPE: {
+        AS_NUMBER((*val)) = AS_NUMBER((*val)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1);
+        NEXT_TOKEN();
+        return LA_OK;
+     }
+
+      default:
+        THROW_SYNTAX_ERR("awaiting an integer or a number");
+    }
+  }
+
+  ifnot (IS_NULL(APPENDVAL)) {
+    switch (val->type) {
+      case INTEGER_TYPE:
+        if (IS_INT(APPENDVAL)) {
+          AS_INT((*val)) += AS_INT(APPENDVAL);
+          *vp = *val;
+          APPENDVAL = NULL_VALUE;
+        }
+        return LA_OK;
+
+      case NUMBER_TYPE:
+        if (IS_NUMBER(APPENDVAL)) {
+          AS_NUMBER((*val)) += AS_NUMBER(APPENDVAL);
+          *vp = *val;
+          APPENDVAL = NULL_VALUE;
+        }
+        return LA_OK;
+
+      case STRING_TYPE:
+        *vp = *val;
+        return LA_OK;
+    }
+  }
 
   if (this->exprList and 0 is this->fmtRefcount) {
     *vp = *val;
     if (vp->type is STRING_TYPE)
       vp->refcount++;
+  } else if (this->fmtRefcount and val->type is STRING_TYPE) {
+    *vp = *val;
+    vp->refcount++;
   } else
     *vp = la_copy_value (*val);
 
-  NEXT_TOKEN();
   return LA_OK;
 }
 
@@ -1477,7 +1543,132 @@ static int la_parse_list_set (la_t *this) {
   THROW_SYNTAX_ERR_IF(ix.type isnot INTEGER_TYPE, "awaiting an integer expression, when getting list index");
   THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS, "list set: awaiting ]");
 
+  listType *list = AS_LIST(v_list);
+  int idx = AS_INT(ix);
+  if (0 > idx) idx += list->num_items;
+  THROW_OUT_OF_BOUNDS_IF(idx <= -1 or idx >= list->num_items, "list index [%d] is out of bounds [%d]", idx, list->num_items);
+
+  listNode *node = DListGetAt(list, listNode, idx);
+
   NEXT_TOKEN();
+
+  if (TOKEN > TOKEN_ASSIGN) {
+    if (TOKEN is TOKEN_PLUS_PLUS or TOKEN is TOKEN_MINUS_MINUS) {
+      VALUE *val = node->value;
+
+      int peek = PEEK_NTH_BYTE(0);
+      switch (peek) {
+        case TOKEN_INDEX_CLOS:
+        case TOKEN_SEMICOLON:
+        case TOKEN_PAREN_CLOS:
+        case TOKEN_NL:
+        case TOKEN_COLON:
+        case ' ':
+        case '\t':
+        case TOKEN_EOF:
+          break;
+
+        default:
+          THROW_SYNTAX_ERR_FMT("unexpected token after %s",
+            (TOKEN is TOKEN_PLUS_PLUS ? "++" : "--"));
+      }
+
+      switch (val->type) {
+        case INTEGER_TYPE:
+          AS_INT((*val)) = AS_INT((*val)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1);
+          NEXT_TOKEN();
+          return LA_OK;
+
+        case NUMBER_TYPE:
+          AS_NUMBER((*val)) = AS_NUMBER((*val)) + (TOKEN is TOKEN_PLUS_PLUS ? 1 : -1);
+          NEXT_TOKEN();
+          return LA_OK;
+
+        default:
+          THROW_SYNTAX_ERR("awaiting an integer or a number");
+      }
+    }
+
+    int token = TOKEN;
+
+    NEXT_TOKEN();
+
+    int is_un = 0;
+
+    if (TOKEN is TOKEN_UNARY) {
+      is_un = 1;
+      NEXT_TOKEN();
+    }
+
+    VALUE v;
+    err = la_parse_expr (this, &v);
+    THROW_ERR_IF_ERR(err);
+
+    if (is_un) {
+      if (v.type is INTEGER_TYPE)
+        AS_INT(v) = ~AS_INT(v);
+      else
+        THROW_SYNTAX_ERR("error while setting an unary object, awaiting an integer");
+    }
+
+    VALUE val = *node->value;
+    switch (val.type) {
+      case STRING_TYPE:
+      case INTEGER_TYPE:
+      case NUMBER_TYPE:
+        break;
+
+      default:
+        THROW_A_TYPE_MISMATCH(val.type, "is not allowd for a binary operation");
+    }
+
+    VALUE result;
+    switch (token) {
+      case TOKEN_ASSIGN_APP:
+        this->objectState |= OBJECT_APPEND;
+        result = la_add (this, val, v);
+        this->objectState &= ~OBJECT_APPEND;
+        break;
+
+      case TOKEN_ASSIGN_SUB:
+        result = la_sub (this, val, v); break;
+      case TOKEN_ASSIGN_DIV:
+        result = la_div (this, val, v); break;
+      case TOKEN_ASSIGN_MUL:
+        result = la_mul (this, val, v); break;
+      case TOKEN_ASSIGN_MOD:
+        result = la_mod (this, val, v); break;
+      case TOKEN_ASSIGN_BAR:
+        result = la_bset (this, val, v); break;
+      case TOKEN_ASSIGN_AND:
+        result = la_bnot (this, val, v); break;
+      case TOKEN_ASSIGN_XOR:
+        result = la_bitxor (this, val, v); break;
+    }
+
+    if (result.type is NULL_TYPE)
+       THROW_SYNTAX_ERR("unxpected operation");
+
+    switch (val.type) {
+      case STRING_TYPE: {
+        *node->value = result;
+        break;
+      }
+
+      case INTEGER_TYPE: {
+        *node->value = result;
+        break;
+      }
+
+      case NUMBER_TYPE: {
+        *node->value = result;
+        break;
+      }
+    }
+
+    return LA_OK;
+  }
+
   THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_ASSIGN, "syntax error while setting list, awaiting =");
 
   NEXT_TOKEN();
@@ -1486,12 +1677,6 @@ static int la_parse_list_set (la_t *this) {
   err = la_parse_expr (this, &v);
   THROW_ERR_IF_ERR(err);
 
-  listType *list = AS_LIST(v_list);
-  int idx = AS_INT(ix);
-  if (0 > idx) idx += list->num_items;
-  THROW_OUT_OF_BOUNDS_IF(idx <= -1 or idx >= list->num_items, "list index [%d] is out of bounds [%d]", idx, list->num_items);
-
-  listNode *node = DListGetAt(list, listNode, idx);
   la_release_val (this, *node->value);
 
   switch (v.refcount) {
@@ -1655,15 +1840,17 @@ static int la_parse_list (la_t *this, VALUE *vp, int is_fun) {
 }
 
 static int la_parse_append (la_t *this, VALUE *vp) {
+  APPENDVAL = NULL_VALUE;
   VALUE v;
   NEXT_TOKEN();
   int err = la_parse_expr (this, &v);
   THROW_ERR_IF_ERR(err);
 
-  if (TOKEN isnot TOKEN_IN)
-    THROW_SYNTAX_ERR("error parsing append, awaiting in");
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_IN, "error parsing append, awaiting in");
 
   NEXT_TOKEN();
+
+  APPENDVAL = v;
 
   err = la_parse_expr (this, vp);
   THROW_ERR_IF_ERR(err);
@@ -1673,8 +1860,8 @@ static int la_parse_append (la_t *this, VALUE *vp) {
   switch (vp->type) {
     case ARRAY_TYPE: {
       ArrayType *array = (ArrayType *) AS_ARRAY((*vp));
-      if (v.type isnot array->type)
-        THROW_SYNTAX_ERR("value type and array type are not the same");
+      THROW_SYNTAX_ERR_IFNOT(v.type is array->type,
+        "appended value type in array, is not the same of the array type");
 
       if (v.type is STRING_TYPE or v.sym isnot NULL) {
         if (v.refcount is STRING_LITERAL)
@@ -1734,6 +1921,7 @@ static int la_parse_append (la_t *this, VALUE *vp) {
     }
 
     default: {
+      if (IS_NULL(APPENDVAL)) break;
       VALUE rv = la_add (this, *vp, v);
       THROW_SYNTAX_ERR_IF(IS_NULL(rv), "append error");
 
@@ -1743,6 +1931,7 @@ static int la_parse_append (la_t *this, VALUE *vp) {
     }
   }
 
+  APPENDVAL = NULL_VALUE;
   return err;
 }
 
@@ -4049,24 +4238,24 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
   int err;
   if (NEXT_BYTE_NOWS_NONL() is TOKEN_INDEX_OPEN) {
-     NEXT_TOKEN();
-     VALUE v;
-     err = la_get_anon_array (this, &v);
-     THROW_ERR_IF_ERR(err);
+    NEXT_TOKEN();
+    VALUE v;
+    err = la_get_anon_array (this, &v);
+    THROW_ERR_IF_ERR(err);
 
-     NEXT_TOKEN();
+    NEXT_TOKEN();
 
-     if (TOKEN isnot TOKEN_INDEX_CLOS)
-       THROW_SYNTAX_ERR("array get, awaiting ]");
+    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS,
+      "array get, awaiting ]");
 
-     err = la_array_from_array (this, array, v, vp);
+    err = la_array_from_array (this, array, v, vp);
 
-     if (TOKEN isnot TOKEN_INDEX_CLOS)
-       THROW_SYNTAX_ERR("array get, awaiting ]");
+    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS,
+      "array get, awaiting ]");
 
-     NEXT_TOKEN();
+    NEXT_TOKEN();
 
-     return err;
+    return err;
   }
 
   VALUE ix;
@@ -4078,8 +4267,8 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   if (ix.type is ARRAY_TYPE)
     return la_array_from_array (this, array, ix, vp);
 
-  if (ix.type isnot INTEGER_TYPE)
-    THROW_SYNTAX_ERR("array get, awaiting an integer expression");
+  THROW_SYNTAX_ERR_IF(ix.type isnot INTEGER_TYPE,
+    "array get, awaiting an integer expression");
 
   integer len = array->len;
   integer idx = AS_INT(ix);
@@ -4094,12 +4283,22 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   switch (array->type) {
     case INTEGER_TYPE: {
       integer *ary = (integer *) AS_ARRAY(array->value);
+      if (IS_INT(APPENDVAL)) {
+        ary[idx] += AS_INT(APPENDVAL);
+        APPENDVAL = NULL_VALUE;
+      }
+
       *vp = INT(ary[idx]);
       break;
     }
 
     case NUMBER_TYPE: {
       number *ary = (number *) AS_ARRAY(array->value);
+      if (IS_NUMBER(APPENDVAL)) {
+        ary[idx] += AS_NUMBER(APPENDVAL);
+        APPENDVAL = NULL_VALUE;
+      }
+
       *vp = NUMBER(ary[idx]);
       break;
     }
@@ -4143,8 +4342,8 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
 
   if (c is TOKEN_DOT) {
     VALUE v = *vp;
-    if (v.type isnot MAP_TYPE)
-      THROW_SYNTAX_ERR("not a map");
+    THROW_SYNTAX_ERR_IF(v.type isnot MAP_TYPE,
+      "value is not a map type");
 
     TOKENVAL = v;
     UNGET_BYTE();
@@ -4183,6 +4382,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
         NEXT_TOKEN();
         return LA_OK;
      }
+
       default:
         THROW_SYNTAX_ERR("awaiting an integer or a number");
     }
@@ -4196,8 +4396,8 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
         this->objectState |= ARRAY_MEMBER;
         UNGET_BYTE();
         err = la_string_get (this, vp);
-        if (TOKEN is TOKEN_INDEX_OPEN)
-          THROW_SYNTAX_ERR("unsupported indexing");
+        THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_INDEX_OPEN,
+          "unsupported indexing");
 
         return err;
 
@@ -4925,6 +5125,24 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
         vp->refcount++;
         this->objectState |= MAP_MEMBER;
       }
+    }
+  }
+
+  ifnot (IS_NULL(APPENDVAL)) {
+    switch (v->type) {
+      case INTEGER_TYPE:
+        if (IS_INT(APPENDVAL)) {
+          AS_INT((*v)) += AS_INT(APPENDVAL);
+          APPENDVAL = NULL_VALUE;
+        }
+        break;
+
+      case NUMBER_TYPE:
+        if (IS_NUMBER(APPENDVAL)) {
+          AS_NUMBER((*v)) += AS_NUMBER(APPENDVAL);
+          APPENDVAL = NULL_VALUE;
+        }
+        break;
     }
   }
 
@@ -5946,6 +6164,7 @@ static int la_parse_prefix (la_t *this, VALUE *vp, int op_token) {
       return LA_OK;
     }
 
+    case TOKEN_LIST:
     case TOKEN_ARRAY:
     // fall through
     case TOKEN_MAP: {
@@ -6047,7 +6266,7 @@ static int la_parse_prefix (la_t *this, VALUE *vp, int op_token) {
     break;
 
     default:
-      THROW_SYNTAX_ERR("awaiting a variable, a map or an array");
+      THROW_SYNTAX_ERR("awaiting a variable, a map or a list or an array");
   }
 
   return LA_NOTOK;
@@ -9476,8 +9695,10 @@ static int la_parse_print (la_t *this) {
     c = TOKEN;
 
     this->curState |= MALLOCED_STRING_STATE;
+    this->fmtRefcount++;
     err = la_parse_expr (this, &v);
     this->curState &= ~MALLOCED_STRING_STATE;
+    this->fmtRefcount--;
     THROW_ERR_IF_ERR(err);
 
     check_expr:

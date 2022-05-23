@@ -510,6 +510,9 @@ func self_semantics () {
     return pm_ar[x]--
   }
 
+  var lis = {[10]}
+  var lm = lis[0]++
+  var lmm = lis[0]
   var pm_10 = p_m (10)
   var pm_21 = p_m (20)
   var pm_30 = p_m (31)
@@ -518,6 +521,8 @@ func self_semantics () {
   var pm_at_0 = p_ap (0)
   var pm_dt_1 = p_am (1)
   assert_true ("testing postfix [de|in]crement --,++ operators",
+      lm    is 10 and
+      lmm   is 11 and
       pm_10 is 10 and
       pm_21 is 21 and
       pm_30 is 30 and
@@ -535,7 +540,12 @@ func self_semantics () {
   var dard = --dar[0]
   var dardi = {k : 3}
   var dardilada = --dardi.k
+  var lpf = ++lis[0]
+  var lpff = lis[0]
+
   assert_true ("testing prefix --,++ operators for expressions",
+      lpf is 12 and
+      lpff is 12 and
       dady is 4 and
       didy is 4 and
       dard is 1 and
@@ -2108,7 +2118,20 @@ func self_semantics () {
     var sa = l: pop_at (1)
     var e = l[0]
 
+    var lal = {[10, "str"]}
+    lal[0] += 100
+    lal[1] += "ing"
+    var lala = lal[1] + "igy"
+    var lla = {[10]}
+    lla[0] *= 2
+    lla[0] /= 5
+    var llaa = ++lla[0]
+
     assert_true ("testing lists",
+        llaa is 5 and
+        lal[0] is 110 and
+        lal[1] is "string" and
+        lala is "stringigy" and
         sum is 1 and
         sun is "twoone12" and
         v is "12" and

@@ -1,3 +1,28 @@
+This is to create with the most minimum code possible, a functional computer system,
+that can be used as it is, or as a foundation to extent it with specific functionality.
+
+Here we assume a bootstrapped system from nothing but a seed, but as this is a quite
+complicated research by its own, it is out of scope for us at least for now, though
+it is a prerequisitie in reality.
+
+We are developing in a Linux system, with C as our programming language, and so we
+are awaiting a C compiler, a libc, a linker and the make utility and probably coreutils
+(we would like to record which ones), for building the first zero bits.
+
+It is crucial to record this whole path to completion, for educational purposes,
+and though this happens automatically by git, we would like in future to document it.
+
+We give extensive focus, to unite the execution namespace and the source code, as
+we believe that both are interdependent and interchangeable, as the wise path to
+evolution and quite probably to our freedom finally. For every bit of code, it is
+utterly important to understand the "why" and the intentions. We let then our actual will
+(filtered by our logic) and the fascination to lead and give the fuel to this eternal path.
+
+This README it is written as a diary and it is quite complicated, so no need to
+run through all these lines to understand. Anyway [this](#Intention) section started all.
+Be aware, that this document needs a quite serious revision (probably 5/6 months of
+extensive work), but at least for the next three/four years, it is not a priority.
+
 [ zero point draft]
 
 Status:  
