@@ -39,8 +39,7 @@ RESULTS[*] = ok
 var EXPECTED_TO_FAIL = 1
 
 func assert_true (msg, expr) {
-  test_num++
-  print ("[${test_num}] ${msg} - ")
+  print ("[${++test_num}] ${msg} - ")
   if expr is false {
     println (stderr, "[NOTOK] awaiting true got false")
     RESULTS[test_num - 1] = notok
@@ -51,8 +50,7 @@ func assert_true (msg, expr) {
 }
 
 func assert_true_msg (msg, msg_on_error, expr) {
-  test_num++
-  print ("[${test_num}] ${msg} - ")
+  print ("[${++test_num}] ${msg} - ")
   if expr is false {
     RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] ${msg_on_error}")
@@ -63,8 +61,7 @@ func assert_true_msg (msg, msg_on_error, expr) {
 }
 
 func assert_false (msg, expr) {
-  test_num++
-  print ("[${test_num}] ${msg} - ")
+  print ("[${++test_num}] ${msg} - ")
   if expr {
     RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] awaiting false got true")
@@ -75,8 +72,7 @@ func assert_false (msg, expr) {
 }
 
 func assert_equal (msg, a_expr, b_expr) {
-  test_num++
-  print ("[${test_num}] ${msg} - ")
+  print ("[${++test_num}] ${msg} - ")
   if a_expr isnot b_expr {
     RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] awaiting equality")
@@ -87,8 +83,7 @@ func assert_equal (msg, a_expr, b_expr) {
 }
 
 func assert_not_equal (msg, a_expr, b_expr) {
-  test_num++
-  print ("[${test_num}] ${msg} - ")
+  print ("[${++test_num}] ${msg} - ")
   if a_expr is b_expr {
     RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] awaiting equality")
@@ -99,8 +94,7 @@ func assert_not_equal (msg, a_expr, b_expr) {
 }
 
 func assert_equal_msg (msg, msg_on_error, a_expr, b_expr) {
-  test_num++
-  print ("[${test_num}] ${msg} - ")
+  print ("[${++test_num}] ${msg} - ")
   if a_expr isnot b_expr {
     RESULTS[test_num - 1] = notok
     println (stderr, "[NOTOK] ${%s, msg_on_error}")
@@ -111,8 +105,7 @@ func assert_equal_msg (msg, msg_on_error, a_expr, b_expr) {
 }
 
 func expected_to_fail (msg, msg_on_error, a_expr, b_expr) {
-  test_num++
-  print ("[${test_num}] ${msg} - ")
+  print ("[${++test_num}] ${msg} - ")
   if a_expr isnot b_expr {
     RESULTS[test_num - 1] = EXPECTED_TO_FAIL
     println (stderr, "[NOTOK] ${%s, msg_on_error}")
@@ -138,9 +131,7 @@ func zero_semantics () {
   retval = fua (11, 12)
   assert_true ("testing scope", retval is 23)
 
-  func fub (b) {
-    return a + b
-  }
+  func fub (b) return a + b
 
   retval = fub (10)
   assert_true ("testing scope", retval is 11)
@@ -455,10 +446,8 @@ func self_semantics () {
   var rbac = if rn isnot null and rn is true then notok orelse ok
   var rbad = if rn isnot null and rn is true then notok
   var rbae
-  if rn isnot null and rn is true then
-    rbae = notok
-  orelse
-    rbae = ok
+  if rn isnot null and rn is true then rbae = notok
+  orelse rbae = ok
 
   var rblues
   if rn isnot null and rn is true or
@@ -705,8 +694,7 @@ func self_semantics () {
       var ign = 0
       var ign_str = "a"
       if i is 2 { i++; continue }
-      append ar[i] in sum
-      i++;
+      append ar[i++] in sum
     }
 
     return sum
@@ -812,9 +800,7 @@ func self_semantics () {
 
   sum = lambda {
     var s = 0
-    for (var i = 1; i < 100 ; s += i, i++) {
-      break if i is 10
-    }
+    for (var i = 1; i < 100 ; s += i, i++) break if i is 10
     return s
    } ()
 
@@ -822,9 +808,7 @@ func self_semantics () {
 
   sum = lambda {
     var s = 0
-    for (var i = 1; i < 100 ; s += i, i++)
-      return s if i is 10
-
+    for (var i = 1; i < 100 ; s += i, i++) return s if i is 10
     return s
    } ()
 
@@ -872,7 +856,8 @@ func self_semantics () {
   sum = lambda {
     var s = 0; var i = 0;
     for 100 times {
-      return s if i is 10; s += i; i++
+      return s if i is 10
+      s += i; i++
     }
     return s
    } ()
@@ -1228,9 +1213,7 @@ func self_semantics () {
 
     func std_module () {
       import ("std")
-      var s = {
-        "f" : 11
-      }
+      var s = {f : 11}
 
       func sa (m, k, v) Map.set (m, k, v)
 
@@ -1611,14 +1594,31 @@ func self_semantics () {
   var sa = [{l : 1, k : [1, 2, 3, 4], lk : {ka : 1, kka : {a : 2,
       b : ["av", "sb", "fg"]}}}]
 
+  var l = {[ {k : 1}, [1, 2], "str", {[1]}, {k : {[ {k : 1, s: ["string"]} ]} }]}
+
   assert_true ("testing getting consecutive container types",
-      sa[0].lk.kka.b[0][0] is 'a')
+      sa[0].lk.kka.b[0][0] is 'a' and
+      l[0].k is 1 and
+      l[1][0] is 1 and
+      l[2][0] is 's' and
+      l[3][0] is 1 and
+      l[4].k[0].k is 1 and
+      l[4].k[0].s[0] is "string")
 
   sa[0].lk.kka.b[0] = "wstring"
   sa[0].lk.kka.b[0][0] = 'x'
 
+  l[0].k = 10
+  l[1][0] = 10
+  l[2][0] = 'a'
+  l[3][0] = 10
+
   assert_true ("testing setting consecutive container types",
-      sa[0].lk.kka.b[0] is "xstring")
+      sa[0].lk.kka.b[0] is "xstring" and
+      l[0].k is 10 and
+      l[1][0] is 10 and
+      l[2][0] is 'a' and
+      l[3][0] is 10)
 
   public var v_visible = "visible variable"
 
@@ -1776,6 +1776,18 @@ func self_semantics () {
     car[0] = [1, 2, 3]
     car[1] = [4, 5, 6]
     assert_true ("testing array of arrays with specified len", car[1][2] is 6)
+
+    var lar = [{[0, "as"]}, {[1, "sa"]}]
+    var list[2] lara = [{[1]}, {["string"]}]
+    append {["list 3"]} in lara
+    assert_true ("testing array of lists",
+        lar[0][0] is 0 and
+        lar[0][1] is "as" and
+        lar[1][1] is "sa" and
+        lar[1][0] is 1 and
+        lara[0][0] is 1 and
+        lara[1][0] is "string" and
+        lara[2][0] is "list 3")
 
     func fibo_array (n) {
       var integer[n + 2] f
@@ -2098,7 +2110,7 @@ func self_semantics () {
   test_maps ()
 
   func test_lists () {
-    var l = list ()
+    var l = {[]}
     list_append (l, 21)
     list_append (l, "12")
     list_prepend(l, 1)
@@ -2192,7 +2204,7 @@ func self_semantics () {
         typeAsString (n_ar[0]) is "NumberType")
     assert_true ("testing map type", typeof (mapa) is MapType and
         typeAsString (mapa) is "MapType")
-    var l = list ("1", [1, 2], {"k" : 1}, list (0, 1, 2))
+    var l = {["1", [1, 2], {"k" : 1}, {[0, 1, 2]}]}
     assert_true ("testing list type", typeof (l) is ListType and
         typeAsString (l) is "ListType" and
         typeAsString (l[3]) is "ListType")
@@ -2265,6 +2277,7 @@ func self_semantics () {
     append "fgh" in s
 
     append "qwe" in "zxc" as v
+    append 'C' in "ab" as vc
 
     var sa = append "asd" in "xcv"
 
@@ -2279,6 +2292,7 @@ func self_semantics () {
         n is 30.0 and
         s is "asdfgh" and
         v is "zxcqwe" and
+        vc is "abC" and
         sa is "xcvasd" and
         l[1] is 2 and
         l[-1] is 2 and

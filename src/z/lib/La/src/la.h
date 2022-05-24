@@ -112,6 +112,13 @@ typedef struct listType listType;
     }                                                    \
     ary_ = ARRAY(m_ar);                                  \
                                                          \
+  } else if (array_->type is LIST_TYPE) {                \
+    listArrayMember **l_ar = Alloc (__len__ * sizeof (listArrayMember)); \
+    for (integer i = 0; i < __len__; i++) {              \
+      l_ar[i] = NULL;                                    \
+    }                                                    \
+    ary_ = ARRAY(l_ar);                                  \
+                                                         \
   } else if (array_->type is ARRAY_TYPE) {               \
     ArrayType **a_ar = Alloc (sizeof (ArrayType) * __len__);\
     for (integer i = 0; i < __len__; i++) {              \
@@ -147,6 +154,11 @@ typedef struct listType listType;
     m_ar = Realloc (m_ar, __len__ * Vmap.size_of ());    \
     m_ar[__len__ - 1] = AS_MAP(__v__);                   \
     ary_ = ARRAY(m_ar);                                  \
+  } else if (__ar__->type is LIST_TYPE) {                \
+    listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(ary_); \
+    l_ar = Realloc (l_ar, __len__ * sizeof (listArrayMember));    \
+    l_ar[__len__ - 1] = LIST_ARRAY_MEMBER(__v__);        \
+    ary_ = ARRAY(l_ar);                                  \
   } else if (__ar__->type is ARRAY_TYPE) {               \
     ArrayType **a_ar = (ArrayType **) AS_ARRAY(ary_);    \
     a_ar = Realloc (a_ar, __len__ * sizeof (ArrayType)); \
@@ -178,6 +190,12 @@ typedef struct listType listType;
   object *_o_ = AS_OBJECT(__v__);                  \
   listType *_l_ = (listType *) AS_PTR(_o_->value); \
   _l_;                                             \
+})
+
+typedef object listArrayMember;
+#define LIST_ARRAY_MEMBER(__v__) ({                \
+  object *_o_ = AS_OBJECT(__v__);                  \
+  _o_;                                             \
 })
 
 #define FILEPTR(__fp__) (VALUE) {.type = FILEPTR_TYPE, .asInteger = (pointer) __fp__, .refcount = 0, .sym = NULL}

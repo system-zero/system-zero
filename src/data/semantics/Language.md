@@ -12,7 +12,7 @@ a prototype of a language specification - see [Excuses](Excuses)]
 
 Basic DataTypes:
 
-  - NullType   : (void *) 0 (declared as `null`)
+  - NullType      : (void *) 0 (declared as `null`)
   - NumberType    : double
   - IntegerType   : integer
   - StringType    : string type (container that holds C strings)
@@ -562,6 +562,7 @@ Probably this will be a very messy output."
   #  number
   #  map
   #  string
+  #  list
   #  array  (arrays of arrays can be nested in an arbitrary depth)
 
   # Now it can be initialized with an algorithm:
@@ -610,10 +611,29 @@ Probably this will be a very messy output."
   # This syntax should be attributed at SLang Programming Language.
 
   # Lists.
-  This datatype is like the ArrayType with the exception that can hold different types
-  for its elements. It has the same (almost) array semantics, when accessing them or
-  when iterate on them, they differ only (for now at least) the way they are created,
-  so there is still a consideration.
+  # This datatype is like the ArrayType with the exception, that is heterogenous and
+  # and it can hold any type.
+  # It has the same (almost) array semantics, when accessing them or when iterate on them,
+  # they differ only the way they are created, and which is using a pair of "{[" "]}"
+  # tokens (note that "{[" or "]}", is one token so '{' must be followed by '[' and
+  # ']' must be followed by '}'.
+
+  # Create an empty list:
+
+  var l = {[]}
+
+  # append an item
+
+  append 1 in l
+
+  # access it
+
+  println (l[0])
+  l[0] += 10
+
+  # iterate over
+
+  for v in l println (v)
 
   # If As Expression and if cond then do this orelse do that, kind of Code Expressions.
 
@@ -801,10 +821,6 @@ Probably this will be a very messy output."
       return {y : 2100}
     }
     println (q_fun (10; fm ()))        # => 30000
-
-  # Note that only one set of qualifiers can be active at the running instance.
-  # Because of that the called function, should use the interface, before any
-  # new function call. (this might be best to change)
 
   # Again, this mechanism should be attributed to the SLang Programming Language,
   # and it is exposed with the exact interface.

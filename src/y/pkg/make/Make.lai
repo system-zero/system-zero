@@ -177,45 +177,45 @@ Type Make {
   retval                      : ok
   debug                       : DEBUG
   rpath                       : RPATH
-  libdirs                     : list ()
-  includedirs                 : list ()
-  shared_library_sources      : list ()
-  shared_module_sources       : list ()
-  shared_executable_sources   : list ()
-  static_library_sources      : list ()
-  static_executable_sources   : list ()
-  script_sources              : list ()
-  cflags                      : list ()
+  libdirs                     : {[]}
+  includedirs                 : {[]}
+  shared_library_sources      : {[]}
+  shared_module_sources       : {[]}
+  shared_executable_sources   : {[]}
+  static_library_sources      : {[]}
+  static_executable_sources   : {[]}
+  script_sources              : {[]}
+  cflags                      : {[]}
 
   shared_library    : {
-    cflags                  : list ()
+    cflags                    : {[]}
   }
 
   shared_module     : {
-    cflags                  : list ()
+    cflags                    : {[]}
   }
 
   shared_executable : {
-    cflags                  : list ()
+    cflags                    : {[]}
   }
 
   static_library    : {
-    cflags                  : list ()
+    cflags                    : {[]}
   }
 
   static_executable : {
-    cflags                  : list ()
+    cflags                    : {[]}
   }
 
   linkagainst       : {
-    shared_library          : list ()
-    shared_executable       : list ()
-    shared_module           : list ()
-    static_library          : list ()
-    static_executable       : list ()
+    shared_library            : {[]}
+    shared_executable         : {[]}
+    shared_module             : {[]}
+    static_library            : {[]}
+    static_executable         : {[]}
   }
 
-  targets                   : 0
+  targets                     : 0
 
   init_local_cflags : func {
     return if this.local_cflags is false
@@ -923,7 +923,7 @@ Type Make {
       return notok if notok is this.change_to_build_directory ()
       return ok if null is this.script_sources
 
-      var sources = list ()
+      var sources = {[]}
       for v in this.script_sources append v + ".lai" in sources
 
       this.record (sources)
@@ -938,7 +938,7 @@ Type Make {
         }
       }
 
-      var targets = list ()
+      var targets = {[]}
 
       for v in this.script_sources {
         append this.bindir: concat_with (v)             in targets

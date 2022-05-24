@@ -609,6 +609,9 @@ static int la_parse_primary (la_t *, VALUE *);
 static int la_parse_func_def (la_t *);
 static int la_eval_file (la_t *, const char *);
 static int la_parse_fmt (la_t *, string *, int);
+static int la_parse_string_get (la_t *, VALUE *);
+static int la_parse_array_set (la_t *);
+static int la_parse_string_set_char (la_t *, VALUE, int);
 static sym_t *la_lookup_symbol (la_t *, la_string);
 static sym_t *la_define_symbol (la_t *, funT *, const char *, int, VALUE, int);
 static VALUE la_release_val (la_t *, VALUE);
@@ -1423,10 +1426,8 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
   VALUE ix;
   int err = la_parse_expr (this, &ix);
   THROW_ERR_IF_ERR(err);
-  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS,
-    "list get: awaiting ]");
-  THROW_SYNTAX_ERR_IF(ix.type isnot INTEGER_TYPE,
-    "awaiting an integer expression, when getting list index");
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS, "list get: awaiting ]");
+  THROW_SYNTAX_ERR_IF(ix.type isnot INTEGER_TYPE, "awaiting an integer expression, when getting list index");
 
   listType *list = AS_LIST(v_list);
   int idx = AS_INT(ix);
@@ -1438,6 +1439,37 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
   VALUE *val = node->value;
 
   NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_DOT) {
+    THROW_SYNTAX_ERR_IF(val->type isnot MAP_TYPE,
+      "value is not a map type");
+
+    TOKENVAL = *val;
+    UNGET_BYTE();
+    return la_parse_map_get (this, vp);
+  }
+
+  if (TOKEN is TOKEN_INDEX_OPEN) {
+    switch (val->type) {
+      case LIST_TYPE:
+      case ARRAY_TYPE:
+      case STRING_TYPE:
+        break;
+      default:
+        THROW_SYNTAX_ERR("awaiting an array or a list or a string");
+    }
+
+    TOKENVAL = *val;
+    UNGET_BYTE();
+
+    if (val->type is LIST_TYPE)
+      return la_parse_list_get (this, vp);
+
+    if (val->type is ARRAY_TYPE)
+      return la_parse_array_get (this, vp);
+
+    return la_parse_string_get (this, vp);
+  }
 
   if (TOKEN is TOKEN_PLUS_PLUS or TOKEN is TOKEN_MINUS_MINUS) {
     int peek = PEEK_NTH_BYTE(0);
@@ -1504,7 +1536,7 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
     *vp = *val;
     if (vp->type is STRING_TYPE)
       vp->refcount++;
-  } else if (this->fmtRefcount and val->type is STRING_TYPE) {
+  } else if (this->fmtRefcount) {
     *vp = *val;
     vp->refcount++;
   } else
@@ -1612,6 +1644,7 @@ static int la_parse_list_set (la_t *this) {
     }
 
     VALUE val = *node->value;
+
     switch (val.type) {
       case STRING_TYPE:
       case INTEGER_TYPE:
@@ -1667,6 +1700,39 @@ static int la_parse_list_set (la_t *this) {
     }
 
     return LA_OK;
+  }
+
+  if (TOKEN is TOKEN_DOT) {
+    VALUE val = *node->value;
+    THROW_SYNTAX_ERR_IF(val.type isnot MAP_TYPE,
+      "value is not a map type");
+
+    TOKENVAL = val;
+    UNGET_BYTE();
+    return la_parse_map_set (this);
+  }
+
+  if (TOKEN is TOKEN_INDEX_OPEN) {
+    VALUE val = *node->value;
+    switch (val.type) {
+      case LIST_TYPE:
+      case ARRAY_TYPE:
+      case STRING_TYPE:
+        break;
+      default:
+        THROW_SYNTAX_ERR("awaiting an array or a list or a string");
+    }
+
+    TOKENVAL = val;
+    UNGET_BYTE();
+
+    if (val.type is LIST_TYPE)
+      return la_parse_list_set (this);
+
+    if (val.type is ARRAY_TYPE)
+      return la_parse_array_set (this);
+
+    return la_parse_string_set_char (this, val, 0);
   }
 
   THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_ASSIGN, "syntax error while setting list, awaiting =");
@@ -1756,6 +1822,7 @@ static VALUE list_clear (la_t *this, VALUE v_list) {
 
   return OK_VALUE;
 }
+
 static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
   ifnot (IS_LIST(v_list)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a list");
   ifnot (IS_INT(v_idx)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
@@ -1783,7 +1850,6 @@ static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
 
 static int la_parse_list (la_t *this, VALUE *vp, int is_fun) {
   int err;
-
   NEXT_TOKEN();
   ifnot (is_fun)
     THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_OPEN,  "parsing list: awaiting [");
@@ -1792,9 +1858,10 @@ static int la_parse_list (la_t *this, VALUE *vp, int is_fun) {
 
   VALUE v_list = LIST_NEW();
   if (this->exprList)
-      v_list.refcount--;
+    v_list.refcount--;
 
   NEXT_TOKEN();
+
   if (TOKEN is TOKEN_PAREN_CLOS) {
     THROW_SYNTAX_ERR_IFNOT(is_fun, "parsing list: unexpected token )");
     *vp = v_list;
@@ -3165,7 +3232,7 @@ static VALUE la_BinaryStringToNum (la_string s) {
   return INT(r);
 }
 
-static int  la_string_get (la_t *this, VALUE *vp) {
+static int  la_parse_string_get (la_t *this, VALUE *vp) {
   int err;
   int c = PEEK_NTH_BYTE(0);
 
@@ -3205,7 +3272,7 @@ static int  la_string_get (la_t *this, VALUE *vp) {
   return LA_OK;
 }
 
-static int la_string_set_char (la_t *this, VALUE value, int is_const) {
+static int la_parse_string_set_char (la_t *this, VALUE value, int is_const) {
   int err;
 
   THROW_SYNTAX_ERR_IF(is_const, "can not modify constant string");
@@ -3304,14 +3371,12 @@ theend:
   return result;
 }
 
-static int la_get_anon_array (la_t *this, VALUE *vp) {
+static int la_parse_anon_array (la_t *this, VALUE *vp) {
   int err;
 
   THROW_SYNTAX_ERR_IF(NEXT_BYTE_NOWS_NONL() is TOKEN_INDEX_CLOS,
     "inline empty array is not supported");
 
-  int pc;
-  int c = 0;
   int instr = 0;
   int inmap = 0;
   int indtokopen = 1;
@@ -3319,6 +3384,7 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   int parenopen = 0;
   int inparen = 0;
   int inar = 0;
+  int inlist = 0;
   int is_array_of_array = 0;
   int num_elem = 1;
 
@@ -3326,17 +3392,28 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
   if (PEEK_NTH_BYTE_NOWS_NONL(&n) is TOKEN_INDEX_OPEN)
     is_array_of_array = 1;
 
+  int pc;
+  int c = 0;
+//  int cn;
+
   n = 0;
+  const char *ptr = GETSTRPTR(PARSEPTR);
 
   while (1) {
     pc = c;
-    c = PEEK_NTH_BYTE(n++);
+    c = *ptr++;
 
     THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "unended array");
 
     if (c is TOKEN_INDEX_CLOS and 0 is instr + inparen) {
       if (inmap)
         continue;
+
+      if (*ptr is TOKEN_MAP_CLOS and inlist) {
+        ptr++;
+        inlist--;
+        continue;
+      }
 
       indtokclos++;
 
@@ -3385,17 +3462,23 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
     }
 
     if (c is TOKEN_MAP_OPEN and 0 is instr + inparen) {
-      inmap++;
+      if (*ptr is TOKEN_INDEX_OPEN) {
+        ptr++;
+        inlist++;
+      } else
+        inmap++;
+
       continue;
     }
 
     if (c is TOKEN_MAP_CLOS and 0 is instr + inparen) {
       inmap--;
+
       continue;
     }
 
     //if ((c is TOKEN_COMMA or c is TOKEN_NL) and 0 is instr and 0 is inmap and 0 is inar)
-    if (c is TOKEN_COMMA and 0 is instr + inmap + inar + inparen)
+    if (c is TOKEN_COMMA and 0 is instr + inmap + inar + inparen + inlist)
       num_elem++;
   }
 
@@ -3445,6 +3528,16 @@ static int la_get_anon_array (la_t *this, VALUE *vp) {
       ifnot (NULL is item)
         Vmap.release (item);
       m_ar[0] = AS_MAP(v);
+      break;
+    }
+
+    case LIST_TYPE: {
+      listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(ar);
+      listArrayMember *item = l_ar[0];
+      ifnot (NULL is item)
+        la_release_val (this, LIST(item));
+
+      l_ar[0] = LIST_ARRAY_MEMBER(v);
       break;
     }
 
@@ -3608,6 +3701,38 @@ static int la_array_set_as_map (la_t *this, VALUE ar, integer len, integer idx, 
   return LA_OK;
 }
 
+static int la_array_set_as_list (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
+  int err;
+  VALUE val;
+
+  listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(ar);
+
+  do {
+    if (idx < 0 or idx >= len or idx > last_idx)
+      THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
+         idx, len, idx, last_idx);
+
+    NEXT_TOKEN();
+
+    err = la_parse_expr (this, &val);
+    THROW_ERR_IF_ERR(err);
+
+    THROW_SYNTAX_ERR_IF(val.type isnot LIST_TYPE and val.type isnot NULL_TYPE,
+      "error while setting List array, awaiting a list or null");
+
+    l_ar[idx] = (val.type is LIST_TYPE) ? LIST_ARRAY_MEMBER(val) : NULL;
+    idx++;
+  } while (TOKEN is TOKEN_COMMA);
+
+  if (idx - 1 isnot last_idx)
+    THROW_OUT_OF_BOUNDS("array index %d - 1 isnot last index %d", idx - 1, last_idx);
+
+  if (TOKEN is TOKEN_NL and PEEK_NTH_TOKEN(0) is TOKEN_INDEX_CLOS)
+    NEXT_TOKEN();
+
+  return LA_OK;
+}
+
 static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer idx, integer last_idx) {
   int err;
   VALUE val;
@@ -3724,7 +3849,7 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx, 
   return LA_OK;
 }
 
-/* Initial Array Interface by MickeyDelp <mickey at delptronics dot com> */
+/* Initial primitive Interface by MickeyDelp <mickey at delptronics dot com> */
 static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int is_single) {
   int err;
 
@@ -3767,6 +3892,10 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
       err = la_array_set_as_array (this, ary, len, idx, last_idx);
       break;
 
+    case LIST_TYPE:
+      err = la_array_set_as_list (this, ary, len, idx, last_idx);
+      break;
+
     default:
       err = la_array_set_as_number (this, ary, len, idx, last_idx);
   }
@@ -3792,8 +3921,7 @@ static int la_parse_array_def (la_t *this, VALUE *vp, int flags) {
 
   NEXT_TOKEN();
 
-  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_OPEN,
-    "array assignment: awaiting [");
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_OPEN, "array assignment: awaiting [");
 
   int c = TOKEN;
 
@@ -3802,10 +3930,8 @@ static int la_parse_array_def (la_t *this, VALUE *vp, int flags) {
   VALUE len;
   err = la_parse_expr (this, &len);
   THROW_ERR_IF_ERR(err);
-  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS,
-    "array assignment: awaiting ]");
-  THROW_SYNTAX_ERR_IFNOT(len.type is INTEGER_TYPE,
-    "awaiting an integer expression, when getting array length");
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS, "array assignment: awaiting ]");
+  THROW_SYNTAX_ERR_IFNOT(len.type is INTEGER_TYPE, "awaiting an integer expression, when getting array length");
 
   NEXT_TOKEN();
 
@@ -3819,9 +3945,8 @@ static int la_parse_array_def (la_t *this, VALUE *vp, int flags) {
     goto assign;
   }
 
-  if (TOKEN isnot TOKEN_SYMBOL and
-      TOKEN isnot TOKEN_ARRAY)
-    THROW_SYNTAX_ERR("syntax error, awaiting an identifier for the array declaration");
+  THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_SYMBOL and TOKEN isnot TOKEN_ARRAY,
+    "syntax error, awaiting an identifier for the array declaration");
 
   la_string name = TOKENSTR;
 
@@ -3928,6 +4053,20 @@ static int la_parse_array_set (la_t *this) {
           return LA_OK;
         }
 
+        case LIST_TYPE: {
+          listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(array->value);
+          for (size_t i = 0; i < array->len; i++) {
+            ifnot (NULL is l_ar[i])
+               la_release_val (this, LIST(l_ar[i]));
+            l_ar[i] = LIST_ARRAY_MEMBER(la_copy_value (ar_val));
+          }
+
+          if (NULL is ar_val.sym)
+            la_release_val (this, ar_val);
+
+          return LA_OK;
+        }
+
         case INTEGER_TYPE: {
           int i_val = AS_INT(ar_val);
           integer *i_ar = (integer *) AS_ARRAY(array->value);
@@ -3978,9 +4117,11 @@ static int la_parse_array_set (la_t *this) {
         string **s_ar = (string **) AS_ARRAY(ar);
         VALUE v = STRING(s_ar[AS_INT(ix)]);
         UNGET_BYTE();
-        err = la_string_set_char (this, v, 0);
-        return err;
+        return la_parse_string_set_char (this, v, 0);
       }
+
+      case LIST_TYPE:
+        return la_parse_list_set (this);
 
       default:
         THROW_SYNTAX_ERR("Arrays of arrays haven't been implemented");
@@ -4240,18 +4381,16 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   if (NEXT_BYTE_NOWS_NONL() is TOKEN_INDEX_OPEN) {
     NEXT_TOKEN();
     VALUE v;
-    err = la_get_anon_array (this, &v);
+    err = la_parse_anon_array (this, &v);
     THROW_ERR_IF_ERR(err);
 
     NEXT_TOKEN();
 
-    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS,
-      "array get, awaiting ]");
+    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS, "array get, awaiting ]");
 
     err = la_array_from_array (this, array, v, vp);
 
-    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS,
-      "array get, awaiting ]");
+    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_INDEX_CLOS, "array get, awaiting ]");
 
     NEXT_TOKEN();
 
@@ -4267,8 +4406,7 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
   if (ix.type is ARRAY_TYPE)
     return la_array_from_array (this, array, ix, vp);
 
-  THROW_SYNTAX_ERR_IF(ix.type isnot INTEGER_TYPE,
-    "array get, awaiting an integer expression");
+  THROW_SYNTAX_ERR_IF(ix.type isnot INTEGER_TYPE, "array get, awaiting an integer expression");
 
   integer len = array->len;
   integer idx = AS_INT(ix);
@@ -4318,24 +4456,33 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
       Vmap_t **ary = (Vmap_t **) AS_ARRAY(array->value);
       if (ary[idx] isnot NULL) {
         *vp = MAP(ary[idx]);
-      }
-      else
+      } else
+        *vp = NULL_VALUE;
+      break;
+    }
+
+    case LIST_TYPE: {
+      listArrayMember **ary = (listArrayMember **) AS_ARRAY(array->value);
+      if (ary[idx] isnot NULL) {
+        this->objectState |= ARRAY_MEMBER;
+        *vp = LIST(ary[idx]);
+      } else
         *vp = NULL_VALUE;
       break;
     }
 
     case ARRAY_TYPE: {
       ArrayType **ary = (ArrayType **) AS_ARRAY(array->value);
-      if (ary[idx] isnot NULL)
+      if (ary[idx] isnot NULL) {
+        this->objectState |= ARRAY_MEMBER;
         *vp = ARRAY(ary[idx]);
-      else
+      } else
         *vp = NULL_VALUE;
       break;
     }
 
     default:
       THROW_INV_ARRAY_TYPE(array->type);
-
   }
 
   c = TOKEN;
@@ -4393,11 +4540,10 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
     switch (v.type) {
       case STRING_TYPE:
         TOKENVAL = v;
-        this->objectState |= ARRAY_MEMBER;
+  //      this->objectState |= ARRAY_MEMBER;
         UNGET_BYTE();
-        err = la_string_get (this, vp);
-        THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_INDEX_OPEN,
-          "unsupported indexing");
+        err = la_parse_string_get (this, vp);
+        THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_INDEX_OPEN, "unsupported indexing");
 
         return err;
 
@@ -4405,6 +4551,11 @@ static int la_parse_array_get (la_t *this, VALUE *vp) {
         TOKENVAL = v;
         UNGET_BYTE();
         return la_parse_array_get (this, vp);
+
+      case LIST_TYPE:
+        TOKENVAL = v;
+        UNGET_BYTE();
+        return la_parse_list_get (this, vp);
 
       default:
         THROW_SYNTAX_ERR("Arrays of arrays haven't been implemented");
@@ -5061,14 +5212,17 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
   }
 
   if (TOKEN is TOKEN_INDEX_OPEN) {
-    THROW_SYNTAX_ERR_IF(v->type isnot ARRAY_TYPE and v->type isnot LIST_TYPE,
-      "map get: not an array nor a list");
+    THROW_SYNTAX_ERR_IF(v->type isnot ARRAY_TYPE and v->type isnot LIST_TYPE and
+      v->type isnot STRING_TYPE,  "map get: not an array nor a list or a string");
 
     TOKENVAL = *v;
     UNGET_BYTE();
 
     if (v->type is ARRAY_TYPE)
       return la_parse_array_get (this, vp);
+
+    if (v->type is STRING_TYPE)
+      return la_parse_string_get (this, vp);
 
     return la_parse_list_get (this, vp);
   }
@@ -6279,7 +6433,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
   switch (c) {
     case TOKEN_INDEX_OPEN:
       ifnot (this->curState & INDEX_STATE) {
-        err = la_get_anon_array (this, vp);
+        err = la_parse_anon_array (this, vp);
         if (err is LA_OK) {
 
           if (TOKEN isnot TOKEN_INDEX_CLOS) {
@@ -6709,7 +6863,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return la_parse_lambda (this, vp, 0);
 
     case TOKEN_STRING:
-      err = la_string_get (this, vp);
+      err = la_parse_string_get (this, vp);
       THROW_ERR_IF_ERR(err);
 
       if (TOKEN is TOKEN_COLON) {
@@ -7028,7 +7182,7 @@ static int la_parse_stmt (la_t *this) {
     case TOKEN_STRING:
       if (IS_NEXT_BYTE(TOKEN_INDEX_OPEN)) {
         sym_t *symbol = TOKENSYM;
-        return la_string_set_char (this, symbol->value, symbol->is_const);
+        return la_parse_string_set_char (this, symbol->value, symbol->is_const);
       }
       /* fall through */
 
@@ -7124,6 +7278,7 @@ static int la_parse_stmt (la_t *this) {
 
       if (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) {
         switch (val.type) {
+          case LIST_TYPE:
           case ARRAY_TYPE:
           case STRING_TYPE: {
             VALUE v = val;
@@ -9620,7 +9775,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
             case STRING_TYPE: {
               VALUE v;
               TOKENVAL = value;
-              err = la_string_get (this, &v);
+              err = la_parse_string_get (this, &v);
               if (err isnot LA_OK) {
                 this->print_bytes (this->err_fp, "string fmt error, awaiting a string\n");
                 err = LA_ERR_SYNTAX;
@@ -11139,7 +11294,7 @@ static struct def {
   { "New",     TOKEN_NEW,      NULL_VALUE },
   { "Type",    TOKEN_TYPE,     PTR(la_parse_type) },
   { "override",TOKEN_OVERRIDE, NULL_VALUE },
-  { "list",    TOKEN_LIST_FUN, NULL_VALUE },
+  { "List",    TOKEN_LIST_FUN, NULL_VALUE },
   { "append",  TOKEN_APPEND,   NULL_VALUE },
   { "print",   TOKEN_PRINT,    PTR(la_parse_print) },
   { "format",  TOKEN_FORMAT,   NULL_VALUE },
@@ -11210,6 +11365,7 @@ static struct deftype {
   { "string",  STRING_TYPE,  PTR(la_parse_array_def) },
   { "number",  NUMBER_TYPE,  PTR(la_parse_array_def) },
   { "integer", INTEGER_TYPE, PTR(la_parse_array_def) },
+  { "list",    LIST_TYPE,    PTR(la_parse_array_def) },
   { NULL,      NULL_TYPE,    NULL_VALUE }
 };
 

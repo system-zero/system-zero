@@ -2,11 +2,12 @@ This is to create with the most minimum code possible, a functional computer sys
 that can be used as it is, or as a foundation to extent it with specific functionality.
 
 Here we assume a bootstrapped system from nothing but a seed, but as this is a quite
-complicated research by its own, it is out of scope for us at least for now, though
-it is a prerequisitie in reality.
+complicated research by its own, it is out of scope at least for now, though it
+is a prerequisitie in reality, as such it should be considered a missing ring
+in the chain.
 
 We are developing in a Linux system, with C as our programming language, and so we
-are awaiting a C compiler, a libc, a linker and the make utility and probably coreutils
+are awaiting a C compiler, a libc, a linker, the make utility and probably a couple of coreutils
 (we would like to record which ones), for building the first zero bits.
 
 It is crucial to record this whole path to completion, for educational purposes,
@@ -18,10 +19,18 @@ evolution and quite probably to our freedom finally. For every bit of code, it i
 utterly important to understand the "why" and the intentions. We let then our actual will
 (filtered by our logic) and the fascination to lead and give the fuel to this eternal path.
 
-This README it is written as a diary and it is quite complicated, so no need to
-run through all these lines to understand. Anyway [this](#Intention) section started all.
-Be aware, that this document needs a quite serious revision (probably 5/6 months of
-extensive work), but at least for the next three/four years, it is not a priority.
+The layout of this README, ended up mostly like a blog, and it is really quite
+complicated unfortunately, and so its not your blame, if you don't understand.
+Anyway [this](#Intention) section started all, but be aware that it is an early
+first draft that needs a serious revision (probably 2 or 3 months of intensive
+work), but at least for the next three/four years, it is not a priority.
+
+Do not expect a hundred percent accuracy for all the technical statements that
+are presented in the documents or within comments in the source code, but they
+should be close. Likewise for the source code itself. It was written by a self
+educated human being, who started C after his fifty plus, but it does not look
+that bad for the kindergarden level, especially if you think that it is really
+a unification of __many__ (small or big and complicated by their own) projects.
 
 [ zero point draft]
 
@@ -87,7 +96,7 @@ really intented to serve as a prototype, all the way towards the alpha ('a').
 So we'll have to break our below-mentioned schedule and move to the next why ['y'](src/y/README.md)
 namespace, which it will serve mostly to understand and implement some bits of a libc,
 so we can be indepented at some point, though this might looks like an overly ambition
-for an uneducated.
+for the uneducated.
 
 What it follows is the original README document, which it is also incomplete and plus  
 needs a serious revision.

@@ -1,0 +1,6 @@
+var m = {
+  "f" : func { return 1 }
+}
+
+func c { return 11 }
+m.f = c

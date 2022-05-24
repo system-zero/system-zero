@@ -1,3 +1,9 @@
+Note that for an up to date document that follows and it is syncronised with
+the latest development, see [this]( ../../src/data/semantics/Language.md).
+The following is just the product of the scratch development, so some semantics
+probably might have been changed in interim, so it might be a source for
+misinformation.
+
 This a simple made tiny Programming Language, that provides this system a
 scripting mechanism.
 

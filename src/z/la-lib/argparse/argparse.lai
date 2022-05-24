@@ -191,7 +191,7 @@ Type Argparse {
        this.results.$(name) = this.input_argv[this.curidx]
     } else if type is ListType {
       if this.results.$(name) is null then
-         this.results.$(name) = list ()
+         this.results.$(name) = {[]}
 
       append this.input_argv[this.curidx] in this.results.$(name)
     }
