@@ -1,0 +1,38 @@
+import ("path")
+import ("syncdir")
+loadfile ("argparse")
+
+var me = __argv[0]: path_basename ()
+
+var argparse = New Argparse (3, 0, me + " [option[s]] source-directory destination-directory")
+argparse.add ("exclude_dirs", 0, "exclude-dir=", "exclude directory", ListType, ARG_VALUE_REQUIRED|ARG_VALUE_APPEND)
+argparse.add ("verbose", 'v', "verbose=", "set verbosity", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+if argparse.argc isnot 2 {
+  argparse.print_description ()
+  exit (1)
+}
+
+var src = argparse.argv[0]
+var dest = argparse.argv[1]
+
+var exclude_dirs = null
+
+if argparse.results.exclude_dirs isnot null {
+  exclude_dirs = string[argparse.results.exclude_dirs: len ()]
+  for v in argparse.results.exclude_dirs
+    append v in exclude_dirs
+}
+
+var r = Sync.dir (src, dest;
+  verbose : argparse.results.verbose
+  exclude_dirs : exclude_dirs
+)
+
+exit (if r is notok then 1 orelse 0)
+

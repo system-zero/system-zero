@@ -148,6 +148,13 @@ static int dir_walk_process_file_def (dirwalk_t *this, const char *file, struct 
   return 1;
 }
 
+/* add either a new function or extent this with a DirWalkOpts (prefered) */
+/* find a way to add this in a database: {
+ * Dir add __fun__  as "simplification of the interface" with "we currently
+ * use at least 4 statements. We need a sane default depth at least (it took
+ * me 10 min to understand why it wasn't descent to a directory in syncdir)"
+ * }.
+ */
 static dirwalk_t *dir_walk_new (DirProcessDir_cb process_dir, DirProcessFile_cb process_file) {
   dirwalk_t *this = Alloc (sizeof (dirwalk_t));
   this->orig_depth = this->depth = 0;

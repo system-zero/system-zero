@@ -81,6 +81,14 @@ typedef struct listType listType;
 
 #define    ARRAY(__a__) (VALUE) {.type = ARRAY_TYPE, .asInteger = (pointer) __a__, .refcount = 0, .sym = NULL}
 #define AS_ARRAY AS_PTR
+#define AS_STRING_ARRAY(__v__, _len_) ({                 \
+  ArrayType *_ar = (ArrayType *) AS_ARRAY(__v__);        \
+  if (_ar->type != STRING_TYPE)                          \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string array or null qualifier");   \
+  string **_s_ar = (string **) AS_ARRAY(_ar->value);     \
+  *_len_ = _ar->len;                                     \
+  _s_ar;                                                 \
+})
 #define    ARRAY_NEW(__type__, __len__) ({               \
   ArrayType *array_ = Alloc (sizeof (ArrayType));        \
   VALUE ary_ = NULL_VALUE;                               \
@@ -561,6 +569,17 @@ public la_T *la_get_root (la_t *);
   else if (IS_NULL(_v_as) == 0)                                           \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
   _as_;                                                                   \
+})
+
+#define GET_OPT_EXCLUDE_DIRS(_len) ({                                     \
+  *_len = 0;                                                              \
+  string **_dirs_ = NULL;                                                 \
+  VALUE _v_dirs = La.get.qualifier (this, "exclude_dirs", NULL_VALUE);    \
+  if (IS_ARRAY(_v_dirs))                                                  \
+    _dirs_ = AS_STRING_ARRAY(_v_dirs, _len);                              \
+  else if (IS_NULL(_v_dirs) == 0)                                         \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+  _dirs_;                                                                 \
 })
 
 #endif /* WITHOUT_LA_FUNCTIONS */

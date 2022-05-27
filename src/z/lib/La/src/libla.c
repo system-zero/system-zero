@@ -8519,7 +8519,7 @@ static int la_parse_foreach (la_t *this) {
       break;
 
     default:
-      THROW_A_TYPE_MISMATCH(type, "illegal foreach type");
+      THROW_A_TYPE_MISMATCH(type, "map or array or string or list: illegal foreach type");
   }
 
   err = la_parse_block (this, "for each");

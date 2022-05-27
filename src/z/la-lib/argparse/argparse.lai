@@ -255,6 +255,24 @@ Type Argparse {
             return true
           }
 
+          if flags & ARG_VALUE_APPEND {
+            if type isnot ListType {
+              println (stderr, "ARG_VALUE_APPEND works only with list type")
+              return notok
+            }
+
+            if this.results.$(name) is null then
+              this.results.$(name) = {[]}
+
+            if this.results.$(name): typeof () isnot ListType {
+              println (stderr, "awaiting a list")
+              return notok
+            }
+
+            append optval in this.results.$(name)
+            return true
+          }
+
           this.results.$(name) =
             if type is BooleanType then
               optval: to_integer (): if x isnot false then true orelse false end
