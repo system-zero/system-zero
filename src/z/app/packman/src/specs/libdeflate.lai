@@ -1,0 +1,16 @@
+var me = __file__: path_basename_sans_extname ()
+
+return Packman.new.spec ({
+  name          : me
+  version       : "b01537448e8eaf0803e38bdba5acef1d1c8effba"
+  repo          : "https://github.com/ebiggers/libdeflate"
+  home          : "https://github.com/ebiggers/libdeflate"
+  descr         : "libdeflate is a library for fast, whole-buffer DEFLATE-based compression and decompression"
+  build_dirname : me
+  sources       : me
+  license       : "MIT"
+  build         : [
+    Packman.copy_sources (),
+    Packman.make_with("V=1 install PREFIX=" + this.sysdir),
+  ]
+})

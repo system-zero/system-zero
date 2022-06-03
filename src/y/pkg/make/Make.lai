@@ -1351,6 +1351,7 @@ func get_dependencies (dir) {
   var an = annotate_get (s)
 
   return notok if an is null
+
   return ok ifnot len (s)
 
   func depends_on (dep, targets) {

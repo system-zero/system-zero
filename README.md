@@ -1518,6 +1518,8 @@ gained consience. Hopefully one day.
 * [UUID generator.](https://github.com/rxi/uuid4)
 * [Bootstrapping an Operating System.](https://gitlab.com/giomasce/asmc)
 * [Live Bootstrap](https://bootstrapping.miraheze.org/wiki/Live-bootstrap)
+* [Libdeflate.](https://github.com/ebiggers/libdeflate)
+* [Microtar.](https://github.com/rxi/microtar)
 
 ## About
 Inner will and Motivation.  

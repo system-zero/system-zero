@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <z/filetype.h>
 #include <stdio.h>
 
