@@ -11,8 +11,8 @@ static VALUE file_type (la_t *this, VALUE v_file) {
   char *file = AS_STRING_BYTES(v_file);
 
   char ft[MAXLEN_FILETYPE];
-  char *r = filetype (file, ft);
-  if (NULL is r)
+  int r = filetype (file, ft);
+  if (r is FILETYPE_ERROR)
     return NULL_VALUE;
 
   string *s = String.new_with (ft);

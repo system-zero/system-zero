@@ -1,13 +1,16 @@
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_STAT
+#define REQUIRE_TERMIOS
 
+#define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_STD_MODULE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
+#define REQUIRE_TERM_TYPE     DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
 
 #include <z/cenv.h>
@@ -25,6 +28,8 @@ struct syncdir_t {
   int dest_has_dir_sep;
   int err;
   int verbose;
+  int interactive_on_remove;
+  int accept_all_on_remove;
 };
 
 static int process_dir (dirwalk_t *dw, const char *dir, struct stat *st) {
@@ -75,8 +80,49 @@ static int process_file (dirwalk_t *dw, const char *file, struct stat *st) {
   return 1;
 }
 
+static int if_should_remove (const char *file, struct stat *st) {
+  char msg[32];
+  if (S_ISDIR(st->st_mode)) {
+    Cstring.cp (msg, 32, "remove directory", 16);
+  } else if (S_ISREG(st->st_mode)) {
+    Cstring.cp (msg, 32, "remove regular file", 19);
+  } else if (S_ISLNK(st->st_mode)) {
+    Cstring.cp (msg, 32, "remove link", 16);
+  } else if (S_ISSOCK(st->st_mode)) {
+    Cstring.cp (msg, 32, "remove socket", 13);
+  } else if (S_ISCHR(st->st_mode)) {
+    Cstring.cp (msg, 32, "remove character device", 23);
+  } else if (S_ISBLK(st->st_mode)) {
+    Cstring.cp (msg, 32, "remove block", 13);
+  } else if (S_ISFIFO(st->st_mode)) {
+    Cstring.cp (msg, 32, "remove fifo", 12);
+  }
+
+  term_t *term = Term.new ();
+  Term.raw_mode (term);
+
+  fprintf (stdout, "%s `%s'? y[es]/n[o]/q[uit]/a[ll]", msg, file);
+
+  fflush (stdout);
+
+  int retval = 0;
+
+  while (1) {
+    int c = IO.input.getkey (STDIN_FILENO);
+    if (c is 'y') { retval =  1; break; }
+    if (c is 'a') { retval =  2; break; }
+    if (c is 'n') { retval =  0; break; }
+    if (c is 'q') { retval = -1; break; }
+  }
+
+  Term.orig_mode (term);
+  Term.release (&term);
+  fprintf (stdout, "\n");
+  fflush (stdout);
+  return retval;
+}
+
 static int process_dir_remove (dirwalk_t *dw, const char *dir, struct stat *st) {
-  (void) st;
   struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
   const char *bn = dir + syncdir->dest_len + (syncdir->dest_has_dir_sep is 0);
 
@@ -92,22 +138,36 @@ static int process_dir_remove (dirwalk_t *dw, const char *dir, struct stat *st) 
 
   struct stat src_st;
   if (access (src, F_OK) and -1 is lstat (src, &src_st)) {
-    if (NOTOK is File.remove (dir, FileRemoveOpts(
-      .verbose = syncdir->verbose + 1,
-      .force = 1,
-      .recursive = 1))) {
-      syncdir->err = errno;
-      return -1;
-    }
+    if (syncdir->interactive_on_remove) {
+      ifnot (syncdir->accept_all_on_remove) {
+        int what = if_should_remove (dir, st);
+        switch (what) {
+          case  0:  return 0;
+          case -1:  return -1;
+          case  2:
+            syncdir->accept_all_on_remove = 1;
+          case 1:
+            break;
+        }
+      }
 
-    return 0;
+      if (NOTOK is File.remove (dir, FileRemoveOpts(
+          .verbose = syncdir->verbose + 1,
+          .force = 1,
+          .recursive = 1,
+          .interactive = 0))) {
+        syncdir->err = errno;
+        return -1;
+      }
+
+      return 0;
+    }
   }
 
   return 1;
 }
 
 static int process_file_remove (dirwalk_t *dw, const char *file, struct stat *st) {
-  (void) st;
   struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
   const char *bn = file + syncdir->dest_len + (syncdir->dest_has_dir_sep is 0);
   size_t len = syncdir->src_len + (syncdir->src_has_dir_sep is 0) + bytelen (bn);
@@ -117,14 +177,28 @@ static int process_file_remove (dirwalk_t *dw, const char *file, struct stat *st
 
   struct stat src_st;
   if (access (src, F_OK) and -1 is lstat (src, &src_st)) {
-    if (NOTOK is File.remove (file, FileRemoveOpts (
-        .force = 1,
-        .verbose = syncdir->verbose + 1,
-        .force = 1))) {
-      syncdir->err = errno;
-      return -1;
+    if (syncdir->interactive_on_remove) {
+      ifnot (syncdir->accept_all_on_remove) {
+        int what = if_should_remove (file, st);
+        switch (what) {
+          case  0:  return 0;
+          case -1:  return -1;
+          case  2:
+            syncdir->accept_all_on_remove = 1;
+          case 1:
+            break;
+        }
+      }
+
+      if (NOTOK is File.remove (file, FileRemoveOpts (
+          .verbose = syncdir->verbose + 1,
+          .force = 1))) {
+        syncdir->err = errno;
+        return -1;
+      }
+
+      return 0;
     }
-    return 0;
   }
 
   return 1;
@@ -141,6 +215,8 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
   char *dest_dir =Path.real (AS_STRING_BYTES(v_dest_dir), dest);
 
   int verbose = GET_OPT_VERBOSE();
+  int interactive = GET_OPT_INTERACTIVE();
+
   int len = 0;
   string **exclude_dirs = GET_OPT_EXCLUDE_DIRS(&len);
 
@@ -217,7 +293,9 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
     .src_has_dir_sep = src_dir[src_len - 1] is DIR_SEP,
     .dest_has_dir_sep = dest_dir[dest_len - 1] is DIR_SEP,
     .err = 0,
-    .verbose = verbose
+    .verbose = verbose,
+    .interactive_on_remove = interactive,
+    .accept_all_on_remove = 0
    };
 
   dw = Dir.walk.new (process_dir, process_file);
@@ -244,9 +322,11 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
 
 public int __init_syncdir_module__ (la_t *this) {
   __INIT_MODULE__(this);
+  __INIT__(io);
   __INIT__(dir);
   __INIT__(file);
   __INIT__(path);
+  __INIT__(term);
   __INIT__(error);
   __INIT__(string);
   __INIT__(cstring);

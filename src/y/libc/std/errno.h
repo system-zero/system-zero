@@ -1,1 +1,1 @@
-int errno;
+int sys_errno;

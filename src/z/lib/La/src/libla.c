@@ -10112,6 +10112,8 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
 
   if (handle is NULL) {
     err_msg = dlerror ();
+    la_set_message_fmt (this, 1, "%s, %s\n", module, err_msg);
+
     ifnot (this->curState & LOADFILE_SILENT)
       this->print_fmt_bytes (this->err_fp, "import error, %s\n", err_msg);
 
@@ -10130,6 +10132,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   ModuleInit init_sym = (ModuleInit) dlsym (handle, init_fun->bytes);
   err_msg = dlerror ();
   if (err_msg isnot NULL) {
+    la_set_message_fmt (this, 1, "%s, while getting %s symbol symbol address %s\n", module, init_fun->bytes, err_msg);
     this->print_fmt_bytes (this->err_fp, "import error while getting %s symbol symbol address, %s\n", init_fun->bytes, err_msg);
     err = LA_ERR_DYNLINK;
     goto theend;
@@ -10139,6 +10142,7 @@ static int la_import_file (la_t *this, const char *module, const char *err_msg) 
   ModuleDeinit deinit_sym = (ModuleDeinit) dlsym (handle, deinit_fun->bytes);
   err_msg = dlerror ();
   if (err_msg isnot NULL) {
+    la_set_message_fmt (this, 1, "%s, while getting %s symbol symbol address %s\n", module, deinit_fun->bytes, err_msg);
     this->print_fmt_bytes (this->err_fp, "import error while getting %s symbol symbol address, %s\n", deinit_fun->bytes, err_msg);
     err = LA_ERR_DYNLINK;
     goto theend;
@@ -10259,6 +10263,8 @@ static int la_parse_import (la_t *this) {
 theload:
   this->curScope = load_ns;
 
+   la_set_message (this, 0, "import: ");
+
   ifnot (Path.is_absolute (fname->bytes)) {
     ifnot (Cstring.eq (LA_STRING_NS, AS_STRING_BYTES(this->file->value))) {
       fn = String.dup (fname);
@@ -10306,7 +10312,7 @@ theend:
     if (err isnot LA_ERR_DYNLINK)
       err = LA_ERR_IMPORT;
 
-    this->print_fmt_bytes (this->err_fp, "[%s] import error: %s\n", fname->bytes, err_msg);
+    this->print_bytes (this->err_fp, this->message->bytes);
   }
 
   this->curScope = prev_ns;
@@ -12076,6 +12082,10 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
 }
 
 static la_t *la_init_instance (la_T *__la__, la_opts opts) {
+  #ifdef LIBDIR
+    setenv ("LD_LIBRARY_PATH", LIBDIR, 0);
+  #endif
+
   la_t *this = la_new (__la__);
 
   la_init (__la__, this, opts);

@@ -38,7 +38,7 @@
 #define SYSCALL_OUTPUT_OPERAND(__r__) "=a" (__r__)
 
 #define SYSCALL_SET_RETVAL_ERRNO(__r__)   \
-   __r__ = (0 > __r__ ? errno = -__r__, -1 : __r__)
+   __r__ = (0 > __r__ ? sys_errno = -__r__, -1 : __r__)
 
 #if defined(__i386__) || defined(__i386)
 

@@ -133,6 +133,7 @@ Type Make {
   sh                          : New Shell ()
   bindir                      : BINDIR
   libdir                      : ZLIBDIR
+  toplibdir                   : LIBDIR
   incdir                      : ZINCDIR
   moddir                      : ZMODDIR
   datadir                     : SYSDATADIR
@@ -715,6 +716,8 @@ Type Make {
     dependencies             : func return this.dependencies
     name                     : func return this.name
     dump_commands            : func return this.dump_commands
+    libdir                   : func return this.libdir
+    toplibdir                : func return this.toplibdir
   }
 
   set : {

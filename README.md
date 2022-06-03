@@ -2,7 +2,7 @@ This is to create with the most minimum code possible, a functional computer sys
 that can be used as it is, or as a foundation to extent it with specific functionality.
 
 Here we assume a bootstrapped system from nothing but a seed, but as this is a quite
-complicated research by its own, it is out of scope at least for now, though it
+[complicated research](https://bootstrapping.miraheze.org/wiki/Live-bootstrap) by its own, it is out of scope at least for now, though it
 is a prerequisitie in reality, as such it should be considered a missing ring
 in the chain.
 
@@ -165,7 +165,7 @@ Another common task,  is to start some given services  explicitly set from the
 user, like  to mount  other filesystems  in some given  addresses of  the root
 mountpoint.
 
-This procedure is called Init Process, and traditionally in a systemV, this is
+This procedure is called Init Process, and traditionally in [systemV](https://en.wikipedia.org/wiki/UNIX_System_V), this is
 done through a very simple mechanism. Such a procedure it looks in a directory
 for files, which are usually shell scripts and loads them by usually using the
 default shell  in UNIX,  which simply is  called `sh`, and  by default  found as
@@ -329,8 +329,8 @@ result. This  satisfy first  the inner human  curiosity, but  most importantly
 allows a system to be further evolved and developed, by the human's realization
 of how a system works underlying. Also by exposing the description, what it is
 actually being exposed it is the intention. And by breaking down the pieces and
-the their intentions, the human's mind flow procedure (sooner or later, and if
-there is a desire) will visualize the big picture as a sudden light.
+their intentions, the human's mind flow procedure (sooner or later, and if there
+is a desire, will visualize the big picture as a sudden light.
 
 This exact realization usually reveals the way to the implementation, either as
 a new code or by modifying the existing.
@@ -411,7 +411,7 @@ Some words from the future (mid++ Octomber raining days and nights of 2021):
 We have also to appreciate the availability of the required tools to build the
 system. These tools are free to use them (free as free beer) by anyone in this
 world. But it is so, because we obey  and serve, to the one and only principle
-that the source code should be free (free as in freedom here).
+that really matters; that the source code should be free (free as in freedom here).
 
 We can be sure, that the people of this world, wouldn't be possible to produce
 this tremendous in size and quality code, in that so sort time, if they had to
@@ -427,14 +427,15 @@ rich they are. Or their parents, or even their grand/grand parents.
 
 It is believed that those are the ways to satisfy our uncontrollable desire for
 the ultimate freedom and a pride path to our evolution, without hiding  behind
-from our known by now convenient illusions, that probably they provide  to  us
-excuses, to take a path that it might give us a chance to escape with a  style
+from our known by now convenient illusions (that probably they provide  to  us
+excuses), to take a path that it might give us a chance to escape with a  style
 from this eternal and painfull cycle, that always reproduces the same result.
 
 Somehow and at some point all the atoms we should climb that hill to meet the
 eternity. If we won a tiny wisdom, then we may realized that every single ring
 of the chain it is equally and crucial important, as an indepented being that
-holds an own wisdom, that it is required to tune and drive this single ship.
+holds an own wisdom, which it is required to tune and drive this single ship
+in safe and fascinating waters.
 
 In any case, and if we won a tiny and so hard to gain wisdom, then at least we
 should try really really hard to make this a pleasant journey for every single
@@ -1158,8 +1159,7 @@ and as well its own [documentation](data/docs/la.md).
     an abnormal huge amount of iterations. And its not _that_ bad. Okey.  It's
     bad. But `double` support it is a prerequisitie, so we had to deal with this
     at some point.
-    Now we have two types of Numbers. An Integer Type, that is as big as to fit
-    the 92th calculation of the fibonacci sequences, and one that should be the
+    Now we have two types of Numbers. An Integer Type, and one that should be the
     largest quantity of one can gets, and can be used as argument to functions,
     that operate on floating point numbers. These are typedef'ed as:
 
@@ -1517,6 +1517,7 @@ gained consience. Hopefully one day.
 * [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
 * [UUID generator.](https://github.com/rxi/uuid4)
 * [Bootstrapping an Operating System.](https://gitlab.com/giomasce/asmc)
+* [Live Bootstrap](https://bootstrapping.miraheze.org/wiki/Live-bootstrap)
 
 ## About
 Inner will and Motivation.  

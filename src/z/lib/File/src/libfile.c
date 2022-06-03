@@ -351,6 +351,7 @@ static int file_on_interactive (const char *file, const char *msg) {
   Term.raw_mode (term);
 
   fprintf (stdout, "%s `%s'? y[es]/n[o]/q[uit]", msg, file);
+
   fflush (stdout);
 
   int retval = 0;
@@ -1122,10 +1123,12 @@ static int file_remove (const char *file, file_remove_opts opts) {
       }
 
       int what = 0;
-      if (NULL is opts.on_interactive)
-        what = file_on_interactive ((char *) file, msg);
-      else
-        what = opts.on_interactive ((char *) file, msg);
+      ifnot (what) {
+        if (NULL is opts.on_interactive)
+          what = file_on_interactive ((char *) file, msg);
+        else
+          what = opts.on_interactive ((char *) file, msg);
+      }
 
       switch (what) {
         case  0:

@@ -4,8 +4,9 @@ loadfile ("argparse")
 
 var me = __argv[0]: path_basename ()
 
-var argparse = New Argparse (3, 0, me + " [option[s]] source-directory destination-directory")
+var argparse = New Argparse (4, 0, me + " [option[s]] source-directory destination-directory")
 argparse.add ("exclude_dirs", 0, "exclude-dir=", "exclude directory", ListType, ARG_VALUE_REQUIRED|ARG_VALUE_APPEND)
+argparse.add ("interactive", 'i', "interactive", "prompt before removing extra files on destination", BooleanType, 0)
 argparse.add ("verbose", 'v', "verbose=", "set verbosity", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
@@ -14,7 +15,7 @@ ifnot ok is argparse.process (__argv, 1) then exit (1)
 if argparse.exit is true then exit (0)
 
 if argparse.argc isnot 2 {
-  argparse.print_description ()
+  argparse.usage ()
   exit (1)
 }
 
@@ -31,6 +32,7 @@ if argparse.results.exclude_dirs isnot null {
 
 var r = Sync.dir (src, dest;
   verbose : argparse.results.verbose
+  interactive : argparse.results.interactive
   exclude_dirs : exclude_dirs
 )
 
