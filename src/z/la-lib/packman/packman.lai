@@ -7,6 +7,7 @@ import ("path")
 import ("crypt")
 
 import ("net")
+#import ("archive")
 
 const PACKMAN                    = "Packman"
 
@@ -230,11 +231,6 @@ Type Packman {
   }
 
   extract : func {
-    if null is this.tar_exec {
-      println (stderr, "the tar executable couln't been found")
-      return notok
-    }
-
     if null is this.spec.archive {
       println (stderr, "archive property hasn't been set")
       return notok
@@ -247,6 +243,15 @@ Type Packman {
       return notok if notok is Dir.change (this.sources_dir)
       return notok if notok is this.fetch ()
       return notok if notok is Dir.change (curdir)
+    }
+
+    #var r = Archive.extract_file (archive)
+    #  println (r)
+    #return ok if ok is r
+
+    if null is this.tar_exec {
+      println (stderr, "the tar executable couln't been found")
+      return notok
     }
 
     var com = this.tar_exec + " " + this.tar_args + " " + archive

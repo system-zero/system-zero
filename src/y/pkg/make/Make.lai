@@ -812,7 +812,11 @@ Type Make {
     }
 
     script : {
-      source                 : func (v) this.append_value (v, this.script_sources)
+      source                 : func (v) {
+        if qualifier_exists ("clear") then
+          this.clear.script.sources ()
+        this.append_value (v, this.script_sources)
+      }
     }
 
     library : {
@@ -879,6 +883,10 @@ Type Make {
         cflags               : func clear (this.static_executable.cflags)
         sources              : func clear (this.static_executable_sources)
       }
+    }
+
+    script : {
+      sources                : func clear (this.script_sources)
     }
   }
 

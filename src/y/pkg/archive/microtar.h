@@ -16,6 +16,10 @@ extern "C"
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MTAR_BLCKSIZ   512
+#define MTAR_NAMELEN   100
+#define MTAR_PREFIXLEN 155
+
 #define MTAR_VERSION "0.1.0"
 
 enum {
@@ -41,16 +45,14 @@ enum {
   MTAR_TFIFO  = '6'
 };
 
-#define TAR_NAME_SIZE 100
-
 typedef struct {
   unsigned mode;
   unsigned uid;
   unsigned size;
   unsigned mtime;
   unsigned type;
-  char name[100];
-  char linkName[100];
+  char name[256];
+  char linkName[256];
 } mtar_header_t;
 
 typedef struct mtar_t mtar_t;

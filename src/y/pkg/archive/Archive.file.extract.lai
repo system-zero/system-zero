@@ -1,0 +1,20 @@
+import ("path")
+import ("archive")
+
+var me = __file__: path_basename ()
+
+if __argc is 1 {
+  println ("${me}  file.tar.gz")
+  exit (1)
+}
+
+var f = __argv[1]
+
+var r = Archive.extract.file (f)
+
+exit (if r is notok then 1 orelse 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)

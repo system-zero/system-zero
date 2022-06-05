@@ -42,7 +42,7 @@ static int archive_tar_write_out (mtar_t *tar, mtar_header_t *h) {
       p = t->archive + tar->pos + 512;
       fd = open (h->name, O_CREAT|O_TRUNC|O_WRONLY, S_IRUSR|S_IWUSR);
       if (fd is -1) {
-        fprintf (stderr, "%s, failed to open, %s\n", h->name, Error.errno_string (errno));
+        fprintf (stderr, "%s: failed to open, %s\n", h->name, Error.errno_string (errno));
         return NOTOK;
       }
 
@@ -129,7 +129,7 @@ static unsigned int load_u32_gzip (const u8 *p) {
     ((u32)p[2] << 16) | ((u32)p[3] << 24);
 }
 
-static VALUE extract_file (la_t *this, VALUE v_file) {
+static VALUE archive_extract_file (la_t *this, VALUE v_file) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *file = AS_STRING_BYTES(v_file);
 
@@ -157,22 +157,24 @@ static VALUE extract_file (la_t *this, VALUE v_file) {
   char *out = NULL;
   struct libdeflate_decompressor *d = NULL;
 
-  long len = 0;
   if (-1 is fseek (fp, 0, SEEK_END)) {
     fprintf (stderr, "%s: [fseek] %s\n", file, Error.errno_string (errno));
     fclose (fp);
     return r;
   }
 
-  len = ftell (fp);
+  long flen = 0;
+  flen = ftell (fp);
 
-  if (-1 is len) {
+  if (-1 is flen) {
     fprintf (stderr, "%s: [ftell] %s\n", file, Error.errno_string (errno));
     fclose (fp);
     return r;
   }
 
-  unsigned char in[len + 1];
+  size_t len = (size_t) flen;
+
+  unsigned char *in = Alloc (len + 1);
 
   if (-1 is fseek (fp, 0, SEEK_SET)) {
     fprintf (stderr, "%s: [fseek] %s\n", file, Error.errno_string (errno));
@@ -255,7 +257,7 @@ static VALUE extract_file (la_t *this, VALUE v_file) {
     len -= actual_in_nbytes;
   } while (len isnot 0);
 
-  ftype = filetype_from_string (out, actual_out_nbytes, ftbuf);
+  ftype = filetype_from_string (out, MTAR_BLCKSIZ, ftbuf);
 
   ifnot (FILETYPE_IS_TAR(ftype)) {
     fprintf (stderr, "%s: not a tar archive\n", file);
@@ -303,10 +305,13 @@ static VALUE extract_file (la_t *this, VALUE v_file) {
 theend:
   ifnot (-1 is fd) close (fd);
   ifnot (NULL is out) free (out);
+  ifnot (NULL is in) free (in);
   ifnot (NULL is fp) fclose (fp);
   ifnot (NULL is d) libdeflate_free_decompressor(d);
   return r;
 }
+
+#define EvalString(...) #__VA_ARGS__
 
 public int __init_archive_module__ (la_t *this) {
   __INIT_MODULE__(this);
@@ -316,7 +321,7 @@ public int __init_archive_module__ (la_t *this) {
   __INIT__(string);
 
   LaDefCFun lafuns[] = {
-    { "extract_file", PTR(extract_file), 1 },
+    { "archive_extract_file", PTR(archive_extract_file), 1 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -326,6 +331,16 @@ public int __init_archive_module__ (la_t *this) {
       return err;
   }
 
+  const char evalString[] = EvalString (
+    public var Archive = {
+      extract : {
+        file : archive_extract_file
+      }
+    }
+  );
+
+  err = La.eval_string (this, evalString);
+  if (err isnot LA_OK) return err;
   return LA_OK;
 }
 

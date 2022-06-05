@@ -3,9 +3,14 @@
   depends_on ("filetype", SHARED_LIBRARY)
 #
 
-var m = New Make (__file__, MODULE)
+var m = New Make (__file__, MODULE|SCRIPT)
 m.set.shared.module.to_linkagainst ("deflate")
 m.set.shared.module.to_linkagainst ("filetype")
+m.set.shared.module.to_linkagainst ("error")
+m.set.shared.module.to_linkagainst ("dir")
+m.set.shared.module.to_linkagainst ("file")
 m.set.shared.module.source ("microtar.c")
 m.set.shared.module.cflag ("-Wl,-rpath=" + m.get.toplibdir ())
+
+m.set.script.source ("Archive.file.extract"; clear : 1)
 return m

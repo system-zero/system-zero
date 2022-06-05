@@ -1,3 +1,13 @@
+/* started from nicrotar: https://github.com/rxi/microtar
+ * commit: 27076e1b9290e9c7842bb7890a54fcf172406c84
+ *
+ * Changes:
+ *   - ustar compatible, that it has been implemented only on reading (for now)
+ *   - recognize also as regular file types when type[0] is the nul byte ('\0')
+ *   - use the prefix field if it has been set (under development)
+ *   - steadily use own functions to adopt to the environment
+ */
+
 /*
  * Copyright (c) 2017 rxi
  *
@@ -20,15 +30,23 @@
  * IN THE SOFTWARE.
  */
 
+#define  _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "microtar.h"
 
+#ifndef DIR_SEP
+//#define DIR_SEP         '/'
+#endif
+
 typedef struct {
-  char name[100];
+  char name[MTAR_NAMELEN];
   char mode[8];
   char uid[8];
   char gid[8];
@@ -36,17 +54,15 @@ typedef struct {
   char mtime[12];
   char checksum[8];
   char type;
-  char linkName[100];
-  char _padding[255];
+  char linkName[MTAR_NAMELEN];
+  char magic[6];
+  char version[2];
+  char uname[32];
+  char gname[32];
+  char major[8];
+  char minor[8];
+  char prefix[MTAR_PREFIXLEN];
 } mtar_raw_header_t;
-//  char magic[6];
-//  char version[2];
-//  char uname[32];
-//  char gname[32];
-//  char major[8];
-//  char minor[8];
-//  char prefix[155];
-//} mtar_raw_header_t;
 
 static unsigned round_up(unsigned n, unsigned incr) {
   return n + (incr - n % incr) % incr;
@@ -89,6 +105,12 @@ static int write_null_bytes(mtar_t *tar, int n) {
   return MTAR_ESUCCESS;
 }
 
+static int dir_is_directory (const char *dname) {
+  struct stat st;
+  if (-1 == lstat (dname, &st)) return 0;
+  return S_ISDIR (st.st_mode);
+}
+
 static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
   unsigned chksum1, chksum2;
 
@@ -106,13 +128,62 @@ static int raw_to_header(mtar_header_t *h, const mtar_raw_header_t *rh) {
   }
 
   /* Load raw header into header */
-  sscanf(rh->size, "%o", &h->size);
-  sscanf(rh->mode, "%o", &h->mode);
-  sscanf(rh->uid, "%o", &h->uid);
+  sscanf(rh->size,  "%o", &h->size);
+  sscanf(rh->mode,  "%o", &h->mode);
+  sscanf(rh->uid,   "%o", &h->uid);
   sscanf(rh->mtime, "%o", &h->mtime);
   h->type = rh->type;
-  strcpy(h->name, rh->name);
-  strcpy(h->linkName, rh->linkName);
+
+  int i = 0;
+  if (*rh->prefix != '\0') {
+    for (; i < MTAR_PREFIXLEN; i++) {
+      if (rh->prefix[i] == '\0') {
+        char t[MTAR_PREFIXLEN];
+        for (int idx = 0; idx < i; idx++) t[idx] = h->name[idx];
+        t[i] = '\0';
+        if (*rh->name != '/' && dir_is_directory (t))
+          h->name[i++] = '/';
+
+        break;
+        // that block was to handle the following
+      }
+// prefix: libgit2-1.4.3/tests/resources/crlf_data/windows_to_odb/autocrlf_false,safecrlf_false,-crlf
+// name  : all-lf-utf8bom
+// produces:
+// libgit2-1.4.3/tests/resources/crlf_data/windows_to_odb/autocrlf_false,safecrlf_false,-crlfall-lf-utf8bom
+// though actually prefix and name should be concatenated with a directory separator
+// so we have to add the separator by ourselves, so we've to check if [prefix] is a directory,
+// but there isn't a gurrantee that the intent was really this (perhaps there is something i miss)
+// note that here the prefix ends with 'f' and '\0' at 90 index, and name
+// starts with 'a' so i do not see any directory separator, but in reality there
+// is, as gnu-tar indicates and it can't be wrong
+
+      h->name[i] = rh->prefix[i];
+    }
+
+    for (int idx = 0; idx < MTAR_NAMELEN; idx++) {
+      if (rh->name[idx] == '\0') break;
+      h->name[i++] = rh->name[idx];
+    }
+
+    h->name[i] = '\0';
+
+  } else {
+    for (i = 0; i < MTAR_NAMELEN; i++) {
+      if (rh->name[i] == '\0') break;
+      h->name[i] = rh->name[i];
+    }
+
+    h->name[i] = '\0';
+  }
+
+  i = 0;
+  for (int idx = 0; idx < MTAR_NAMELEN; idx++) {
+    if (rh->linkName[idx] == '\0') break;
+    h->linkName[i++] = rh->linkName[idx];
+  } // we might want to do the same
+
+  h->linkName[i] = '\0';
 
   return MTAR_ESUCCESS;
 }
@@ -242,7 +313,8 @@ int mtar_next(mtar_t *tar) {
     return err;
   }
   /* Seek to next record */
-  n = round_up(h.size, 512) + sizeof(mtar_raw_header_t);
+  //n = round_up(h.size, 512) + sizeof(mtar_raw_header_t);
+  n = round_up(h.size, 512) + MTAR_BLCKSIZ;
   return mtar_seek(tar, tar->pos + n);
 }
 
@@ -280,6 +352,7 @@ int mtar_read_header(mtar_t *tar, mtar_header_t *h) {
   tar->last_header = tar->pos;
   /* Read raw header */
   err = tread(tar, &rh, sizeof(rh));
+  tar->pos += 12;
   if (err) {
     return err;
   }
@@ -305,7 +378,8 @@ int mtar_read_data(mtar_t *tar, void *ptr, unsigned size) {
       return err;
     }
     /* Seek past header and init remaining data */
-    err = mtar_seek(tar, tar->pos + sizeof(mtar_raw_header_t));
+    //err = mtar_seek(tar, tar->pos + sizeof(mtar_raw_header_t));
+    err = mtar_seek(tar, tar->pos + MTAR_BLCKSIZ);
     if (err) {
       return err;
     }
