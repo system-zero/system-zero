@@ -1550,8 +1550,8 @@ Y_SRCPKGDIR  := $(Y_SRCDIR)/pkg
 l-shared: libargparse-shared librline-shared libla-shared
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) la-shared
 
-generate-libc: l-shared
-	@cd $(Y_SRCDIR) && La generateLibc
+generate-libc: l-shared y-make
+	@$(SYSBINDIR)/Make all -v libc
 
 #-#
 YMake               = make

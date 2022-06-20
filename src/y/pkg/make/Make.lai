@@ -88,6 +88,7 @@ const SRCDIR            = Sys.get ("SRCDIR")
 const TMPDIR            = Sys.get ("TMPDIR")
 const ZSRCDIR           = SRCDIR:  concat_with (Z)
 const YSRCDIR           = SRCDIR:  concat_with (Y)
+const YSRCPKGDIR        = YSRCDIR: concat_with ("pkg")
 const LIBDIR            = SYSDIR:  concat_with ("lib")
 const BINDIR            = SYSDIR:  concat_with ("bin")
 const INCDIR            = SYSDIR:  concat_with ("include")
@@ -97,6 +98,7 @@ const ZMODDIR           = ZLIBDIR: concat_with ("la-modules")
 const YLIBDIR           = LIBDIR:  concat_with (Y)
 const YINCDIR           = INCDIR:  concat_with (Y)
 const YMODDIR           = YLIBDIR: concat_with ("l-modules")
+const LIBCNAME          = "libcmm"
 const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
 const RPATH             = true
@@ -121,6 +123,7 @@ const STATIC            = (1 << 7)
 const MODULE            = (1 << 8)
 const SCRIPT            = (1 << 9)
 const PACKAGE           = (1 << 10)
+const LIBC              = (1 << 11)
 
 const COMPILE_ASSEMBLE_LINK = 1
 const COMPILE_ASSEMBLE      = 2
@@ -375,6 +378,7 @@ Type Make {
     if this.cached is null {
       var fd = open (this.cached_file, O_RDONLY, 0)
       return true if fd is null
+
       var s = read (fd)
       var r = eval (s)
       if r isnot ok {
@@ -578,13 +582,13 @@ Type Make {
     if this.verbose then println (com)
 
     r = this.sh: exec (com)
-    if r is notok {
+    if r isnot ok {
       ifnot this.verbose then println (com)
       println ("failed")
       return notok
     }
 
-    return this.endbuild (ok)
+    return this.endbuild (if r isnot ok then notok orelse ok end)
   }
 
   static_library_compile_objects : func {
@@ -666,6 +670,9 @@ Type Make {
       p.new.spec (this.name)
       return notok if notok is p.build ()
     }
+
+    if this.targets & LIBC
+      return this.make.libc ()
 
     if this.targets & SHARED_LIBRARY or this.targets & SHARED or
        this.targets & STATIC_LIBRARY or this.targets & STATIC
@@ -1057,10 +1064,10 @@ Type Make {
 
         this.make_shared_library = false
 
-        if r is notok println ("  failed") orelse
+        if r isnot ok println ("  failed") orelse
           ifnot this.verbose then println ("  done")
 
-        return this.endbuild (r)
+        return this.endbuild (if r isnot ok then notok orelse ok end)
       }
 
       executable : func {
@@ -1121,7 +1128,7 @@ Type Make {
         if r is notok println ("  failed") orelse
           ifnot this.verbose then println ("  done")
 
-        return this.endbuild (r)
+        return this.endbuild (if r isnot ok then notok orelse ok end)
       }
 
       module : func {
@@ -1184,7 +1191,7 @@ Type Make {
         if r is notok println ("  failed") orelse
           ifnot this.verbose then println ("  done")
 
-        return this.endbuild (r)
+        return this.endbuild (if r isnot ok then notok orelse ok end)
       }
     }
 
@@ -1256,7 +1263,7 @@ Type Make {
         if r is notok println ("  failed") orelse
           ifnot this.verbose then println ("  done")
 
-        return this.endbuild (r)
+        return this.endbuild (if r isnot ok then notok orelse ok end)
       }
 
       executable: func {
@@ -1314,8 +1321,99 @@ Type Make {
         if r is notok println ("  failed") orelse
           ifnot this.verbose then println ("  done")
 
-        return this.endbuild (r)
+        return this.endbuild (if r isnot ok then notok orelse ok end)
       }
+    }
+
+    libc : func {
+      return notok if notok is this.change_to_build_directory ()
+
+      var sources = [
+        "libc/ctype/isalpha.c",
+        "libc/ctype/isascii.c",
+        "libc/ctype/isdigit.c",
+        "libc/ctype/islower.c",
+        "libc/ctype/isprint.c",
+        "libc/ctype/isspace.c",
+        "libc/ctype/isupper.c",
+        "libc/ctype/tolower.c",
+        "libc/ctype/toupper.c",
+        "libc/signal/sigaction.c",
+        "libc/signal/sigaction.h",
+        "libc/signal/sigprocmask.c",
+        "libc/signal/sigset.h",
+        "libc/std/NULL.h",
+        "libc/std/environ.h",
+        "libc/std/errno.h",
+        "libc/std/size_t.h",
+        "libc/std/stdarg.h",
+        "libc/stdlib/alloc.c",
+        "libc/stdlib/atoi.c",
+        "libc/stdlib/getenv.c",
+        "libc/string/memcpy.c",
+        "libc/string/memset.c",
+        "libc/string/snprintf.c",
+        "libc/string/str_byte_copy.c",
+        "libc/string/str_copy.c",
+        "libc/string/str_copy_fmt.c",
+        "libc/string/str_eq.c",
+        "libc/string/str_eq_n.c",
+        "libc/string/strcat.c",
+        "libc/string/strchr.c",
+        "libc/string/strlen.c",
+        "libc/string/strncmp.c",
+        "libc/string/strrchr.c",
+        "libc/string/vsnprintf.c",
+        "libc/sys/brk.c",
+        "libc/sys/ioctl.c",
+        "libc/sys/lstat.c",
+        "libc/sys/mman.c",
+        "libc/sys/mman.h",
+        "libc/sys/pid.h",
+        "libc/sys/stat.c",
+        "libc/sys/stat.h",
+        "libc/sys/types.h",
+        "libc/sys/waitpid.c",
+        "libc/syscall/syscall.c",
+        "libc/time/gettimeofday.c",
+        "libc/time/localtime.c",
+        "libc/time/time.c",
+        "libc/time/time.h",
+        "libc/time/tp2tm.c",
+        "libc/time/tzset.c",
+        "libc/unistd/access.c",
+        "libc/unistd/close.c",
+        "libc/unistd/dup2.c",
+        "libc/unistd/execve.c",
+        "libc/unistd/fcntl.c",
+        "libc/unistd/fcntl.h",
+        "libc/unistd/fcntl3.c",
+        "libc/unistd/fork.c",
+        "libc/unistd/isatty.c",
+        "libc/unistd/open.c",
+        "libc/unistd/pipe.c",
+        "libc/unistd/read.c",
+        "libc/unistd/termios.h",
+        "libc/unistd/write.c"]
+
+      this.record (sources)
+
+      var force = ARGPARSE.results.force
+
+      var outputDir = YSRCPKGDIR: concat_with (LIBCNAME)
+      var output = outputDir: concat_with (LIBCNAME + ".c")
+
+      var r = this.should_make (output, sources, force)
+
+      return notok if r is notok
+      return ok if r is false
+
+      include ("generateLibc")
+
+      var argv = ["", "--outputName=" + LIBCNAME, "--outputDir=" + outputDir] 
+      if this.verbose then println ("installing libc at ${output}")
+
+      return libc_generate (3, argv);
     }
   }
 }
@@ -1484,7 +1582,7 @@ func get_dependencies (dir) {
 
     init_argparse_results (DEPENDENCIES.$(v).targets, is_the_last)
 
-    if i then println ("")
+    #if i then println ("")
     println ("# Making: [ ${dirname (v): basename ()} ]")
 
     var s = evalfile (v)
@@ -1493,10 +1591,10 @@ func get_dependencies (dir) {
 
     if r isnot ok then println ("failed")
     orelse
-      ifnot (verbose) then
+      ifnot verbose then
         ifnot s.get.dump_commands then println ("done")
 
-    return notok if r is notok
+    return notok if r isnot ok
 
     s.write_record ()
 

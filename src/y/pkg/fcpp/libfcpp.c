@@ -1,3 +1,5 @@
+#define _DEFAULT_SOURCE /* isascii */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -5,7 +7,7 @@
 #include <stdarg.h>
 #include <time.h>
 
-#include "fcpp.h"
+#include <fcpp.h>
 
 #ifndef LINE_PREFIX
 #define LINE_PREFIX    "#line"

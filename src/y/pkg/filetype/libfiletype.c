@@ -9,7 +9,7 @@
 #define REQUIRE_READ
 #define REQUIRE_ACCESS
 
-#include "../../generatedLibc/libc.c"
+#include "../libcmm/libcmm.c"
 
 #include <z/filetype.h>
 
@@ -37,15 +37,16 @@ static int is_tar (unsigned char *buf) {
   int sum = 0;
   unsigned char *p = buf;
   unsigned char *end = p + sizeof (*h);
+
   while (p < end) sum += *p++;
+
   for (size_t i = 0; i < sizeof (h->checksum); i++)
     sum -= h->checksum[i];
-
   sum += ' ' * sizeof(h->checksum);
 
   size_t clen = sizeof (h->checksum);
-
   char *checksum = h->checksum;
+
   while (*checksum == ' ' || *checksum == '\0') {
     if (clen-- == 0) return 0;
     checksum++;

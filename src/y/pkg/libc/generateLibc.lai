@@ -27,9 +27,9 @@ public func libc_generate (argc, argv) {
   var
     thisDir      = __me__: dirname (),
     prog         = __me__: basename (),
-    libcDir      = thisDir + "/libc",
+    libcDir      = thisDir: concat_with ("/libc"),
     default      = {
-      dirname    :  "generatedLibc"
+      dirname    :  thisDir: concat_with ("../Libc")
       libname    :  "libc"
     }
 
@@ -39,7 +39,8 @@ public func libc_generate (argc, argv) {
   argparse.add ("verbose", 'v', "verbose=", "set verbosity", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
-  return notok ifnot ok is argparse.process (__argv, 1)
+  return notok ifnot ok is argparse.process (argv, 1)
+
   return ok if argparse.exit is true
 
   var verbose = argparse.results.verbose
@@ -49,8 +50,9 @@ public func libc_generate (argc, argv) {
   var directoryName =
     argparse.results.outputDir:  if x is null then default.dirname orelse x end
 
-  var outputDir  = thisDir: concat_with (directoryName)
+  var outputDir = if directoryName : path_is_absolute () then directoryName orelse thisDir: concat_with (directoryName)
   ifnot outputDir: file_exists  () then make_directory (outputDir, 0755)
+
   ifnot outputDir: is_directory () {
     if verbose then println (stderr, "${outputDir}: is not a directory")
     return notok
@@ -61,6 +63,9 @@ public func libc_generate (argc, argv) {
   var commentFile = outputDir: concat_with ("comments")
 
   var dotsToLibc = lambda (d) {
+    if d: path_is_absolute ()
+      return thisDir: concat_with ("libc")
+
     var s = ""
     var p = d: tokenize ("/")
     for (var i = 0; i < p: len (); i++) {
@@ -68,7 +73,7 @@ public func libc_generate (argc, argv) {
       append ".." in s
     }
 
-    append "/libc" in s
+    append "/libc/libc" in s
     return s
   } (directoryName);
 
@@ -186,7 +191,7 @@ public func libc_generate (argc, argv) {
             num_found++
             # id[0]:  sometimes we need a "break that works for if's"
             #         else the logic may lost a bit, just because of
-            #           the error conditional checks
+            #         the error conditional checks
 
             sp = sp: advance_after_bytes (provide_str, 1)
 
@@ -309,12 +314,13 @@ public func libc_generate (argc, argv) {
 
   append "#endif /* LIBC_HDR */\n" in libcFuns
 
-  File.write (outputFile, libcHdrs + libcTypes + funcSigns + libcFuns)
-  File.write (commentFile, comments)
-  File.write (licenceFile, licenses)
+  return notok if notok is File.write (outputFile, libcHdrs + libcTypes + funcSigns + libcFuns)
+  return notok if notok is File.write (commentFile, comments)
+  return notok if notok is File.write (licenceFile, licenses)
+  return ok
 }
 
-libc_generate (__argc, __argv)
+# libc_generate (__argc, __argv)
 
 func generatedLibc_help () {
   println (`Reserved tokens

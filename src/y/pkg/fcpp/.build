@@ -1,0 +1,4 @@
+var m =New Make (__file__, SHARED|STATIC)
+m.set.shared.library.cflag ("-Wno-char-subscripts")
+m.set.static.library.cflag ("-Wno-char-subscripts")
+return m
