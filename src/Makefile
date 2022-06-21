@@ -1357,7 +1357,7 @@ clone-libc:
 libpam:
 	@$(SYSBINDIR)/Packman install pam
 
-bootstrap: net-shared la-shared
+bootstrap: la-shared
 	@$(SYSBINDIR)/Packman bootstrap
 
 #----------------------------------------------------------#

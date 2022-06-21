@@ -12,7 +12,8 @@ return Packman.new.spec ({
   build         : [
     Packman.copy_sources (),
     Packman.make (),
-    Packman.eval ("[install]",
-      `File.copy (this.spec.name, this.bindir; {"verbose": 2, "force" : 1})`)
+    Packman.install_executable (name)
   ] 
 })
+#    Packman.eval ("[install]",
+      `File.copy (this.spec.name, this.bindir; {"verbose": 2, "force" : 1})`)

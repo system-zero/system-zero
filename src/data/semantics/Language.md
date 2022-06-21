@@ -137,7 +137,9 @@ Comments.
   const vv = 1
 
   # In any attempt to change value to constant types, the interpreter should
-  # raise an error.
+  # raise an error. However, it is possible to redeclare a symbol in the same
+  # scope as `const`, when both old and new values point to the sane C or user
+  # function, which then it is considered as a function alias.
 
   # As you may not know the value of a constant untill the runtime, it may left
   # uninitialized, untill the first time that will be initialized with a value
@@ -213,6 +215,7 @@ Comments.
 
   return fibo_tail (n - 1, b, a + b)
 
+
   # Functions always return a value and functions that don't return a value.
   # This value is `null` by default. For C functions this is guarranteed by the
   # function signature, which is always a VALUE type.
@@ -249,6 +252,11 @@ Comments.
   } (50, 100)
 
   println ("${r}") # => 650
+
+  # Note that this interface is weak, and it is only used to develop instant
+  # logic, like the statement expressions in C11 (though with arguments) and
+  # so it neither captures up values nor it can be stored for reuse.
+
 
   # Statements and loops:
 

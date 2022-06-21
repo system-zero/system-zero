@@ -7151,8 +7151,26 @@ static int la_parse_stmt (la_t *this) {
 
       sym = ns_lookup_symbol (scope, key);
 
-      THROW_SYNTAX_ERR_IFNOT(NULL is sym,
-        "can not redeclare a symbol in this scope");
+      ifnot (NULL is sym) {
+        VALUE v = sym->value;
+        if (is_const and (v.type & UFUNCTION_TYPE or IS_CFUNC(v.type))) {
+          NEXT_TOKEN();
+          if (TOKEN is TOKEN_ASSIGN) {
+            NEXT_TOKEN();
+            VALUE vv = TOKENVAL;
+            switch (TOKEN) {
+              case TOKEN_USRFUNC:
+              case TOKEN_BUILTIN:
+              if (AS_PTR(v) is AS_PTR(vv)) {
+                NEXT_TOKEN();
+                return OK;
+              }
+            }
+          }
+        }
+
+      THROW_SYNTAX_ERR("can not redeclare a symbol in this scope");
+      }
 
       VALUE v = NULL_VALUE;
 

@@ -28,7 +28,8 @@ const PACKMAN_BUILD_USER_COM     = 8
 const PACKMAN_BUILD_EVAL         = 9
 const PACKMAN_BUILD_USER_COM_IF  = 10
 const PACKMAN_BUILD_MKDIR        = 11
-var LAST_BUILD_TYPE              = PACKMAN_BUILD_MKDIR
+const PACKMAN_INSTALL_EXECUTABLE = 12
+var LAST_BUILD_TYPE              = PACKMAN_INSTALL_EXECUTABLE
 
 const PACKMAN_DATADIR            = Sys.get ("DATADIR"): path_concat (PACKMAN)
 const PACKMAN_SYSDIR             = Sys.get ("SYSDIR")
@@ -643,6 +644,16 @@ Type Packman {
 
           continue
         }
+
+        if action.type is PACKMAN_INSTALL_EXECUTABLE {
+          var r = File.copy (action.command, this.bindir; verbose : 2, force : 1)
+          break 2 if r is notok
+          var f = this.bindir: path_concat (action.command)
+          ifnot f: file_is_executable ()
+            break 2 if notok is f: file_chmod (0755)
+
+          continue
+        }
       }
 
       retval = ok
@@ -679,22 +690,26 @@ func packman_eval_if (m, s, x)
   return New PackmanBuild (if m is null then "[conditional expression]" orelse m end, PACKMAN_BUILD_EVAL, [s, x])
 func packman_mkdir (d)
   return New PackmanBuild ("[making directory]", PACKMAN_BUILD_MKDIR, d)
+func packman_install_executable (x)
+  return New PackmanBuild ("[installing executable]", PACKMAN_INSTALL_EXECUTABLE, x)
+
 
 public const Packman = {
-  make           : packman_make
-  make_with      : packman_make_with
-  eval           : packman_eval
-  eval_if        : packman_eval_if
-  extract        : packman_extract
-  install        : packman_install
-  install_with   : packman_install_with
-  configure      : packman_configure
-  configure_with : packman_configure_with
-  copy_sources   : packman_copy_sources
-  command        : packman_command
-  command_if     : packman_command_if
-  mkdir          : packman_mkdir
-  new            : {
+  make               : packman_make
+  make_with          : packman_make_with
+  eval               : packman_eval
+  eval_if            : packman_eval_if
+  extract            : packman_extract
+  install            : packman_install
+  install_with       : packman_install_with
+  configure          : packman_configure
+  configure_with     : packman_configure_with
+  copy_sources       : packman_copy_sources
+  command            : packman_command
+  command_if         : packman_command_if
+  mkdir              : packman_mkdir
+  install_executable : packman_install_executable
+  new                : {
     spec : func (s) {
       var haskey = map_key_exists
       var to_string = integer_to_string
