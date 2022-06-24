@@ -22,8 +22,6 @@ static VALUE Sudoku_generate (la_t *this) {
   return OK_VALUE;
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_sudoku_module__ (la_t *this) {
   __INIT_MODULE__(this);
 

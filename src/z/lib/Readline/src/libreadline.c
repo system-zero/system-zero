@@ -797,6 +797,7 @@ static readline_t *readline_parse (readline_t *this) {
           it = it->next;
 
           arg->argval = String.new (8);
+
           int is_quoted = '"' is it->data->bytes[0];
           if (is_quoted) it = it->next;
 
@@ -811,14 +812,18 @@ static readline_t *readline_parse (readline_t *this) {
             if ('"' is it->data->bytes[0]) {
               if (is_quoted) {
                 is_quoted = 0;
-                if (arg->argval->bytes[arg->argval->num_bytes - 1] is '\\' and
-                    arg->argval->bytes[arg->argval->num_bytes - 2] isnot '\\') {
+                if (arg->argval->num_bytes is 1 and arg->argval->bytes[0] is '\\') {
+                  arg->argval->bytes[arg->argval->num_bytes - 1] = '"';
+                  is_quoted = 1;
+                  it = it->next;
+                   continue;
+                } else if (arg->argval->num_bytes > 1 and arg->argval->bytes[arg->argval->num_bytes - 1] is '\\' and
+                           arg->argval->bytes[arg->argval->num_bytes - 2] isnot '\\') {
                   arg->argval->bytes[arg->argval->num_bytes - 1] = '"';
                   is_quoted = 1;
                   it = it->next;
                   continue;
-                }
-                else { /* accept empty string --opt="" */
+                } else { /* accept empty string --opt="" */
                   type |= READLINE_TOK_ARG_OPTION;
                   goto arg_type;
                 }

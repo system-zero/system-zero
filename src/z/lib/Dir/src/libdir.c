@@ -214,7 +214,7 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
     String.replace_with_fmt (new, "%s/%s", dir, dp->d_name);
 
     ifnot (OK is (this->status = this->stat_file (new->bytes, &st)))
-      return this->status;
+      goto theend;
 
     switch (dp->d_type) {
       case DT_DIR:

@@ -784,8 +784,6 @@ static VALUE file_type_to_string (la_t *this, VALUE v_mode) {
   return STRING(s);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_file_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);

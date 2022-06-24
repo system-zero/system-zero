@@ -34,8 +34,6 @@ static VALUE dl_dump_dependencies (la_t *this, VALUE v_file) {
   return MAP(m);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_dl_module__ (la_t *this) {
   __INIT_MODULE__(this);
 

@@ -4269,9 +4269,9 @@ searchandsub:;
         "replace? yY[es]|nN[o] replace all?aA[ll], continue next line? cC[ontinue], quit? qQ[uit]\n",
          idx, re->match_idx + bidx, prefix, TERM_MAKE_COLOR(COLOR_MENU_SEL), re->match->bytes,
          TERM_MAKE_COLOR(COLOR_MENU_BG), re->match_ptr + re->match_len,
-         TERM_MAKE_COLOR(COLOR_MENU_SEL), substr->bytes, TERM_MAKE_COLOR(COLOR_MENU_BG));
+         TERM_MAKE_COLOR(COLOR_MENU_SEL), (substr->num_bytes ? substr->bytes : " "), TERM_MAKE_COLOR(COLOR_MENU_BG));
 
-      utf8 c =  buf_quest (this, qu, chars, ARRLEN(chars));
+      utf8 c = buf_quest (this, qu, chars, ARRLEN(chars));
 
       switch (c) {
         case 'n': case 'N': goto if_global;

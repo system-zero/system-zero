@@ -179,7 +179,7 @@ static video_t *video_paint_rows_with (video_t *this, int row, int f_col, int l_
   vstring_t *vstr = Vstr->head;
 
   int num_items = 0;
-  while (l_p) {
+  while (l_p and *l_p) {
     String.clear (vstr->data);
 
     l_p = Cstring.byte.in_str (l_p, '\n');
@@ -189,7 +189,7 @@ static video_t *video_paint_rows_with (video_t *this, int row, int f_col, int l_
     } else {
       char line[l_p - f_p];
       int i = 0;
-      while (f_p < l_p) line[i++] = *f_p++;
+      while (f_p < l_p and *f_p) line[i++] = *f_p++;
       f_p++; l_p++;
       line[i] = '\0';
       String.append_with (vstr->data, line);
@@ -210,6 +210,7 @@ static video_t *video_paint_rows_with (video_t *this, int row, int f_col, int l_
 
   vstring_t *it = Vstr->head;
   i = 0;
+
   while (i < num_rows) {
     this->rows[i] = (i + first_row);
     String.append_with_fmt (this->tmp_render, TERM_GOTO_PTR_POS_FMT, first_row + i++, first_col);

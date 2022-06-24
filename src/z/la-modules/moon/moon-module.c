@@ -47,8 +47,6 @@ static VALUE moon_phase (la_t *this) {
   return val;
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_moon_module__ (la_t *this) {
   __INIT_MODULE__(this);
 

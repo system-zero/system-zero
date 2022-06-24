@@ -26,8 +26,6 @@ MODULE(archive);
 typedef uint8_t u8;
 typedef uint32_t u32;
 
-#define MIN(a, b) ((a) <= (b) ? (a) : (b))
-
 static int archive_tar_write_out (mtar_t *tar, mtar_header_t *h) {
   archive_tar *t = (archive_tar *) tar->stream;
   char *p;
@@ -310,8 +308,6 @@ theend:
   ifnot (NULL is d) libdeflate_free_decompressor(d);
   return r;
 }
-
-#define EvalString(...) #__VA_ARGS__
 
 public int __init_archive_module__ (la_t *this) {
   __INIT_MODULE__(this);

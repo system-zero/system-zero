@@ -52,8 +52,6 @@ static VALUE sun_compute (la_t *this) {
   return STRING(s);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_sun_module__ (la_t *this) {
   __INIT_MODULE__(this);
 

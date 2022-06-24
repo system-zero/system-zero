@@ -60,8 +60,6 @@ static VALUE url_parse (la_t *this, VALUE v_url) {
   return MAP(m);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_url_module__ (la_t *this) {
   __INIT_MODULE__(this);
 

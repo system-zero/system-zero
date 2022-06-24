@@ -256,8 +256,13 @@ Type Argparse {
           }
 
           if flags & ARG_VALUE_APPEND {
+            if type is IntegerType {
+              this.results.$(name) = optval: to_integer ()
+              break
+            }
+
             if type isnot ListType {
-              println (stderr, "ARG_VALUE_APPEND works only with list type")
+              println (stderr, "ARG_VALUE_APPEND works only with list and Integer types")
               return notok
             }
 

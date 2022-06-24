@@ -26,8 +26,6 @@ static VALUE net_fetch (la_t *this, VALUE v_url) {
   return INT(retval);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_net_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__ (net);

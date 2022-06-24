@@ -111,8 +111,6 @@ static VALUE term_get_cols (la_t *this, VALUE v_term) {
   return INT(term->num_cols);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_term_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);

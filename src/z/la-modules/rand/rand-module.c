@@ -29,8 +29,6 @@ static VALUE rand_get_entropy_bytes (la_t *this, VALUE v_size) {
   return STRING(s);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_rand_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__ (random);

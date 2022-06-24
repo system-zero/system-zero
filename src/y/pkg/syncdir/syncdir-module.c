@@ -318,8 +318,6 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
   return INT(retval);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_syncdir_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);

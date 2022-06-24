@@ -156,8 +156,6 @@ static VALUE dir_list (la_t *this, VALUE v_dir) {
   return ARRAY(array);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_dir_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(dir);

@@ -266,7 +266,6 @@ static int re_match_set (const char *re, int re_len, const char *s,
 }
 
 static int re_doh (const char *s, int s_len, struct regex_info *info, int bi);
-
 static int re_bar (const char *re, int re_len, const char *s, int s_len,
                struct regex_info *info, int bi) {
   /* i is offset in re, j is offset in s, bi is brackets index */

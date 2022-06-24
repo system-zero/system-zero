@@ -511,6 +511,15 @@ Type Make {
       if t is StringType then append v in l
   }
 
+  append_linkagainst_value : func (v, l) {
+    return if null is v
+    var t =  v: typeof ()
+    if t is ArrayType then
+      for f in v append "-l" + f in l
+    orelse
+      if t is StringType then append "-l" + v in l
+  }
+
   make_objects_build_dir : func {
     ifnot "build": exists () then mkdir ("build", 0700)
     ifnot "build": isdirectory () {
@@ -776,20 +785,20 @@ Type Make {
 
     shared : {
       library : {
-        to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.shared_library
-        cflag                : func (v) this.append_value (v, this.shared_library.cflags)
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_library)
+        cflag                : func (v) this.append_value (v, this.linkagainst.shared_library)
         source               : func (v) this.append_value (v, this.shared_library_sources)
         compile_type         : func (t) this.shared_library_compile_type = t
       }
 
       executable : {
-        to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.shared_executable
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_executable)
         cflag                : func (v) this.append_value (v, this.shared_executable.cflags)
         source               : func (v) this.append_value (v, this.shared_executable_sources)
       }
 
       module : {
-        to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.shared_module
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_module)
         cflag                : func (v) this.append_value (v, this.shared_module.cflags)
         source               : func (v) this.append_value (v, this.shared_module_sources)
       }
@@ -801,14 +810,14 @@ Type Make {
 
     static : {
       library : {
-        to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.static_library
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_library)
         cflag                : func (v) this.append_value (v, this.static_library.cflags)
         source               : func (v) this.append_value (v, this.static_library_sources)
         compile_type         : func (t) this.static_library_compile_type = t
       }
 
       executable : {
-        to_linkagainst       : func (l) ifnot null is l append "-l" + l in this.linkagainst.static_executable
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_executable)
         cflag                : func (v) this.append_value (v, this.static_executable.cflags)
         source               : func (v) this.append_value (v, this.static_executable_sources)
       }

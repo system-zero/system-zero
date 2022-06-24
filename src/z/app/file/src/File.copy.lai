@@ -1,18 +1,19 @@
-var prog = "File.copy"
-
+import ("path")
 import ("file")
-loadfile ("argparse")
+include ("argparse")
 
-var argparse = New Argparse (10, 0, prog + " [option[s]] source destination")
+var me = __file__: path_basename ()
+
+var argparse = New Argparse (10, 0, me + " [option[s]] source destination")
 argparse.add ("all", 'a', "archive", "same as -Rp", BooleanType, 0)
 argparse.add ("force", 'f', "force", "if a destination file cannot be opened, remove it and try again", BooleanType, 0)
-argparse.add ("update", 'u', "update", "copy only if source file is newer than destination and size differs or is missing", BooleanType, 0) 
+argparse.add ("update", 'u', "update", "copy only if source file is newer than destination or the size differs or when destination is missing", BooleanType, 0) 
 argparse.add ("backup", 'b', "backup", "make a backup of each existing destination file", BooleanType, 0) 
 argparse.add ("preserve", 'p', "preserve", "preserve mode, ownership and timestamps", BooleanType, 0)
 argparse.add ("recursive", 'R', "recursive", "copy recursively", BooleanType, 0)
 argparse.add ("dereference", 'L', "dereference", "follow symbolic links in source", BooleanType, 0)
 argparse.add ("interactive", 'i', "interactive", "prompt before overwrite", BooleanType, 0)
-argparse.add ("verbose", 'v', "verbose=", "set verbosity", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
+argparse.add ("verbose", 'v', "verbose=", "set verbosity, when == 2 or with -vv then it shows the percentage", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 ifnot ok is argparse.process (__argv, 1) then exit (1)
@@ -20,19 +21,19 @@ ifnot ok is argparse.process (__argv, 1) then exit (1)
 if argparse.exit is true then exit (0)
 
 var qualif = {
-  "all"         : argparse.results.all
-  "force"       : argparse.results.force
-  "update"      : argparse.results.update
-  "backup"      : argparse.results.backup
-  "preserve"    : argparse.results.preserve
-  "recursive"   : argparse.results.recursive
-  "dereference" : argparse.results.dereference
-  "interactive" : argparse.results.interactive
-  "verbose"     : argparse.results.verbose: ifnot x then 1 orelse x + 1 end
+  all         : argparse.results.all
+  force       : argparse.results.force
+  update      : argparse.results.update
+  backup      : argparse.results.backup
+  preserve    : argparse.results.preserve
+  recursive   : argparse.results.recursive
+  dereference : argparse.results.dereference
+  interactive : argparse.results.interactive
+  verbose     : argparse.results.verbose: ifnot x then 1 orelse x + 1 end
 }
 
 if (argparse.argc < 2) {
-  println (stderr, "${%s, prog}: missing operands")
+  println (stderr, "${%s, me}: missing operands")
   exit (1)
 }
 
@@ -42,7 +43,7 @@ var exitval = 0
 
 var retval = ok
 
-for (var i = 0; i < argparse.argc - 1; i += 1) {
+for (var i = 0; i < argparse.argc - 1; i++) {
   retval = argparse.argv[i]: file_copy (destination; qualif)
   exitval = retval: if x is notok then 1 orelse exitval end
 }

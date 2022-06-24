@@ -95,8 +95,6 @@ static VALUE io_open (la_t *this, VALUE v_fname, VALUE v_flags, VALUE v_mode) {
   return v;
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_io_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(io);

@@ -115,8 +115,6 @@ static VALUE path_concat (la_t *this, VALUE v_apath, VALUE v_bpath) {
   return STRING(new);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_path_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(path);

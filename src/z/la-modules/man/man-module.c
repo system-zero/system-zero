@@ -53,8 +53,6 @@ static VALUE man_page (la_t *this, VALUE v_page, VALUE v_section) {
   return NULL_VALUE;
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_man_module__ (la_t *this) {
   __INIT_MODULE__(this);
 

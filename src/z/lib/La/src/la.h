@@ -418,6 +418,19 @@ public la_T *la_get_root (la_t *);
   return NULL_VALUE;                \
 } while (0)
 
+#define VSTRING_TO_ARRAY(__v__) ({                                        \
+  ArrayType *_array = ARRAY_NEW(STRING_TYPE, __v__->num_items);           \
+  string **_ar = (string **) AS_ARRAY(_array->value);                     \
+  vstring_t *_it = __v__->head;                                           \
+  int _idx = 0;                                                           \
+  while (_it) {                                                           \
+    String.replace_with_len (_ar[_idx++],                                 \
+       _it->data->bytes, _it->data->num_bytes);                           \
+    _it = _it->next;                                                      \
+  }                                                                       \
+  _array;                                                                 \
+})
+
 #define GET_OPT_ERR_STREAM() ({                                           \
   FILE *_err_fp = NULL;                                                   \
   VALUE _v_err_stream = La.get.qualifier (this, "err_stream", NULL_VALUE);\
@@ -580,6 +593,27 @@ public la_T *la_get_root (la_t *);
   else if (IS_NULL(_v_dirs) == 0)                                         \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
   _dirs_;                                                                 \
+})
+
+#define GET_OPT_WITH_LINE_NUMBER() ({                                     \
+  VALUE _v_line_nr = La.get.qualifier (this, "with_line_number", INT(0)); \
+  ifnot (IS_INT(_v_line_nr))                                              \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_line_nr);                                                     \
+})
+
+#define GET_OPT_WITH_FILENAME() ({                                        \
+  VALUE _v_with_fname = La.get.qualifier (this, "with_filename", INT(0)); \
+  ifnot (IS_INT(_v_with_fname))                                           \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_with_fname);                                                  \
+})
+
+#define GET_OPT_WITHOUT_FILENAME() ({                                         \
+  VALUE _v_without_fname = La.get.qualifier (this, "without_filename", INT(0));\
+  ifnot (IS_INT(_v_without_fname))                                           \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");            \
+  AS_INT(_v_without_fname);                                                     \
 })
 
 #endif /* WITHOUT_LA_FUNCTIONS */

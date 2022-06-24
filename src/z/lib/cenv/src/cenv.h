@@ -110,7 +110,7 @@
 */
 
 /* strlen might made sence, but now is confusing for young minds.
- * so dissasociate it violently by forbiding it in the code.
+ * So dissasociate it violently by forbiding it in the code.
  * Today a standard charlen() might justified. */
 
 inline size_t bytelen (const char *str) {
@@ -247,6 +247,18 @@ typedef unsigned long ulong;
 
 #ifndef ARRLEN
 #define ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+#endif
+
+#ifndef MIN
+#define MIN(__a__, __b__) ((__a__) <= (__b__) ? (__a__) : (__b__))
+#endif
+
+#ifndef MAX
+#define MAX(__a__, __b__) ((__a__) > (__b__) ? (__a__) : (__b__))
+#endif
+
+#ifndef EvalString
+#define EvalString(...) #__VA_ARGS__
 #endif
 
 #define __BASE_ERROR__         -10000

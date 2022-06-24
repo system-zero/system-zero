@@ -50,8 +50,6 @@ static VALUE sys_battery_info (la_t *this) {
   return STRING(info);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_sys_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(sys);

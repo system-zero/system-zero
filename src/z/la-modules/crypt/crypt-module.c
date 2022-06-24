@@ -253,8 +253,6 @@ static VALUE crypt_verify_passwd_hash (la_t *this, VALUE v_passwd, VALUE v_hash)
   return INT(r);
 }
 
-#define EvalString(...) #__VA_ARGS__
-
 public int __init_crypt_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(md5);

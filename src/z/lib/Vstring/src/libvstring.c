@@ -32,7 +32,6 @@ static void vstring_clear (Vstring_t *this) {
 }
 
 static void vstring_release (Vstring_t *this) {
-  if (NULL is this) return;
   vstring_clear (this);
   free (this);
 }

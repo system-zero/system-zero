@@ -11,6 +11,6 @@ return Packman.new.spec ({
   license       : "MIT"
   build         : [
     Packman.copy_sources (),
-    Packman.make_with("V=1 install PREFIX=" + this.sysdir),
+    Packman.make_with("V=1 install PREFIX=" + this.sysdir)
   ]
 })
