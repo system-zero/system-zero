@@ -184,18 +184,19 @@ theend:
 static string_t *__ex_buf_serial_info__ (bufinfo_t *info) {
   string_t *sinfo = String.new_with ("BUF_INFO_STRUCTURE\n");
   String.append_with_fmt (sinfo,
-    "fname       : \"%s\"\n"
-    "cwd         : \"%s\"\n"
-    "parent name : \"%s\"\n"
-    "at frame    : %d\n"
-    "num bytes   : %zd\n"
-    "num lines   : %zd\n"
-    "cur idx     : %d\n"
-    "is writable : %d\n"
-    "autosave    : %ld\n",
+    "fname        : \"%s\"\n"
+    "cwd          : \"%s\"\n"
+    "parent name  : \"%s\"\n"
+    "at frame     : %d\n"
+    "num bytes    : %zd\n"
+    "num lines    : %zd\n"
+    "cur idx      : %d\n"
+    "is writable  : %d\n"
+    "autosave     : %ld\n"
+    "save on exit : %d\n",
     info->fname, info->cwd, info->parents_name, info->at_frame,
     info->num_bytes, info->num_lines, info->cur_idx, info->is_writable,
-    info->autosave);
+    info->autosave, info->save_on_exit);
 
   return sinfo;
 }
@@ -718,6 +719,7 @@ int main (int argc, char **argv) {
   int
     exit = 0,
     exit_quick = 0,
+    save_on_exit = 0,
     filetype = FTYPE_DEFAULT,
     autosave = 0,
     backupfile = 0,
@@ -739,6 +741,7 @@ int main (int argc, char **argv) {
     OPT_INTEGER(0, "autosave", &autosave, "interval time in minutes to autosave buffer", NULL, 0, 0),
     OPT_BOOLEAN(0, "backupfile", &backupfile, "backup file at the initial reading", NULL, 0, 0),
     OPT_BOOLEAN(0, "pager", &ispager, "behave as a pager", NULL, 0, 0),
+    OPT_BOOLEAN(0, "save-on-exit", &save_on_exit, "save buffer on exit", NULL, 0, 0),
     OPT_BOOLEAN(0, "exit", &exit, "exit", NULL, 0, 0),
     OPT_BOOLEAN(0, "exit-quick", &exit_quick, "exit when quiting current buffer", NULL, 0, 0),
     OPT_END()
@@ -810,6 +813,7 @@ int main (int argc, char **argv) {
     buf_t *buf = Win.buf.new (w, BufOpts (
         .ftype = filetype,
         .autosave = autosave,
+        .save_on_exit = save_on_exit,
         .flags = (ispager ? BUF_IS_PAGER : 0)));
 
     Win.append_buf (w, buf);
@@ -837,6 +841,7 @@ int main (int argc, char **argv) {
           .at_column = column,
           .backupfile = backupfile,
           .backup_suffix = backup_suffix,
+          .save_on_exit = save_on_exit,
           .autosave = autosave,
           .flags = (ispager ? BUF_IS_PAGER : 0)));
 

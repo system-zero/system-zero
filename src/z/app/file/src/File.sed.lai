@@ -25,6 +25,9 @@ var subst       = argparse.results.subst
 var interactive =
   if argparse.results.interactive then "::--interactive" orelse ""
 
+var save_on_exit =
+  if argparse.results.interactive then "" orelse "--save-on-exit "
+
 if null is pattern or null is subst {
   argparse.usage ()
   exit (1)
@@ -33,6 +36,6 @@ if null is pattern or null is subst {
 const zs = New Shell ()
 
 var com = "A --exec-com=s%::--pat=" + pattern + "::--sub=" + subst +
- interactive + "::--global --exit " + file
+ interactive + "::--global --exit " + save_on_exit + file
 
 zs.exec (com)

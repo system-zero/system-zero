@@ -1594,6 +1594,10 @@ static int buf_com_set (buf_t *this, readline_t *rl) {
   if (Readline.arg.exists (rl, "enable-writing"))
     $my(enable_writing) = 1;
 
+  arg = Readline.get.anytype_arg (rl, "save-on-exit");
+  ifnot (NULL is arg)
+    self(set.save_on_exit, atoi (arg->bytes));
+
   if (draw) self(draw);
 
   return OK;
@@ -2279,6 +2283,13 @@ static void buf_set_mode (buf_t *this, const char *mode) {
   Cstring.cp ($my(mode), MAXLEN_MODE, mode, MAXLEN_MODE - 1);
 }
 
+static void buf_set_save_on_exit (buf_t *this, int val) {
+  if (val)
+    $my(flags) |= BUF_SAVE_ON_EXIT;
+  else
+    $my(flags) &= ~BUF_SAVE_ON_EXIT;
+}
+
 static void buf_set_autosave (buf_t *this, long minutes) {
   if (minutes <= 0) {
     $my(autosave) = $my(saved_sec) = 0;
@@ -2788,6 +2799,7 @@ static bufinfo_t *buf_get_info_as_type (buf_t *this) {
   info->num_bytes = self(get.size);
   info->num_lines = self(get.num_lines);
   info->autosave = $my(autosave);
+  info->save_on_exit = (($my(flags) & BUF_SAVE_ON_EXIT) ? 1 : 0);
   return info;
 }
 
@@ -2968,6 +2980,7 @@ static buf_t *win_buf_new (win_t *win, buf_opts opts) {
   self(set.ftype, opts.ftype);
   self(set.row.idx, 0, NO_OFFSET, 1);
   self(set.autosave, opts.autosave);
+  self(set.save_on_exit, opts.save_on_exit);
   self(set.backup, opts.backupfile,
     (NULL is opts.backup_suffix ? BACKUP_SUFFIX : opts.backup_suffix));
   self(backupfile);
@@ -4803,6 +4816,11 @@ static int ed_quit (ed_t *ed, int force, int global) {
           or ($my(flags) & BUF_IS_PAGER)
           or Cstring.eq ($my(fname), UNNAMED))
         goto bufnext;
+
+      if ($my(flags) & BUF_SAVE_ON_EXIT) {
+        self(write, FORCE);
+        goto bufnext;
+      }
 
       utf8 chars[] = {'y', 'Y', 'n', 'N', 'c', 'C','d'};
 thequest:;
@@ -8138,7 +8156,7 @@ static int buf_write (buf_t *this, int force) {
           "continue writing? [yY|nN]", $my(fname)), chars, ARRLEN (chars));
       switch (c) {case 'n': case 'N': return NOTHING_TODO;};
     } else {
-      if (2 isnot force) {
+      if (2 isnot force or 0 is ($my(flags) & BUF_SAVE_ON_EXIT)) {
   #if defined(__MACH__)
         if ($my(st).st_mtimespec.tv_sec isnot st.st_mtimespec.tv_sec) {
   #else
@@ -12124,6 +12142,7 @@ static void ed_init_commands (ed_t *this) {
   ed_append_command_arg (this, "set", "--enable-writing", 16);
   ed_append_command_arg (this, "set", "--backup-suffix=", 16);
   ed_append_command_arg (this, "set", "--no-backupfile", 15);
+  ed_append_command_arg (this, "set", "--save-on-exit=", 15);
   ed_append_command_arg (this, "set", "--shiftwidth=", 13);
   ed_append_command_arg (this, "set", "--save-image=", 13);
   ed_append_command_arg (this, "set", "--image-file=", 13);
@@ -12436,6 +12455,7 @@ static ed_T *editor_new (void) {
           .modified = buf_set_modified,
           .autosave = buf_set_autosave,
           .autochdir = buf_set_autochdir,
+          .save_on_exit = buf_set_save_on_exit,
           .on_emptyline = buf_set_on_emptyline,
           .video_first_row = buf_set_video_first_row,
           .show_statusline = buf_set_show_statusline,
@@ -12967,6 +12987,7 @@ static string_t *E_create_image (E_T *this) {
         char *ftype_name = $from(buf, ftype)->name;
         long autosave = $from(buf, autosave);
         if (autosave > 0) autosave /= 60;
+        int save_on_exit = (($from(buf, flags) & BUF_SAVE_ON_EXIT) ? 1 : 0);
         int cur_row_idx = buf->cur_idx;
 
         String.append_with (img, "\n");
@@ -12976,11 +12997,13 @@ static string_t *E_create_image (E_T *this) {
               "  buf_init_fname (buf, \"%s\")\n"
               "  buf_set_ftype (buf, \"%s\")\n"
               "  buf_set_autosave (buf, %ld)\n"
+              "  buf_set_save_on_exit (buf, %d)\n"
               "  buf_set_row_idx (buf, %d)\n"
               "  win_append_buf (cwin, buf)\n",
             bufname,
             ftype_name,
             autosave,
+            save_on_exit,
             cur_row_idx);
 
 next_buf:
@@ -13446,109 +13469,94 @@ static int Ed_init (E_T *__E__, ed_T *this) {
 
 static VALUE la_e_get_ed_num (la_t *this) {
   E_T *laroot = La.get.user_data (this);
-  VALUE r = INT(LaRoot.get.num (laroot));
-  return r;
+  return INT(LaRoot.get.num (laroot));
 }
 
 static VALUE la_e_set_ed_next (la_t *this) {
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR(LaRoot.set.next (laroot));
-  return r;
+  return PTR(LaRoot.set.next (laroot));
 }
 
 static VALUE la_e_set_ed_by_idx (la_t *this, VALUE idxv) {
   int idx = AS_INT(idxv);
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR(LaRoot.set.current (laroot, idx));
-  return r;
+  return PTR(LaRoot.set.current (laroot, idx));
 }
 
 static VALUE la_e_set_save_image (la_t *this, VALUE val) {
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.save_image (laroot, AS_INT(val));
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
 }
 
 static VALUE la_e_set_persistent_layout (la_t *this, VALUE valv) {
   int val = AS_INT(valv);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.persistent_layout (laroot, val);
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
 }
 
 static VALUE la_e_set_image_name (la_t *this, VALUE namev) {
   char *name = AS_STRING_BYTES(namev);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.image_name (laroot, name);
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
 }
 
 static VALUE la_e_set_image_file (la_t *this, VALUE filev) {
   char *file = AS_STRING_BYTES(filev);
   E_T *laroot = La.get.user_data (this);
   LaRoot.set.image_file (laroot, file);
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
 }
 
 static VALUE la_e_get_ed_current_idx (la_t *this) {
   E_T *laroot = La.get.user_data (this);
-  VALUE r = INT(LaRoot.get.current_idx (laroot));
-  return r;
+  return INT(LaRoot.get.current_idx (laroot));
 }
 
 static VALUE la_e_get_ed_current (la_t *this) {
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR(LaRoot.get.current (laroot));
-  return r;
+  return PTR(LaRoot.get.current (laroot));
 }
 
 static VALUE la_ed_new (la_t *this, VALUE num_winv) {
   int num_win = AS_INT(num_winv);
   E_T *laroot = La.get.user_data (this);
-  VALUE r = PTR(LaRoot.new (laroot, EdOpts(.num_win = num_win)));
-  return r;
+  return PTR(LaRoot.new (laroot, EdOpts(.num_win = num_win)));
 }
 
 static VALUE la_ed_get_num_win (la_t *this, VALUE edv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
-  VALUE r = INT(ed_get_num_win (ed, 0));
-  return r;
+  return INT(ed_get_num_win (ed, 0));
 }
 
 static VALUE la_ed_get_win_next (la_t *this, VALUE edv, VALUE winv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   win_t *win = (win_t *) AS_PTR(winv);
-  VALUE r = PTR(ed_get_win_next (ed, win));
-  return r;
+  return PTR(ed_get_win_next (ed, win));
 }
 
 static VALUE la_ed_get_current_win (la_t *this, VALUE edv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
-  VALUE r = PTR(ed_get_current_win (ed));
-  return r;
+  return PTR(ed_get_current_win (ed));
 }
 
 static VALUE la_ed_set_current_win (la_t *this, VALUE edv, VALUE idxv) {
   (void) this;
   ed_t *ed = (ed_t *) AS_PTR(edv);
   int idx = AS_INT(idxv);
-  VALUE r = PTR(ed_set_current_win (ed, idx));
-  return r;
+  return PTR(ed_set_current_win (ed, idx));
 }
 
 static VALUE la_buf_init_fname (la_t *this, VALUE bufv, VALUE fnamev) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   char *fn = AS_STRING_BYTES(fnamev);
-  VALUE r = INT(buf_init_fname (buf, fn));
-  return r;
+  return INT(buf_init_fname (buf, fn));
 }
 
 static VALUE la_buf_set_ftype (la_t *this, VALUE bufv, VALUE ftypev) {
@@ -13556,8 +13564,7 @@ static VALUE la_buf_set_ftype (la_t *this, VALUE bufv, VALUE ftypev) {
   char *ftype = AS_STRING_BYTES(ftypev);
   E_T *laroot = La.get.user_data (this);
   buf_set_ftype (buf, ed_syn_get_ftype_idx ($from(laroot, current), ftype));
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
 }
 
 static VALUE la_buf_set_autosave (la_t *this, VALUE bufv, VALUE minutesv) {
@@ -13565,24 +13572,29 @@ static VALUE la_buf_set_autosave (la_t *this, VALUE bufv, VALUE minutesv) {
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   long minutes = (long) AS_INT(minutesv);
   buf_set_autosave (buf, minutes);
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
+}
+
+static VALUE la_buf_set_save_on_exit (la_t *this, VALUE bufv, VALUE v_val) {
+  (void) this;
+  buf_t *buf = (buf_t *) AS_PTR(bufv);
+  int val = AS_INT(v_val);
+  buf_set_save_on_exit (buf, val);
+  return INT(LA_OK);
 }
 
 static VALUE la_buf_set_row_idx (la_t *this, VALUE bufv, VALUE rowv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int row = AS_INT(rowv);
-  VALUE r = INT(buf_set_row_idx (buf, row, NO_OFFSET, 1));
-  return r;
+  return INT(buf_set_row_idx (buf, row, NO_OFFSET, 1));
 }
 
 static VALUE la_buf_draw (la_t *this, VALUE bufv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   buf_draw (buf);
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
 }
 
 static VALUE la_buf_substitute (la_t *this, VALUE bufv, VALUE patv, VALUE subv, VALUE globalv,
@@ -13598,8 +13610,7 @@ static VALUE la_buf_substitute (la_t *this, VALUE bufv, VALUE patv, VALUE subv, 
 
   if (fidx is lidx) fidx = lidx = buf->cur_idx;
 
-  VALUE r = INT(buf_substitute (buf, pat, sub, global, interactive, fidx, lidx));
-  return r;
+  return INT(buf_substitute (buf, pat, sub, global, interactive, fidx, lidx));
 }
 
 static VALUE la_win_buf_init (la_t *this, VALUE winv, VALUE framev, VALUE flagsv) {
@@ -13607,8 +13618,7 @@ static VALUE la_win_buf_init (la_t *this, VALUE winv, VALUE framev, VALUE flagsv
   int flags = AS_INT(flagsv);
   int frame = AS_INT(framev);
   win_t *win = (win_t *) AS_PTR(winv);
-  VALUE r = PTR(win_buf_init (win, frame, flags));
-  return r;
+  return PTR(win_buf_init (win, frame, flags));
 }
 
 static VALUE la_win_set_current_buf (la_t *this, VALUE winv, VALUE idxv, VALUE drawv) {
@@ -13616,31 +13626,27 @@ static VALUE la_win_set_current_buf (la_t *this, VALUE winv, VALUE idxv, VALUE d
   win_t *win = (win_t *) AS_PTR(winv);
   int idx = AS_INT(idxv);
   int draw = AS_INT(drawv);
-  VALUE r = PTR(win_set_current_buf (win, idx, draw));
-  return r;
+  return PTR(win_set_current_buf (win, idx, draw));
 }
 
 static VALUE la_win_get_current_buf (la_t *this, VALUE winv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
-  VALUE r = PTR(win_get_current_buf (win));
-  return r;
+  return PTR(win_get_current_buf (win));
 }
 
 static VALUE la_win_draw (la_t *this, VALUE winv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
   win_draw (win);
-  VALUE r = INT(LA_OK);
-  return r;
+  return INT(LA_OK);
 }
 
 static VALUE la_win_append_buf (la_t *this, VALUE winv, VALUE bufv) {
   (void) this;
   win_t *win = (win_t *) AS_PTR(winv);
   buf_t *buf = (buf_t *) AS_PTR(bufv);
-  VALUE r = INT(win_append_buf (win, buf));
-  return r;
+  return INT(win_append_buf (win, buf));
 }
 
 static VALUE la_buf_normal_page_down (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
@@ -13648,8 +13654,7 @@ static VALUE la_buf_normal_page_down (la_t *this, VALUE bufv, VALUE countv, VALU
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int count = AS_INT(countv);
   int draw = AS_INT(drawv);
-  VALUE r = INT(buf_normal_page_down (buf, count, draw));
-  return r;
+  return INT(buf_normal_page_down (buf, count, draw));
 }
 
 static VALUE la_buf_normal_page_up (la_t *this, VALUE bufv, VALUE countv, VALUE drawv) {
@@ -13657,8 +13662,7 @@ static VALUE la_buf_normal_page_up (la_t *this, VALUE bufv, VALUE countv, VALUE 
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int count = AS_INT(countv);
   int draw = AS_INT(drawv);
-  VALUE r = INT(buf_normal_page_up (buf, count, draw));
-  return r;
+  return INT(buf_normal_page_up (buf, count, draw));
 }
 
 static VALUE la_buf_normal_goto_linenr (la_t *this, VALUE bufv, VALUE linenumv, VALUE drawv) {
@@ -13666,23 +13670,20 @@ static VALUE la_buf_normal_goto_linenr (la_t *this, VALUE bufv, VALUE linenumv, 
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   int linenum = AS_INT(linenumv);
   int draw = AS_INT(drawv);
-  VALUE r = INT(buf_normal_goto_linenr (buf, linenum, draw));
-  return r;
+  return INT(buf_normal_goto_linenr (buf, linenum, draw));
 }
 
 static VALUE la_buf_normal_replace_character_with (la_t *this, VALUE bufv, VALUE cv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   utf8 c = AS_INT(cv);
-  VALUE r = INT(buf_normal_replace_character_with (buf, c));
-  return r;
+  return INT(buf_normal_replace_character_with (buf, c));
 }
 
 static VALUE la_buf_normal_change_case (la_t *this, VALUE bufv) {
   (void) this;
   buf_t *buf = (buf_t *) AS_PTR(bufv);
-  VALUE r = INT(buf_normal_change_case (buf));
-  return r;
+  return INT(buf_normal_change_case (buf));
 }
 
 static VALUE la_buf_insert_string (la_t *this, VALUE bufv, VALUE strv, VALUE drawv) {
@@ -13690,8 +13691,7 @@ static VALUE la_buf_insert_string (la_t *this, VALUE bufv, VALUE strv, VALUE dra
   buf_t *buf = (buf_t *) AS_PTR(bufv);
   char *str = AS_STRING_BYTES(strv);
   int draw = AS_INT(drawv);
-  VALUE r = INT(buf_insert_string (buf, str, bytelen (str), draw));
-  return r;
+  return INT(buf_insert_string (buf, str, bytelen (str), draw));
 }
 
 static VALUE la_buf_search (la_t *this, VALUE bufv, VALUE comv, VALUE strv, VALUE cv) {
@@ -13700,8 +13700,7 @@ static VALUE la_buf_search (la_t *this, VALUE bufv, VALUE comv, VALUE strv, VALU
   char com = AS_INT(comv);
   char *str = AS_STRING_BYTES(strv);
   int c = AS_INT(cv);
-  VALUE r = INT(buf_search (buf, com, str, c));
-  return r;
+  return INT(buf_search (buf, com, str, c));
 }
 
 struct lafun_t {
@@ -13725,6 +13724,7 @@ struct lafun_t {
   { "ed_set_current_win",    PTR(la_ed_set_current_win), 2},
   { "buf_set_ftype",         PTR(la_buf_set_ftype), 2},
   { "buf_set_autosave",      PTR(la_buf_set_autosave), 2},
+  { "buf_set_save_on_exit",  PTR(la_buf_set_save_on_exit), 2},
   { "buf_set_row_idx",       PTR(la_buf_set_row_idx), 2},
   { "buf_normal_page_up",    PTR(la_buf_normal_page_up), 3},
   { "buf_normal_page_down",  PTR(la_buf_normal_page_down), 3},

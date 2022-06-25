@@ -237,6 +237,7 @@
 #define BUF_FORCE_REOPEN    (1 << 10)
 #define PTR_IS_AT_EOL       (1 << 12)
 #define BUF_LW_RESELECT     (1 << 13)
+#define BUF_SAVE_ON_EXIT    (1 << 14)
 
 #define ED_SUSPENDED        (1 << 0)
 #define ED_EXIT             (1 << 1)
@@ -497,7 +498,8 @@ struct bufinfo_t {
   int
     at_frame,
     cur_idx,
-    is_writable;
+    is_writable,
+    save_on_exit;
 
   long autosave;
 
@@ -559,7 +561,8 @@ typedef struct buf_opts {
      at_frame,
      at_linenr,
      at_column,
-     backupfile;
+     backupfile,
+     save_on_exit;
 
    long autosave;
 } buf_opts;
@@ -571,6 +574,7 @@ typedef struct buf_opts {
   .ftype = FTYPE_DEFAULT,         \
   .autosave = 0,                  \
   .backupfile = 0,                \
+  .save_on_exit = 0,              \
   .backup_suffix = BACKUP_SUFFIX, \
   .flags = 0,                     \
   .fname = UNNAMED,               \
@@ -762,6 +766,7 @@ typedef struct buf_set_self {
     (*ftype) (buf_t *, int),
     (*backup) (buf_t *, int, const char *),
     (*modified) (buf_t *),
+    (*save_on_exit) (buf_t *, int),
     (*autosave) (buf_t *, long),
     (*autochdir) (buf_t *, int),
     (*on_emptyline) (buf_t *, const char *),

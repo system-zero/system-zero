@@ -421,20 +421,20 @@ typedef struct buf_prop {
 
   int
     fd,
-    state,
-    nth_ptr_pos,
-    prev_nth_ptr_pos,
-    prev_num_items,
-    at_frame,
-    video_first_row_idx,
-    is_sticked,
     flags,
+    state,
+    at_frame,
+    is_sticked,
+    nth_ptr_pos,
+    *msg_row_ptr,
     cur_video_row,
     cur_video_col,
+    prev_num_items,
     statusline_row,
-    show_statusline,
     enable_writing,
-    *msg_row_ptr,
+    show_statusline,
+    prev_nth_ptr_pos,
+    video_first_row_idx,
     *prompt_row_ptr;
 
   long
