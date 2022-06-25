@@ -1,10 +1,10 @@
-#!/bin/env La
-
 import ("sh")
 import ("path")
 include ("argparse")
 
-var argparse = New Argparse (4, 0, __argv[0]: path_basename () + " options file")
+var me = __file__: path_basename ()
+
+var argparse = New Argparse (4, 0, me + " options file")
 argparse.add ("pattern", 0, "pat=", "pattern", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("subst", 0, "sub=", "substitution", StringType, ARG_VALUE_REQUIRED) 
 argparse.add ("interactive", 'i', "interactive", "interactive", BooleanType, 0) 

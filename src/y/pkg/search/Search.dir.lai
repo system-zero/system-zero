@@ -1,0 +1,56 @@
+import ("dir")
+import ("path")
+import ("search")
+include ("argparse")
+
+var me = __file__: path_basename ()
+
+var argparse = New Argparse (5, 0, me + " [option[s]] --pat=pattern dir[s]")
+argparse.add ("without_filename", 0, "without-filename", "do not print the filename", BooleanType, 0)
+argparse.add ("with_line_number", 'n', "with-line-number", "print line number of the match", BooleanType, 0)
+argparse.add ("max_depth", 0, "max-depth=", "maximum depth, 1 means search only in the given directory", IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("pat", 0, "pat=", "pattern", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var qualif = {
+  recursive        : 1
+  without_filename : argparse.results.without_filename
+  with_line_number : argparse.results.with_line_number
+}
+
+if argparse.results.max_depth isnot 0 {
+  if argparse.results.max_depth < 1 {
+    argparse.usage ()
+    exit (1)
+  }
+
+  qualif.max_depth = argparse.results.max_depth - 1
+}
+
+var pat = argparse.results.pat
+
+if 0 is argparse.argc or null is pat {
+  argparse.usage ()
+  exit (1)
+}
+
+const is_directory = dir_is_directory
+
+var exitval = 1
+
+for d in argparse.argv {
+  continue ifnot d: is_directory ()
+  var a = d: search_file (pat; qualif)
+  if null is a {
+    exitval = 2
+    continue
+  }
+  if exitval isnot 2 and a: len () then exitval = 0
+  for v in a println (v)
+}
+
+exit (exitval)

@@ -112,8 +112,7 @@ static VALUE dir_list (la_t *this, VALUE v_dir) {
 
   int recursive = GET_OPT_RECURSIVE();
   if (recursive) {
-    int depth = GET_OPT_DEPTH();
-    ifnot (depth) depth = -1;
+    int depth = GET_OPT_MAX_DEPTH_WITH(-1);
     return dir_list_recursive (this, v_dir, INT(depth));
   }
 

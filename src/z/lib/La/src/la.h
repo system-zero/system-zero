@@ -480,8 +480,15 @@ public la_T *la_get_root (la_t *);
   AS_INT(_v_debug);                                                       \
 })
 
-#define GET_OPT_DEPTH() ({                                                \
-  VALUE _v_depth = La.get.qualifier (this, "depth", INT(0));              \
+#define GET_OPT_MAX_DEPTH() ({                                            \
+  VALUE _v_depth = La.get.qualifier (this, "max_depth", INT(0));          \
+  ifnot (IS_INT(_v_depth))                                                \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_depth);                                                       \
+})
+
+#define GET_OPT_MAX_DEPTH_WITH(__d__) ({                                  \
+  VALUE _v_depth = La.get.qualifier (this, "max_depth", INT(__d__));      \
   ifnot (IS_INT(_v_depth))                                                \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
   AS_INT(_v_depth);                                                       \
