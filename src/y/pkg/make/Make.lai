@@ -372,6 +372,11 @@ Type Make {
       var base = base64_encode (v)
       this.recorded.$(v) = { mtime : st.st_mtime, base : base }
     }
+
+    var v = SPEC
+    var st = v: stat ()
+    var base = base64_encode (v)
+    this.recorded.$(v) = { mtime : st.st_mtime, base : base }
   }
 
   read_cached_file : func {
@@ -407,12 +412,17 @@ Type Make {
     return true  if r is true
 
     for v in sources {
-      return true ifnot   this.cached: key_exists (v)
+      return true ifnot this.cached:   key_exists (v)
       return true ifnot this.recorded: key_exists (v)
 
       return true if this.cached.$(v).mtime isnot this.recorded.$(v).mtime
       return true if this.cached.$(v).base  isnot this.recorded.$(v).base
     }
+
+    var v = SPEC
+    return true ifnot this.cached:   key_exists (v)
+    return true ifnot this.recorded: key_exists (v)
+    return true if    this.cached.$(v).mtime isnot this.recorded.$(v).mtime
 
     return false
   }
