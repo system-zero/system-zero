@@ -1,0 +1,49 @@
+import ("io")
+import ("re")
+import ("path")
+include ("argparse")
+
+const isatty   = Io.fd.isatty
+const tokenize = String.tokenize
+const basename = Path.basename
+
+var me = __file__: basename ()
+
+var argparse = New Argparse (2, ARGPARSE_SINGLE_DASH_IS_STDIN, me + " --pat=pattern [-]")
+argparse.add ("pat", 0, "pat=", "pattern", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var pat = argparse.results.pat
+
+if null is pat {
+  argparse.usage ()
+  exit (1)
+}
+
+if argparse.argc and argparse.argv[0] isnot "-" then exit 1
+
+if STDIN_FILENO: isatty () {
+  argparse.usage ()
+  exit (1)
+}
+
+var str = Io.fd.read (STDIN_FILENO)
+if null is str then exit (1)
+
+var a = str: string_tokenize ("\n")
+
+if null is a or 0 is a: len () then exit (1)
+
+var exitval = 1
+
+for v in a {
+  continue ifnot v: re_match (pat)
+  println (v)
+  if exitval then exitval = 0
+}
+
+exit (exitval)

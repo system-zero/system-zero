@@ -1,5 +1,10 @@
+#@
+  depends_on ("re", MODULE)
+#
+
 var m = New Make (__file__, MODULE|SCRIPT)
 m.set.shared.module.to_linkagainst (["dir", "file", "re", "io"])
 m.set.script.source ("Search.file"; clear : 1)
 m.set.script.source ("Search.dir")
+m.set.script.source ("Search.string")
 return m
