@@ -143,7 +143,7 @@ static VALUE search_file (la_t *this, VALUE v_file, VALUE v_pat) {
       return NULL_VALUE;
     }
 
-    if (max_depth < 1) max_depth = DIRWALK_MAX_DEPTH;
+    if (max_depth < 0) max_depth = DIRWALK_MAX_DEPTH;
 
     Vstring_t unused;
     dirwalk_t *dw = Dir.walk.new (process_dir, process_file);

@@ -1,0 +1,16 @@
+-l,--long-format
+--sort-by-size
+--sort-by-mtime
+--sort-by-atime
+--sort-by-ctime
+--reverse
+--directories
+--links
+--sockets
+--character-devices
+--fifos
+--block-devices
+--files
+-F,--donot-append-indicator
+-a,--show-hidden
+--pat=

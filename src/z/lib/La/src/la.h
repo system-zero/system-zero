@@ -89,6 +89,7 @@ typedef struct listType listType;
   *_len_ = _ar->len;                                     \
   _s_ar;                                                 \
 })
+
 #define    ARRAY_NEW(__type__, __len__) ({               \
   ArrayType *array_ = Alloc (sizeof (ArrayType));        \
   VALUE ary_ = NULL_VALUE;                               \
@@ -139,6 +140,57 @@ typedef struct listType listType;
   array_->value = ary_;                                  \
   array_;                                                \
 })
+
+#define ARRAY_INIT_WITH_LEN(__type__, __len__) ({        \
+  ArrayType *array_ = Alloc (sizeof (ArrayType));        \
+  VALUE ary_ = NULL_VALUE;                               \
+  array_->type = __type__;                               \
+  array_->len  = __len__;                                \
+  if (array_->type is INTEGER_TYPE) {                    \
+    integer *i_ar = Alloc (__len__ * sizeof (integer));  \
+    for (integer i = 0; i < __len__; i++)                \
+      i_ar[i] = 0;                                       \
+    ary_ = ARRAY(i_ar);                                  \
+                                                         \
+  }  else if (array_->type is NUMBER_TYPE) {             \
+    number *n_ar = Alloc (__len__ * sizeof (number));    \
+    for (integer i = 0; i < __len__; i++)                \
+      n_ar[i] = 0.0;                                     \
+    ary_ = ARRAY(n_ar);                                  \
+                                                         \
+  } else if (array_->type is STRING_TYPE) {              \
+    string **s_ar = Alloc (__len__ * sizeof (string));   \
+    for (integer i = 0; i < __len__; i++) {              \
+      s_ar[i] = NULL;                                    \
+    }                                                    \
+    ary_ = ARRAY(s_ar);                                  \
+                                                         \
+  } else if (array_->type is MAP_TYPE) {                 \
+    Vmap_t **m_ar = Alloc (__len__ * Vmap.size_of ());   \
+    for (integer i = 0; i < __len__; i++) {              \
+      m_ar[i] = NULL;                                    \
+    }                                                    \
+    ary_ = ARRAY(m_ar);                                  \
+                                                         \
+  } else if (array_->type is LIST_TYPE) {                \
+    listArrayMember **l_ar = Alloc (__len__ * sizeof (listArrayMember)); \
+    for (integer i = 0; i < __len__; i++) {              \
+      l_ar[i] = NULL;                                    \
+    }                                                    \
+    ary_ = ARRAY(l_ar);                                  \
+                                                         \
+  } else if (array_->type is ARRAY_TYPE) {               \
+    ArrayType **a_ar = Alloc (sizeof (ArrayType) * __len__);\
+    for (integer i = 0; i < __len__; i++) {              \
+      a_ar[i] = NULL;                                    \
+    }                                                    \
+    ary_ = ARRAY(a_ar);                                  \
+  }                                                      \
+                                                         \
+  array_->value = ary_;                                  \
+  array_;                                                \
+})
+
 #define    ARRAY_APPEND(__ar__, __v__) ({                \
   VALUE ary_ = __ar__->value;                            \
   int __len__ = __ar__->len + 1;                         \
@@ -431,6 +483,36 @@ public la_T *la_get_root (la_t *);
   _array;                                                                 \
 })
 
+#define VSTRING_TO_ARRAY_AND_RELEASE(__v__) ({                            \
+  ArrayType *_array = ARRAY_INIT_WITH_LEN(STRING_TYPE, __v__->num_items); \
+  string **_ar = (string **) AS_ARRAY(_array->value);                     \
+  vstring_t *_it = __v__->head;                                           \
+  int _idx = 0;                                                           \
+  while (_it) {                                                           \
+    vstring_t *_tmp = _it->next;                                          \
+    _ar[_idx++] = _it->data;                                              \
+    free (_it);                                                           \
+    _it = _tmp;                                                           \
+  }                                                                       \
+  free (__v__);                                                           \
+  _array;                                                                 \
+})
+
+#define VSTRING_REVERSE_TO_ARRAY_AND_RELEASE(__v__) ({                    \
+  ArrayType *_array = ARRAY_INIT_WITH_LEN(STRING_TYPE, __v__->num_items); \
+  string **_ar = (string **) AS_ARRAY(_array->value);                     \
+  vstring_t *_it = __v__->tail;                                           \
+  int _idx = 0;                                                           \
+  while (_it) {                                                           \
+    vstring_t *_tmp = _it->prev;                                          \
+    _ar[_idx++] = _it->data;                                              \
+    free (_it);                                                           \
+    _it = _tmp;                                                           \
+  }                                                                       \
+  free (__v__);                                                           \
+  _array;                                                                 \
+})
+
 #define GET_OPT_ERR_STREAM() ({                                           \
   FILE *_err_fp = NULL;                                                   \
   VALUE _v_err_stream = La.get.qualifier (this, "err_stream", NULL_VALUE);\
@@ -478,6 +560,13 @@ public la_T *la_get_root (la_t *);
   ifnot (IS_INT(_v_debug))                                                \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
   AS_INT(_v_debug);                                                       \
+})
+
+#define GET_OPT_REVERSE() ({                                              \
+  VALUE _v_reverse = La.get.qualifier (this, "reverse", INT(0));          \
+  ifnot (IS_INT(_v_reverse))                                              \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_reverse);                                                     \
 })
 
 #define GET_OPT_MAX_DEPTH() ({                                            \
@@ -591,6 +680,16 @@ public la_T *la_get_root (la_t *);
   _as_;                                                                   \
 })
 
+#define GET_OPT_PAT() ({                                                  \
+  char *_pat_ = NULL;                                                     \
+  VALUE _v_pat = La.get.qualifier (this, "pat", NULL_VALUE);              \
+  if (IS_STRING(_v_pat))                                                  \
+    _pat_ = AS_STRING_BYTES(_v_pat);                                      \
+  else if (IS_NULL(_v_pat) == 0)                                          \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+   _pat_;                                                                 \
+})
+
 #define GET_OPT_EXCLUDE_DIRS(_len) ({                                     \
   *_len = 0;                                                              \
   string **_dirs_ = NULL;                                                 \
@@ -600,6 +699,55 @@ public la_T *la_get_root (la_t *);
   else if (IS_NULL(_v_dirs) == 0)                                         \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
   _dirs_;                                                                 \
+})
+
+#define GET_OPT_HIDDEN() ({                                               \
+  VALUE _v_hidden = La.get.qualifier (this, "hidden", INT(0));            \
+  ifnot (IS_INT(_v_hidden))                                               \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_hidden);                                                      \
+})
+
+#define GET_OPT_LONG_FORMAT() ({                                          \
+  VALUE _v_long_format = La.get.qualifier (this, "long_format", INT(0));  \
+  ifnot (IS_INT(_v_long_format))                                          \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_long_format);                                                 \
+})
+
+#define GET_OPT_APPEND_INDICATOR() ({                                     \
+  VALUE _v_append = La.get.qualifier (this, "append_indicator", INT(0));  \
+  ifnot (IS_INT(_v_append))                                               \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_append);                                                      \
+})
+
+#define GET_OPT_SORT_BY_MTIME() ({                                        \
+  VALUE _v_mtime = La.get.qualifier (this, "sort_by_mtime", INT(0));      \
+  ifnot (IS_INT(_v_mtime))                                                \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_mtime);                                                       \
+})
+
+#define GET_OPT_SORT_BY_CTIME() ({                                        \
+  VALUE _v_ctime = La.get.qualifier (this, "sort_by_ctime", INT(0));      \
+  ifnot (IS_INT(_v_ctime))                                                \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_ctime);                                                       \
+})
+
+#define GET_OPT_SORT_BY_ATIME() ({                                        \
+  VALUE _v_atime = La.get.qualifier (this, "sort_by_atime", INT(0));      \
+  ifnot (IS_INT(_v_atime))                                                \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_atime);                                                       \
+})
+
+#define GET_OPT_SORT_BY_SIZE() ({                                         \
+  VALUE _v_size = La.get.qualifier (this, "sort_by_size", INT(0));        \
+  ifnot (IS_INT(_v_size))                                                 \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_size);                                                        \
 })
 
 #define GET_OPT_WITH_LINE_NUMBER() ({                                     \

@@ -169,10 +169,8 @@ static Vstring_t *vstring_dup (Vstring_t *this) {
   return vs;
 }
 
-/* so far, we always want sorted and unique members */
-static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, const char *bytes) {
-  vstring_t *vs = Alloc (sizeof (vstring_t));
-  vs->data = String.new_with (bytes);
+static vstring_t *vstring_add_sort_and_uniq_item (Vstring_t *this, vstring_t *vs) {
+  char *bytes = vs->data->bytes;
 
   int res = 1;
 
@@ -242,6 +240,13 @@ theend:
   }
 
   return vs;
+}
+
+/* so far, we always want sorted and unique members */
+static vstring_t *vstring_add_sort_and_uniq (Vstring_t *this, const char *bytes) {
+  vstring_t *vs = Alloc (sizeof (vstring_t));
+  vs->data = String.new_with (bytes);
+  return vstring_add_sort_and_uniq_item (this, vs);
 }
 
 static void vstring_append_uniq (Vstring_t *this, const char *bytes) {
@@ -322,7 +327,8 @@ public vstring_T __init_vstring__ (void) {
         .append_with_len = vstring_current_append_with_len
       },
       .add = (vstring_add_self) {
-        .sort_and_uniq = vstring_add_sort_and_uniq
+        .sort_and_uniq = vstring_add_sort_and_uniq,
+        .sort_and_uniq_item = vstring_add_sort_and_uniq_item
       },
       .to = (vstring_to_self) {
         .cstring = vstring_to_cstring

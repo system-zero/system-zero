@@ -2,11 +2,15 @@ import ("io")
 import ("std")
 import ("path")
 import ("file")
-loadfile ("argparse")
+include ("argparse")
 
-var prog = __file__: path_basename ()
+const basename = Path.basename
+const isatty   = Io.fd.isatty
+const read     = Io.fd.read
 
-var argparse = New Argparse (3, 0, prog + " filename")
+var me = __file__: basename ()
+
+var argparse = New Argparse (3, 0, me + " filename")
 argparse.add ("mode", 'm', "mode=", "mode in octal (default: 0600)", IntegerType, ARG_VALUE_REQUIRED)
 argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
@@ -20,27 +24,22 @@ var mode    = argparse.results.mode
 
 var fnames = null
 
-ifnot (argparse.argc) {
-  if (Io.fd.isatty (STDIN_FILENO)) {
-    println (stderr, "${%s, prog}: filename")
-    exit (0) # just for this program
+ifnot argparse.argc {
+  if STDIN_FILENO: isatty ()
+    argparse.usage ()
+    exit (1)
   }
 
   # SYNTAX: do ... if expr
 
-  var std_inp = Io.fd.read (STDIN_FILENO)
+  var std_inp = read (STDIN_FILENO)
   if null is std_inp then exit (1)
 
   fnames = std_inp: tokenize (" ")
 
 } else {
   fnames = string[0]
-  for |v| in argparse.argv append v in fnames
-
-  # or less fancy but without reallocations and so probably faster 
-  # fnames = string[argparse.argc]
-  # for (var i = 0; i < argparse.argc; i++)
-  #   fnames[i] = argparse.argv[i]
+  for v in argparse.argv append v in fnames
 }
 
 ifnot (fnames: len ()) {
@@ -48,11 +47,11 @@ ifnot (fnames: len ()) {
   exit (0)
 }
 
-var retval
-var exitval
+var retval = 0
+var exitval = 0
 
-for |v| in fnames {
-  retval = File.new (v, mode; verbose : verbose)
+for v in fnames {
+  retval = v:file_new (mode; verbose : verbose)
   exitval = if retval is notok then 1 orelse exitval
 }
 

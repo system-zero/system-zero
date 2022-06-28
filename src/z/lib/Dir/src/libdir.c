@@ -190,7 +190,9 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
   }
 
   if (depth >= this->depth) {
-    this->status = this->process_dir (this, dir, &st);
+    /* discovered while using this interface from the find-module, so
+     * it is quite probably needless as it add duplicates */
+     // this->status = this->process_dir (this, dir, &st);
     return OK;
   }
 

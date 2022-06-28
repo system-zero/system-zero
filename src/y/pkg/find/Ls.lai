@@ -1,0 +1,62 @@
+import ("path")
+import ("find")
+include ("argparse")
+
+var me = __file__: path_basename ()
+
+var argparse = New Argparse (17, 0, me + " [option[s]] file[s]|dir[s]")
+argparse.add ("long_format", 'l', "long-format",   "long format",   BooleanType, 0) 
+argparse.add ("sort_by_size",  0, "sort-by-size",  "sort by size",  BooleanType, 0)
+argparse.add ("sort_by_mtime", 0, "sort-by-mtime", "sort by mtime", BooleanType, 0)
+argparse.add ("sort_by_atime", 0, "sort-by-atime", "sort by atime", BooleanType, 0)
+argparse.add ("sort_by_ctime", 0, "sort-by-ctime", "sort by ctime", BooleanType, 0)
+argparse.add ("reverse", 0, "reverse", "sort in reverse order", BooleanType, 0)
+argparse.add ("dirs", 0, "directories", "list directories", BooleanType, 0)
+argparse.add ("lnks", 0, "links", "list symbolic links", BooleanType, 0)
+argparse.add ("socks", 0, "sockets", "list sockets", BooleanType, 0)
+argparse.add ("chrs", 0, "character-devices", "list character devices", BooleanType, 0)
+argparse.add ("fifos", 0, "fifos", "list fifos (named pipes)", BooleanType, 0)
+argparse.add ("blks", 0, "block-devices", "list block devices", BooleanType, 0)
+argparse.add ("regs", 0, "files", "list regular files", BooleanType, 0)
+argparse.add ("donot_append_indicator", 0, "donot-append-indicator", "do not append indicator (yes by default)", BooleanType, 0) 
+argparse.add ("show_hidden", 'a', "show-hidden", "show hidden", BooleanType, 0)
+argparse.add ("pat", 0, "pat=", "show files that match pattern", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("help", 'h', "help", "\nThis lists only a given directory.\nWithout a sorted option by default sorting is alphanumeric.\nWithout a specific type, default is all", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var object = ifnot argparse.argc then "." orelse argparse.argv[0] end
+
+var qualif = {
+  sort_by_size     : argparse.results.sort_by_size
+  sort_by_mtime    : argparse.results.sort_by_mtime
+  sort_by_atime    : argparse.results.sort_by_atime
+  sort_by_ctime    : argparse.results.sort_by_ctime
+  hidden           : argparse.results.show_hidden
+  append_indicator : argparse.results.donot_append_indicator is 0
+  long_format      : argparse.results.long_format
+  pat              : argparse.results.pat
+  reverse          : argparse.results.reverse
+  max_depth        : 0
+}
+
+var types = ""
+if argparse.results.dirs  then append "d" in types
+if argparse.results.chrs  then append "c" in types
+if argparse.results.fifos then append "p" in types
+if argparse.results.blks  then append "b" in types
+if argparse.results.regs  then append "f" in types
+if argparse.results.lnks  then append "l" in types
+if argparse.results.socks then append "s" in types
+
+ifnot types: len () then types = null
+
+var a = object: find_dir (types; qualif)
+
+if null is a then exit (1)
+
+for v in a println (v)
+
+exit (0)

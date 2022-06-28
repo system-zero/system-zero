@@ -1,3 +1,5 @@
 -n,--with-line-number
 -h,--without-filename
+--pat=
+--max-depth=
 -r,--recursive

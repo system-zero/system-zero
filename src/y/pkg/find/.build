@@ -1,0 +1,8 @@
+#@
+  depends_on ("re", MODULE)
+#
+
+var m = New Make (__file__, MODULE|SCRIPT)
+m.set.shared.module.to_linkagainst (["dir", "re", "file", "path", "os"])
+m.set.script.source ("Ls"; clear : 1)
+return m
