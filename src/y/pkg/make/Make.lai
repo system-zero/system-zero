@@ -18,7 +18,7 @@ include ("argparse")
 include ("packman")
 
 func argparseNew () {
-  var argparse = New Argparse (30, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (31, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -47,6 +47,7 @@ func argparseNew () {
   argparse.add ("no_local_env", 0, "no-local-env", "do not add local env in cflags ", BooleanType, 0)
   argparse.add ("dump_commands", 0, "dump-commands", "dump commands only", BooleanType, 0)
   argparse.add ("namespace", 0, "namespace=", "namespace (default z)", StringType, ARG_VALUE_REQUIRED)
+  argparse.add ("local_spec", 0, "local-spec", "use .local.build and .local_cached.build", BooleanType, 0)
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
   return argparse
@@ -104,9 +105,11 @@ const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
 const RPATH             = true
 const NORPATH           = false
 const SPEC              = ".build"
-const LOCAL_SPEC        = ".l.build"
+const LOCAL_SPEC        = ".local.build"
+var   SPECNAME          = SPEC
 const CACHED            = ".cached.build"
-const LOCAL_CACHED      = ".l.cached.build"
+const LOCAL_CACHED      = ".local_cached.build"
+var   CACHEDNAME        = CACHED
 
 const DEBUG             = true
 const NODEBUG           = false
@@ -351,6 +354,11 @@ Type Make {
 
     if ARGPARSE.results.dump_commands is true then this.set.dump_commands (true)
 
+    if ARGPARSE.results.local_spec is true {
+      SPECNAME = LOCAL_SPEC
+      CACHEDNAME = LOCAL_CACHED
+    }
+
     return ifnot ARGPARSE.results.force
 
     if ARGPARSE.results.shared or ARGPARSE.results.shared_library    or ARGPARSE.results.all then this.force_shared_library = true
@@ -373,7 +381,7 @@ Type Make {
       this.recorded.$(v) = { mtime : st.st_mtime, base : base }
     }
 
-    var v = SPEC
+    var v = SPECNAME
     var st = v: stat ()
     var base = base64_encode (v)
     this.recorded.$(v) = { mtime : st.st_mtime, base : base }
@@ -419,7 +427,8 @@ Type Make {
       return true if this.cached.$(v).base  isnot this.recorded.$(v).base
     }
 
-    var v = SPEC
+    var v = SPECNAME
+
     return true ifnot this.cached:   key_exists (v)
     return true ifnot this.recorded: key_exists (v)
     return true if    this.cached.$(v).mtime isnot this.recorded.$(v).mtime
@@ -497,7 +506,7 @@ Type Make {
     this.set.liboutput                        (name)
     this.set.builddir                         (dir)
     this.set.header                           (name + ".h")
-    this.set.cached_file                      (this.builddir: concat_with (CACHED))
+    this.set.cached_file                      (this.builddir: concat_with (CACHEDNAME))
     this.set.shared.library.source            ("lib" + name + ".c")
     this.set.shared.module.source             (name + "-module.c")
     this.set.static.library.source            ("lib" + name + ".c")
@@ -1452,7 +1461,7 @@ func get_dependencies (dir) {
     dir = n
   }
 
-  var file = if dir: isdirectory () then dir: concat_with (SPEC): realpath ()
+  var file = if dir: isdirectory () then dir: concat_with (SPECNAME): realpath ()
              orelse dir: realpath ()
 
   return notok ifnot file: exists ()
@@ -1540,6 +1549,12 @@ func get_dependencies (dir) {
   var INST_SCRIPT = ARGPARSE.results.install_script
   var DO_ALL      = ARGPARSE.results.all
   var verbose     = ARGPARSE.results.verbose
+
+  # do it twice as the time that is properly set, it might be already late
+  if ARGPARSE.results.local_spec is true {
+    SPECNAME = LOCAL_SPEC
+    CACHEDNAME = LOCAL_CACHED
+  }
 
   func zero_argparse_results () {
     ARGPARSE.results.shared            = false

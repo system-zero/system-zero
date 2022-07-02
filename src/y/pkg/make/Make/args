@@ -16,5 +16,6 @@
 --no-local-env
 --dump-commands
 --namespace=
+--local-spec
 -v,--verbose
 -h,--help
