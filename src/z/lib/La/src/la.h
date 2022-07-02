@@ -701,6 +701,27 @@ public la_T *la_get_root (la_t *);
   _dirs_;                                                                 \
 })
 
+#define GET_OPT_UID() ({                                                  \
+  VALUE _v_uid = La.get.qualifier (this, "uid", INT(-1));                 \
+  ifnot (IS_INT(_v_uid))                                                  \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_uid);                                                         \
+})
+
+#define GET_OPT_GID() ({                                                  \
+  VALUE _v_gid = La.get.qualifier (this, "gid", INT(-1));                 \
+  ifnot (IS_INT(_v_gid))                                                  \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_gid);                                                         \
+})
+
+#define GET_OPT_EXECUTABLE() ({                                           \
+  VALUE _v_exec = La.get.qualifier (this, "executable", INT(0));          \
+  ifnot (IS_INT(_v_exec))                                                 \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_exec);                                                        \
+})
+
 #define GET_OPT_HIDDEN() ({                                               \
   VALUE _v_hidden = La.get.qualifier (this, "hidden", INT(0));            \
   ifnot (IS_INT(_v_hidden))                                               \

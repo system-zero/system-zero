@@ -4,7 +4,7 @@ include ("argparse")
 
 var me = __file__: path_basename ()
 
-var argparse = New Argparse (17, 0, me + " [option[s]] file[s]|dir[s]")
+var argparse = New Argparse (20, 0, me + " [option[s]] file[s]|dir[s]")
 argparse.add ("long_format", 'l', "long-format",   "long format",   BooleanType, 0) 
 argparse.add ("sort_by_size",  0, "sort-by-size",  "sort by size",  BooleanType, 0)
 argparse.add ("sort_by_mtime", 0, "sort-by-mtime", "sort by mtime", BooleanType, 0)
@@ -19,9 +19,12 @@ argparse.add ("fifos", 0, "fifos", "list fifos (named pipes)", BooleanType, 0)
 argparse.add ("blks", 0, "block-devices", "list block devices", BooleanType, 0)
 argparse.add ("regs", 0, "files", "list regular files", BooleanType, 0)
 argparse.add ("donot_append_indicator", 0, "donot-append-indicator", "do not append indicator (yes by default)", BooleanType, 0) 
+argparse.add ("only_executables", 0, "executable", "list only executables", BooleanType, 0)
+argparse.add ("match_uid", 0, "uid=", "list only files that match uid", IntegerType, ARG_VALUE_REQUIRED; defval : -1)
+argparse.add ("match_gid", 0, "gid=", "list only files that match gid", IntegerType, ARG_VALUE_REQUIRED; defval : -1)
 argparse.add ("show_hidden", 'a', "show-hidden", "show hidden", BooleanType, 0)
 argparse.add ("pat", 0, "pat=", "show files that match pattern", StringType, ARG_VALUE_REQUIRED)
-argparse.add ("help", 'h', "help", "\nThis lists only a given directory.\nWithout a sorted option by default sorting is alphanumeric.\nWithout a specific type, default is all", BooleanType, 0)
+argparse.add ("help", 'h', "help", "\nThis lists only a given directory.\nWithout a sorted option by default sorting is alphanumeric.\nWithout a specific type, default is all.", BooleanType, 0)
 
 ifnot ok is argparse.process (__argv, 1) then exit (1)
 
@@ -39,6 +42,9 @@ var qualif = {
   long_format      : argparse.results.long_format
   pat              : argparse.results.pat
   reverse          : argparse.results.reverse
+  executable       : argparse.results.only_executables
+  uid              : argparse.results.match_uid
+  gid              : argparse.results.match_gid
   max_depth        : 0
 }
 

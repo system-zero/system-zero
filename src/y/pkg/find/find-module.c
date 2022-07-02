@@ -15,6 +15,7 @@
 
 MODULE(find);
 
+#define EXECUTABLE -1
 #define DIR_TYPE  (1 << 0)
 #define REG_TYPE  (1 << 1)
 #define BLK_TYPE  (1 << 2)
@@ -37,6 +38,10 @@ typedef struct find_t {
   int initialdir_isdot;
   int sort_type;
   int reverse_order;
+  int match_uid;
+  uid_t uid;
+  int match_gid;
+  gid_t gid;
   unsigned long *sorted_long;
   char **sorted_string;
   re_t *re;
@@ -196,6 +201,8 @@ static string *long_format (const char *o, size_t len, struct stat *st, int isln
 
 static int process_file (dirwalk_t *dw, const char *f, struct stat *st) {
   find_t *find = dw->user_data;
+  if (-1 isnot find->match_uid and st->st_uid isnot find->uid) return 0;
+  if (-1 isnot find->match_gid and st->st_gid isnot find->gid) return 0;
 
   char *file = (char *) f;
 
@@ -211,12 +218,20 @@ static int process_file (dirwalk_t *dw, const char *f, struct stat *st) {
   char indicator = '\0';
 
   do {
-    if (find->type & REG_TYPE  and S_ISREG(st->st_mode))  { indicator = '*'; break; }
-    if (find->type & BLK_TYPE  and S_ISBLK(st->st_mode))  break;
-    if (find->type & CHR_TYPE  and S_ISCHR(st->st_mode))  break;
+    if (find->type is EXECUTABLE) {
+      if (st->st_mode & S_IXUSR or st->st_mode & S_IXGRP or st->st_mode & S_IXOTH) {
+        indicator = '*';
+        break;
+      } else
+        return 0;
+    }
+
+    if (find->type & REG_TYPE  and S_ISREG(st->st_mode))  { indicator = 'f'; break; }
     if (find->type & LNK_TYPE  and S_ISLNK(st->st_mode))  { indicator = '@'; break; }
     if (find->type & FIFO_TYPE and S_ISFIFO(st->st_mode)) { indicator = '|'; break; }
     if (find->type & SOCK_TYPE and S_ISSOCK(st->st_mode)) { indicator = '='; break; }
+    if (find->type & BLK_TYPE  and S_ISBLK(st->st_mode)) break;
+    if (find->type & CHR_TYPE  and S_ISCHR(st->st_mode)) break;
     return 0;
   } while (0);
 
@@ -224,46 +239,48 @@ static int process_file (dirwalk_t *dw, const char *f, struct stat *st) {
 
   if (NULL is find->re)
     v = Vstring.new_item ();
-  else if (Re.exec (find->re, bname, bytelen (bname)) >= 0)
+  else if (Re.exec (find->re, bname,  len - (bname - file)) >= 0)
     v = Vstring.new_item ();
+  else return 0;
 
   char *tmp = NULL;
-  if (v isnot NULL) {
-    ifnot (find->long_format) {
-      v->data = String.new_with (file);
-      tmp = v->data->bytes;
-    } else
-      v->data = long_format (file, len, st, indicator is '@', &tmp);
 
-    if (find->append_indicator) {
-      switch (indicator) {
-        case '*':
-          if (st->st_mode & S_IXUSR or st->st_mode & S_IXGRP or st->st_mode & S_IXOTH)
-            String.append_byte (v->data, '*');
-          break;
+  ifnot (find->long_format) {
+    v->data = String.new_with (file);
+    tmp = v->data->bytes;
+  } else
+    v->data = long_format (file, len, st, indicator is '@', &tmp);
 
-        case '@':
-          if (find->long_format) break;
-          // fall through
+  if (find->append_indicator) {
+    switch (indicator) {
+      case '\0': break;
 
-        default:
-          if (indicator is '\0') break;
-            String.append_byte (v->data, indicator);
-      }
+      case 'f':
+        if (st->st_mode & S_IXUSR or st->st_mode & S_IXGRP or st->st_mode & S_IXOTH)
+          String.append_byte (v->data, '*');
+        break;
+
+      case '@':
+        if (find->long_format) break;
+        // fall through
+
+      default:
+        String.append_byte (v->data, indicator);
     }
-
-    DListAppend (find->files, v);
-    append_sorted_type (find, st, tmp);
   }
+
+  DListAppend (find->files, v);
+  append_sorted_type (find, st, tmp);
 
   return 0;
 }
 
 static int process_dir (dirwalk_t *dw, const char *d, struct stat *st) {
-  (void) st;
   find_t *find = dw->user_data;
 
-  ifnot (find->type & DIR_TYPE) return 1;
+  if (-1 isnot find->match_uid and st->st_uid isnot find->uid) return 1;
+  if (-1 isnot find->match_gid and st->st_gid isnot find->gid) return 1;
+  if (find->type is EXECUTABLE or 0 is (find->type & DIR_TYPE)) return 1;
 
   char *dir = (char *) d;
   if (find->initialdir_isdot and *d is '.' and *(d + 1) is DIR_SEP)
@@ -278,22 +295,23 @@ static int process_dir (dirwalk_t *dw, const char *d, struct stat *st) {
 
   if (NULL is find->re)
     v = Vstring.new_item ();
-  else if (Re.exec (find->re, bname, bytelen (bname)) >= 0)
+  else if (Re.exec (find->re, bname, len - (bname - dir)) >= 0)
     v = Vstring.new_item ();
+  else
+    return 1;
 
   char *tmp = NULL;
-  if (v isnot NULL) {
-    ifnot (find->long_format) {
-      v->data = String.new_with (dir);
-      tmp = v->data->bytes;
-    } else
-      v->data = long_format (dir, len, st, 0, &tmp);
 
-    if (find->append_indicator) String.append_byte (v->data, '/');
+  ifnot (find->long_format) {
+    v->data = String.new_with (dir);
+    tmp = v->data->bytes;
+  } else
+    v->data = long_format (dir, len, st, 0, &tmp);
 
-    DListAppend (find->files, v);
-    append_sorted_type (find, st, tmp);
-  }
+  if (find->append_indicator) String.append_byte (v->data, '/');
+
+  DListAppend (find->files, v);
+  append_sorted_type (find, st, tmp);
 
   return 1;
 }
@@ -323,6 +341,9 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
   int sort_by_atime = GET_OPT_SORT_BY_ATIME();
   int sort_by_ctime = GET_OPT_SORT_BY_CTIME();
   int sort_by_size  = GET_OPT_SORT_BY_SIZE();
+  int only_executables = GET_OPT_EXECUTABLE();
+  int match_uid = GET_OPT_UID();
+  int match_gid = GET_OPT_GID();
 
   if (sort_by_mtime) sort_type = SORT_MTIME;
   if (sort_by_atime) {
@@ -347,7 +368,9 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
 
   int types = 0;
 
-  if (type is NULL) {
+  if (only_executables) {
+    types = EXECUTABLE;
+  } else if (type is NULL) {
     types |= (DIR_TYPE|REG_TYPE|BLK_TYPE|CHR_TYPE|LNK_TYPE|FIFO_TYPE|SOCK_TYPE);
   } else {
     while (*type) {
@@ -387,6 +410,10 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
     .initialdir_isdot = initialdir_isdot,
     .sort_type = sort_type,
     .reverse_order = reverse,
+    .match_uid = match_uid,
+    .match_gid = match_gid,
+    .uid = (match_uid isnot -1 ? match_uid : 0),
+    .gid = (match_gid isnot -1 ? match_gid : 0),
     .re = re,
     .files = Vstring.new (),
     .sorted_long = NULL,

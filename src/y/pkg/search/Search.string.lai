@@ -4,6 +4,7 @@ import ("path")
 include ("argparse")
 
 const isatty   = Io.fd.isatty
+const read     = Io.fd.read
 const tokenize = String.tokenize
 const basename = Path.basename
 
@@ -31,10 +32,11 @@ if STDIN_FILENO: isatty () {
   exit (1)
 }
 
-var str = Io.fd.read (STDIN_FILENO)
+var str = read (STDIN_FILENO)
+
 if null is str then exit (1)
 
-var a = str: string_tokenize ("\n")
+var a = str: tokenize ("\n")
 
 if null is a or 0 is a: len () then exit (1)
 

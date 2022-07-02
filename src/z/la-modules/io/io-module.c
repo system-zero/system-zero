@@ -18,6 +18,7 @@ static VALUE io_fd_isatty (la_t *this, VALUE v_fd) {
 
 static VALUE io_fd_read (la_t *this, VALUE v_fd) {
   ifnot (IS_FILEDES(v_fd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file descriptor");
+  int fd = AS_FILEDES(v_fd);
   int len = 1024;
   char buf[len];
   string *s = String.new (128);
@@ -26,7 +27,7 @@ static VALUE io_fd_read (la_t *this, VALUE v_fd) {
   La.set.Errno (this, 0);
 
   while (1) {
-    bts = IO.fd.read (AS_FILEDES(v_fd), buf, len);
+    bts = IO.fd.read (fd, buf, len);
     if (NOTOK is bts) {
       String.release (s);
       La.set.Errno (this, errno);

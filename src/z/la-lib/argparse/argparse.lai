@@ -237,11 +237,10 @@ Type Argparse {
             return this.parse_opt_val (arg, flags, type, name)
 
           var optval = arg: byte_in_str ('=')
-          var vallen = optval: len ()
 
           optval = String.advance (optval, 1);
 
-          if vallen is optval: len () {
+          ifnot optval: len () {
             if flags & ARG_VALUE_REQUIRED {
               if this.verbose is true then
                 println (stderr, "error ${arg} argument requires a value")
@@ -360,9 +359,11 @@ Type Argparse {
     this.flags[this.idx]     = flags
     this.descr[this.idx]     = descr
 
-    this.results.$(name) =
-      if type is IntegerType or type is BooleanType
-        then false orelse null
+    if type is IntegerType or type is BooleanType {
+      this.results.$(name) = qualifier ("defval", false)
+    } else {
+      this.results.$(name) = qualifier ("defval", null)
+    }
 
     ifnot null is long {
       var llen = long: len ()

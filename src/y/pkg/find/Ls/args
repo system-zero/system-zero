@@ -11,6 +11,9 @@
 --fifos
 --block-devices
 --files
--F,--donot-append-indicator
+--donot-append-indicator
+--executable
 -a,--show-hidden
 --pat=
+--uid=
+--gid=
