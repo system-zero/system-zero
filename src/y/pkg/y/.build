@@ -1,0 +1,14 @@
+#@
+  depends_on ("uuid", ALL)
+  depends_on ("syncdir", ALL)
+  depends_on ("search", ALL)
+  depends_on ("re", ALL)
+  depends_on ("find", ALL)
+  depends_on ("filetype", ALL)
+  depends_on ("fcpp", ALL)
+  depends_on ("archive", ALL)
+  depends_on ("libc", LIBC)
+  depends_on ("make", ALL)
+#
+
+return New Make (__file__, IGNORE)

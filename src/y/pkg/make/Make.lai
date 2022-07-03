@@ -116,6 +116,7 @@ const NODEBUG           = false
 const VERBOSE           = true
 const NOVERBOSE         = false
 
+const IGNORE            = -2
 const ALL               = (1 << 1)
 const SHARED_LIBRARY    = (1 << 2)
 const SHARED_EXECUTABLE = (1 << 3)
@@ -692,6 +693,8 @@ Type Make {
 
   public
   main : func {
+    return ok if this.targets is IGNORE
+
     if this.targets & PACKAGE {
       var p = New Packman ()
       p.set.builddir (TMPDIR)
@@ -805,7 +808,7 @@ Type Make {
     shared : {
       library : {
         to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_library)
-        cflag                : func (v) this.append_value (v, this.linkagainst.shared_library)
+        cflag                : func (v) this.append_value (v, this.shared_library.cflags)
         source               : func (v) this.append_value (v, this.shared_library_sources)
         compile_type         : func (t) this.shared_library_compile_type = t
       }
@@ -1055,7 +1058,6 @@ Type Make {
           return this.shared_library_compile_objects ()
 
         var output = this.libdir: concat_with (this.liboutput + ".so")
-
         var r = this.should_make (output, this.shared_library_sources, this.force_shared_library)
         return notok if r is notok
         return ok if r is false
@@ -1447,86 +1449,106 @@ Type Make {
 }
 
 const DEPENDENCIES = {}
-const Dependencies = {}
-const TARGETS      = {}
 
-func get_dependencies (dir) {
-  ifnot dir: exists () {
-    var n = YSRCDIR: concat_with ("pkg"): concat_with (dir)
-    ifnot n: exists () {
-      n = ZSRCDIR: concat_with ("lib"): concat_with (dir): concat_with ("src")
-      return notok ifnot n: exists ()
+func make_dependencies (f) {
+
+  func get_dep_spec (d) {
+    var p = d
+
+    ifnot d: exists () {
+      var n = YSRCDIR: concat_with ("pkg"): concat_with (d)
+      ifnot n: exists () {
+        n = ZSRCDIR: concat_with ("lib"): concat_with (d): concat_with ("src")
+        return null ifnot n: exists ()
+      }
+
+      p = n
     }
 
-    dir = n
+    var file =
+      if p: isdirectory () then p: concat_with (SPECNAME): realpath ()
+      orelse p: realpath ()
+
+    return null ifnot file: exists ()
+    return file
   }
 
-  var file = if dir: isdirectory () then dir: concat_with (SPECNAME): realpath ()
-             orelse dir: realpath ()
+  const Dependencies = {}
+  const TARGETS      = {}
 
-  return notok ifnot file: exists ()
+  func append_target (d, targets) {
 
-  return ok if DEPENDENCIES: key_exists (file)
-
-  var dlen = DEPENDENCIES: len ()
-
-  append { id : dlen + 1, targets : 0 } in DEPENDENCIES as file
-
-  append { deps : string[0], targets : integer[0] } in Dependencies as file
-
-  if TARGETS: key_exists (dir) then
-    DEPENDENCIES.$(file).targets = TARGETS.$(dir).targets
-
-  var fd = open (file, O_RDONLY, 0)
-  return notok if fd is null
-
-  var s = read (fd)
-
-  var an = annotate_get (s)
-
-  return notok if an is null
-
-  return ok ifnot len (s)
-
-  func depends_on (dep, targets) {
-
-    func append_target (d) {
-      if TARGETS: key_exists (d) then
-         TARGETS.$(d).targets |= targets
-      orelse
-         append { targets : targets, initializedAs : null} in TARGETS as d
-
-      if TARGETS.$(d).initializedAs isnot null {
-        DEPENDENCIES.$(TARGETS.$(d).initializedAs).targets |= targets
-      }
+    if TARGETS: key_exists (d) {
+      TARGETS.$(d).targets |= targets
+    } else {
+      var k = get_dep_spec (d)
+      append { targets : targets, initializedAs : k } in TARGETS as d
     }
 
-    ifnot null is dep {
-      for k, v in Dependencies {
-        for d in v.deps {
-          if dep is d {
-            append_target (d)
-            return ok
+    if TARGETS.$(d).initializedAs isnot null  {
+      var t = TARGETS.$(d).initializedAs
+      if DEPENDENCIES: key_exists (t) then
+        DEPENDENCIES.$(t).targets |= targets
+    }
+  }
+
+  func get_dependencies (dir) {
+    var file = get_dep_spec (dir)
+    return notok if file is null
+
+    return ok if DEPENDENCIES: key_exists (file)
+
+    var dlen = DEPENDENCIES: len ()
+
+    append { id : dlen + 1, targets : 0 } in DEPENDENCIES as file
+
+    append { deps : string[0], targets : integer[0] } in Dependencies as file
+
+    var bname = dir: basename ()
+    if TARGETS: key_exists (bname)
+      DEPENDENCIES.$(file).targets = TARGETS.$(bname).targets
+
+    var fd = open (file, O_RDONLY, 0)
+
+    return notok if fd is null
+
+    var s = read (fd)
+
+    var an = annotate_get (s)
+    return notok if an is null
+
+    return ok ifnot len (s)
+
+    func depends_on (dep, targets) {
+      ifnot null is dep {
+        for k, v in Dependencies {
+          for d in v.deps {
+            if dep is d {
+              append_target (d, targets)
+              return ok
+            }
           }
         }
+
+        append dep in Dependencies.$(file).deps
+
+        append_target (dep, targets)
       }
-
-      append dep in Dependencies.$(file).deps
-
-      append_target (dep)
     }
+
+    return notok if notok is eval (an)
+
+    return ok ifnot len (Dependencies.$(file).deps)
+
+    for d in Dependencies.$(file).deps {
+      if d isnot null then
+        return notok if notok is get_dependencies (d)
+    }
+
+    return ok
   }
 
-  return notok if notok is eval (an)
-
-  return ok ifnot len (Dependencies.$(file).deps)
-
-  for d in Dependencies.$(file).deps {
-    if d isnot null then
-      return notok if notok is get_dependencies (d)
-  }
-
-  return ok
+  get_dependencies (f)
 }
 
   # main
@@ -1592,15 +1614,15 @@ func get_dependencies (dir) {
       if RECUR then
         ARGPARSE.results.force = true
 
-    ARGPARSE.results.shared         = if flag & SHARED         then true orelse false
-    ARGPARSE.results.shared_library = if flag & SHARED_LIBRARY then true orelse false
-    ARGPARSE.results.shared_module  = if flag & MODULE         then true orelse false
-    ARGPARSE.results.static         = if flag & STATIC         then true orelse false
-    ARGPARSE.results.static_library = if flag & STATIC_LIBRARY then true orelse false
-    ARGPARSE.results.install_script = if flag & SCRIPT         then true orelse false
+    ARGPARSE.results.shared         = if flag & SHARED or flag & ALL then true orelse false
+    ARGPARSE.results.shared_library = if flag & SHARED_LIBRARY or flag & ALL  then true orelse false
+    ARGPARSE.results.shared_module  = if flag & MODULE or flag & ALL          then true orelse false
+    ARGPARSE.results.static         = if flag & STATIC or flag & ALL          then true orelse false
+    ARGPARSE.results.static_library = if flag & STATIC_LIBRARY or flag & ALL  then true orelse false
+    ARGPARSE.results.install_script = if flag & SCRIPT or flag & ALL         then true orelse false
   }
 
-  return notok if notok is get_dependencies (f)
+  return notok if notok is make_dependencies (f)
 
   var dlen = DEPENDENCIES: len ()
   var deps = string[dlen]

@@ -701,6 +701,17 @@ public la_T *la_get_root (la_t *);
   _dirs_;                                                                 \
 })
 
+#define GET_OPT_EXCLUDE_FILES(_len) ({                                    \
+  *_len = 0;                                                              \
+  string **_files_ = NULL;                                                \
+  VALUE _v_files = La.get.qualifier (this, "exclude_files", NULL_VALUE);  \
+  if (IS_ARRAY(_v_files))                                                 \
+    _files_ = AS_STRING_ARRAY(_v_files, _len);                            \
+  else if (IS_NULL(_v_files) == 0)                                        \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+  _files_;                                                                \
+})
+
 #define GET_OPT_UID() ({                                                  \
   VALUE _v_uid = La.get.qualifier (this, "uid", INT(-1));                 \
   ifnot (IS_INT(_v_uid))                                                  \

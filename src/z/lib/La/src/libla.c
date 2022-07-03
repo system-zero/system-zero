@@ -7169,7 +7169,7 @@ static int la_parse_stmt (la_t *this) {
           }
         }
 
-      THROW_SYNTAX_ERR("can not redeclare a symbol in this scope");
+        THROW_SYNTAX_ERR("can not redeclare a symbol in this scope");
       }
 
       VALUE v = NULL_VALUE;

@@ -3,7 +3,7 @@ var prog = "File.chmod"
 import ("file")
 loadfile ("argparse")
 
-var argparse = New Argparse (2, 0, prog + " [option[s]] file")
+var argparse = New Argparse (2, 0, prog + " mode file")
 argparse.add ("verbose", 'v', "verbose", "be verbose", BooleanType, 0)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 

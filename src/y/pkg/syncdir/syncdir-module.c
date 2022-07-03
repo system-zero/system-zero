@@ -22,6 +22,8 @@ struct syncdir_t {
   const char *dest;
   string **exclude_dirs;
   int exclude_dirs_len;
+  string **exclude_files;
+  int exclude_files_len;
   size_t src_len;
   size_t dest_len;
   int src_has_dir_sep;
@@ -62,7 +64,16 @@ static int process_dir (dirwalk_t *dw, const char *dir, struct stat *st) {
 static int process_file (dirwalk_t *dw, const char *file, struct stat *st) {
   (void) st;
   struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
+
   const char *bn = file + syncdir->src_len + (syncdir->src_has_dir_sep is 0);
+
+  if (syncdir->exclude_files isnot NULL) {
+    char *bname = Path.basename ((char *) bn);
+    for (int i = 0; i < syncdir->exclude_files_len; i++) {
+      if (Cstring.eq (bname, syncdir->exclude_files[i]->bytes)) return 0;
+    }
+  }
+
   size_t len = syncdir->dest_len + (syncdir->dest_has_dir_sep is 0) + bytelen (bn);
   char dest[len + 1];
   Cstring.cp_fmt (dest, len + 1, "%s%s%s", syncdir->dest,
@@ -170,6 +181,13 @@ static int process_dir_remove (dirwalk_t *dw, const char *dir, struct stat *st) 
 static int process_file_remove (dirwalk_t *dw, const char *file, struct stat *st) {
   struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
   const char *bn = file + syncdir->dest_len + (syncdir->dest_has_dir_sep is 0);
+
+  if (syncdir->exclude_files isnot NULL) {
+    for (int i = 0; i < syncdir->exclude_files_len; i++) {
+      if (Cstring.eq (bn, syncdir->exclude_files[i]->bytes)) return 0;
+    }
+  }
+
   size_t len = syncdir->src_len + (syncdir->src_has_dir_sep is 0) + bytelen (bn);
   char src[len + 1];
   Cstring.cp_fmt (src, len + 1, "%s%s%s", syncdir->src,
@@ -217,8 +235,11 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
   int verbose = GET_OPT_VERBOSE();
   int interactive = GET_OPT_INTERACTIVE();
 
-  int len = 0;
-  string **exclude_dirs = GET_OPT_EXCLUDE_DIRS(&len);
+  int exclude_dirs_len = 0;
+  string **exclude_dirs = GET_OPT_EXCLUDE_DIRS(&exclude_dirs_len);
+
+  int exclude_files_len = 0;
+  string **exclude_files = GET_OPT_EXCLUDE_FILES(&exclude_files_len);
 
   ifnot (Dir.is_directory (src_dir)) {
     fprintf (stderr, "%s, source is not a directory\n", src_dir);
@@ -287,7 +308,9 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
     .src = src_dir,
     .dest = dest_dir,
     .exclude_dirs = exclude_dirs,
-    .exclude_dirs_len = len,
+    .exclude_dirs_len = exclude_dirs_len,
+    .exclude_files = exclude_files,
+    .exclude_files_len = exclude_files_len,
     .src_len = src_len,
     .dest_len = dest_len,
     .src_has_dir_sep = src_dir[src_len - 1] is DIR_SEP,
