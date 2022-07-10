@@ -1103,10 +1103,21 @@ func self_semantics () {
 
   func import_test () {
     func path_module () {
+
       # on static builds this will throw a syntax error if the modules hasn't been initialized
       import ("path")
-      assert_equal ("testing the Path module and the basename method", Path.basename ("/home/aga/t.ext"), "t.ext")
-      assert_equal ("testing the sans_extname method", Path.basename_sans_extname ("/home/aga/t.ext"), "t")
+
+      assert_true ("testing the Path module and the basename method",
+         Path.basename ("/path/t.ext") is "t.ext" and
+         Path.basename (null) is null)
+      assert_true ("testing the sans_extname method",
+         Path.basename_sans_extname ("/path/t.ext") is "t" and
+         Path.basename_sans_extname ("/path/t.ta.ext") is "t.ta" and
+         Path.basename_sans_extname ("/path/t.ta.ta.ext") is "t.ta.ta" and
+         Path.basename_sans_extname (".ext") is "" and
+         Path.basename_sans_extname (".") is "" and
+         Path.basename_sans_extname ("") is "" and
+         Path.basename_sans_extname (null) is null)
       assert_equal ("testing the extname method", Path.extname ("/t.ext"), ".ext")
       assert_equal ("testing the dirname method", Path.dirname ("/home/aga/t.ext"), "/home/aga")
       assert_equal ("testing the is_absolute method", Path.is_absolute ("t"), 0)

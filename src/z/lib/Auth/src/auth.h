@@ -47,6 +47,7 @@ typedef struct auth_set_self {
     (*num_tries) (auth_t *, int),
     (*cached_time) (auth_t *, int);
 
+  void (*passwd) (auth_t *, char *, size_t);
   void (*user_data) (auth_t *, void *);
 } auth_set_self;
 

@@ -11,7 +11,11 @@ MODULE(path)
 
 static VALUE path_basename (la_t *this, VALUE v_path) {
   (void) this;
-  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_path)) {
+    if (IS_NULL(v_path)) return NULL_VALUE;
+    THROW(LA_ERR_TYPE_MISMATCH, "basename: awaiting a string or null");
+  }
+
   string *p = AS_STRING(v_path);
   char *tmp = Cstring.dup (p->bytes, p->num_bytes);
   char *bn = Path.basename (tmp);
@@ -22,7 +26,11 @@ static VALUE path_basename (la_t *this, VALUE v_path) {
 
 static VALUE path_basename_sans_extname (la_t *this, VALUE v_path) {
   (void) this;
-  ifnot (IS_STRING(v_path)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_path)) {
+    if (IS_NULL(v_path)) return NULL_VALUE;
+    THROW(LA_ERR_TYPE_MISMATCH, "basename_sans_extname: awaiting a string or null");
+  }
+
   string *p = AS_STRING(v_path);
   char *tmp = Cstring.dup (p->bytes, p->num_bytes);
   char *bn = Path.basename_sans_extname (tmp);

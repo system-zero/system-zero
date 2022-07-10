@@ -104,6 +104,7 @@ const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
 const RPATH             = true
 const NORPATH           = false
+const SCRIPT_INTERPRETER= "La-shared"
 const SPEC              = ".build"
 const LOCAL_SPEC        = ".local.build"
 var   SPECNAME          = SPEC
@@ -176,6 +177,8 @@ Type Make {
   libname                     : null
   liboutput                   : null
   execoutput                  : null
+  moduleoutput                : null
+  script_interpr              : null
   curdir                      : null
   cached_file                 : null
   cached                      : null
@@ -514,6 +517,7 @@ Type Make {
     this.set.execoutput                       (char (name[0] - ('a' - 'A')) + advance (name, 1))
     this.set.script.source                    (char (name[0] - ('a' - 'A')) + advance (name, 1))
     this.set.shared.executable.source         (name + "_main.c")
+    this.set.shared.module.output             (name)
     this.set.static.executable.source         (name + "_main.c")
 
     this.init_local_cflags ()
@@ -809,20 +813,34 @@ Type Make {
       library : {
         to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_library)
         cflag                : func (v) this.append_value (v, this.shared_library.cflags)
-        source               : func (v) this.append_value (v, this.shared_library_sources)
+        source               : func (v) {
+          if qualifier_exists ("clear") then
+            this.clear.shared.library.sources ()
+          this.append_value (v, this.shared_library_sources)
+        }
+
         compile_type         : func (t) this.shared_library_compile_type = t
       }
 
       executable : {
         to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_executable)
         cflag                : func (v) this.append_value (v, this.shared_executable.cflags)
-        source               : func (v) this.append_value (v, this.shared_executable_sources)
+        source               : func (v) {
+          if qualifier_exists ("clear") then
+            this.clear.shared.executable.sources ()
+          this.append_value (v, this.shared_executable_sources)
+        }
       }
 
       module : {
         to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_module)
         cflag                : func (v) this.append_value (v, this.shared_module.cflags)
-        source               : func (v) this.append_value (v, this.shared_module_sources)
+        output               : func (o) ifnot null is o this.moduleoutput = o
+        source               : func (v) {
+          if qualifier_exists ("clear") then
+            this.clear.shared.module.sources ()
+          this.append_value (v, this.shared_module_sources)
+        }
       }
 
       cflags                 : func (v) {
@@ -834,14 +852,22 @@ Type Make {
       library : {
         to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_library)
         cflag                : func (v) this.append_value (v, this.static_library.cflags)
-        source               : func (v) this.append_value (v, this.static_library_sources)
+        source               : func (v) {
+          if qualifier_exists ("clear") then
+            this.clear.static.library.sources ()
+          this.append_value (v, this.static_library_sources)
+        }
         compile_type         : func (t) this.static_library_compile_type = t
       }
 
       executable : {
         to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_executable)
         cflag                : func (v) this.append_value (v, this.static_executable.cflags)
-        source               : func (v) this.append_value (v, this.static_executable_sources)
+        source               : func (v) {
+          if qualifier_exists ("clear") then
+            this.clear.static.executable.sources ()
+          this.append_value (v, this.static_executable_sources)
+        }
       }
 
       cflags                 : func (v) {
@@ -854,6 +880,13 @@ Type Make {
         if qualifier_exists ("clear") then
           this.clear.script.sources ()
         this.append_value (v, this.script_sources)
+      }
+
+      interpr : func (s, interpr) {
+        if null is this.script_interpr then
+          this.script_interpr = { $(s) : interpr }
+        orelse
+          this.script_interpr.$(s) = interpr
       }
     }
 
@@ -1007,12 +1040,25 @@ Type Make {
         continue if null is read_fd
         var script = read (read_fd)
 
+        var interpr = SCRIPT_INTERPRETER
+
+        ifnot null is this.script_interpr {
+          var vv = v: path_basename_sans_extname ()
+          for u, i in this.script_interpr {
+            if u is vv {
+              interpr = i
+              break
+            }
+          }
+        }
+
         var output = targets[idx++]
 
         var write_fd = open (output, O_WRONLY|O_CREAT, S_IRWXU);
+
         ifnot null is write_fd { 
           if this.verbose then println ("install ${output}") orelse println ("  install scripts")
-          write (write_fd, "#!/bin/env La-shared\n\n")
+          write (write_fd, "#!/bin/env " + interpr + "\n\n")
           write (write_fd, script)
           r = ok
         }
@@ -1185,7 +1231,7 @@ Type Make {
           }
         }
 
-        var output = instdir: concat_with (this.libname + "-module.so")
+        var output = instdir: concat_with (this.moduleoutput + "-module.so")
 
         var r = this.should_make (output, this.shared_module_sources, this.force_shared_module)
         return notok if r is notok

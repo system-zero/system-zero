@@ -139,7 +139,7 @@ static int auth_pam (auth_t *this, const char *pass) {
       if (retval is PAM_NEW_AUTHTOK_REQD) {
         int num_tries = 3;
         while (num_tries--) {
-		  retval = pam_chauthtok (pamh, PAM_SILENT|PAM_CHANGE_EXPIRED_AUTHTOK);
+          retval = pam_chauthtok (pamh, PAM_SILENT|PAM_CHANGE_EXPIRED_AUTHTOK);
           if (retval is PAM_SUCCESS) break;
         }
       }
@@ -181,6 +181,8 @@ static int auth_check (auth_t *this) {
   if (is_expired) {
     int num_tries = $my(num_tries);
     int retval = NOTOK;
+
+    String.clear ($my(hashed_data));
 
     for (;;) {
       retval = $my(get_passwd_cb) (this);
@@ -285,6 +287,11 @@ static char *auth_get_user (auth_t *this) {
 
 static void auth_set_user_data (auth_t *this, void *user_data) {
   $my(user_data) = user_data;
+}
+
+static void auth_set_passwd (auth_t *this, char *bytes, size_t len) {
+  if (NULL is bytes or 0 >= len) return;
+  String.replace_with_len ($my(hashed_data), bytes, len);
 }
 
 static int auth_set_timeout (auth_t *this, time_t timeout) {
@@ -416,6 +423,7 @@ public auth_T  __init_auth__ (void) {
       .release = auth_release,
       .reset_hashed = auth_reset_hashed,
       .set = (auth_set_self) {
+        .passwd = auth_set_passwd,
         .timeout = auth_set_timeout,
         .num_tries = auth_set_num_tries,
         .user_data = auth_set_user_data,

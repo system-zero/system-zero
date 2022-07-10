@@ -14,9 +14,9 @@
 #include <z/cenv.h>
 
 static char *path_basename (char *name) {
-  ifnot (name) return name;
+  if (NULL is name) return NULL;
+
   char *p = Cstring.byte.null_in_str (name);
-  if (p is NULL) p = name + bytelen (name) + 1;
   if (p - 1 is name and IS_DIR_SEP (*(p - 1)))
     return p - 1;
 
@@ -30,13 +30,24 @@ static char *path_basename (char *name) {
 /* ala SLang */
 static char *path_basename_sans_extname (char *name) {
   char *bsnm = path_basename (name);
-  ifnot (bsnm) return name;
+  if (NULL is bsnm) return NULL;
 
   char *sp = bsnm;
+  do {
+    ifnot (*sp) break;
+    while (*(sp + 1)) sp++;
+    while (sp > bsnm) {
+      if (*sp is '.') {
+        sp--;
+        break;
+      }
 
-  while (*(sp + 1) and *(sp + 1) isnot '.') sp++;
+      sp--;
+    }
 
-  size_t len = sp - bsnm + 1;
+  } while (0);
+
+  size_t len = sp - bsnm + (*sp isnot '.');
   char *buf = Alloc (len + 1);
   Cstring.cp (buf, len + 1, bsnm, len);
   return buf;
