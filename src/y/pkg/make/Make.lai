@@ -129,6 +129,7 @@ const MODULE            = (1 << 8)
 const SCRIPT            = (1 << 9)
 const PACKAGE           = (1 << 10)
 const LIBC              = (1 << 11)
+const EXECUTABLE        = (SHARED_EXECUTABLE|STATIC_EXECUTABLE)
 
 const COMPILE_ASSEMBLE_LINK = 1
 const COMPILE_ASSEMBLE      = 2
@@ -961,6 +962,28 @@ Type Make {
     }
   }
 
+  filter: {
+    shared : {
+      executable : {
+        to_linkagainst  : func (f) {
+          for i, v in this.linkagainst.shared_executable  {
+            if v is f then list_delete_at (this.linkagainst.shared_executable, i)
+          }
+        }
+      }
+    }
+
+    static : {
+      executable : {
+        to_linkagainst      : func (f) {
+          for i, v in this.linkagainst.static_executable  {
+            if v is f then list_delete_at (this.linkagainst.static_executable, i)
+          }
+        }
+      }
+    }
+  }
+
   unset : {
     rpath                    : func this.rpath = NORPATH
   }
@@ -1028,6 +1051,7 @@ Type Make {
       }
 
       var r = this.should_make (targets, sources, this.force_script)
+
       return notok if r is notok
       return ok if r is false
 
@@ -1709,3 +1733,7 @@ func make_dependencies (f) {
 var r = Make (__argc, __argv)
 
 exit (if r is ok then 0 orelse 1)
+
+#####################
+#  at the end (at least) funcrefs callbacks
+#

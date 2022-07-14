@@ -5,7 +5,7 @@
  * for details about syntax and semantics.
  */
 
- /* an unorthodoxical way */
+ /* an unorthodoxical way for an express as much as human language */
 
 #define LIBRARY "la"
 
@@ -12265,3 +12265,16 @@ public void __deinit_la__ (la_T **thisp) {
   free (this);
   *thisp = NULL;
 }
+
+#if 0
+  < inherit
+    - human readable ranges
+
+  -> var? === to for ... in loop (as autodeclare)
+
+   function qualifiers without a value
+
+   && envs
+
+  >= 3 # multiline comments until the first blank
+#endif

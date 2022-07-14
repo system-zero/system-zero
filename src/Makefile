@@ -276,10 +276,6 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     Z_LIST_SRCDIR      := $(Z_SRCLIBDIR)/list/src
     # it is extended with a list stack implementation (it requires a next pointer)
 
-    # finally, a self library used by the author (ignore)
-    Self_Type          = Self
-    Z_SELF_SRCDIR      = $(Z_SRCLIBDIR)/$(Self_Type)/src
-
   # C applicarion namespace
   Z_SRCAPPDIR  = $(Z_SRCDIR)/app
 
@@ -982,34 +978,6 @@ clean-libsudoku-static:
 	@cd $(Z_SUDOKU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
 
-# Development and personal stuff (ignore this section)
-libself-shared: Env cenv libstring-shared libcstring-shared\
-                libvstring-shared libdir-shared libfile-shared\
-                libpath-shared libre-shared e-shared la-shared\
-                v-shared
-	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
-
-libself-only-shared: Env cenv
-	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
-
-libself-static: Env cenv libstring-static libcstring-static\
-                libvstring-static libdir-static libfile-static\
-                libpath-static libre-static la-static e-static\
-                v-static
-	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
-
-libself-only-static: Env cenv
-	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
-
-clean-libself-shared:
-	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
-
-clean-libself-static:
-	@cd $(Z_SELF_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
-
-#----------------------------------------------------------#
-
-
 # STD APPLICATIONS
 #----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared\
@@ -1570,33 +1538,6 @@ libfiletype-static: Env y-make
 	@cd $(Y_FILETYPE_SRCDIR) && Make static
 
 #-----------------------------------------------#
-# Development and personal stuff (ignore this section)
-  ZA_SELF          = self
-  ZA_SELF_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SELF)/src
-
-self-shared: cenv libstring-shared libdir-shared libargparse-shared\
-             libvstring-shared libcstring-shared libe-shared\
-             libvui-shared libjson-shared libauth-shared libself-shared
-	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
-
-self-editor-shared: cenv libe-shared
-	@cd $(ZA_SELF_SRCDIR) && $(MAKE) DEBUG=1 $(APP_FLAGS) self-editor-shared
-	
-self-editor-static: cenv libe-static
-	@cd $(ZA_SELF_SRCDIR) && $(MAKE) DEBUG=1 $(APP_FLAGS) self-editor-static
-	
-self-static: cenv libstring-static libdir-static libargparse-static\
-             libvstring-static libcstring-static libe-static\
-             libvui-static libjson-static libauth-static libself-static
-	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) static
-
-clean-self-shared:
-	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
-
-clean-self-static:
-	@cd $(ZA_SELF_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
-
-#----------------------------------------------------------#
 Env: checkuid makeenv checkenv
 
 checkuid:
