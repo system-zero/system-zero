@@ -1,3 +1,7 @@
+commit 9bf8d3623d8904990683daa6a59c00f8f85d6ce5
+Author: why not <aga dot chatzimanikas at gmail dot com>
+Date:   Thu Jul 14 23:03:06 2022 +0300
+
 This is the only one commit so far, for just this  commit message itself.
 
 This is to mention a couple of things about the development procedure and
@@ -163,7 +167,7 @@ our compilers)).
 But i feel that some time should be devoted to documentation which is always
 too much of a hassle for my limited free time, as i lack compactness and correct
 expressions in English Language (we could say a language into the Ascii range)
-used mostly by programmers. 
+used mostly by programmers.
 
 Other than this, i feel that i see myself involved mostly on other things and
-the code may it evolve in a more, lets say lazy way than usual. But noone knows.
+the code may evolve in a more, lets say lazy way than usual. But noone knows.

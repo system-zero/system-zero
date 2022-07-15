@@ -630,6 +630,7 @@ static VALUE la_mod  (la_t *, VALUE, VALUE);
 static VALUE la_bset (la_t *, VALUE, VALUE);
 static VALUE la_bnot (la_t *, VALUE, VALUE);
 static VALUE la_bitxor (la_t *, VALUE, VALUE);
+static void la_release_map_val (void *);
 static VALUE array_release (VALUE);
 static ArrayType *array_copy (ArrayType *);
 static int la_parse_annotation (la_t *, VALUE *);
@@ -2885,6 +2886,27 @@ static int la_do_next_token (la_t *this, int israw) {
     c = GET_BYTE();
 
     switch (c) {
+      case TOKEN_COMMENT:
+        c = GET_BYTE();
+        if (c isnot TOKEN_INDEX_OPEN)
+          goto consume_comment;
+
+        int num = 1;
+        while (num) {
+          c = GET_BYTE();
+
+          if (c is TOKEN_COMMENT and ((c = GET_BYTE()) is TOKEN_COMMENT)) {
+            c = GET_BYTE();
+            if (c is TOKEN_INDEX_CLOS) { num--; continue; }
+            if (c is TOKEN_INDEX_OPEN) { num++; continue; }
+          }
+
+          THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "awaiting ##]");
+        }
+
+        c = GET_BYTE();
+        goto consume_comment;
+
       case TOKEN_AT:
         c = la_get_annotated_block (this, NULL);
         THROW_ERR_IF_ERR(c);
@@ -12275,6 +12297,4 @@ public void __deinit_la__ (la_T **thisp) {
    function qualifiers without a value
 
    && envs
-
-  >= 3 # multiline comments until the first blank
 #endif

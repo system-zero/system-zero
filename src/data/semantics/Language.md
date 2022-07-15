@@ -94,9 +94,12 @@ keywords and Operators (reserved keywords):
 ```
 Comments.
 
-  Single line comments that start with ('# ') and end up to the end of the line.
-  The space after the hash symbol it is siginificant as there is code that uses
-  comments to parse applications annotations or macros, so it can be misinterpreted.
+  Single line comments that start with '# ', and end up to the end of the line.
+  The space after the hash symbol it is (almost) siginificant, as there is code
+  that uses comments for application annotations or macros, so it can be easily
+  misinterpreted.
+
+  Multiline comments that start with '##[', and end up with '##]'. Those can nest.
 
 ```js
   # Variable declaration:

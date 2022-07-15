@@ -1,18 +1,19 @@
-# Wed May 11 00:44:03 2022: this is the code that should obey to the language 
-# document. For now it is the copy from the tests from the first development,
-# and some of those tests that assume the top root directory they might fail.
-# So still they have to be written again with the established and stabilized
-# development, so they do not really correspond to the declared intentions of
-# the document. Though to be frank, time it might not be so generous with us,
-# so it isn't a priority. But still useful. For a better visual effect with
-# some real code, there is z/app/packman/src/packman.lai or y/pkg/make/Make.lai,
-# as this code in this unit, it was intented to catch corner cases and bugs
-# rather as an exhibition, and so it is not really representative.
+##[
+  Wed May 11 00:44:03 2022: this is the code that should obey to the language 
+  document. For now it is the copy from the tests from the first development,
+  and some of those tests that assume the top root directory they might fail.
+  So still they have to be written again with the established and stabilized
+  development, so they do not really correspond to the declared intentions of
+  the document.
+  For real code, there is z/app/packman/src/packman.lai or y/pkg/make/Make.lai,
+  as the code in this unit, it is intented to catch corner cases, and test old
+  bugs, and so it is not really representative.
+##]
 
 loadfile ("argparse")
 
 # For testing reasons, this should be called from the root directory of the
-# distribution. If not a couple of tests may fail.
+# distribution. If not a couple of tests may fail like the __argv tests.
 
 var argparse = New Argparse (5, 0, "La src/data/semantics/language/l-semantics.lai [options]")
 
@@ -182,8 +183,8 @@ func zero_semantics () {
     return fibo_tail (n - 1, b, a + b)
   }
 
-  retval = fibo_tail (92, 0, 1)
-  assert_true ("testing recursive function", retval is 7540113804746346429)
+  retval = fibo_tail (32, 0, 1)
+  assert_true ("testing recursive function", retval is 2178309)
 
   func fibo_recursive (n) {
     return n if n < 2

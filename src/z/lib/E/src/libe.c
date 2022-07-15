@@ -770,6 +770,9 @@ const char *lai_keywords[] = {
 };
 
 const char lai_singleline_comment[] = "#";
+const char lai_multiline_comment_start[] = "##[";
+const char lai_multiline_comment_end[] = "##]";
+const char lai_multiline_comment_continuation[] = " # ";
 
 const char *NULL_ARRAY[] = {NULL};
 
@@ -791,7 +794,9 @@ syn_t HL_DB[] = {
   },
   {
     "lai", NULL_ARRAY, lai_extensions, lai_shebangs, lai_keywords, lai_operators,
-    lai_singleline_comment, NULL, NULL, NULL, HL_STRINGS, HL_NUMBERS,
+    lai_singleline_comment, lai_multiline_comment_start, lai_multiline_comment_end,
+    lai_multiline_comment_continuation,
+    HL_STRINGS, HL_NUMBERS,
     buf_syn_parser, buf_syn_init_lai, 0, 0, NULL, NULL, c_balanced_pairs
   }
 };
