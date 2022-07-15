@@ -169,6 +169,12 @@ Comments.
 
   var funname = func println ("howl")
 
+  # A Function can be redefined, unless it is attributed with the const
+  # keyword.
+
+  const func xx (x) return x * 2
+  const xxx = func (x) return xx (x)
+
   # If there are no function armuments the pair of '()' parens could be ommited.
 
   # A function can be used as an argument to a function

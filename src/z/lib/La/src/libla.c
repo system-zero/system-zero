@@ -7142,8 +7142,15 @@ static int la_parse_stmt (la_t *this) {
       char *key = sym_key (this, name);
 
       sym_t *sym = ns_lookup_symbol (this->std, key);
-      THROW_SYNTAX_ERR_IFNOT(NULL is sym,
-        "can not redefine a standard symbol");
+      ifnot (NULL is sym) {
+        THROW_SYNTAX_ERR_IFNOT(Cstring.eq (key, "func"), "can not redefine a standard symbol");
+        err = la_parse_func_def (this);
+        THROW_ERR_IF_ERR(err);
+
+        if (is_const)
+         this->curSym->is_const = 1;
+        return LA_OK;
+      }
 
       sym = ns_lookup_symbol (this->datatypes, key);
 
@@ -7291,11 +7298,16 @@ static int la_parse_stmt (la_t *this) {
 
       switch (TOKEN) {
         case TOKEN_FUNCDEF: {
+          int is_const = symbol->is_const;
           char *key = sym_key (this, name);
           la_release_sym (Vmap.pop (scope->symbols, key));
           Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, key, GETSTRLEN(name));
           err = la_parse_func_def (this);
           this->curFunName[0] = '\0';
+          THROW_ERR_IF_ERR(err);
+          if (is_const)
+            this->curSym->is_const = 1;
+
           return err;
         }
 
@@ -9488,8 +9500,7 @@ static int la_parse_func_def (la_t *this) {
   ifnot (this->curFunName[0]) {
     NEXT_RAW_TOKEN();
 
-    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_SYMBOL,
-      "function definition, not a symbol");
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_SYMBOL,  "function definition, not a symbol");
 
     name = TOKENSTR;
     len = GETSTRLEN(name);
@@ -9502,6 +9513,10 @@ static int la_parse_func_def (la_t *this) {
     THROW_SYNTAX_ERR_IF_SYM_NAME_EXCEEDS_LEN(name, len);
     fn = this->curFunName;
   }
+
+  sym_t *sym = la_lookup_symbol (this, name);
+  ifnot (NULL is sym)
+    THROW_SYNTAX_ERR_IF(sym->is_const, "can not redefine a constant function");
 
   funT *uf = Fun_new (this, funNew (
     .name = fn, .namelen = len, .parent = this->curScope
