@@ -3,8 +3,8 @@
 #define REQUIRE_SYS_STAT
 #define REQUIRE_TERMIOS
 
-#define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_STD_MODULE
+#define REQUIRE_IO_TYPE       DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 #define REQUIRE_STRING_TYPE   DECLARE
 #define REQUIRE_PATH_TYPE     DECLARE
@@ -85,10 +85,48 @@ static int process_file (dirwalk_t *dw, const char *file, struct stat *st) {
       .preserve = 1,
       .force = 1))) {
     syncdir->err = errno;
+    fprintf (stderr, "failed to copy: %s to %s\n", file, dest);
     return -1;
   }
 
   return 1;
+}
+
+static int on_error (dirwalk_t *dw, const char *msg, const char *obj, int err) {
+  (void) dw;
+  fprintf (stderr, "dirwalk error: %s: %s %s\n", obj, msg, Error.errno_string (err));
+  term_t *term = Term.new ();
+  Term.raw_mode (term);
+
+  fprintf (stdout, "q[uit all the operation]/c[ontinue and ignore the error]/r[emove the file and continue]");
+  fflush (stdout);
+
+  int retval = 0;
+
+  while (1) {
+    int c = IO.input.getkey (STDIN_FILENO);
+    switch (c) {
+      case 'c': retval =  0; goto theend;
+      case 'q': retval = -1; goto theend;
+      case 'r':
+        fprintf (stdout, "\r\n");
+        fflush (stdout);
+        if (NOTOK is File.remove (obj, FileRemoveOpts (
+            .verbose = 2,
+            .force = 1)))
+          retval = -1;
+
+        retval = 0;
+        goto theend;
+    }
+  }
+
+theend:
+  Term.orig_mode (term);
+  Term.release (&term);
+  fprintf (stdout, "\n");
+  fflush (stdout);
+  return retval;
 }
 
 static int if_should_remove (const char *file, struct stat *st) {
@@ -324,6 +362,7 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
   dw = Dir.walk.new (process_dir, process_file);
   dw->depth = DIRWALK_MAX_DEPTH;
   dw->user_data = &data;
+  dw->on_error = on_error;
   int retval = Dir.walk.run (dw, src_dir);
   Dir.walk.release (&dw);
 
@@ -365,7 +404,7 @@ public int __init_syncdir_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Sync = {
-       "dir"    : syncdir,
+      dir : syncdir
      }
    );
 

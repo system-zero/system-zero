@@ -148,6 +148,12 @@ static int dir_walk_process_file_def (dirwalk_t *this, const char *file, struct 
   return 1;
 }
 
+static int dir_walk_on_error_def (dirwalk_t *this, const char *msg, const char *obj, int err) {
+  (void) this;
+  fprintf (stderr, "dirwalk error: %s: %s %s\n", obj, msg, Error.errno_string (err));
+  return NOTOK;
+}
+
 /* add either a new function or extent this with a DirWalkOpts (prefered) */
 /* find a way to add this in a database: {
  * Dir add __fun__  as "simplification of the interface" with "we currently
@@ -163,6 +169,7 @@ static dirwalk_t *dir_walk_new (DirProcessDir_cb process_dir, DirProcessFile_cb 
   this->process_dir = (NULL is process_dir ? dir_walk_process_dir_def : process_dir);
   this->process_file = (NULL is process_file ? dir_walk_process_file_def : process_file);
   this->stat_file = stat;
+  this->on_error = dir_walk_on_error_def;
   this->user_data = NULL;
 
   return this;
@@ -181,8 +188,10 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
   depth -= this->orig_depth;
 
   struct stat st;
-  ifnot (OK is (this->status = this->stat_file (dir, &st)))
-    return this->status;
+  ifnot (OK is (this->status = this->stat_file (dir, &st))) {
+    if (NOTOK is this->on_error (this, "stat()", dir, errno))
+      return this->status;
+  }
 
   ifnot (S_ISDIR (st.st_mode)) {
     this->status = this->process_file (this, dir, &st);
@@ -197,15 +206,25 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
   }
 
   DIR *dh = NULL;
-  if (NULL is (dh = opendir (dir))) return OK;
+  if (NULL is (dh = opendir (dir))) {
+    if (NOTOK is this->on_error (this, "opendir()", dir, errno))
+      return NOTOK;
+  }
+
   struct dirent *dp;
 
   string_t *new = String.new (PATH_MAX);
 
   while (1) {
     errno = 0;
-    if (NULL is (dp = readdir (dh)))
-      break;
+    if (NULL is (dp = readdir (dh))) {
+      if (errno) {
+        if (NOTOK is this->on_error (this, "readdir()", dir, errno))
+          this->status = NOTOK;
+      }
+
+      goto theend;
+    }
 
     size_t len = bytelen (dp->d_name);
 
@@ -215,8 +234,11 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
 
     String.replace_with_fmt (new, "%s/%s", dir, dp->d_name);
 
-    ifnot (OK is (this->status = this->stat_file (new->bytes, &st)))
-      goto theend;
+    ifnot (OK is (this->status = this->stat_file (new->bytes, &st))) {
+      if (NOTOK is this->on_error (this, "stat()", new->bytes, errno))
+        goto theend;
+      continue;
+    }
 
     switch (dp->d_type) {
       case DT_DIR:

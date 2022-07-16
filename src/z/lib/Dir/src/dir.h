@@ -10,6 +10,7 @@ typedef struct dir_opts  dir_opts;
 typedef int (*DirStatFile_cb) (const char *, struct stat *);
 typedef int (*DirProcessDir_cb) (dirwalk_t *, const char *, struct stat *);
 typedef int (*DirProcessFile_cb) (dirwalk_t *, const char *, struct stat *);
+typedef int (*DirWalkOnError_cb) (dirwalk_t *, const char *, const char *, int);
 typedef int (*DirMake) (const char *, mode_t, dir_opts);
 typedef int (*DirRm) (const char *, dir_opts);
 
@@ -54,9 +55,10 @@ struct dirwalk_t {
 
   void *user_data;
 
-  DirProcessDir_cb process_dir;
+  DirProcessDir_cb  process_dir;
   DirProcessFile_cb process_file;
-  DirStatFile_cb stat_file;
+  DirStatFile_cb    stat_file;
+  DirWalkOnError_cb on_error;
 };
 
 #define DIRLIST_DONOT_CHECK_DIRECTORY (1 << 0)
