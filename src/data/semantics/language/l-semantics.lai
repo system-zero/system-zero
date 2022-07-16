@@ -1599,6 +1599,11 @@ func self_semantics () {
         q_fun (10; qm) is 20000 and
         q_fun (10; fm ()) is 30000)
 
+    func q_xxx (x) return x + qualifier_exists ("xx") + qualifier_exists ("yy")
+    assert_true ("testing qualifiers with members without a value",
+        q_xxx (100) is 100 and
+        q_xxx (100; xx) is 101 and
+        q_xxx (100; xx, yy) is 102)
   }
 
   test_qualifiers ()

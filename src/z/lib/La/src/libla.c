@@ -63,6 +63,7 @@
 #define MAP_METHOD_STATE              (1 << 0)
 #define OBJECT_RELEASE_STATE          (1 << 1)
 #define TYPE_NEW_STATE                (1 << 2)
+#define QUALIFIER_STATE               TYPE_NEW_STATE
 #define EVAL_UNIT_STATE               (1 << 3)
 #define RETURN_STATE                  (1 << 4)
 #define CHAIN_STATE                   (1 << 5)
@@ -693,6 +694,10 @@ static int la_err_ptr (la_t *this, int err) {
   size_t len = GETSTRLEN(PARSEPTR);
 
   char *sp = (char *) keep;
+
+  if (sp > this->script_buffer)
+    if (*sp is '\n' or *(sp - 1) is '\n') sp--;
+
   while (sp > this->script_buffer and
       0 is Cstring.byte.in_str (";\n", *(sp - 1)) and
       *(sp - 1) >= ' ')
@@ -5555,7 +5560,7 @@ static int la_parse_type (la_t *this) {
 
 static char EXPR_NAMES[20][128];
 
-static int la_parse_expr_list (la_t *this, funT *uf) {
+static int la_parse_expr_list (la_t *this, funT *uf, int expectargs) {
   int err;
   la_string saved_ptr;
   int count = this->argCount;
@@ -5570,6 +5575,8 @@ static int la_parse_expr_list (la_t *this, funT *uf) {
 
   this->exprList++;
   do {
+    THROW_SYNTAX_ERR_FMT_IF(expectargs is count, "error while expression list, expected %d arguments", expectargs);
+
     this->curState |= MALLOCED_STRING_STATE;
     this->objectState &= ~ANNON_ARRAY;
     this->exprList++;
@@ -5613,7 +5620,9 @@ static int la_parse_expr_list (la_t *this, funT *uf) {
       this->objectState &= ~ANNON_ARRAY;
       this->curState |= MALLOCED_STRING_STATE;
       NEXT_TOKEN();
+      THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_COMMA, "error while parsing expression list, found two consecutive commas");
     }
+
   } while (c is TOKEN_COMMA);
 
   this->exprList--;
@@ -5640,8 +5649,12 @@ parse_qualifiers:
 
     THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL, "error while parsing qualifiers of an expression list, found two consecutive new lines");
 
+    Vmap_t *map = NULL;
+
     if (TOKEN is TOKEN_BLOCK) {
+      this->funcState |= QUALIFIER_STATE;
       err = la_parse_map (this, &v);
+      this->funcState &= ~QUALIFIER_STATE;
       THROW_ERR_IF_ERR(err);
 
       la_set_qualifiers (this, v, uf);
@@ -5659,12 +5672,15 @@ parse_qualifiers:
 
     } else {
       if (PEEK_NTH_TOKEN(0) is TOKEN_COLON) {
-        Vmap_t *map = Vmap.new (32);
+parse_members:
+        map = Vmap.new (32);
         PARSEPTR = saved_ptr;
         RESET_TOKEN;
 
         this->exprList++;
+        this->funcState |= QUALIFIER_STATE;
         err = la_parse_map_members (this, MAP(map));
+        this->funcState &= ~QUALIFIER_STATE;
         this->exprList--;
         THROW_ERR_IF_ERR(err);
 
@@ -5674,6 +5690,8 @@ parse_qualifiers:
         la_set_qualifiers (this, MAP(map), uf);
 
       } else {
+        if (NULL is TOKENSYM) goto parse_members;
+
         this->exprList++;
         err = la_parse_primary (this, &v);
         this->exprList--;
@@ -5848,7 +5866,7 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   c = TOKEN;
 
   if (c isnot TOKEN_PAREN_CLOS) {
-    paramCount = la_parse_expr_list (this, uf);
+    paramCount = la_parse_expr_list (this, uf, expectargs);
 
     c = TOKEN;
     if (paramCount < 0)
@@ -5939,7 +5957,7 @@ again:
 
       this->curState |= MALLOCED_STRING_STATE;
       NEXT_TOKEN();
-      paramCount = la_parse_expr_list (this, uf);
+      paramCount = la_parse_expr_list (this, uf, expectargs);
       this->curState &= ~MALLOCED_STRING_STATE;
 
       THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,
@@ -12308,8 +12326,6 @@ public void __deinit_la__ (la_T **thisp) {
     - human readable ranges
 
   -> var? === to for ... in loop (as autodeclare)
-
-   function qualifiers without a value
 
    && envs
 #endif
