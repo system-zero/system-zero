@@ -1,0 +1,5 @@
+#@
+  depends_on ("y", ALL)
+#
+
+return New Make (__file__, IGNORE)

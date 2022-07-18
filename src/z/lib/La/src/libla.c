@@ -5,7 +5,10 @@
  * for details about syntax and semantics.
  */
 
- /* an unorthodoxical way for an express as much as human language */
+ /* an unorthodoxical way for an express as much as human language,
+  * thus any competent programmer can break it (i imagine) easily,
+  * but it worksforus, so we are grateful
+  */
 
 #define LIBRARY "la"
 
@@ -10284,9 +10287,8 @@ static int la_parse_import (la_t *this) {
     *tmp = chr;
   }
 
-  sym_t *sym = ns_lookup_symbol (this->function, tmp);
-  if (NULL is sym)
-    THROW_SYNTAX_ERR_FMT("%s module hasn't been initialized", tmp);
+  THROW_SYNTAX_ERR_FMT_IF(NULL is ns_lookup_symbol (this->function, tmp),
+    "%s module hasn't been initialized", tmp);
 
   return LA_OK;
 #endif

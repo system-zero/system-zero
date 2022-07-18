@@ -4,7 +4,7 @@
 # environment and its development flow (though there is some kind of an
 # abstraction), so its nothing new and excited.
 
-          public func Make (argc, argv) {
+          public const func Make (argc, argv) {
 
 import ("io")
 import ("sh")
@@ -76,6 +76,7 @@ const advance           = string_advance
 
 const Z                 = "z"
 const Y                 = "y"
+const J                 = "j"
 const VERSION           = "0.3"
 const CC                = "gcc"
 const STD11             = "c11"
@@ -89,7 +90,11 @@ const SRCDIR            = Sys.get ("SRCDIR")
 const TMPDIR            = Sys.get ("TMPDIR")
 const ZSRCDIR           = SRCDIR:  concat_with (Z)
 const YSRCDIR           = SRCDIR:  concat_with (Y)
+const JSRCDIR           = SRCDIR:  concat_with (J)
+const ZSRCLIBDIR        = ZSRCDIR: concat_with ("lib")
+const ZSRCAPPDIR        = ZSRCDIR: concat_with ("app")
 const YSRCPKGDIR        = YSRCDIR: concat_with ("pkg")
+const JSRCPKGDIR        = JSRCDIR: concat_with ("pkg")
 const LIBDIR            = SYSDIR:  concat_with ("lib")
 const BINDIR            = SYSDIR:  concat_with ("bin")
 const INCDIR            = SYSDIR:  concat_with ("include")
@@ -197,27 +202,14 @@ Type Make {
   static_library_sources      : {[]}
   static_executable_sources   : {[]}
   script_sources              : {[]}
+  libc_sources                : {[]}
   cflags                      : {[]}
 
-  shared_library    : {
-    cflags                    : {[]}
-  }
-
-  shared_module     : {
-    cflags                    : {[]}
-  }
-
-  shared_executable : {
-    cflags                    : {[]}
-  }
-
-  static_library    : {
-    cflags                    : {[]}
-  }
-
-  static_executable : {
-    cflags                    : {[]}
-  }
+  shared_library    : { cflags : {[]} }
+  shared_module     : { cflags : {[]} }
+  shared_executable : { cflags : {[]} }
+  static_library    : { cflags : {[]} }
+  static_executable : { cflags : {[]} }
 
   linkagainst       : {
     shared_library            : {[]}
@@ -258,8 +250,8 @@ Type Make {
   }
 
   init_cflags : func {
-    for v in this.includedirs append "-I" + v      in this.cflags
-    for v in this.libdirs     append "-L" + v      in this.cflags
+    for v in this.includedirs append "-I" + v        in this.cflags
+    for v in this.libdirs     append "-L" + v        in this.cflags
 
     append "-Wall"                                   in this.cflags
     append "-Wno-override-init"                      in this.cflags
@@ -494,6 +486,7 @@ Type Make {
     }
 
     this.name = name
+
     this.curdir = Dir.current ()
 
     this.set_options ()
@@ -761,6 +754,7 @@ Type Make {
     dump_commands            : func return this.dump_commands
     libdir                   : func return this.libdir
     toplibdir                : func return this.toplibdir
+    targets                  : func return this.targets
   }
 
   set : {
@@ -891,6 +885,14 @@ Type Make {
       }
     }
 
+    libc : {
+      source               : func (v) {
+        if qualifier_exists ("clear") then
+          this.clear.libc.sources ()
+        this.append_value (v, this.libc_sources)
+      }
+    }
+
     library : {
       cflag                  : func (v) {
         this.set.shared.library.cflag (v) this.set.static.library.cflag (v)
@@ -957,9 +959,9 @@ Type Make {
       }
     }
 
-    script : {
-      sources                : func clear (this.script_sources)
-    }
+    script : { sources       : func clear (this.script_sources) }
+
+    libc   : { sources       : func clear (this.libc_sources) }
   }
 
   filter: {
@@ -984,9 +986,7 @@ Type Make {
     }
   }
 
-  unset : {
-    rpath                    : func this.rpath = NORPATH
-  }
+  unset : { rpath : func this.rpath = NORPATH }
 
   install : {
     header : func {
@@ -1427,83 +1427,16 @@ Type Make {
 
     libc : func {
       return notok if notok is this.change_to_build_directory ()
+      return notok ifnot this.libc_sources: len ()
 
-      var sources = [
-        "libc/ctype/isalpha.c",
-        "libc/ctype/isascii.c",
-        "libc/ctype/isdigit.c",
-        "libc/ctype/islower.c",
-        "libc/ctype/isprint.c",
-        "libc/ctype/isspace.c",
-        "libc/ctype/isupper.c",
-        "libc/ctype/tolower.c",
-        "libc/ctype/toupper.c",
-        "libc/signal/sigaction.c",
-        "libc/signal/sigaction.h",
-        "libc/signal/sigprocmask.c",
-        "libc/signal/sigset.h",
-        "libc/std/NULL.h",
-        "libc/std/environ.h",
-        "libc/std/errno.h",
-        "libc/std/size_t.h",
-        "libc/std/stdarg.h",
-        "libc/stdlib/alloc.c",
-        "libc/stdlib/atoi.c",
-        "libc/stdlib/getenv.c",
-        "libc/string/memcpy.c",
-        "libc/string/memset.c",
-        "libc/string/snprintf.c",
-        "libc/string/str_byte_copy.c",
-        "libc/string/str_copy.c",
-        "libc/string/str_copy_fmt.c",
-        "libc/string/str_eq.c",
-        "libc/string/str_eq_n.c",
-        "libc/string/strcat.c",
-        "libc/string/strchr.c",
-        "libc/string/strlen.c",
-        "libc/string/strncmp.c",
-        "libc/string/strrchr.c",
-        "libc/string/vsnprintf.c",
-        "libc/sys/brk.c",
-        "libc/sys/ioctl.c",
-        "libc/sys/lstat.c",
-        "libc/sys/mman.c",
-        "libc/sys/mman.h",
-        "libc/sys/pid.h",
-        "libc/sys/stat.c",
-        "libc/sys/stat.h",
-        "libc/sys/types.h",
-        "libc/sys/waitpid.c",
-        "libc/syscall/syscall.c",
-        "libc/time/gettimeofday.c",
-        "libc/time/localtime.c",
-        "libc/time/time.c",
-        "libc/time/time.h",
-        "libc/time/tp2tm.c",
-        "libc/time/tzset.c",
-        "libc/unistd/access.c",
-        "libc/unistd/close.c",
-        "libc/unistd/dup2.c",
-        "libc/unistd/execve.c",
-        "libc/unistd/fcntl.c",
-        "libc/unistd/fcntl.h",
-        "libc/unistd/fcntl3.c",
-        "libc/unistd/fork.c",
-        "libc/unistd/isatty.c",
-        "libc/unistd/open.c",
-        "libc/unistd/pipe.c",
-        "libc/unistd/read.c",
-        "libc/unistd/termios.h",
-        "libc/unistd/write.c"]
-
-      this.record (sources)
+      this.record (this.libc_sources)
 
       var force = ARGPARSE.results.force
 
       var outputDir = YSRCPKGDIR: concat_with (LIBCNAME)
       var output = outputDir: concat_with (LIBCNAME + ".c")
 
-      var r = this.should_make (output, sources, force)
+      var r = this.should_make (output, this.libc_sources, force)
 
       return notok if r is notok
       return ok if r is false
@@ -1518,18 +1451,24 @@ Type Make {
   }
 }
 
+
 const DEPENDENCIES = {}
 
 func make_dependencies (f) {
 
   func get_dep_spec (d) {
     var p = d
-
     ifnot d: exists () {
-      var n = YSRCDIR: concat_with ("pkg"): concat_with (d)
+      var n = JSRCPKGDIR: concat_with(d)
       ifnot n: exists () {
-        n = ZSRCDIR: concat_with ("lib"): concat_with (d): concat_with ("src")
-        return null ifnot n: exists ()
+        n = YSRCPKGDIR: concat_with (d)
+        ifnot n: exists () {
+          n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+          ifnot n: exists () {
+            n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
+            return null ifnot n: exists ()
+          }
+        }
       }
 
       p = n
@@ -1627,7 +1566,7 @@ func make_dependencies (f) {
   return notok ifnot ok is ARGPARSE.process (argv, 1)
   return ok if ARGPARSE.exit is true
 
-  var f = ifnot ARGPARSE.argc then Dir.current () orelse ARGPARSE.argv[0]
+  var pkg = ifnot ARGPARSE.argc then Dir.current () orelse ARGPARSE.argv[0]
 
   var FORCE       = ARGPARSE.results.force
   var RECUR       = ARGPARSE.results.recursive
@@ -1692,7 +1631,7 @@ func make_dependencies (f) {
     ARGPARSE.results.install_script = if flag & SCRIPT or flag & ALL         then true orelse false
   }
 
-  return notok if notok is make_dependencies (f)
+  return notok if notok is make_dependencies (pkg)
 
   var dlen = DEPENDENCIES: len ()
   var deps = string[dlen]
@@ -1701,6 +1640,11 @@ func make_dependencies (f) {
 
   var retval = ok
 
+  ifnot deps: len () {
+    println ("${pkg} package: not found")
+    exit (1)
+  }
+
   for i, v in deps {
     return notok ifnot v: exists ()
 
@@ -1708,17 +1652,23 @@ func make_dependencies (f) {
 
     init_argparse_results (DEPENDENCIES.$(v).targets, is_the_last)
 
-    #if i then println ("")
-    println ("# Making: [ ${dirname (v): basename ()} ]")
-
+    var r = ok
     var s = evalfile (v)
 
-    var r =  s.main ()
+    if null is s {
+      r = notok
+      print ("# Making: [ ${dirname (v): basename ()} ]")
+    } else {
+      ifnot s.get.targets () is IGNORE then
+        println ("# Making: [\e[33m ${s.get.name ()} \e[m]")
+      r =  s.main ()
+    }
 
-    if r isnot ok then println ("failed")
+    if r isnot ok then println (" \e[31mfailed\e[m")
     orelse
       ifnot verbose then
-        ifnot s.get.dump_commands then println ("done")
+        ifnot s.get.targets () is IGNORE then
+          ifnot s.get.dump_commands then println ("\e[32mdone\e[m")
 
     return notok if r isnot ok
 
