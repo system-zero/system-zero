@@ -65,11 +65,9 @@
 
 #define MAP_METHOD_STATE              (1 << 0)
 #define OBJECT_RELEASE_STATE          (1 << 1)
-#define TYPE_NEW_STATE                (1 << 2)
-#define QUALIFIER_STATE               TYPE_NEW_STATE
-#define EVAL_UNIT_STATE               (1 << 3)
-#define RETURN_STATE                  (1 << 4)
-#define CHAIN_STATE                   (1 << 5)
+#define EVAL_UNIT_STATE               (1 << 2)
+#define RETURN_STATE                  (1 << 3)
+#define CHAIN_STATE                   (1 << 4)
 
 #define FMT_LITERAL                   (1 << 0)
 
@@ -5061,17 +5059,12 @@ static int la_parse_map_members (la_t *this, VALUE map) {
           "error while getting a map field, awaiting a double quoted string or an identifier token");
     }
 
-    NEXT_TOKEN();
-
-    if (TOKEN isnot TOKEN_COLON) {
-      ifnot (this->funcState & TYPE_NEW_STATE) {
-        THROW_SYNTAX_ERR("error while setting map field, awaiting :");
-      } else {
-        la_map_set_value (this, AS_MAP(map), key, NULL_VALUE, scope);
-        UNGET_BYTE();
-        continue;
-      }
+    if (PEEK_NTH_TOKEN(0) isnot TOKEN_COLON) {
+      la_map_set_value (this, AS_MAP(map), key, NULL_VALUE, scope);
+      continue;
     }
+
+    NEXT_TOKEN();
 
     err = map_set_rout (this, AS_MAP(map), key, this->scopeState is PUBLIC_SCOPE);
     this->scopeState = scope;
@@ -5503,10 +5496,7 @@ static int la_parse_new (la_t *this, VALUE *vp) {
 
   TOKENSTR = StringNew (block->bytes);
 
-  int state = this->funcState;
-  this->funcState |= TYPE_NEW_STATE;
   err = la_parse_map (this, vp);
-  ifnot (state & TYPE_NEW_STATE) this->funcState &= ~TYPE_NEW_STATE;
   THROW_ERR_IF_ERR(err);
 
   THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE, "not a type");
@@ -5578,7 +5568,8 @@ static int la_parse_expr_list (la_t *this, funT *uf, int expectargs) {
 
   this->exprList++;
   do {
-    THROW_SYNTAX_ERR_FMT_IF(expectargs is count, "error while expression list, expected %d arguments", expectargs);
+    THROW_SYNTAX_ERR_FMT_IF(expectargs is count,
+      "error while parsing expression list, expected %d arguments", expectargs);
 
     this->curState |= MALLOCED_STRING_STATE;
     this->objectState &= ~ANNON_ARRAY;
@@ -5655,9 +5646,7 @@ parse_qualifiers:
     Vmap_t *map = NULL;
 
     if (TOKEN is TOKEN_BLOCK) {
-      this->funcState |= QUALIFIER_STATE;
       err = la_parse_map (this, &v);
-      this->funcState &= ~QUALIFIER_STATE;
       THROW_ERR_IF_ERR(err);
 
       la_set_qualifiers (this, v, uf);
@@ -5681,9 +5670,7 @@ parse_members:
         RESET_TOKEN;
 
         this->exprList++;
-        this->funcState |= QUALIFIER_STATE;
         err = la_parse_map_members (this, MAP(map));
-        this->funcState &= ~QUALIFIER_STATE;
         this->exprList--;
         THROW_ERR_IF_ERR(err);
 
@@ -5694,16 +5681,25 @@ parse_members:
 
       } else {
         if (NULL is TOKENSYM) goto parse_members;
+        if (IS_UFUNC(TOKENSYM->type) or IS_CFUNC(TOKENSYM->type)) {
+          if (PEEK_NTH_TOKEN(0) is TOKEN_PAREN_OPEN) {
+            this->exprList++;
+            err = la_parse_primary (this, &v);
+            this->exprList--;
+            THROW_ERR_IF_ERR(err);
 
-        this->exprList++;
-        err = la_parse_primary (this, &v);
-        this->exprList--;
-        THROW_ERR_IF_ERR(err);
+            if (v.type is MAP_TYPE) {
+              la_set_qualifiers (this, v, uf);
+              goto theend;
+            }
 
-        if (v.type is MAP_TYPE)
-          la_set_qualifiers (this, v, uf);
-        else if (v.type isnot NULL_TYPE)
-          THROW_SYNTAX_ERR("awaiting a map as qualifiers");
+            if (v.type isnot NULL_TYPE)
+              THROW_SYNTAX_ERR("awaiting a map as qualifiers");
+            goto theend;
+          }
+        }
+
+        goto parse_members;
       }
     }
   }
@@ -7434,7 +7430,7 @@ static int la_parse_stmt (la_t *this) {
 
       this->curState &= ~LITERAL_STRING_STATE;
 
-      if (prev_token isnot TOKEN_VARDEF)
+      if (prev_token isnot TOKEN_VARDEF and prev_token isnot TOKEN_CONSTDEF)
         return LA_OK;
 
       if (TOKEN is TOKEN_COMMA) {
@@ -7445,7 +7441,7 @@ static int la_parse_stmt (la_t *this) {
             IGNORE_NEXT_BYTE;
         }
 
-        TOKEN = TOKEN_VARDEF;
+        TOKEN = prev_token;
         goto do_token;
       }
 
@@ -7646,6 +7642,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     if (level > max_level) break;
 
     OpFunc op = (OpFunc) AS_PTR(TOKENVAL);
+    int isbtype = TOKENSYM->type is BINOP(4);
 
     this->curState |= MALLOCED_STRING_STATE;
     NEXT_TOKEN();
@@ -7677,7 +7674,8 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     const char *ptr = GETSTRPTR(TOKENSTR);
     lhs = op (this, lhs, rhs);
 
-    if (op is la_equals or op is la_ne) {
+    //if (op is la_equals or op is la_ne or op is la_gt or op is la_lt or op is la_le or op is la_ge) {
+    if (isbtype) {
       ifnot (AS_INT(lhs)) {
         if (Cstring.eq_n (ptr, "and", 3) or Cstring.eq_n (ptr, "&&", 2)) {
           err = la_consume_binop (this);
@@ -10812,6 +10810,10 @@ static VALUE la_equals (la_t *this, VALUE x, VALUE y) {
                 AS_STRING_BYTES(la_typeAsString (this, y)));
             return result;
         }
+      }
+
+      switch (y.type) {
+        case NULL_TYPE: return result;
       }
 
       this->CFuncError = LA_ERR_TYPE_MISMATCH;
