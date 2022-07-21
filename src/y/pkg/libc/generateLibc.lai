@@ -1,5 +1,7 @@
 var __me__ = __file__
 
+     public const func libc_generate (argc, argv) {
+
 import ("io")
 import ("dir")
 import ("std")
@@ -8,8 +10,9 @@ import ("path")
 
 include ("argparse")
 
-var
-  is_directory   = dir_is_directory,
+  const
+  is_directory = dir_is_directory,
+  realpath       = path_real,
   extname        = path_extname,
   dirname        = path_dirname,
   concat_with    = path_concat,
@@ -22,16 +25,15 @@ var
   comment_str    = "// comment: ",
   end_str        = "// end"
 
-public func libc_generate (argc, argv) {
 
-  var
-    thisDir      = __me__: dirname (),
-    prog         = __me__: basename (),
-    libcDir      = thisDir: concat_with ("/libc"),
-    default      = {
-      dirname    :  thisDir: concat_with ("../Libc")
-      libname    :  "libc"
-    }
+  const
+  thisDir      = __me__: dirname (),
+  prog         = __me__: basename (),
+  libcDir      = thisDir: concat_with ("libc"),
+  default      = {
+    dirname    :  thisDir: concat_with ("../../../libcmm"): realpath ()
+    libname    :  "libc"
+  }
 
   var argparse = New Argparse (4, 0, prog)
   argparse.add ("outputName",  0,  "outputName=",  "set output file name (default libc)",  StringType, ARG_VALUE_REQUIRED)

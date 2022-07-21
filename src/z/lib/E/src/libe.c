@@ -756,7 +756,7 @@ const char *lai_keywords[] = {
   "orelse I", "then I", "and I", "end I", "or I", "this V", "return I",
   "for I", "while I", "break I", "continue I", "times I", "time I",
   "in I", "as I", "append I", "println F", "format F",
-  "null T", "ok T", "notok T", "true T", "false T",
+  "null T", "ok T", "notok T", "true T", "false T", "anonymous I",
   "array V", "map V", "string T", "integer T", "number T", "list T",
   "stdout V", "stderr V", "stdin V",
   "qualifier F", "qualifiers F", "qualifier_exists F",
@@ -2021,7 +2021,7 @@ static void venv_new (ed_T *this) {
     char *i_dir = Sys.get.env_value ("LA_DIR");
     __env_check_directory__ (i_dir, "integrated interpreter directory", 1, 1, 0);
 
-    size_t len = bytelen (i_dir + 8);
+    size_t len = bytelen (i_dir) + 8;
     char scripts[len + 1];
     Cstring.cp_fmt (scripts, len + 1, "%s/scripts", i_dir);
     __env_check_directory__ (scripts, "integrated interpreter scripts directory", 1, 1, 0);

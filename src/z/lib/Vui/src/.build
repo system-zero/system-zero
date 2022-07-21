@@ -1,0 +1,13 @@
+#@
+  depends_on ("String",   LIBRARY)
+  depends_on ("Cstring",  LIBRARY)
+  depends_on ("Vstring",  LIBRARY)
+  depends_on ("Readline", LIBRARY)
+  depends_on ("Video",    LIBRARY)
+#
+
+var m = New Make (__file__, LIBRARY; from_z_namespace)
+m.set.library.to_linkagainst ([
+  "string", "cstring", "vstring", "readline", "video"]; append_version)
+m.set.library.cflag ("-DTMPDIR=\"" + TMPDIR + "\"")
+return m

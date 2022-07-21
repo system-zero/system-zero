@@ -1,0 +1,22 @@
+var m = New Make (__file__, LIBRARY; from_z_namespace)
+
+func error_pre_exec {
+  var l = "liberror.c"
+  var h = "error.h"
+  if false is this.get.shared_library.force () and false is this.get.static_library.force () {
+    return ok if l: exists () and h: exists ()
+  }
+
+  var cc = this.get.cc ()
+  var sh = this.get.sh ()
+  var com = cc + " -Wall -o generate_lib generate_lib.c"
+  var r = sh.exec (com)
+  return notok if r isnot ok
+  r = sh.exec ("./generate_lib")
+  return notok if r isnot ok
+  return ok
+}
+
+m.set.shared.library.pre_exec (error_pre_exec)
+
+return m

@@ -1,0 +1,59 @@
+#@
+  depends_on ("Spell",   LIBRARY)
+  depends_on ("Re",      LIBRARY)
+  depends_on ("IO",      LIBRARY)
+  depends_on ("Proc",    LIBRARY)
+  depends_on ("Dir",     LIBRARY)
+  depends_on ("Sys",     LIBRARY)
+  depends_on ("Path",    LIBRARY)
+  depends_on ("File",    LIBRARY)
+  depends_on ("Video",   LIBRARY)
+  depends_on ("Vui",     LIBRARY)
+  depends_on ("Readline",LIBRARY)
+  depends_on ("Smap",    LIBRARY)
+  depends_on ("Vmap",    LIBRARY)
+  depends_on ("Imap",    LIBRARY)
+  depends_on ("Vstring", LIBRARY)
+  depends_on ("Ustring", LIBRARY)
+  depends_on ("String",  LIBRARY)
+  depends_on ("Cstring", LIBRARY)
+#
+
+var m = New Make (__file__, LIBRARY; from_z_namespace)
+
+var
+TABWIDTH = "8",
+UNDO_NUM_ENTRIES = "100",
+RLINE_HISTORY_NUM_ENTRIES = "30",
+CLEAR_BLANKLINES = "1",
+TAB_ON_INSERT_MODE_INDENTS = "0",
+CARRIAGE_RETURN_ON_NORMAL_IS_LIKE_INSERT_MODE = "1",
+SPACE_ON_NORMAL_IS_LIKE_INSERT_MODE = "1",
+SMALL_E_ON_NORMAL_GOES_INSERT_MODE = "1",
+BACKSPACE_ON_FIRST_IDX_REMOVE_TRAILING_SPACES = "1",
+BACKSPACE_ON_NORMAL_IS_LIKE_INSERT_MODE = "1",
+BACKSPACE_ON_NORMAL_GOES_UP = "0",
+BACKSPACE_ON_INSERT_GOES_UP_AND_JOIN = "0"
+
+m.set.library.cflag ([
+  "-DLIBE_DIR=\"" + SYSDIR + "\"", "-DLIBE_DATADIR=\"" + SYSDATADIR + "\"",
+  "-DLIBE_TMPDIR=\"" + TMPDIR + "\"",
+  "-DTABWIDTH=" + TABWIDTH, "-DUNDO_NUM_ENTRIES=" + UNDO_NUM_ENTRIES,
+  "-DRLINE_HISTORY_NUM_ENTRIES=" + RLINE_HISTORY_NUM_ENTRIES,
+  "-DCLEAR_BLANKLINES=" + CLEAR_BLANKLINES,
+  "-DTAB_ON_INSERT_MODE_INDENTS=" + TAB_ON_INSERT_MODE_INDENTS,
+  "-DCARRIAGE_RETURN_ON_NORMAL_IS_LIKE_INSERT_MODE=" + CARRIAGE_RETURN_ON_NORMAL_IS_LIKE_INSERT_MODE,
+  "-DSPACE_ON_NORMAL_IS_LIKE_INSERT_MODE=" + SPACE_ON_NORMAL_IS_LIKE_INSERT_MODE,
+  "-DSMALL_E_ON_NORMAL_GOES_INSERT_MODE=" + SMALL_E_ON_NORMAL_GOES_INSERT_MODE,
+  "-DBACKSPACE_ON_FIRST_IDX_REMOVE_TRAILING_SPACES=" + BACKSPACE_ON_FIRST_IDX_REMOVE_TRAILING_SPACES,
+  "-DBACKSPACE_ON_NORMAL_IS_LIKE_INSERT_MODE=" + BACKSPACE_ON_NORMAL_IS_LIKE_INSERT_MODE,
+  "-DBACKSPACE_ON_NORMAL_GOES_UP=" + BACKSPACE_ON_NORMAL_GOES_UP,
+  "-DBACKSPACE_ON_INSERT_GOES_UP_AND_JOIN=" + BACKSPACE_ON_INSERT_GOES_UP_AND_JOIN
+])
+
+m.set.library.to_linkagainst ([
+  "string", "ustring", "cstring", "vstring", "file",
+  "dir", "path", "re", "sys", "spell", "video", "vmap",
+  "smap", "imap", "vui", "readline", "io", "proc"]; append_version)
+
+return m

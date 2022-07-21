@@ -1,0 +1,12 @@
+#@
+  depends_on ("Vstring", LIBRARY)
+  depends_on ("Cstring", LIBRARY)
+  depends_on ("Ustring", LIBRARY)
+  depends_on ("File",    LIBRARY)
+  depends_on ("Error",   LIBRARY)
+#
+
+var m = New Make (__file__, LIBRARY; from_z_namespace)
+m.set.library.to_linkagainst ([
+  "vstring", "cstring", "ustring", "file", "error"]; append_version)
+return m

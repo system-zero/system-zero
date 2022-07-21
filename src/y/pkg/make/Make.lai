@@ -74,10 +74,11 @@ const base64_encode     = crypt_base64_encode_file
 const char              = integer_char
 const advance           = string_advance
 
+var   VERSION           = "0.3"
+
 const Z                 = "z"
 const Y                 = "y"
 const J                 = "j"
-const VERSION           = "0.3"
 const CC                = "gcc"
 const STD11             = "c11"
 const STD99             = "c99"
@@ -88,6 +89,8 @@ const SYSDIR            = Sys.get ("SYSDIR")
 const SYSDATADIR        = Sys.get ("DATADIR")
 const SRCDIR            = Sys.get ("SRCDIR")
 const TMPDIR            = Sys.get ("TMPDIR")
+const USERNAME          = Sys.get ("USERNAME")
+const GROUPNAME         = Sys.get ("GROUPNAME")
 const ZSRCDIR           = SRCDIR:  concat_with (Z)
 const YSRCDIR           = SRCDIR:  concat_with (Y)
 const JSRCDIR           = SRCDIR:  concat_with (J)
@@ -109,7 +112,8 @@ const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
 const RPATH             = true
 const NORPATH           = false
-const SCRIPT_INTERPRETER= "La-shared"
+const SHARED_INTERPRETER= "La-shared"
+const STATIC_INTERPRETER= "La-static"
 const SPEC              = ".build"
 const LOCAL_SPEC        = ".local.build"
 var   SPECNAME          = SPEC
@@ -135,6 +139,7 @@ const SCRIPT            = (1 << 9)
 const PACKAGE           = (1 << 10)
 const LIBC              = (1 << 11)
 const EXECUTABLE        = (SHARED_EXECUTABLE|STATIC_EXECUTABLE)
+const LIBRARY           = (SHARED_LIBRARY|STATIC_LIBRARY)
 
 const COMPILE_ASSEMBLE_LINK = 1
 const COMPILE_ASSEMBLE      = 2
@@ -143,83 +148,121 @@ const ARGPARSE          = null
 
 Type Make {
   private
-  name                        : null
-  sh                          : New Shell ()
-  bindir                      : BINDIR
-  libdir                      : ZLIBDIR
-  toplibdir                   : LIBDIR
-  incdir                      : ZINCDIR
-  moddir                      : ZMODDIR
-  datadir                     : SYSDATADIR
-  shelldatadir                : SHELLDATADIR
-  local_env                   : true
-  local_cflags                : true
-  make_shared_library         : false
-  make_shared_module          : false
-  make_shared_executable      : false
-  make_static_library         : false
-  make_static_executable      : false
-  install_header              : false
-  install_script              : false
-  install_package             : false
-  force_shared_library        : false
-  force_shared_module         : false
-  force_shared_executable     : false
-  force_static_library        : false
-  force_static_executable     : false
-  force_header                : false
-  force_script                : false
-  dump_commands               : false
-  shared_library_compile_type : COMPILE_ASSEMBLE_LINK
-  static_library_compile_type : COMPILE_ASSEMBLE_LINK
-  namespace                   : Z
-  modulesdirname              : "la-modules"
-  verbose                     : false
-  version                     : null
-  cc                          : null
-  std                         : null
-  builddir                    : null
-  header                      : null
-  libname                     : null
-  liboutput                   : null
-  execoutput                  : null
-  moduleoutput                : null
-  script_interpr              : null
-  curdir                      : null
-  cached_file                 : null
-  cached                      : null
-  recorded                    : null
-  optimization                : null
-  march                       : null
-  retval                      : ok
-  debug                       : DEBUG
-  rpath                       : RPATH
-  libdirs                     : {[]}
-  includedirs                 : {[]}
-  shared_library_sources      : {[]}
-  shared_module_sources       : {[]}
-  shared_executable_sources   : {[]}
-  static_library_sources      : {[]}
-  static_executable_sources   : {[]}
-  script_sources              : {[]}
-  libc_sources                : {[]}
-  cflags                      : {[]}
+  retval          : ok
+  sh              : New Shell ()
+  bindir          : BINDIR
+  libdir          : ZLIBDIR
+  toplibdir       : LIBDIR
+  incdir          : ZINCDIR
+  moddir          : ZMODDIR
+  datadir         : SYSDATADIR
+  shelldatadir    : SHELLDATADIR
+  local_env       : true
+  local_cflags    : true
+  dump_commands   : false
+  namespace       : Z
+  modulesdirname  : "la-modules"
+  verbose         : false
+  debug           : DEBUG
+  rpath           : RPATH
+  libdirs         : {[]}
+  includedirs     : {[]}
+  cflags          : {[]}
+  targets         : 0
+  name
+  orig_name
+  version
+  cc
+  std
+  builddir
+  header
+  libname
+  liboutput
+  execoutput
+  curdir
+  cached_file
+  cached
+  recorded
+  optimization
+  march
 
-  shared_library    : { cflags : {[]} }
-  shared_module     : { cflags : {[]} }
-  shared_executable : { cflags : {[]} }
-  static_library    : { cflags : {[]} }
-  static_executable : { cflags : {[]} }
-
-  linkagainst       : {
-    shared_library            : {[]}
-    shared_executable         : {[]}
-    shared_module             : {[]}
-    static_library            : {[]}
-    static_executable         : {[]}
+  shared_library : {
+    cflags       : {[]}
+    sources      : {[]}
+    compile_type : COMPILE_ASSEMBLE_LINK
+    force        : false
+    make         : false
+    pre_exec
+    post_exec
   }
 
-  targets                     : 0
+  shared_module : {
+    sources   : {[]} 
+    cflags    : {[]}
+    force     : false
+    make      : false
+    output
+    pre_exec
+    post_exec
+  }
+
+  shared_executable : {
+    sources   : {[]}
+    cflags    : {[]}
+    force     : false
+    make      : false
+    pre_exec
+    post_exec
+  }
+
+  static_library : {
+    sources      : {[]}
+    cflags       : {[]}
+    force        : false
+    make         : false
+    compile_type : COMPILE_ASSEMBLE_LINK
+    pre_exec
+    post_exec
+  }
+
+  static_executable : {
+    sources   : {[]}
+    cflags    : {[]}
+    force     : false
+    make      : false
+    pre_exec
+    post_exec
+  }
+
+  script : {
+    sources   : {[]}
+    force     : false
+    install   : false
+    interpr   : {
+      shared
+      static
+    }
+    pre_exec
+    post_exec
+  }
+
+  header : {
+    sources
+    force   : false
+    install : false
+  }
+
+  libc : {
+    sources : {[]}
+  }
+
+  linkagainst : {
+    shared_library    : {[]}
+    shared_executable : {[]}
+    shared_module     : {[]}
+    static_library    : {[]}
+    static_executable : {[]}
+  }
 
   init_local_cflags : func {
     return if this.local_cflags is false
@@ -295,32 +338,32 @@ Type Make {
 
     this.set.namespace (ARGPARSE.results.namespace)
 
-    this.make_shared_library       = ARGPARSE.results.shared_library
-    this.make_shared_module        = ARGPARSE.results.shared_module
-    this.make_shared_executable    = ARGPARSE.results.shared_executable
-    this.make_static_library       = ARGPARSE.results.static_library
-    this.make_static_executable    = ARGPARSE.results.static_executable
-    this.install_header            = ARGPARSE.results.install_header
-    this.install_script            = ARGPARSE.results.install_script
+    this.shared_library.make       = ARGPARSE.results.shared_library
+    this.shared_module.make        = ARGPARSE.results.shared_module
+    this.shared_executable.make    = ARGPARSE.results.shared_executable
+    this.static_library.make       = ARGPARSE.results.static_library
+    this.static_executable.make    = ARGPARSE.results.static_executable
+    this.header.install            = ARGPARSE.results.install_header
+    this.script.install            = ARGPARSE.results.install_script
 
     if ARGPARSE.results.shared or ARGPARSE.results.all {
-      this.make_shared_library    = true
-      this.make_shared_executable = true
-      this.make_shared_module     = true
+      this.shared_library.make    = true
+      this.shared_executable.make = true
+      this.shared_module.make     = true
     }
 
     if ARGPARSE.results.static or ARGPARSE.results.all {
-      this.make_static_library    = true
-      this.make_static_executable = true
+      this.static_library.make    = true
+      this.static_executable.make = true
     }
 
     if ARGPARSE.results.shared_module or ARGPARSE.results.shared_executable then
-      this.make_shared_library = true
+      this.shared_library.make = true
 
     if ARGPARSE.results.static_executable then
-      this.make_static_library = true
+      this.static_library.make = true
 
-    if this.make_shared_library or this.make_static_library then this.install_header = true
+    if this.shared_library.make or this.static_library.make then this.header.install = true
 
     ifnot null is ARGPARSE.results.version then this.version = ARGPARSE.results.version
 
@@ -338,7 +381,7 @@ Type Make {
     this.debug        = if ARGPARSE.results.no_debug     then NODEBUG orelse DEBUG
     this.rpath        = if ARGPARSE.results.no_rpath     then NORPATH orelse RPATH
 
-    if this.install_script is false and ARGPARSE.results.all then this.install_script = true
+    if this.script.install is false and ARGPARSE.results.all then this.script.install = true
 
     if ARGPARSE.results.libdir  isnot null then this.set.libdir  (ARGPARSE.results.libdir)
     if ARGPARSE.results.incdir  isnot null then this.set.incdir  (ARGPARSE.results.incdir)
@@ -358,13 +401,13 @@ Type Make {
 
     return ifnot ARGPARSE.results.force
 
-    if ARGPARSE.results.shared or ARGPARSE.results.shared_library    or ARGPARSE.results.all then this.force_shared_library = true
-    if ARGPARSE.results.shared or ARGPARSE.results.shared_module     or ARGPARSE.results.all then this.force_shared_module = true
-    if ARGPARSE.results.shared or ARGPARSE.results.shared_executable or ARGPARSE.results.all then this.force_shared_executable = true
-    if ARGPARSE.results.static or ARGPARSE.results.static_library    or ARGPARSE.results.all then this.force_static_library = true
-    if ARGPARSE.results.static or ARGPARSE.results.static_executable or ARGPARSE.results.all then this.force_static_executable = true
-    if ARGPARSE.results.shared or ARGPARSE.results.static            or ARGPARSE.results.install_header or ARGPARSE.results.all then this.force_header = true
-    if ARGPARSE.results.all    or ARGPARSE.results.install_script    then this.force_script = true
+    if ARGPARSE.results.shared or ARGPARSE.results.shared_library    or ARGPARSE.results.all then this.shared_library.force = true
+    if ARGPARSE.results.shared or ARGPARSE.results.shared_module     or ARGPARSE.results.all then this.shared_module.force = true
+    if ARGPARSE.results.shared or ARGPARSE.results.shared_executable or ARGPARSE.results.all then this.shared_executable.force = true
+    if ARGPARSE.results.static or ARGPARSE.results.static_library    or ARGPARSE.results.all then this.static_library.force = true
+    if ARGPARSE.results.static or ARGPARSE.results.static_executable or ARGPARSE.results.all then this.static_executable.force = true
+    if ARGPARSE.results.shared or ARGPARSE.results.static            or ARGPARSE.results.install_header or ARGPARSE.results.all then this.header.force = true
+    if ARGPARSE.results.all    or ARGPARSE.results.install_script    then this.script.force = true
   }
 
   record : func (sources) {
@@ -479,9 +522,13 @@ Type Make {
     if null is name {
       if this.local_env and is_z_ns {
         var base_name = dir: dirname (): basename ()
-        name = (char (base_name[0] + ('a' - 'A')) + advance (base_name, 1)
+        this.orig_name = base_name
+        name = (char (base_name[0] + ('a' - 'A')) +
+          if base_name: len () > 1 then advance (base_name, 1) orelse ""
+        if name: len () > 1 and name[1] < 'a' then name[1] = name[1] + ('a' - 'A')
       } else {
         name =  dir: basename ()
+        this.orig_name = name
       }
     }
 
@@ -489,30 +536,31 @@ Type Make {
 
     this.curdir = Dir.current ()
 
+    return if targets is IGNORE
+
     this.set_options ()
 
     if this.targets & SHARED_EXECUTABLE or this.targets & SHARED then
-      this.set.shared.executable.to_linkagainst (this.name + "-" + this.version)
+      this.set.shared.executable.to_linkagainst (this.name; append_version)
 
     if this.targets & STATIC_EXECUTABLE or this.targets & STATIC then
-      this.set.static.executable.to_linkagainst (this.name + "-" + this.version)
+      this.set.static.executable.to_linkagainst (this.name; append_version)
 
     if this.targets & MODULE and (this.targets & SHARED_LIBRARY or this.targets & SHARED) then
-      this.set.shared.module.to_linkagainst (this.name + "-" + this.version)
+      this.set.shared.module.to_linkagainst (this.name; append_version)
 
     this.set.libname                          (name)
     this.set.liboutput                        (name)
     this.set.builddir                         (dir)
-    this.set.header                           (name + ".h")
+    this.set.header.source                    (name + ".h")
     this.set.cached_file                      (this.builddir: concat_with (CACHEDNAME))
     this.set.shared.library.source            ("lib" + name + ".c")
     this.set.shared.module.source             (name + "-module.c")
     this.set.static.library.source            ("lib" + name + ".c")
-    this.set.execoutput                       (char (name[0] - ('a' - 'A')) + advance (name, 1))
-    this.set.script.source                    (char (name[0] - ('a' - 'A')) + advance (name, 1))
-    this.set.shared.executable.source         (name + "_main.c")
+    this.set.execoutput                       (char (name[0] - ('a' - 'A')) + if name: len () > 1 then advance (name, 1) orelse "")
+    this.set.script.source                    (char (name[0] - ('a' - 'A')) + if name: len () > 1 then advance (name, 1) orelse "")
+    this.set.executable.source                (name + "_main.c")
     this.set.shared.module.output             (name)
-    this.set.static.executable.source         (name + "_main.c")
 
     this.init_local_cflags ()
     this.init_include_dirs ()
@@ -531,11 +579,18 @@ Type Make {
 
   append_linkagainst_value : func (v, l) {
     return if null is v
+    var append_version = qualifier_exists ("append_version")
     var t =  v: typeof ()
-    if t is ArrayType then
-      for f in v append "-l" + f in l
-    orelse
-      if t is StringType then append "-l" + v in l
+
+    if t is ArrayType {
+      for f in v append "-l" + f + if append_version then "-" + VERSION orelse "" end in l
+    } else {
+      if t is StringType {
+        append "-l" + v + if append_version then "-" + VERSION orelse "" end in l
+      } else {
+        println (stderr, "append_linkagainst_value: ${typeAsString (v) is not a valid type")
+      }
+    }
   }
 
   make_objects_build_dir : func {
@@ -562,9 +617,9 @@ Type Make {
 
     append " -shared -fPIC" in com
 
-    var string[this.shared_library_sources: len ()] objects
+    var string[this.shared_library.sources: len ()] objects
 
-    for i, v in this.shared_library_sources {
+    for i, v in this.shared_library.sources {
       var oo = "build/" + v: path_basename_sans_extname () + ".o"
       objects[i] = oo
     }
@@ -573,11 +628,11 @@ Type Make {
 
     var r
     for i, v in objects {
-      r = this.should_make (v, [this.shared_library_sources[i]], this.force_shared_library)
+      r = this.should_make (v, [this.shared_library.sources[i]], this.shared_library.force)
       return notok if r is notok
       continue if r is false
       n++
-      var lcom = com + " -c " + this.shared_library_sources[i] + " -o " + v
+      var lcom = com + " -c " + this.shared_library.sources[i] + " -o " + v
 
       if this.dump_commands {
         println (lcom)
@@ -634,9 +689,9 @@ Type Make {
 
     if this.cc isnot "tcc" then append " -z muldefs" in com
 
-    var string[this.static_library_sources: len ()] objects
+    var string[this.static_library.sources: len ()] objects
 
-    for i, v in this.static_library_sources {
+    for i, v in this.static_library.sources {
       var oo = "build/" + (v: path_basename_sans_extname ()) + ".o"
       objects[i] = oo
     }
@@ -645,11 +700,11 @@ Type Make {
 
     var r
     for i, v in objects {
-      r = this.should_make (v, [this.static_library_sources[i]], this.force_static_library)
+      r = this.should_make (v, [this.static_library.sources[i]], this.static_library.force)
       return notok if r is notok
       continue if r is false
       n++
-      var lcom = com + " -c " + this.static_library_sources[i] + " -o " + v
+      var lcom = com + " -c " + this.static_library.sources[i] + " -o " + v
 
       if this.dump_commands {
         println (lcom)
@@ -747,14 +802,25 @@ Type Make {
   }
 
   get : {
+    cc                       : func return this.cc
+    sh                       : func return this.sh
     version                  : func return this.version
     retval                   : func return this.retval
     dependencies             : func return this.dependencies
     name                     : func return this.name
+    orig_name                : func return this.orig_name
     dump_commands            : func return this.dump_commands
     libdir                   : func return this.libdir
     toplibdir                : func return this.toplibdir
     targets                  : func return this.targets
+
+    shared_library  : {
+      force :  func return this.shared_library.force
+    }
+
+    static_library  : {
+      force : func return this.static_library.force
+    }
   }
 
   set : {
@@ -766,7 +832,6 @@ Type Make {
     liboutput                : func (o) ifnot null is o this.liboutput = "lib" + o + "-" + this.version
     execoutput               : func (o) ifnot null is o this.execoutput = o
     optimization             : func (o) ifnot null is o this.optimization = o
-    header                   : func (h) ifnot null is h this.header = h
     cached_file              : func (c) ifnot null is c this.cached_file = c
     builddir                 : func (d) ifnot null is d this.builddir = d
     bindir                   : func (d) ifnot null is d this.bindir = d
@@ -806,35 +871,41 @@ Type Make {
 
     shared : {
       library : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_library)
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_library; qualifiers())
         cflag                : func (v) this.append_value (v, this.shared_library.cflags)
+        pre_exec             : func (f) ifnot null is f then this.shared_library.pre_exec = f as anonymous
+        post_exec            : func (f) ifnot null is f then this.shared_library.post_exec = f as anonymous
         source               : func (v) {
           if qualifier_exists ("clear") then
             this.clear.shared.library.sources ()
-          this.append_value (v, this.shared_library_sources)
+          this.append_value (v, this.shared_library.sources)
         }
 
-        compile_type         : func (t) this.shared_library_compile_type = t
+        compile_type         : func (t) this.shared_library.compile_type = t
       }
 
       executable : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_executable)
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_executable; qualifiers())
         cflag                : func (v) this.append_value (v, this.shared_executable.cflags)
+        pre_exec             : func (f) ifnot null is f then this.shared_executable.pre_exec = f as anonymous
+        post_exec            : func (f) ifnot null is f then this.shared_executable.post_exec = f as anonymous
         source               : func (v) {
           if qualifier_exists ("clear") then
             this.clear.shared.executable.sources ()
-          this.append_value (v, this.shared_executable_sources)
+          this.append_value (v, this.shared_executable.sources)
         }
       }
 
       module : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_module)
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.shared_module; qualifiers())
         cflag                : func (v) this.append_value (v, this.shared_module.cflags)
-        output               : func (o) ifnot null is o this.moduleoutput = o
+        pre_exec             : func (f) ifnot null is f then this.shared_module.pre_exec = f as anonymous
+        post_exec            : func (f) ifnot null is f then this.shared_module.post_exec = f as anonymous
+        output               : func (o) ifnot null is o this.shared_module.output = o
         source               : func (v) {
           if qualifier_exists ("clear") then
             this.clear.shared.module.sources ()
-          this.append_value (v, this.shared_module_sources)
+          this.append_value (v, this.shared_module.sources)
         }
       }
 
@@ -845,23 +916,27 @@ Type Make {
 
     static : {
       library : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_library)
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_library; qualifiers())
         cflag                : func (v) this.append_value (v, this.static_library.cflags)
+        pre_exec             : func (f) ifnot null is f then this.static_library.pre_exec = f as anonymous
+        post_exec            : func (f) ifnot null is f then this.static_library.post_exec = f as anonymous
         source               : func (v) {
           if qualifier_exists ("clear") then
             this.clear.static.library.sources ()
-          this.append_value (v, this.static_library_sources)
+          this.append_value (v, this.static_library.sources)
         }
-        compile_type         : func (t) this.static_library_compile_type = t
+        compile_type         : func (t) this.static_library.compile_type = t
       }
 
       executable : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_executable)
+        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.linkagainst.static_executable; qualifiers())
         cflag                : func (v) this.append_value (v, this.static_executable.cflags)
+        pre_exec             : func (f) ifnot null is f then this.static_executable.pre_exec = f as anonymous
+        post_exec            : func (f) ifnot null is f then this.static_executable.post_exec = f as anonymous
         source               : func (v) {
           if qualifier_exists ("clear") then
             this.clear.static.executable.sources ()
-          this.append_value (v, this.static_executable_sources)
+          this.append_value (v, this.static_executable.sources)
         }
       }
 
@@ -871,37 +946,70 @@ Type Make {
     }
 
     script : {
-      source                 : func (v) {
+      source : func (v) {
         if qualifier_exists ("clear") then
           this.clear.script.sources ()
-        this.append_value (v, this.script_sources)
+        this.append_value (v, this.script.sources)
       }
 
-      interpr : func (s, interpr) {
-        if null is this.script_interpr then
-          this.script_interpr = { $(s) : interpr }
-        orelse
-          this.script_interpr.$(s) = interpr
+      interpr : {
+        shared : func (s, interpr) {
+          if null is this.script.interpr.shared then
+            this.script.interpr.shared = { $(s) : interpr }
+          orelse
+            this.script.interpr.shared.$(s) = interpr
+        }
+
+        static : func (s, interpr) {
+          if null is this.script.interpr.static then
+            this.script.interpr.static = { $(s) : interpr }
+          orelse
+            this.script.interpr.static.$(s) = interpr
+        }
       }
+
+      pre_exec  : func (f) ifnot null is f then this.script.pre_exec = f as anonymous
+      post_exec : func (f) ifnot null is f then this.script.post_exec = f as anonymous
     }
 
     libc : {
       source               : func (v) {
         if qualifier_exists ("clear") then
           this.clear.libc.sources ()
-        this.append_value (v, this.libc_sources)
+        this.append_value (v, this.libc.sources)
       }
+    }
+
+    header : {
+      source : func (h) ifnot null is h this.header.sources = h
     }
 
     library : {
       cflag                  : func (v) {
-        this.set.shared.library.cflag (v) this.set.static.library.cflag (v)
+        this.set.shared.library.cflag (v)
+        this.set.static.library.cflag (v)
+      }
+
+      to_linkagainst : func (l) {
+        this.set.shared.library.to_linkagainst (l; qualifiers ())
+        this.set.static.library.to_linkagainst (l; qualifiers ())
       }
     }
 
     executable : {
-      cflags                 : func (v) {
-        this.set.shared.executable.cflag (v) this.set.static.executable.cflag (v)
+      cflags : func (v) {
+        this.set.shared.executable.cflag (v)
+        this.set.static.executable.cflag (v)
+      }
+
+      source : func (v) {
+        this.set.shared.executable.source (v; qualifiers ())
+        this.set.static.executable.source (v; qualifiers ())
+      }
+
+      to_linkagainst : func (l) {
+        this.set.shared.executable.to_linkagainst (l; qualifiers ())
+        this.set.static.executable.to_linkagainst (l; qualifiers ())
       }
     }
 
@@ -929,19 +1037,19 @@ Type Make {
       library : {
         to_linkagainst       : func clear (this.linkagainst.shared_library)
         cflags               : func clear (this.shared_library.cflags)
-        sources              : func clear (this.shared_library_sources)
+        sources              : func clear (this.shared_library.sources)
       }
 
       module : {
         to_linkagainst       : func clear (this.linkagainst.shared_module)
         cflags               : func clear (this.shared_module.cflags)
-        sources              : func clear (this.shared_module_sources)
+        sources              : func clear (this.shared_module.sources)
       }
 
       executable : {
         to_linkagainst       : func clear (this.linkagainst.shared_executable)
         cflags               : func clear (this.shared_executable.cflags)
-        sources              : func clear (this.shared_executable_sources)
+        sources              : func clear (this.shared_executable.sources)
       }
     }
 
@@ -949,19 +1057,19 @@ Type Make {
       library : {
         to_linkagainst       : func clear (this.linkagainst.static_library)
         cflags               : func clear (this.static_library.cflags)
-        sources              : func clear (this.static_library_sources)
+        sources              : func clear (this.static_library.sources)
       }
 
       executable : {
         to_linkagainst       : func clear (this.linkagainst.static_executable)
         cflags               : func clear (this.static_executable.cflags)
-        sources              : func clear (this.static_executable_sources)
+        sources              : func clear (this.static_executable.sources)
       }
     }
 
-    script : { sources       : func clear (this.script_sources) }
+    script : { sources       : func clear (this.script.sources) }
 
-    libc   : { sources       : func clear (this.libc_sources) }
+    libc   : { sources       : func clear (this.libc.sources) }
   }
 
   filter: {
@@ -969,7 +1077,10 @@ Type Make {
       executable : {
         to_linkagainst  : func (f) {
           for i, v in this.linkagainst.shared_executable  {
-            if v is f then list_delete_at (this.linkagainst.shared_executable, i)
+            if v is f {
+              list_delete_at (this.linkagainst.shared_executable, i)
+              i--
+            }
           }
         }
       }
@@ -979,7 +1090,10 @@ Type Make {
       executable : {
         to_linkagainst      : func (f) {
           for i, v in this.linkagainst.static_executable  {
-            if v is f then list_delete_at (this.linkagainst.static_executable, i)
+            if v is f {
+              list_delete_at (this.linkagainst.static_executable, i)
+              i--
+            }
           }
         }
       }
@@ -992,10 +1106,10 @@ Type Make {
     header : func {
       return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-      this.record ([this.header])
+      this.record ([this.header.sources])
 
-      return ok if false is this.install_header
-      return ok if null is this.header
+      return ok if false is this.header.install
+      return ok if null is this.header.sources
 
       ifnot this.incdir: exists () then mkdir (this.incdir, 0755; verbose : this.verbose + 1)
       ifnot this.incdir: isdirectory () {
@@ -1005,35 +1119,35 @@ Type Make {
         }
       }
 
-      var to = this.incdir: concat_with (this.header);
+      var to = this.incdir: concat_with (this.header.sources);
 
-      var r = this.should_make (to, [this.header], this.force_header)
+      var r = this.should_make (to, [this.header.sources], this.header.force)
       return notok if r is notok
       return ok if r is false
 
       if this.dump_commands {
         var ver = "-v "
         println ("# installing C header")
-        println ("cp ${%s, this.verbose: if v is 1 then ver orelse `` end}--force ${this.header} ${to}")
+        println ("cp ${%s, this.verbose: if v is 1 then ver orelse `` end}--force ${this.header.sources} ${to}")
         return ok
       }
 
-      r = copy (this.header, to; verbose : this.verbose + 1, force : 1)
-      this.install_header = false
+      r = copy (this.header.sources, to; verbose : this.verbose + 1, force : 1)
+      this.header.install = false
       return this.endbuild (r)
     }
 
     script : func {
       return ok if this.dump_commands
       return notok if notok is this.change_to_build_directory ()
-      return ok if null is this.script_sources
+      return ok if null is this.script.sources
 
       var sources = {[]}
-      for v in this.script_sources append v + ".lai" in sources
+      for v in this.script.sources append v + ".lai" in sources
 
       this.record (sources)
 
-      return ok if false is this.install_script
+      return ok if false is this.script.install
 
       ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
       ifnot this.bindir: isdirectory () {
@@ -1045,15 +1159,21 @@ Type Make {
 
       var targets = {[]}
 
-      for v in this.script_sources {
+      for v in this.script.sources {
         append this.bindir: concat_with (v)             in targets
         append this.bindir: concat_with (v) + "-static" in targets
       }
 
-      var r = this.should_make (targets, sources, this.force_script)
+      var r = this.should_make (targets, sources, this.script.force)
 
       return notok if r is notok
       return ok if r is false
+
+      if null isnot this.script.pre_exec {
+        r = this.script.pre_exec ()
+        return notok if r is notok
+        return ok if r > ok
+      }
 
       r = notok
       var idx = 0
@@ -1064,11 +1184,11 @@ Type Make {
         continue if null is read_fd
         var script = read (read_fd)
 
-        var interpr = SCRIPT_INTERPRETER
+        var interpr = SHARED_INTERPRETER
 
-        ifnot null is this.script_interpr {
+        ifnot null is this.script.interpr.shared {
           var vv = v: path_basename_sans_extname ()
-          for u, i in this.script_interpr {
+          for u, i in this.script.interpr.shared {
             if u is vv {
               interpr = i
               break
@@ -1078,7 +1198,7 @@ Type Make {
 
         var output = targets[idx++]
 
-        var write_fd = open (output, O_WRONLY|O_CREAT, S_IRWXU);
+        var write_fd = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
 
         ifnot null is write_fd { 
           if this.verbose then println ("install ${output}") orelse println ("  install scripts")
@@ -1087,18 +1207,37 @@ Type Make {
           r = ok
         }
 
+        interpr = STATIC_INTERPRETER
+
+        ifnot null is this.script.interpr.static {
+          var vv = v: path_basename_sans_extname ()
+          for u, i in this.script.interpr.static {
+            if u is vv {
+              interpr = i
+              break
+            }
+          }
+        }
+
         output = targets[idx++]
-        write_fd  = open (output, O_WRONLY|O_CREAT, S_IRWXU)
+        write_fd  = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
         ifnot null is write_fd {
           if this.verbose then println ("install ${output}")
-          write (write_fd, "#!/bin/env La-static\n\n")
+          write (write_fd, "#!/bin/env " + interpr + "\n\n")
           write (write_fd, script)
           r = ok
         }
       }
 
-      if r is ok then
-        for v in this.script_sources this.install_data (v)
+      if r is ok {
+        for v in this.script.sources this.install_data (v)
+
+        if null isnot this.script.post_exec {
+          r = this.script.post_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        }
+      }
 
       return this.endbuild (r)
     }
@@ -1109,12 +1248,12 @@ Type Make {
       library : func {
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.shared_library_sources)
+        this.record (this.shared_library.sources)
 
-        return ok if false is this.make_shared_library
+        return ok if false is this.shared_library.make
 
-        return notok if this.shared_library_compile_type < COMPILE_ASSEMBLE_LINK or
-           this.shared_library_compile_type > COMPILE_ASSEMBLE
+        return notok if this.shared_library.compile_type < COMPILE_ASSEMBLE_LINK or
+           this.shared_library.compile_type > COMPILE_ASSEMBLE
 
         ifnot this.libdir: exists () then mkdir (this.libdir, 0755; verbose : this.verbose + 1)
         ifnot this.libdir: isdirectory () {
@@ -1124,13 +1263,19 @@ Type Make {
           }
         }
 
-        if this.shared_library_compile_type is COMPILE_ASSEMBLE then
+        if this.shared_library.compile_type is COMPILE_ASSEMBLE then
           return this.shared_library_compile_objects ()
 
         var output = this.libdir: concat_with (this.liboutput + ".so")
-        var r = this.should_make (output, this.shared_library_sources, this.force_shared_library)
+        var r = this.should_make (output, this.shared_library.sources, this.shared_library.force)
         return notok if r is notok
         return ok if r is false
+
+        if null isnot this.shared_library.pre_exec {
+          r = this.shared_library.pre_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        } 
 
         var com = this.cc + " -std=" + this.std
 
@@ -1146,7 +1291,7 @@ Type Make {
         append " -shared -fPIC" in com
         append " -o " + output  in com
 
-        for v in this.shared_library_sources if v isnot null then append " " + v in com
+        for v in this.shared_library.sources if v isnot null then append " " + v in com
 
         if this.dump_commands {
           println ("# making the shared library")
@@ -1162,10 +1307,18 @@ Type Make {
         if ok is r then
           symlink (this.liboutput + ".so", to; verbose : this.verbose + 1, force : 1)
 
-        this.make_shared_library = false
+        this.shared_library.make = false
 
-        if r isnot ok println ("  failed") orelse
-          ifnot this.verbose then println ("  done")
+        if r is notok then println (" \e[31mfailed\e[m") orelse
+          ifnot this.verbose then println ("  \e[32mdone\e[m")
+
+
+        if r is ok and null isnot this.shared_library.post_exec {
+println ("ddd")
+          r = this.shared_library.post_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        } 
 
         return this.endbuild (if r isnot ok then notok orelse ok end)
       }
@@ -1173,9 +1326,9 @@ Type Make {
       executable : func {
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.shared_executable_sources)
+        this.record (this.shared_executable.sources)
 
-        return ok if false is this.make_shared_executable
+        return ok if false is this.shared_executable.make
 
         ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
         ifnot this.bindir: isdirectory () {
@@ -1187,9 +1340,15 @@ Type Make {
 
         var output = this.bindir: concat_with (this.execoutput + "-shared")
 
-        var r = this.should_make (output, this.shared_executable_sources, this.force_shared_executable)
+        var r = this.should_make (output, this.shared_executable.sources, this.shared_executable.force)
         return notok if r is notok
         return ok if r is false
+
+        if null isnot this.shared_executable.pre_exec {
+          r = this.shared_executable.pre_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        } 
 
         var com = this.cc + " -std=" + this.std
 
@@ -1204,7 +1363,7 @@ Type Make {
 
         append " -o " + output in com
 
-        for v in this.shared_executable_sources if v isnot null then append " " + v in com
+        for v in this.shared_executable.sources if v isnot null then append " " + v in com
 
         if this.dump_commands {
           println ("# making the shared executable")
@@ -1223,10 +1382,16 @@ Type Make {
           this.install_data (this.execoutput)
         }
 
-        this.make_shared_executable = false
+        this.shared_executable.make = false
 
-        if r is notok println ("  failed") orelse
-          ifnot this.verbose then println ("  done")
+        if r is notok then println (" \e[31mfailed\e[m") orelse
+          ifnot this.verbose then println ("  \e[32mdone\e[m")
+
+        if r is ok and null isnot this.shared_executable.post_exec {
+          r = this.shared_executable.post_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        } 
 
         return this.endbuild (if r isnot ok then notok orelse ok end)
       }
@@ -1234,9 +1399,9 @@ Type Make {
       module : func {
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.shared_module_sources)
+        this.record (this.shared_module.sources)
 
-        return ok if false is this.make_shared_module
+        return ok if false is this.shared_module.make
 
         ifnot this.moddir: exists () then mkdir (this.moddir, 0755; verbose : this.verbose + 1)
         ifnot this.moddir: isdirectory () {
@@ -1255,11 +1420,17 @@ Type Make {
           }
         }
 
-        var output = instdir: concat_with (this.moduleoutput + "-module.so")
+        var output = instdir: concat_with (this.shared_module.output + "-module.so")
 
-        var r = this.should_make (output, this.shared_module_sources, this.force_shared_module)
+        var r = this.should_make (output, this.shared_module.sources, this.shared_module.force)
         return notok if r is notok
         return ok if r is false
+
+        if null isnot this.shared_module.pre_exec {
+          r = this.shared_module.pre_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        }
 
         var com = this.cc + " -std=" + this.std
 
@@ -1274,7 +1445,7 @@ Type Make {
         append " -lla -lstring -lvmap -lvstring" in com
         append " -o " + output in com
 
-        for v in this.shared_module_sources if v isnot null then append " " + v in com
+        for v in this.shared_module.sources if v isnot null then append " " + v in com
 
         if this.dump_commands {
           println ("# making the shared module")
@@ -1286,10 +1457,16 @@ Type Make {
 
         r = this.sh: exec (com)
 
-        this.make_shared_module = false
+        this.shared_module.make = false
 
-        if r is notok println ("  failed") orelse
-          ifnot this.verbose then println ("  done")
+        if r is notok then println (" \e[31mfailed\e[m") orelse
+          ifnot this.verbose then println ("  \e[32mdone\e[m")
+
+        if r is ok and null isnot this.shared_module.post_exec {
+          r = this.shared_module.post_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        } 
 
         return this.endbuild (if r isnot ok then notok orelse ok end)
       }
@@ -1299,12 +1476,12 @@ Type Make {
       library : func {
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.static_library_sources)
+        this.record (this.static_library.sources)
 
-        return ok if false is this.make_static_library
+        return ok if false is this.static_library.make
 
-        return notok if this.static_library_compile_type < COMPILE_ASSEMBLE_LINK or
-           this.static_library_compile_type > COMPILE_ASSEMBLE
+        return notok if this.static_library.compile_type < COMPILE_ASSEMBLE_LINK or
+           this.static_library.compile_type > COMPILE_ASSEMBLE
 
         ifnot this.libdir: exists () then mkdir (this.libdir, 0755; verbose : this.verbose + 1)
         ifnot this.libdir: isdirectory () {
@@ -1314,18 +1491,24 @@ Type Make {
           }
         }
 
-        if this.static_library_compile_type is COMPILE_ASSEMBLE then
+        if this.static_library.compile_type is COMPILE_ASSEMBLE then
           return this.static_library_compile_objects ()
 
         var output = this.libdir: concat_with (this.liboutput + ".a")
 
-        var r = this.should_make (output, this.static_library_sources, this.force_static_library)
+        var r = this.should_make (output, this.static_library.sources, this.static_library.force)
         return notok if r is notok
         return ok if r is false
 
+        if null isnot this.static_library.pre_exec {
+          r = this.static_library.pre_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        }
+
         var com = this.cc + " -std=" + this.std
 
-        for v in this.static_library_sources if v isnot null then append " " + v in com
+        for v in this.static_library.sources if v isnot null then append " " + v in com
 
         append " " + this.march        in com
         append " " + this.optimization in com
@@ -1335,6 +1518,8 @@ Type Make {
         for v in this.cflags                     if v isnot null append " " + v in com
         for v in this.static_library.cflags      if v isnot null append " " + v in com
         for v in this.linkagainst.static_library if v isnot null append " " + v in com
+
+        if this.rpath then append " -Wl,-rpath=" + this.libdir in com
 
         append " -DSTATIC"                    in com
         append " -static -c"                  in com
@@ -1358,10 +1543,16 @@ Type Make {
           remove (this.liboutput + ".o")
         }
 
-        this.make_static_library = false
+        this.static_library.make = false
 
-        if r is notok println ("  failed") orelse
-          ifnot this.verbose then println ("  done")
+        if r is notok then println (" \e[31mfailed\e[m") orelse
+          ifnot this.verbose then println ("  \e[32mdone\e[m")
+
+        if r is ok and null isnot this.static_library.post_exec {
+          r = this.static_library.post_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        } 
 
         return this.endbuild (if r isnot ok then notok orelse ok end)
       }
@@ -1369,9 +1560,9 @@ Type Make {
       executable: func {
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.static_executable_sources)
+        this.record (this.static_executable.sources)
 
-        return ok if false is this.make_static_executable
+        return ok if false is this.static_executable.make
 
         ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
         ifnot this.bindir: isdirectory () {
@@ -1383,13 +1574,19 @@ Type Make {
 
         var output = this.bindir: concat_with (this.execoutput + "-static")
 
-        var r = this.should_make (output, this.static_executable_sources, this.force_static_executable)
+        var r = this.should_make (output, this.static_executable.sources, this.static_executable.force)
         return notok if r is notok
         return ok if r is false
 
+        if null isnot this.static_executable.pre_exec {
+          r = this.static_executable.pre_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        }
+
         var com = this.cc + " -std=" + this.std
 
-        for v in this.static_executable_sources if v isnot null then append " " + v in com
+        for v in this.static_executable.sources if v isnot null then append " " + v in com
 
         append " " + this.march        in com
         append " " + this.optimization in com
@@ -1416,10 +1613,16 @@ Type Make {
         if r is ok
           this.install_data (output)
 
-        this.make_static_executable = false
+        this.static_executable.make = false
 
-        if r is notok println ("  failed") orelse
-          ifnot this.verbose then println ("  done")
+        if r is notok then println (" \e[31mfailed\e[m") orelse
+          ifnot this.verbose then println ("  \e[32mdone\e[m")
+
+        if r is ok and null isnot this.static_executable.post_exec {
+          r = this.static_executable.post_exec ()
+          return notok if r is notok
+          return ok if r > ok
+        }
 
         return this.endbuild (if r isnot ok then notok orelse ok end)
       }
@@ -1427,16 +1630,16 @@ Type Make {
 
     libc : func {
       return notok if notok is this.change_to_build_directory ()
-      return notok ifnot this.libc_sources: len ()
+      return notok ifnot this.libc.sources: len ()
 
-      this.record (this.libc_sources)
+      this.record (this.libc.sources)
 
       var force = ARGPARSE.results.force
 
       var outputDir = YSRCPKGDIR: concat_with (LIBCNAME)
       var output = outputDir: concat_with (LIBCNAME + ".c")
 
-      var r = this.should_make (output, this.libc_sources, force)
+      var r = this.should_make (output, this.libc.sources, force)
 
       return notok if r is notok
       return ok if r is false
@@ -1479,6 +1682,7 @@ func make_dependencies (f) {
       orelse p: realpath ()
 
     return null ifnot file: exists ()
+
     return file
   }
 
@@ -1491,6 +1695,11 @@ func make_dependencies (f) {
       TARGETS.$(d).targets |= targets
     } else {
       var k = get_dep_spec (d)
+      if k is null {
+        println (stderr, "${d}: spec hasn't been found")
+        return notok
+      }
+
       append { targets : targets, initializedAs : k } in TARGETS as d
     }
 
@@ -1499,11 +1708,17 @@ func make_dependencies (f) {
       if DEPENDENCIES: key_exists (t) then
         DEPENDENCIES.$(t).targets |= targets
     }
+
+    return ok
   }
 
   func get_dependencies (dir) {
     var file = get_dep_spec (dir)
-    return notok if file is null
+
+    if file is null {
+      println (stderr, "${dir}: spec hasn't been found")
+      return notok
+    }
 
     return ok if DEPENDENCIES: key_exists (file)
 
@@ -1531,17 +1746,13 @@ func make_dependencies (f) {
     func depends_on (dep, targets) {
       ifnot null is dep {
         for k, v in Dependencies {
-          for d in v.deps {
-            if dep is d {
-              append_target (d, targets)
-              return ok
-            }
-          }
+          for d in v.deps
+            if dep is d then return append_target (d, targets)
         }
 
         append dep in Dependencies.$(file).deps
 
-        append_target (dep, targets)
+        return notok if notok is append_target (dep, targets)
       }
     }
 
@@ -1557,7 +1768,7 @@ func make_dependencies (f) {
     return ok
   }
 
-  get_dependencies (f)
+  return get_dependencies (f)
 }
 
   # main
@@ -1628,7 +1839,7 @@ func make_dependencies (f) {
     ARGPARSE.results.shared_module  = if flag & MODULE or flag & ALL          then true orelse false
     ARGPARSE.results.static         = if flag & STATIC or flag & ALL          then true orelse false
     ARGPARSE.results.static_library = if flag & STATIC_LIBRARY or flag & ALL  then true orelse false
-    ARGPARSE.results.install_script = if flag & SCRIPT or flag & ALL         then true orelse false
+    ARGPARSE.results.install_script = if flag & SCRIPT or flag & ALL          then true orelse false
   }
 
   return notok if notok is make_dependencies (pkg)
@@ -1660,7 +1871,7 @@ func make_dependencies (f) {
       print ("# Making: [ ${dirname (v): basename ()} ]")
     } else {
       ifnot s.get.targets () is IGNORE then
-        println ("# Making: [\e[33m ${s.get.name ()} \e[m]")
+        println ("# Making: [\e[33m ${s.get.orig_name ()} \e[m]")
       r =  s.main ()
     }
 

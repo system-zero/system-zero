@@ -1,0 +1,24 @@
+#@
+  depends_on ("String",  LIBRARY)
+  depends_on ("Cstring", LIBRARY)
+  depends_on ("File",    LIBRARY)
+  depends_on ("Dir",     LIBRARY)
+  depends_on ("Path",    LIBRARY)
+  depends_on ("Smap",    LIBRARY)
+  depends_on ("Error",   LIBRARY)
+#@
+
+var m = New Make (__file__, LIBRARY; from_z_namespace)
+
+m.set.library.to_linkagainst ([
+  "string", "cstring", "file", "dir", "path",
+  "smap", "error"]; append_version)
+
+m.set.library.cflag ([
+  "-DUSERNAME=\"" + USERNAME + "\"",
+  "-DGROUPNAME=\"" + GROUPNAME + "\"",
+  "-DDATADIR=\"" + SYSDATADIR + "\"",
+  "-DTMPDIR=\"" + TMPDIR + "\"",
+  "-DSYSDIR=\"" + SYSDIR + "\"",
+  "-DSRCDIR=\"" + SRCDIR + "\""])
+return m

@@ -1,0 +1,16 @@
+#@
+  depends_on ("Vstring", LIBRARY)
+  depends_on ("Cstring", LIBRARY)
+  depends_on ("Dir",     LIBRARY)
+  depends_on ("OS",      LIBRARY)
+  depends_on ("Random",  LIBRARY)
+  depends_on ("Term",    LIBRARY)
+  depends_on ("IO",      LIBRARY)
+#
+
+var m = New Make (__file__, LIBRARY; from_z_namespace)
+
+m.set.library.to_linkagainst ([
+  "vstring", "cstring", "dir", "os", "io", "term", "random"]; append_version)
+
+return m

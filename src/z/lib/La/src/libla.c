@@ -187,6 +187,7 @@
 #define TOKEN_LIST_FUN    127
 #define TOKEN_LIST_NEW    128
 #define TOKEN_ANNOTATION  129
+#define TOKEN_ANONYMOUS   130
 
 //#define TOKEN_NULL       '0'
 #define TOKEN_ASSIGN      1000
@@ -2285,6 +2286,20 @@ static void la_release_unit (void *item) {
   String.release (str);
 }
 
+static funT *fun_copy (funT *f, char *name, size_t len) {
+  funT *uf = Alloc (sizeof (funT));
+  Cstring.cp (uf->funname, MAXLEN_SYMBOL + 1, name, len);
+  uf->body = f->body;
+  uf->nargs = f->nargs;
+  uf->prev = f->prev;
+  uf->root = f->root;
+  uf->next = f->next;
+  uf->symbols = Vmap.new (MAP_DEFAULT_LENGTH);
+  uf->block_symbols = NULL;
+  uf->modules = NULL;
+  return uf;
+}
+
 static funT *fun_new (funNewArgs options) {
   funT *uf = Alloc (sizeof (funT));
   Cstring.cp (uf->funname, MAXLEN_SYMBOL, options.name, options.namelen);
@@ -2295,6 +2310,7 @@ static funT *fun_new (funNewArgs options) {
   uf->next = NULL;
   uf->symbols = Vmap.new (options.num_symbols);
   uf->block_symbols = NULL;
+
   return uf;
 }
 
@@ -4690,6 +4706,7 @@ static int la_map_set_value (la_t *this, Vmap_t *map, const char *key, VALUE v, 
 
     case NUMBER_TYPE: val->asNumber  = v.asNumber;  break;
     case NULL_TYPE  : val->asNull    = v.asNull;    break;
+
     case MAP_TYPE:
       if (v.sym isnot NULL) {
         val->asInteger = (pointer) AS_MAP(la_copy_map (v));
@@ -4697,7 +4714,7 @@ static int la_map_set_value (la_t *this, Vmap_t *map, const char *key, VALUE v, 
       }
       // fall through
 
-    default:          val->asInteger = v.asInteger; break;
+    default: val->asInteger = v.asInteger; break;
   }
 
   if (NOTOK is Vmap.set (map, key, val, la_release_map_val, 0)) {
@@ -4820,8 +4837,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
 
   NEXT_TOKEN();
 
-  while (TOKEN is TOKEN_NL)
-    NEXT_TOKEN();
+  while (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
   if (TOKEN is TOKEN_FUNCDEF) {
     Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
@@ -4866,6 +4882,22 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   err = la_parse_expr (this, &v);
   this->objectState &= ~MAP_ASSIGNMENT;
   THROW_ERR_IF_ERR(err);
+
+  if (IS_UFUNC(v.type) or v.type & UFUNCTION_TYPE) {
+    if (TOKEN is TOKEN_AS) {
+      NEXT_TOKEN();
+      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_ANONYMOUS, "awaiting anonymous");
+      size_t len = Cstring.cp_fmt
+        (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
+      funT *uf = fun_copy (AS_FUNC_PTR(v), this->curFunName, len);
+      this->curFunName[0] = '\0';
+      v = PTR(uf);
+      v.type = UFUNCTION_TYPE;
+      sym_t *sym = la_define_symbol (this, this->function, uf->funname, (UFUNC_TYPE | (uf->nargs << 8)), PTR(uf), 0);
+      THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
+      NEXT_TOKEN();
+    }
+  }
 
   assign:
 
@@ -5099,6 +5131,23 @@ static int la_parse_map (la_t *this, VALUE *vp) {
   PARSEPTR = TOKENSTR;
 
   Vmap_t *map = Vmap.new (32);
+  funT *scope = this->curScope;
+  while (scope and Cstring.eq_n (scope->funname, "__block_", 8))
+    scope = scope->prev;
+
+#if 0
+  VALUE *vscope = Alloc (sizeof (VALUE));
+  *vscope = STRING_NEW(scope->funname);
+  sym_t *sym = Alloc (sizeof (sym_t));
+  sym->scope = NULL;
+  sym->value = MAP(map);
+  vscope->sym = sym;
+
+  if (NOTOK is Vmap.set (map, "__MAP_SCOPE__", vscope, la_release_map_val, 0)) {
+    this->print_bytes (this->err_fp, "Map.set() internal error\n");
+    return LA_NOTOK;
+  }
+#endif
   int err = la_parse_map_members (this, MAP(map));
   THROW_ERR_IF_ERR(err);
 
@@ -5277,7 +5326,8 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       else
         th = map_par.sym->value;
 
-      la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+      sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+      THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
       this->funcState |= MAP_METHOD_STATE;
       err = la_parse_func_call (this, vp, NULL, uf, *v);
 
@@ -5367,7 +5417,6 @@ static int la_parse_map_set (la_t *this) {
   char key[MAXLEN_SYMBOL + 1];
   TOKEN = la_get_map_key (this, key);
   THROW_ERR_IF_ERR(TOKEN);
-
   NEXT_TOKEN();
   c = TOKEN;
   VALUE *v;
@@ -5400,7 +5449,8 @@ static int la_parse_map_set (la_t *this) {
       else
         th = map_par.sym->value;
 
-      la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+      sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+      THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
       this->funcState |= MAP_METHOD_STATE;
       VALUE vp;
       err = la_parse_func_call (this, &vp, NULL, uf, *v);
@@ -5479,7 +5529,6 @@ static int la_parse_map_set (la_t *this) {
 
 static int la_parse_new (la_t *this, VALUE *vp) {
   int err;
-
   NEXT_RAW_TOKEN();
   int c = TOKEN;
 
@@ -5516,7 +5565,8 @@ static int la_parse_new (la_t *this, VALUE *vp) {
 
   funT *uf = AS_FUNC_PTR((*val));
   VALUE th = val->sym->value;
-  la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+  sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+  THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
   this->funcState |= MAP_METHOD_STATE;
   VALUE v;
   err = la_parse_func_call (this, &v, NULL, uf, *val);
@@ -5837,13 +5887,15 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   int c = TOKEN;
 
   if (c isnot TOKEN_PAREN_OPEN) {
-    UNGET_BYTE();
+//    UNGET_BYTE();
     VALUE v;
     if (uf isnot NULL) {
+      int l = GETSTRLEN(TOKENSTR);
+      while (l-- > 0) UNGET_BYTE();
       v = PTR(uf);
       v.type |= UFUNCTION_TYPE;
     } else {
-      NEXT_TOKEN();
+//      NEXT_TOKEN();
       v = PTR(op);
       v.type = value.sym->type;
     }
@@ -6874,9 +6926,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       THROW_ERR_IF_ERR(err);
 
       NEXT_TOKEN();
-      c = TOKEN;
 
-      if (c is TOKEN_COLON) {
+      if (TOKEN is TOKEN_COLON) {
         TOKENVAL = *vp;
         return la_parse_chain (this, vp);
       }
@@ -8636,6 +8687,7 @@ static int la_parse_foreach (la_t *this) {
       VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
       if (value->sym->scope is NULL and 0 is is_this)
         continue;
+      // if (Cstring.eq (keys[i]->bytes, "__MAP_SCOPE__")) continue;
 
       string *v_k = AS_STRING(key_sym->value);
       String.replace_with_len (v_k, keys[i]->bytes, keys[i]->num_bytes);
@@ -11375,6 +11427,7 @@ static struct def {
   { "Annotation", TOKEN_ANNOTATION, NULL_VALUE },
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
   { "New",     TOKEN_NEW,      NULL_VALUE },
+  { "anonymous",TOKEN_ANONYMOUS, NULL_VALUE },
   { "Type",    TOKEN_TYPE,     PTR(la_parse_type) },
   { "override",TOKEN_OVERRIDE, NULL_VALUE },
   { "List",    TOKEN_LIST_FUN, NULL_VALUE },
