@@ -221,8 +221,9 @@ static int process_file_remove (dirwalk_t *dw, const char *file, struct stat *st
   const char *bn = file + syncdir->dest_len + (syncdir->dest_has_dir_sep is 0);
 
   if (syncdir->exclude_files isnot NULL) {
+    char *bname = Path.basename ((char *) bn);
     for (int i = 0; i < syncdir->exclude_files_len; i++) {
-      if (Cstring.eq (bn, syncdir->exclude_files[i]->bytes)) return 0;
+      if (Cstring.eq (bname, syncdir->exclude_files[i]->bytes)) return 0;
     }
   }
 

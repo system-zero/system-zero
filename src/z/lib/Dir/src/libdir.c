@@ -245,7 +245,8 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
       case DT_UNKNOWN:
         this->status = this->process_dir (this, new->bytes, &st);
         if (1 is this->status) {
-          __dir_walk_run__ (this, new->bytes);
+          if (NOTOK is __dir_walk_run__ (this, new->bytes))
+            goto theend;
         } else if (NOTOK is this->status)
           goto theend;
         break;
