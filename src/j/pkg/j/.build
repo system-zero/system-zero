@@ -1,6 +1,6 @@
 #@
-  depends_on ("y", ALL)
   depends_on ("E", LIBRARY)
+  depends_on ("y", ALL)
 #
 
 return New Make (__file__, IGNORE)

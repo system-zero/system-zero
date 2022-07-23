@@ -6,7 +6,7 @@
   depends_on ("Video",    LIBRARY)
 #
 
-var m = New Make (__file__, LIBRARY; from_z_namespace)
+var m = New Make (__file__, LIBRARY; z_library)
 m.set.library.to_linkagainst ([
   "string", "cstring", "vstring", "readline", "video"]; append_version)
 m.set.library.cflag ("-DTMPDIR=\"" + TMPDIR + "\"")

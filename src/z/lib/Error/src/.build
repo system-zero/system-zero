@@ -1,14 +1,14 @@
-var m = New Make (__file__, LIBRARY; from_z_namespace)
+var m = New Make (__file__, LIBRARY; z_library)
 
-func error_pre_exec {
+func error_pre_exec (s) {
   var l = "liberror.c"
   var h = "error.h"
-  if false is this.get.shared_library.force () and false is this.get.static_library.force () {
+  if false is s.get.shared.library.force () and false is s.get.static.library.force () {
     return ok if l: exists () and h: exists ()
   }
 
-  var cc = this.get.cc ()
-  var sh = this.get.sh ()
+  var cc = s.get.cc ()
+  var sh = s.get.sh ()
   var com = cc + " -Wall -o generate_lib generate_lib.c"
   var r = sh.exec (com)
   return notok if r isnot ok

@@ -5,6 +5,6 @@
   depends_on ("String",  LIBRARY)
 #
 
-var m = New Make (__file__, LIBRARY; from_z_namespace)
+var m = New Make (__file__, LIBRARY; z_library)
 m.set.library.to_linkagainst (["cstring", "string", "sys", "error"]; append_version)
 return m
