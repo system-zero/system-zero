@@ -47,6 +47,7 @@
 #define NS_CHAIN_BLOCK      "__chain_block__"
 #define NS_CHAIN_BLOCK_LEN  15
 #define NS_ANON            "anonymous"
+#define NS_ANON_LEN        9
 #define LA_EXTENSION       "lai"
 #define LA_STRING_NS       "__string__"
 #define LA_OPERATORS       "=+-!/*%<>&|^"
@@ -187,7 +188,7 @@
 #define TOKEN_LIST_FUN    127
 #define TOKEN_LIST_NEW    128
 #define TOKEN_ANNOTATION  129
-#define TOKEN_ANONYMOUS   130
+#define TOKEN_CALLBACK    130
 
 //#define TOKEN_NULL       '0'
 #define TOKEN_ASSIGN      1000
@@ -2294,6 +2295,8 @@ static funT *fun_copy (funT *f, char *name, size_t len) {
   uf->prev = f->prev;
   uf->root = f->root;
   uf->next = f->next;
+  for (int i = 0; i < uf->nargs; i++)
+    Cstring.cp (uf->argName[i], MAXLEN_SYMBOL + 1, f->argName[i], bytelen (f->argName[i]));
   uf->symbols = Vmap.new (MAP_DEFAULT_LENGTH);
   uf->block_symbols = NULL;
   uf->modules = NULL;
@@ -2302,7 +2305,7 @@ static funT *fun_copy (funT *f, char *name, size_t len) {
 
 static funT *fun_new (funNewArgs options) {
   funT *uf = Alloc (sizeof (funT));
-  Cstring.cp (uf->funname, MAXLEN_SYMBOL, options.name, options.namelen);
+  Cstring.cp (uf->funname, MAXLEN_SYMBOL + 1, options.name, options.namelen);
   uf->body = options.body;
   uf->nargs = options.nargs;
   uf->prev = options.parent;
@@ -4886,9 +4889,9 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
   if (IS_UFUNC(v.type) or v.type & UFUNCTION_TYPE) {
     if (TOKEN is TOKEN_AS) {
       NEXT_TOKEN();
-      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_ANONYMOUS, "awaiting anonymous");
+      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_CALLBACK, "awaiting callback");
       size_t len = Cstring.cp_fmt
-        (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
+        (this->curFunName, MAXLEN_SYMBOL + 1, "__G_" NS_ANON "_%zd", this->anon_id++);
       funT *uf = fun_copy (AS_FUNC_PTR(v), this->curFunName, len);
       this->curFunName[0] = '\0';
       v = PTR(uf);
@@ -5326,10 +5329,25 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       else
         th = map_par.sym->value;
 
-      sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
-      THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
-      this->funcState |= MAP_METHOD_STATE;
-      err = la_parse_func_call (this, vp, NULL, uf, *v);
+      if (Cstring.eq_n (uf->funname, "__G_" NS_ANON, 4 + NS_ANON_LEN)) {
+        Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
+        funT *fun = Fun_new (this, funNew (
+          .name = this->curFunName, .namelen = bytelen (this->curFunName),
+          .parent = this->function));
+        this->curFunName[0] = '\0';
+        funT *curScope = this->curScope;
+        this->curScope = fun;
+        stack_push (this, th);
+        this->argCount = 1;
+        err = la_parse_func_call (this, vp, NULL, uf, *v);
+        fun_release (&fun);
+        this->curScope = curScope;
+      } else {
+        sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+        THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
+        this->funcState |= MAP_METHOD_STATE;
+        err = la_parse_func_call (this, vp, NULL, uf, *v);
+      }
 
       NEXT_TOKEN();
     } else {
@@ -5449,11 +5467,28 @@ static int la_parse_map_set (la_t *this) {
       else
         th = map_par.sym->value;
 
-      sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
-      THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
-      this->funcState |= MAP_METHOD_STATE;
-      VALUE vp;
-      err = la_parse_func_call (this, &vp, NULL, uf, *v);
+      if (Cstring.eq_n (uf->funname, "__G_" NS_ANON, 4 + NS_ANON_LEN)) {
+        Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
+        funT *fun = Fun_new (this, funNew (
+          .name = this->curFunName, .namelen = bytelen (this->curFunName),
+          .parent = this->function));
+        this->curFunName[0] = '\0';
+        funT *curScope = this->curScope;
+        this->curScope = fun;
+        stack_push (this, th);
+        this->argCount = 1;
+        VALUE vp;
+        err = la_parse_func_call (this, &vp, NULL, uf, *v);
+        fun_release (&fun);
+        this->curScope = curScope;
+      } else {
+        sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+        THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
+        this->funcState |= MAP_METHOD_STATE;
+        VALUE vp;
+        err = la_parse_func_call (this, &vp, NULL, uf, *v);
+      }
+
       NEXT_TOKEN();
     } else {
       CFunc op = (CFunc) AS_PTR((*v));
@@ -7192,22 +7227,19 @@ static int la_parse_stmt (la_t *this) {
       prev_token = c;
       int is_const = c is TOKEN_CONSTDEF;
 
-      NEXT_RAW_TOKEN();
-      c = TOKEN;
+      NEXT_RAW_TOKEN(); c = TOKEN;
 
       if (c is TOKEN_NL) {
-        NEXT_TOKEN();
-        c = TOKEN;
+        NEXT_RAW_TOKEN(); c = TOKEN;
       }
 
-      if (c isnot TOKEN_SYMBOL)
-        THROW_SYNTAX_ERR("var definition: expected a symbol");
+      THROW_SYNTAX_ERR_IF(c isnot TOKEN_SYMBOL, "var definition: expected a symbol");
 
       name = TOKENSTR;
 
-      THROW_SYNTAX_ERR_IFNOT(GETSTRLEN(name), "empty length symbol name");
-
       char *key = sym_key (this, name);
+
+      THROW_SYNTAX_ERR_IF(Cstring.eq(key, "this"), "can not define this");
 
       sym_t *sym = ns_lookup_symbol (this->std, key);
       ifnot (NULL is sym) {
@@ -7418,8 +7450,7 @@ static int la_parse_stmt (la_t *this) {
       if (val.type & UFUNCTION_TYPE) {
         funT *f = AS_FUNC_PTR(val);
         symbol->type = (UFUNC_TYPE | (f->nargs << 8));
-        Cstring.cp (f->funname, MAXLEN_SYMBOL, GETSTRPTR(name),
-            GETSTRLEN(name));
+        Cstring.cp (f->funname, MAXLEN_SYMBOL + 1, GETSTRPTR(name), GETSTRLEN(name));
         f->prev = scope->prev;
       } else
         symbol->type = val.type;
@@ -9536,7 +9567,7 @@ static int la_parse_arg_list (la_t *this, funT *uf) {
 
     const char *ptr = GETSTRPTR(name);
     size_t len = GETSTRLEN(name);
-    Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL, ptr, len);
+    Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL + 1, ptr, len);
 
     THROW_SYNTAX_ERR_IF_SYM_NAME_EXCEEDS_LEN(uf->argName[nargs], len);
 
@@ -11427,7 +11458,7 @@ static struct def {
   { "Annotation", TOKEN_ANNOTATION, NULL_VALUE },
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
   { "New",     TOKEN_NEW,      NULL_VALUE },
-  { "anonymous",TOKEN_ANONYMOUS, NULL_VALUE },
+  { "callback",TOKEN_CALLBACK, NULL_VALUE },
   { "Type",    TOKEN_TYPE,     PTR(la_parse_type) },
   { "override",TOKEN_OVERRIDE, NULL_VALUE },
   { "List",    TOKEN_LIST_FUN, NULL_VALUE },

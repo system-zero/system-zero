@@ -756,7 +756,7 @@ const char *lai_keywords[] = {
   "orelse I", "then I", "and I", "end I", "or I", "this V", "return I",
   "for I", "while I", "break I", "continue I", "times I", "time I",
   "in I", "as I", "append I", "println F", "format F",
-  "null T", "ok T", "notok T", "true T", "false T", "anonymous I",
+  "null T", "ok T", "notok T", "true T", "false T", "callback I",
   "array V", "map V", "string T", "integer T", "number T", "list T",
   "stdout V", "stderr V", "stdin V",
   "qualifier F", "qualifiers F", "qualifier_exists F",
