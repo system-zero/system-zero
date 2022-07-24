@@ -2255,13 +2255,27 @@ static int buf_isit_special_type (buf_t *this) {
 static int buf_set_row_idx (buf_t *this, int idx, int ofs, int col) {
   if (idx < 0) idx = 0;
 
+  int index = idx;
   do {
-    idx = DListSetCurrent (this, idx);
+    idx = DListSetCurrent (this, index);
+
     if (idx is EINDEX) {
-      idx--;
+      index--;
       continue;
     }
-  } while (0);
+
+    break;
+  } while (1);
+
+  /* ATTENTION: the following doesn't do what you may think it will do */
+  // do {
+  //   idx = DListSetCurrent (this, index);
+  //   if (idx is EINDEX) {
+  //     index--;
+  //     continue;
+  //   }
+  // } while (0);
+  /* as the continue statement doesn't really continues the loop */
 
   $my(video)->row_pos = $my(cur_video_row) = $my(dim)->first_row;
   $my(video_first_row) = this->current;
