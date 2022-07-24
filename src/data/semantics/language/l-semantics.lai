@@ -1098,6 +1098,12 @@ func self_semantics () {
 
   # var trcl = tail_call_long (1000000)
 
+  var definedV
+
+  assert_true ("testing is_defined() function",
+    is_defined ("definedV") is true and
+    is_defined ("definedVV") is false)
+
   assert_true ("testing self as a recursive tail call",
       rtc is 7540113804746346429 and
       rtcs is "aaaaaaaaaaaaaaaa")

@@ -33,11 +33,13 @@ static char *path_basename_sans_extname (char *name) {
   if (NULL is bsnm) return NULL;
 
   char *sp = bsnm;
+  int found = 0;
   do {
     ifnot (*sp) break;
     while (*(sp + 1)) sp++;
     while (sp > bsnm) {
       if (*sp is '.') {
+        found = 1;
         sp--;
         break;
       }
@@ -47,7 +49,12 @@ static char *path_basename_sans_extname (char *name) {
 
   } while (0);
 
-  size_t len = sp - bsnm + (*sp isnot '.');
+  size_t len = 0;
+  ifnot (found)
+    len = bsnm - name;
+  else
+    len = sp - bsnm + (*sp isnot '.');
+
   char *buf = Alloc (len + 1);
   Cstring.cp (buf, len + 1, bsnm, len);
   return buf;

@@ -211,6 +211,9 @@
 
 #define TOKEN_INCLUDE     89000
 
+#define LIST_APPEND       1
+#define LIST_PREPEND      0
+
 typedef struct la_string {
   uint len;
   const char *ptr;
@@ -616,6 +619,7 @@ static int la_parse_fmt (la_t *, string *, int);
 static int la_parse_string_get (la_t *, VALUE *);
 static int la_parse_array_set (la_t *);
 static int la_parse_string_set_char (la_t *, VALUE, int);
+static inline sym_t *ns_lookup_symbol (funT *, const char *);
 static sym_t *la_lookup_symbol (la_t *, la_string);
 static sym_t *la_define_symbol (la_t *, funT *, const char *, int, VALUE, int);
 static VALUE la_release_val (la_t *, VALUE);
@@ -1115,6 +1119,21 @@ static VALUE la_typeArrayAsString (la_t *this, VALUE value) {
   return la_typeAsString (this, v);
 }
 
+static VALUE la_is_defined (la_t *this, VALUE v_val) {
+  ifnot (IS_STRING(v_val)) C_THROW(LA_ERR_TYPE_MISMATCH, "is_defined(): awaiting a string");
+  char *val = AS_STRING_BYTES(v_val);
+
+  funT *f = this->curScope;
+
+  while (NULL isnot f) {
+    ifnot (NULL is ns_lookup_symbol (f, val))
+      return TRUE_VALUE;
+    f = f->prev;
+  }
+
+  return FALSE_VALUE;
+}
+
 static VALUE la_set_qualifiers (la_t *this, VALUE v_qual, funT *uf) {
   ifnot (IS_MAP(v_qual)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map as qualifiers");
 
@@ -1368,7 +1387,7 @@ static VALUE list_set (la_t *this, VALUE v_list, VALUE v_item, int what) {
   VALUE *vp = Alloc (sizeof (VALUE));
   *vp = v;
   node->value = vp;
-  if (what)
+  if (what is LIST_APPEND)
     DListAppend(list, node);
   else
     DListPrepend(list, node);
@@ -1377,11 +1396,11 @@ static VALUE list_set (la_t *this, VALUE v_list, VALUE v_item, int what) {
 }
 
 static VALUE list_prepend (la_t *this, VALUE v_list, VALUE v_item) {
-  return list_set (this, v_list, v_item, 0);
+  return list_set (this, v_list, v_item, LIST_PREPEND);
 }
 
 static VALUE list_append (la_t *this, VALUE v_list, VALUE v_item) {
-  return list_set (this, v_list, v_item, 1);
+  return list_set (this, v_list, v_item, LIST_APPEND);
 }
 
 static VALUE list_insert_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
@@ -1395,14 +1414,12 @@ static VALUE list_insert_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
 
   if (idx <= -1 or idx > list->num_items) {
     char msg[256]; Cstring.cp_fmt (msg, 256,
-      "index %d > than %d length, or less or equal than -1", idx, list->num_items);
+      "given index %d is > than %d list length, or less than or equal with -1", AS_INT(v_idx), list->num_items);
     C_THROW(LA_ERR_OUTOFBOUNDS, msg);
   }
 
-  if (idx is 0)
-    return list_set (this, v_list, v_v, 0);
-  if (idx is list->num_items)
-    return list_set (this, v_list, v_v, 1);
+  if (idx is 0)               return list_set (this, v_list, v_v, LIST_PREPEND);
+  if (idx is list->num_items) return list_set (this, v_list, v_v, LIST_APPEND);
 
   idx--;
 
@@ -1441,7 +1458,8 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
   listType *list = AS_LIST(v_list);
   int idx = AS_INT(ix);
   if (0 > idx) idx += list->num_items;
-  THROW_OUT_OF_BOUNDS_IF(idx <= -1 or idx >= list->num_items, "list index [%d] is out of bounds [%d]", idx, list->num_items);
+  THROW_OUT_OF_BOUNDS_IF(idx <= -1 or idx >= list->num_items, "list index [%d] is out of bounds, actual list length [%d]",
+    AS_INT(ix), list->num_items);
 
   listNode *node = DListGetAt(list, listNode, idx);
 
@@ -1450,9 +1468,7 @@ static int la_parse_list_get (la_t *this, VALUE *vp) {
   NEXT_TOKEN();
 
   if (TOKEN is TOKEN_DOT) {
-    THROW_SYNTAX_ERR_IF(val->type isnot MAP_TYPE,
-      "value is not a map type");
-
+    THROW_SYNTAX_ERR_IF(val->type isnot MAP_TYPE, "value is not a map type");
     TOKENVAL = *val;
     UNGET_BYTE();
     return la_parse_map_get (this, vp);
@@ -1802,7 +1818,7 @@ static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
 
   if (idx <= -1 or idx >= list->num_items) {
     char msg[256]; Cstring.cp_fmt (msg, 256,
-      "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
+      "given index %d >= than %d list length, or less than or equal with -1", AS_INT(v_idx), list->num_items);
     C_THROW(LA_ERR_OUTOFBOUNDS, msg);
   }
 
@@ -1844,7 +1860,7 @@ static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
 
   if (idx <= -1 or idx >= list->num_items) {
     char msg[256]; Cstring.cp_fmt (msg, 256,
-      "index %d >= than %d length, or less or equal than -1", idx, list->num_items);
+      "given index %d >= than %d list length, or less than or equal with -1", AS_INT(v_idx), list->num_items);
     C_THROW(LA_ERR_OUTOFBOUNDS, msg);
   }
 
@@ -1915,6 +1931,7 @@ static int la_parse_list (la_t *this, VALUE *vp, int is_fun) {
   return LA_OK;
 }
 
+
 static int la_parse_append (la_t *this, VALUE *vp) {
   APPENDVAL = NULL_VALUE;
   VALUE v;
@@ -1954,7 +1971,7 @@ static int la_parse_append (la_t *this, VALUE *vp) {
     }
 
     case LIST_TYPE:
-      list_set (this, *vp, v, 1); // always succeeds
+      list_set (this, *vp, v, LIST_APPEND); // always succeeds
       break;
 
     case MAP_TYPE: {
@@ -2757,7 +2774,7 @@ static int la_parse_directive (la_t *this, VALUE *vp, int tok) {
   switch (tok) {
     case TOKEN_D_ISDEFINED:
       THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
-        "error while parsing is defined directive: awaiting a string");
+        "error while parsing #isdefined directive: awaiting a string");
       *vp = INT(NULL isnot ns_lookup_symbol (this->macros, AS_STRING_BYTES(v)));
       return OK;
 
@@ -2773,16 +2790,16 @@ static int la_parse_directive (la_t *this, VALUE *vp, int tok) {
       err = la_parse_expr (this, &as);
       THROW_ERR_IF_ERR(err);
       THROW_SYNTAX_ERR_IF(as.type isnot STRING_TYPE,
-        "error while parsing is defined directive: awaiting a string");
+        "error while parsing #define directive: awaiting a string");
       THROW_SYNTAX_ERR_FMT_IF(NULL isnot ns_lookup_symbol (this->macros, AS_STRING_BYTES(as)),
-        "error while parsing define directive: %s, is already defined", AS_STRING_BYTES(as));
+        "error while parsing #define directive: %s, is already defined", AS_STRING_BYTES(as));
       THROW_SYNTAX_ERR_FMT_IF(NULL is la_define_symbol (this, this->macros, AS_STRING_BYTES(as), v.type, v, 1),
-        "error while parsing define directive: %s, cannot define", AS_STRING_BYTES(as));
+        "error while parsing #define directive: %s, cannot define", AS_STRING_BYTES(as));
       return OK;
 
     case TOKEN_D_UNDEF: {
       THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
-        "error while parsing undef directive: awaiting a string");
+        "error while parsing #undef directive: awaiting a string");
 
       sym_t *sym = Vmap.pop (this->macros->symbols, AS_STRING_BYTES(v));
       THROW_SYNTAX_ERR_FMT_IF(NULL is sym,
@@ -2793,7 +2810,7 @@ static int la_parse_directive (la_t *this, VALUE *vp, int tok) {
 
     case TOKEN_D_GET: {
       THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
-        "error while parsing get directive: awaiting a string");
+        "error while parsing #get directive: awaiting a string");
 
       sym_t *sym = ns_lookup_symbol (this->macros, AS_STRING_BYTES(v));
       if (NULL is sym) {
@@ -11554,6 +11571,7 @@ LaDefCFun la_funs[] = {
   { "qualifier",        PTR(la_qualifier), 2},
   { "qualifiers",       PTR(la_qualifiers), 0},
   { "qualifier_exists", PTR(la_qualifier_exists), 1},
+  { "is_defined",       PTR(la_is_defined), 1},
   { "list_pop_at",      PTR(list_pop_at), 2},
   { "list_append",      PTR(list_append), 2},
   { "list_prepend",     PTR(list_prepend), 2},

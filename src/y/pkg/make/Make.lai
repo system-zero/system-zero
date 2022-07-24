@@ -1,10 +1,13 @@
-#!/bin/env La
-
 # An oversimplified make like utility, which is quite specific for this
 # environment and its development flow (though there is some kind of an
-# abstraction), so its nothing new and excited.
+# abstraction), so its nothing new and excited, but it has a nice grammar!
 
-          public const func Make (argc, argv) {
+# It can be used both as the main utility if it will be installed by itself,
+# or as a library if the MAKE_AS_LIBRARY const/var has been declared before
+# include it. If it is being used as an executable, the argv argument comes
+# from the environment and the argument parsing starts from index 1, otherwise
+# the argv argument is an array of strings and parsing starts from index zero.
+# Other than that difference, the interface is the same.
 
 import ("io")
 import ("sh")
@@ -16,6 +19,8 @@ import ("crypt")
 
 include ("argparse")
 include ("packman")
+
+          public const func Make (argv) {
 
 func argparseNew () {
   var argparse = New Argparse (31, 0, "Make option[s] [directory]")
@@ -1318,6 +1323,7 @@ Type Make {
       }
     }
   }
+
   public
   main : func {
     return ok if this.targets is IGNORE
@@ -1376,17 +1382,17 @@ Type Make {
   }
 
   get : {
-    cc                       : func return this.cc
-    sh                       : func return this.sh
-    version                  : func return this.version
-    retval                   : func return this.retval
-    dependencies             : func return this.dependencies
-    name                     : func return this.name
-    orig_name                : func return this.orig_name
-    dump_commands            : func return this.dump_commands
-    libdir                   : func return this.libdir
-    toplibdir                : func return this.toplibdir
-    targets                  : func return this.targets
+    cc            : func return this.cc
+    sh            : func return this.sh
+    name          : func return this.name
+    orig_name     : func return this.orig_name
+    version       : func return this.version
+    retval        : func return this.retval
+    libdir        : func return this.libdir
+    toplibdir     : func return this.toplibdir
+    targets       : func return this.targets
+    dependencies  : func return this.dependencies
+    dump_commands : func return this.dump_commands
 
     shared : {
       library : {
@@ -1402,30 +1408,30 @@ Type Make {
   }
 
   set : {
-    cc                       : func (c) ifnot null is c this.cc = c
-    std                      : func (s) ifnot null is s this.std = s
-    march                    : func (m) ifnot null is m this.march = m
-    version                  : func (v) ifnot null is v this.version = v
-    libname                  : func (l) ifnot null is l this.libname = l
-    liboutput                : func (o) ifnot null is o this.liboutput = "lib" + o + "-" + this.version
-    optimization             : func (o) ifnot null is o this.optimization = o
-    cached_file              : func (c) ifnot null is c this.cached_file = c
-    builddir                 : func (d) ifnot null is d this.builddir = d
-    bindir                   : func (d) ifnot null is d this.bindir = d
-    libdir                   : func (d) ifnot null is d this.libdir = d
-    incdir                   : func (d) ifnot null is d this.incdir = d
-    moddir                   : func (d) ifnot null is d this.moddir = d
-    datadir                  : func (d) ifnot null is d this.datadir = d
-    shelldatadir             : func (d) ifnot null is d this.shelldatadir = d
+    cc           : func (c) ifnot null is c this.cc = c
+    std          : func (s) ifnot null is s this.std = s
+    march        : func (m) ifnot null is m this.march = m
+    version      : func (v) ifnot null is v this.version = v
+    libname      : func (l) ifnot null is l this.libname = l
+    liboutput    : func (o) ifnot null is o this.liboutput = "lib" + o + "-" + this.version
+    optimization : func (o) ifnot null is o this.optimization = o
+    cached_file  : func (c) ifnot null is c this.cached_file = c
+    builddir     : func (d) ifnot null is d this.builddir = d
+    bindir       : func (d) ifnot null is d this.bindir = d
+    libdir       : func (d) ifnot null is d this.libdir = d
+    incdir       : func (d) ifnot null is d this.incdir = d
+    moddir       : func (d) ifnot null is d this.moddir = d
+    datadir      : func (d) ifnot null is d this.datadir = d
+    shelldatadir : func (d) ifnot null is d this.shelldatadir = d
 
-    dump_commands            : func (v) this.dump_commands = v
+    dump_commands : func (v) this.dump_commands = v
 
-    local_env                : func (b) {
+    local_env : func (b) {
       this.local_env = b
       if this.local_env is false then this.local_cflags = false
     }
 
-    modulesdirname           : func (n) {
+    modulesdirname : func (n) {
       return if null is n
       if this.local_env is false then this.modulesdirname = n
       orelse
@@ -1435,7 +1441,7 @@ Type Make {
           orelse this.modulesdirname = n
     }
 
-    namespace                : func (n) {
+    namespace : func (n) {
       return if null is n
       return if this.namespace is n
       this.namespace = n
@@ -1444,90 +1450,85 @@ Type Make {
       this.set.modulesdirname (n)
     }
 
-    cflags                   : func (v) this.append_value (v, this.cflags)
+    cflags : func (v) this.append_value (v, this.cflags)
 
     shared : {
       library : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.shared.library.linkagainst; qualifiers())
-        cflag                : func (v) this.append_value (v, this.shared.library.cflags)
-        pre_exec             : func (f) ifnot null is f then this.shared.library.pre_exec = f as callback
-        post_exec            : func (f) ifnot null is f then this.shared.library.post_exec = f as callback
-        source               : func (v) {
-          if qualifier_exists ("clear") then
-            this.clear.shared.library.sources ()
+        to_linkagainst : func (l) this.append_linkagainst_value (l, this.shared.library.linkagainst; qualifiers())
+        cflag          : func (v) this.append_value (v, this.shared.library.cflags)
+        pre_exec       : func (f) ifnot null is f then this.shared.library.pre_exec = f as callback
+        post_exec      : func (f) ifnot null is f then this.shared.library.post_exec = f as callback
+        compile_type   : func (t) this.shared.library.compile_type = t
+        source         : func (v) {
+          if qualifier_exists ("clear") then this.clear.shared.library.sources ()
           this.append_value (v, this.shared.library.sources)
         }
-
-        compile_type         : func (t) this.shared.library.compile_type = t
       }
 
       executable : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.shared.executable.linkagainst; qualifiers())
-        cflag                : func (v) this.append_value (v, this.shared.executable.cflags)
-        pre_exec             : func (f) ifnot null is f then this.shared.executable.pre_exec = f as callback
-        output               : func (o) ifnot null is o then this.shared.executable.output = o
-        post_exec            : func (f) ifnot null is f then this.shared.executable.post_exec = f as callback
-        source               : func (v) {
-          if qualifier_exists ("clear") then
-            this.clear.shared.executable.sources ()
+        to_linkagainst : func (l) this.append_linkagainst_value (l, this.shared.executable.linkagainst; qualifiers())
+        cflag          : func (v) this.append_value (v, this.shared.executable.cflags)
+        pre_exec       : func (f) ifnot null is f then this.shared.executable.pre_exec = f as callback
+        output         : func (o) ifnot null is o then this.shared.executable.output = o
+        post_exec      : func (f) ifnot null is f then this.shared.executable.post_exec = f as callback
+        source         : func (v) {
+          if qualifier_exists ("clear") then this.clear.shared.executable.sources ()
           this.append_value (v, this.shared.executable.sources)
         }
       }
 
       module : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.shared.module.linkagainst; qualifiers())
-        cflag                : func (v) this.append_value (v, this.shared.module.cflags)
-        pre_exec             : func (f) ifnot null is f then this.shared.module.pre_exec = f as callback
-        post_exec            : func (f) ifnot null is f then this.shared.module.post_exec = f as callback
-        output               : func (o) ifnot null is o this.shared.module.output = o
-        source               : func (v) {
-          if qualifier_exists ("clear") then
-            this.clear.shared.module.sources ()
+        to_linkagainst : func (l) this.append_linkagainst_value (l, this.shared.module.linkagainst; qualifiers())
+        cflag          : func (v) this.append_value (v, this.shared.module.cflags)
+        pre_exec       : func (f) ifnot null is f then this.shared.module.pre_exec = f as callback
+        post_exec      : func (f) ifnot null is f then this.shared.module.post_exec = f as callback
+        output         : func (o) ifnot null is o this.shared.module.output = o
+        source         : func (v) {
+          if qualifier_exists ("clear") then this.clear.shared.module.sources ()
           this.append_value (v, this.shared.module.sources)
         }
       }
 
-      cflags                 : func (v) {
-        this.set.shared.library.cflag (v) this.set.shared.executable.cflag (v)
+      cflags : func (v) {
+        this.set.shared.library.cflag (v)
+        this.set.shared.executable.cflag (v)
       }
     }
 
     static : {
       library : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.static.library.linkagainst; qualifiers())
-        cflag                : func (v) this.append_value (v, this.static.library.cflags)
-        pre_exec             : func (f) ifnot null is f then this.static.library.pre_exec = f as callback
-        post_exec            : func (f) ifnot null is f then this.static.library.post_exec = f as callback
-        source               : func (v) {
-          if qualifier_exists ("clear") then
-            this.clear.static.library.sources ()
+        to_linkagainst : func (l) this.append_linkagainst_value (l, this.static.library.linkagainst; qualifiers())
+        cflag          : func (v) this.append_value (v, this.static.library.cflags)
+        pre_exec       : func (f) ifnot null is f then this.static.library.pre_exec = f as callback
+        post_exec      : func (f) ifnot null is f then this.static.library.post_exec = f as callback
+        compile_type   : func (t) this.static.library.compile_type = t
+        source         : func (v) {
+          if qualifier_exists ("clear") then this.clear.static.library.sources ()
           this.append_value (v, this.static.library.sources)
         }
-        compile_type         : func (t) this.static.library.compile_type = t
       }
 
       executable : {
-        to_linkagainst       : func (l) this.append_linkagainst_value (l, this.static.executable.linkagainst; qualifiers())
-        cflag                : func (v) this.append_value (v, this.static.executable.cflags)
-        pre_exec             : func (f) ifnot null is f then this.static.executable.pre_exec = f as callback
-        post_exec            : func (f) ifnot null is f then this.static.executable.post_exec = f as callback
-        output               : func (o) ifnot null is o then this.static.executable.output = o
-        source               : func (v) {
-          if qualifier_exists ("clear") then
-            this.clear.static.executable.sources ()
+        to_linkagainst : func (l) this.append_linkagainst_value (l, this.static.executable.linkagainst; qualifiers())
+        cflag          : func (v) this.append_value (v, this.static.executable.cflags)
+        pre_exec       : func (f) ifnot null is f then this.static.executable.pre_exec = f as callback
+        post_exec      : func (f) ifnot null is f then this.static.executable.post_exec = f as callback
+        output         : func (o) ifnot null is o then this.static.executable.output = o
+        source         : func (v) {
+          if qualifier_exists ("clear") then this.clear.static.executable.sources ()
           this.append_value (v, this.static.executable.sources)
         }
       }
 
-      cflags                 : func (v) {
-        this.set.static.library.cflag (v) this.set.static.executable.cflag (v)
+      cflags : func (v) {
+        this.set.static.library.cflag (v)
+        this.set.static.executable.cflag (v)
       }
     }
 
     script : {
       source : func (v) {
-        if qualifier_exists ("clear") then
-          this.clear.script.sources ()
+        if qualifier_exists ("clear") then this.clear.script.sources ()
         this.append_value (v, this.script.sources)
       }
 
@@ -1552,9 +1553,8 @@ Type Make {
     }
 
     libc : {
-      source               : func (v) {
-        if qualifier_exists ("clear") then
-          this.clear.libc.sources ()
+      source : func (v) {
+        if qualifier_exists ("clear") then this.clear.libc.sources ()
         this.append_value (v, this.libc.sources)
       }
     }
@@ -1606,7 +1606,7 @@ Type Make {
   reset : {
     executable : {
       sources : {
-        with                 : func (v) {
+        with  : func (v) {
           ifnot null is v {
             this.clear.shared.executable.sources ()
             this.clear.static.executable.sources ()
@@ -1619,45 +1619,45 @@ Type Make {
   }
 
   clear : {
-    cflags                   : func clear (this.cflags)
+    cflags : func clear (this.cflags)
 
     shared : {
       library : {
-        to_linkagainst       : func clear (this.shared.library.linkagainst)
-        cflags               : func clear (this.shared.library.cflags)
-        sources              : func clear (this.shared.library.sources)
+        to_linkagainst : func clear (this.shared.library.linkagainst)
+        cflags         : func clear (this.shared.library.cflags)
+        sources        : func clear (this.shared.library.sources)
       }
 
       module : {
-        to_linkagainst       : func clear (this.shared.module.linkagainst)
-        cflags               : func clear (this.shared.module.cflags)
-        sources              : func clear (this.shared.module.sources)
+        to_linkagainst : func clear (this.shared.module.linkagainst)
+        cflags         : func clear (this.shared.module.cflags)
+        sources        : func clear (this.shared.module.sources)
       }
 
       executable : {
-        to_linkagainst       : func clear (this.shared.executable.linkagainst)
-        cflags               : func clear (this.shared.executable.cflags)
-        sources              : func clear (this.shared.executable.sources)
+        to_linkagainst : func clear (this.shared.executable.linkagainst)
+        cflags         : func clear (this.shared.executable.cflags)
+        sources        : func clear (this.shared.executable.sources)
       }
     }
 
     static : {
       library : {
-        to_linkagainst       : func clear (this.static.library.linkagainst)
-        cflags               : func clear (this.static.library.cflags)
-        sources              : func clear (this.static.library.sources)
+        to_linkagainst : func clear (this.static.library.linkagainst)
+        cflags         : func clear (this.static.library.cflags)
+        sources        : func clear (this.static.library.sources)
       }
 
       executable : {
-        to_linkagainst       : func clear (this.static.executable.linkagainst)
-        cflags               : func clear (this.static.executable.cflags)
-        sources              : func clear (this.static.executable.sources)
+        to_linkagainst : func clear (this.static.executable.linkagainst)
+        cflags         : func clear (this.static.executable.cflags)
+        sources        : func clear (this.static.executable.sources)
       }
     }
 
-    script : { sources       : func clear (this.script.sources) }
+    script : { sources : func clear (this.script.sources) }
 
-    libc   : { sources       : func clear (this.libc.sources) }
+    libc   : { sources : func clear (this.libc.sources) }
   }
 
   filter: {
@@ -1676,7 +1676,7 @@ Type Make {
 
     static : {
       executable : {
-        to_linkagainst      : func (f) {
+        to_linkagainst : func (f) {
           for i, v in this.static.executable.linkagainst {
             if v is f {
               list_delete_at (this.static.executable.linkagainst, i)
@@ -1808,10 +1808,14 @@ func make_dependencies (f) {
   return get_dependencies (f)
 }
 
-  # main
+  return notok if argv: typeof () isnot ArrayType
+  return notok ifnot argv: len ()
+
   ARGPARSE = argparseNew ()
 
-  return notok ifnot ok is ARGPARSE.process (argv, 1)
+  var start_index = if argv[0]: path_basename_sans_extname () is __func__ then 1 orelse 0
+
+  return notok ifnot ok is ARGPARSE.process (argv, start_index)
   return ok if ARGPARSE.exit is true
 
   var pkg = ifnot ARGPARSE.argc then Dir.current () orelse ARGPARSE.argv[0]
@@ -1928,10 +1932,5 @@ func make_dependencies (f) {
   return retval
 }
 
-var r = Make (__argc, __argv)
-
-exit (if r is ok then 0 orelse 1)
-
-#####################
-#  at the end (at least) funcrefs callbacks
-#
+ifnot "MAKE_AS_LIBRARY": is_defined () then
+  exit (if ok is Make (__argv) then 0 orelse 1)

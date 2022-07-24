@@ -1184,6 +1184,8 @@ Probably this will be a very messy output."
 # fileno             - returns the underlying file descriptor of a stream or
 #                      a file pointer object
 #                      args: file pointer
+# is_defined         - returns true if the given symbols has been defined, or false otherwise 
+#                      args: a string with the symbol name
 # errno_string       - returns a string represantation of a system error
 #                      args: error number
 # errno_name         - returns a string represantation of a system error name
