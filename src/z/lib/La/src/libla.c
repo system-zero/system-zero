@@ -3412,6 +3412,13 @@ static VALUE array_release (VALUE value) {
       Vmap.release (m_ar[i]);
     free (m_ar);
     m_ar = NULL;
+  } else if (array->type is LIST_TYPE) {
+    listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(ary);
+    if (l_ar is NULL) return result;
+    for (size_t i = 0; i < array->len; i++)
+      object_release (NULL, LIST(l_ar[i]));
+    free (l_ar);
+    l_ar = NULL;
   } else if (array->type is ARRAY_TYPE) {
     ArrayType **a_ar = (ArrayType **) AS_ARRAY(ary);
     if (a_ar is NULL) return result;
@@ -7489,10 +7496,16 @@ static int la_parse_stmt (la_t *this) {
             la_release_val (this, symbol->value);
         }
 
-        if ((val.type is STRING_TYPE or val.type is ARRAY_TYPE or val.type is LIST_TYPE) and
-             val.sym isnot NULL) {
-          VALUE v = val;
-          val = la_copy_value (v);
+        if (val.sym isnot NULL) {
+          switch (val.type) {
+            case STRING_TYPE:
+            case ARRAY_TYPE:
+            case LIST_TYPE:
+            case MAP_TYPE: {
+              VALUE v = val;
+              val = la_copy_value (v);
+            }
+          }
         }
       }
 
