@@ -212,12 +212,12 @@ public int __init_time_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Time = {
-      "now" : time_now,
-      "gmt" : time_gmt,
-      "local" : time_local,
-      "format" : time_format,
-      "to_string" : time_to_string,
-      "to_seconds" : time_to_seconds
+      now : time_now,
+      gmt : time_gmt,
+      local : time_local,
+      format : time_format,
+      to_string : time_to_string,
+      to_seconds : time_to_seconds
     }
  );
 

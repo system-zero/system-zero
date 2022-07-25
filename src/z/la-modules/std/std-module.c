@@ -64,6 +64,83 @@ static VALUE map_keys (la_t *this, VALUE v_map) {
   return ARRAY(v_keys);
 }
 
+static int cmp_string (const void *a, const void *b) {
+  const string *sa = *(string **) a, *sb = * (string  **)b;
+  return Cstring.cmp (sa->bytes, sb->bytes);
+}
+
+static int cmp_int (const void *a, const void *b) {
+  const int ia = * (integer *) a, ib = * (integer *) b;
+  return ia > ib;
+}
+
+static int cmp_number (const void *a, const void *b) {
+  const number na = * (number *) a, nb = * (number *) b;
+  return na > nb;
+}
+
+static VALUE array_sort (la_t *this, VALUE v_array) {
+  ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
+  ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
+  int type = array->type;
+  size_t len = array->len;
+  VALUE value = array->value;
+
+  switch (type) {
+    case STRING_TYPE: {
+      string **s_ar = (string **) AS_ARRAY(value);
+      string **new_s_ar = Alloc (len * sizeof (string));
+      for (size_t i = 0; i < len; i++)
+        new_s_ar[i] = String.new_with_len (s_ar[i]->bytes, s_ar[i]->num_bytes);
+
+      qsort (new_s_ar, len, sizeof(string *), cmp_string);
+
+      ArrayType *new_array = Alloc (sizeof (ArrayType));
+      new_array->type = STRING_TYPE;
+      new_array->len  = len;
+      new_array->value = ARRAY(new_s_ar);
+      return ARRAY(new_array);
+    }
+
+    case INTEGER_TYPE: {
+      integer *i_ar = (integer *) AS_ARRAY(value);
+      integer *new_i_ar = Alloc (len * sizeof (integer));
+      for (size_t i = 0; i < len; i++)
+        new_i_ar[i] = i_ar[i];
+
+      qsort (new_i_ar, len, sizeof(integer *), cmp_int);
+
+      ArrayType *new_array = Alloc (sizeof (ArrayType));
+      new_array->type = INTEGER_TYPE;
+      new_array->len  = len;
+      new_array->value = ARRAY(new_i_ar);
+      return ARRAY(new_array);
+    }
+
+    case NUMBER_TYPE: {
+      number *i_ar = (number *) AS_ARRAY(value);
+      number *new_i_ar = Alloc (len * sizeof (number));
+      for (size_t i = 0; i < len; i++)
+        new_i_ar[i] = i_ar[i];
+
+      qsort (new_i_ar, len, sizeof(number *), cmp_number);
+
+      ArrayType *new_array = Alloc (sizeof (ArrayType));
+      new_array->type = NUMBER_TYPE;
+      new_array->len  = len;
+      new_array->value = ARRAY(new_i_ar);
+      return ARRAY(new_array);
+    }
+
+    default:
+      La.set.CFuncError (this, LA_ERR_TYPE_MISMATCH);
+      La.set.curMsg (this, STR_FMT("%s, has been implemented for (Integer|String|Number)Type", __func__));
+      return NULL_VALUE;
+  }
+  return NULL_VALUE;
+
+}
+
 static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
   ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
   ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
@@ -483,6 +560,7 @@ public int __init_std_module__ (la_t *this) {
     { "map_remove",         PTR(map_remove), 2 },
     { "map_key_exists",     PTR(map_key_exists), 2 },
     { "array_len",          PTR(array_len), 1},
+    { "array_sort",         PTR(array_sort), 1},
     { "array_where",        PTR(array_where), 2 },
     { "string_eq",          PTR(string_eq), 2 },
     { "string_eq_n",        PTR(string_eq_n), 3 },
@@ -516,43 +594,44 @@ public int __init_std_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Map = {
-       "set" : map_set,
-       "get" : map_get,
-       "keys" : map_keys,
-       "remove" : map_remove,
-       "key_exists" : map_key_exists
+       set : map_set,
+       get : map_get,
+       keys : map_keys,
+       remove : map_remove,
+       key_exists : map_key_exists
      };
 
     public var Array = {
-      "len"   : array_len,
-      "where" : array_where
+      len   : array_len,
+      sort  : array_sort,
+      where : array_where
     };
 
     public var String = {
-       "eq" : string_eq,
-       "eq_n" : string_eq_n,
-       "cmp" : string_cmp,
-       "cmp_n" : string_cmp_n,
-       "advance" : string_advance,
-       "bytelen" : string_bytelen,
-       "numchars" : string_numchars,
-       "tokenize" : string_tokenize,
-       "to_upper" : string_to_upper,
-       "to_lower" : string_to_lower,
-       "to_array" : string_to_array,
-       "to_number" : string_to_number,
-       "to_integer" : string_to_integer,
-       "byte_in_str" : string_byte_in_str,
-       "bytes_in_str" : string_bytes_in_str,
-       "advance_on_byte" : string_advance_on_byte,
-       "advance_after_bytes" : string_advance_after_bytes,
-       "trim_byte_at_end" : string_trim_byte_at_end
+       eq : string_eq,
+       eq_n : string_eq_n,
+       cmp : string_cmp,
+       cmp_n : string_cmp_n,
+       advance : string_advance,
+       bytelen : string_bytelen,
+       numchars : string_numchars,
+       tokenize : string_tokenize,
+       to_upper : string_to_upper,
+       to_lower : string_to_lower,
+       to_array : string_to_array,
+       to_number : string_to_number,
+       to_integer : string_to_integer,
+       byte_in_str : string_byte_in_str,
+       bytes_in_str : string_bytes_in_str,
+       advance_on_byte : string_advance_on_byte,
+       advance_after_bytes : string_advance_after_bytes,
+       trim_byte_at_end : string_trim_byte_at_end
      };
 
      public var Integer = {
-       "eq"        : integer_eq,
-       "char"      : integer_char,
-       "to_string" : integer_to_string
+       eq        : integer_eq,
+       char      : integer_char,
+       to_string : integer_to_string
      };
 
     public const Std = false

@@ -1236,6 +1236,7 @@ Probably this will be a very messy output."
     # IntegerType   Map.key_exists (MapType map, StringType key)
 
     # IntegerType[] Array.where (ArrayType ar, Value expression)
+    # ArrayType     Array.sort (ArrayType ar)
 
     # IntegerType   String.eq (StringType a, StringType b)
     # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)
