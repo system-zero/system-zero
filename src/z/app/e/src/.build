@@ -1,0 +1,37 @@
+#@
+  depends_on ("E",        LIBRARY)
+  depends_on ("IO",       LIBRARY)
+  depends_on ("OS",       LIBRARY)
+  depends_on ("Re",       LIBRARY)
+  depends_on ("Vui",      LIBRARY)
+  depends_on ("Sys",      LIBRARY)
+  depends_on ("Dir",      LIBRARY)
+  depends_on ("Path",     LIBRARY)
+  depends_on ("File",     LIBRARY)
+  depends_on ("Term",     LIBRARY)
+  depends_on ("Vmap",     LIBRARY)
+  depends_on ("Smap",     LIBRARY)
+  depends_on ("Imap",     LIBRARY)
+  depends_on ("Proc",     LIBRARY)
+  depends_on ("Spell",    LIBRARY)
+  depends_on ("Video",    LIBRARY)
+  depends_on ("Error",    LIBRARY)
+  depends_on ("Random",   LIBRARY)
+  depends_on ("String",   LIBRARY)
+  depends_on ("Ustring",  LIBRARY)
+  depends_on ("Cstring",  LIBRARY)
+  depends_on ("Vstring",  LIBRARY)
+  depends_on ("Readline", LIBRARY)
+#
+
+var m = New Make (__file__, EXECUTABLE; z_app)
+
+m.set.executable.cflags ("-DVERSION_STRING=\"" + m.get.version () + "\"")
+m.set.executable.to_linkagainst ([
+  "string", "cstring", "vstring", "file", "dir", "path", "sys",
+  "term", "error", "readline", "io", "argparse", "e", "la"]; append_version)
+m.set.static.executable.to_linkagainst ([
+  "vmap", "ustring", "video", "spell", "vui", "re", "imap", "smap", "proc",
+  "random", "os"]; append_version)
+
+return m

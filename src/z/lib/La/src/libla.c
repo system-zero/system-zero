@@ -9566,42 +9566,36 @@ static int la_parse_visibility (la_t *this) {
 }
 
 static int la_parse_arg_list (la_t *this, funT *uf) {
-  int c;
   int nargs = 0;
 
   NEXT_RAW_TOKEN();
-  c = TOKEN;
 
   for (;;) {
-    if (c is TOKEN_PAREN_CLOS) break;
+    if (TOKEN is TOKEN_PAREN_CLOS) break;
 
-    THROW_SYNTAX_ERR_IF(c isnot TOKEN_SYMBOL, "argument list definition, awaiting a symbol name");
+    if (nargs is MAX_BUILTIN_PARAMS) THROW_TOOMANY_FUNCTION_ARGS();
 
-    la_string name = TOKENSTR;
+    THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_SYMBOL, "argument list definition, awaiting a symbol name");
 
-    if (nargs >= MAX_BUILTIN_PARAMS)
-      THROW_TOOMANY_FUNCTION_ARGS();
+    size_t len = GETSTRLEN(TOKENSTR);
 
-    const char *ptr = GETSTRPTR(name);
-    size_t len = GETSTRLEN(name);
-    Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL + 1, ptr, len);
+    if (len > MAXLEN_SYMBOL)
+      THROW_SYNTAX_ERR_FMT("%s: exceeds maximum length (%d) of an identifier",
+         cur_msg_str (this, TOKENSTR), MAXLEN_SYMBOL);
 
-    THROW_SYNTAX_ERR_IF_SYM_NAME_EXCEEDS_LEN(uf->argName[nargs], len);
+    Cstring.cp (uf->argName[nargs], MAXLEN_SYMBOL + 1, GETSTRPTR(TOKENSTR), len);
+
+    THROW_SYNTAX_ERR_IF(Cstring.eq (uf->argName[nargs], "this"), "declaring this in an argument list is not allowed");
 
     nargs++;
 
-    NEXT_TOKEN();
-    c = TOKEN;
+    NEXT_RAW_TOKEN();
 
-    if (c is TOKEN_COMMA) {
+    if (TOKEN is TOKEN_COMMA) {
       NEXT_RAW_TOKEN();
-      if (TOKEN is TOKEN_NL)
-        NEXT_RAW_TOKEN();
-
+      if (TOKEN is TOKEN_NL) NEXT_RAW_TOKEN();
       THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL or TOKEN is TOKEN_COMMA,
           "awaiting a symbol, while parsing argument list");
-
-      c = TOKEN;
     }
   }
 
@@ -9657,7 +9651,7 @@ static int la_parse_func_def (la_t *this) {
     NEXT_TOKEN();
   }
 
-  int err = la_parse_block (this, STR_FMT("`%s' function", uf->funname));
+  int err = la_parse_block (this, uf->funname);
   THROW_ERR_IF_ERR(err);
 
   uf->body = TOKENSTR;
