@@ -1,4 +1,5 @@
 #@
+  depends_on ("clock", ALL)
   depends_on ("uuid", ALL)
   depends_on ("syncdir", ALL)
   depends_on ("search", ALL)

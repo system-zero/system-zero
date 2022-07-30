@@ -670,6 +670,27 @@ public la_T *la_get_root (la_t *);
   AS_INT(_v_day);                                                         \
 })
 
+#define GET_OPT_HOUR() ({                                                 \
+  VALUE _v_hour = La.get.qualifier (this, "hour", INT(OPT_NO_HOUR));      \
+  ifnot (IS_INT(_v_hour))                                                 \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_hour);                                                        \
+})
+
+#define GET_OPT_MINUTES() ({                                              \
+  VALUE _v_min = La.get.qualifier (this, "minutes", INT(OPT_NO_MINUTES)); \
+  ifnot (IS_INT(_v_min))                                                  \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_min);                                                         \
+})
+
+#define GET_OPT_SECONDS() ({                                              \
+  VALUE _v_sec = La.get.qualifier (this, "seconds", INT(OPT_NO_SECONDS)); \
+  ifnot (IS_INT(_v_sec))                                                  \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_sec);                                                         \
+})
+
 #define GET_OPT_AS() ({                                                   \
   char * _as_ = NULL;                                                     \
   VALUE _v_as = La.get.qualifier (this, "as", NULL_VALUE);                \

@@ -52,6 +52,7 @@ m.set.libc.source ([
   "libc/time/time.h",
   "libc/time/tp2tm.c",
   "libc/time/tzset.c",
+  "libc/time/clock_settime.c",
   "libc/unistd/access.c",
   "libc/unistd/close.c",
   "libc/unistd/dup2.c",

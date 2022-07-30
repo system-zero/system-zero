@@ -1,0 +1,71 @@
+import ("path")
+import ("clock")
+import ("time")
+include ("argparse")
+
+var prog = __file__: path_basename ()
+
+var argparse = New Argparse (8, 0, prog)
+argparse.add ("min",  0, "minute=",    "set minute",  IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("sec",  0, "second=",    "set second",  IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("hour", 0, "hour=",      "set hour",    IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("day",  0, "day=",       "set day",     IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("mon",  0, "month=",     "set month",   IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("year", 0, "year=",      "set year",    IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("nohw", 0, "no-hwclock", "do not set the hardware clock", BooleanType, 0)
+argparse.add ("help", 'h', "help",     "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg) {
+  println (stderr, msg)
+  exit (1)
+}
+
+var sec  = argparse.results.sec
+var min  = argparse.results.min
+var hour = argparse.results.hour
+var day  = argparse.results.day
+var mon  = argparse.results.mon
+var year = argparse.results.year
+
+ifnot min  then exit_error ("minutes hasn't been set")
+ifnot hour then exit_error ("hour hasn't been set")
+ifnot day  then exit_error ("day hasn't been set")
+ifnot mon  then exit_error ("month hasn't been set")
+ifnot year then exit_error ("year hasn't been set")
+
+var tm = Clock.readhw ()
+
+if null is tm then exit_error ("error while reading hardware clock, " + errno_string (errno))
+
+println ("Current hardware clock time is ${Time.format ("%Y-%m-%d %H:%M:%S", tm)}")
+
+tm.tm_sec  = sec
+tm.tm_min  = min
+tm.tm_hour = hour
+tm.tm_mday = day
+tm.tm_mon  = mon - 1
+tm.tm_year = year - 1900
+
+var seconds = Time.to_seconds (tm)
+var r = Clock.settime (seconds)
+if r isnot ok then exit_error ("error while setting clock, " + errno_string (errno))
+
+if argparse.results.nohw then exit (0)
+
+tm.tm_year += 1900
+tm.tm_mon++
+
+r = Clock.sethw (tm)
+
+if r is notok then exit_error ("error while setting hardware clock, " + errno_string (errno))
+
+tm = Clock.readhw ()
+if null is tm then exit_error ("error while reading hardware clock, " + errno_string (errno))
+
+println ("New hardware clock time is ${Time.format ("%Y-%m-%d %H:%M:%S", tm)}")
+
+exit (0)

@@ -3,7 +3,7 @@
 # the implementation through some loud thoughts in comments, so it is more verbose
 # than in usual Makefiles and serve also to initialize also a developer way of
 # thinking. So though there are might be some pointers (for those that are not
-# familiar with programming consept), it was really written for developers, but it
+# familiar with programming consepts), it was really written for developers, but it
 # might be used by others too.
 
 # This is our actual first file, and it is the one that will assist us to build the
@@ -60,7 +60,7 @@ SYSDATADIR     = $(SYSDIR)/../data
 SYSTMPDIR      = $(SYSDIR)/../tmp
 
 SYSLADIR       = $(SYSDATADIR)/la
-SYSSCRIPTDIR   = $(SYSLADIR)/scripts
+SYSLSCRIPTDIR  = $(SYSLADIR)/scripts
 SYSMODULEDIR   = $(SYSLIBDIR)/la-modules
 SYSSCRIPTDIR   = $(SYSLIBDIR)/la-lib
 SYSZMODULEDIR  = $(SYSLIBDIR)/z/la-modules
@@ -251,6 +251,7 @@ Z_SRCDIR    = $(SRCDIR)/$(ZNAME)
     # Dl Type
     Dl_Type       = Dl
     Z_DL_SRCDIR   = $(Z_SRCLIBDIR)/$(Dl_Type)/src
+
     # Moon_Type
     Moon_Type       = Moon
     Z_MOON_SRCDIR   = $(Z_SRCLIBDIR)/$(Moon_Type)/src
@@ -1560,6 +1561,7 @@ makeenv:
 	@$(TEST) -d $(SYSZSCRIPTDIR) || $(MKDIR)   $(SYSZSCRIPTDIR)
 	@$(TEST) -d $(SYSMODULEDIR)  || $(MKDIR)   $(SYSMODULEDIR)
 	@$(TEST) -d $(SYSSCRIPTDIR)  || $(MKDIR)   $(SYSSCRIPTDIR)
+	@$(TEST) -d $(SYSLSCRIPTDIR) || $(MKDIR)   $(SYSLSCRIPTDIR)
 
 checkenv:
 	@$(TEST) -w $(SYSDIR)        || exit 1
@@ -1574,6 +1576,7 @@ checkenv:
 	@$(TEST) -w $(SYSZSCRIPTDIR) || exit 1
 	@$(TEST) -w $(SYSMODULEDIR)  || exit 1
 	@$(TEST) -w $(SYSSCRIPTDIR)  || exit 1
+	@$(TEST) -w $(SYSLSCRIPTDIR) || exit 1
 	@$(TEST) -w $(Z_SYSBINDIR)   || exit 1
 	@$(TEST) -w $(Z_SYSLIBDIR)   || exit 1
 	@$(TEST) -w $(Z_SYSINCDIR)   || exit 1

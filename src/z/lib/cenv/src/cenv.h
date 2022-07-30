@@ -2035,6 +2035,18 @@ do {                             \
 #define OPT_NO_DAY -1
 #endif
 
+#ifndef OPT_NO_HOUR
+#define OPT_NO_HOUR -1
+#endif
+
+#ifndef OPT_NO_MINUTES
+#define OPT_NO_MINUTES -1
+#endif
+
+#ifndef OPT_NO_SECONDS
+#define OPT_NO_SECONDS -1
+#endif
+
 /* Those application routines are quite the same and is useless
  * to repeat ourselves.
  */

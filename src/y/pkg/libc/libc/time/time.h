@@ -1,6 +1,7 @@
 typedef long time_t;
 typedef long clock_t;
 typedef long suseconds_t;
+typedef int clockid_t;
 
 struct timespec {
   time_t tv_sec;

@@ -1,0 +1,7 @@
+#@
+  depends_on ("libc", ALL)
+#
+
+var m = New Make (__file__, SCRIPT|MODULE)
+m.set.script.source ("Clock.settime"; clear)
+return m

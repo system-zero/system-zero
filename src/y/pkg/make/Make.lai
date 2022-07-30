@@ -590,7 +590,7 @@ Type Make {
 
   append_value : func (v, l) {
     return if null is v
-    var t =  v: typeof ()
+    var t = v: typeof ()
     if t is ArrayType then
       for f in v append f in l
     orelse
@@ -600,7 +600,7 @@ Type Make {
   append_linkagainst_value : func (v, l) {
     return if null is v
     var append_version = qualifier_exists ("append_version")
-    var t =  v: typeof ()
+    var t = v: typeof ()
 
     if t is ArrayType {
       for f in v append "-l" + f + if append_version then "-" + this.version orelse "" end in l
