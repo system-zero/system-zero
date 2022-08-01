@@ -1,0 +1,9 @@
+#@
+  depends_on ("fcpp", SHARED_LIBRARY)
+#
+
+var m =New Make (__file__, MODULE)
+m.set.shared.module.source ("generateerrno-module.c"; clear)
+m.set.shared.module.output ("generateerrno")
+m.set.shared.module.to_linkagainst (["error", "fcpp"])
+return m

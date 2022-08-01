@@ -4668,6 +4668,7 @@ int fcppPreProcess (struct fcppTag *tags){
   free (global->tokenbuf);
   free (global->functionname);
   if (global->spacebuf) free (global->spacebuf);
+  if (global->sharpfilename != NULL) free ((void *) global->sharpfilename);
   free (global);
 
   fflush (stdout);

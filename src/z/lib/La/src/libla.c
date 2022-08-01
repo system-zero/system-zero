@@ -12441,4 +12441,8 @@ public void __deinit_la__ (la_T **thisp) {
   -> var? === to for ... in loop (as autodeclare)
 
    && envs
+
+  < last statement value
+
+  < func (~a = def, ~b = val)
 #endif

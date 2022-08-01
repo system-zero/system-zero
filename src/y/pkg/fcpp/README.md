@@ -71,8 +71,19 @@
 
 ```
 Build:
+
+Using the provided Makefile:
+
 ```sh
   make shared && make main-shared
   make static && make main-static
 ```
 
+Using our Make utility:
+```sh
+  Make shared -v fcpp
+  Make static -v fcpp
+
+# or both at once
+  Make all -v fcpp
+```

@@ -8,7 +8,8 @@
 #define __BASE_ERROR__        -10000
 #define EINDEX                (__BASE_ERROR__ - 1)
 #define EINTEGEROVERFLOW      (__BASE_ERROR__ - 2)
-#define ECANNOTGETCWD         (__BASE_ERROR__ - 3)
+#define ENOTENOUGHSPACE       (__BASE_ERROR__ - 3)
+#define ECANNOTGETCWD         (__BASE_ERROR__ - 4)
 
 #define __LAST_ERROR__        (ECANNOTGETCWD - 1)
 
@@ -16,8 +17,12 @@
 #define EINDEX_NAME           "EINDEX"
 #define EINTEGEROVERFLOW_STR  "Integer overflow"
 #define EINTEGEROVERFLOW_NAME "EINTEGEROVERFLOW"
+#define ENOTENOUGHSPACE_STR   "Not enough space"
+#define ENOTENOUGHSPACE_NAME  "ENOTENOUGHSPACE"
 #define ECANNOTGETCWD_STR     "Can not get current directory"
 #define ECANNOTGETCWD_NAME    "ECANNOTGETCWD"
+
+
 #define EUNKNOWN_NAME         "EUNKNOWN"
 #define EUNKNOWN_STR          "Unknown error"
 
@@ -93,6 +98,7 @@ int main (void) {
   fprintf (fp_dest, "  { \"%s\", \"%s\", %d},\n", EUNKNOWN_NAME, EUNKNOWN_STR, num_err + 1);
   fprintf (fp_dest, "  { \"%s\", \"%s\", %d},\n", EINDEX_NAME, EINDEX_STR, EINDEX);
   fprintf (fp_dest, "  { \"%s\", \"%s\", %d},\n", EINTEGEROVERFLOW_NAME, EINTEGEROVERFLOW_STR, EINTEGEROVERFLOW);
+  fprintf (fp_dest, "  { \"%s\", \"%s\", %d},\n", ENOTENOUGHSPACE_NAME, ENOTENOUGHSPACE_STR, ENOTENOUGHSPACE);
   fprintf (fp_dest, "  { \"%s\", \"%s\", %d},\n", ECANNOTGETCWD_NAME, ECANNOTGETCWD_STR, ECANNOTGETCWD);
   fprintf (fp_dest, "};\n\n");
 

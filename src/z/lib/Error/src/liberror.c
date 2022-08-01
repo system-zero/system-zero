@@ -6,7 +6,7 @@
 #define __BASE_ERROR__   -10000
 #endif
 
-#define __LAST_ERROR__   -10004
+#define __LAST_ERROR__   -10005
 
 static const struct sys_error_list_type {
   const char *name;
@@ -150,7 +150,8 @@ static const struct sys_error_list_type {
   { "EUNKNOWN", "Unknown error", 135},
   { "EINDEX", "Index is out of range", -10001},
   { "EINTEGEROVERFLOW", "Integer overflow", -10002},
-  { "ECANNOTGETCWD", "Can not get current directory", -10003},
+  { "ENOTENOUGHSPACE", "Not enough space", -10003},
+  { "ECANNOTGETCWD", "Can not get current directory", -10004},
 };
 
 static int sys_last_error = 134;

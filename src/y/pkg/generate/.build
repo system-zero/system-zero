@@ -1,0 +1,5 @@
+#@
+  depends_on ("generate/errno", MODULE);
+#
+
+return New Make (__file__, IGNORE)
