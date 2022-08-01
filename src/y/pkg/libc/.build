@@ -1,4 +1,51 @@
+#@
+  depends_on ("generate/errno", MODULE)
+#
+
 var m = New Make (__file__, LIBC)
+
+func error_exit (msg) {
+  println (stderr, msg)
+  return notok
+}
+
+func libc_pre_exec (s) {
+  var d = "libc/error"
+  ifnot d: exists () then
+    if mkdir (d, 0755; verbose : 1) is notok then
+      return error_exit ("can not create libc/error directory")
+
+  ifnot d: isdirectory () then return error_exit ("libc/error is not a directrory")
+
+  var f = d: concat_with ("errors.h")
+
+  if f: exists () {
+    ifnot f: isregular () then
+      return error_exit (f + " is not a regular file")
+
+    return ok if s.get.libc.force () is false
+  }
+
+  import ("generateerrno")
+  var e = Generate.errno ()
+
+  var write_fd = open (f, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IROTH|S_IRGRP);
+  if write_fd is null then return exit_error ("can not open(): " + f)
+
+  for i, v in e.definitions {
+    if notok is write (write_fd, "#ifndef " + v + "\n") return exit_error ("couldn't write to " + f)
+    if notok is write (write_fd, "#define " + v + " " +
+      if i isnot e.errors[i] then e.definitions[i] orelse e.errors[i]: to_string (10) end + "\n") return exit_error ("couldn't write to " + f)
+
+    if notok is write (write_fd, "#endif /* " + v + " */\n") return exit_error ("couldn't write to " + f)
+    if i + 1 isnot e.definitions: len ()
+    if notok is write (write_fd, "\n") return exit_error ("couldn't write to " + f)
+  }
+  return ok
+}
+
+m.set.libc.pre_exec (libc_pre_exec)
+
 m.set.libc.source ([
   "libc/ctype/isalpha.c",
   "libc/ctype/isascii.c",
@@ -66,5 +113,6 @@ m.set.libc.source ([
   "libc/unistd/pipe.c",
   "libc/unistd/read.c",
   "libc/unistd/termios.h",
-  "libc/unistd/write.c"])
+  "libc/unistd/write.c",
+  "libc/error/errors.h"])
 return m

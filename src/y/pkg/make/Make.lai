@@ -78,6 +78,7 @@ const key_exists        = map_key_exists
 const base64_encode     = crypt_base64_encode_file
 const char              = integer_char
 const advance           = string_advance
+const isregular         = file_is_reg
 
 const VERSION           = "0.3"
 const Z                 = "z"
@@ -271,6 +272,9 @@ Type Make {
 
   libc : {
     sources : {[]}
+    force : false
+    pre_exec
+    post_exec
   }
 
   init_local_cflags : func {
@@ -1156,22 +1160,37 @@ Type Make {
 
       this.record (this.libc.sources)
 
-      var force = ARGPARSE.results.force
+      this.libc.force = ARGPARSE.results.force
 
       var outputDir = YSRCPKGDIR: concat_with (LIBCNAME)
       var output = outputDir: concat_with (LIBCNAME + ".c")
 
-      var r = this.should_make (output, this.libc.sources, force)
+      var r = this.should_make (output, this.libc.sources, this.libc.force)
 
       return notok if r is notok
       return ok if r is false
 
+      if null isnot this.libc.pre_exec {
+        r = this.libc.pre_exec ()
+        return notok if r is notok
+        return ok if r > ok
+      }
+
       include ("generateLibc")
 
       var argv = ["", "--outputName=" + LIBCNAME, "--outputDir=" + outputDir] 
+      var argc = 3
       if this.verbose then println ("installing libc at ${output}")
 
-      return libc_generate (3, argv);
+      r = libc_generate (argc, argv);
+
+      if null isnot this.libc.post_exec {
+        r = this.libc.post_exec ()
+        return notok if r is notok
+        return ok if r > ok
+      }
+
+      return r
     }
   }
 
@@ -1405,6 +1424,10 @@ Type Make {
         force : func return this.static.library.force
       }
     }
+
+    libc : {
+      force : func return this.libc.force
+    }
   }
 
   set : {
@@ -1557,6 +1580,9 @@ Type Make {
         if qualifier_exists ("clear") then this.clear.libc.sources ()
         this.append_value (v, this.libc.sources)
       }
+
+      pre_exec  : func (f) ifnot null is f then this.libc.pre_exec = f as callback
+      post_exec : func (f) ifnot null is f then this.libc.post_exec = f as callback
     }
 
     header : {

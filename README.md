@@ -330,7 +330,7 @@ allows a system to be further evolved and developed, by the human's realization
 of how a system works underlying. Also by exposing the description, what it is
 actually being exposed it is the intention. And by breaking down the pieces and
 their intentions, the human's mind flow procedure (sooner or later, and if there
-is a desire, will visualize the big picture as a sudden light.
+is a desire) will visualize the big picture as a sudden light.
 
 This exact realization usually reveals the way to the implementation, either as
 a new code or by modifying the existing.
@@ -873,7 +873,7 @@ Because of that, they don't require at the runtime their dependencies, but are
 a lot larger objects than their shared counterparts, and should  be recompiled
 everytime a dependency has been modified. They are initialized faster, but are
 less gently with the resources as they do not share them with other executables.
-There are could be practical in cases, but not economical.
+They could be practical in cases, but not economical.
 
 But lets see the dependencies of a shared object:
 ```sh
