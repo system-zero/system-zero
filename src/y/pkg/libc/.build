@@ -29,18 +29,65 @@ func libc_pre_exec (s) {
   import ("generateerrno")
   var e = Generate.errno ()
 
-  var write_fd = open (f, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IROTH|S_IRGRP);
+  var write_fd = open (f, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IROTH|S_IRGRP);
   if write_fd is null then return exit_error ("can not open(): " + f)
 
   for i, v in e.definitions {
     if notok is write (write_fd, "#ifndef " + v + "\n") return exit_error ("couldn't write to " + f)
     if notok is write (write_fd, "#define " + v + " " +
-      if i isnot e.errors[i] then e.definitions[i] orelse e.errors[i]: to_string (10) end + "\n") return exit_error ("couldn't write to " + f)
+      if i isnot e.errors[i] then e.definitions[e.errors[i]] orelse e.errors[i]: to_string (10) end + "\n") return exit_error ("couldn't write to " + f)
 
     if notok is write (write_fd, "#endif /* " + v + " */\n") return exit_error ("couldn't write to " + f)
     if i + 1 isnot e.definitions: len ()
     if notok is write (write_fd, "\n") return exit_error ("couldn't write to " + f)
   }
+
+  f = d: concat_with ("error_list.h")
+  if f: exists () {
+    ifnot f: isregular () then
+      return error_exit (f + " is not a regular file")
+
+    return ok if s.get.libc.force () is false
+  }
+
+  write_fd = open (f, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IROTH|S_IRGRP);
+  if write_fd is null then return exit_error ("can not open(): " + f)
+
+  var num = e.errors: len () - 5
+  if notok is write (write_fd, "// requires: error/errors.h\n\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "#define LAST_ERROR " + num: to_string (10) + "\n\n") return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "static const struct sys_errorlist_type {\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "  const char *name;\n  const char *msg;\n  int errnum;\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "} sys_errorlist[] = {\n") then return exit_error ("couldn't write to " + f)
+
+  for i, v in e.definitions {
+    if notok is write (write_fd, "  { \"" + v + "\", \"" + e.strerrors[i] + "\", " +
+      if i isnot e.errors[i] then e.definitions[e.errors[i]] orelse e.errors[i]: to_string (10) end + "},\n") return exit_error ("couldn't write to " + f)
+  }
+
+  if notok is write (write_fd, "};\n\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "static int get_error_num (int errnum) {\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "  if (LAST_ERROR < errnum || errnum < 0)\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "    return EUNKNOWN;\n\n  return errnum;\n}\n") then return exit_error ("couldn't write to " + f)
+
+  f = d: concat_with ("errno_string.c")
+  if f: exists () {
+    ifnot f: isregular () then
+      return error_exit (f + " is not a regular file")
+
+    return ok if s.get.libc.force () is false
+  }
+
+  write_fd = open (f, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IROTH|S_IRGRP);
+  if write_fd is null then return exit_error ("can not open(): " + f)
+
+  if notok is write (write_fd, "// provides: char *errno_string (int)\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "// requires: error/errors.h\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "// requires: error/error_list.h\n\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "char *errno_string (int errnum) {\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "  errnum = get_error_num (errnum);\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "  return (char *) sys_errorlist[errnum].msg;\n}\n") then return exit_error ("couldn't write to " + f)
+
   return ok
 }
 
@@ -114,5 +161,7 @@ m.set.libc.source ([
   "libc/unistd/read.c",
   "libc/unistd/termios.h",
   "libc/unistd/write.c",
-  "libc/error/errors.h"])
+  "libc/error/errors.h",
+  "libc/error/error_list.h",
+  "libc/error/errno_string.c"])
 return m
