@@ -1766,8 +1766,11 @@ func make_dependencies (f) {
     append { deps : string[0], targets : integer[0] } in Dependencies as file
 
     var bname = dir: basename ()
-    if TARGETS: key_exists (bname)
+    if TARGETS: key_exists (bname) then
       DEPENDENCIES.$(file).targets = TARGETS.$(bname).targets
+    orelse
+      if TARGETS: key_exists (dir) then
+        DEPENDENCIES.$(file).targets = TARGETS.$(dir).targets
 
     var fd = open (file, O_RDONLY, 0)
 
@@ -1876,11 +1879,11 @@ func make_dependencies (f) {
         ARGPARSE.results.force = true
 
     ARGPARSE.results.shared         = if flag & SHARED or flag & ALL then true orelse false
-    ARGPARSE.results.shared_library = if flag & SHARED_LIBRARY or flag & ALL  then true orelse false
-    ARGPARSE.results.shared_module  = if flag & MODULE or flag & ALL          then true orelse false
-    ARGPARSE.results.static         = if flag & STATIC or flag & ALL          then true orelse false
-    ARGPARSE.results.static_library = if flag & STATIC_LIBRARY or flag & ALL  then true orelse false
-    ARGPARSE.results.install_script = if flag & SCRIPT or flag & ALL          then true orelse false
+    ARGPARSE.results.shared_library = if flag & SHARED_LIBRARY or flag & ALL then true orelse false
+    ARGPARSE.results.shared_module  = if flag & MODULE or flag & ALL then true orelse false
+    ARGPARSE.results.static         = if flag & STATIC or flag & ALL then true orelse false
+    ARGPARSE.results.static_library = if flag & STATIC_LIBRARY or flag & ALL then true orelse false
+    ARGPARSE.results.install_script = if flag & SCRIPT or flag & ALL then true orelse false
   }
 
   return notok if notok is make_dependencies (pkg)
