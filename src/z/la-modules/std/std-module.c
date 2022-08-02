@@ -70,13 +70,17 @@ static int cmp_string (const void *a, const void *b) {
 }
 
 static int cmp_int (const void *a, const void *b) {
-  const int ia = * (integer *) a, ib = * (integer *) b;
-  return ia > ib;
+  const int ia = * (integer *) a, ib = *(integer *) b;
+  if (ia > ib) return 1;
+  if (ia < ib) return -1;
+  return 0;
 }
 
 static int cmp_number (const void *a, const void *b) {
-  const number na = * (number *) a, nb = * (number *) b;
-  return na > nb;
+  const number na = *(number *) a, nb = *(number *) b;
+  if (na > nb) return 1;
+  if (na < nb) return -1;
+  return 0;
 }
 
 static VALUE array_sort (la_t *this, VALUE v_array) {
@@ -108,7 +112,7 @@ static VALUE array_sort (la_t *this, VALUE v_array) {
       for (size_t i = 0; i < len; i++)
         new_i_ar[i] = i_ar[i];
 
-      qsort (new_i_ar, len, sizeof(integer *), cmp_int);
+      qsort (new_i_ar, len, sizeof(new_i_ar[0]), cmp_int);
 
       ArrayType *new_array = Alloc (sizeof (ArrayType));
       new_array->type = INTEGER_TYPE;
@@ -123,7 +127,7 @@ static VALUE array_sort (la_t *this, VALUE v_array) {
       for (size_t i = 0; i < len; i++)
         new_i_ar[i] = i_ar[i];
 
-      qsort (new_i_ar, len, sizeof(number *), cmp_number);
+      qsort (new_i_ar, len, sizeof(new_i_ar[0]), cmp_number);
 
       ArrayType *new_array = Alloc (sizeof (ArrayType));
       new_array->type = NUMBER_TYPE;

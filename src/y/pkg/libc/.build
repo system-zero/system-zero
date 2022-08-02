@@ -39,7 +39,7 @@ func libc_pre_exec (s) {
 
     if notok is write (write_fd, "#endif /* " + v + " */\n") return exit_error ("couldn't write to " + f)
     if i + 1 isnot e.definitions: len ()
-    if notok is write (write_fd, "\n") return exit_error ("couldn't write to " + f)
+      if notok is write (write_fd, "\n") return exit_error ("couldn't write to " + f)
   }
 
   f = d: concat_with ("error_list.h")
@@ -163,5 +163,8 @@ m.set.libc.source ([
   "libc/unistd/write.c",
   "libc/error/errors.h",
   "libc/error/error_list.h",
-  "libc/error/errno_string.c"])
+  "libc/error/errno_string.c",
+  "libc/convert/string_to_hexstring.c",
+  "libc/convert/hexstring_to_string.c"])
+
 return m

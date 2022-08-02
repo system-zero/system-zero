@@ -79,9 +79,9 @@ include ("argparse")
     return s
   } (directoryName);
 
-  var string[10] dirs = [
+  var string[11] dirs = [
     "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
-    "time", "error"]
+    "time", "error", "convert"]
 
   var funcSigns = "\n/* Function Signatures */\n"
   var libcFuns  = "\n"

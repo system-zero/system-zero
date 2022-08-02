@@ -79,9 +79,9 @@ unitdir = nsdir: concat_with (type): concat_with (dir)
 
 func generate_module (unit, unitdir) {
   ifnot unitdir: exists () then mkdir (unitdir, 0755; verbose : 1)
-  ifnot unitdir: isdirectory () then exit_error ("${dir}: not a directory", false)
+  ifnot unitdir: isdirectory () then exit_error (unitdir + ": is not a directory", false)
 
-  ifnot ok is Dir.change (unitdir) then exit_error ("${dir}: couldn't change to the directory")
+  ifnot ok is Dir.change (unitdir) then exit_error (unitdir + ": couldn't change to the directory")
 
   var file = unit + "-module.c"
   var fd = open (file, O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH)
@@ -139,9 +139,9 @@ func generate_module (unit, unitdir) {
 
 func generate_script (unit, unitdir) {
   ifnot unitdir: exists () then mkdir (unitdir, 0755; verbose : 1)
-  ifnot unitdir: isdirectory () then exit_error ("${dir}: not a directory", false)
+  ifnot unitdir: isdirectory () then exit_error (unitdir + ": is not a directory", false)
 
-  ifnot ok is Dir.change (unitdir) then exit_error ("${dir}: couldn't change to the directory")
+  ifnot ok is Dir.change (unitdir) then exit_error (unitdir + ": couldn't change to the directory")
 
   var file = unit + ".lai"
 

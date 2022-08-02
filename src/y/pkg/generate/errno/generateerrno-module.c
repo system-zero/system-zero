@@ -165,7 +165,7 @@ static VALUE generateerrno (la_t *this) {
 
   String.release (t.line);
 
-  int num = t.last_idx + 1;
+  int num = t.last_idx + 5;
 
   Vmap_t *m = Vmap.new (8);
 
@@ -177,7 +177,8 @@ static VALUE generateerrno (la_t *this) {
   string **str_array = (string **) AS_ARRAY(strerrors->value);
   integer *err_array = (integer *) AS_ARRAY(errors->value);
 
-  for (int i = 0; i < num; i++) {
+  int i = 0;
+  for (; i < num - 4; i++) {
     ifnot (NULL is t.definitions[i]) {
       def_array[i] = t.definitions[i];
       str_array[i] = t.strerrors[i];
@@ -189,6 +190,25 @@ static VALUE generateerrno (la_t *this) {
     str_array[i] = String.new_with ("Unknown error");
     err_array[i] = i;
   }
+
+  def_array[i] = String.new_with ("EINDEX");
+  str_array[i] = String.new_with ("Index is out of range");
+  err_array[i] = i;
+  i++;
+
+  def_array[i] = String.new_with ("EINTEGEROVERFLOW");
+  str_array[i] = String.new_with ("Integer overflow");
+  err_array[i] = i;
+  i++;
+
+  def_array[i] = String.new_with ("ECANNOTGETCWD");
+  str_array[i] = String.new_with ("Can not get current directory");
+  err_array[i] = i;
+  i++;
+
+  def_array[i] = String.new_with ("ENOTENOUGHSPACE");
+  str_array[i] = String.new_with ("Not enough space");
+  err_array[i] = i;
 
   La.map.set_value (this, m, "definitions", ARRAY(definitions), 1);
   La.map.set_value (this, m, "strerrors",   ARRAY(strerrors), 1);
