@@ -223,6 +223,7 @@ Type Make {
       force       : false
       make        : false
       output
+      completion  : true
       pre_exec
       post_exec
     }
@@ -247,6 +248,7 @@ Type Make {
       force       : false
       make        : false
       output
+      completion  : true
       pre_exec
       post_exec
     }
@@ -260,6 +262,7 @@ Type Make {
       shared
       static
     }
+    completion : true
     pre_exec
     post_exec
   }
@@ -757,7 +760,8 @@ Type Make {
       }
 
       if r is ok {
-        for v in this.script.sources this.install_data (v)
+        if this.script.completion is true then
+          for v in this.script.sources this.install_data (v)
 
         if null isnot this.script.post_exec {
           r = this.script.post_exec ()
@@ -905,7 +909,9 @@ Type Make {
 
         if ok is r {
           symlink (this.shared.executable.output + "-shared", to; verbose : this.verbose + 1, force : 1)
-          this.install_data (this.shared.executable.output)
+
+          if this.shared.executable.completion is true then
+            this.install_data (this.shared.executable.output)
         }
 
         this.shared.executable.make = false
@@ -1137,7 +1143,8 @@ Type Make {
 
         r = this.sh: exec (com)
         if r is ok
-          this.install_data (output)
+          if this.static.executable.completion is true then
+            this.install_data (output)
 
         this.static.executable.make = false
 
@@ -1492,8 +1499,9 @@ Type Make {
         to_linkagainst : func (l) this.append_linkagainst_value (l, this.shared.executable.linkagainst; qualifiers())
         cflag          : func (v) this.append_value (v, this.shared.executable.cflags)
         pre_exec       : func (f) ifnot null is f then this.shared.executable.pre_exec = f as callback
-        output         : func (o) ifnot null is o then this.shared.executable.output = o
         post_exec      : func (f) ifnot null is f then this.shared.executable.post_exec = f as callback
+        output         : func (o) ifnot null is o then this.shared.executable.output = o
+        completion     : func (v) this.static.executable.completion = v
         source         : func (v) {
           if qualifier_exists ("clear") then this.clear.shared.executable.sources ()
           this.append_value (v, this.shared.executable.sources)
@@ -1537,6 +1545,7 @@ Type Make {
         pre_exec       : func (f) ifnot null is f then this.static.executable.pre_exec = f as callback
         post_exec      : func (f) ifnot null is f then this.static.executable.post_exec = f as callback
         output         : func (o) ifnot null is o then this.static.executable.output = o
+        completion     : func (v) this.static.executable.completion = v
         source         : func (v) {
           if qualifier_exists ("clear") then this.clear.static.executable.sources ()
           this.append_value (v, this.static.executable.sources)
@@ -1573,6 +1582,8 @@ Type Make {
 
       pre_exec  : func (f) ifnot null is f then this.script.pre_exec = f as callback
       post_exec : func (f) ifnot null is f then this.script.post_exec = f as callback
+
+      completion : func (v) this script.completion = v
     }
 
     libc : {
@@ -1625,6 +1636,11 @@ Type Make {
       to_linkagainst : func (l) {
         this.set.shared.executable.to_linkagainst (l; qualifiers ())
         this.set.static.executable.to_linkagainst (l; qualifiers ())
+      }
+
+      completion : func (v) {
+        this.set.shared.executable.completion (v)
+        this.set.static.executable.completion (v)
       }
     }
   }

@@ -1,0 +1,185 @@
+import ("path")
+import ("dir")
+import ("io")
+import ("file")
+import ("sys")
+
+include ("argparse")
+
+const concat_with = path_concat
+const basename    = path_basename
+const exists      = file_exists
+const mkdir       = dir_make
+const isdirectory = dir_is_directory
+const open        = Io.open
+const write       = Io.fd.write
+
+const SRCDIR      = Sys.get ("SRCDIR")
+
+const J           = "j"
+const Y           = "y"
+const YSRCDIR     = SRCDIR: concat_with (Y)
+const JSRCDIR     = SRCDIR: concat_with (J)
+
+const PKG         = "pkg"
+const TYPE        = PKG
+
+const NS          = J
+const NSDIR       = JSRCDIR
+
+const type        = TYPE
+const dir
+const ns
+const nsdir
+const unit
+const unitdir
+
+var me = __argv[0]: path_basename ()
+
+var argparse = New Argparse (6, 0, me + " option[s]")
+argparse.add ("module", 0, "module", "generate module", BooleanType, 0)
+argparse.add ("script", 0, "script", "generate script", BooleanType, 0)
+argparse.add ("dir", 0, "directory=", "under directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("name", 0, "name=", "name", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("ns", 0, "namespace=", "namespace", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+argparse.set.help (`
+  This script it generates either a module or a script unit, with the minimum code.
+
+  Notes:
+
+    if the --ns= argument is omited, then default is the '` + NS + `' namespace
+
+    if the --directory argument is omited, then default is the name
+
+    --name= is a required argument`)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg, usage) {
+  ifnot null is msg then println (msg)
+  ifnot null is usage then argparse.usage ()
+  exit (1)
+}
+
+ifnot argparse.results.module + argparse.results.script then
+  exit_error ("either --script or --module should be specified", true)
+
+if argparse.results.name is null then exit_error (null, true)
+
+unit  = argparse.results.name
+ns    = ifnot null is argparse.results.ns then argparse.results.ns orelse NS
+dir   = ifnot null is argparse.results.dir then argparse.results.dir orelse unit
+nsdir = if ns isnot NS then SRCDIR: concat_with (ns) orelse NSDIR
+
+unitdir = nsdir: concat_with (type): concat_with (dir)
+
+func generate_module (unit, unitdir) {
+  ifnot unitdir: exists () then mkdir (unitdir, 0755; verbose : 1)
+  ifnot unitdir: isdirectory () then exit_error ("${dir}: not a directory", false)
+
+  ifnot ok is Dir.change (unitdir) then exit_error ("${dir}: couldn't change to the directory")
+
+  var file = unit + "-module.c"
+  var fd = open (file, O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH)
+  return notok if fd is null
+  return notok if notok is write (fd, `
+    #define REQUIRE_STDIO
+
+    #define REQUIRE_STD_MODULE
+
+    #include <z/cenv.h>
+
+    MODULE(`S4 + unit + `);
+
+    public int __init_`S4 + unit + `_module__ (la_t *this) {
+      __INIT_MODULE__(this);
+
+      LaDefCFun lafuns[] = {
+        { , PTR(), 0 },
+        { NULL, NULL_VALUE, 0}
+      };
+
+      int err;
+      for (int i = 0; lafuns[i].name; i++) {
+        if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+          return err;
+      }
+
+      const char evalString[] = EvalString (
+        public var  = {
+          : ,
+         }
+       );
+
+      err = La.eval_string (this, evalString);
+      if (err isnot LA_OK) return err;
+      return LA_OK;
+    }
+
+    public void __deinit_`S4 + unit + `_module__ (la_t *this) {
+      (void) this;
+    }
+`S4)
+
+  println ("Created ${unitdir}/${file}")
+
+  ifnot ".build": exists () {
+    fd = open (".build", O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH)
+    return notok if notok is write (fd, "return New Make (__file__, MODULE)\n")
+    println ("Created ${unitdir}/.build")
+  }
+
+
+  return ok
+}
+
+func generate_script (unit, unitdir) {
+  ifnot unitdir: exists () then mkdir (unitdir, 0755; verbose : 1)
+  ifnot unitdir: isdirectory () then exit_error ("${dir}: not a directory", false)
+
+  ifnot ok is Dir.change (unitdir) then exit_error ("${dir}: couldn't change to the directory")
+
+  var file = unit + ".lai"
+
+  var fd = open (file, O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH)
+  return notok if fd is null
+  return notok if notok is write (fd, `
+    import ("path")
+    include ("argparse")
+
+    const basename = path_basename
+    var me = __file__: basename ()
+
+    var argparse = New Argparse (1, 0, me + " [option[s]]")
+    argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+    ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+    if argparse.exit is true then exit (0)
+
+    func exit_error (msg, usage) {
+      ifnot null is msg then println (msg)
+      ifnot null is usage then argparse.usage ()
+      exit (1)
+    }
+`S4)
+
+  println ("Created ${unitdir}/${file}")
+
+  ifnot ".build": exists () {
+    fd = open (".build", O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH)
+    return notok if notok is write (fd, "return New Make (__file__, SCRIPT)\n")
+    println ("Created ${unitdir}/.build")
+  }
+
+  return ok
+}
+
+var r = if argparse.results.module then generate_module (unit, unitdir)
+        orelse generate_script (unit, unitdir)
+
+exit (if r is notok then 1 orelse 0)

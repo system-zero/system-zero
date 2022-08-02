@@ -28,6 +28,7 @@ Type Argparse {
   longopts
   descr
   message
+  help
 
   init : func (num_options, flags, message) {
     this.idx = -1
@@ -346,10 +347,17 @@ Type Argparse {
       append "  " + this.descr[i] + "\n" in msg
     }
 
+    ifnot null is this.help
+      append this.help + "\n" in msg
+
     println (msg)
   }
 
   public
+  set : {
+    help : func (m) this.help = m
+  }
+
   add : func (name, short, long, descr, type, flags) {
     this.idx++
     this.shortopts[this.idx] = short

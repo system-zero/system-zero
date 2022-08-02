@@ -1,5 +1,6 @@
 #@
-  depends_on ("generate/errno", MODULE);
+  depends_on ("generate/errno", MODULE)
+  depends_on ("generate/unit",  SCRIPT)
 #
 
 return New Make (__file__, IGNORE)

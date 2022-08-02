@@ -1,0 +1,3 @@
+var m = New Make (__file__, SCRIPT)
+m.set.script.source ("Generate.unit"; clear)
+return m

@@ -1,5 +1,9 @@
 #@
-  depends_on ("re", MODULE)
+  depends_on ("OS",   SHARED_LIBRARY)
+  depends_on ("Re",   SHARED_LIBRARY)
+  depends_on ("Dir",  SHARED_LIBRARY)
+  depends_on ("Path", SHARED_LIBRARY)
+  depends_on ("File", SHARED_LIBRARY)
 #
 
 var m = New Make (__file__, MODULE|SCRIPT)
