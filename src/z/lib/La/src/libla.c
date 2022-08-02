@@ -960,6 +960,7 @@ static int la_get_opened_block (la_t *this, const char *msg) {
   int prev_c = 0;
   int in_str = 0;
   int in_com = 0;
+  char str_tok = 0;
 
   while (bracket > 0) {
     c = GET_BYTE();
@@ -1010,12 +1011,17 @@ static int la_get_opened_block (la_t *this, const char *msg) {
     if (in_com)
       continue;
 
-    if (c is TOKEN_DQUOTE and prev_c isnot TOKEN_ESCAPE_CHR) {
-      if (in_str)
-        in_str--;
-      else
-        in_str++;
-      continue;
+    if ((c is TOKEN_DQUOTE or c is TOKEN_BQUOTE)) {
+      if (prev_c isnot TOKEN_ESCAPE_CHR) {
+        if (in_str) {
+          if (str_tok isnot c) continue;
+          in_str--;
+        } else {
+          in_str++;
+          str_tok = c;
+          continue;
+        }
+      }
     }
 
     prev_c = c;
@@ -2865,14 +2871,14 @@ static int la_get_annotated_block (la_t *this, string *s) {
 
   THROW_SYNTAX_ERR_IF(c isnot ' ' and c isnot TOKEN_NL, "error while getting annotated block: awaiting a space");
 
-  int prevc;
+  int prev_c;
 
   while (1) {
-    prevc = c;
+    prev_c = c;
     c = GET_BYTE();
     THROW_SYNTAX_ERR_IF(c is TOKEN_EOF, "unended annotated block");
 
-    if (c is TOKEN_COMMENT and prevc is TOKEN_NL)
+    if (c is TOKEN_COMMENT and prev_c is TOKEN_NL)
       break;
 
     if (s)
@@ -7871,10 +7877,11 @@ static int la_parse_block (la_t *this, const char *descr) {
   int parens = 0;
   int in_str = 0;
   int c = 0;
-  int prev;
+  int prev_c;
+  char str_tok = 0;
 
   while (1) {
-    prev = c;
+    prev_c = c;
     c = GET_BYTE();
 
     switch (c) {
@@ -7886,14 +7893,17 @@ static int la_parse_block (la_t *this, const char *descr) {
         ifnot (in_str) parens--;
          continue;
 
-      case '"':
-        if (prev isnot TOKEN_ESCAPE_CHR) {
-          if (in_str)
-            in_str--;
-          else
-            in_str++;
-        }
+      case TOKEN_DQUOTE:
+      case TOKEN_BQUOTE:
+        if (prev_c is TOKEN_ESCAPE_CHR) continue;
 
+        if (in_str) {
+          if (str_tok isnot c) continue;
+           in_str--;
+        } else {
+          str_tok = c;
+          in_str++;
+        }
         continue;
 
       case TOKEN_SEMICOLON:
@@ -8477,7 +8487,8 @@ static int la_parse_do (la_t *this) {
 
   int parenopen = is_paren_open;
   int in_str = 0;
-  int prevc = *ptr;
+  int prev_c = *ptr;
+  char str_tok = 0;
 
   THROW_SYNTAX_ERR_IF(has_a_nl and *ptr is TOKEN_NL, "error while parsing do/while condition: found two consecutive new lines");
 
@@ -8509,14 +8520,19 @@ static int la_parse_do (la_t *this) {
       goto next;
     }
 
-    if ((*ptr is TOKEN_DQUOTE or *ptr is TOKEN_BQUOTE) and prevc isnot TOKEN_ESCAPE_CHR) {
-      if (in_str)
-        in_str--;
-      else
-        in_str++;
+    if ((*ptr is TOKEN_DQUOTE or *ptr is TOKEN_BQUOTE)) {
+      if (prev_c isnot TOKEN_ESCAPE_CHR) {
+        if (in_str) {
+          if (str_tok isnot *ptr) goto next;
+           in_str--;
+        } else {
+          str_tok = *ptr;
+          in_str++;
+        }
+      }
     }
 
-    next: prevc = *ptr; ptr++;
+    next: prev_c = *ptr; ptr++;
   }
 
   ifnot (*ptr)
@@ -9127,6 +9143,7 @@ static char *find_end_for_stmt (const char *str) {
 
   char *ptr = (char *) str;
   char prev_c = *ptr;
+  char str_tok = 0;
 
   while (cl_paren <= op_paren) {
     if (*ptr is TOKEN_EOF)
@@ -9142,12 +9159,16 @@ static char *find_end_for_stmt (const char *str) {
       goto next;
     }
 
-    if ((*ptr is TOKEN_DQUOTE or *ptr is TOKEN_BQUOTE) and prev_c isnot TOKEN_ESCAPE_CHR) {
-      if (in_str)
-        in_str--;
-      else
-        in_str++;
-      goto next;
+    if ((*ptr is TOKEN_DQUOTE or *ptr is TOKEN_BQUOTE)) {
+      if (prev_c isnot TOKEN_ESCAPE_CHR) {
+        if (in_str) {
+          if (str_tok isnot *ptr) goto next;
+           in_str--;
+        } else {
+          str_tok = *ptr;
+          in_str++;
+        }
+      }
     }
 
    next: prev_c = *ptr; ptr++;
