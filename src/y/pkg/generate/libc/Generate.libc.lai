@@ -1,8 +1,5 @@
-var __me__ = __file__
-
-     public const func libc_generate (argc, argv) {
-
 import ("io")
+import ("sys")
 import ("dir")
 import ("std")
 import ("file")
@@ -11,35 +8,49 @@ import ("path")
 include ("argparse")
 
   const
-  is_directory = dir_is_directory,
+  is_directory   = dir_is_directory,
   realpath       = path_real,
   extname        = path_extname,
   dirname        = path_dirname,
   concat_with    = path_concat,
   basename       = path_basename,
-  basename_without_extname = path_basename_sans_extname,
   filelines      = file_readlines,
-  make_directory = dir_make,
+  mkdir          = dir_make,
+  basename_without_extname = path_basename_sans_extname
+
+  public const func generate_libc (argc, argv) {
+
+  const
+  Y           = "y",
+  PKG         = "pkg",
+  LIBCSRCNAME = "libc",
+  LIBCOUTNAME = "zlibc",
+  SRCDIR      = Sys.get ("SRCDIR"),
+  YSRCDIR     = SRCDIR: concat_with (Y),
+  YPKGDIR     = YSRCDIR: concat_with (PKG),
+  LIBCDIR     = YPKGDIR: concat_with (LIBCSRCNAME),
+  LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
+  LIBCOUTDIR  =  SRCDIR: concat_with (LIBCOUTNAME)
+
+  const
   provide_str    = " provides: ",
   require_str    = "// requires: ",
   comment_str    = "// comment: ",
   end_str        = "// end"
 
-
-  const
-  thisDir      = __me__: dirname (),
-  prog         = __me__: basename (),
-  libcDir      = thisDir: concat_with ("libc"),
-  default      = {
-    dirname    :  thisDir: concat_with ("../../../libcmm"): realpath ()
-    libname    :  "libc"
-  }
-
-  var argparse = New Argparse (4, 0, prog)
-  argparse.add ("outputName",  0,  "outputName=",  "set output file name (default libc)",  StringType, ARG_VALUE_REQUIRED)
-  argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default gen$(outputName)", StringType, ARG_VALUE_REQUIRED)
-  argparse.add ("verbose", 'v', "verbose=", "set verbosity", IntegerType, ARG_VALUE_OPTIONAL|ARG_VALUE_APPEND)
+  var me = __file__: basename ()
+  var argparse = New Argparse (4, 0, me)
+  argparse.add ("outputName",  0,  "outputName=",  "set output file name (default " + LIBCOUTNAME + ")",  StringType, ARG_VALUE_REQUIRED)
+  argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
+  argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
+
+  argparse.set.help (`Reserved tokens
+    // provides: [function signature], it is required when the unit is a function, and should be at the first line only
+    // requires: [dir/unit]
+    // comment: 
+    // end [ends the interpretation]
+  `S4)
 
   return notok ifnot ok is argparse.process (argv, 1)
 
@@ -47,26 +58,19 @@ include ("argparse")
 
   var verbose = argparse.results.verbose
 
-  var outputName =
-    argparse.results.outputName: if x is null then default.libname orelse x end
-  var directoryName =
-    argparse.results.outputDir:  if x is null then default.dirname orelse x end
+  var outputName = if null is argparse.results.outputName then LIBCOUTNAME orelse argparse.results.outputName
+  var outputDir  = if null is argparse.results.outputDir then LIBCOUTDIR orelse argparse.results.outputDir
 
-  var outputDir = if directoryName : path_is_absolute () then directoryName orelse thisDir: concat_with (directoryName)
-  ifnot outputDir: file_exists  () then make_directory (outputDir, 0755)
-
-  ifnot outputDir: is_directory () {
-    if verbose then println (stderr, "${outputDir}: is not a directory")
-    return notok
-  }
+  ifnot outputDir: file_exists () then mkdir (outputDir, 0755; verbose : verbose)
+  ifnot outputDir: is_directory () then return error (outputDir + ": is not a directory")
 
   var outputFile  = outputDir: concat_with (outputName + ".c")
   var licenceFile = outputDir: concat_with ("LICENSES")
   var commentFile = outputDir: concat_with ("comments")
 
   var dotsToLibc = lambda (d) {
-    if d: path_is_absolute ()
-      return thisDir: concat_with ("libc")
+    var def = LIBCSRCDIR
+    return def if d: path_is_absolute ()
 
     var s = ""
     var p = d: tokenize ("/")
@@ -75,9 +79,9 @@ include ("argparse")
       append ".." in s
     }
 
-    append "/libc/libc" in s
+    append LIBCSRCNAME: concat_with (LIBCSRCNAME) in s
     return s
-  } (directoryName);
+  } (outputDir)
 
   var string[11] dirs = [
     "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
@@ -144,10 +148,15 @@ include ("argparse")
     }
   } 
 
+  func error (msg) {
+    ifnot null is msg then println (stderr, msg)
+    if errno then println (errno_string (errno))
+    return notok
+  }
+
   for v in dirs {
     if v isnot "syscall" append format ("/* ${v} */") in libcFuns
-
-    var dir = libcDir: concat_with (v)
+    var dir = LIBCSRCDIR: concat_with (v)
     var arr = dir: dir_list ()
 
     for f in arr {
@@ -202,7 +211,7 @@ include ("argparse")
             sp = sp: advance_after_bytes (provide_str, 1)
 
             ifnot (sp: len ()) {
-              if verbose then println (stderr, "${v}/${f}: missing function signature")
+              return error (v + "/" + f + ": missing function signature")
             } else {
               ifnot num_found - 1 then
                 append format ("\n#ifdef REQUIRE_${f_hdr}\n") in funcSigns
@@ -211,8 +220,8 @@ include ("argparse")
             idx++
 
           } else {
-            ifnot num_found
-              if verbose then println (stderr, "${v}/${f}: is missing a '// provides: ' token")
+            ifnot num_found then
+              return error (v + "/" + f + ": is missing a '// provides: ' token")
             break
           }
         }
@@ -320,21 +329,17 @@ include ("argparse")
 
   append "#endif /* LIBC_HDR */\n" in libcFuns
 
-  return notok if notok is File.write (outputFile, libcHdrs + libcTypes + funcSigns + libcFuns)
-  return notok if notok is File.write (commentFile, comments)
-  return notok if notok is File.write (licenceFile, licenses)
+  if notok is File.write (outputFile, libcHdrs + libcTypes + funcSigns + libcFuns) then
+    return error ("failed to write to " + outputfile)
+  if verbose then println ("libc implementation has been written to " + outputFile)
+
+  if notok is File.write (commentFile, comments) then
+    return error ("failed to write to " + commentFile)
+  if verbose then println ("comments have been written to " + commentFile)
+
+  if notok is File.write (licenceFile, licenses) then
+    return error ("failed to write to " + licenceFile)
+  if verbose then println ("licences have been written to " + licenceFile)
+
   return ok
 }
-
-# libc_generate (__argc, __argv)
-
-func generatedLibc_help () {
-  println (`Reserved tokens
-
-// provides: [function signature], it is required when the unit is a function, and should be at the first line only
-// requires: [dir/unit]
-// comment: 
-// end [ends the interpretation]`)
-}
-
-#generatedLibc_help ()

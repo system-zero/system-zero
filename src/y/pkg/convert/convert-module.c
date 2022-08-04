@@ -6,7 +6,7 @@
 #define REQUIRE_HEXSTRING_TO_STRING
 
 #include <z/cenv.h>
-#include "../../libcmm/libcmm.c"
+#include "../../../zlibc/zlibc.c"
 
 MODULE(convert);
 

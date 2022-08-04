@@ -112,7 +112,8 @@ const ZMODDIR           = ZLIBDIR: concat_with ("la-modules")
 const YLIBDIR           = LIBDIR:  concat_with (Y)
 const YINCDIR           = INCDIR:  concat_with (Y)
 const YMODDIR           = YLIBDIR: concat_with ("l-modules")
-const LIBCNAME          = "libcmm"
+const LIBCDEFNAME       = "zlibc"
+const LIBCDEFDIR        = SRCDIR:  concat_with (LIBCDEFNAME)
 const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
 const RPATH             = true
@@ -149,6 +150,9 @@ const LIBRARY           = (SHARED_LIBRARY|STATIC_LIBRARY)
 
 const COMPILE_ASSEMBLE_LINK = 1
 const COMPILE_ASSEMBLE      = 2
+
+const SHARED_TYPE       = 1
+const STATIC_TYPE       = 2
 
 const ARGPARSE          = null
 
@@ -263,6 +267,9 @@ Type Make {
       static
     }
     completion : true
+    curtype
+    cursource
+    curoutput
     pre_exec
     post_exec
   }
@@ -346,6 +353,7 @@ Type Make {
   change_to_build_directory : func {
     return ok if null is this.builddir
     this.retval = this.builddir: change ()
+    if notok is this.retval then println (errno_string (errno))
     return this.retval
   }
 
@@ -452,11 +460,9 @@ Type Make {
       return true if fd is null
 
       var s = read (fd)
+      if s is null then return this.error ("can not read() " + this.cached_file)
       var r = eval (s)
-      if r isnot ok {
-        println ("${this.cached_file}: evaluation error")
-        return notok
-      }
+      if r isnot ok then return this.error (this.cached_file + " evaluation error")
     }
 
     return false
@@ -501,10 +507,7 @@ Type Make {
 
     var targetdir = this.shelldatadir: concat_with (exec)
     ifnot targetdir: exists () then mkdir (targetdir, 0700)
-    ifnot targetdir: isdirectory () {
-      println ("${targetdir}: not a directory")
-      return notok
-    }
+    ifnot targetdir: isdirectory () then return this.error (targetdir + ": not a directory")
 
     ifnot this.verbose then
       ifnot this.dump_commands then
@@ -670,7 +673,7 @@ Type Make {
     script : func {
       return ok if this.dump_commands
       return notok if notok is this.change_to_build_directory ()
-      return ok if null is this.script.sources
+      if null is this.script.sources then return this.error ("script sources is null")
 
       var sources = {[]}
       for v in this.script.sources append v + ".lai" in sources
@@ -680,12 +683,9 @@ Type Make {
       return ok if false is this.script.install
 
       ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
-      ifnot this.bindir: isdirectory () {
-        if false is this.dump_commands {
-          println ("${this.bindir}: is not a directory")
-          return notok
-        }
-      }
+
+      ifnot this.bindir: isdirectory () then
+        if false is this.dump_commands then return this.error (this.bindir + " is not a directory")
 
       var targets = {[]}
 
@@ -701,18 +701,21 @@ Type Make {
 
       if null isnot this.script.pre_exec {
         r = this.script.pre_exec ()
-        return notok if r is notok
+        if r is notok then return this.error ("callback returned an error, abort ...")
         return ok if r > ok
       }
 
       r = notok
       var idx = 0
+
       for v in sources {
-        continue ifnot v: exists ()
+        ifnot v: exists () then return this.error (v + " source doesn't exists")
+
 
         var read_fd = open (v, O_RDONLY, 0)
-        continue if null is read_fd
+        if null is read_fd then return this.error ("unable to open() " + v)
         var script = read (read_fd)
+        if null is script then return this.error ("unable to read() " + v)
 
         var interpr = SHARED_INTERPRETER
 
@@ -729,12 +732,30 @@ Type Make {
         var output = targets[idx++]
 
         var write_fd = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
+        if null is write_fd then return this.error ("unable to open() " + output)
 
-        ifnot null is write_fd { 
-          if this.verbose then println ("install ${output}") orelse println ("  install scripts")
-          write (write_fd, "#!/bin/env " + interpr + "\n\n")
-          write (write_fd, script)
-          r = ok
+        this.script.cursource = v
+        this.script.curtype = SHARED_TYPE
+        this.script.curoutput = output
+
+        if null isnot this.script.pre_exec {
+          r = this.script.pre_exec ()
+          if r is notok then return this.error ("callback function returned an error, abort ...")
+          return ok if r > ok
+        }
+
+        if this.verbose then println ("install ${output}") orelse println ("  install scripts")
+
+        if notok is write (write_fd, "#!/bin/env " + interpr + "\n\n") then
+          return this.error ("failed to write() on " + output)
+
+        if notok is write (write_fd, script) then
+          return this.error ("failed to write() on " + output)
+
+        if null isnot this.script.post_exec {
+          r = this.script.post_exec ()
+          if r is notok then return this.error ("callback function returned an error, abort ...")
+          return ok if r > ok
         }
 
         interpr = STATIC_INTERPRETER
@@ -750,25 +771,38 @@ Type Make {
         }
 
         output = targets[idx++]
-        write_fd  = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
-        ifnot null is write_fd {
-          if this.verbose then println ("install ${output}")
-          write (write_fd, "#!/bin/env " + interpr + "\n\n")
-          write (write_fd, script)
-          r = ok
-        }
-      }
 
-      if r is ok {
-        if this.script.completion is true then
-          for v in this.script.sources this.install_data (v)
+        write_fd  = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
+        if null is write_fd then return this.error ("unable to open() " + output)
+
+        this.script.curoutput = output
+        this.script.curtype = STATIC_TYPE
+
+        if null isnot this.script.pre_exec {
+          r = this.script.pre_exec ()
+          if r is notok then return this.error ("callback function returned an error, abort ...")
+          return ok if r > ok
+        }
+
+        if this.verbose then println ("install ${output}")
+
+        if notok is write (write_fd, "#!/bin/env " + interpr + "\n\n") then
+          return this.error ("failed to write() on " + output)
+        if notok is write (write_fd, script) then
+          return this.error ("failed to write() on " + output)
 
         if null isnot this.script.post_exec {
           r = this.script.post_exec ()
-          return notok if r is notok
+          if r is notok then return this.error ("callback function returned an error, abort ...")
           return ok if r > ok
         }
+
+        r = ok
       }
+
+      if r is ok then
+        if this.script.completion is true then
+          for v in this.script.sources this.install_data (v)
 
       return this.endbuild (r)
     }
@@ -932,25 +966,18 @@ Type Make {
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
         this.record (this.shared.module.sources)
-
         return ok if false is this.shared.module.make
 
         ifnot this.moddir: exists () then mkdir (this.moddir, 0755; verbose : this.verbose + 1)
-        ifnot this.moddir: isdirectory () {
-          if false is this.dump_commands {
-            println ("${this.moddir}: is not a directory")
-            return notok
-          }
-        }
+        ifnot this.moddir: isdirectory () then
+          if false is this.dump_commands then
+            return this.error (this.moddir + ": is not a directory")
 
         var instdir = this.libdir: concat_with (this.modulesdirname)
         ifnot instdir: exists () then mkdir (instdir, 0755; verbose : this.verbose + 1)
-        ifnot instdir: isdirectory () {
-          if false is this.dump_commands {
-            println ("${this.moddir}: is not a directory")
-            return notok
-          }
-        }
+        ifnot instdir: isdirectory () then
+          if false is this.dump_commands then
+            return this.error (this.moddir + ": is not a directory")
 
         var output = instdir: concat_with (this.shared.module.output + "-module.so")
 
@@ -1142,7 +1169,7 @@ Type Make {
         if this.verbose then println (com) orelse println ("  making the static executable")
 
         r = this.sh: exec (com)
-        if r is ok
+        if r is ok then
           if this.static.executable.completion is true then
             this.install_data (output)
 
@@ -1163,15 +1190,13 @@ Type Make {
 
     libc : func {
       return notok if notok is this.change_to_build_directory ()
-      return notok ifnot this.libc.sources: len ()
+      ifnot this.libc.sources: len () return this.error ("libc sources array is null")
 
       this.record (this.libc.sources)
 
       this.libc.force = ARGPARSE.results.force
 
-      var outputDir = YSRCPKGDIR: concat_with (LIBCNAME)
-      var output = outputDir: concat_with (LIBCNAME + ".c")
-
+      var output = LIBCDEFDIR: concat_with (LIBCDEFNAME + ".c")
       var r = this.should_make (output, this.libc.sources, this.libc.force)
 
       return notok if r is notok
@@ -1183,13 +1208,11 @@ Type Make {
         return ok if r > ok
       }
 
-      include ("generateLibc")
 
-      var argv = ["", "--outputName=" + LIBCNAME, "--outputDir=" + outputDir] 
-      var argc = 3
-      if this.verbose then println ("installing libc at ${output}")
+      include ("../generate/libc/Generate.libc") # ugly
+      r = generate_libc (2, ["", if this.verbose then "--verbose" orelse ""]);
 
-      r = libc_generate (argc, argv);
+      if r is notok return this.error ("failed to generate libc")
 
       if null isnot this.libc.post_exec {
         r = this.libc.post_exec ()
@@ -1351,6 +1374,12 @@ Type Make {
   }
 
   public
+  error : func (msg) {
+    ifnot null then println (stderr, msg)
+    if errno then println (stderr, errno_string (errno))
+    return notok
+  }
+
   main : func {
     return ok if this.targets is IGNORE
 
@@ -1430,6 +1459,12 @@ Type Make {
       library : {
         force : func return this.static.library.force
       }
+    }
+
+    script : {
+      curoutput   : func return this.script.curoutput
+      curtype     : func return this.script.curtype
+      cursource   : func return this.script.cursource
     }
 
     libc : {

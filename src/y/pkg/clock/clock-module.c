@@ -7,7 +7,7 @@
 #define REQUIRE_IOCTL
 
 #include <z/cenv.h>
-#include "../libcmm/libcmm.c"
+#include "../../../zlibc/zlibc.c"
 
 MODULE(clock);
 
@@ -64,14 +64,14 @@ static VALUE clock_readhw (la_t *this) {
   int fd = open (RTCDEVICE, O_RDONLY);
   if (fd is -1) {
     La.set.Errno (this, errno);
-    return NOTOK_VALUE;
+    return NULL_VALUE;
   }
 
   int r;
   struct rtc_time rtc;
   if (-1 is (r = sys_ioctl (fd, RTC_RD_TIME, &rtc))) {
     La.set.Errno (this, sys_errno);
-    return NOTOK_VALUE;
+    return NULL_VALUE;
   }
 
   sys_close (fd);

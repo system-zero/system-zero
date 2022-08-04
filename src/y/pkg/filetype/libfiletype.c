@@ -9,7 +9,7 @@
 #define REQUIRE_READ
 #define REQUIRE_ACCESS
 
-#include "../libcmm/libcmm.c"
+#include "../../../zlibc/zlibc.c"
 
 #include <z/filetype.h>
 

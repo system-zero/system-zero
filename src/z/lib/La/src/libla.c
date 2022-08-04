@@ -461,6 +461,8 @@ typedef struct tokenState {
   do { ifnot (_cond_) THROW_SYNTAX_ERR(_msg_); } while (0)
 #define THROW_SYNTAX_ERR_FMT_IF(_cond_,_fmt_, ...) \
   do { if (_cond_) return la_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
+#define THROW_SYNTAX_ERR_FMT_IFNOT(_cond_,_fmt_, ...) \
+  do { if (!_cond_) return la_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
 #define THROW_SYNTAX_ERR_FMT(_fmt_, ...) \
   do { return la_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
 #define THROW_OUT_OF_BOUNDS(_fmt_, ...) do {                \
@@ -7273,7 +7275,7 @@ static int la_parse_stmt (la_t *this) {
 
       sym_t *sym = ns_lookup_symbol (this->std, key);
       ifnot (NULL is sym) {
-        THROW_SYNTAX_ERR_IFNOT(Cstring.eq (key, "func"), "can not redefine a standard symbol");
+        THROW_SYNTAX_ERR_FMT_IFNOT(Cstring.eq (key, "func"), "%s, can not redefine a standard symbol", key);
         err = la_parse_func_def (this);
         THROW_ERR_IF_ERR(err);
 
@@ -10685,10 +10687,10 @@ static int la_parse_loadfile (la_t *this) {
   if (exlen) {
     if (exlen isnot fname->num_bytes) {
       char *p = fname->bytes + fname->num_bytes - 1;
-      while (*p isnot '.') {
-        p--;
-        String.clear_at (fname, fname->num_bytes - 1);
-      }
+      if (exlen is 4 and (Cstring.eq (p - 4, "." LA_EXTENSION)))
+        goto loadfile;
+
+      String.append_byte (fname, '.');
     } else  // .file
       String.append_byte (fname, '.');
   } else

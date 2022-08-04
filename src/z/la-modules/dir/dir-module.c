@@ -24,13 +24,13 @@ static VALUE dir_remove_parents (la_t *this, VALUE v_dir) {
 }
 
 static VALUE dir_make (la_t *this, VALUE v_dir, VALUE v_mode) {
-  ifnot (IS_STRING(v_dir))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_dir)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
-  ifnot (IS_INT(v_mode))
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
-  return INT(Dir.make (AS_STRING_BYTES(v_dir), AS_INT(v_mode), DirOpts(.err = 0)));
+  int verbose = GET_OPT_VERBOSE();
+
+  return INT(Dir.make (AS_STRING_BYTES(v_dir), AS_INT(v_mode), DirOpts(.err = 0, .msg = verbose)));
 }
 
 static VALUE dir_make_parents (la_t *this, VALUE v_dir, VALUE v_mode) {

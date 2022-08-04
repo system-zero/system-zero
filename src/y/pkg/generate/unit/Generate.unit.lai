@@ -34,7 +34,7 @@ const nsdir
 const unit
 const unitdir
 
-var me = __argv[0]: path_basename ()
+var me = __argv[0]: basename ()
 
 var argparse = New Argparse (6, 0, me + " option[s]")
 argparse.add ("module", 0, "module", "generate module", BooleanType, 0)
@@ -49,9 +49,9 @@ argparse.set.help (`
 
   Notes:
 
-    if the --ns= argument is omited, then default is the '` + NS + `' namespace
+    if the --namespace= argument is omited, then default is the '` + NS + `' namespace
 
-    if the --directory argument is omited, then default is the name
+    if the --directory= argument is omited, then default is the value of the name argument
 
     --name= is a required argument`)
 
