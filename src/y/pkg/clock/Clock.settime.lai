@@ -6,9 +6,9 @@ include ("argparse")
 var prog = __file__: path_basename ()
 
 var argparse = New Argparse (8, 0, prog)
-argparse.add ("min",  0, "minute=",    "set minute",  IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("min",  0, "minute=",    "set minute",  IntegerType, ARG_VALUE_REQUIRED; defval : -1)
 argparse.add ("sec",  0, "second=",    "set second",  IntegerType, ARG_VALUE_REQUIRED)
-argparse.add ("hour", 0, "hour=",      "set hour",    IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("hour", 0, "hour=",      "set hour",    IntegerType, ARG_VALUE_REQUIRED; defval : -1)
 argparse.add ("day",  0, "day=",       "set day",     IntegerType, ARG_VALUE_REQUIRED)
 argparse.add ("mon",  0, "month=",     "set month",   IntegerType, ARG_VALUE_REQUIRED)
 argparse.add ("year", 0, "year=",      "set year",    IntegerType, ARG_VALUE_REQUIRED)
@@ -20,7 +20,8 @@ ifnot ok is argparse.process (__argv, 1) then exit (1)
 if argparse.exit is true then exit (0)
 
 func exit_error (msg) {
-  println (stderr, msg)
+  ifnot null is msg then println (stderr, msg)
+  if errno then println (stderr, errno_string (errno))
   exit (1)
 }
 
@@ -31,40 +32,41 @@ var day  = argparse.results.day
 var mon  = argparse.results.mon
 var year = argparse.results.year
 
-ifnot min  then exit_error ("minutes hasn't been set")
-ifnot hour then exit_error ("hour hasn't been set")
+if min  is -1  then exit_error ("minutes hasn't been set")
+if hour is -1 then exit_error ("hour hasn't been set")
 ifnot day  then exit_error ("day hasn't been set")
 ifnot mon  then exit_error ("month hasn't been set")
 ifnot year then exit_error ("year hasn't been set")
 
 var tm = Clock.readhw ()
 
-if null is tm then exit_error ("error while reading hardware clock, " + errno_string (errno))
+if null is tm then exit_error ("error while reading hardware clock")
 
 println ("Current hardware clock time is ${Time.format ("%Y-%m-%d %H:%M:%S", tm)}")
 
 tm.tm_sec  = sec
 tm.tm_min  = min
-tm.tm_hour = hour
+tm.tm_hour = hour - 1
 tm.tm_mday = day
 tm.tm_mon  = mon - 1
 tm.tm_year = year - 1900
 
 var seconds = Time.to_seconds (tm)
 var r = Clock.settime (seconds)
-if r isnot ok then exit_error ("error while setting clock, " + errno_string (errno))
+if r isnot ok then exit_error ("error while setting clock")
 
 if argparse.results.nohw then exit (0)
 
 tm.tm_year += 1900
 tm.tm_mon++
+tm.tm_hour++
 
 r = Clock.sethw (tm)
 
-if r is notok then exit_error ("error while setting hardware clock, " + errno_string (errno))
+if r is notok then exit_error ("error while setting hardware clock")
 
 tm = Clock.readhw ()
-if null is tm then exit_error ("error while reading hardware clock, " + errno_string (errno))
+if null is tm then exit_error ("error while reading hardware clock")
 
 println ("New hardware clock time is ${Time.format ("%Y-%m-%d %H:%M:%S", tm)}")
 

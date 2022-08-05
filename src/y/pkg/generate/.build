@@ -1,6 +1,6 @@
 #@
   depends_on ("generate/errno", MODULE)
-  depends_on ("generate/unit",  SCRIPT)
+  depends_on ("generate/unit",  SCRIPT_EXECUTABLE)
   depends_on ("generate/libc",  SCRIPT)
 #
 

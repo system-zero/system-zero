@@ -6,5 +6,6 @@ shared-module
 static-library
 static-executable
 install-header
-install-script
+install-script-executable
+install-script-library
 all

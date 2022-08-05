@@ -23,7 +23,7 @@ include ("packman")
           public const func Make (argv) {
 
 func argparseNew () {
-  var argparse = New Argparse (31, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (32, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -32,7 +32,8 @@ func argparseNew () {
   argparse.add ("static_library", 0, "static-library", "make static library", BooleanType, ARG_LITERAL) 
   argparse.add ("static_executable", 0, "static-executable", "make static executable", BooleanType, ARG_LITERAL)
   argparse.add ("install_header", 0, "install-header", "install header", BooleanType, ARG_LITERAL)
-  argparse.add ("install_script", 0, "install-script", "install script", BooleanType, ARG_LITERAL)
+  argparse.add ("install_script_lib", 0, "install-script-library", "install script library", BooleanType, ARG_LITERAL)
+  argparse.add ("install_script_exec", 0, "install-script-executable", "install script executable", BooleanType, ARG_LITERAL)
   argparse.add ("all", 0, "all", "make all targets", BooleanType, ARG_LITERAL)
   argparse.add ("force", 'f', "force", "force making targets", BooleanType, 0)
   argparse.add ("recursive", 'R', "recursive", "apply the 'force' option recursively", BooleanType, 0)
@@ -108,6 +109,7 @@ const BINDIR            = SYSDIR:  concat_with ("bin")
 const INCDIR            = SYSDIR:  concat_with ("include")
 const ZLIBDIR           = LIBDIR:  concat_with (Z)
 const ZINCDIR           = INCDIR:  concat_with (Z)
+const ZLADIR            = ZLIBDIR: concat_with ("la-lib")
 const ZMODDIR           = ZLIBDIR: concat_with ("la-modules")
 const YLIBDIR           = LIBDIR:  concat_with (Y)
 const YINCDIR           = INCDIR:  concat_with (Y)
@@ -142,9 +144,11 @@ const STATIC_LIBRARY    = (1 << 5)
 const STATIC_EXECUTABLE = (1 << 6)
 const STATIC            = (1 << 7)
 const MODULE            = (1 << 8)
-const SCRIPT            = (1 << 9)
-const PACKAGE           = (1 << 10)
-const LIBC              = (1 << 11)
+const SCRIPT_EXECUTABLE = (1 << 9)
+const SCRIPT_LIBRARY    = (1 << 10)
+const PACKAGE           = (1 << 11)
+const LIBC              = (1 << 12)
+const SCRIPT            = (SCRIPT_EXECUTABLE|SCRIPT_LIBRARY)
 const EXECUTABLE        = (SHARED_EXECUTABLE|STATIC_EXECUTABLE)
 const LIBRARY           = (SHARED_LIBRARY|STATIC_LIBRARY)
 
@@ -165,6 +169,7 @@ Type Make {
   toplibdir       : LIBDIR
   incdir          : ZINCDIR
   moddir          : ZMODDIR
+  lalibdir        : ZLADIR
   datadir         : SYSDATADIR
   shelldatadir    : SHELLDATADIR
   specname        : SPECNAME
@@ -259,19 +264,31 @@ Type Make {
   }
 
   script : {
-    sources   : {[]}
-    force     : false
-    install   : false
-    interpr   : {
-      shared
-      static
+    executable : {
+      sources   : {[]}
+      force     : false
+      install   : false
+      interpr   : {
+        shared
+        static
+      }
+      completion : true
+      curtype
+      cursource
+      curoutput
+      pre_exec
+      post_exec
     }
-    completion : true
-    curtype
-    cursource
-    curoutput
-    pre_exec
-    post_exec
+
+    library : {
+      sources   : {[]}
+      force     : false
+      install   : false
+      cursource
+      curoutput
+      pre_exec
+      post_exec
+    }
   }
 
   header : {
@@ -368,7 +385,8 @@ Type Make {
     this.static.library.make       = ARGPARSE.results.static_library
     this.static.executable.make    = ARGPARSE.results.static_executable
     this.header.install            = ARGPARSE.results.install_header
-    this.script.install            = ARGPARSE.results.install_script
+    this.script.executable.install = ARGPARSE.results.install_script_exec
+    this.script.library.install    = ARGPARSE.results.install_script_lib
 
     if ARGPARSE.results.shared or ARGPARSE.results.all {
       this.shared.library.make    = true
@@ -405,7 +423,8 @@ Type Make {
     this.debug        = if ARGPARSE.results.no_debug     then NODEBUG orelse DEBUG
     this.rpath        = if ARGPARSE.results.no_rpath     then NORPATH orelse RPATH
 
-    if this.script.install is false and ARGPARSE.results.all then this.script.install = true
+    if this.script.executable.install is false and ARGPARSE.results.all then this.script.executable.install = true
+    if this.script.library.install is false and ARGPARSE.results.all then this.script.library.install = true
 
     if ARGPARSE.results.libdir  isnot null then this.set.libdir  (ARGPARSE.results.libdir)
     if ARGPARSE.results.incdir  isnot null then this.set.incdir  (ARGPARSE.results.incdir)
@@ -434,7 +453,8 @@ Type Make {
     if ARGPARSE.results.static or ARGPARSE.results.static_library    or ARGPARSE.results.all then this.static.library.force = true
     if ARGPARSE.results.static or ARGPARSE.results.static_executable or ARGPARSE.results.all then this.static.executable.force = true
     if ARGPARSE.results.shared or ARGPARSE.results.static            or ARGPARSE.results.install_header or ARGPARSE.results.all then this.header.force = true
-    if ARGPARSE.results.all    or ARGPARSE.results.install_script    then this.script.force = true
+    if ARGPARSE.results.all    or ARGPARSE.results.install_script_exec then this.script.executable.force = true
+    if ARGPARSE.results.all    or ARGPARSE.results.install_script_lib  then this.script.library.force = true
   }
 
   record : func (sources) {
@@ -447,7 +467,6 @@ Type Make {
       var base = base64_encode (v)
       this.recorded.$(v) = { mtime : st.st_mtime, base : base }
     }
-
     var v = this.specname
     var st = v: stat ()
     var base = base64_encode (v)
@@ -590,7 +609,8 @@ Type Make {
     this.set.executable.output                (cap_name)
     this.set.shared.module.source             (name + "-module.c")
     this.set.shared.module.output             (name)
-    this.set.script.source                    (cap_name)
+    this.set.script.executable.source         (cap_name)
+    this.set.script.library.source            (cap_name)
 
     this.init_local_cflags ()
     this.init_include_dirs ()
@@ -670,141 +690,210 @@ Type Make {
       return this.endbuild (r)
     }
 
-    script : func {
-      return ok if this.dump_commands
-      return notok if notok is this.change_to_build_directory ()
-      if null is this.script.sources then return this.error ("script sources is null")
+    script : {
+      executable : func {
+        return ok if this.dump_commands
+        return notok if notok is this.change_to_build_directory ()
+        if null is this.script.executable.sources then return this.error ("script executable sources is null")
 
-      var sources = {[]}
-      for v in this.script.sources append v + ".lai" in sources
+        var sources = {[]}
+        for v in this.script.executable.sources append v + ".lai" in sources
 
-      this.record (sources)
+        this.record (sources)
 
-      return ok if false is this.script.install
+        return ok if false is this.script.executable.install
 
-      ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
+        ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
 
-      ifnot this.bindir: isdirectory () then
-        if false is this.dump_commands then return this.error (this.bindir + " is not a directory")
+        ifnot this.bindir: isdirectory () then
+          if false is this.dump_commands then return this.error (this.bindir + " is not a directory")
 
-      var targets = {[]}
+        var targets = {[]}
 
-      for v in this.script.sources {
-        append this.bindir: concat_with (v)             in targets
-        append this.bindir: concat_with (v) + "-static" in targets
-      }
+        for v in this.script.executable.sources {
+          append this.bindir: concat_with (v)             in targets
+          append this.bindir: concat_with (v) + "-static" in targets
+        }
 
-      var r = this.should_make (targets, sources, this.script.force)
+        var r = this.should_make (targets, sources, this.script.executable.force)
 
-      return notok if r is notok
-      return ok if r is false
+        return notok if r is notok
+        return ok if r is false
 
-      if null isnot this.script.pre_exec {
-        r = this.script.pre_exec ()
-        if r is notok then return this.error ("callback returned an error, abort ...")
-        return ok if r > ok
-      }
+        if null isnot this.script.executable.pre_exec {
+          r = this.script.executable.pre_exec ()
+          if r is notok then return this.error ("script executable pre_exec() callback returned an error, abort ...")
+          return ok if r > ok
+        }
 
-      r = notok
-      var idx = 0
+        r = notok
+        var idx = 0
 
-      for v in sources {
-        ifnot v: exists () then return this.error (v + " source doesn't exists")
+        for v in sources {
+          ifnot v: exists () then return this.error (v + " source doesn't exists")
 
 
-        var read_fd = open (v, O_RDONLY, 0)
-        if null is read_fd then return this.error ("unable to open() " + v)
-        var script = read (read_fd)
-        if null is script then return this.error ("unable to read() " + v)
+          var read_fd = open (v, O_RDONLY, 0)
+          if null is read_fd then return this.error ("unable to open() " + v)
+          var script = read (read_fd)
+          if null is script then return this.error ("unable to read() " + v)
 
-        var interpr = SHARED_INTERPRETER
+          var interpr = SHARED_INTERPRETER
 
-        ifnot null is this.script.interpr.shared {
-          var vv = v: path_basename_sans_extname ()
-          for u, i in this.script.interpr.shared {
-            if u is vv {
-              interpr = i
-              break
+          ifnot null is this.script.executable.interpr.shared {
+            var vv = v: path_basename_sans_extname ()
+            for u, i in this.script.executable.interpr.shared {
+              if u is vv {
+                interpr = i
+                break
+              }
             }
           }
-        }
 
-        var output = targets[idx++]
+          var output = targets[idx++]
 
-        var write_fd = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
-        if null is write_fd then return this.error ("unable to open() " + output)
+          var write_fd = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
+          if null is write_fd then return this.error ("unable to open() " + output)
 
-        this.script.cursource = v
-        this.script.curtype = SHARED_TYPE
-        this.script.curoutput = output
+          this.script.executable.cursource = v
+          this.script.executable.curtype = SHARED_TYPE
+          this.script.executable.curoutput = output
 
-        if null isnot this.script.pre_exec {
-          r = this.script.pre_exec ()
-          if r is notok then return this.error ("callback function returned an error, abort ...")
-          return ok if r > ok
-        }
+          if null isnot this.script.executable.pre_exec {
+            r = this.script.executable.pre_exec ()
+            if r is notok then return this.error ("script executable pre_exec() callback function returned an error, abort ...")
+            return ok if r > ok
+          }
 
-        if this.verbose then println ("install ${output}") orelse println ("  install scripts")
+          if this.verbose then println ("install ${output}") orelse println ("  install scripts")
 
-        if notok is write (write_fd, "#!/bin/env " + interpr + "\n\n") then
-          return this.error ("failed to write() on " + output)
+          if notok is write (write_fd, "#!/bin/env " + interpr + "\n\n") then
+            return this.error ("failed to write() on " + output)
 
-        if notok is write (write_fd, script) then
-          return this.error ("failed to write() on " + output)
+          if notok is write (write_fd, script) then
+            return this.error ("failed to write() on " + output)
 
-        if null isnot this.script.post_exec {
-          r = this.script.post_exec ()
-          if r is notok then return this.error ("callback function returned an error, abort ...")
-          return ok if r > ok
-        }
+          if null isnot this.script.executable.post_exec {
+            r = this.script.executable.post_exec ()
+            if r is notok then return this.error ("script executable post_exec() callback function returned an error, abort ...")
+            return ok if r > ok
+          }
 
-        interpr = STATIC_INTERPRETER
+          interpr = STATIC_INTERPRETER
 
-        ifnot null is this.script.interpr.static {
-          var vv = v: path_basename_sans_extname ()
-          for u, i in this.script.interpr.static {
-            if u is vv {
-              interpr = i
-              break
+          ifnot null is this.script.executable.interpr.static {
+            var vv = v: path_basename_sans_extname ()
+            for u, i in this.script.executable.interpr.static {
+              if u is vv {
+                interpr = i
+                break
+              }
             }
           }
+
+          output = targets[idx++]
+
+          write_fd  = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
+          if null is write_fd then return this.error ("unable to open() " + output)
+
+          this.script.executable.curoutput = output
+          this.script.executable.curtype = STATIC_TYPE
+
+          if null isnot this.script.executable.pre_exec {
+            r = this.script.executable.pre_exec ()
+            if r is notok then return this.error ("script executable pre_exec() callback function returned an error, abort ...")
+            return ok if r > ok
+          }
+
+          if this.verbose then println ("install ${output}")
+
+          if notok is write (write_fd, "#!/bin/env " + interpr + "\n\n") then
+            return this.error ("failed to write() on " + output)
+          if notok is write (write_fd, script) then
+            return this.error ("failed to write() on " + output)
+
+          if null isnot this.script.executable.post_exec {
+            r = this.script.executable.post_exec ()
+            if r is notok then return this.error ("script executable post_exec() callback function returned an error, abort ...")
+            return ok if r > ok
+          }
+
+          r = ok
         }
 
-        output = targets[idx++]
+        if r is ok then
+          if this.script.executable.completion is true then
+            for v in this.script.executable.sources this.install_data (v)
 
-        write_fd  = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
-        if null is write_fd then return this.error ("unable to open() " + output)
-
-        this.script.curoutput = output
-        this.script.curtype = STATIC_TYPE
-
-        if null isnot this.script.pre_exec {
-          r = this.script.pre_exec ()
-          if r is notok then return this.error ("callback function returned an error, abort ...")
-          return ok if r > ok
-        }
-
-        if this.verbose then println ("install ${output}")
-
-        if notok is write (write_fd, "#!/bin/env " + interpr + "\n\n") then
-          return this.error ("failed to write() on " + output)
-        if notok is write (write_fd, script) then
-          return this.error ("failed to write() on " + output)
-
-        if null isnot this.script.post_exec {
-          r = this.script.post_exec ()
-          if r is notok then return this.error ("callback function returned an error, abort ...")
-          return ok if r > ok
-        }
-
-        r = ok
+        return this.endbuild (r)
       }
 
-      if r is ok then
-        if this.script.completion is true then
-          for v in this.script.sources this.install_data (v)
+      library : func {
+        return ok if this.dump_commands
+        return notok if notok is this.change_to_build_directory ()
+        if null is this.script.library.sources then return this.error ("script library sources is null")
 
-      return this.endbuild (r)
+        var sources = {[]}
+        for v in this.script.library.sources append v + ".lai" in sources
+
+        this.record (sources)
+
+        return ok if false is this.script.library.install
+
+        ifnot this.lalibdir: exists () then mkdir (this.lalibdir, 0755; verbose : this.verbose + 1)
+
+        ifnot this.lalibdir: isdirectory () then
+          if false is this.dump_commands then return this.error (this.lalibdir + " is not a directory")
+
+        var targets = {[]}
+
+        for v in this.script.library.sources
+          append this.lalibdir: concat_with (v + ".lai") in targets
+
+        var r = this.should_make (targets, sources, this.script.library.force)
+
+        return notok if r is notok
+        return ok if r is false
+
+        if null isnot this.script.library.pre_exec {
+          r = this.script.library.pre_exec ()
+          if r is notok then return this.error ("script library pre_exec() callback returned an error, abort ...")
+          return ok if r > ok
+        }
+
+        r = notok
+        var idx = 0
+
+        for v in sources {
+          ifnot v: exists () then return this.error (v + " source doesn't exists")
+
+          var output = targets[idx++]
+
+          this.script.library.cursource = v
+          this.script.library.curoutput = output
+
+          if null isnot this.script.library.pre_exec {
+            r = this.script.library.pre_exec ()
+            if r is notok then return this.error ("script library pre_exec() callback function returned an error, abort ...")
+            return ok if r > ok
+          }
+
+          if notok is copy (v, output; verbose : 2, force : 1) then
+            return this.error ("can not install la library")
+
+          if null isnot this.script.library.post_exec {
+            r = this.script.library.post_exec ()
+            if r is notok then return this.error ("script library post_exec() callback function returned an error, abort ...")
+            return ok if r > ok
+          }
+
+          if this.verbose then println ("install ${output}")
+
+          r = ok
+        }
+
+        return this.endbuild (r)
+      }
     }
   }
 
@@ -1412,8 +1501,11 @@ Type Make {
     if this.targets & MODULE then
       return notok if this.make.shared.module () is notok
 
-    if this.targets & SCRIPT then
-      return notok if this.install.script () is notok
+    if this.targets & SCRIPT_EXECUTABLE then
+      return notok if this.install.script.executable () is notok
+
+    if this.targets & SCRIPT_LIBRARY then
+      return notok if this.install.script.library () is notok
 
     return ok
   }
@@ -1462,9 +1554,16 @@ Type Make {
     }
 
     script : {
-      curoutput   : func return this.script.curoutput
-      curtype     : func return this.script.curtype
-      cursource   : func return this.script.cursource
+      executable : {
+        curoutput   : func return this.script.executable.curoutput
+        curtype     : func return this.script.executable.curtype
+        cursource   : func return this.script.executable.cursource
+      }
+
+      library : {
+        curoutput   : func return this.script.executable.curoutput
+        cursource   : func return this.script.executable.cursource
+      }
     }
 
     libc : {
@@ -1486,6 +1585,7 @@ Type Make {
     libdir       : func (d) ifnot null is d this.libdir = d
     incdir       : func (d) ifnot null is d this.incdir = d
     moddir       : func (d) ifnot null is d this.moddir = d
+    lalibdir     : func (d) ifnot null is d this.lalibdir = d
     datadir      : func (d) ifnot null is d this.datadir = d
     shelldatadir : func (d) ifnot null is d this.shelldatadir = d
 
@@ -1594,31 +1694,43 @@ Type Make {
     }
 
     script : {
-      source : func (v) {
-        if qualifier_exists ("clear") then this.clear.script.sources ()
-        this.append_value (v, this.script.sources)
-      }
-
-      interpr : {
-        shared : func (s, interpr) {
-          if null is this.script.interpr.shared then
-            this.script.interpr.shared = { $(s) : interpr }
-          orelse
-            this.script.interpr.shared.$(s) = interpr
+      executable : {
+        source : func (v) {
+          if qualifier_exists ("clear") then this.clear.script.executable.sources ()
+          this.append_value (v, this.script.executable.sources)
         }
 
-        static : func (s, interpr) {
-          if null is this.script.interpr.static then
-            this.script.interpr.static = { $(s) : interpr }
-          orelse
-            this.script.interpr.static.$(s) = interpr
+        interpr : {
+          shared : func (s, interpr) {
+            if null is this.script.executable.interpr.shared then
+              this.script.executable.interpr.shared = { $(s) : interpr }
+            orelse
+              this.script.executable.interpr.shared.$(s) = interpr
+          }
+
+          static : func (s, interpr) {
+            if null is this.script.executable.interpr.static then
+              this.script.executable.interpr.static = { $(s) : interpr }
+            orelse
+              this.script.executable.interpr.static.$(s) = interpr
+          }
         }
+
+        pre_exec  : func (f) ifnot null is f then this.script.executable.pre_exec = f as callback
+        post_exec : func (f) ifnot null is f then this.script.executable.post_exec = f as callback
+
+        completion : func (v) this script.executable.completion = v
       }
 
-      pre_exec  : func (f) ifnot null is f then this.script.pre_exec = f as callback
-      post_exec : func (f) ifnot null is f then this.script.post_exec = f as callback
+      library : {
+        source : func (v) {
+          if qualifier_exists ("clear") then this.clear.script.library.sources ()
+          this.append_value (v, this.script.library.sources)
+        }
 
-      completion : func (v) this script.completion = v
+        pre_exec  : func (f) ifnot null is f then this.script.library.pre_exec = f as callback
+        post_exec : func (f) ifnot null is f then this.script.library.post_exec = f as callback
+      }
     }
 
     libc : {
@@ -1732,7 +1844,15 @@ Type Make {
       }
     }
 
-    script : { sources : func clear (this.script.sources) }
+    script : {
+      executable : {
+        sources : func clear (this.script.executable.sources)
+      }
+
+      library : {
+        sources : func clear (this.script.library.sources)
+      }
+    }
 
     libc   : { sources : func clear (this.libc.sources) }
   }
@@ -1900,18 +2020,19 @@ func make_dependencies (f) {
 
   var pkg = ifnot ARGPARSE.argc then Dir.current () orelse ARGPARSE.argv[0]
 
-  var FORCE       = ARGPARSE.results.force
-  var RECUR       = ARGPARSE.results.recursive
-  var SHARED_ALL  = ARGPARSE.results.shared
-  var SHARED_LIB  = ARGPARSE.results.shared_library
-  var SHARED_EXE  = ARGPARSE.results.shared_executable
-  var SHARED_MOD  = ARGPARSE.results.shared_module
-  var STATIC_ALL  = ARGPARSE.results.static
-  var STATIC_LIB  = ARGPARSE.results.static_library
-  var STATIC_EXE  = ARGPARSE.results.static_executable
-  var INST_SCRIPT = ARGPARSE.results.install_script
-  var DO_ALL      = ARGPARSE.results.all
-  var verbose     = ARGPARSE.results.verbose
+  var verbose          = ARGPARSE.results.verbose
+  var DO_ALL           = ARGPARSE.results.all
+  var FORCE            = ARGPARSE.results.force
+  var RECUR            = ARGPARSE.results.recursive
+  var SHARED_ALL       = ARGPARSE.results.shared
+  var SHARED_LIB       = ARGPARSE.results.shared_library
+  var SHARED_EXE       = ARGPARSE.results.shared_executable
+  var SHARED_MOD       = ARGPARSE.results.shared_module
+  var STATIC_ALL       = ARGPARSE.results.static
+  var STATIC_LIB       = ARGPARSE.results.static_library
+  var STATIC_EXE       = ARGPARSE.results.static_executable
+  var INST_SCRIPT_EXEC = ARGPARSE.results.install_script_exec
+  var INST_SCRIPT_LIB  = ARGPARSE.results.install_script_lib
 
   # do it twice as the time that is properly set, it might be already late
   if ARGPARSE.results.local_spec is true {
@@ -1920,32 +2041,34 @@ func make_dependencies (f) {
   }
 
   func zero_argparse_results () {
-    ARGPARSE.results.shared            = false
-    ARGPARSE.results.static            = false
-    ARGPARSE.results.force             = false
-    ARGPARSE.results.recursive         = false
-    ARGPARSE.results.shared_library    = false
-    ARGPARSE.results.shared_executable = false
-    ARGPARSE.results.shared_module     = false
-    ARGPARSE.results.static_library    = false
-    ARGPARSE.results.static_executable = false
-    ARGPARSE.results.install_script    = false
-    ARGPARSE.results.all               = false
+    ARGPARSE.results.all                 = false
+    ARGPARSE.results.shared              = false
+    ARGPARSE.results.static              = false
+    ARGPARSE.results.force               = false
+    ARGPARSE.results.recursive           = false
+    ARGPARSE.results.shared_library      = false
+    ARGPARSE.results.shared_executable   = false
+    ARGPARSE.results.shared_module       = false
+    ARGPARSE.results.static_library      = false
+    ARGPARSE.results.static_executable   = false
+    ARGPARSE.results.install_script_exec = false
+    ARGPARSE.results.install_script_lib  = false
   }
 
   func init_argparse_results (flag, is_the_last) {
     if is_the_last {
-      ARGPARSE.results.force             = FORCE
-      ARGPARSE.results.recursive         = RECUR
-      ARGPARSE.results.shared            = SHARED_ALL
-      ARGPARSE.results.shared_library    = SHARED_LIB
-      ARGPARSE.results.shared_executable = SHARED_EXE
-      ARGPARSE.results.shared_module     = SHARED_MOD
-      ARGPARSE.results.static            = STATIC_ALL
-      ARGPARSE.results.static_library    = STATIC_LIB
-      ARGPARSE.results.static_executable = STATIC_EXE
-      ARGPARSE.results.install_script    = INST_SCRIPT
-      ARGPARSE.results.all               = DO_ALL
+      ARGPARSE.results.all                 = DO_ALL
+      ARGPARSE.results.force               = FORCE
+      ARGPARSE.results.recursive           = RECUR
+      ARGPARSE.results.shared              = SHARED_ALL
+      ARGPARSE.results.shared_library      = SHARED_LIB
+      ARGPARSE.results.shared_executable   = SHARED_EXE
+      ARGPARSE.results.shared_module       = SHARED_MOD
+      ARGPARSE.results.static              = STATIC_ALL
+      ARGPARSE.results.static_library      = STATIC_LIB
+      ARGPARSE.results.static_executable   = STATIC_EXE
+      ARGPARSE.results.install_script_exec = INST_SCRIPT_EXEC
+      ARGPARSE.results.install_script_lib  = INST_SCRIPT_LIB
       return
     }
 
@@ -1960,7 +2083,8 @@ func make_dependencies (f) {
     ARGPARSE.results.shared_module  = if flag & MODULE or flag & ALL then true orelse false
     ARGPARSE.results.static         = if flag & STATIC or flag & ALL then true orelse false
     ARGPARSE.results.static_library = if flag & STATIC_LIBRARY or flag & ALL then true orelse false
-    ARGPARSE.results.install_script = if flag & SCRIPT or flag & ALL then true orelse false
+    ARGPARSE.results.install_script_exec = if flag & SCRIPT_EXECUTABLE or flag & ALL then true orelse false
+    ARGPARSE.results.install_script_lib = if flag & SCRIPT_LIBRARY or flag & ALL then true orelse false
   }
 
   return notok if notok is make_dependencies (pkg)
@@ -2011,6 +2135,3 @@ func make_dependencies (f) {
 
   return retval
 }
-
-ifnot "MAKE_AS_LIBRARY": is_defined () then
-  exit (if ok is Make (__argv) then 0 orelse 1)

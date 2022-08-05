@@ -2,4 +2,4 @@
  depends_on ("libc", LIBC)
 #
 
-return New Make (__file__, SHARED|STATIC|MODULE|SCRIPT)
+return New Make (__file__, SHARED|STATIC|MODULE|SCRIPT_EXECUTABLE)

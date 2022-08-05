@@ -172,7 +172,7 @@ func generate_script (unit, unitdir) {
 
   ifnot ".build": exists () {
     fd = open (".build", O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH)
-    return notok if notok is write (fd, "return New Make (__file__, SCRIPT)\n")
+    return notok if notok is write (fd, "return New Make (__file__, SCRIPT_EXECUTABLE)\n")
     println ("Created ${unitdir}/.build")
   }
 

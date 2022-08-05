@@ -1,1 +1,10 @@
-return New Make (__file__, SCRIPT)
+var m = New Make (__file__, SCRIPT)
+
+func post_exec (m) {
+  var fd = open (m.get.script.executable.curoutput (), O_WRONLY|O_APPEND, 0)
+  var r = write (fd, "\nexit (if ok is Make (__argv) then 0 orelse 1)\n")
+  return if r is notok then notok orelse ok
+}
+
+m.set.script.executable.post_exec (post_exec)
+return m

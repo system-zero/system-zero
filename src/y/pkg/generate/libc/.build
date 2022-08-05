@@ -1,12 +1,13 @@
 var m = New Make (__file__, SCRIPT)
 
 func post_exec (m) {
-  var fd = open (m.get.script.curoutput (), O_WRONLY|O_APPEND, 0)
+  var fd = open (m.get.script.executable.curoutput (), O_WRONLY|O_APPEND, 0)
   var r = write (fd, "\nexit (generate_libc (__argc, __argv))\n")
   return if r is notok then notok orelse ok
 }
 
-m.set.script.source ("Generate.libc"; clear)
-m.set.script.post_exec (post_exec)
+m.set.script.executable.source ("Generate.libc"; clear)
+m.set.script.executable.post_exec (post_exec)
+m.set.script.library.source ("Generate.libc"; clear)
 return m
 
