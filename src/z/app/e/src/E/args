@@ -1,0 +1,13 @@
+--ftype=
+--backup-suffix=
+--exec-com=
+--load-file=
++,--line-nr=
+--column=
+--num-win=
+--autosave=
+--backupfile
+--pager
+--save-on-exit
+--exit
+--exit-quick

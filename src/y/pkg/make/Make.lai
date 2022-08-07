@@ -523,7 +523,6 @@ Type Make {
   install_data : func (exec) {
     return ok if null is exec
     return notok if notok is this.change_to_build_directory ()
-
     var targetdir = this.shelldatadir: concat_with (exec)
     ifnot targetdir: exists () then mkdir (targetdir, 0700)
     ifnot targetdir: isdirectory () then return this.error (targetdir + ": not a directory")
@@ -1260,7 +1259,7 @@ Type Make {
         r = this.sh: exec (com)
         if r is ok then
           if this.static.executable.completion is true then
-            this.install_data (output)
+            this.install_data (this.static.executable.output)
 
         this.static.executable.make = false
 
@@ -1297,8 +1296,8 @@ Type Make {
         return ok if r > ok
       }
 
+      include ("Generate.libc")
 
-      include ("../generate/libc/Generate.libc") # ugly
       r = generate_libc (2, ["", if this.verbose then "--verbose" orelse ""]);
 
       if r is notok return this.error ("failed to generate libc")

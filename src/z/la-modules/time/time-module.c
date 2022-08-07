@@ -1,11 +1,182 @@
 #define REQUIRE_STDIO
 #define REQUIRE_TIME
 
+#define REQUIRE_ERROR_TYPE  DECLARE
+#define REQUIRE_VMAP_TYPE   DECLARE
 #define REQUIRE_STD_MODULE
 
 #include <z/cenv.h>
 
-MODULE(time)
+MODULE(time);
+
+typedef struct retval_t {
+  VALUE value;
+  const char *msg;
+  int print_error;
+  void *userdata;
+} retval_t;
+
+#define Notok(...) (retval_t) {              \
+  .value = NOTOK_VALUE,                      \
+  .msg = NULL,                               \
+  .print_error = 0,                          \
+  .userdata = NULL,                          \
+  __VA_ARGS__}
+
+#if 0
+#define Ok(...) (retval_t) {                 \
+  .value = OK_VALUE,                         \
+  .msg = NULL,                               \
+  .print_error = 0,                          \
+  .userdata = NULL,                          \
+  __VA_ARGS__}
+#endif
+
+#define True(...) (retval_t) {               \
+  .value = TRUE_VALUE,                       \
+  .msg = NULL,                               \
+  .print_error = 0,                          \
+  .userdata = NULL,                          \
+  __VA_ARGS__}
+
+#define False(...) (retval_t) {              \
+  .value = FALSE_VALUE,                      \
+  .msg = NULL,                               \
+  .print_error = 0,                          \
+  .userdata = NULL,                          \
+  __VA_ARGS__}
+
+#if 0
+#define Null(...) (retval_t) {               \
+  .value = NULL_VALUE),                      \
+  .msg = NULL,                               \
+  .print_error = 0,                          \
+  .userdata = NULL,                          \
+  __VA_ARGS__}
+#endif
+
+// #define RETURN_OK(...) return value(this, Ok(__VA_ARGS__))
+// #define RETURN_NOTOK(...) return error(this, Notok(__VA_ARGS__))
+// #define PRINT_AND_RETURN_NOTOK(...) RETURN_NOTOK (.print_error = 1, __VA_ARGS__)
+#define PRINT_AND_RETURN_FALSE(...) RETURN_FALSE (.print_error = 1, __VA_ARGS__)
+#define RETURN_FALSE(...) return error (this, False(__VA_ARGS__))
+#define RETURN_TRUE(...)  return value (this, True(__VA_ARGS__))
+
+typedef struct tm_value {
+  VALUE
+    *v_sec,
+    *v_min,
+    *v_hour,
+    *v_mday,
+    *v_mon,
+    *v_year;
+} tm_value;
+
+#define TIME_TM_ERROR(...) error (this, Notok(.print_error = 1, __VA_ARGS__))
+
+static VALUE value (la_t *this, retval_t v) {
+  Vmap_t *m = Vmap.new (4);
+  La.map.set_value (this, m, "value", v.value, 1);
+  La.map.set_value (this, m, "msg",
+    (NULL is v.msg ? NULL_VALUE : STRING_NEW(v.msg)), 1);
+  return MAP(m);
+}
+
+static VALUE error (la_t *this, retval_t v) {
+  if (v.print_error) {
+    ifnot (NULL is v.msg) fprintf (stderr, "%s\n", v.msg);
+    if (errno and v.print_error) fprintf (stderr, "%s\n", Error.errno_string (errno));
+  }
+
+  return value (this, v);
+}
+
+static VALUE time_year_isleap (la_t *this, VALUE v_year) {
+  ifnot (IS_INT(v_year)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  int year = AS_INT(v_year);
+  if ((0 is year % 4 and 0 isnot (year % 100)) or
+      (0 is (year % 400)))
+    return INT(1);
+  return INT(0);
+}
+
+static int validate_tm_value (la_t *this, Vmap_t *tm, retval_t *vp) {
+  tm_value *v = vp->userdata;
+
+  v->v_sec = Vmap.get (tm, "tm_sec");
+  if (v->v_sec is NULL) {
+    vp->value = TIME_TM_ERROR(.msg = "tm map has no member tm_sec");
+    return NOTOK;
+  }
+
+  v->v_min = Vmap.get (tm, "tm_min");
+  if (v->v_min is NULL) {
+    vp->value = TIME_TM_ERROR(.msg = "tm map has no member tm_v_min");
+    return NOTOK;
+  }
+
+  v->v_hour = Vmap.get (tm, "tm_hour");
+  if (v->v_hour is NULL) {
+    vp->value = TIME_TM_ERROR(.msg = "tm map has no member tm_hour");
+    return NOTOK;
+  }
+
+  v->v_mday = Vmap.get (tm, "tm_mday");
+  if (v->v_mday is NULL) {
+    vp->value = TIME_TM_ERROR(.msg = "tm map has no member tm_mday");
+    return NOTOK;
+  }
+
+  v->v_mon = Vmap.get (tm, "tm_mon");
+  if (v->v_mon is NULL) {
+    vp->value = TIME_TM_ERROR(.msg = "tm map has no member tm_mon");
+    return NOTOK;
+  }
+
+  v->v_year = Vmap.get (tm, "tm_year");
+  if (v->v_year is NULL) {
+    vp->value = TIME_TM_ERROR(.msg = "tm map has no member tm_year");
+    return NOTOK;
+  }
+
+  return OK;
+}
+
+static VALUE time_validate_tm (la_t *this, VALUE v_tm) {
+  ifnot (IS_MAP(v_tm))
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a tm map");
+
+  Vmap_t *tm = AS_MAP (v_tm);
+  tm_value tm_val;
+  retval_t retval;
+  retval.userdata = &tm_val;
+  int r = validate_tm_value (this, tm, &retval);
+  if (r is NOTOK) return retval.value;
+
+  int
+    sec  = AS_INT((*tm_val.v_sec)),
+    min  = AS_INT((*tm_val.v_min)),
+    hour = AS_INT((*tm_val.v_hour)),
+    mday = AS_INT((*tm_val.v_mday)),
+    mon  = AS_INT((*tm_val.v_mon)),
+    year = AS_INT((*tm_val.v_year));
+
+  ifnot (year) PRINT_AND_RETURN_FALSE(.msg = "0: is not a valid year");
+
+  if (0 > mon or mon > 11) PRINT_AND_RETURN_FALSE(.msg = STR_FMT("%d is not a valid month", mon));
+
+  int m_ar[] = {31, 28 + AS_INT(time_year_isleap (this, INT(year))),
+    31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+  if (1 > mday or m_ar[mon] < mday)
+    PRINT_AND_RETURN_FALSE(.msg = STR_FMT("%d: mday is not a valid day", mday));
+
+  if ((hour > 23 || min > 59 || sec > 59) ||
+      (hour < 0  || min < 0  || sec < 0 ))
+    PRINT_AND_RETURN_FALSE(.msg = "not a valid hour/minutes/second format");
+
+   RETURN_TRUE();
+}
 
 static VALUE time_now (la_t *this) {
   (void) this;
@@ -193,6 +364,8 @@ static VALUE time_format (la_t *this, VALUE v_fmt, VALUE v_tm) {
 
 public int __init_time_module__ (la_t *this) {
   __INIT_MODULE__(this);
+  __INIT__ (vmap);
+  __INIT__ (error);
 
   LaDefCFun lafuns[] = {
     { "time_now",            PTR(time_now), 0 },
@@ -201,6 +374,8 @@ public int __init_time_module__ (la_t *this) {
     { "time_format",         PTR(time_format), 2 },
     { "time_to_string",      PTR(time_to_string), 1 },
     { "time_to_seconds",     PTR(time_to_seconds), 1 },
+    { "time_validate_tm",    PTR(time_validate_tm), 1 },
+    { "time_year_isleap",    PTR(time_year_isleap), 1 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -217,7 +392,11 @@ public int __init_time_module__ (la_t *this) {
       local : time_local,
       format : time_format,
       to_string : time_to_string,
-      to_seconds : time_to_seconds
+      to_seconds : time_to_seconds,
+      validate_tm : time_validate_tm,
+      year : {
+        isleap : time_year_isleap
+      }
     }
  );
 

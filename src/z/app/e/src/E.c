@@ -679,6 +679,55 @@ static void __init_ext__ (ed_t *this, ed_opts opts) {
   Ed.set.lang_getkey (this, ex_lang_getkey);
 }
 
+/* this is also serves as API documentation for the basic functionality
+ * of the library, that is to create instances and to make the absolute
+ * tests for the lower possible conditions that can be met, and then to
+ * to make the necessary library calls to implement the decisions that
+ * got from the its caller (in this specific case, from the environment)
+ */
+
+/* for example, this is a quite like vim editor (but with many tweaks
+ * specifically made for our system (as there is a basic knowledge of our
+ * host system, that we are all part of it (almost as a simply entity),
+ * and we are actually the ones that we write this whole thing!))
+ */
+
+/*
+ * using the command line (undocumented options) this same machine can
+ * be used for creating even scripts, like an interactive sed implementation:
+
+   echo "this" > /tmp/file
+   E --exec-com=s%::--pat=this::--sub=that::--interactive::--global \
+     --exit \
+     --save-on-exit /tmp/file
+
+   * breaks down to:
+   *  --exec-com=...:
+        s% (search) --pat=(pattern) --sub=(substitution) --interactive --global
+
+        this is our search command (a command interface that behave mostly
+        like a shell does (it offers autocompletion (with a zsh like menu
+        selection interface)))
+
+        note that the :: separator just plays the role of the space
+
+      --exit exit after the command execution
+
+      --save-on-exit
+        this is if you want, to automatically save the (possible) modified
+        buffer, as usual when it tries to exit with a modified buffer, it
+        presents you a dialog with what to do with this: as a bonus it can
+        also show a unified diff with the differences from the original buffer
+ */
+
+ /* Of course the whole API is enormous to be described, and possible it will
+    never documented. It is exposed as a structure with sub-structures and for
+    now and ever, the names describe their functionality. If in doubt then the
+    only real solution is to look at the library functions themeselves and try
+    to understand. This might be a bit difficult, because this unit it was and
+    the very first bytes in C.
+  */
+
 int main (int argc, char **argv) {
   __INIT__ (dir);
   __INIT__ (sys);
@@ -707,7 +756,7 @@ int main (int argc, char **argv) {
   setlocale (LC_ALL, "");
   AllocErrorHandler = __alloc_error_handler__;
 
-  if (NULL is (__E__ = __init_ed__ ("vedas")))
+  if (NULL is (__E__ = __init_ed__ ("E")))
     return 1;
 
   char
@@ -793,9 +842,8 @@ int main (int argc, char **argv) {
 
   num_win = (num_win < argc ? num_win : argc);
 
-  this = E.new (__E__, EdOpts(
-      .num_win = num_win,
-      .term_flags = term_flags));
+  this = E.new (__E__, EdOpts(.num_win = num_win, .term_flags = term_flags));
+
   Ed.set.at_exit_cb (this, Ed.history.write);
 
   if (NOTOK is Ed.check_sanity (this)) {
@@ -888,7 +936,7 @@ theloop:;
 
     if (E.test.state_bit (__E__, E_SUSPENDED)) {
       if (E.get.num (__E__) is 1) {
-        /* as an example, we simply create another independed instance */
+        /* as an example, we simply create another independent instance */
         this = E.new (__E__, EdOpts());
         Ed.set.at_exit_cb (this, Ed.history.write);
 
