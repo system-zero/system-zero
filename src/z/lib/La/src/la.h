@@ -3,7 +3,7 @@
 
 #define MAX_BUILTIN_PARAMS 9
 #define MAXLEN_SYMBOL      255
-#define MAXLEN_MSG         255
+#define MAXLEN_MSG         511
 #define MAXLEN_TYPENAME    15
 
 typedef struct la_T la_T;
@@ -404,7 +404,8 @@ typedef struct la_set_self {
     (*curMsg) (la_t *, const char *),
     (*user_data) (la_t *, void *),
     (*CFuncError) (la_t *, int),
-    (*define_funs_cb) (la_t *, LaDefineFuns_cb);
+    (*define_funs_cb) (la_t *, LaDefineFuns_cb),
+    (*function_curMsg) (la_t *, const char *, const char *);
 
   VALUE (*qualifiers) (la_t *, VALUE, funT *);
 } la_set_self;
@@ -464,10 +465,10 @@ public la_T *la_get_root (la_t *);
 
 /* assumed a La structure */
 #ifndef WITHOUT_LA_FUNCTIONS
-#define THROW(__e__, __m__) do {    \
-  La.set.CFuncError (this,  __e__); \
-  La.set.curMsg (this, __m__);      \
-  return NULL_VALUE;                \
+#define THROW(__e__, __m__) do {                                          \
+  La.set.CFuncError (this,  __e__);                                       \
+  La.set.function_curMsg (this, __func__, __m__);                         \
+  return NULL_VALUE;                                                      \
 } while (0)
 
 #define VSTRING_TO_ARRAY(__v__) ({                                        \

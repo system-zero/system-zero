@@ -317,13 +317,13 @@ static int process_dir (dirwalk_t *dw, const char *d, struct stat *st) {
 }
 
 static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
-  ifnot (IS_STRING(v_dir)) THROW(LA_ERR_TYPE_MISMATCH, "find_dir(): awaiting a string");
+  ifnot (IS_STRING(v_dir)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *type = NULL;
 
   if (IS_STRING(v_type))
     type = AS_STRING_BYTES(v_type);
   else ifnot (IS_NULL(v_type))
-    THROW(LA_ERR_TYPE_MISMATCH, "find_dir(): awaiting a string or null");
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null");
 
   char *dir = AS_STRING_BYTES(v_dir);
   ifnot (Dir.is_directory (dir)) {

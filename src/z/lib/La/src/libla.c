@@ -583,10 +583,10 @@ do {                                                        \
 #define SETSTRPTR(_s_, _p_) _s_.ptr = _p_
 #define TOKENSTRBYTES GETSTRPTR(TOKENSTR)
 
-#define C_THROW(__e__, __m__) do {  \
-  la_set_CFuncError (this,  __e__); \
-  la_set_curMsg (this, __m__);      \
-  return NULL_VALUE;                \
+#define C_THROW(__e__, __m__) do {                \
+  la_set_CFuncError (this,  __e__);               \
+  la_set_function_curMsg (this, __func__, __m__); \
+  return NULL_VALUE;                              \
 } while (0)
 
 typedef struct listNode listNode;
@@ -656,6 +656,7 @@ static int la_parse_loadfile (la_t *);
 static int la_parse_chain (la_t *, VALUE *);
 static void la_set_CFuncError (la_t *, int);
 static void la_set_curMsg (la_t *, const char *);
+static void la_set_function_curMsg (la_t *, const char *, const char *);
 static void la_set_Errno (la_t *, int);
 static int la_peek_nth_byte_nows_inline (la_t *, uint *);
 
@@ -1128,7 +1129,7 @@ static VALUE la_typeArrayAsString (la_t *this, VALUE value) {
 }
 
 static VALUE la_is_defined (la_t *this, VALUE v_val) {
-  ifnot (IS_STRING(v_val)) C_THROW(LA_ERR_TYPE_MISMATCH, "is_defined(): awaiting a string");
+  ifnot (IS_STRING(v_val)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *val = AS_STRING_BYTES(v_val);
 
   funT *f = this->curScope;
@@ -12108,6 +12109,11 @@ static void la_set_curMsg (la_t *this, const char *msg) {
   Cstring.cp (this->curMsg, MAXLEN_MSG + 1, msg, bytelen (msg));
 }
 
+static void la_set_function_curMsg (la_t *this, const char *fname, const char *msg) {
+  size_t len = Cstring.cp_fmt (this->curMsg, MAXLEN_MSG + 1, "%s(): ", fname);
+  Cstring.cp (this->curMsg + len, (MAXLEN_MSG + 1) - len, msg, bytelen (msg));
+}
+
 static void la_set_Errno (la_t *this, int err) {
   this->Errno = err;
   sym_t *sym = ns_lookup_symbol (this->std, "errno");
@@ -12418,7 +12424,8 @@ public la_T *__init_la__ (void) {
         .user_data = la_set_user_data,
         .CFuncError = la_set_CFuncError,
         .qualifiers = la_set_qualifiers,
-        .define_funs_cb = la_set_define_funs_cb
+        .define_funs_cb = la_set_define_funs_cb,
+        .function_curMsg = la_set_function_curMsg
       },
       .map = (la_map_self) {
         .set_value = la_map_set_value,

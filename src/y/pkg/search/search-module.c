@@ -116,8 +116,8 @@ static int process_file (dirwalk_t *dw, const char *file, struct stat *st) {
 }
 
 static VALUE search_file (la_t *this, VALUE v_file, VALUE v_pat) {
-  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "search_file(): awaiting a string");
-  ifnot (IS_STRING(v_pat)) THROW(LA_ERR_TYPE_MISMATCH, "search_file(): awaiting a string");
+  ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_pat)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   char *file = AS_STRING_BYTES(v_file);
   char *pat  = AS_STRING_BYTES(v_pat);

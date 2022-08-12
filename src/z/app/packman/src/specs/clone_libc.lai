@@ -37,7 +37,7 @@ return Packman.new.spec ({
       ]
 
       func install_libs () {
-        for |v| in libs {
+        for v in libs {
           continue if v is null
           continue ifnot ("/lib/" + v): file_exists ()
           return notok if notok is File.copy ("/lib/" + v, this.libdir; verbose : 2, force : 1, preserve : 1)
@@ -47,7 +47,7 @@ return Packman.new.spec ({
       }
 
       func install_links () {
-        for |i, v| in links {
+        for i, v in links {
           i++
           continue if v is null
           return notok if notok is v: file_symlink (this.libdir + "/" + links[i]; verbose : 2, force : 1)

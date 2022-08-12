@@ -9,8 +9,8 @@
 MODULE(re);
 
 static VALUE re_match (la_t *this, VALUE v_str, VALUE v_pat) {
-  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "re_match(): awaiting a string");
-  ifnot (IS_STRING(v_pat)) THROW(LA_ERR_TYPE_MISMATCH, "re_match(): awaiting a string");
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_pat)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   string *str = AS_STRING(v_str);
   char *pat = AS_STRING_BYTES(v_pat);
