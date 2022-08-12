@@ -1730,6 +1730,11 @@ Type Make {
         pre_exec  : func (f) ifnot null is f then this.script.library.pre_exec = f as callback
         post_exec : func (f) ifnot null is f then this.script.library.post_exec = f as callback
       }
+
+      source : func (v) {
+        this.set.script.executable.source (v; qualifiers ())
+        this.set.script.library.source (v; qualifiers ())
+      }
     }
 
     libc : {

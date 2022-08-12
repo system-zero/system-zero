@@ -32,6 +32,10 @@ include ("argparse")
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
   LIBCOUTDIR  =  SRCDIR: concat_with (LIBCOUTNAME)
 
+  const string[11] libcdirs = [
+    "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
+    "time", "error", "convert"]
+
   const
   provide_str    = " provides: ",
   require_str    = "// requires: ",
@@ -82,10 +86,6 @@ include ("argparse")
     append LIBCSRCNAME: concat_with (LIBCSRCNAME) in s
     return s
   } (outputDir)
-
-  var string[11] dirs = [
-    "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
-    "time", "error", "convert"]
 
   var funcSigns = "\n/* Function Signatures */\n"
   var libcFuns  = "\n"
@@ -154,7 +154,7 @@ include ("argparse")
     return notok
   }
 
-  for v in dirs {
+  for v in libcdirs {
     if v isnot "syscall" append format ("/* ${v} */") in libcFuns
     var dir = LIBCSRCDIR: concat_with (v)
     var arr = dir: dir_list ()
@@ -172,6 +172,7 @@ include ("argparse")
       }
 
       if "syscall.c" is f {
+        append "#ifndef SYSCALL_P\n#define SYSCALL_P\n" in funcSigns
         append "long syscall0 (long);\n" in funcSigns
         append "long syscall1 (long, long);\n" in funcSigns
         append "long syscall2 (long, long, long);\n" in funcSigns
@@ -179,14 +180,16 @@ include ("argparse")
         append "long syscall4 (long, long, long, long, long);\n" in funcSigns
         append "long syscall5 (long, long, long, long, long, long);\n" in funcSigns
         append "long syscall6 (long, long, long, long, long, long, long);\n" in funcSigns
+        append "#endif /* SYSCALL_P */\n" in funcSigns
 
         append "/* Syscalls Implementation */\n" in libcFuns
 
          # so we can open it with 'gf'
+        append "#ifndef SYSCALLS_D\n#define SYSCALLS_D\n" in libcFuns
         append "/* " + (dotsToLibc: concat_with ("syscall/syscall.c")) + " */\n" in libcFuns
 
         for line in lines append line + '\n' in libcFuns
-        append "\n" in libcFuns
+        append "#endif /* SYSCALLS_D */\n\n" in libcFuns
         append "/* Function Implementation */\n" in libcFuns
         continue
       }
@@ -213,8 +216,9 @@ include ("argparse")
             ifnot (sp: len ()) {
               return error (v + "/" + f + ": missing function signature")
             } else {
+              #append format ("\n#ifdef REQUIRE_${f_hdr}\n") in funcSigns
               ifnot num_found - 1 then
-                append format ("\n#ifdef REQUIRE_${f_hdr}\n") in funcSigns
+                append format ("\n#ifdef REQUIRE_${f_hdr}\n#ifndef ${f_hdr}_FD\n#define ${f_hdr}_FD\n\n") in funcSigns
               append sp + if sp: eq_n ("#define ", 8) then "\n" orelse ";\n" end in funcSigns
             }
             idx++
@@ -226,7 +230,7 @@ include ("argparse")
           }
         }
 
-        if num_found then append "#endif\n" in funcSigns
+        if num_found then append "\n#endif /* " + f_hdr + "_FD */\n#endif\n" in funcSigns
       }
 
       num_found = 0
@@ -285,25 +289,26 @@ include ("argparse")
       }
 
       if "H" is f_ext {
-        append format ("\n#ifdef REQUIRE_${f_hdr}") in libcTypes
-        append "_H\n" in libcTypes
-        append format ("/* ${dotsToLibc}/${v}/${f} */\n") in libcTypes
+        append format ("\n#ifdef REQUIRE_${f_hdr}_H\n") in libcTypes
+        append "#ifndef " + f_hdr + "_TD\n#define " + f_hdr + "_TD\n" in libcTypes
+        append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcTypes
 
         for (var i = idx; i < lines: len (); i++) {
           break if lines[i]: eq_n ("// end", 6)
           append lines[i] + '\n' in libcTypes
         }
 
-        append "#endif\n" in libcTypes
+        append "\n#endif /* " + f_hdr + "_TD */\n#endif\n" in libcTypes
       } else {
-        append format ("\n#ifdef REQUIRE_${f_hdr}\n") in libcFuns
-        append format ("/* ${dotsToLibc}/${v}/${f} */\n") in libcFuns
-
+        append "\n#ifdef REQUIRE_" + f_hdr + "\n" in libcFuns
+        append "#ifndef " + f_hdr + "_F\n#define " + f_hdr + "_F\n" in libcFuns
+        append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcFuns
         for (var i = idx; i < lines: len (); i++) {
           break if lines[i]: eq_n ("// end", 6)
           append lines[i] + '\n' in libcFuns
         }
 
+        append "\n#endif /* " + f_hdr + "_F */\n" in libcFuns
         append "#endif\n" in libcFuns
       }
     }
@@ -315,16 +320,16 @@ include ("argparse")
     var lines = v.abspath: filelines ()
     var idx = v.endidx
 
-    append format ("\n#ifdef REQUIRE_${v.header}") in libcTypes
-    append "_H\n" in libcTypes
-    append format ("/* ${dotsToLibc}/${v.basedir}/${v.funname} */\n") in libcTypes
+    append "\n#ifdef REQUIRE_" + v.header + "_H\n" in libcTypes
+    append "#ifndef " + v.header + "_T\n#define " + v.header + "_T\n" in libcTypes
+    append format ("/* ${dotsToLibc}/${v.basedir}/${v.funname} */\n\n") in libcTypes
 
     for (var i = idx; i < lines: len (); i++) {
       break if lines[i]: eq_n (end_str, 6)
       append lines[i] + '\n' in libcTypes
     }
 
-    append "#endif\n" in libcTypes
+    append "#endif /* " + v.header + "_T */\n#endif\n" in libcTypes
   }
 
   append "#endif /* LIBC_HDR */\n" in libcFuns
