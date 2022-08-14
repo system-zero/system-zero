@@ -1,13 +1,13 @@
 ```C
 /* This is an oversimplified tiny libc for x86 and x86_64. The underlying
- * development name is libcmm, which goes for libc-- (minusminus).
+ * development name is zlibc.
  *
  * It is based on syscalls and it is meant just for a primitive and
  * straight forward way to execute some code, without any intermediator.
  * It is not the safest way and it is not the optimized way to do this
  * kind of job.
  *
- * It is focused on clarity, that means that betweeen an optimized code
+ * It is focused on clarity, that means that between an optimized code
  * that we can not understand, the simplest is preferable. We might want
  * to write more than one version of a function.
  *

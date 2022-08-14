@@ -148,6 +148,7 @@ const SCRIPT_EXECUTABLE = (1 << 9)
 const SCRIPT_LIBRARY    = (1 << 10)
 const PACKAGE           = (1 << 11)
 const LIBC              = (1 << 12)
+const C_HEADER          = (1 << 13)
 const SCRIPT            = (SCRIPT_EXECUTABLE|SCRIPT_LIBRARY)
 const EXECUTABLE        = (SHARED_EXECUTABLE|STATIC_EXECUTABLE)
 const LIBRARY           = (SHARED_LIBRARY|STATIC_LIBRARY)
@@ -452,7 +453,7 @@ Type Make {
     if ARGPARSE.results.shared or ARGPARSE.results.shared_executable or ARGPARSE.results.all then this.shared.executable.force = true
     if ARGPARSE.results.static or ARGPARSE.results.static_library    or ARGPARSE.results.all then this.static.library.force = true
     if ARGPARSE.results.static or ARGPARSE.results.static_executable or ARGPARSE.results.all then this.static.executable.force = true
-    if ARGPARSE.results.shared or ARGPARSE.results.static            or ARGPARSE.results.install_header or ARGPARSE.results.all then this.header.force = true
+    if ARGPARSE.results.shared_library or ARGPARSE.results.static_library or ARGPARSE.results.install_header or ARGPARSE.results.all then this.header.force = true
     if ARGPARSE.results.all    or ARGPARSE.results.install_script_exec then this.script.executable.force = true
     if ARGPARSE.results.all    or ARGPARSE.results.install_script_lib  then this.script.library.force = true
   }
@@ -1482,7 +1483,8 @@ Type Make {
       return this.make.libc ()
 
     if this.targets & SHARED_LIBRARY or this.targets & SHARED or
-       this.targets & STATIC_LIBRARY or this.targets & STATIC
+       this.targets & STATIC_LIBRARY or this.targets & STATIC or
+       this.targets & C_HEADER
       return notok if this.install.header () is notok
 
     if this.targets & SHARED_LIBRARY or this.targets & SHARED then
@@ -2035,6 +2037,7 @@ func make_dependencies (f) {
   var STATIC_ALL       = ARGPARSE.results.static
   var STATIC_LIB       = ARGPARSE.results.static_library
   var STATIC_EXE       = ARGPARSE.results.static_executable
+  var INST_HEADER      = ARGPARSE.results.install_header
   var INST_SCRIPT_EXEC = ARGPARSE.results.install_script_exec
   var INST_SCRIPT_LIB  = ARGPARSE.results.install_script_lib
 
@@ -2055,6 +2058,7 @@ func make_dependencies (f) {
     ARGPARSE.results.shared_module       = false
     ARGPARSE.results.static_library      = false
     ARGPARSE.results.static_executable   = false
+    ARGPARSE.results.install_header      = false
     ARGPARSE.results.install_script_exec = false
     ARGPARSE.results.install_script_lib  = false
   }
@@ -2071,6 +2075,7 @@ func make_dependencies (f) {
       ARGPARSE.results.static              = STATIC_ALL
       ARGPARSE.results.static_library      = STATIC_LIB
       ARGPARSE.results.static_executable   = STATIC_EXE
+      ARGPARSE.results.install_header      = INST_HEADER
       ARGPARSE.results.install_script_exec = INST_SCRIPT_EXEC
       ARGPARSE.results.install_script_lib  = INST_SCRIPT_LIB
       return
@@ -2087,8 +2092,9 @@ func make_dependencies (f) {
     ARGPARSE.results.shared_module  = if flag & MODULE or flag & ALL then true orelse false
     ARGPARSE.results.static         = if flag & STATIC or flag & ALL then true orelse false
     ARGPARSE.results.static_library = if flag & STATIC_LIBRARY or flag & ALL then true orelse false
+    ARGPARSE.results.install_header = if flag & INST_HEADER or flag & ALL then true orelse false
     ARGPARSE.results.install_script_exec = if flag & SCRIPT_EXECUTABLE or flag & ALL then true orelse false
-    ARGPARSE.results.install_script_lib = if flag & SCRIPT_LIBRARY or flag & ALL then true orelse false
+    ARGPARSE.results.install_script_lib  = if flag & SCRIPT_LIBRARY or flag & ALL then true orelse false
   }
 
   return notok if notok is make_dependencies (pkg)

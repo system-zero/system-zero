@@ -27,6 +27,7 @@ func libc_pre_exec (s) {
   }
 
   import ("generateerrno")
+
   var e = Generate.errno ()
 
   var write_fd = open (f, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IROTH|S_IRGRP);
@@ -107,11 +108,11 @@ m.set.libc.source ([
   "libc/signal/sigaction.h",
   "libc/signal/sigprocmask.c",
   "libc/signal/sigset.h",
-  "libc/std/NULL.h",
   "libc/std/environ.h",
   "libc/std/errno.h",
-  "libc/std/size_t.h",
   "libc/std/stdarg.h",
+  "libc/std/std.h",
+  "libc/std/zenv.h",
   "libc/stdlib/alloc.c",
   "libc/stdlib/atoi.c",
   "libc/stdlib/getenv.c",

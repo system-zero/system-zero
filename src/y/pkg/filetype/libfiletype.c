@@ -1,4 +1,3 @@
-#define REQUIRE_SIZE_T_H
 #define REQUIRE_STRCAT
 #define REQUIRE_STRLEN
 #define REQUIRE_STR_EQ_N

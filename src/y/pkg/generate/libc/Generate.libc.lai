@@ -99,16 +99,8 @@ include ("argparse")
     #ifndef LIBC_HDR
     #define LIBC_HDR
 
-    #ifndef REQUIRE_STDINT
-    #define REQUIRE_STDINT
-    #endif
-
-    #ifndef REQUIRE_NULL_H
-    #define REQUIRE_NULL_H
-    #endif
-
-    #ifndef REQUIRE_SIZE_T_H
-    #define REQUIRE_SIZE_T_H
+    #ifndef REQUIRE_STD_H
+    #define REQUIRE_STD_H
     #endif
 
     #ifndef REQUIRE_ERRNO_H
@@ -119,8 +111,10 @@ include ("argparse")
     #define REQUIRE_ERRORS_H
     #endif
 
-    #ifdef REQUIRE_STDINT
-    #include <stdint.h>
+    #ifndef WITHOUT_ZENV
+    #ifndef REQUIRE_ZENV_H
+    #define REQUIRE_ZENV_H
+    #endif
     #endif
 
     /* Tracking Dependencies */
@@ -201,33 +195,28 @@ include ("argparse")
       var num_found = 0
 
       if "C" is f_ext {
-        for (var i = idx; i < lines: len (); i++) {
+        var length = lines: len ()
+        for (var i = idx; i < length; i++) {
           var line = lines[idx]
           var sp = line: bytes_in_str (provide_str)
 
-          ifnot null is sp {
-            num_found++
-            # id[0]:  sometimes we need a "break that works for if's"
-            #         else the logic may lost a bit, just because of
-            #         the error conditional checks
-
-            sp = sp: advance_after_bytes (provide_str, 1)
-
-            ifnot (sp: len ()) {
-              return error (v + "/" + f + ": missing function signature")
-            } else {
-              #append format ("\n#ifdef REQUIRE_${f_hdr}\n") in funcSigns
-              ifnot num_found - 1 then
-                append format ("\n#ifdef REQUIRE_${f_hdr}\n#ifndef ${f_hdr}_FD\n#define ${f_hdr}_FD\n\n") in funcSigns
-              append sp + if sp: eq_n ("#define ", 8) then "\n" orelse ";\n" end in funcSigns
-            }
-            idx++
-
-          } else {
-            ifnot num_found then
-              return error (v + "/" + f + ": is missing a '// provides: ' token")
+          if null is sp {
+            ifnot num_found then return error (v + "/" + f + ": is missing a '// provides: ' token")
             break
           }
+
+          num_found++
+
+          sp = sp: advance_after_bytes (provide_str, 1)
+
+          ifnot sp: len () then return error (v + "/" + f + ": missing function signature")
+
+          ifnot num_found - 1 then
+            append format ("\n#ifdef REQUIRE_${f_hdr}\n#ifndef ${f_hdr}_FD\n#define ${f_hdr}_FD\n\n") in funcSigns
+
+          append sp + if sp: eq_n ("#define ", 8) then "\n" orelse ";\n" end in funcSigns
+
+          idx++
         }
 
         if num_found then append "\n#endif /* " + f_hdr + "_FD */\n#endif\n" in funcSigns
