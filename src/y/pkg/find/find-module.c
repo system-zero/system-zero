@@ -30,8 +30,16 @@ MODULE(find);
 #define SORT_SIZE   4
 #define SORT_STRING 5
 
+#define GET_OPT_TOSTDOUT() ({                                               \
+  VALUE _v_tostdout = La.get.qualifier (this, "tostdout", INT(0));          \
+  ifnot (IS_INT(_v_tostdout))                                               \
+    THROW(LA_ERR_TYPE_MISMATCH, "tostdout, awaiting an integer qualifier"); \
+  AS_INT(_v_tostdout);                                                      \
+})
+
 typedef struct find_t {
   int type;
+  int tostdout;
   int show_hidden;
   int append_indicator;
   int long_format;
@@ -269,8 +277,13 @@ static int process_file (dirwalk_t *dw, const char *f, struct stat *st) {
     }
   }
 
-  DListAppend (find->files, v);
-  append_sorted_type (find, st, tmp);
+  if (find->tostdout) {
+    fprintf (stdout, "%s\n", v->data->bytes);
+    Vstring.release_item (v);
+  } else {
+    DListAppend (find->files, v);
+    append_sorted_type (find, st, tmp);
+  }
 
   return 0;
 }
@@ -310,8 +323,13 @@ static int process_dir (dirwalk_t *dw, const char *d, struct stat *st) {
 
   if (find->append_indicator) String.append_byte (v->data, '/');
 
-  DListAppend (find->files, v);
-  append_sorted_type (find, st, tmp);
+  if (find->tostdout) {
+    fprintf (stdout, "%s\n", v->data->bytes);
+    Vstring.release_item (v);
+  } else {
+    DListAppend (find->files, v);
+    append_sorted_type (find, st, tmp);
+  }
 
   return 1;
 }
@@ -342,6 +360,7 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
   int sort_by_ctime = GET_OPT_SORT_BY_CTIME();
   int sort_by_size  = GET_OPT_SORT_BY_SIZE();
   int only_executables = GET_OPT_EXECUTABLE();
+  int tostdout = GET_OPT_TOSTDOUT();
   int match_uid = GET_OPT_UID();
   int match_gid = GET_OPT_GID();
 
@@ -404,6 +423,7 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
 
   find_t find = (find_t) {
     .type = types,
+    .tostdout = tostdout,
     .show_hidden = show_hidden,
     .append_indicator = append_indicator,
     .long_format = long_format,
@@ -415,10 +435,13 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
     .uid = (match_uid isnot -1 ? match_uid : 0),
     .gid = (match_gid isnot -1 ? match_gid : 0),
     .re = re,
-    .files = Vstring.new (),
+    .files = NULL,
     .sorted_long = NULL,
     .sorted_string = NULL
   };
+
+  ifnot (tostdout)
+    find.files = Vstring.new ();
 
   if (max_depth < 0) max_depth = DIRWALK_MAX_DEPTH;
 
@@ -429,11 +452,13 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
   dw->stat_file = lstat;
   Dir.walk.run (dw, dir);
 
-  ArrayType *array = NULL;
-  array = find_sort (&find);
-
   if (NULL isnot re) Re.release (re);
   Dir.walk.release (&dw);
+
+  if (tostdout) return INT(0);
+
+  ArrayType *array = NULL;
+  array = find_sort (&find);
 
   if (find.sorted_string isnot NULL) free (find.sorted_string);
   if (find.sorted_long   isnot NULL) free (find.sorted_long);

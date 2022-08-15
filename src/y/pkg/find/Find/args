@@ -2,6 +2,7 @@
 --sort-by-mtime
 --sort-by-atime
 --sort-by-ctime
+--tostdout
 --reverse
 --directories
 --links

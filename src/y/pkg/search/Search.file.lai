@@ -18,6 +18,7 @@ if argparse.exit is true then exit (0)
 
 var qualif = {
   recursive        : argparse.results.recursive
+  tostdout         : 1
   without_filename : argparse.results.without_filename
   with_line_number : argparse.results.with_line_number
 }
@@ -41,14 +42,13 @@ if 0 is argparse.argc or null is pat {
 var exitval = 1
 
 for f in argparse.argv  {
-  var a = f: search_file (pat; qualif)
-  if null is a {
+  var r = f: search_file (pat; qualif)
+  if notok is r {
     exitval = 2
     continue
   }
 
-  if exitval isnot 2 and a: len () then exitval = 0
-  for v in a println (v)
+  if exitval isnot 2 and r is ok then exitval = ok
 }
 
 exit (exitval)

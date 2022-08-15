@@ -15,12 +15,20 @@
 
 MODULE(search);
 
+#define GET_OPT_TOSTDOUT() ({                                               \
+  VALUE _v_tostdout = La.get.qualifier (this, "tostdout", INT(0));          \
+  ifnot (IS_INT(_v_tostdout))                                               \
+    THROW(LA_ERR_TYPE_MISMATCH, "tostdout, awaiting an integer qualifier"); \
+  AS_INT(_v_tostdout);                                                      \
+})
+
 typedef struct search_file_t {
   Vstring_t *result;
   const char *file;
   re_t *re;
   int with_line_number;
   int with_filename;
+  int tostdout;
   struct stat *st;
 } search_file_t;
 
@@ -86,10 +94,14 @@ static int __search_file (search_file_t *args) {
         String.append_with_fmt (s, "%zd:", num_lines);
 
       String.append_with_len (s, line, num_read);
-
-      vstring_t *vs = Vstring.new_item ();
-      vs->data = s;
-      Vstring.append (args->result, vs);
+      if (args->tostdout) {
+        fprintf (stdout, "%s\n", s->bytes);
+        String.release (s);
+      } else {
+        vstring_t *vs = Vstring.new_item ();
+        vs->data = s;
+        Vstring.append (args->result, vs);
+      }
     }
 
     num_read = 0;
@@ -126,21 +138,27 @@ static VALUE search_file (la_t *this, VALUE v_file, VALUE v_pat) {
   int without_filename = GET_OPT_WITHOUT_FILENAME();
   int with_line_number = GET_OPT_WITH_LINE_NUMBER();
   int max_depth = GET_OPT_MAX_DEPTH();
+  int tostdout = GET_OPT_TOSTDOUT();
 
   ArrayType *array = NULL;
 
   search_file_t args = (search_file_t) {
-    .result = Vstring.new (),
+    .tostdout = tostdout,
     .re = Re.new (pat, 0, RE_MAX_NUM_CAPTURES, Re.compile),
     .with_filename = without_filename is 0,
     .with_line_number = with_line_number,
     .st = NULL
   };
 
+  ifnot (tostdout)
+    args.result = Vstring.new ();
+
+  VALUE retvalue = NULL_VALUE;
+
   if (Dir.is_directory (file)) {
     if (0 is recursive and max_depth >= 0) {
       fprintf (stderr, "%s: is a directory and recursive hasn't been set\n", file);
-      return NULL_VALUE;
+      goto theend;
     }
 
     if (max_depth < 0) max_depth = DIRWALK_MAX_DEPTH;
@@ -150,7 +168,7 @@ static VALUE search_file (la_t *this, VALUE v_file, VALUE v_pat) {
     dw->user_data = &args;
     dw->depth = max_depth;
     dw->files = &unused;
-    Dir.walk.run (dw, file);
+    retvalue = INT(Dir.walk.run (dw, file));
     dw->files = NULL;
     Dir.walk.release (&dw);
     goto theend;
@@ -161,13 +179,18 @@ static VALUE search_file (la_t *this, VALUE v_file, VALUE v_pat) {
   args.st = &st;
   args.file = file;
 
-  __search_file (&args);
+  retvalue = INT(__search_file (&args));
 
 theend:
-  array = VSTRING_TO_ARRAY(args.result);
-  Vstring.release (args.result);
   Re.release (args.re);
-  return ARRAY(array);
+
+  ifnot (tostdout) {
+    array = VSTRING_TO_ARRAY(args.result);
+    Vstring.release (args.result);
+    return ARRAY(array);
+  }
+
+  return retvalue;
 }
 
 public int __init_search_module__ (la_t *this) {

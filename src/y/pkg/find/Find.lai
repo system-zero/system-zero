@@ -4,11 +4,12 @@ include ("argparse")
 
 var me = __file__: path_basename ()
 
-var argparse = New Argparse (19, 0, me + " [option[s]] file[s]|dir[s]")
+var argparse = New Argparse (20, 0, me + " [option[s]] file[s]|dir[s]")
 argparse.add ("sort_by_size",  0, "sort-by-size",  "sort by size",  BooleanType, 0)
 argparse.add ("sort_by_mtime", 0, "sort-by-mtime", "sort by mtime", BooleanType, 0)
 argparse.add ("sort_by_atime", 0, "sort-by-atime", "sort by atime", BooleanType, 0)
 argparse.add ("sort_by_ctime", 0, "sort-by-ctime", "sort by ctime", BooleanType, 0)
+argparse.add ("tostdout", 0, "tostdout", "print as soon as possible without sorting", BooleanType, 0)
 argparse.add ("reverse", 0, "reverse", "sort in reverse order", BooleanType, 0)
 argparse.add ("dirs", 0, "directories", "list directories", BooleanType, 0)
 argparse.add ("lnks", 0, "links", "list symbolic links", BooleanType, 0)
@@ -22,7 +23,7 @@ argparse.add ("only_executables", 0, "executable", "list only executables", Bool
 argparse.add ("match_uid", 0, "uid=", "list only files that match uid", IntegerType, ARG_VALUE_REQUIRED; defval : -1)
 argparse.add ("match_gid", 0, "gid=", "list only files that match gid", IntegerType, ARG_VALUE_REQUIRED; defval : -1)
 argparse.add ("pat", 0, "pat=", "show files that match pattern", StringType, ARG_VALUE_REQUIRED)
-argparse.add ("max_depth", 0, "max-depth=", "maximum depth, 1 means find files only in the fiven directory", IntegerType, ARG_VALUE_REQUIRED) 
+argparse.add ("max_depth", 0, "max-depth=", "maximum depth, 1 means find files only in the fiven directory (default is 100)", IntegerType, ARG_VALUE_REQUIRED; defval : 100) 
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 ifnot ok is argparse.process (__argv, 1) then exit (1)
@@ -36,6 +37,7 @@ var qualif = {
   sort_by_mtime    : argparse.results.sort_by_mtime
   sort_by_atime    : argparse.results.sort_by_atime
   sort_by_ctime    : argparse.results.sort_by_ctime
+  tostdout         : argparse.results.tostdout
   hidden           : argparse.results.donot_show_hidden is 0
   pat              : argparse.results.pat
   reverse          : argparse.results.reverse
@@ -56,10 +58,12 @@ if argparse.results.socks then append "s" in types
 
 ifnot types: len () then types = null
 
-var a = object: find_dir (types; qualif)
+var intOrarray = object: find_dir (types; qualif)
 
-if null is a then exit (1)
+if argparse.results.tostdout then exit (intOrarray)
 
-for v in a println (v)
+if null is intOrarray then exit (1)
+
+for v in intOrarray println (v)
 
 exit (0)
