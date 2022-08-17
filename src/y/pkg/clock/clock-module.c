@@ -1,12 +1,10 @@
-#define REQUIRE_STDIO
-
 #define REQUIRE_STD_MODULE
 #define REQUIRE_CLOCK_SETTIME
 #define REQUIRE_OPEN
 #define REQUIRE_CLOSE
 #define REQUIRE_IOCTL
+#define REQUIRE_Z_TYPES
 
-#include <z/cenv.h>
 #include "../../../zlibc/zlibc.c"
 
 MODULE(clock);
