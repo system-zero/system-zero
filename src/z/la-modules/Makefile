@@ -181,7 +181,7 @@ clean-man-shared:
 	@$(TEST) ! -f $(SYSMODULEDIR)/man-module.so  || $(RM)  $(SYSMODULEDIR)/man-module.so
 
 #-----------------------------------------------------------
-SUDOKU_FLAGS = -lsudoku
+SUDOKU_FLAGS = -lsudoku -lterm -lvideo
 sudoku-module-shared: Env
 	$(CC) -o $(SYSMODULEDIR)/sudoku-module.so $(SHARED_FLAGS) $(SUDOKU_FLAGS) sudoku/sudoku-module.c
 

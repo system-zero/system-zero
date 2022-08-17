@@ -818,11 +818,22 @@ public la_T *la_get_root (la_t *);
   AS_INT(_v_with_fname);                                                  \
 })
 
-#define GET_OPT_WITHOUT_FILENAME() ({                                         \
+#define GET_OPT_WITHOUT_FILENAME() ({                                     \
   VALUE _v_without_fname = La.get.qualifier (this, "without_filename", INT(0));\
-  ifnot (IS_INT(_v_without_fname))                                           \
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");            \
-  AS_INT(_v_without_fname);                                                     \
+  ifnot (IS_INT(_v_without_fname))                                        \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+  AS_INT(_v_without_fname);                                               \
+})
+
+#define GET_OPT_PRINT() ({                                                \
+  int _print = La.qualifier_exists (this, "print");                       \
+  ifnot (_print) {                                                        \
+    VALUE _v_print = La.get.qualifier (this, "print", INT(0));            \
+    ifnot (IS_INT(_v_print))                                              \
+      THROW(LA_ERR_TYPE_MISMATCH, "print, awaiting an integer qualifier");\
+    _print = AS_INT(_v_print);                                            \
+  }                                                                       \
+  _print;                                                                 \
 })
 
 #endif /* WITHOUT_LA_FUNCTIONS */

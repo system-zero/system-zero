@@ -1,19 +1,56 @@
-
 import ("path")
 import ("sudoku")
-loadfile ("argparse")
+include ("argparse")
 
 var prog = __file__: path_basename_sans_extname ()
 
-var argparse = New Argparse (7, 0, prog + " [option[s]]")
-argparse.add ("generate", 'g', "generate", "generate sudoku", BooleanType, 0)
-argparse.add ("solve", 's', "solve", "solve ", BooleanType, 0)
+var argparse = New Argparse (4, 0, prog + " [option[s]]")
+argparse.add ("print_solved", 0, "print-solved=", "print solved (default is to print, use 0 to disable)", IntegerType, ARG_VALUE_REQUIRED; defval : 1)
+argparse.add ("play", 0, "play", "play", BooleanType, 0)
+argparse.add ("max_mistakes", 0, "max-mistakes=", "maximum mistakes", IntegerType, ARG_VALUE_REQUIRED; defval : 3)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 ifnot ok is argparse.process (__argv, 1) then exit (1)
 
 if argparse.exit is true then exit (0)
 
-Sudoku.generate ()
+if argparse.results.play then exit (Sudoku.play (;max_mistakes : argparse.results.max_mistakes))
 
-exit (0)
+var m = Sudoku.generate ()
+
+var separator    = "│"
+var upper_line   = " ┌─────┬─────┬─────┐"
+var central_line = " ├─────┼─────┼─────┤"
+var last_line    = " └─────┴─────┴─────┘"
+
+func print_sudoku (s) {
+  var i, j, k, c
+  var ind = 0
+
+  print ("${upper_line}\n ${separator}")
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {     # 3 x 3 squares
+      for 3 times {               # line
+        for (k = 0; k < 3; k++) { # square row
+          c = s[ind++]
+          ifnot c then print (" ") orelse print ("${c}")
+          ifnot k is 2 then print (" ")
+        }
+
+        print (separator)
+      }
+
+      ifnot j is 2 then print ("\n ${separator}") orelse println ("")
+    }
+
+    ifnot i is 2 then print ("${central_line}\n ${separator}")
+  }
+
+  println (last_line)
+}
+
+println (" Difficulty ${m.difficulty}")
+print_sudoku (m.grid)
+
+if argparse.results.print_solved then print_sudoku (m.solved)
