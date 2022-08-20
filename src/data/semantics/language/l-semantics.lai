@@ -569,8 +569,17 @@ func self_semantics () {
     return i
   }
 
+  func if_break (x) {
+    var i
+    for (i = 0; i < 1000; i++) break if i is x
+
+    return i
+  }
+
   retval = loop_test_break (50)
-  assert_true ("testing break statement", retval is 50)
+  assert_true ("testing break statement",
+      retval is 50 and
+      if_break (10) is 10)
 
   var tsum = 0
   var aar = [1, 2, 3]
@@ -969,34 +978,38 @@ func self_semantics () {
     return -1
   }
 
-  func if_break (x) {
-    var i
-    for (i = 0; i < 1000; i++) break if i is x
-
-    return i
-  }
-
   assert_true ("testing if/then/orelse",
       if_short (10) is 10 and
-      if_short (11) is 11 and
-      if_break (10) is 10)
+      if_short (11) is 11)
 
   var fvar = if null then null orelse "notnull"
   var svar = ifnot fvar is null then "notnull" orelse fvar
   var tvar = if svar is fvar then if svar is null then ok orelse notok
   var evar = if tvar is ok then ifnot fvar is null then notok orelse ok
 
+  func ifyf () return ["3"]
+  func ifxf () return "4"
+  var ifa = ["1"]
+  var ifb = if true  then ifa orelse ["2"]
+  var ifc = if false then ifa orelse ["2"]
+  var ifd = if false then ifa orelse ifyf ()
+  var ife = if false then ifa orelse [ifxf ()]
+
   func xxx (y)
-    return if y < 10 then -1 orelse if y is 10 then ok orelse 1
+    return if y < 10 then notok orelse if y is 10 then ok orelse true
 
   assert_true ("testing if/then/orelse expressions",
       fvar is null and
       svar is null and
       tvar is ok and
       evar is ok and
-      xxx (9) is -1 and
-      xxx (10) is 0 and
-      xxx (11) is 1)
+      xxx (9) is notok and
+      xxx (10) is ok and
+      xxx (11) is true and
+      ifb[0] is "1" and
+      ifc[0] is "2" and
+      ifd[0] is "3" and
+      ife[0] is "4")
 
   var integer[2] xar
   xar[if true then 0 orelse 1 : ifnot false then 1 orelse 100] = [31, 41]

@@ -9,5 +9,5 @@ func post_exec (m) {
 m.set.script.executable.source ("Generate.libc"; clear)
 m.set.script.executable.post_exec (post_exec)
 m.set.script.library.source ("Generate.libc"; clear)
-return m
 
+return m

@@ -1296,7 +1296,7 @@ clean-packman:
   ZA_SUDOKU          = sudoku
   ZA_SUDOKU_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SUDOKU)/src
 
-sudoku:
+sudoku: libsudoku-shared sudoku-module-shared
 	@cd $(ZA_SUDOKU_SRCDIR) && $(MAKE) $(MARGS)
 
 clean-sudoku:
@@ -1503,7 +1503,7 @@ man-module-shared: Env libman-shared
 net-module-shared: Env libnet-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) net-module-shared
 
-sudoku-module-shared: Env libsudoku-shared
+sudoku-module-shared: Env libla-shared libvideo-shared libterm-shared libsudoku-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sudoku-module-shared
 
 #----------- [ LALIBRARY ] -----------------------#

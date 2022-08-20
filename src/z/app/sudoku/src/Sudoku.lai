@@ -10,6 +10,69 @@ argparse.add ("play", 0, "play", "play", BooleanType, 0)
 argparse.add ("max_mistakes", 0, "max-mistakes=", "maximum mistakes", IntegerType, ARG_VALUE_REQUIRED; defval : 3)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
+argparse.set.help (`
+  UI:
+     - a topline that (for now) displays the difficulty level of the generated puzzle
+
+     - a 9x9 board with 3x3 separated squares (development note: every glyph of those
+       separators occupies three bytes)
+
+     - an info line that displays the number of uncovered cells, the number of mistakes
+       and the time that has been spend so far
+
+     - a msg line (the last line on screen)
+
+  Usage:
+
+    At the initialization the cursor is positioning at the first upper left cell.
+
+    Navigation:
+      - DOWN_ARROW  or 'j'  to go down  one row
+      - UP_ARROW    or 'k'  to go up    one row
+      - LEFT_ARROW  or 'h'  to go left  one cell
+      - RIGHT_ARROW or 'l'  to go right one cell
+
+    When the cursor is onto a visible cell, this highlights every cell with the same
+    number.
+
+    Main loop:
+    Keys:
+      - 'q' quits the game if puzzle has been solved
+
+      - 'Q' quits the game unconditionally
+
+      - 'r' replay (start a new puzzle) (todo? probably add a command to replay from
+         the begining the current puzzle)
+
+      - ' ' (pauses game) use ' ' again to unpause
+
+      - [1...9]:
+        if a cell is visible this does nothing
+        else if it is a mistake then a msg is displayed
+          - if the mistakes reached the maximum number, the game is considered as lost
+        else it uncovers current cell
+
+      - '.' insert last succesfull number
+
+  TODO:
+    - add a save and a restore command to save and restore previous puzzle states
+        (expose a --restore= command line argument)
+
+    - there is some code repetition and probably some blocks of code could be functions,
+      instead of jumping around with goto's (this is actually a quick prototype (albeit
+      a workable prototype and so to be honest i might leave it the way it is))
+
+    - calculate the minimum required number of lines on screen and exit if they are less
+      (or display a message and await for a CTRL-l (redraw) key and reinitialize terminal
+        state), and also catch and handle sigwinch (and probably a couple of others) (as
+        this is a world with only fullscreen terminals this probably will be delayed)
+
+    - highlight topline, infoline and probably the separators
+
+    - flush for a very short time the solved puzzle for a minimum of times
+      (not sure about this, but in any case this should be for a really short time)
+`S2)
+
 ifnot ok is argparse.process (__argv, 1) then exit (1)
 
 if argparse.exit is true then exit (0)

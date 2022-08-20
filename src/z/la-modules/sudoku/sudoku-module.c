@@ -70,6 +70,12 @@ play:
     for (int j = 0; j < 9; j++)
       My.grid[idx++] = My.sudoku->grid[i][j];
 
+  for (int i = 0; i < 81; i++) {
+    int c = My.grid[i];
+    ifnot (c) continue;
+    My.cells[c - 1]++;
+  }
+
   if (My.term is NULL) { My.term = Term.new (); Term.set (My.term); }
 
   int rows = My.term->num_rows;
@@ -147,17 +153,45 @@ play:
   int msg_send = 0;
   int is_error = 0;
   int insert   = 0;
+  int min, sec, total;
+  int pause = 0;
+  int last_c = 0;
+
+  time_t now;
 
   String.replace_with_fmt (My.buf, " Cells left %d, Mistakes %d", 81 - My.visible, My.num_mistakes);
   Video.set.row_with (My.video, info_line, My.buf->bytes);
   Video.draw.rows_from_to (My.video, 1, rows);
 
+  My.beg = time (NULL);
+  goto hl;
+
+#define SEND_MSG() do {                                   \
+  Video.set.row_with (My.video, msg_line, My.buf->bytes); \
+  Video.draw.row_at (My.video, msg_line + 1);             \
+  set_pos = 1;                                            \
+  msg_send = 1;                                           \
+  if (is_error) { is_error = 0; goto set_info; }          \
+} while (0)
+
+#define CLEAR_MSG() do {                                  \
+  Video.set.row_with (My.video, msg_line, "");            \
+  Video.draw.row_at (My.video, msg_line + 1);             \
+  Term.cursor.set_pos (My.term, row, col);                \
+  msg_send = 0;                                           \
+} while (0)
+
   theloop:
-    if (My.visible is 81 and msg_send is 0) {
-      msg_send = 1; set_pos = 1;
-      Video.set.row_with (My.video, msg_line, "You won!");
-      Video.draw.row_at (My.video, msg_line + 1);
-      Term.cursor.set_pos (My.term, row, col);
+    if (My.visible is 81) {
+      if (0 is msg_send and My.end) {
+        My.total += My.end - My.beg;
+        My.end = 0;
+        min = My.total / 60;
+        sec = My.total % 60;
+        String.replace_with_fmt (My.buf, "You won in %d minutes and %d seconds",
+          min, sec);
+        SEND_MSG();
+      }
     }
 
     if (set_pos) {
@@ -167,19 +201,42 @@ play:
 
     c = IO.input.getkey (0);
 
-    if (msg_send) {
-      msg_send = 0;
-      Video.set.row_with (My.video, msg_line, "");
-      Video.draw.row_at (My.video, msg_line + 1);
-      Term.cursor.set_pos (My.term, row, col);
-    }
+    if (msg_send) CLEAR_MSG();
 
-    if (My.num_mistakes > My.max_mistakes and c isnot 'q' and c isnot 'r')
-     goto theloop;
+    if ((My.num_mistakes > My.max_mistakes or My.visible is 81) and
+        (c isnot 'q' and c isnot 'Q' and c isnot 'r'))
+      goto theloop;
+
+    if (pause and c isnot ' ') goto theloop;
 
     switch (c) {
-      case 'q': goto theend;
+      case 'q':
+        if (My.visible is 81 or My.num_mistakes > My.max_mistakes)
+         goto theend;
+
+        String.replace_with (My.buf, "game hasn't been finished, use Q to force");
+        SEND_MSG();
+        goto theloop;
+
+      case 'Q': goto theend;
+
       case 'r': goto play;
+
+      case ' ':
+        ifnot (pause) {
+          My.total += time (NULL) - My.beg;
+          My.beg = 0;
+          pause = 1;
+          String.replace_with (My.buf, "paused");
+          SEND_MSG();
+          msg_send = 0;
+        } else {
+          pause = 0;
+          CLEAR_MSG();
+          My.beg = time (NULL);
+        }
+
+        goto theloop;
 
       case 'j':
       case ARROW_DOWN_KEY:
@@ -219,8 +276,18 @@ play:
         }
         goto theloop;
 
+      case '.': c = last_c;
+      // fallthrough
+
       case '1'...'9':
+        if (My.cells[c - '0' - 1] is 9) {
+          String.replace_with_fmt (My.buf, "%d has been completed", c - '0');
+          SEND_MSG();
+          goto theloop;
+        }
+
         if (My.sudoku->grid[actual_row][actual_col]) goto theloop;
+
         if (My.sudoku->solved[actual_row][actual_col] isnot c - '0') {
           String.replace_with_fmt (My.buf, "%c: wrong", c);
           My.num_mistakes++;
@@ -230,11 +297,23 @@ play:
             String.replace_with_fmt (My.buf, "[%c] is wrong, left %d tries", c, My.max_mistakes - My.num_mistakes);
 
           is_error = 1;
-          goto send_msg;
+          SEND_MSG ();
+          goto theloop;
         }
 
         My.sudoku->grid[actual_row][actual_col] = c - '0';
         My.grid[(actual_row * 9) + actual_col] = c - '0';
+        My.cells[c - '0' - 1]++;
+        My.visible++;
+        last_c = c;
+
+        if (My.visible is 81) My.end = time (NULL);
+
+        if (My.cells[c - '0' - 1] is 9 and My.visible isnot 81) {
+          String.replace_with_fmt (My.buf, "%d has been completed");
+          SEND_MSG();
+        }
+
         goto set_line;
 
       default: goto theloop;
@@ -260,11 +339,15 @@ set_line:
 
   Video.set.row_with (My.video, row - 1, My.buf->bytes);
   Video.draw.row_at (My.video, row);
-  My.visible++;
   insert = 1;
 
 set_info:
-  String.replace_with_fmt (My.buf, " Cells left %d, Mistakes %d", 81 - My.visible, My.num_mistakes);
+  now = time (NULL);
+  total = My.total + (now - My.beg);
+  min = total / 60;
+  sec = total % 60;
+  String.replace_with_fmt (My.buf, " Cells left %d, Mistakes %d, in %d minutes and %d seconds",
+    81 - My.visible, My.num_mistakes, min, sec);
   Video.set.row_with (My.video, info_line, My.buf->bytes);
   Video.draw.row_at (My.video, info_line + 1);
 
@@ -312,6 +395,8 @@ hl:
 
   Video.draw.rows_from_to (My.video, first_row, last_row);
 
+  if (My.visible is 81) goto theloop;
+
   int index = 1;
   vstring_t *v = My.video->head->next->next;
   while (v and index++ < last_row - 1) {
@@ -334,15 +419,10 @@ hl:
     v = v->next;
   }
 
-  goto theloop;
-
-send_msg:
-  Video.set.row_with (My.video, msg_line, My.buf->bytes);
-  Video.draw.row_at (My.video, msg_line + 1);
-  set_pos = 1;
-  msg_send = 1;
-
-  if (is_error) { is_error = 0; goto set_info; }
+  if (My.cells[c - 1] is 9) {
+     String.replace_with_fmt (My.buf, "%d has been completed", c);
+     SEND_MSG();
+  }
 
   goto theloop;
 

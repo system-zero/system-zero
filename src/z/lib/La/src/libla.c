@@ -7966,7 +7966,7 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
   this->curState |= CONSUME_STATE;
 
   int paren_open = 0;
-  int index_open = 0;
+  int index_open = TOKEN is TOKEN_INDEX_OPEN;
 
   while (1) {
     NEXT_TOKEN();
@@ -8010,12 +8010,16 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
         break;
 
       case TOKEN_PAREN_CLOS:
-        ifnot (paren_open) goto theend;
+        ifnot (paren_open) {
+          ifnot (index_open) goto theend;
+          break;
+        }
+
         paren_open--;
         break;
 
       case TOKEN_COMMA:
-        ifnot (paren_open) goto theend;
+        ifnot (paren_open + index_open) goto theend;
         break;
 
       case TOKEN_INDEX_OPEN:
@@ -8152,6 +8156,7 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
     while (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
     int lerr = la_consume_iforelse (this, 0);
+
     THROW_ERR_IF_ERR(lerr);
 
     save = SAVE_TOKENSTATE();
