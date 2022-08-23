@@ -1294,13 +1294,19 @@ func self_semantics () {
           String.cmp_n ("asd",  "asdf", 3) is 0)
 
       var tok = String.tokenize ("asd:fgh:jkl:mno", ":")
+      var tak = String.tokenize ("  ab  cd ef  ", " ")
+
       assert_true ("testing the tokenize method",
-          typeof (tok) is ArrayType and
-          len (tok) is 4  and
-          tok[0] is "asd" and
-          tok[1] is "fgh" and
-          tok[2] is "jkl" and
-          tok[3] is "mno")
+          tok: typeof () is ArrayType and
+          tok: len () is 4 and
+          tok[0] is "asd"  and
+          tok[1] is "fgh"  and
+          tok[2] is "jkl"  and
+          tok[3] is "mno"  and
+          tak: len () is 3 and
+          tak[0] is "ab"   and
+          tak[1] is "cd"   and
+          tak[2] is "ef")
 
       var stra = "asdfg"
       stra = String.advance (stra, 3)

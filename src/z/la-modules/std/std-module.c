@@ -6,7 +6,7 @@
 
 #include <z/cenv.h>
 
-MODULE(std)
+MODULE(std);
 
 static VALUE map_set (la_t *this, VALUE v_map, VALUE v_key, VALUE v_val) {
   ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
@@ -406,16 +406,44 @@ static VALUE string_tokenize (la_t *this, VALUE v_str, VALUE v_tok) {
   char *str = AS_STRING_BYTES(v_str);
   char *tok = AS_STRING_BYTES(v_tok);
 
-  cstring_tok *ctok = Cstring.tokenize (NULL, str, tok, NULL, NULL);
-  if (NULL is ctok)
-    return NULL_VALUE;
+  size_t toklen = AS_STRING(v_tok)->num_bytes;
+  char *sp = str;
+  char *beg = sp;
 
-  ArrayType *array = ARRAY_NEW(STRING_TYPE, ctok->num_tokens);
-  string **ar = (string **) AS_ARRAY(array->value);
-  for (int i = 0; i < ctok->num_tokens; i++)
-    String.replace_with_len (ar[i], ctok->tokens[i], ctok->length[i]);
+  int len = 0;
 
-  Cstring.tok_release (ctok);
+  ArrayType *array = ARRAY_NEW(STRING_TYPE, len);
+
+  string *s = NULL;
+
+  int end = 0;
+
+// we want:
+// " a  b c   d  " = ["a", "b", "c", "d"] with " " as separator
+  for (;;) {
+    if (end) break;
+
+    ifnot (*sp) {
+      ifnot (*beg) break;
+      end = 1;
+      goto add_element;
+    }
+
+    if (Cstring.eq_n (sp, tok, toklen)) {
+
+    add_element:
+      if (sp is beg) { beg = sp + 1; goto next; }
+
+      s = String.new_with_len (beg, sp - beg);
+
+      VALUE star = STRING(s);
+      array = ARRAY_APPEND(array, star);
+      beg = sp + 1;
+    }
+
+  next:
+    sp++;
+  }
 
   return ARRAY(array);
 }
