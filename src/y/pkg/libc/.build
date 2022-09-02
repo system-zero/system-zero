@@ -120,6 +120,7 @@ m.set.libc.source ([
   "libc/string/memset.c",
   "libc/string/snprintf.c",
   "libc/string/str_byte_copy.c",
+  "libc/string/str_byte_move.c",
   "libc/string/str_copy.c",
   "libc/string/str_copy_fmt.c",
   "libc/string/str_eq.c",
@@ -166,6 +167,8 @@ m.set.libc.source ([
   "libc/error/error_list.h",
   "libc/error/errno_string.c",
   "libc/convert/string_to_hexstring.c",
-  "libc/convert/hexstring_to_string.c"])
+  "libc/convert/hexstring_to_string.c",
+  "libc/stringbuf/stringbuf.c",
+  "libc/stringbuf/stringbuf.h"])
 
 return m

@@ -97,6 +97,28 @@ static VALUE term_init_size (la_t *this, VALUE v_term) {
   return OK_VALUE;
 }
 
+static VALUE term_set_pos (la_t *this, VALUE v_term, VALUE v_row, VALUE v_col) {
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  ifnot (IS_INT(v_row))   THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  ifnot (IS_INT(v_col))   THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+
+  term_t *term = AS_TERM(v_term);
+  Term.cursor.set_pos (term, AS_INT(v_row), AS_INT(v_col));
+  return OK_VALUE;
+}
+
+static VALUE term_get_pos (la_t *this, VALUE v_term) {
+  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
+  term_t *term = AS_TERM(v_term);
+  int row, col;
+  int r = Term.cursor.get_pos (term, &row, &col);
+  if (r is NOTOK) return NULL_VALUE;
+  Vmap_t *m = Vmap.new (2);
+  La.map.set_value (this, m, "row", INT(row), 1);
+  La.map.set_value (this, m, "col", INT(col), 1);
+  return MAP(m);
+}
+
 static VALUE term_get_rows (la_t *this, VALUE v_term) {
   (void) this;
   ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
@@ -120,6 +142,8 @@ public int __init_term_module__ (la_t *this) {
   LaDefCFun lafuns[] = {
     { "term_new",         PTR(term_new), 0 },
     { "term_getkey",      PTR(term_getkey), 1 },
+    { "term_set_pos",     PTR(term_set_pos), 3 },
+    { "term_get_pos",     PTR(term_get_pos), 1 },
     { "term_get_rows",    PTR(term_get_rows), 1 },
     { "term_get_cols",    PTR(term_get_cols), 1 },
     { "term_raw_mode",    PTR(term_raw_mode), 1 },
@@ -137,15 +161,19 @@ public int __init_term_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Term = {
-      "new" : term_new,
-      "getkey" : term_getkey,
-      "raw_mode" : term_raw_mode,
-      "sane_mode" : term_sane_mode,
-      "orig_mode" : term_orig_mode,
-      "init_size" : term_init_size,
-      "get" : {
-        "rows" : term_get_rows,
-        "cols" : term_get_cols,
+      new : term_new,
+      getkey : term_getkey,
+      raw_mode : term_raw_mode,
+      sane_mode : term_sane_mode,
+      orig_mode : term_orig_mode,
+      init_size : term_init_size,
+      set : {
+        pos : term_set_pos,
+      },
+      get : {
+        pos : term_get_pos,
+        rows : term_get_rows,
+        cols : term_get_cols,
       }
     }
   );

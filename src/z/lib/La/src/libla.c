@@ -1,13 +1,13 @@
 /* The first thousand lines derived from the Tinyscript project at:
  * https://github.com/totalspectrum/ (see LICENSE included in this directory)
  *
- * See data/docs/la.md and data/tests/la-semantics.lai
+ * See src/data/semantics/Language.md and src/data/semantics/language/l-semantics.lai
  * for details about syntax and semantics.
  */
 
- /* an unorthodoxical way for an express as much as human language,
-  * thus any competent programmer can break it (i imagine) easily,
-  * but it worksforus, so we are grateful
+ /* an unorthodoxical way for an express as much as a human does language,
+  * that any competent programmer can break it easily, but it worksforus,
+  * so we are grateful
   */
 
 #define LIBRARY "la"

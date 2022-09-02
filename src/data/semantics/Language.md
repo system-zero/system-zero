@@ -6,9 +6,8 @@ The code that should support the below claims with accuracy lies at [language/l-
 [Note that probably needs a consideration and minor revisions to match the exact latest
 develpment and decisions]
 
-[Note that the implementation isnot the safest ever, as it is a hand written language
-from someone, that never ever has done something like this before, and who had to has
-a prototype of a language specification - see [Excuses](Excuses)]
+[Note that the implementddation isnot the safest ever, as it is a hand written language
+from someone, that never ever has done something like this before]
 
 Basic DataTypes:
 
@@ -1528,106 +1527,3 @@ unless a god exists.
 [Note that this a copy of the previous document, which it was under heavy for
 quite some time development, and which is located in data/docs/la.md at the
 root of the distribution].
-
-## Excuses
-It was written without a prior knowledge of how is to write a proper programming language
-before. Still even after, there isn't at points, especially whatever has to do with
-bits and bytes.
-
-I just know how to use the bytes and what to do with them. But not fundamentally
-to be hoonest. And so i'm still weak and probably will ever be, for a couple of common
-realizations like: what to do exactly with the bit of a byte - of which not that
-it always was eight, and could be use them with two ways (little and big endian) -
-and aaall of these fascinating fantastic details about binary arithmetic.
-
-But it was never really the purpose to realize - enough times - the low level mechanics.
-Enough times to feel like: a natural concreted knowledge that you can pick up with total control over it.
-
-Here "enough times" describes mostly a critical point in time, that it may feel like: the
-life is still the same but it isn't! A new tiny point of knowledge that belongs to you
-that can be used in time, since that critical point. As a guess - we as humanity,
-we live such a point in our times and we live it all of us together!
-
-So programming ended up mostly, as a vehicle to realize many programming consepts
-as i've faced them during development like: a young sparrow in the wide ocean drive
-in the valley of programming.
-
-The aim, was just to code the implementation, and to adjust it to our scripting requirenments
-while trying to understand: what is the minimum that will make the language enough
-functional and with a quit bit of flexibility  syntactically - with known enough
-consepts that you could understand every bit of them, in a blink of an eye.
-
-Instantly understable familiar established semantics and syntax, that you could
-be ready to feel natural, in (at least) maximum three/four times - both when you
-read the code and use the code.
-
-An *Intentional Language*, with a huge emphasis to expressivity, so to make it look
-like the way a human thought is rolling. With regards to latter, you might face a
-surprise though! :)
-
-The expressed logic has been reversed (though it still works either way).
-I had to do it because it feels much more natural to follow the underlying rolling
-thought that way, so instead of:
-
-```lua
-  if condition is true then do this
-```
-
-it is possible to become and if desirable (in my case it is):
-
-```lua
-  do this if the condition is true
-```
-
-And we used that in many ways. We also allowed the result of a conditional block
-to be used as an expression, so we achieved this:
-
-```C
-  declare a symbol (or use the result as an argument to a function call, ...) first,
-  and if condition is true,
-  then assign the result of a conditional as an expression (the short circuit operation in C,
-  but expressed with the way that a human speaks and thinks, and with much more flexibility
-  and clarity).
-```
-Many such expressions.
-
-So yes I had to code the implementation. But who? If you really knew the trueth
-but the facts are facts and some are shameful like: I know - as i can't escape from
-myself - that I have really never even started (even, and to be really honest)) the elementary
-education level (with my own blame) in my youth, while though (and this is a bit of funny),
-I ended it and graduated it "gracefully"!
-
-I started C at 52 - comming first from 'sh', then for a while to 'vimL' and then moved
-to SLang for 7 years might a bit more.- and I'm walking now at fifty six, and a bit
-tired for a proper study on the subject.
-
-So i really would want a wide time to rewrite it at least for a couple times more.
-But I don't. Don't ask me why. And it is a s[h]ame and it is same for all of us and
-everybory.
-
-And if you wonder 'and why not begin right now', I would say 'why noot?'. My answer would be:
-The time is precious and i want to achieve focus as we all want to concentrate with a way.
-Programming is a high pleasant way. Focusing to the details on every subject in
-this life with full of gifts (the most were hidden though), is more than enough than enough
-for The will - as we, and with our will - A stabilized will that stems from the
-gained conscience by now, and which is in a eternal evolution (through common  practice
-and agreements (but as symphony in greek)), to concentrate with a controlled passion,
-to meet the Time, that comes and comes again and again (as an endless stream of bytes),
-that will let us going through and passing throughout through in and back in again, until -
-and that is guess: we are ready to try to jump through up and down and up again and back.
-There is one high bridge way and we should climb and pass over and over againg without
-fear and with full control over it yet.
-
-Yea enough of excuses, though we also had to raise four children in forest conditions
-with hand conditions. And yes i'm tired, plus it is the fact that looks so real to
-me, that there is a chance (and i'm not sure if it was ever was there for us),
-that i feel that we loose in front of our noses. And yes if it is that true, what i feel
-then it is and becomes a pity for everyone.
-
-If it is not and you are true about the `why not`, then it is on my head only and
-that is really really fine and a relief, as in that case i'm in blame. I can accept
-and live with it, with one condition. To really be able and be sure that we can see overround
-of our nose. Not that easy guys, with a big ugly guy over ourselves all the f time.
-OurSelf. sheet.]
-
-So yes. Don't ask why. I tell you it thats it is.

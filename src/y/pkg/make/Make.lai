@@ -1896,9 +1896,7 @@ Type Make {
 }
 
 const DEPENDENCIES = {}
-
 func make_dependencies (f) {
-
   func get_dep_spec (d) {
     var p = d
     ifnot d: exists () {
@@ -1952,7 +1950,16 @@ func make_dependencies (f) {
     return ok
   }
 
+  var   nth = 0
   func get_dependencies (dir) {
+    if nth and ARGPARSE.results.local_spec is true and
+               ARGPARSE.results.recursive  isnot true {
+      CUR_SPECNAME = SPECNAME
+      CUR_CACHEDNAME = CACHEDNAME
+    }
+
+    nth++
+
     var file = get_dep_spec (dir)
 
     if file is null {
@@ -2040,6 +2047,7 @@ func make_dependencies (f) {
   var INST_HEADER      = ARGPARSE.results.install_header
   var INST_SCRIPT_EXEC = ARGPARSE.results.install_script_exec
   var INST_SCRIPT_LIB  = ARGPARSE.results.install_script_lib
+  var LOCALSPEC        = ARGPARSE.results.local_spec
 
   # do it twice as the time that is properly set, it might be already late
   if ARGPARSE.results.local_spec is true {
@@ -2061,6 +2069,7 @@ func make_dependencies (f) {
     ARGPARSE.results.install_header      = false
     ARGPARSE.results.install_script_exec = false
     ARGPARSE.results.install_script_lib  = false
+    ARGPARSE.results.local_spec          = false
   }
 
   func init_argparse_results (flag, is_the_last) {
@@ -2078,6 +2087,7 @@ func make_dependencies (f) {
       ARGPARSE.results.install_header      = INST_HEADER
       ARGPARSE.results.install_script_exec = INST_SCRIPT_EXEC
       ARGPARSE.results.install_script_lib  = INST_SCRIPT_LIB
+      ARGPARSE.results.local_spec          = LOCALSPEC
       return
     }
 
@@ -2086,6 +2096,10 @@ func make_dependencies (f) {
     if FORCE then
       if RECUR then
         ARGPARSE.results.force = true
+
+    if LOCALSPEC then
+      if RECUR then
+        ARGPARSE.results.local_spec = true
 
     ARGPARSE.results.shared         = if flag & SHARED or flag & ALL then true orelse false
     ARGPARSE.results.shared_library = if flag & SHARED_LIBRARY or flag & ALL then true orelse false

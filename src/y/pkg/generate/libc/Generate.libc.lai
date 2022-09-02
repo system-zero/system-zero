@@ -32,9 +32,9 @@ include ("argparse")
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
   LIBCOUTDIR  =  SRCDIR: concat_with (LIBCOUTNAME)
 
-  const string[11] libcdirs = [
+  const string[12] libcdirs = [
     "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
-    "time", "error", "convert"]
+    "time", "error", "convert", "stringbuf"]
 
   const
   provide_str    = " provides: ",
