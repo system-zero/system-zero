@@ -1,0 +1,9 @@
+import ("pager")
+import ("file")
+
+if __argc is 1 then exit (1)
+
+var file = __argv[1]
+var lines = file: file_readlines ()
+var p = Pager.new (lines)
+Pager.main (p)

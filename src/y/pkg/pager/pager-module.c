@@ -6,6 +6,7 @@
 #define REQUIRE_TERM_TYPE    DECLARE
 #define REQUIRE_VIDEO_TYPE   DECLARE
 #define REQUIRE_USTRING_TYPE DECLARE
+#define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_KEYS_MACROS
 #define REQUIRE_TERM_MACROS
 
@@ -14,8 +15,20 @@
 MODULE(pager);
 
 #define GOTO(r,c) Term.cursor.set_pos (My->term, r, c)
+#define ONE_PAGE(__buf__)  __buf__->last_row - __buf__->first_row + 1
 
-#define ONE_PAGE My->last_row - My->first_row + 1
+#define IS_PAGER(__v__)({ int _r_ = 0; \
+  if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "PagerType");}\
+  _r_; \
+})
+
+#define GET_PAGER(__v__)\
+({ \
+  ifnot (IS_PAGER(__v__)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a pager object");\
+  object *_o_ = AS_OBJECT(__v__); \
+   Me *_s_ = (Me *) AS_OBJECT (_o_->value); \
+  _s_; \
+})
 
 typedef struct line_t {
   Ustring_t *data;
@@ -45,29 +58,49 @@ typedef struct Buf {
 } Buf;
 	
 typedef struct Me {
-  int     cur_row_idx;
-  int     row_pos;
-  int     col_pos;
-  int     num_rows;
-  int     num_cols;
   int     first_row;
   int     first_col;
   int     last_row;
   int     last_col;
-  int     video_first_row_idx;
-  size_t  array_len;
+  int     num_cols;
+  int     num_rows;
 
   string  *empty_line;
   string  *buf;
-  line_t  **lines;
   term_t  *term;
   video_t *video;
 
-  Buf **buffers;
-  int cur_buf;
+  Buf     **buffers;
+  Buf     *cur_buf;
+  int      num_buf;
 } Me;
 
-static void adjust_col (Me *My, line_t *prevline) {
+
+static VALUE pager_release (la_t *this, VALUE v_pager) {
+  Me *My = GET_PAGER(v_pager);
+  Video.release (My->video);
+  Term.reset (My->term);
+  Term.release (&My->term);
+
+  String.release (My->empty_line);
+  String.release (My->buf);
+
+  for (int i = 0; i < My->num_buf; i++) {
+    for (size_t j = 0; j < My->buffers[i]->array_len; j++) {
+      Ustring.release (My->buffers[i]->lines[j]->data);
+      free (My->buffers[i]->lines[j]);
+    }
+    free (My->buffers[i]->lines);
+    free (My->buffers[i]);
+  }
+
+  free (My->buffers);
+  free (My);
+
+  return OK_VALUE;
+}
+
+static void adjust_col (Buf *My, line_t *prevline) {
   line_t *line = My->lines[My->cur_row_idx];
   ustring_t *it = line->data->head;
 
@@ -118,15 +151,15 @@ static void adjust_col (Me *My, line_t *prevline) {
   My->col_pos = num + My->first_col - 1;
 }
 
-static void set_video_row (Me *My, size_t vidx, size_t idx) {
+static void set_video_row (Me *My, Buf *buf, size_t vidx, size_t idx) {
   String.clear (My->buf);
 
-  if (idx >= My->array_len) {
+  if (idx >= buf->array_len) {
     Video.set.row_with (My->video, vidx, My->empty_line->bytes);
     return;
   }
 
-  line_t *line = My->lines[idx];
+  line_t *line = buf->lines[idx];
   ustring_t *it = line->data->head;
 
   int cidx = 0;
@@ -137,7 +170,7 @@ static void set_video_row (Me *My, size_t vidx, size_t idx) {
   }
 
   int num = 0;
-  while (it and num < My->num_cols) {
+  while (it and num < buf->num_cols) {
     num += it->width;
     if (it->code is '\t') {
       for (int j = 0; j < it->width; j++)
@@ -151,8 +184,8 @@ static void set_video_row (Me *My, size_t vidx, size_t idx) {
   Video.set.row_with (My->video, vidx, My->buf->bytes);
 }
 
-static void set_video_rows (Me *My, size_t vidx, size_t fidx, size_t lidx) {
-  for (; fidx <= lidx; fidx++) set_video_row (My, vidx++, fidx);
+static void set_video_rows (Me *My, Buf *buf, size_t vidx, size_t fidx, size_t lidx) {
+  for (; fidx <= lidx; fidx++) set_video_row (My, buf, vidx++, fidx);
 }
 
 static ustring_t *get_line_num (line_t *line, int idx, int *num, ustring_t **fcol_it) {
@@ -191,24 +224,15 @@ static ustring_t *get_line_num (line_t *line, int idx, int *num, ustring_t **fco
   return NULL;
 }
 
-static int pager_normal_mode (Me *My, string **lines) {
-  int tabwidth = 8;
+static VALUE pager_normal_mode (la_t *this, VALUE v_pager) {
+  Me *My = GET_PAGER(v_pager);
 
-  for (size_t i = 0; i < My->array_len; i++)
-    My->lines[i] = Alloc (sizeof (line_t));
+  Buf *buf = My->cur_buf;
 
-  for (size_t i = 0; i < My->array_len; i++) {
-    Ustring_t *u = Ustring.new ();
-    Ustring.encode (u, lines[i]->bytes, lines[i]->num_bytes, 1, tabwidth, 0);
-    My->lines[i]->data = u;
-    My->lines[i]->first_col_idx = 0;
-    My->lines[i]->cur_col_idx = 0;
-  }
+  set_video_rows (My, buf, 0, 0, buf->num_rows - 1);
+  Video.draw.rows_from_to (My->video, buf->first_row, buf->last_row);
 
-  set_video_rows (My, 0, 0, My->num_rows - 1);
-  Video.draw.rows_from_to (My->video, My->first_row, My->last_row);
-
-  GOTO(My->row_pos, My->col_pos);
+  GOTO(buf->row_pos, buf->col_pos);
 
   line_t    *line    = NULL;
   ustring_t *it      = NULL;
@@ -220,7 +244,7 @@ static int pager_normal_mode (Me *My, string **lines) {
   for (;;)  {
     c = IO.input.getkey (0);
 
-    line = My->lines[My->cur_row_idx];
+    line = buf->lines[buf->cur_row_idx];
 
     switch (c) {
       case 'q':
@@ -233,90 +257,90 @@ static int pager_normal_mode (Me *My, string **lines) {
         // fallthrough
 
       case HOME_KEY:
-        ifnot (My->video_first_row_idx + My->cur_row_idx)
-          if (My->row_pos is My->first_row) continue;
+        ifnot (buf->video_first_row_idx + buf->cur_row_idx)
+          if (buf->row_pos is buf->first_row) continue;
 
-        My->row_pos = My->first_row;
-        My->video_first_row_idx = 0;
-        My->cur_row_idx = 0;
-        set_video_rows (My, 0, My->video_first_row_idx, My->video_first_row_idx + My->num_rows);
-        Video.draw.rows_from_to (My->video, My->first_row, My->last_row);
-        adjust_col (My, line);
-        GOTO(My->row_pos, My->col_pos);
+        buf->row_pos = buf->first_row;
+        buf->video_first_row_idx = 0;
+        buf->cur_row_idx = 0;
+        set_video_rows (My, buf, 0, buf->video_first_row_idx, buf->video_first_row_idx + buf->num_rows);
+        Video.draw.rows_from_to (My->video, buf->first_row, buf->last_row);
+        adjust_col (buf, line);
+        GOTO(buf->row_pos, buf->col_pos);
         continue;
 
       case 'G':
       case END_KEY:
-        if ((size_t) My->video_first_row_idx is My->array_len - 1) continue;
-        if ((size_t) My->cur_row_idx is My->array_len - 1) continue;
+        if ((size_t) buf->video_first_row_idx is buf->array_len - 1) continue;
+        if ((size_t) buf->cur_row_idx is buf->array_len - 1) continue;
 
-        My->cur_row_idx = My->array_len - 1;
+        buf->cur_row_idx = buf->array_len - 1;
 
-        if ((size_t) ONE_PAGE > My->array_len) {
-          My->row_pos = My->first_row + My->array_len - 1;
+        if ((size_t) ONE_PAGE(buf) > buf->array_len) {
+          buf->row_pos = buf->first_row + buf->array_len - 1;
         } else {
-          My->video_first_row_idx = My->array_len - ONE_PAGE;
-          My->row_pos = My->last_row;
-          set_video_rows (My, 0, My->video_first_row_idx, My->video_first_row_idx + My->num_rows);
-          Video.draw.rows_from_to (My->video, My->first_row, My->last_row);
+          buf->video_first_row_idx = buf->array_len - ONE_PAGE(buf);
+          buf->row_pos = buf->last_row;
+          set_video_rows (My, buf, 0, buf->video_first_row_idx, buf->video_first_row_idx + buf->num_rows);
+          Video.draw.rows_from_to (My->video, buf->first_row, buf->last_row);
         }
 
-        adjust_col (My, line);
-        GOTO(My->row_pos, My->col_pos);
+        adjust_col (buf, line);
+        GOTO(buf->row_pos, buf->col_pos);
         continue;
 
       case CTRL('f'):
       case PAGE_DOWN_KEY:
-        if ((size_t) (My->video_first_row_idx + My->num_rows) > My->array_len)
+        if ((size_t) (buf->video_first_row_idx + buf->num_rows) > buf->array_len)
           continue;
 
-        My->video_first_row_idx += My->num_rows;
-        My->cur_row_idx         += My->num_rows;
+        buf->video_first_row_idx += buf->num_rows;
+        buf->cur_row_idx         += buf->num_rows;
 
-        while ((size_t) My->cur_row_idx >= My->array_len)
-          My->cur_row_idx--;
+        while ((size_t) buf->cur_row_idx >= buf->array_len)
+          buf->cur_row_idx--;
 
-        n = My->array_len - (size_t) My->video_first_row_idx;
-        while (My->row_pos > n) My->row_pos--;
+        n = buf->array_len - (size_t) buf->video_first_row_idx;
+        while (buf->row_pos > n) buf->row_pos--;
 
-        set_video_rows (My, 0, My->video_first_row_idx, My->video_first_row_idx + My->num_rows);
-        Video.draw.rows_from_to (My->video, My->first_row, My->last_row);
-        adjust_col (My, line);
-        GOTO(My->row_pos, My->col_pos);
+        set_video_rows (My, buf, 0, buf->video_first_row_idx, buf->video_first_row_idx + buf->num_rows);
+        Video.draw.rows_from_to (My->video, buf->first_row, buf->last_row);
+        adjust_col (buf, line);
+        GOTO(buf->row_pos, buf->col_pos);
         continue;
 
       case CTRL('b'):
       case PAGE_UP_KEY:
-        ifnot (My->video_first_row_idx)
+        ifnot (buf->video_first_row_idx)
           continue;
 
-        n = My->num_rows;
+        n = buf->num_rows;
         while (n) {
-          My->video_first_row_idx--;
+          buf->video_first_row_idx--;
           n--;
-          ifnot (My->video_first_row_idx) break;
+          ifnot (buf->video_first_row_idx) break;
         }
 
-        My->cur_row_idx -= (My->num_rows - n);
+        buf->cur_row_idx -= (buf->num_rows - n);
 
-        set_video_rows (My, 0, My->video_first_row_idx, My->video_first_row_idx + My->num_rows);
-        Video.draw.rows_from_to (My->video, My->first_row, My->last_row);
-        adjust_col (My, line);
-        GOTO(My->row_pos, My->col_pos);
+        set_video_rows (My, buf, 0, buf->video_first_row_idx, buf->video_first_row_idx + buf->num_rows);
+        Video.draw.rows_from_to (My->video, buf->first_row, buf->last_row);
+        adjust_col (buf, line);
+        GOTO(buf->row_pos, buf->col_pos);
         continue;
 
       case 'j':
       case ARROW_DOWN_KEY:
-        if (My->row_pos < My->last_row and (size_t) My->cur_row_idx < My->array_len - 1) {
-          My->row_pos++;
-          My->cur_row_idx++;
+        if (buf->row_pos < buf->last_row and (size_t) buf->cur_row_idx < buf->array_len - 1) {
+          buf->row_pos++;
+          buf->cur_row_idx++;
 
-        } else if (My->row_pos is My->last_row) {
-          if ((size_t) My->cur_row_idx + 1 < My->array_len) {
-            My->cur_row_idx++;
-            My->video_first_row_idx++;
-            set_video_rows (My, 0, My->video_first_row_idx, My->video_first_row_idx + My->num_rows);
-            Video.draw.rows_from_to (My->video, My->first_row, My->last_row);
+        } else if (buf->row_pos is buf->last_row) {
+          if ((size_t) buf->cur_row_idx + 1 < buf->array_len) {
+            buf->cur_row_idx++;
+            buf->video_first_row_idx++;
+            set_video_rows (My, buf, 0, buf->video_first_row_idx, buf->video_first_row_idx + buf->num_rows);
+            Video.draw.rows_from_to (My->video, buf->first_row, buf->last_row);
 
           } else
             continue;
@@ -324,22 +348,22 @@ static int pager_normal_mode (Me *My, string **lines) {
         } else
           continue;
 
-        adjust_col (My, line);
-        GOTO(My->row_pos, My->col_pos);
+        adjust_col (buf, line);
+        GOTO(buf->row_pos, buf->col_pos);
         continue;
 
       case 'k':
       case ARROW_UP_KEY:
-        if (My->row_pos > My->first_row) {
-          My->row_pos--;
-          My->cur_row_idx--;
+        if (buf->row_pos > buf->first_row) {
+          buf->row_pos--;
+          buf->cur_row_idx--;
 
-        } else if (My->row_pos is My->first_row) {
-          if (My->video_first_row_idx > 0) {
-            My->cur_row_idx--;
-            My->video_first_row_idx--;
-            set_video_rows (My, 0, My->video_first_row_idx, My->video_first_row_idx + My->num_rows);
-            Video.draw.rows_from_to (My->video, My->first_row, My->last_row);
+        } else if (buf->row_pos is buf->first_row) {
+          if (buf->video_first_row_idx > 0) {
+            buf->cur_row_idx--;
+            buf->video_first_row_idx--;
+            set_video_rows (My, buf, 0, buf->video_first_row_idx, buf->video_first_row_idx + buf->num_rows);
+            Video.draw.rows_from_to (My->video, buf->first_row, buf->last_row);
 
           } else
             continue;
@@ -347,8 +371,8 @@ static int pager_normal_mode (Me *My, string **lines) {
         } else
           continue;
 
-        adjust_col (My, line);
-        GOTO(My->row_pos, My->col_pos);
+        adjust_col (buf, line);
+        GOTO(buf->row_pos, buf->col_pos);
         continue;
 
       case 'l':
@@ -358,21 +382,21 @@ static int pager_normal_mode (Me *My, string **lines) {
         if (NULL is it or it is line->data->tail)
           continue;
 
-        n = num - 1 + My->first_col;
+        n = num - 1 + buf->first_col;
 
-        if (n < My->last_col) {
+        if (n < buf->last_col) {
           line->cur_col_idx += it->len;
-          My->col_pos = num + My->first_col;
-          GOTO(My->row_pos, My->col_pos);
+          buf->col_pos = num + buf->first_col;
+          GOTO(buf->row_pos, buf->col_pos);
           continue;
         }
 
-        if (n is My->last_col or n - it->width is My->last_col) {
+        if (n is buf->last_col or n - it->width is buf->last_col) {
           line->first_col_idx += fcol_it->len;
           line->cur_col_idx += it->len;
-          set_video_row (My, My->row_pos - 1, My->cur_row_idx);
-          Video.draw.rows_from_to (My->video, My->row_pos, My->row_pos);
-          GOTO(My->row_pos, My->col_pos);
+          set_video_row (My, buf, buf->row_pos - 1, buf->cur_row_idx);
+          Video.draw.rows_from_to (My->video, buf->row_pos, buf->row_pos);
+          GOTO(buf->row_pos, buf->col_pos);
         }
 
         continue;
@@ -384,15 +408,15 @@ static int pager_normal_mode (Me *My, string **lines) {
         if (it is NULL or it is line->data->head)
           continue;
 
-        n = num - 1 + My->first_col;
+        n = num - 1 + buf->first_col;
 
-        if (n > My->first_col) {
-          My->col_pos = num - it->width;
+        if (n > buf->first_col) {
+          buf->col_pos = num - it->width;
           it = it->prev;
           line->cur_col_idx -= it->len;
-          My->col_pos -= it->width;
-          My->col_pos += My->first_col;
-          GOTO(My->row_pos, My->col_pos);
+          buf->col_pos -= it->width;
+          buf->col_pos += buf->first_col;
+          GOTO(buf->row_pos, buf->col_pos);
           continue;
         }
 
@@ -402,9 +426,9 @@ static int pager_normal_mode (Me *My, string **lines) {
         it = it->prev;
         line->first_col_idx -= it->len;
         line->cur_col_idx   -= it->len;
-        set_video_row (My, My->row_pos - 1, My->cur_row_idx);
-        Video.draw.rows_from_to (My->video, My->row_pos, My->row_pos);
-        GOTO(My->row_pos, My->col_pos);
+        set_video_row (My, buf, buf->row_pos - 1, buf->cur_row_idx);
+        Video.draw.rows_from_to (My->video, buf->row_pos, buf->row_pos);
+        GOTO(buf->row_pos, buf->col_pos);
 
         continue;
 
@@ -413,22 +437,14 @@ static int pager_normal_mode (Me *My, string **lines) {
   }
 
 theend:
-  Video.release (My->video);
-  Term.reset (My->term);
-  Term.release (&My->term);
-
-  for (size_t i = 0; i < My->array_len; i++) {
-    Ustring.release (My->lines[i]->data);
-    free (My->lines[i]);
-  }
-
-  free (My->lines);
-  String.release (My->empty_line);
-  String.release (My->buf);
-  return OK;
+  return OK_VALUE;
 }
 
-static VALUE pager_main (la_t *this, VALUE v_lines) {
+static VALUE pager_main (la_t *this, VALUE v_pager) {
+  return pager_normal_mode (this, v_pager);
+}
+
+static VALUE pager_new (la_t *this, VALUE v_lines) {
   ifnot (IS_ARRAY(v_lines)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
 
   ArrayType *array = (ArrayType *) AS_ARRAY(v_lines);
@@ -440,11 +456,37 @@ static VALUE pager_main (la_t *this, VALUE v_lines) {
   ifnot (array->len) return OK_VALUE;
 
   int first_row = 1;
-  int first_col = 4;
+  int first_col = 1;
   int last_col  = -1;
   int last_row  = -1;
+  int tabwidth  = 8;
 
-  Me My = (Me) {
+  Me *My = Alloc (sizeof (Me));
+
+  (*My) = (Me) {
+    .first_row = first_row,
+    .last_row  = last_row,
+    .first_col = first_col,
+    .last_col = 0,
+    .buf = String.new (128),
+    .term = Term.new (),
+    .video = NULL,
+  };
+
+  Term.set (My->term);
+
+  My->last_row   = (last_row is -1 ? My->term->num_rows : last_row);
+  My->last_col   = (last_col is -1 ? My->term->num_cols : last_col);
+  My->num_rows   = My->last_row - My->first_row + 1;
+  My->num_cols   = My->last_col - My->first_col + 1;
+  My->num_rows   = My->last_row - My->first_row + 1;
+  My->num_cols   = My->last_col - My->first_col + 1;
+
+  My->buffers = Alloc (sizeof (Buf));
+  My->buffers[0] = Alloc (sizeof (Buf));
+  Buf *buf = My->buffers[0];
+
+  (*buf) = (Buf) {
     .cur_row_idx = 0,
     .col_pos = first_col,
     .first_row = first_row,
@@ -453,27 +495,39 @@ static VALUE pager_main (la_t *this, VALUE v_lines) {
     .last_col = 0,
     .video_first_row_idx = 0,
     .array_len = array->len,
-    .buf = String.new (128),
-    .lines = Alloc (sizeof (line_t) * My.array_len),
-    .term = Term.new (),
-    .video = NULL
+    .lines = Alloc (sizeof (line_t) * array->len)
   };
+  buf->row_pos   = My->first_row;
+  buf->col_pos   = My->first_col;
+  buf->last_row  = My->last_row;
+  buf->last_col  = My->last_col;
+  buf->num_rows  = My->num_rows;
+  buf->num_cols  = My->num_cols;
 
-  Term.set (My.term);
+  My->cur_buf = buf;
+  My->num_buf = 1;
 
-  My.row_pos    = My.first_row;
-  My.col_pos    = My.first_col;
-  My.last_row   = (last_row is -1 ? My.term->num_rows : last_row);
-  My.last_col   = (last_col is -1 ? My.term->num_cols : last_col);
-  My.num_rows   = My.last_row - My.first_row + 1;
-  My.num_cols   = My.last_col - My.first_col + 1;
-  My.empty_line = String.new (My.num_cols);
-  My.video      = Video.new (1, My.num_rows, My.num_cols, My.first_row, My.first_col);
+  My->empty_line = String.new (buf->num_cols);
+  My->video      = Video.new (1, My->num_rows, My->num_cols, My->first_row, My->first_col);
 
-  for (size_t i = 0; i < (size_t) My.num_cols; i++)
-    String.append_byte (My.empty_line, ' ');
+  for (size_t i = 0; i < (size_t) My->num_cols; i++)
+    String.append_byte (My->empty_line, ' ');
 
-  return INT(pager_normal_mode (&My, lines));
+ for (size_t j = 0; j < My->buffers[0]->array_len; j++)
+    My->buffers[0]->lines[j] = Alloc (sizeof (line_t));
+
+  for (size_t i = 0; i < My->buffers[0]->array_len; i++) {
+    Ustring_t *u = Ustring.new ();
+    Ustring.encode (u, lines[i]->bytes,
+                       lines[i]->num_bytes, 1, tabwidth, 0);
+    My->buffers[0]->lines[i]->data = u;
+    My->buffers[0]->lines[i]->first_col_idx = 0;
+    My->buffers[0]->lines[i]->cur_col_idx = 0;
+  }
+
+  VALUE v = OBJECT(My);
+  object *o = La.object.new (pager_release, NULL, "PagerType", v);
+  return OBJECT(o);
 }
 
 public int __init_pager_module__ (la_t *this) {
@@ -482,9 +536,11 @@ public int __init_pager_module__ (la_t *this) {
   __INIT__(term);
   __INIT__(video);
   __INIT__(ustring);
+  __INIT__(cstring);
 
   LaDefCFun lafuns[] = {
-    { "pager", PTR(pager_main), 1 },
+    { "pager_new",  PTR(pager_new), 1 },
+    { "pager_main", PTR(pager_main), 1 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -496,7 +552,8 @@ public int __init_pager_module__ (la_t *this) {
 
   const char evalString[] = EvalString (
     public var Pager = {
-      main : pager,
+      new  : pager_new,
+      main : pager_main
      }
    );
 
