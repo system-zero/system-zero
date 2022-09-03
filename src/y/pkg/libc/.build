@@ -169,6 +169,13 @@ m.set.libc.source ([
   "libc/convert/string_to_hexstring.c",
   "libc/convert/hexstring_to_string.c",
   "libc/stringbuf/stringbuf.c",
-  "libc/stringbuf/stringbuf.h"])
+  "libc/stringbuf/stringbuf.h",
+  "libc/ustring/ustring.h",
+  "libc/ustring/ustring_code.c",
+  "libc/ustring/cwidth.c",
+  "libc/ustring/ustring_character.c",
+  "libc/ustring/ustring_charlen.c",
+  "libc/ustring/ustring_validate.c",
+  "libc/ustring/ustring_case.c"])
 
 return m

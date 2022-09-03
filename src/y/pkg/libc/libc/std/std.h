@@ -137,6 +137,10 @@ typedef unsigned long long int uint64_t;
 
 #endif
 
+typedef unsigned int  uint;
+typedef unsigned char uchar;
+typedef unsigned long ulong;
+
 #ifdef NULL
 #undef NULL
 #endif
@@ -173,3 +177,12 @@ typedef unsigned long long int uint64_t;
 
 #define container_of(_p_, _c_, _m_) ((_c_ *)((char *) (_p_) - offsetof(_c_, _m_)))
 
+typedef signed int utf8;
+
+#ifndef IS_UTF8
+#define IS_UTF8(__c__) (((__c__) & 0xC0) == 0x80)
+#endif
+
+#ifndef ISNOT_UTF8
+#define ISNOT_UTF8(__c__) (0 == IS_UTF8(__c__))
+#endif
