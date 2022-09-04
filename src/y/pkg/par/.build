@@ -1,0 +1,3 @@
+var m = New Make (__file__, SHARED_LIBRARY|MODULE|SCRIPT_EXECUTABLE)
+m.set.shared.module.to_linkagainst (["cstring", "par"])
+return m

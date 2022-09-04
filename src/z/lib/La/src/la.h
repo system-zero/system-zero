@@ -827,7 +827,7 @@ public la_T *la_get_root (la_t *);
 
 #define GET_OPT_PRINT() ({                                                \
   int _print = La.qualifier_exists (this, "print");                       \
-  ifnot (_print) {                                                        \
+  if (_print) {                                                           \
     VALUE _v_print = La.get.qualifier (this, "print", INT(0));            \
     ifnot (IS_INT(_v_print))                                              \
       THROW(LA_ERR_TYPE_MISMATCH, "print, awaiting an integer qualifier");\

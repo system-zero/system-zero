@@ -1,4 +1,6 @@
 #@
+  depends_on ("par", ALL)
+  depends_on ("pager", ALL)
   depends_on ("convert", ALL)
   depends_on ("generate", ALL)
   depends_on ("clock", ALL)

@@ -66,8 +66,8 @@ MODULE(pager);
 #define GET_OPT_TABWIDTH() ({                                               \
   VALUE _v_tabwidth = La.get.qualifier (this, "tabwidth", INT(DEFAULT_TABWIDTH));\
   ifnot (IS_INT(_v_tabwidth))                                               \
-    THROW(LA_ERR_TYPE_MISMATCH, "tawidth, awaiting an integer qualifier");  \
-  AS_INT(_v_tabwidth);                                                          \
+    THROW(LA_ERR_TYPE_MISMATCH, "tabwidth, awaiting an integer qualifier"); \
+  AS_INT(_v_tabwidth);                                                      \
 })
 
 typedef struct Me Me;

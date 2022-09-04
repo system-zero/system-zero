@@ -1,0 +1,55 @@
+import ("io")
+import ("par")
+import ("path")
+include ("argparse")
+
+const basename = path_basename
+const open     = io_open
+const read     = io_fd_read
+
+var me = __file__: basename ()
+
+var argparse = New Argparse (5, 0, me + " [option[s]] file")
+argparse.add ("width", 0, "width=", "width", IntegerType, ARG_VALUE_REQUIRED; defval : 78)
+argparse.add ("tabwidth", 0, "tabwidth=", "tab width", IntegerType, ARG_VALUE_REQUIRED; defval : 8)
+argparse.add ("just", 0, "just", "just", BooleanType, 0)
+argparse.add ("argv", 0, "arg=", "par argument", ListType, ARG_VALUE_REQUIRED|ARG_VALUE_APPEND)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg, usage) {
+  ifnot null is msg then println (msg)
+  if usage then argparse.usage ()
+  exit (1)
+}
+
+ifnot argparse.argc then exit_error (null, true)
+
+var file = argparse.argv[0]
+var fd   = file: open (O_RDONLY, 0)
+if null is fd then exit (1)
+
+var s = fd: read ()
+if null is s then exit (1)
+ifnot s: len () then exit (0)
+
+var q = {
+  just     : argparse.results.just
+  width    : argparse.results.width
+  tabwidth : argparse.results.tabwidth
+}
+
+var argv = null
+if argparse.results.argv isnot null {
+  argv = string[argparse.results.argv: len ()]
+  for v in argparse.results.argv append v in argv
+}
+
+var p = Par.new (; q)
+
+ifnot null is argv then Par.parse_argv (p, argv)
+
+exit (Par.process (p, s; tostdout))

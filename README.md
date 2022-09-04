@@ -1520,6 +1520,7 @@ gained consience. Hopefully one day.
 * [Live Bootstrap](https://bootstrapping.miraheze.org/wiki/Live-bootstrap)
 * [Libdeflate.](https://github.com/ebiggers/libdeflate)
 * [Microtar.](https://github.com/rxi/microtar)
+* [Par.](https://bitbucket.org/amc-nicemice/par)
 
 ## About
 Inner will and Motivation.  

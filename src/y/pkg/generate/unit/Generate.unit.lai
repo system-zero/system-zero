@@ -61,7 +61,7 @@ if argparse.exit is true then exit (0)
 
 func exit_error (msg, usage) {
   ifnot null is msg then println (msg)
-  ifnot null is usage then argparse.usage ()
+  if true is usage then argparse.usage ()
   exit (1)
 }
 
@@ -163,7 +163,7 @@ func generate_script (unit, unitdir) {
 
     func exit_error (msg, usage) {
       ifnot null is msg then println (msg)
-      ifnot null is usage then argparse.usage ()
+      if true is usage then argparse.usage ()
       exit (1)
     }
 `S4)
