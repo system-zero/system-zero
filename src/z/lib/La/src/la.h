@@ -829,11 +829,38 @@ public la_T *la_get_root (la_t *);
   int _print = La.qualifier_exists (this, "print");                       \
   if (_print) {                                                           \
     VALUE _v_print = La.get.qualifier (this, "print", INT(0));            \
-    ifnot (IS_INT(_v_print))                                              \
-      THROW(LA_ERR_TYPE_MISMATCH, "print, awaiting an integer qualifier");\
+    if (0 == IS_INT(_v_print)) {                                          \
+      if (IS_NULL(_v_print))                                              \
+        _print = 1;                                                       \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "print, awaiting an integer qualifier"); \
+     } else                                                               \
     _print = AS_INT(_v_print);                                            \
   }                                                                       \
   _print;                                                                 \
+})
+
+#define IS_TERM(__v__) ({                                                 \
+  int _r_ = 0;                                                            \
+  if (IS_OBJECT(__v__)) {                                                 \
+    object *_o_ = AS_OBJECT(__v__);                                       \
+     _r_ = Cstring.eq (_o_->name, "TermType");}                           \
+  _r_;                                                                    \
+})
+
+#define GET_TERM(__v__) ({                                                \
+  ifnot (IS_TERM(__v__)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");\
+  object *_o_ = AS_OBJECT(__v__);                                         \
+  term_t *_t_ = (term_t *) AS_OBJECT (_o_->value);                        \
+  _t_;                                                                    \
+})
+
+#define GET_OPT_TERM() ({                                                 \
+  VALUE _v_term = La.get.qualifier (this, "term", NULL_VALUE);            \
+  term_t *_tt_ = NULL;                                                    \
+  ifnot (IS_NULL(_v_term))                                                \
+    _tt_ = GET_TERM(_v_term);                                             \
+  _tt_;                                                                   \
 })
 
 #endif /* WITHOUT_LA_FUNCTIONS */

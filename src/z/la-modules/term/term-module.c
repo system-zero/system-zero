@@ -12,25 +12,59 @@
 
 MODULE(term)
 
-#define IS_TERM(__v__)({ int _r_ = 0; \
-  if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "TermType");}\
-  _r_; \
+#define GET_OPT_SET() ({                                                  \
+  int _set = La.qualifier_exists (this, "set");                           \
+  if (_set) {                                                             \
+    VALUE _v_set = La.get.qualifier (this, "set", INT(0));                \
+    if (0 == IS_INT(_v_set)) {                                            \
+      if (IS_NULL(_v_set))                                                \
+        _set = 1;                                                         \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "set, awaiting an integer qualifier");\
+     } else                                                               \
+    _set = AS_INT(_v_set);                                                \
+  }                                                                       \
+  _set;                                                                   \
 })
 
-#define AS_TERM(__v__)\
-({object *_o_ = AS_OBJECT(__v__); term_t *_s_ = (term_t *) AS_OBJECT (_o_->value); _s_;})
+#define GET_OPT_SAVE_SCREEN() ({                                          \
+  int _save_screen = La.qualifier_exists (this, "save_screen");           \
+  if (_save_screen) {                                                     \
+    VALUE _v_save_screen = La.get.qualifier (this, "save_screen", INT(0));\
+    if (0 == IS_INT(_v_save_screen)) {                                    \
+      if (IS_NULL(_v_save_screen))                                        \
+        _save_screen = 1;                                                 \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "save_screen, awaiting an integer qualifier");\
+     } else                                                               \
+    _save_screen = AS_INT(_v_save_screen);                                \
+  }                                                                       \
+  _save_screen;                                                           \
+})
+
+#define GET_OPT_CLEAR_SCREEN() ({                                         \
+  int _clear_screen = La.qualifier_exists (this, "clear_screen");         \
+  if (_clear_screen) {                                                    \
+    VALUE _v_clear_screen = La.get.qualifier (this, "clear_screen", INT(0));\
+    if (0 == IS_INT(_v_clear_screen)) {                                   \
+      if (IS_NULL(_v_clear_screen))                                       \
+        _clear_screen = 1;                                                \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "clear_screen, awaiting an integer qualifier");\
+     } else                                                               \
+    _clear_screen = AS_INT(_v_clear_screen);                              \
+  }                                                                       \
+  _clear_screen;                                                          \
+})
 
 static VALUE term_getkey (la_t *this, VALUE v_fd) {
-  (void) this;
   ifnot (IS_FILEDES(v_fd)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a file descriptor");
   utf8 k = IO.input.getkey (AS_FILEDES(v_fd));
   return INT(k);
 }
 
 static VALUE term_release (la_t *this, VALUE v_term) {
-  (void) this;
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   Term.release (&term);
   return OK_VALUE;
 }
@@ -38,39 +72,40 @@ static VALUE term_release (la_t *this, VALUE v_term) {
 static VALUE term_new (la_t *this) {
   (void) this;
   term_t *term = Term.new ();
+  int set = GET_OPT_SET();
+  if (set) {
+    int save_screen = GET_OPT_SAVE_SCREEN();
+    int clear_screen = GET_OPT_CLEAR_SCREEN();
+    ifnot (save_screen) Term.set_state_bit (term, TERM_DONOT_SAVE_SCREEN);
+    ifnot (clear_screen) Term.set_state_bit (term, TERM_DONOT_CLEAR_SCREEN);
+    Term.set (term);
+  }
+
   VALUE v = OBJECT(term);
   object *o = La.object.new (term_release, NULL, "TermType", v);
   return OBJECT(o);
 }
 
 static VALUE term_raw_mode (la_t *this, VALUE v_term) {
-  (void) this;
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   int retval = Term.raw_mode (term);
   return INT(retval);
 }
 
 static VALUE term_sane_mode (la_t *this, VALUE v_term) {
-  (void) this;
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   int retval = Term.sane_mode (term);
   return INT(retval);
 }
 
 static VALUE term_orig_mode (la_t *this, VALUE v_term) {
-  (void) this;
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   int retval = Term.orig_mode (term);
   return INT(retval);
 }
 
 static VALUE term_init_size (la_t *this, VALUE v_term) {
-  (void) this;
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   char mode = term->mode;
 
   if (mode isnot 'r') {
@@ -98,18 +133,15 @@ static VALUE term_init_size (la_t *this, VALUE v_term) {
 }
 
 static VALUE term_set_pos (la_t *this, VALUE v_term, VALUE v_row, VALUE v_col) {
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
   ifnot (IS_INT(v_row))   THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   ifnot (IS_INT(v_col))   THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
-
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   Term.cursor.set_pos (term, AS_INT(v_row), AS_INT(v_col));
   return OK_VALUE;
 }
 
 static VALUE term_get_pos (la_t *this, VALUE v_term) {
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   int row, col;
   int r = Term.cursor.get_pos (term, &row, &col);
   if (r is NOTOK) return NULL_VALUE;
@@ -120,17 +152,31 @@ static VALUE term_get_pos (la_t *this, VALUE v_term) {
 }
 
 static VALUE term_get_rows (la_t *this, VALUE v_term) {
-  (void) this;
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   return INT(term->num_rows);
 }
 
 static VALUE term_get_cols (la_t *this, VALUE v_term) {
-  (void) this;
-  ifnot (IS_TERM(v_term)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a term object");
-  term_t *term = AS_TERM(v_term);
+  term_t *term = GET_TERM(v_term);
   return INT(term->num_cols);
+}
+
+static VALUE term_screen_save (la_t *this, VALUE v_term) {
+  term_t *term = GET_TERM(v_term);
+  Term.screen.save (term);
+  return OK_VALUE;
+}
+
+static VALUE term_screen_clear (la_t *this, VALUE v_term) {
+  term_t *term = GET_TERM(v_term);
+  Term.screen.clear (term);
+  return OK_VALUE;
+}
+
+static VALUE term_screen_restore (la_t *this, VALUE v_term) {
+  term_t *term = GET_TERM(v_term);
+  Term.screen.restore (term);
+  return OK_VALUE;
 }
 
 public int __init_term_module__ (la_t *this) {
@@ -150,6 +196,9 @@ public int __init_term_module__ (la_t *this) {
     { "term_sane_mode",   PTR(term_sane_mode), 1 },
     { "term_orig_mode",   PTR(term_orig_mode), 1 },
     { "term_init_size",   PTR(term_init_size), 1 },
+    { "term_screen_save", PTR(term_screen_save), 1},
+    { "term_screen_clear",PTR(term_screen_clear), 1},
+    { "term_screen_restore", PTR(term_screen_restore), 1},
     { NULL, NULL_VALUE, 0}
   };
 
@@ -169,6 +218,11 @@ public int __init_term_module__ (la_t *this) {
       init_size : term_init_size,
       set : {
         pos : term_set_pos,
+      },
+      screen : {
+        save : term_screen_save,
+        clear : term_screen_clear,
+        restore : term_screen_restore,
       },
       get : {
         pos : term_get_pos,

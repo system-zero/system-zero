@@ -1,6 +1,8 @@
 import ("io")
 import ("par")
+import ("term")
 import ("path")
+import ("pager")
 include ("argparse")
 
 const basename = path_basename
@@ -9,10 +11,12 @@ const read     = io_fd_read
 
 var me = __file__: basename ()
 
-var argparse = New Argparse (5, 0, me + " [option[s]] file")
+var argparse = New Argparse (7, 0, me + " [option[s]] file")
 argparse.add ("width", 0, "width=", "width", IntegerType, ARG_VALUE_REQUIRED; defval : 78)
 argparse.add ("tabwidth", 0, "tabwidth=", "tab width", IntegerType, ARG_VALUE_REQUIRED; defval : 8)
 argparse.add ("just", 0, "just", "just", BooleanType, 0)
+argparse.add ("has_statusline", 0, "has-statusline=", "draw statusline", IntegerType, ARG_VALUE_REQUIRED; defval : 1)
+argparse.add ("first_col", 0, "first-column=", "first column", IntegerType, ARG_VALUE_REQUIRED)
 argparse.add ("argv", 0, "arg=", "par argument", ListType, ARG_VALUE_REQUIRED|ARG_VALUE_APPEND)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
@@ -28,28 +32,61 @@ func exit_error (msg, usage) {
 
 ifnot argparse.argc then exit_error (null, true)
 
-var file = argparse.argv[0]
-var fd   = file: open (O_RDONLY, 0)
-if null is fd then exit (1)
+var just     = argparse.results.just
+var width    = argparse.results.width
+var tabwidth = argparse.results.tabwidth
+var has_statusline = argparse.results.has_statusline
 
-var s = fd: read ()
-if null is s then exit (1)
-ifnot s: len () then exit (0)
+func par () {
+  var file = argparse.argv[0]
+  var fd   = file: open (O_RDONLY, 0)
+  if null is fd then exit (1)
+
+  var s = fd: read ()
+  if null is s then exit (1)
+  ifnot s: len () then exit (0)
+
+  var argv = null
+  if argparse.results.argv isnot null {
+    argv = string[argparse.results.argv: len ()]
+    for v in argparse.results.argv append v in argv
+  }
+
+  var q = {
+    just : just
+    width : width
+    tabwidth : tabwidth
+  }
+
+  var p = Par.new (; q)
+
+  ifnot null is argv then Par.parse_argv (p, argv)
+
+  return Par.process (p, s)
+}
+
+var input = par ()
+
+var term = Term.new (;set)
+var cols = Term.get.cols (term)
+var rows = Term.get.rows (term)
+
+var cells = cols - width
+
+var first_col = if argparse.results.first_col then argparse.results.first_col orelse
+   if cells > 0 then cells / 2 + (cells % 2) orelse 1
+
+cells -= first_col
+
+var last_col  = if cells > 0 then cols - cells orelse cols
 
 var q = {
-  just     : argparse.results.just
-  width    : argparse.results.width
-  tabwidth : argparse.results.tabwidth
+  first_col : first_col
+  last_col  : last_col
+  last_row  : rows - 2
+  first_row : 2
+  has_statusline : has_statusline
 }
 
-var argv = null
-if argparse.results.argv isnot null {
-  argv = string[argparse.results.argv: len ()]
-  for v in argparse.results.argv append v in argv
-}
-
-var p = Par.new (; q)
-
-ifnot null is argv then Par.parse_argv (p, argv)
-
-exit (Par.process (p, s; tostdout))
+var p = Pager.new (input; q)
+exit (Pager.main (p))

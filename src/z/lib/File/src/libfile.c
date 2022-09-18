@@ -555,7 +555,7 @@ static int file_copy (const char *src, const char *o_dest, file_copy_opts opts) 
     }
 
     dlist->release (dlist);
-    goto theerror;  // unconditionally, as it might be not an error
+    goto theerror;  // unconditionally, as it might not be an error
 
   } else {
     if (dest_exists) {

@@ -21,6 +21,7 @@ static VALUE io_fd_read (la_t *this, VALUE v_fd) {
   int fd = AS_FILEDES(v_fd);
   int len = 1024;
   char buf[len];
+  buf[0] = '\0';
   string *s = String.new (128);
   int bts = 0;
 

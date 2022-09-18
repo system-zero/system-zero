@@ -1,12 +1,13 @@
 #@
   depends_on ("IO", SHARED_LIBRARY)
   depends_on ("Term", SHARED_LIBRARY)
-  depends_on ("Video", SHARED_LIBRARY)
+  depends_on ("String", SHARED_LIBRARY)
   depends_on ("Ustring", SHARED_LIBRARY)
   depends_on ("Cstring", SHARED_LIBRARY)
 #
 
-var m = New Make (__file__, MODULE|SCRIPT_EXECUTABLE)
-m.set.shared.module.to_linkagainst (["io", "term", "video", "ustring", "cstring"])
+var m = New Make (__file__, LIBRARY|MODULE|SCRIPT_EXECUTABLE)
+m.set.library.to_linkagainst (["io", "term", "string", "ustring", "cstring", "sys", "path"])
+m.set.shared.module.to_linkagainst (["cstring", "ustring"])
 m.set.script.executable.source ("Pager"; clear)
 return m

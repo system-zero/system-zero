@@ -1,16 +1,13 @@
 
 #define REQUIRE_STDIO
-#define REQUIRE_CTYPE
-#define REQUIRE_LOCALE
 
 #define REQUIRE_STD_MODULE
 #define REQUIRE_CSTRING_TYPE  DECLARE
 
 #include <z/cenv.h>
+#include <z/par.h>
 
 MODULE(par);
-
-#include <z/par.h>
 
 typedef par_t Me;
 

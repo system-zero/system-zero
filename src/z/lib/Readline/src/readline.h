@@ -229,7 +229,7 @@ typedef struct readline_self {
 
 typedef struct readline_T {
   readline_self self;
-}readline_T;
+} readline_T;
 
 public readline_T __init_readline__ (void);
 #endif /* READLINE_HDR */

@@ -1,3 +1,92 @@
+## Genesis of a Basic Operating System.
+
+This project has been started at the very first days of 2021 and the first cycle has
+been ended at the last days of August of 2022.
+
+Initially, we had been set the ambitious goal to build a bootable system, but we were
+unable to achieve our promise, however we were close as the main missing functionality
+is an init.
+
+The following section is a conclusion from this adventure.
+
+## The initial idea and intention
+
+The basic idea is about demystification and realization of the mechanics, of a computer
+system, with two main branches:
+
+  - a bootstrapped system from nothing but a seed, that can provide the essential tools
+    for further development (we yet have to incorporate this [genesis](https://gitlab.com/giomasce/asmc))
+
+  - creation with own code of a functional bootable system, which was our focus in this
+    cycle
+
+We assumed in this initial research, a C compiler, a standard C library, a linker and
+basic tools like make and core utilities. We used what our development platform offered,
+a Void Linux distribution with the GNU infrastructure.
+
+We developed a shell, an editor, a scripting language and most of the basic administration
+system tools.
+
+We used this first zero branch to build a rich set of essential libraries. We've also
+used many small and mostly unknown libraries, or specific algorithms, pulled from the
+enormous pool of the open source ecosystem.
+
+The purpose of this iteration was to realize firstly the needs and secondly to create
+a system that could let us to disassociate from our host.
+
+As it has been said already, we didn't achieved our goal, but we walked too far beyond
+our expectations, though there was never such an ambition, or if it was, it was very
+well hidden. The codebase now is quite enormous and unhandled by one person. Again,
+completion it was never the purpose as it was destined to fail.
+
+The idea is that we need a definite educational platform, that interest humans or|and
+universities can build together, as a basis to explain and realize - if not all, but
+most of - the concepts and mechanics of a computer system and programming. A platform
+that it shouldn't been treated as a toy but as a functional basic system, or a little
+bit away than the basic admistration level, but not more.
+
+Perhaps the most interesting thing about all this, is how a system is born from almost
+nothing. Okey at the fist point we need a seed. But what is a seed? And how this can
+be envolved into a functional system? This is a fascinating topic by itself alone and
+fulfils our uncontrollable inner desire to realize the mechanics. But I believe it is
+also our path to our evolution, as then we can use our will to develop ourselves and
+our world into unimaginable levels, and sufficient knowledge is the key.
+
+It is mostly believed, that this is all magic and way too complicated, though I think
+it is mostly logic and simplicity, as our wise UNIX ancestors have been concluded:
+
+"UNIX is not that complicated. It is that you just have to be genious to understand
+the simplicity."
+
+... and missing of information. So this is all about.
+
+I imagine that most - if not all - of the pieces in a imaginary project like this,
+should be separated and independent with a way, into their own namespace.
+
+In this modern world probably as git submodules.
+
+And even that, they have to be developed in many branches, as many are required, from
+the very first scratch code, up to the very last developed functionality, so they can
+be processed gradually. Also in such a project most - if not all - of the code bits
+should be commented with explanations to the very last bit of it.
+
+Perhaps then it would be easy and fun all the way to our education.
+
+And I know, this specific one system. is not this definite unification system, that
+I'm trying so hard to describe, and it couldn't be as I do not have the qualifications,
+though because of this missing, I deeply feel the value and so I've tried.
+
+The current development, probably is getting into some scratch points again, and we
+will need a lot of time to stabilization. Perhaps in one or two years.
+
+What follows in this document, is what have been produced by the development. It is
+surely a mess at points, but there also many points with a value too, but it needs a
+bit of investement in time, to unite all those bits under a readable document, and it
+is not going to be by me, so probably will never happen, but happy to invest my energy
+on this anyway. See you on the path.
+
+## Original readme (development version)
+
 This is to create with the most minimum code possible, a functional computer system,
 that can be used as it is, or as a foundation to extent it with specific functionality.
 
@@ -43,9 +132,11 @@ Implemented:
   - a basic set of system/core utilities
   - a tiny shell
   - a package manager
+  - a make kind utility
   - a container
   - a primitive http[s] client
-
+  - a tiny libc
+  
 The only requirenment is libc, except that the sudo replacement requires libpam
 and the https functionality requires either openssl or libressl. We can do though  
 without libpam, but we have to implement crypt() first.
@@ -57,7 +148,7 @@ For a standalone system:
   - network managment
   - system configuration (timezone/password/groups)
   - libc/kernel/X installation?
-  
+
 Functionality:
   - mail managment
   - process viewer

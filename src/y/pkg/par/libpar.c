@@ -1949,10 +1949,10 @@ int par_process (Me *My, const char *input) {
 
             //fprintf (stdout, "%.*s\n", firstprop->p, *firstline);
 
-            for (i = n;  i;  --i)
+            for (i = n; i; --i)
               My->output_byte (My, *(unsigned char *)&firstprop->rc);
 
-             My->output_line (My, end - firstprop->s);
+            My->output_line (My, end - firstprop->s);
           }
         }
 

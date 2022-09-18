@@ -2159,3 +2159,5 @@ func make_dependencies (f) {
 
   return retval
 }
+
+# record dependencies on shared/static libraries (the library as a key)
