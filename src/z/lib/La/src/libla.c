@@ -10661,15 +10661,13 @@ static int la_parse_loadfile (la_t *this) {
   int c = TOKEN;
   int err;
 
-  ifnot (c is TOKEN_PAREN_OPEN)
-    THROW_SYNTAX_ERR("error while parsing loadfile(), awaiting (");
+  THROW_SYNTAX_ERR_IFNOT(c is TOKEN_PAREN_OPEN, "evaluation error, awaiting (");
 
   VALUE v;
   err = la_parse_expr (this, &v);
-  THROW_SYNTAX_ERR_IF_ERR(err, "error while parsing loadfile()");
+  THROW_SYNTAX_ERR_IF_ERR(err, "error while evaluating file");
 
-  THROW_SYNTAX_ERR_IF (v.type isnot STRING_TYPE,
-    "error while parsing loadfile(), awaiting a string");
+  THROW_SYNTAX_ERR_IF (v.type isnot STRING_TYPE, "error while evaluating file, awaiting a string");
 
   string *fname = AS_STRING(v);
   string *fn = NULL;
@@ -10718,8 +10716,7 @@ loadfile: {}
     err = la_parse_expr (this, &v);
     THROW_ERR_IF_ERR(err);
 
-    ifnot (v.type is STRING_TYPE)
-      THROW_SYNTAX_ERR("error while parsing loadfile() ns, awaiting a string");
+    THROW_SYNTAX_ERR_IFNOT (v.type is STRING_TYPE, "namespace error while evaluating file, awaiting a string");
 
     ns = AS_STRING(v);
 
@@ -11909,6 +11906,7 @@ static int la_eval_file (la_t *this, const char *filename) {
     size_t flen = bytelen (this->curFunName);
     funT *uf = Fun_new (this, funNew (
       .name = this->curFunName, .namelen = flen, .parent = this->curScope));
+    this->curFunName[0] = '\0';
 
     string *script_buf;
     if (exists) {
@@ -12480,4 +12478,6 @@ public void __deinit_la__ (la_T **thisp) {
   < last statement value
 
   < func (~a = def, ~b = val)
+
+ -> add not on chained functions   return null if file: not exists ()
 #endif
