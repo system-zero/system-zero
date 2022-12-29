@@ -87,7 +87,9 @@ static void term_screen_bell (term_t *this) {
 }
 
 static void term_screen_set_color (term_t *this, int color) {
-  IO.fd.write (this->out_fd, TERM_MAKE_COLOR(color), 5);
+  char buf[8];
+  int len = snprintf (buf, 8, TERM_SET_COLOR_FMT, color);
+  IO.fd.write (this->out_fd, buf, len);
 }
 
 static void term_screen_clear (term_t *this) {

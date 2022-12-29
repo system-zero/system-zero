@@ -34,6 +34,30 @@ struct syncdir_t {
   int accept_all_on_remove;
 };
 
+static int process_dir_dryrun (dirwalk_t *dw, const char *dir, struct stat *st) {
+  (void) st;
+  struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
+  const char *bn = dir + syncdir->src_len + (syncdir->src_has_dir_sep is 0);
+
+  if (syncdir->exclude_dirs isnot NULL) {
+    for (int i = 0; i < syncdir->exclude_dirs_len; i++) {
+      if (Cstring.eq (bn, syncdir->exclude_dirs[i]->bytes)) return 0;
+    }
+  }
+
+  size_t len = syncdir->dest_len + (syncdir->dest_has_dir_sep is 0) + bytelen (bn);
+
+  char dest[len + 1];
+  Cstring.cp_fmt (dest, len + 1, "%s%s%s", syncdir->dest,
+    (syncdir->src_has_dir_sep ? "" : DIR_SEP_STR), bn);
+
+  struct stat dest_st;
+  if (access (dest, F_OK) and -1 is lstat (dest, &dest_st))
+    fprintf (stdout, "%s: making directory\n", dest);
+
+  return 1;
+}
+
 static int process_dir (dirwalk_t *dw, const char *dir, struct stat *st) {
   struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
   const char *bn = dir + syncdir->src_len + (syncdir->src_has_dir_sep is 0);
@@ -57,6 +81,29 @@ static int process_dir (dirwalk_t *dw, const char *dir, struct stat *st) {
       return -1;
     }
   }
+
+  return 1;
+}
+
+static int process_file_dryrun (dirwalk_t *dw, const char *file, struct stat *st) {
+  (void) st;
+  struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
+
+  const char *bn = file + syncdir->src_len + (syncdir->src_has_dir_sep is 0);
+
+  if (syncdir->exclude_files isnot NULL) {
+    char *bname = Path.basename ((char *) bn);
+    for (int i = 0; i < syncdir->exclude_files_len; i++) {
+      if (Cstring.eq (bname, syncdir->exclude_files[i]->bytes)) return 0;
+    }
+  }
+
+  size_t len = syncdir->dest_len + (syncdir->dest_has_dir_sep is 0) + bytelen (bn);
+  char dest[len + 1];
+  Cstring.cp_fmt (dest, len + 1, "%s%s%s", syncdir->dest,
+    (syncdir->dest_has_dir_sep ? "" : DIR_SEP_STR), bn);
+
+  fprintf (stdout, "%s -> %s\n", file, dest);
 
   return 1;
 }
@@ -171,7 +218,46 @@ static int if_should_remove (const char *file, struct stat *st) {
   return retval;
 }
 
+static int process_dir_remove_dryrun (dirwalk_t *dw, const char *dir, struct stat *st) {
+  (void) st;
+  struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
+  const char *bn = dir + syncdir->dest_len + (syncdir->dest_has_dir_sep is 0);
+
+  if (syncdir->exclude_dirs isnot NULL)
+    for (int i = 0; i < syncdir->exclude_dirs_len; i++)
+      if (Cstring.eq (bn, syncdir->exclude_dirs[i]->bytes)) return 0;
+
+  size_t len = syncdir->src_len + (syncdir->src_has_dir_sep is 0) + bytelen (bn);
+  char src[len + 1];
+
+  Cstring.cp_fmt (src, len + 1, "%s%s%s", syncdir->src,
+    (syncdir->src_has_dir_sep ? "" : DIR_SEP_STR), bn);
+
+  struct stat src_st;
+  if (access (src, F_OK) and -1 is lstat (src, &src_st)) {
+    if (syncdir->interactive_on_remove) {
+      ifnot (syncdir->accept_all_on_remove) {
+        int what = if_should_remove (dir, st);
+        switch (what) {
+          case  0:  return 0;
+          case -1:  return -1;
+          case  2:
+            syncdir->accept_all_on_remove = 1;
+          case 1:
+            break;
+        }
+      }
+
+      fprintf (stdout, "%s: removing directory\n", src);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 static int process_dir_remove (dirwalk_t *dw, const char *dir, struct stat *st) {
+  (void) st;
   struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
   const char *bn = dir + syncdir->dest_len + (syncdir->dest_has_dir_sep is 0);
 
@@ -209,6 +295,45 @@ static int process_dir_remove (dirwalk_t *dw, const char *dir, struct stat *st) 
         return -1;
       }
 
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static int process_file_remove_dryrun (dirwalk_t *dw, const char *file, struct stat *st) {
+  struct syncdir_t *syncdir = (struct syncdir_t *) dw->user_data;
+  const char *bn = file + syncdir->dest_len + (syncdir->dest_has_dir_sep is 0);
+
+  if (syncdir->exclude_files isnot NULL) {
+    char *bname = Path.basename ((char *) bn);
+    for (int i = 0; i < syncdir->exclude_files_len; i++) {
+      if (Cstring.eq (bname, syncdir->exclude_files[i]->bytes)) return 0;
+    }
+  }
+
+  size_t len = syncdir->src_len + (syncdir->src_has_dir_sep is 0) + bytelen (bn);
+  char src[len + 1];
+  Cstring.cp_fmt (src, len + 1, "%s%s%s", syncdir->src,
+    (syncdir->src_has_dir_sep ? "" : DIR_SEP_STR), bn);
+
+  struct stat src_st;
+  if (access (src, F_OK) and -1 is lstat (src, &src_st)) {
+    if (syncdir->interactive_on_remove) {
+      ifnot (syncdir->accept_all_on_remove) {
+        int what = if_should_remove (file, st);
+        switch (what) {
+          case  0:  return 0;
+          case -1:  return -1;
+          case  2:
+            syncdir->accept_all_on_remove = 1;
+          case 1:
+            break;
+        }
+      }
+
+      fprintf (stdout, "%s: removing file\n", src);
       return 0;
     }
   }
@@ -260,7 +385,6 @@ static int process_file_remove (dirwalk_t *dw, const char *file, struct stat *st
 
   return 1;
 }
-
 static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
   ifnot (IS_STRING(v_src_dir)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_dest_dir)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -273,6 +397,7 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
 
   int verbose = GET_OPT_VERBOSE();
   int interactive = GET_OPT_INTERACTIVE();
+  int dryrun = GET_OPT_DRYRUN();
 
   int exclude_dirs_len = 0;
   string **exclude_dirs = GET_OPT_EXCLUDE_DIRS(&exclude_dirs_len);
@@ -302,6 +427,11 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
   }
 
   if (access (dest, F_OK) and -1 is lstat (dest, &dest_st)) {
+    if (dryrun) {
+      fprintf (stdout, "%s: destination doesn't exists\n", dest);
+      return INT(0);
+    }
+
     int retval = File.copy (src_dir, dest_dir, FileCopyOpts (
       .verbose = verbose + 1,
       .preserve = 1,
@@ -360,7 +490,10 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
     .accept_all_on_remove = 0
    };
 
-  dw = Dir.walk.new (process_dir, process_file);
+  dw = Dir.walk.new (
+    dryrun ? process_dir_dryrun  : process_dir,
+    dryrun ? process_file_dryrun : process_file);
+
   dw->depth = DIRWALK_MAX_DEPTH;
   dw->user_data = &data;
   dw->on_error = on_error;
@@ -372,7 +505,10 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
     return NOTOK_VALUE;
   }
 
-  dw = Dir.walk.new (process_dir_remove, process_file_remove);
+  dw = Dir.walk.new (
+    dryrun ? process_dir_remove_dryrun  : process_dir_remove,
+    dryrun ? process_file_remove_dryrun : process_file_remove);
+
   dw->user_data = &data;
   dw->depth = DIRWALK_MAX_DEPTH;
   retval = Dir.walk.run (dw, dest_dir);

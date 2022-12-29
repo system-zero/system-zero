@@ -94,9 +94,17 @@ keywords and Operators (reserved keywords):
 Comments.
 
   Single line comments that start with '# ', and end up to the end of the line.
-  The space after the hash symbol it is (almost) siginificant, as there is code
+  The space after the hash symbol it is (almost) significant,  as there is code
   that uses comments for application annotations or macros, so it can be easily
   misinterpreted.
+
+    [Note about the significant whitespace:
+      while it is mostly about a free form syntax  (we appreciate indentation and
+      it is practiced rigorously in our code (in C and in our language), there is
+      not enforcement: but we might use them to denote blocks in future, since is
+      about consistency also and should be rewarded with a way - as this is about
+      readability and crystal clear expression of the underlying intention (well
+      almost boring and expected expression actually)]
 
   Multiline comments that start with '##[', and end up with '##]'. Those can nest.
 
@@ -108,8 +116,14 @@ Comments.
   var c
 
   # An explicit semicolon, denotes the end of a statement, but also a new line
-  # can also denote the end of a statement.
-  # A statement, and based on the context it may span into multiply lines.
+  # can denote the end of a statement.
+
+  # A statement, and based on the context it may span into multiply lines (even
+  # complicated ones, though there is some sensitivity to match sane established
+  # breaking points (almost standard way) - for such cases - but there isn't such
+  # a strong guarantee that all (usually) corner combinations might work on such
+  # a long statement, but such code has already been written and it works).
+
   # Multiply statements in one line without a semicolon at the end, may work
   # or may not work, as there are a couple of obvious ambiquities, so in that
   # case a semicolon is required.
@@ -130,7 +144,7 @@ Comments.
 
   var xxx,
       yyy,
-      ccc;
+      ccc
 
   # Any symbol can be reassigned with a new value, unless it is attributed as
   # `const`. Symbols are associated with a value but do not have types, just
@@ -140,12 +154,22 @@ Comments.
 
   # In any attempt to change value to constant types, the interpreter should
   # raise an error. However, it is possible to redeclare a symbol in the same
-  # scope as `const`, when both old and new values point to the sane C or user
-  # function, which then it is considered as a function alias.
+  # scope as `const`, when both old and new values point to the same C or user
+  # defined function, which then it is considered as a function alias, so:
+
+  const basename = path_basename
+
+  # can be repeated usually in another compilation unit.
+  # In all the other cases it is considered a fatal error.
 
   # As you may not know the value of a constant untill the runtime, it may left
   # uninitialized, untill the first time that will be initialized with a value
-  # other than `null`.
+  # other than `null`, so:
+
+  const cv
+
+  # has the value of null and can be assigned. From that point though it can not
+  # be modified.
 
 
   # The following is a function declaration. Functions and function arguments
@@ -163,18 +187,24 @@ Comments.
   # Every block creates a new local scope, which is invisible to the outer scope,
   # and accessible only from the nested blocks.
 
+  # Blocks are considered also the loops and conditional statements and expressions.
+
   # You can associate a function with a symbol and use it with the same way
   # you use a function.
 
   var funname = func println ("howl")
+  # [Note: that this is under consideration as in practice it never being used
+     even once, plus there some posibilities if this was dissallowed, so do not
+     has to be used (so for now it is just at demonstration fancy level)]
 
   # A Function can be redefined, unless it is attributed with the const
   # keyword.
 
   const func xx (x) return x * 2
-  const xxx = func (x) return xx (x)
 
   # If there are no function armuments the pair of '()' parens could be ommited.
+
+  func sayhowl return "howl"
 
   # A function can be used as an argument to a function
 
@@ -211,10 +241,12 @@ Comments.
   # however the stack can be easily exhausted with some thousands of calls.
   # Thus it is not guarranteed. However the compiler performs a tail call optimization
   # if the function explicitly recall itself as `self`. However the return statement
-  # should be in a tail call position, thus it is the only guarrantee.
+  # __should__ be in a tail call position, and this is the only guarrantee.
 
-  # In the above case it's not in a tail position, so it can overflow.
-  # But the first form it is a tail call, and so the return statement it should be
+  # In the above second function, the statement is not in a tail position, so it
+  # can overflow with some thousand recursive calls.
+
+  # But the first form it is a tail call, and so the return statement it can be
   # written as:
 
   return self (n - 1, b, a + b)
@@ -223,6 +255,7 @@ Comments.
 
   return fibo_tail (n - 1, b, a + b)
 
+  # and so in this case, it can't overflow.
 
   # Functions always return a value and functions that don't return a value.
   # This value is `null` by default. For C functions this is guarranteed by the
@@ -263,8 +296,9 @@ Comments.
 
   # Note that this interface is weak, and it is only used to develop instant
   # logic, like the statement expressions in C11 (though with arguments) and
-  # so it neither captures up values nor it can be stored for reuse.
-
+  # so it neither captures up values nor it can be stored for reuse, and the
+  # worst of all probably `lambda' is misleading (though we want to implement
+  # them properly someday).
 
   # Statements and loops:
 
@@ -282,11 +316,11 @@ Comments.
   println (ifelseif ("")) # => xy
 
   # As it has been said the language supports an ifnot conditional, that
-  # it is true when the condition evaluates to zero.
+  # it is true when the condition evaluates to zero:
 
   ifnot 10 - 10 println ("zero")
 
-  # for
+  # for loop
   var sum = 1
   func forfun (x) {
     for (var i = 1; i <= x; i++) {
@@ -317,11 +351,9 @@ Comments.
 
   #  forever { block }
 
-  # alternatively
-
   # do/while loop
 
-  func forwhiledo (x) {
+  func whiledo (x) {
     var i = 0
     do {
       sum += i
@@ -332,7 +364,7 @@ Comments.
   print ("all the results should be ${sum}\n")
 
   # For all the cases the pair of '{}' braces are mandatory, unless their
-  # body consists of a single statement, or expression, so this is valid:
+  # body consists of a single statement or expression, so this is valid:
 
   for (var i = 0; i < 10; i++) println (i)
 
@@ -343,9 +375,9 @@ Comments.
   # This is a map declaration which it is a memory managment type, so it is
   # associated with a memory address:
 
-  var damap = { "key" : 1, "second" : "two" }
+  var damap = { key : 1, second : "two" }
   println ("${%p, damap}") # this it will print the hexadecimal address of
-    # the value.
+  # the value.
     # The supported set of directives:
     #  - %d as a decimal
     #  - %s as a string
@@ -354,7 +386,7 @@ Comments.
     #  - %x as a hexadecimal (0x is prefixed in the output)
     #  - %f as a double
 
-  # But all those can be ommited, but the default it is %s for strings or %d for
+  # Directives can be ommited, but the default it is %s for strings or %d for
   # anything else.
 
   # Maps
@@ -388,7 +420,7 @@ Comments.
 
     public
     visible : "Now I'm visible again until the next private attribute."
-    "again visible" : "Visibility it is public by default."
+    "again visible" : "Visibility it is still public."
 
     private
     "back_to_privacy" : "So and the next properties until a public attribute."
@@ -396,7 +428,7 @@ Comments.
 
     public
     "exposed_fun" : func {
-      println ("I am a function method, and I can saw you them all.")
+      println ("I am a function method, and I can see you them all.")
       return this.private_prop + " " + this.metoo
       # Some Interpreted Languages they refer to this self object as self,
       # some as this. We use this, and which has sence only inside map methods.
@@ -404,11 +436,11 @@ Comments.
   }
 
   # Testing for string equality for a public property.
-  println (dadamap."again visible" is "Visibility it is public by default.") # => 1
+  println (dadamap."again visible" is "Visibility it is still public.") # => 1
 
   # But this will raises an error:
-    # println (dadamap.back_to_privacy)
-    # SYNTAX ERROR: back_to_privacy, symbol has private scope
+  println (dadamap.back_to_privacy)
+  # SYNTAX ERROR: back_to_privacy, symbol has private scope
 
   # Accessing map properties is through a dot ('.'), the same way C access its
   # structures. The properties can be eithers strings, identifiers or expressions.
@@ -423,8 +455,8 @@ Comments.
   println (dadamap.sumfun (10)) # => 10
 
   # But it is not possible to override a method. This it will raises an error:
-    # dadamap.sumfun = 100
-    # SYNTAX ERROR: you can not override a method
+  dadamap.sumfun = 100
+  # SYNTAX ERROR: you can not override a method
 
   # Unless doing it explicitly:
   override dadamap.sumfun = 100
@@ -434,7 +466,7 @@ Comments.
 
   var x = "question!"
   dadamap.$(x) = " Does really has a value?"
-  dadamap.$("answer") = "Dubious. But nothing is lost forever."
+  dadamap.$("answer") = "Dubious. But nothing is being lost forever."
 
   println (dadamap.$("question!"))
   println (dadamap.$("ans" + "wer")) # string concatenation
@@ -451,7 +483,7 @@ Comments.
 
   # String literal are delimeted by double quotes ('"') or back quotes ('`').
 
-  # Both are multi-line strings but the difference is that double qouted strings
+  # Both are multi-line strings but the difference is that double quoted strings
   # are subject for backslash substitution.
 
   # In that case the characters are interpeted like:
@@ -491,7 +523,7 @@ Comments.
     println ("character integer represantion |${c}|, as string |${v}|, cell width ${w}")
 
   # in this case 'c' holds the integer value of the underlying byte,
-  # while 'b' holds the string representation and 'w' holds the cell
+  # while 'v' holds the string representation and 'w' holds the cell
   # width of the character.
 
   # String literals are enclosed within double quotes. A double quote can be
@@ -510,23 +542,17 @@ Probably this will be a very messy output."
 
   # Here also we see that individual characters can be enclosed in single quotes,
   # that they should point to the associated integer value, again like C does.
+
+  # 'a' => 97
+
   # But unlike C, this is not limited to the ascii range. This works the same
   # in UTF-8 encoding:
 
   println ('α') # => 945
 
-  # single characters can be specified as integers, when are enclosed in single
-  #  quotes:
-
-  # 'a' => 97
-
-  # this doesn't limited for characters in the ASCII range:
-
-  # 'α' => 945
-
   # in this case the value is the codepoint of the UTF8 byte sequence.
 
-  # They can be also specified in hexadecimal notation using this form:
+  # They can also be specified in hexadecimal notation using this form:
 
   '\x{3b1}' => 945
 
@@ -579,9 +605,10 @@ Probably this will be a very messy output."
   #  map
   #  string
   #  list
-  #  array  (arrays of arrays can be nested in an arbitrary depth)
+  #  array (arrays of arrays can be nested in an arbitrary depth)
 
   # Now it can be initialized with an algorithm:
+
   for var i = 0; i < len (int_ar); i++ int_ar[i] = i
 
   # Here we've used the `len` C native function, that returns the length
@@ -651,7 +678,9 @@ Probably this will be a very messy output."
 
   for v in l println (v)
 
-  # If As Expression and if cond then do this orelse do that, kind of Code Expressions.
+
+  # If As Expression and if cond then do this orelse do that, kind of Code Expressions
+  # and statements.
 
   # This is a dyadic operation, which is a "do this or do that" entity. An
   # orelse evaluates the next entity (the next dyadic operation). Evaluation
@@ -697,11 +726,11 @@ Probably this will be a very messy output."
     return arg * 2
   }
 
-  var res = f (if v is null then 1 orelse 0) # => an argument of value 1
+  var res = f (if v isnot null then 1 orelse 0) # => an argument of value 1
 
   # to get an array index:
   var ar = [1, 2, 3]
-  println (ar[if v isnot null then 0 orelse 2]) # => 3
+  println (ar[if v is null then 0 orelse 2]) # => 3
 
   # to access a map key with an expression:
   var m = {"key" : 1, "f" : 2}
@@ -715,9 +744,6 @@ Probably this will be a very messy output."
   # result would be different (without the last κοάξ).
 
   # Chaining with a Sequence of Functions Calls and Continuational Expressions.
-
-  # The language supports a mechanism, where the current value, becomes the
-  # first argument to the next function, or the last result value.
 
   # The language supports a mechanism, where the current value, becomes the
   # first argument to the next function in the chain, or the last result value.
@@ -792,11 +818,11 @@ Probably this will be a very messy output."
   # argument.
 
   println (q (100)) # => 1000
-  println (q (100; {"key" : 200})) # => 20000
+  println (q (100; key : 200)) # => 20000
 
   func qq (x) {
     var m = qualifiers ()
-    if null is m then m = {"key" : 10}
+    if null is m then m = {key : 10}
     return x * m.key
   }
   # similarly, the `qualifiers` function, checks for a pending set of qualifiers,
@@ -890,8 +916,8 @@ Probably this will be a very messy output."
   # If the given `count` is greater than the existing loop level, a syntax error
   # is raised. Maximum `count` is 9 nested loops.
 
-  # If botth `continue` and `break`, is not into a loop state then a syntax error
-  # is raised.
+  # (for both `continue` and `break`) if they are not into a loop state then a
+  # syntax error is raised.
 
   # However both can be expressed in a boolean context. That means that they
   # get executed only if the condition is true:
@@ -913,10 +939,9 @@ Probably this will be a very messy output."
   # function.
 
   # A single return that is followed by a semicolon or a new line it breaks
-  # execution without returning back a value. In this case the
-  # value becomes `null`.
+  # execution without returning back a value. In this case the value is `null`.
 
-  func ret1 () return
+  func ret1 return
   println (ret1 ()) # => null
 
   # A return that is followed by an expression and a semicolon or
@@ -990,7 +1015,7 @@ Probably this will be a very messy output."
   # namespace. The `private` attribute to a variable is reduntant, as this is the
   # default.
 
-  # When accessing submaps using a colon (':') then `this` instead is a reference to
+  # When accessing submaps using a colon (':') then the `this` is a reference to
   # the submap:
 
    map.submap:method (...)
@@ -1020,19 +1045,17 @@ Probably this will be a very messy output."
 
   # Limits and semantics
 
-  # - maximum number of function arguments is nine
+  # - standard keywords and functions can not be redefined and reassigned
 
   # - maximum length of any identifier is 255 bytes
 
   # - functions can get at most nine arguments
 
-  # - standard keywords and functions can not be redefined and reassigned
-
   # - function arguments that are memory types (like strings, arrays and maps),
   #   are passed by reference and so can be modified by the called function
 
   # - valid identifiers are [_a-zA-Z] and may include digits after the leading
-  #  byte (with an exception to map members that may start with a digit)
+  #   byte (with an exception to map members that may start with a digit)
 
   # - a valid array can contain only members with the same type, except if it is
   #   an array of arrays, which can contain different types of arrays and which
@@ -1054,25 +1077,26 @@ Probably this will be a very messy output."
   # this should throw an error, and it should terminate execution of the current
   # interpreter instance, with an error constant less than zero (a zero value
   # indicates success).
+
   # The interpreter in that case, it should print (to the standard error by default),
   # a message that will explain the error, and then it should try to print the
   # error line and with some lines offset, that raised the error.
+
   # All errors should propagated internally, from the current error point, back
   # to the very first function that started the evaluation. There is no kind of
   # exception handling. There are some thoughts, that the only thing that can
-  # be supported probably and has some sence and it has imo, it is a mechanism
-  # that could pause execution to the try breaking point and then to provide
-  # an interactive session. At any that try point, the state has to be saved
-  # first. The mechanism will have to expose internal information, about values
-  # or for evaluation parsing points or function bodies. And finally it has to
-  # support an interactive session, with options to abort, debug or even to...
-  # re-evaluate, by providing even the failed function with a new body.
-  # This for sure worths some invenstment.
+  # be supported probably and has some sence, it is a mechanism that could pause
+  # execution to the try breaking point and then to provide an interactive session.
+  # At that try point, the state has to be saved first. The mechanism will have
+  # to expose internal information, about values or for evaluation parsing points
+  # or function bodies. And finally it has to support an interactive session, with
+  # options to abort, debug or even to... re-evaluate, by providing even the failed
+  # function with a new body. This worths some invenstment.
 ```
 
-# loadfile syntax and semantics:
+# imclude syntax and semantics:
 
-  loadfile ("fname")
+  include ("fname")
 
   If `fname` is not an absolute path, then it is relative to the current
   evaluated unit. If that fails, then it is relative to the current directory,
@@ -1083,7 +1107,7 @@ Probably this will be a very messy output."
 
   var val = evalfile ("fname")
 
-  evalfile is like loadfile, with some differences described below.
+  evalfile is like include, with some differences described below.
 
   Files that are loaded with `evalfile` always reevaluated, thus they can
   provide different code.
@@ -1140,11 +1164,12 @@ Probably this will be a very messy output."
 ```
 
 # Standard Functions.
+
 # print and println -  print functions
 # format            -  format a string with the same semantics with the print[ln]
 #                      functions
 #                      args: string
-# loadfile          -  load a filename for evaluation
+# include           -  include a compilation file unit
 #                      args: a filename
 # evalfile          -  immediately evaluate filename contents
 #                      args: a filename
@@ -1439,17 +1464,17 @@ Probably this will be a very messy output."
        - all of them match the function name and most of them the function arguments
          of their counterparts
 
-        - not all of them they call their equivalents
+       - not all of them they call their equivalents
 
-        - with the same consistent way, they are being used in C which writes
-          this code
+       - with the same consistent way, they are being used in C which writes
+         this code
 
      - those are all excuses to avoid writting extented documentation
 
 # Library
   # Argparse Interface
 
-    loadfile ("argparse")
+    include ("argparse")
     var argparse = New Argparse (num_options, argparse_flags, message)
     argparse.add (variableName, shortopt, longopt, description, type, arg_flags)
     var retval = argparse.process (argv, start_index)

@@ -3,7 +3,7 @@ var prog = "File.chown"
 import ("os")
 import ("std")
 import ("file")
-loadfile ("argparse")
+include ("argparse")
 
 var argparse = New Argparse (3, 0, prog + " [option[s]] user[:group] file")
 argparse.add ("dereference", 'L', "dereference", "if a file is a symlink, change permissions of the referent, rather to symbolic link", BooleanType, 0)

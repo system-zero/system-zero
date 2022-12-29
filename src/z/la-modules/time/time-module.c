@@ -163,13 +163,18 @@ static VALUE time_validate_tm (la_t *this, VALUE v_tm) {
 
   ifnot (year) PRINT_AND_RETURN_FALSE(.msg = "0: is not a valid year");
 
-  if (0 > mon or mon > 11) PRINT_AND_RETURN_FALSE(.msg = STR_FMT("%d is not a valid month", mon));
+  if (0 > mon or mon > 11) {
+    char buf[128];
+    PRINT_AND_RETURN_FALSE(.msg = STRING_FMT(buf, 128, "%d is not a valid month", mon));
+  }
 
   int m_ar[] = {31, 28 + AS_INT(time_year_isleap (this, INT(year))),
     31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
-  if (1 > mday or m_ar[mon] < mday)
-    PRINT_AND_RETURN_FALSE(.msg = STR_FMT("%d: mday is not a valid day", mday));
+  if (1 > mday or m_ar[mon] < mday) {
+    char buf[128];
+    PRINT_AND_RETURN_FALSE(.msg = STRING_FMT(buf, 128, "%d: mday is not a valid day", mday));
+  }
 
   if ((hour > 23 || min > 59 || sec > 59) ||
       (hour < 0  || min < 0  || sec < 0 ))

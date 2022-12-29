@@ -32,15 +32,16 @@ include ("argparse")
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
   LIBCOUTDIR  =  SRCDIR: concat_with (LIBCOUTNAME)
 
-  const string[13] libcdirs = [
+  const string[14] libcdirs = [
     "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
-    "time", "error", "convert", "stringbuf", "ustring"]
+    "time", "error", "convert", "stringbuf", "ustring", "file"]
 
   const
   provide_str    = " provides: ",
   require_str    = "// requires: ",
   comment_str    = "// comment: ",
-  end_str        = "// end"
+  end_str        = "// end",
+  as_str         = "// as: "
 
   var me = __file__: basename ()
   var argparse = New Argparse (4, 0, me)
@@ -50,7 +51,8 @@ include ("argparse")
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
   argparse.set.help (`Reserved tokens
-    // provides: [function signature], it is required when the unit is a function, and should be at the first line only
+    // as: [header name], else it is constructed as dir/unit in caps, and should be at the first line only 
+    // provides: [function signature], it is required when the unit is a function, and should be at the first line only or after an as token
     // requires: [dir/unit]
     // comment: 
     // end [ends the interpretation]
@@ -196,6 +198,17 @@ include ("argparse")
 
       if "C" is f_ext {
         var length = lines: len ()
+        var line = lines[idx]
+        var sp = line: bytes_in_str (as_str)
+
+        ifnot null is sp {
+          sp = sp: advance_after_bytes (as_str, 1)
+
+          ifnot sp: len () then return error (v + "/" + f + ": [as] missing header name")
+          f_hdr = sp: to_upper ()
+          idx++
+        }
+
         for (var i = idx; i < length; i++) {
           var line = lines[idx]
           var sp = line: bytes_in_str (provide_str)

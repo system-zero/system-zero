@@ -214,7 +214,8 @@ init_list:;
   this->num_rows = rend_rows;
   this->first_row = first_row;
 
-  char *fmt = STR_FMT ("\033[%%dm%%-%ds%%s", maxlen);
+  char buf[128];
+  char *fmt = STRING_FMT (buf, 128, "\033[%%dm%%-%ds%%s", maxlen);
 
   vrow_pos = first_row;
 

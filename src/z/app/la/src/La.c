@@ -89,7 +89,7 @@
 
 const char *keywords[] = {
   "for (", "for |", "exit (", "var ", "import (\"", "if (", "ifnot (",
-  "loadfile (\"", "print (", "println (", NULL
+  "include (\"", "print (", "println (", NULL
 };
 
 static void la_completion (const char *buf, int curpos, rlineCompletions *lc, void *userdata) {

@@ -728,6 +728,7 @@ static zs_t *zs_init_rline (void) {
 
   char *datadir = Sys.get.env_value ("DATADIR");
   zs->comdir = String.new_with_fmt ("%s/zs/commands", datadir);
+
   size_t len = bytelen (datadir) + sizeof ("/zs/.zs_history");
   char histfile[len + 1];
   Cstring.cp_fmt (histfile, len + 1, "%s/zs/.zs_history", datadir);
@@ -757,6 +758,22 @@ static zs_t *zs_init_rline (void) {
   return zs;
 }
 
+#define ZS_NO_COMMAND 0
+#define ZS_COMMAND    1
+
+static int zs_commands (zs_t *this, sh_t *sh, const char *line, int *retval) {
+  (void) sh;
+
+  if (Cstring.eq (line, "rehash")) {
+    deinit_commands (this->command_head);
+    init_rline_commands (this);
+    *retval = 0;
+    return ZS_COMMAND;
+  }
+
+  return ZS_NO_COMMAND;
+}
+
 static int zs_interactive (sh_t *this) {
   int retval = OK;
   char *line;
@@ -776,6 +793,9 @@ static int zs_interactive (sh_t *this) {
 
     char *save_line = line;
 
+    if (ZS_COMMAND is zs_commands (zs, this, line, &retval))
+      goto post_command;
+
     signal (SIGINT, SIG_IGN);
     retval = Sh.exec (this, line);
     if (retval < 0) {
@@ -784,6 +804,8 @@ static int zs_interactive (sh_t *this) {
     }
 
     signal (SIGINT, SIG_DFL);
+
+    post_command:
     zs->last_retval = retval;
     line = save_line;
 
@@ -835,7 +857,8 @@ int main (int argc, char **argv) {
   size_t comlen = 0;
   size_t fnamelen = 0;
 
-  for (int i = 0; i < argc; i++) {
+  int idx = 0;
+  for (int i = idx; i < argc; i++) {
     ifnot (is_command) {
       if (Cstring.eq_n (argv[i], "--chdir=", 8)) {
         size_t dirlen = bytelen (argv[i] + 8);
@@ -855,6 +878,7 @@ int main (int argc, char **argv) {
       }
 
       fnamelen = bytelen (argv[i]);
+      fprintf (stderr, "%s, i %d arg %s\n", __func__, i, argv[i]);
       if (fnamelen > MAXLEN_DIR) {
         Stderr.print_fmt ("%s, path name is too long", argv[i]);
         retval = 1;
@@ -862,6 +886,7 @@ int main (int argc, char **argv) {
       }
 
       Cstring.cp (fname, MAXLEN_DIR + 1, argv[i], fnamelen);
+      idx = i;
       break;
     }
 
@@ -911,6 +936,8 @@ int main (int argc, char **argv) {
     goto get_exit_val;
   }
 
+  for (int i = idx; i < argc;i++)
+    fprintf(stderr, "idx %d, arg %s\n", i, argv[i]);
   retval = Sh.exec_file (this, fname);
 
   if (retval is NOTOK) {

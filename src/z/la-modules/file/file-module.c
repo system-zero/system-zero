@@ -122,7 +122,6 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   if (retval is -1) {
     if (errno is EEXIST) {
       if (force > 0) {
-        //char *d = STR_FMT("%s/%s", targetDir, dest_file);
         if (File.is_lnk (dest_file)) {
           retval = unlinkat (dirfd, dest_file, 0);
           ifnot (retval)

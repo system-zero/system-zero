@@ -464,7 +464,7 @@ static char *__ex_diff_syn_parser (buf_t *this, char *line, int len, int idx, ro
   }
 
 theend:;
-  String.append_with_fmt (shared, "%s%s%s", TERM_MAKE_COLOR(color), line, TERM_COLOR_RESET);
+  String.append_with_fmt (shared, TERM_SET_COLOR_FMT "%s%s", color, line, TERM_COLOR_RESET);
   Cstring.cp (line, MAXLEN_LINE, shared->bytes, shared->num_bytes);
   return line;
 }

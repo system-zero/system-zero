@@ -1,6 +1,6 @@
 import ("path")
 import ("net")
-loadfile ("argparse")
+include ("argparse")
 
 var prog = __file__: path_basename ()
 

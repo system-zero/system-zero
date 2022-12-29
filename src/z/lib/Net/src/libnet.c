@@ -732,7 +732,7 @@ static int net_default_output_callback (net_t *this, FILE *fp, char *recvb, size
      return NOTOK;
 
    ulong fractiondownloaded = (ulong) (((ulong) (num_bytes + nread) * 100) / (ulong) contentLength);
-   fprintf (stdout, "%luKB (%lu%%) of %luMB\r", (num_bytes + nread) / 1024, fractiondownloaded,
+   fprintf (stdout, "\033[?25l%zdKB (%lu%%) of %zdMB\r\033[?25h", (num_bytes + nread) / 1024, fractiondownloaded,
         contentLength / 1024);
    return OK;
 }

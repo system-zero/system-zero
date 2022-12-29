@@ -811,7 +811,7 @@ syn_t HL_DB[] = {
   TERM_SET_COLOR_FMT "%c" TERM_COLOR_RESET,(_clr), (_c))
 
 #define ADD_INVERTED_CHAR(_c, _clr) String.append_with_fmt ($my(shared_str), \
-  TERM_INVERTED "%s%c" TERM_COLOR_RESET, TERM_MAKE_COLOR ((_clr)), (_c))
+  TERM_INVERTED TERM_SET_COLOR_FMT "%c" TERM_COLOR_RESET, (_clr), (_c))
 
 #define SYN_HAS_OPEN_COMMENT       (1 << 0)
 #define SYN_HAS_SINGLELINE_COMMENT (1 << 1)
@@ -899,7 +899,7 @@ parse_comment:
     if ($my(syn)->state & SYN_HAS_OPEN_COMMENT) {
       $my(syn)->state &= ~SYN_HAS_OPEN_COMMENT;
       int diff = len;
-      String.append_with_fmt ($my(shared_str), "%s%s", TERM_MAKE_COLOR (HL_COMMENT), TERM_ITALIC);
+      String.append_with_fmt ($my(shared_str), TERM_SET_COLOR_FMT "%s", HL_COMMENT, TERM_ITALIC);
 
       if ($my(syn)->state & SYN_HAS_MULTILINE_COMMENT) {
         $my(syn)->state &= ~SYN_HAS_MULTILINE_COMMENT;
@@ -1012,7 +1012,7 @@ parse_char:
            IsSeparator (line[idx + kw_len])) {
          // (0 is is_glob ? IsSeparator (line[idx + kw_len]) : 1)) {
           int color = $my(syn)->keywords_colors[j];
-          String.append_with ($my(shared_str), TERM_MAKE_COLOR (color));
+          String.append_with_fmt ($my(shared_str), TERM_SET_COLOR_FMT, color);
 
           for (int i = 0; i < kw_len; i++)
             String.append_byte ($my(shared_str), line[idx+i]);
@@ -1989,8 +1989,9 @@ static void venv_new (ed_T *this) {
   if ($OurRoots(uid))
     __env_check_directory__ (Sys.get.env_value ("HOME"), "home directory", 1, 0, 0);
 
+  char b[MAXLEN_BUF];
 #ifndef LIBE_DIR
-  Sys.set.env_as (STR_FMT ("%s/.libe", Sys.get.env_value ("HOME"), "E_DIR", 1);
+  Sys.set.env_as (STRING_FMT (b, MAXLEN_BUF, "%s/.libe", Sys.get.env_value ("HOME"), "E_DIR", 1);
 #else
   Sys.set.env_as (LIBE_DIR, "E_DIR", 1);
 #endif
@@ -1999,7 +2000,7 @@ static void venv_new (ed_T *this) {
     __env_check_directory__ (e_dir, "libe directory", 1, 0, 0);
 
 #ifndef LIBE_TMPDIR
-  Sys.set.env_as (STR_FMT ("%s/tmp", e_dir), "E_TMPDIR", 1);
+  Sys.set.env_as (STRING_FMT (b, MAXLEN_BUF, "%s/tmp", e_dir), "E_TMPDIR", 1);
 #else
   Sys.set.env_as (LIBE_TMPDIR, "E_TMPDIR", 1);
 #endif
@@ -2008,7 +2009,7 @@ static void venv_new (ed_T *this) {
     __env_check_directory__ (tmp_dir, "editor temp directory", 1, 1, 0);
 
 #ifndef LIBE_DATADIR
-  Sys.set.env_as (STR_FMT ("%s/data", e_dir), "E_DATADIR", 1);
+  Sys.set.env_as (STRING_FMT(b, MAXLEN_BUF, "%s/data", e_dir), "E_DATADIR", 1);
 #else
   Sys.set.env_as (LIBE_DATADIR, "E_DATADIR", 1);
 #endif
@@ -2016,7 +2017,7 @@ static void venv_new (ed_T *this) {
   if ($OurRoots(uid))
     __env_check_directory__ (data_dir, "editor data directory", 1, 1, 0);
 
-  Sys.set.env_as (STR_FMT ("%s/e", data_dir), "LA_DIR", 1);
+  Sys.set.env_as (STRING_FMT (b, MAXLEN_BUF, "%s/e", data_dir), "LA_DIR", 1);
   if ($OurRoots(uid)) {
     char *i_dir = Sys.get.env_value ("LA_DIR");
     __env_check_directory__ (i_dir, "integrated interpreter directory", 1, 1, 0);
@@ -2522,7 +2523,9 @@ static int buf_com_backupfile (buf_t *this) {
 
   if (File.exists ($my(backupfile))) {
     utf8 chars[] = {'y', 'Y', 'n', 'N'};
-    utf8 c =  buf_quest (this, STR_FMT ("backup file: %s exists\noverride? [yYnN]",
+    char b[MAXLEN_BUF];
+    utf8 c = buf_quest (this, STRING_FMT(b, MAXLEN_BUF,
+      "backup file: %s exists\noverride? [yYnN]",
         $my(backupfile)), chars, ARRLEN(chars));
 
       switch (c) {
@@ -3587,7 +3590,7 @@ static void ed_msg_set (ed_t *this, int color, int msg_flags, const char *msg,
 
   int set_color = (msg_flags & MSG_SET_COLOR);
   if (set_color) {
-    String.prepend_with ($my(msgline), TERM_MAKE_COLOR(color));
+    String.prepend_with_fmt ($my(msgline), TERM_SET_COLOR_FMT, color);
     String.append_with ($my(msgline), TERM_COLOR_RESET);
   }
 
@@ -4294,14 +4297,18 @@ searchandsub:;
       char qu[MAXLEN_LINE]; /* using STR_FMT (a statement expression) causes  */
                         /* messages for uninitialized value[s] (on clang) */
       snprintf (qu, MAXLEN_LINE,
-        "|match at line %d byte idx %d|\n"
-        "%s%s%s%s%s\n"
+        "|match at line %d byte idx %d|\n%s"
+        TERM_SET_COLOR_FMT "%s"
+        TERM_SET_COLOR_FMT "%s\n"
         "|substitution string|\n"
-        "%s%s%s\n"
+        TERM_SET_COLOR_FMT "%s"
+        TERM_SET_COLOR_FMT "\n"
         "replace? yY[es]|nN[o] replace all?aA[ll], continue next line? cC[ontinue], quit? qQ[uit]\n",
-         idx, re->match_idx + bidx, prefix, TERM_MAKE_COLOR(COLOR_MENU_SEL), re->match->bytes,
-         TERM_MAKE_COLOR(COLOR_MENU_BG), re->match_ptr + re->match_len,
-         TERM_MAKE_COLOR(COLOR_MENU_SEL), (substr->num_bytes ? substr->bytes : " "), TERM_MAKE_COLOR(COLOR_MENU_BG));
+        idx, re->match_idx + bidx, prefix,
+        COLOR_MENU_SEL, re->match->bytes,
+        COLOR_MENU_BG,  re->match_ptr + re->match_len,
+        COLOR_MENU_SEL, (substr->num_bytes ? substr->bytes : " "),
+        COLOR_MENU_BG);
 
       utf8 c = buf_quest (this, qu, chars, ARRLEN(chars));
 
@@ -4843,7 +4850,8 @@ static int ed_quit (ed_t *ed, int force, int global) {
 
       utf8 chars[] = {'y', 'Y', 'n', 'N', 'c', 'C','d'};
 thequest:;
-      utf8 c = buf_quest (this, STR_FMT (
+      char b[MAXLEN_BUF];
+      utf8 c = buf_quest (this, STRING_FMT(b, MAXLEN_BUF,
          "%s has been modified since last change\n"
          "continue writing? [yY|nN], [cC]ansel, unified [d]iff?",
          $my(fname)), chars, ARRLEN (chars));
@@ -6990,12 +6998,12 @@ static char *buf_syn_parse_visual_lw (buf_t *this, char *line, int len, int idx,
        idx < $my(vis)[0].fidx)) {
 
     Ustring.encode ($my(line), line, len,
-        CLEAR, $my(ftype)->tabwidth, currow->first_col_idx);
+      CLEAR, $my(ftype)->tabwidth, currow->first_col_idx);
 
     ustring_t *it = $my(line)->current;
 
-    String.replace_with_fmt ($my(shared_str), "%s%s",
-         TERM_LINE_CLR_EOL, TERM_MAKE_COLOR(HL_VISUAL));
+    String.replace_with_fmt ($my(shared_str), "%s" TERM_SET_COLOR_FMT,
+      TERM_LINE_CLR_EOL, HL_VISUAL);
 
     int num = 0;
 
@@ -7438,11 +7446,11 @@ static char *buf_syn_parse_visual_line (buf_t *this, char *line, int len, row_t 
   int idx = currow->first_col_idx;
 
   if (idx > fidx)
-    String.append_with_fmt ($my(shared_str), "%s", TERM_MAKE_COLOR(HL_VISUAL));
+    String.append_with_fmt ($my(shared_str), TERM_SET_COLOR_FMT, HL_VISUAL);
 
   while (num < $my(dim)->num_cols and it) {
     if (idx is fidx)
-      String.append_with_fmt ($my(shared_str), "%s", TERM_MAKE_COLOR(HL_VISUAL));
+      String.append_with_fmt ($my(shared_str), TERM_SET_COLOR_FMT, HL_VISUAL);
 
     if (it->buf[0] is '\t') goto handle_tab;
 
@@ -8170,7 +8178,8 @@ static int buf_write (buf_t *this, int force) {
     if (NOTOK is stat ($my(fname), &st)) {
       $my(flags) &= ~FILE_EXISTS;
       utf8 chars[] = {'y', 'Y', 'n', 'N'};
-      utf8 c = buf_quest (this, STR_FMT (
+      char b[MAXLEN_BUF];
+      utf8 c = buf_quest (this, STRING_FMT(b, MAXLEN_BUF,
           "[Warning]\n%s: removed from filesystem since last operation\n"
           "continue writing? [yY|nN]", $my(fname)), chars, ARRLEN (chars));
       switch (c) {case 'n': case 'N': return NOTHING_TODO;};
@@ -8182,7 +8191,8 @@ static int buf_write (buf_t *this, int force) {
         if ($my(st).st_mtim.tv_sec isnot st.st_mtim.tv_sec) {
   #endif
           utf8 chars[] = {'y', 'Y', 'n', 'N'};
-          utf8 c = buf_quest (this, STR_FMT (
+          char b[MAXLEN_BUF];
+          utf8 c = buf_quest (this, STRING_FMT(b, MAXLEN_BUF,
               "[Warning]%s: has been modified since last operation\n"
               "continue writing? [yY|nN]", $my(fname)), chars, ARRLEN (chars));
           switch (c) {case 'n': case 'N': return NOTHING_TODO;};
@@ -11179,9 +11189,11 @@ x_selection:
           ('*' is c ? X_PRIMARY : X_CLIPBOARD));
       break;
 
-    default:
-      ed_selection_to_X ($my(root), STR_FMT ("%s\n", line), size + 1,
+    default: {
+      char b[MAXLEN_BUF];
+      ed_selection_to_X ($my(root), STRING_FMT (b, MAXLEN_BUF, "%s\n", line), size + 1,
           ('*' is c ? X_PRIMARY : X_CLIPBOARD));
+    }
   }
   return DONE;
 
@@ -13466,7 +13478,8 @@ static int Ed_init (E_T *__E__, ed_T *this) {
 
   venv_new (this);
 
-  Spell.set.dictionary (STR_FMT ("%s/spell/spell.txt", Sys.get.env_value ("E_DATADIR")));
+  char b[MAXLEN_BUF];
+  Spell.set.dictionary (STRING_FMT (b, MAXLEN_BUF, "%s/spell/spell.txt", Sys.get.env_value ("E_DATADIR")));
 
   Term.set_state_bit ($my(term), (TERM_DONOT_CLEAR_SCREEN|TERM_DONOT_SAVE_SCREEN|TERM_DONOT_RESTORE_SCREEN));
 

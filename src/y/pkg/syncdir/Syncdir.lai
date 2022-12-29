@@ -1,6 +1,6 @@
 import ("path")
 import ("syncdir")
-loadfile ("argparse")
+include ("argparse")
 
 var me = __argv[0]: path_basename ()
 

@@ -769,12 +769,13 @@ static readline_t *ed_readline_new (ed_t *);
 #define $OurRoot  $my(__E__)
 #define $OurRoots(__p__) $my(__E__)->prop->__p__
 
-#define debug_append(fmt, ...)                            \
-({                                                        \
-  char *file_ = STR_FMT ("/tmp/%s.debug", __func__);      \
-  FILE *fp_ = fopen (file_, "a+");                        \
-  if (fp_ isnot NULL) {                                   \
-    fprintf (fp_, (fmt), ## __VA_ARGS__);                 \
-    fclose (fp_);                                         \
-  }                                                       \
+#define debug_append(fmt, ...)                             \
+({                                                         \
+  char file_[MAXLEN_BUF];                                  \
+  snprintf (file_, MAXLEN_BUF, "/tmp/%s.debug", __func__); \
+  FILE *fp_ = fopen (file_, "a+");                         \
+  if (fp_ isnot NULL) {                                    \
+    fprintf (fp_, (fmt), ## __VA_ARGS__);                  \
+    fclose (fp_);                                          \
+  }                                                        \
 })

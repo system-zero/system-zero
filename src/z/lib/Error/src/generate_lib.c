@@ -159,7 +159,7 @@ int main (void) {
     "  };\n"
     "}\n");
 
-  fclose (fp_source);
+  pclose (fp_source);
   fclose (fp_dest);
 
   fp_dest = fopen (ERROR_H_FILE, "w");

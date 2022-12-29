@@ -56,16 +56,10 @@ static  vwm_T  *__VWM__ = NULL;
 #define MIN_ROWS 2
 #define MAX_TTYNAME 1024
 #define MAX_PARAMS  12
+#ifdef DEBUG
 #define MAX_SEQ_LEN 32
-
+#endif
 #define TABWIDTH    8
-
-#define V_STR_FMT_LEN(len_, fmt_, ...)                                \
-({                                                                    \
-  char buf_[len_];                                                    \
-  snprintf (buf_, len_, fmt_, __VA_ARGS__);                           \
-  buf_;                                                               \
-})
 
 #define NORMAL          0x00
 #define BOLD            0x01
@@ -384,8 +378,9 @@ static void vwm_set_debug_unimplemented (vwm_t *this, char *fname) {
 
   if (NULL is fname) {
     char *tmpdir = self(get.tmpdir);
+    char fpid[64];
     tmpfname_t *t = File.tmpfname.new (tmpdir,
-        V_STR_FMT_LEN (64, "%d_unimplemented", getpid ()));
+        STRING_FMT(fpid, 64, "%d_unimplemented", getpid ()));
 
     if (-1 is t->fd) return;
 
@@ -413,8 +408,9 @@ static void vwm_set_debug_sequences (vwm_t *this, char *fname) {
 
   if (NULL is fname) {
     char *tmpdir = self(get.tmpdir);
+    char fpid[64];
     tmpfname_t *t = File.tmpfname.new (tmpdir,
-        V_STR_FMT_LEN (64, "%d_sequences", getpid ()));
+        STRING_FMT (fpid, 64, "%d_sequences", getpid ()));
 
     if (-1 is t->fd) return;
 
@@ -463,7 +459,7 @@ do_dir:
     String.append_with_len ($my(tmpdir), dir, len);
 
   String.append_byte ($my(tmpdir), '/');
-  String.append_with ($my(tmpdir), V_STR_FMT_LEN (64, "%d-vwm_tmpdir", getpid ()));
+  String.append_with_fmt ($my(tmpdir), "%d-vwm_tmpdir", getpid ());
 
   if (-1 is access ($my(tmpdir)->bytes, F_OK)) {
     if (-1 is Dir.make_parents ($my(tmpdir)->bytes, S_IRWXU, DirOpts(.err = 0)))
@@ -966,11 +962,11 @@ static void vt_write (char *buf, FILE *fp) {
 }
 
 static string_t *vt_insline (string_t *buf, int num) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dL", num));
+  return String.append_with_fmt (buf, "\033[%dL", num);
 }
 
 static string_t *vt_insertchar (string_t *buf, int numcols) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%d@", numcols));
+  return String.append_with_fmt (buf, "\033[%d@", numcols);
 }
 
 static string_t *vt_savecursor (string_t *buf) {
@@ -994,11 +990,11 @@ static string_t *vt_clrline (string_t *buf) {
 }
 
 static string_t *vt_delunder (string_t *buf, int num) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dP", num));
+  return String.append_with_fmt (buf, "\033[%dP", num);
 }
 
 static string_t *vt_delline (string_t *buf, int num) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dM", num));
+  return String.append_with_fmt (buf, "\033[%dM", num);
 }
 
 static string_t *vt_attr_reset (string_t *buf) {
@@ -1006,23 +1002,23 @@ static string_t *vt_attr_reset (string_t *buf) {
 }
 
 static string_t *vt_reverse (string_t *buf, int on) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%sm", (on ? "7" : "27")));
+  return String.append_with_fmt (buf, "\033[%sm", (on ? "7" : "27"));
 }
 
 static string_t *vt_underline (string_t *buf, int on) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%sm", (on ? "4" : "24")));
+  return String.append_with_fmt (buf, "\033[%sm", (on ? "4" : "24"));
 }
 
 static string_t *vt_bold (string_t *buf, int on) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%sm", (on ? "1" : "22")));
+  return String.append_with_fmt (buf, "\033[%sm", (on ? "1" : "22"));
 }
 
 static string_t *vt_italic (string_t *buf, int on) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%sm", (on ? "3" : "23")));
+  return String.append_with_fmt (buf, "\033[%sm", (on ? "3" : "23"));
 }
 
 static string_t *vt_blink (string_t *buf, int on) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%sm", (on ? "5" : "25")));
+  return String.append_with_fmt (buf, "\033[%sm", (on ? "5" : "25"));
 }
 
 static string_t *vt_bell (string_t *buf) {
@@ -1030,27 +1026,27 @@ static string_t *vt_bell (string_t *buf) {
 }
 
 static string_t *vt_setfg (string_t *buf, int color) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%d;1m", color));
+  return String.append_with_fmt (buf, "\033[%d;1m", color);
 }
 
 static string_t *vt_setbg (string_t *buf, int color) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%d;1m", color));
+  return String.append_with_fmt (buf, "\033[%d;1m", color);
 }
 
 static string_t *vt_left (string_t *buf, int count) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dD", count));
+  return String.append_with_fmt (buf, "\033[%dD", count);
 }
 
 static string_t *vt_right (string_t *buf, int count) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dC", count));
+  return String.append_with_fmt (buf, "\033[%dC", count);
 }
 
 static string_t *vt_up (string_t *buf, int numrows) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dA", numrows));
+  return String.append_with_fmt (buf, "\033[%dA", numrows);
 }
 
 static string_t *vt_down (string_t *buf, int numrows) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dB", numrows));
+  return String.append_with_fmt (buf, "\033[%dB", numrows);
 }
 
 static string_t *vt_irm (string_t *buf) {
@@ -1065,11 +1061,11 @@ static string_t *vt_setscroll (string_t *buf, int first, int last) {
   if (0 is first and 0 is last)
     return String.append_with_len (buf, "\033[r", 3);
   else
-    return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%d;%dr", first, last));
+    return String.append_with_fmt (buf, "\033[%d;%dr", first, last);
 }
 
 static string_t *vt_goto (string_t *buf, int row, int col) {
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%d;%dH", row, col));
+  return String.append_with_fmt (buf, "\033[%d;%dH", row, col);
 }
 
 static string_t *vt_attr_check (string_t *buf, int pixel, int lastattr, uchar *currattr) {
@@ -1218,7 +1214,7 @@ static string_t *vt_frame_ech (vwm_frame *frame, string_t *buf, int num_cols) {
     frame->colors[frame->row_pos-1][frame->col_pos - i - 1] = COLOR_FG_NORMAL;
   }
 
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dX", num_cols));
+  return String.append_with_fmt (buf, "\033[%dX", num_cols);
 }
 
 /*
@@ -1231,7 +1227,7 @@ static string_t *vt_frame_cha (vwm_frame *frame, string_t *buf, int param) {
     frame->col_pos = param;
   }
 
-  return String.append_with(buf, V_STR_FMT_LEN (MAX_SEQ_LEN, "\033[%dG", param));
+  return String.append_with_fmt (buf, "\033[%dG", param);
 }
 */
 
@@ -1330,15 +1326,15 @@ static string_t *vt_keystate_print (string_t *buf, int application) {
 static string_t *vt_altcharset (string_t *buf, int charset, int type) {
   switch (type) {
     case UK_CHARSET:
-      String.append_with_len (buf, V_STR_FMT_LEN (4, "\033%cA", (charset is G0 ? '(' : ')')), 3);
+      String.append_with_fmt (buf, "\033%cA", (charset is G0 ? '(' : ')'));
       break;
 
     case US_CHARSET:
-      String.append_with_len (buf, V_STR_FMT_LEN (4, "\033%cB", (charset is G0 ? '(' : ')')), 3);
+      String.append_with_fmt (buf, "\033%cB", (charset is G0 ? '(' : ')'));
       break;
 
     case GRAPHICS:
-      String.append_with_len (buf, V_STR_FMT_LEN (4, "\033%c0", (charset is G0 ? '(' : ')')), 3);
+      String.append_with_fmt (buf, "\033%c0", (charset is G0 ? '(' : ')'));
       break;
 
     default:  break;

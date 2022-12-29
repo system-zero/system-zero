@@ -559,7 +559,8 @@ static int proc_parse_env (proc_t *this, string **sa, char **bufp) {
   return 1;
 }
 
-static int proc_append_arg (proc_t *this, char **linep, char *arg, size_t len, int just_append) {
+static int proc_append_arg (proc_t *this, char **linep, char *arg, size_t len,
+                                                             int just_append) {
   string *s = NULL;
 
   if (just_append) goto append;

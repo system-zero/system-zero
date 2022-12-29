@@ -1,6 +1,6 @@
 import ("path")
 import ("file")
-loadfile ("argparse")
+include ("argparse")
 
 var prog = path_basename (__file__)
 

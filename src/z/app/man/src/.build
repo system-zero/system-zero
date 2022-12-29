@@ -1,0 +1,9 @@
+#@
+  depends_on ("man", MODULE)
+#
+
+var m = New Make (__file__, SCRIPT_EXECUTABLE; z_app)
+
+m.set.script.executable.source ("Man.page"; clear)
+m.set.script.executable.output ("Man.page")
+return m

@@ -1,4 +1,4 @@
-include ("Make")
+include ("./Make")
 
 var argv = ["all", "make"]
 

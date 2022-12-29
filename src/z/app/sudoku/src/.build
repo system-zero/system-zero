@@ -1,0 +1,3 @@
+var m = New Make (__file__, SCRIPT_EXECUTABLE)
+m.set.script.executable.source ("Sudoku.generate")
+return m

@@ -3,14 +3,14 @@
   document. For now it is the copy from the tests from the first development,
   and some of those tests that assume the top root directory they might fail.
   So still they have to be written again with the established and stabilized
-  development, so they do not really correspond to the declared intentions of
+  development, and so they might not correspond to the declared intentions of
   the document.
   For real code, there is z/app/packman/src/packman.lai or y/pkg/make/Make.lai,
   as the code in this unit, it is intented to catch corner cases, and test old
   bugs, and so it is not really representative.
 ##]
 
-loadfile ("argparse")
+include ("argparse")
 
 # For testing reasons, this should be called from the root directory of the
 # distribution. If not a couple of tests may fail like the __argv tests.
@@ -39,81 +39,85 @@ RESULTS[*] = ok
 
 var EXPECTED_TO_FAIL = 1
 
+const OK = "\e[32m"
+const NOTOK = "\e[31m"
+const RESET = "\e[m"
+
 func assert_true (msg, expr) {
   print ("[${++test_num}] ${msg} - ")
   if expr is false {
-    println (stderr, "[NOTOK] awaiting true got false")
+    println (stderr, "${NOTOK}[NOTOK] awaiting true got false${RESET}")
     RESULTS[test_num - 1] = notok
     return
   }
 
-  println ("[OK]")
+  println ("${OK}[OK]${RESET}")
 }
 
 func assert_true_msg (msg, msg_on_error, expr) {
   print ("[${++test_num}] ${msg} - ")
   if expr is false {
     RESULTS[test_num - 1] = notok
-    println (stderr, "[NOTOK] ${msg_on_error}")
+    println (stderr, "${NOTOK}[NOTOK] ${msg_on_error}${RESET}")
     return
   }
 
-  println ("[OK]")
+  println ("${OK}[OK]${RESET}")
 }
 
 func assert_false (msg, expr) {
   print ("[${++test_num}] ${msg} - ")
   if expr {
     RESULTS[test_num - 1] = notok
-    println (stderr, "[NOTOK] awaiting false got true")
+    println (stderr, "${NOTOK}[NOTOK] awaiting false got true${RESET}")
     return
   }
 
-  println ("[OK]")
+  println ("${OK}[OK]${RESET}")
 }
 
 func assert_equal (msg, a_expr, b_expr) {
   print ("[${++test_num}] ${msg} - ")
   if a_expr isnot b_expr {
     RESULTS[test_num - 1] = notok
-    println (stderr, "[NOTOK] awaiting equality")
+    println (stderr, "${NOTOK}[NOTOK] awaiting equality${RESET}")
     return
   }
 
-  println ("[OK]")
+  println ("${OK}[OK]${RESET}")
 }
 
 func assert_not_equal (msg, a_expr, b_expr) {
   print ("[${++test_num}] ${msg} - ")
   if a_expr is b_expr {
     RESULTS[test_num - 1] = notok
-    println (stderr, "[NOTOK] awaiting equality")
+    println (stderr, "${NOTOK}[NOTOK] awaiting equality${RESET}")
     return
   }
 
-  println ("[OK]")
+  println ("${OK}[OK]${RESET}")
 }
 
 func assert_equal_msg (msg, msg_on_error, a_expr, b_expr) {
   print ("[${++test_num}] ${msg} - ")
   if a_expr isnot b_expr {
     RESULTS[test_num - 1] = notok
-    println (stderr, "[NOTOK] ${%s, msg_on_error}")
+    println (stderr, "${NOTOK}[NOTOK] ${msg_on_error}${RESET}")
     return
   }
 
-  println ("[OK]")
+  println ("${OK}[OK]${RESET}")
 }
 
 func expected_to_fail (msg, msg_on_error, a_expr, b_expr) {
   print ("[${++test_num}] ${msg} - ")
   if a_expr isnot b_expr {
     RESULTS[test_num - 1] = EXPECTED_TO_FAIL
-    println (stderr, "[NOTOK] ${%s, msg_on_error}")
+    println (stderr, "${NOTOK}[NOTOK] ${msg_on_error}${RESET}")
     return
   }
 
-  println ("[OK]")
+  println ("${OK}[OK]${RESET}")
 }
 
 func zero_semantics () {
@@ -1071,10 +1075,10 @@ func self_semantics () {
       format ("awaiting |assert_equal_msg|, got |${%s, __func__}|"),
       __func__, "assert_equal_msg")
 
-  loadfile ("loaded")
+  include ("loaded")
 
   retval = loaded_f (10)
-  assert_true ("testing loadfile function", retval is 20)
+  assert_true ("testing include function", retval is 20)
 
   var fmt = format ("${%s, load_va} ${%s, format (load_vc)}")
   assert_true ("testing format function with an embedded call",  fmt is "string is 6 bytes length")

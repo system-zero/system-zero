@@ -337,6 +337,7 @@ typedef int (*LaPrintByte_cb) (FILE *, int);
 typedef int (*LaPrintBytes_cb) (FILE *, const char *);
 typedef int (*LaPrintFmtBytes_cb) (FILE *, const char *, ...);
 typedef int (*LaSyntaxError_cb) (la_t *, const char *);
+typedef int (*LaSyntaxErrorFmt_cb) (la_t *, const char *, ...);
 typedef int (*LaDefineFuns_cb) (la_t *);
 
 #define LA_CFUNC(x) (((x) << 8) + 'B')
@@ -354,6 +355,7 @@ typedef struct la_opts {
   LaPrintBytes_cb print_bytes;
   LaPrintFmtBytes_cb print_fmt_bytes;
   LaSyntaxError_cb syntax_error;
+  LaSyntaxErrorFmt_cb syntax_error_fmt;
   LaDefineFuns_cb define_funs_cb;
 
   void *user_data;
@@ -371,6 +373,7 @@ typedef struct la_opts {
   .print_bytes = NULL,          \
   .print_fmt_bytes = NULL,      \
   .syntax_error = NULL,         \
+  .syntax_error_fmt = NULL,     \
   .define_funs_cb = NULL,       \
   .user_data = NULL,            \
   __VA_ARGS__}
@@ -838,6 +841,21 @@ public la_T *la_get_root (la_t *);
     _print = AS_INT(_v_print);                                            \
   }                                                                       \
   _print;                                                                 \
+})
+
+#define GET_OPT_DRYRUN() ({                                               \
+  int _dryrun = La.qualifier_exists (this, "dryrun");                     \
+  if (_dryrun) {                                                          \
+    VALUE _vdryrun = La.get.qualifier (this, "dryrun", INT(0));           \
+    if (0 == IS_INT(_vdryrun)) {                                          \
+      if (IS_NULL(_vdryrun))                                              \
+        _dryrun = 1;                                                      \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "dryrun, awaiting an integer qualifier"); \
+     } else                                                               \
+    _dryrun = AS_INT(_vdryrun);                                           \
+  }                                                                       \
+  _dryrun;                                                                \
 })
 
 #define IS_TERM(__v__) ({                                                 \

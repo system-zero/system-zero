@@ -149,8 +149,12 @@ typedef unsigned long ulong;
 #define MAXLEN_PATH   PATH_MAX
 #endif
 
+#ifndef MAXLEN_BUF
+#define MAXLEN_BUF        4096
+#endif
+
 #ifndef MAXLEN_LINE
-#define MAXLEN_LINE       4096
+#define MAXLEN_LINE       MAXLEN_BUF
 #endif
 
 #ifndef MAXLEN_WORD
@@ -388,6 +392,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 })
 #endif /* VA_ARGS_GET_FMT_STR */
 
+/* deprecated as gcc-12.2.0 raises a warning (with a right) */
 #ifndef STR_FMT_WITH_LEN
 #define STR_FMT_WITH_LEN(len_, fmt_, ...)                             \
 ({                                                                    \
@@ -402,6 +407,14 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 ({                                                                    \
   char buf_[MAXLEN_LINE];                                             \
   snprintf (buf_, MAXLEN_LINE, fmt_, __VA_ARGS__);                    \
+  buf_;                                                               \
+})
+#endif
+
+#ifndef STRING_FMT
+#define STRING_FMT(buf_, size_, fmt_, ...)                            \
+({                                                                    \
+  snprintf (buf_, size_, fmt_, __VA_ARGS__);                          \
   buf_;                                                               \
 })
 #endif
@@ -1775,6 +1788,7 @@ do {                             \
 
   #define COLOR_BOX         COLOR_YELLOW
 
+  // deprecated as gcc-12.2.0 raises rightly a warning
   #define TERM_MAKE_COLOR(clr) \
   ({char b__[8];snprintf (b__, 8, TERM_SET_COLOR_FMT, (clr));b__;})
   #define TERM_SEND_ESC_SEQ(seq_) IO.fd.write (this->out_fd, seq_, seq_ ## _LEN)

@@ -2,7 +2,7 @@ var prog = "File.exists"
 
 import ("file")
 import ("io")
-loadfile ("argparse")
+include ("argparse")
 
 var argparse = New Argparse (1, 0, prog + " filename")
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)

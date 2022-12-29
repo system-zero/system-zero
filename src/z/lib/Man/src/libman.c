@@ -27,8 +27,7 @@
 
 /*
  * The purpose here is to use this unit as a library. So we had to move first
- * all the static state into a structure and pass this structured state to the
- * functions.
+ * all the static state into a structure and pass this state to the functions.
  *
  * The second thing is to use the end result with an own way instead of directly
  * printing either to standard output or pass it to a pager, which is the default.
@@ -41,7 +40,7 @@
  *
  * But really the main aim here is to use this development as a vehicle to an
  * experiment, which is simply to make it indepented even from libc.
- * Again  we still have to do the implementation.
+ * Again we still have to do the implementation.
  * 
  * Unfortunatelly i do not understand all the intentions of the code, so
  * there are some difficulties to adjust the code in a way, that will not
@@ -49,11 +48,16 @@
  * is not that big of success but it works!
  */
 
+/* workaround for our build system */
+#ifndef USE_SYSTEM_LIBC
+#define USE_SYSTEM_LIBC
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <sys/ioctl.h>
 
 // prepare an abstraction for the switch we are talking about
 #ifdef USE_SYSTEM_LIBC
-
 #include <stdio.h>
 #include <unistd.h>
 #define STRING_FORMAT     snprintf

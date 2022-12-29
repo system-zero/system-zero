@@ -290,7 +290,8 @@ init_list:;
   this->num_rows = rend_rows;
   this->first_row = first_row;
 
-  char *fmt = STR_FMT ("\033[%%dm%%-%ds%%s", maxlen);
+  char fmt[128];
+  snprintf (fmt, 128, "\033[%%dm%%-%ds%%s", maxlen);
 
   vrow_pos = first_row;
 

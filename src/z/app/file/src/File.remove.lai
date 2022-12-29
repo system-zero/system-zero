@@ -1,7 +1,7 @@
 var prog = "File.remove"
 
 import ("file")
-loadfile ("argparse")
+include ("argparse")
 
 var argparse = New Argparse (5, 0, prog + " [option[s]] file")
 argparse.add ("force", 'f', "force", "continue operation for missing files, never prompt", BooleanType, 0)

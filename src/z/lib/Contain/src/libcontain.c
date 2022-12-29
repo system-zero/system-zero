@@ -719,11 +719,14 @@ static int createroot (contain_t *cnt) {
     RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to create /home directory", "");
   }
 
-  if (File.exists (STR_FMT("home/%s", cnt->user))) {
-    RETURN_NOTOK_IF(cnt, Dir.is_directory (STR_FMT("home/%s", cnt->user)) == 0, 0, "/home/%s isnot a directory", cnt->user);
+  char home[MAXLEN_BUF];
+  STRING_FMT(home, MAXLEN_BUF, "home/%s", cnt->user);
+
+  if (File.exists (home)) {
+    RETURN_NOTOK_IF(cnt, Dir.is_directory (home) == 0, 0, "%s isnot a directory", home);
   } else {
-    retval = mkdir (STR_FMT("home/%s", cnt->user), 0755);
-    RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to create /home/%s directory", cnt->user);
+    retval = mkdir (home, 0755);
+    RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to create %s directory", home);
   }
 
   if (File.exists ("tmp")) {
@@ -747,7 +750,7 @@ static int createroot (contain_t *cnt) {
   if (NOTOK == bindnode (cnt, "/dev/urandom", "dev/urandom")) return NOTOK;
   if (NOTOK == bindnode (cnt, "/dev/zero", "dev/zero")) return NOTOK;
   if (NOTOK == bindnode (cnt, SRCDIR, "src")) return NOTOK;
-  if (NOTOK == bindnode (cnt, DATADIR, STR_FMT("home/%s", cnt->user))) return NOTOK;
+  if (NOTOK == bindnode (cnt, DATADIR, home)) return NOTOK;
 
   retval = symlink ("pts/ptmx", "dev/ptmx");
   RETURN_NOTOK_IF(cnt, retval != 0, errno, "Failed to creates symbolic link pts/ptmx -> dev/ptmx", "");
@@ -1052,10 +1055,12 @@ static int contain_run (contain_t *cnt) {
       putenv ((char *)"PATH=/bin");
       putenv ((char *)"SRCDIR=/src");
       putenv ((char *)"SYSDIR=/");
-      putenv (STR_FMT("HOME=/home/%s", cnt->user));
-      putenv (STR_FMT("DATADIR=/home/%s", cnt->user));
-      putenv (STR_FMT("USERNAME=%s", cnt->user));
-      putenv (STR_FMT("GROUPNAME=%s", cnt->group));
+
+      char buf[MAXLEN_BUF];
+      putenv (STRING_FMT(buf, MAXLEN_BUF, "HOME=/home/%s", cnt->user));
+      putenv (STRING_FMT(buf, MAXLEN_BUF, "DATADIR=/home/%s", cnt->user));
+      putenv (STRING_FMT(buf, MAXLEN_BUF, "USERNAME=%s", cnt->user));
+      putenv (STRING_FMT(buf, MAXLEN_BUF, "GROUPNAME=%s", cnt->group));
 
       if (cnt->argv)
         execv (cnt->argv[0], cnt->argv);

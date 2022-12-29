@@ -68,6 +68,27 @@ static char *sys_get_env_value (const char *as) {
   if (NULL is env)
     return NULL;
 
+  /* {
+       DocRef : {
+         type     : CODE
+         language : C
+       }
+
+       endsat : AT_EOFFUNC
+     }
+     #  Evaluated inline blocks
+     #  As this block contributed the initial conception,
+     #  it is also the very first codeblock that could be evaluated.
+     #  The concept is simple:
+     #    - begins as a C multiline comment string, and when the slash
+     #      is at the third byte following two spaces
+     #    - a right brace following a space and followed by a newline
+     #    - closes when a left brace is at the third byte following
+     #      two spaces
+     #    - a '#' it is considered as the begining of a singleline comment
+     #    - json syntax?
+  */
+
   char *val = Cstring.byte.in_str (env->bytes, '=');
   if (NULL is val) return NULL;
 
@@ -135,14 +156,16 @@ static int sys_init_environment (sys_env_opts opts) {
   * locked_after_first_set objects
   */
 
+  char buf[512];
+
   pid_t pid = getpid ();
-  sys_set_env_as (STR_FMT ("%d", pid), "PID", opts.overwrite);
+  sys_set_env_as (STRING_FMT (buf, 512, "%d", pid), "PID", opts.overwrite);
 
   uid_t uid = getuid ();
-  sys_set_env_as (STR_FMT ("%d", uid), "UID", opts.overwrite);
+  sys_set_env_as (STRING_FMT (buf, 512, "%d", uid), "UID", opts.overwrite);
 
   gid_t gid = getgid ();
-  sys_set_env_as (STR_FMT ("%d", gid), "GID", opts.overwrite);
+  sys_set_env_as (STRING_FMT (buf, 512, "%d", gid), "GID", opts.overwrite);
 
   char *path = getenv ("PATH");
   if (NULL is path)
@@ -245,7 +268,7 @@ static int sys_init_environment (sys_env_opts opts) {
       #ifdef HOME
         home = sys_set_env_as (HOME, "HOME", opts.overwrite);
       #else
-        home = sys_set_env_as (STR_FMT (DIR_SEP_STR "home" DIR_SEP_STR "%s", sys_get_env_value ("USERNAME")), "HOME", opts.overwrite);
+        home = sys_set_env_as (STRING_FMT (buf, 512, DIR_SEP_STR "home" DIR_SEP_STR "%s", sys_get_env_value ("USERNAME")), "HOME", opts.overwrite);
       #endif
     } while (0);
   }
@@ -358,7 +381,7 @@ static int sys_init_environment (sys_env_opts opts) {
         else
           datadir = sys_set_env_as (tmp, "DATADIR", opts.overwrite);
       #else
-        datadir = sys_set_env_as (STR_FMT ("%s/.z",
+        datadir = sys_set_env_as (STRING_FMT (buf, 512, "%s/.z",
           Cstring.byte.in_str (home->bytes, '=') + 1), "DATADIR", opts.overwrite);
       #endif
     } while (0);

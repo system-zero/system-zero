@@ -1,0 +1,30 @@
+#@
+  depends_on ("OS",       STATIC_LIBRARY)
+  depends_on ("Sh",       LIBRARY)
+  depends_on ("IO",       LIBRARY)
+  depends_on ("Dir",      LIBRARY)
+  depends_on ("Sys",      LIBRARY)
+  depends_on ("Term",     LIBRARY)
+  depends_on ("Path",     LIBRARY)
+  depends_on ("Proc",     LIBRARY)
+  depends_on ("Smap",     LIBRARY)
+  depends_on ("File",     LIBRARY)
+  depends_on ("Error",    LIBRARY)
+  depends_on ("Rline",    LIBRARY)
+  depends_on ("Random",   STATIC_LIBRARY)
+  depends_on ("Ustring",  STATIC_LIBRARY)
+  depends_on ("String",   LIBRARY)
+  depends_on ("Cstring",  LIBRARY)
+  depends_on ("Vstring",  LIBRARY)
+#
+
+var m = New Make (__file__, EXECUTABLE; z_app)
+
+m.set.executable.to_linkagainst ([
+  "sh", "io", "string", "cstring", "vstring", "file", "dir", "path", "sys",
+  "term", "error", "rline", "io", "smap"]; clear, append_version)
+m.set.static.executable.to_linkagainst ([
+  "proc", "ustring", "os", "random"]; append_version)
+m.set.executable.source ("zs.c"; clear)
+m.set.executable.output ("Zs")
+return m

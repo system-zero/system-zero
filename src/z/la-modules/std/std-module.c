@@ -136,10 +136,12 @@ static VALUE array_sort (la_t *this, VALUE v_array) {
       return ARRAY(new_array);
     }
 
-    default:
+    default: {
       La.set.CFuncError (this, LA_ERR_TYPE_MISMATCH);
-      La.set.curMsg (this, STR_FMT("%s, has been implemented for (Integer|String|Number)Type", __func__));
+      char buf[512];
+      La.set.curMsg (this, STRING_FMT(buf, 512, "%s, has been implemented for (Integer|String|Number)Type", __func__));
       return NULL_VALUE;
+    }
   }
   return NULL_VALUE;
 
@@ -151,7 +153,8 @@ static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
   int type = array->type;
   if (type isnot v_expr.type) {
     La.set.CFuncError (this, LA_ERR_TYPE_MISMATCH);
-    La.set.curMsg (this, STR_FMT("%s, expression is not the same type", __func__));
+    char buf[512];
+    La.set.curMsg (this, STRING_FMT(buf, 512, "%s, expression is not the same type", __func__));
     return NULL_VALUE;
   }
 
@@ -161,10 +164,12 @@ static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
     case NUMBER_TYPE:
       break;
 
-    default:
+    default: {
       La.set.CFuncError (this, LA_ERR_TYPE_MISMATCH);
-      La.set.curMsg (this, STR_FMT("%s, has been implemented for (Integer|String|Number)Type", __func__));
+      char buf[512];
+      La.set.curMsg (this, STRING_FMT(buf, 512, "%s, has been implemented for (Integer|String|Number)Type", __func__));
       return NULL_VALUE;
+    }
   }
 
   integer *r_ar = Alloc (sizeof (integer));

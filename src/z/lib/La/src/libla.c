@@ -153,7 +153,7 @@
 #define TOKEN_BINOP      'o'
 #define TOKEN_PRINTLN    'p'
 #define TOKEN_HEX_CHAR   'q'
-#define TOKEN_LOADFILE   'r'
+#define TOKEN_INCLUDE    'r'
 #define TOKEN_IMPORT     's'
 #define TOKEN_OCTAL      't'
 #define TOKEN_BINARY     'u'
@@ -208,8 +208,6 @@
 #define TOKEN_D_UNDEF     1012
 #define TOKEN_D_ISDEFINED 1013
 #define TOKEN_D_GET       1014
-
-#define TOKEN_INCLUDE     89000
 
 #define LIST_APPEND       1
 #define LIST_PREPEND      0
@@ -421,6 +419,7 @@ struct la_t {
   LaPrintBytes_cb print_bytes;
   LaPrintFmtBytes_cb print_fmt_bytes;
   LaSyntaxError_cb syntax_error;
+  LaSyntaxErrorFmt_cb syntax_error_fmt;
   LaDefineFuns_cb define_funs_cb;
 
   la_t *next;
@@ -5893,7 +5892,7 @@ static int la_parse_string (la_t *this, la_string str) {
       continue;
     //else
     goto do_token; // this is experimental (allow multiply statements in a single line)
-    //return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
+    //return this->syntax_error_fmt (this, "%s(), unknown token |%c| |%d|", __func__, c, c);
   }
 
   PARSEPTR = savepc;
@@ -7142,8 +7141,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       }
 
       if (c isnot TOKEN_EOF)
-        return this->syntax_error (this, STR_FMT(
-            "%s(), syntax error, unknown token |%c| |%d|", __func__, c, c));
+        return this->syntax_error_fmt (this, "%s(), syntax error, unknown token |%c| |%d|", __func__, c, c);
   }
 
   return LA_OK;
@@ -7653,7 +7651,7 @@ static int la_parse_stmt (la_t *this) {
         return err;
       }
 
-      return this->syntax_error (this, STR_FMT("%s(), unknown token |%c| |%d|", __func__, c, c));
+      return this->syntax_error_fmt (this, "%s(), unknown token |%c| |%d|", __func__, c, c);
   }
 
   return err;
@@ -7869,13 +7867,11 @@ static int la_parse_block (la_t *this, const char *descr) {
   if (TOKEN is TOKEN_BLOCK)
     return LA_OK;
 
-  if (TOKEN is TOKEN_EOF)
-    THROW_SYNTAX_ERR(STR_FMT("unended %s block", descr));
+  THROW_SYNTAX_ERR_FMT_IF(TOKEN is TOKEN_EOF, "unended %s block", descr);
 
   if (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
-  THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_NL,
-    STR_FMT("%s: expecting a block, found two consecutive new lines\n", descr));
+  THROW_SYNTAX_ERR_FMT_IF(TOKEN is TOKEN_NL, "%s: expecting a block, found two consecutive new lines", descr);
 
   int parens = 0;
   int in_str = 0;
@@ -11503,7 +11499,6 @@ static struct def {
   { "lambda",  TOKEN_LAMBDA,   NULL_VALUE },
   { "return",  TOKEN_RETURN,   PTR(la_parse_return) },
   { "import",  TOKEN_IMPORT,   PTR(la_parse_import) },
-  { "loadfile",TOKEN_LOADFILE, PTR(la_parse_loadfile) },
   { "include", TOKEN_INCLUDE,  PTR(la_parse_loadfile) },
   { "Annotation", TOKEN_ANNOTATION, NULL_VALUE },
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
@@ -11973,6 +11968,9 @@ static la_opts la_default_options (la_t *this, la_opts opts) {
   if (NULL is opts.syntax_error)
     opts.syntax_error = la_syntax_error;
 
+  if (NULL is opts.syntax_error_fmt)
+    opts.syntax_error_fmt = la_syntax_error_fmt;
+
   if (NULL is opts.err_fp)
     opts.err_fp = stderr;
 
@@ -12191,6 +12189,7 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
   this->print_fmt_bytes = opts.print_fmt_bytes;
   this->print_bytes = opts.print_bytes;
   this->syntax_error = opts.syntax_error;
+  this->syntax_error_fmt = opts.syntax_error_fmt;
   this->err_fp = opts.err_fp;
   this->out_fp = opts.out_fp;
   this->user_data = opts.user_data;

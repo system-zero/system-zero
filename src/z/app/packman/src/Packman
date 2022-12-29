@@ -5,7 +5,7 @@
 
 import ("sys")
 
-loadfile ("argparse")
+include ("argparse")
 
 var argparse = New Argparse (8, 0, "Packman option[s] package")
 argparse.add ("install", 0, "install", "install package", BooleanType, ARG_LITERAL)
@@ -36,7 +36,7 @@ if bootstrap is true {
    install = true
 } 
 
-loadfile ("packman")
+include ("packman")
 
 if false is bootstrap {
   package = lambda {

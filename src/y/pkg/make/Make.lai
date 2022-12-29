@@ -10,6 +10,7 @@
 # Other than that difference, the interface is the same.
 
 import ("io")
+import ("os")
 import ("sh")
 import ("sys")
 import ("dir")
@@ -102,6 +103,7 @@ const YSRCDIR           = SRCDIR:  concat_with (Y)
 const JSRCDIR           = SRCDIR:  concat_with (J)
 const ZSRCLIBDIR        = ZSRCDIR: concat_with ("lib")
 const ZSRCAPPDIR        = ZSRCDIR: concat_with ("app")
+const ZSRCMODDIR        = ZSRCDIR: concat_with ("la-modules")
 const YSRCPKGDIR        = YSRCDIR: concat_with ("pkg")
 const JSRCPKGDIR        = JSRCDIR: concat_with ("pkg")
 const LIBDIR            = SYSDIR:  concat_with ("lib")
@@ -557,23 +559,27 @@ Type Make {
 
     var is_z_library = qualifier_exists ("z_library")
     var is_z_app = qualifier_exists ("z_app")
+    var is_z_module = qualifier_exists ("z_module")
 
     this.targets = targets
 
     var dir = unit: dirname ()
 
     if null is name {
-      if this.local_env and (is_z_library or is_z_app) {
+      if this.local_env and (is_z_library or is_z_app or is_z_module) {
         var base_name = dir: dirname (): basename ()
         this.orig_name = base_name
         if is_z_app {
           name = base_name
           cap_name = (char (name[0] - ('a' - 'A')) + if name: len () > 1 then advance (name, 1) orelse ""
-        } else {
+        } else if is_z_library {
           name = (char (base_name[0] + ('a' - 'A')) +
             if base_name: len () > 1 then advance (base_name, 1) orelse ""
           if name: len () > 1 and name[1] < 'a' then name[1] = name[1] + ('a' - 'A')
           cap_name = base_name
+        } else {
+          name = base_name
+          cap_name = (char (name[0] - ('a' - 'A')) + if name: len () > 1 then advance (name, 1) orelse ""
         }
       } else {
         name =  dir: basename ()
@@ -1402,8 +1408,6 @@ Type Make {
           if this.rpath then append " -Wl,-rpath=" + this.libdir in com
           append " -DSTATIC -static" in com
 
-          if this.cc isnot "tcc" then append " -z muldefs" in com
-
           var string[this.static.library.sources: len ()] objects
 
           for i, v in this.static.library.sources {
@@ -1632,7 +1636,11 @@ Type Make {
       }
 
       executable : {
-        to_linkagainst : func (l) this.append_linkagainst_value (l, this.shared.executable.linkagainst; qualifiers())
+        to_linkagainst : func (l) {
+          if qualifier_exists ("clear") then this.clear.shared.executable.to_linkagainst()
+          this.append_linkagainst_value (l, this.shared.executable.linkagainst; qualifiers())
+        }
+
         cflag          : func (v) this.append_value (v, this.shared.executable.cflags)
         pre_exec       : func (f) ifnot null is f then this.shared.executable.pre_exec = f as callback
         post_exec      : func (f) ifnot null is f then this.shared.executable.post_exec = f as callback
@@ -1676,7 +1684,11 @@ Type Make {
       }
 
       executable : {
-        to_linkagainst : func (l) this.append_linkagainst_value (l, this.static.executable.linkagainst; qualifiers())
+        to_linkagainst : func (l) {
+          if qualifier_exists ("clear") then this.clear.static.executable.to_linkagainst()
+          this.append_linkagainst_value (l, this.static.executable.linkagainst; qualifiers())
+        }
+
         cflag          : func (v) this.append_value (v, this.static.executable.cflags)
         pre_exec       : func (f) ifnot null is f then this.static.executable.pre_exec = f as callback
         post_exec      : func (f) ifnot null is f then this.static.executable.post_exec = f as callback
@@ -1700,6 +1712,8 @@ Type Make {
           if qualifier_exists ("clear") then this.clear.script.executable.sources ()
           this.append_value (v, this.script.executable.sources)
         }
+
+        output : func (o) ifnot null is o then this.script.executable.output = o
 
         interpr : {
           shared : func (s, interpr) {
@@ -1907,7 +1921,10 @@ func make_dependencies (f) {
           n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
           ifnot n: exists () {
             n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
-            return null ifnot n: exists ()
+            if 0 is n: exists () or ARGPARSE.results.shared_module {
+              n = ZSRCMODDIR: concat_with (d)
+              return null ifnot n: exists ()
+            }
           }
         }
       }
@@ -1920,7 +1937,6 @@ func make_dependencies (f) {
       orelse p: realpath ()
 
     return null ifnot file: exists ()
-
     return file
   }
 
@@ -1950,7 +1966,7 @@ func make_dependencies (f) {
     return ok
   }
 
-  var   nth = 0
+  var nth = 0
   func get_dependencies (dir) {
     if nth and ARGPARSE.results.local_spec is true and
                ARGPARSE.results.recursive  isnot true {
@@ -2159,5 +2175,3 @@ func make_dependencies (f) {
 
   return retval
 }
-
-# record dependencies on shared/static libraries (the library as a key)

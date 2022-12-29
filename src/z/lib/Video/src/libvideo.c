@@ -152,8 +152,9 @@ static void video_row_hl_at (video_t *this, int idx, int color,
   if (fidx >= (int) row->data->num_bytes) return;
   if (lidx >= (int) row->data->num_bytes) lidx = row->data->num_bytes - 1;
 
+  char buf[8];
   String.insert_at_with_len (row->data, lidx, TERM_COLOR_RESET, TERM_COLOR_RESET_LEN);
-  String.insert_at_with_len (row->data, fidx, TERM_MAKE_COLOR (color), TERM_SET_COLOR_FMT_LEN);
+  String.insert_at_with_len (row->data, fidx, STRING_FMT(buf, 8, TERM_SET_COLOR_FMT, color), TERM_SET_COLOR_FMT_LEN);
   String.replace_with_fmt (this->tmp_render, TERM_GOTO_PTR_POS_FMT, idx + 1, 1);
   String.append_with_len (this->tmp_render, row->data->bytes, row->data->num_bytes);
 
