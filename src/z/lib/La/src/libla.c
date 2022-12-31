@@ -118,7 +118,6 @@
 #define TOKEN_DO         'D'
 #define TOKEN_ELSEIF     'E'
 #define TOKEN_FUNCDEF    'F'
-#define TOKEN_LAMBDA     'G'
 #define TOKEN_FORMAT     'H'
 #define TOKEN_IFNOT      'I'
 #define TOKEN_ORELSE     'J'
@@ -566,6 +565,13 @@ do {                                                        \
   SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + 1); \
   SETSTRLEN(PARSEPTR, GETSTRLEN(PARSEPTR) - 1); \
 } while (0)
+
+#define IGNORE_UNTIL_KNOWN_BYTE(_c_) do {       \
+  int _c = *GETSTRPTR(PARSEPTR) == _c_;         \
+  SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + 1); \
+  SETSTRLEN(PARSEPTR, GETSTRLEN(PARSEPTR) - 1); \
+  if (_c) break;                                \
+} while (1)
 
 #define IGNORE_FIRST_TOKEN do {                 \
   SETSTRPTR(TOKENSTR, GETSTRPTR(TOKENSTR) + 1); \
@@ -2440,7 +2446,7 @@ static sym_t *la_lookup_symbol (la_t *this, la_string name) {
   return NULL;
 }
 
-static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
+static int la_parse_anon_func (la_t *this, VALUE *vp) {
   int err;
 
   Cstring.cp_fmt
@@ -2455,20 +2461,17 @@ static int la_parse_lambda (la_t *this, VALUE *vp, int justFun) {
 
   sym_t *sym = this->curSym;
   sym->value = NULL_VALUE;
-  funT *lambda = this->curFunDef;
-  TOKENARGS = lambda->nargs;
+  funT *fun = this->curFunDef;
+  TOKENARGS = fun->nargs;
 
   THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_PAREN_OPEN,
-    "lambda error, awaiting (");
+    "anonymous function error, awaiting (");
 
   UNGET_BYTE();
 
-  if (justFun)
-    return LA_OK;
+  err = la_parse_func_call (this, vp, NULL, fun, TOKENVAL);
 
-  err = la_parse_func_call (this, vp, NULL, lambda, TOKENVAL);
-
-  fun_release (&lambda);
+  fun_release (&fun);
 
   NEXT_TOKEN();
 
@@ -3457,6 +3460,7 @@ static int la_parse_anon_array (la_t *this, VALUE *vp) {
     "inline empty array is not supported");
 
   int instr = 0;
+  int strtype = '"';
   int inmap = 0;
   int indtokopen = 1;
   int indtokclos = 0;
@@ -3535,9 +3539,19 @@ static int la_parse_anon_array (la_t *this, VALUE *vp) {
       continue;
     }
 
-    if (0 is inparen and ((c is TOKEN_DQUOTE and pc isnot TOKEN_ESCAPE_CHR) or c is TOKEN_BQUOTE)) {
-      if (instr) instr = 0; else instr = 1;
-      continue;
+    if (c is TOKEN_DQUOTE or c is TOKEN_BQUOTE) {
+      ifnot (inparen) {
+        if (instr) {
+          if (c is strtype and pc isnot TOKEN_ESCAPE_CHR) {
+            instr = 0;
+            continue;
+          }
+        } else {
+          instr = 1;
+          strtype = c;
+          continue;
+        }
+      }
     }
 
     if (c is TOKEN_MAP_OPEN and 0 is instr + inparen) {
@@ -5131,7 +5145,7 @@ static int la_parse_map_members (la_t *this, VALUE map) {
       continue;
     }
 
-    NEXT_TOKEN();
+    IGNORE_UNTIL_KNOWN_BYTE(TOKEN_COLON);
 
     err = map_set_rout (this, AS_MAP(map), key, this->scopeState is PUBLIC_SCOPE);
     this->scopeState = scope;
@@ -6248,8 +6262,6 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
     this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
 
-    int fun_should_be_freed = 0;
-
     if (c isnot TOKEN_SYMBOL)
       THROW_SYNTAX_ERR("awaiting a method");
 
@@ -6303,15 +6315,6 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
         THROW_SYNTAX_ERR_FMT("%s: unknown function", method);
 
       switch (sym->type) {
-        case TOKEN_LAMBDA:
-          err = la_parse_lambda (this, vp, 1);
-          THROW_ERR_IF_ERR(err);
-
-          sym = this->curSym;
-          sym->value = PTR(this->curFunDef);
-          fun_should_be_freed = 1;
-          break;
-
         case TOKEN_FORMAT: {
           if (vp->type isnot STRING_TYPE)
             THROW_SYNTAX_ERR("awaiting a string type");
@@ -6407,12 +6410,6 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
       if (save_v.refcount is ARRAY_LITERAL)
         save_v.refcount--;
-
-      if (fun_should_be_freed) {
-        sym->value = NULL_VALUE;
-        fun_release (&uf);
-        fun_should_be_freed = 0;
-      }
 
       NEXT_TOKEN();
 
@@ -7016,8 +7013,8 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
       return err;
     }
 
-    case TOKEN_LAMBDA:
-      return la_parse_lambda (this, vp, 0);
+    case TOKEN_FUNCDEF:
+      return la_parse_anon_func (this, vp);
 
     case TOKEN_STRING:
       err = la_parse_string_get (this, vp);
@@ -7419,34 +7416,15 @@ static int la_parse_stmt (la_t *this) {
         }
       }
 
-      if (symbol->is_const)
+      int is_const = symbol->is_const;
+      if (is_const)
         THROW_SYNTAX_ERR_IFNOT(symbol->value.type is NULL_TYPE,
           "can not reassign to a constant");
 
       NEXT_TOKEN();
 
-      int is_un = 0;
-
-      switch (TOKEN) {
-        case TOKEN_FUNCDEF: {
-          int is_const = symbol->is_const;
-          char *key = sym_key (this, name);
-          la_release_sym (Vmap.pop (scope->symbols, key));
-          Cstring.cp (this->curFunName, MAXLEN_SYMBOL + 1, key, GETSTRLEN(name));
-          err = la_parse_func_def (this);
-          this->curFunName[0] = '\0';
-          THROW_ERR_IF_ERR(err);
-          if (is_const)
-            this->curSym->is_const = 1;
-
-          return err;
-        }
-
-        case TOKEN_UNARY:
-          is_un = 1;
-          NEXT_TOKEN();
-          break;
-      }
+      int is_un = TOKEN is TOKEN_UNARY;
+      if (is_un) NEXT_TOKEN();
 
       val.refcount = IS_UNCHANGEABLE;
       err = la_parse_expr (this, &val);
@@ -11496,7 +11474,6 @@ static struct def {
   { "break",   TOKEN_BREAK,    NULL_VALUE },
   { "continue",TOKEN_CONTINUE, NULL_VALUE },
   { "func",    TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
-  { "lambda",  TOKEN_LAMBDA,   NULL_VALUE },
   { "return",  TOKEN_RETURN,   PTR(la_parse_return) },
   { "import",  TOKEN_IMPORT,   PTR(la_parse_import) },
   { "include", TOKEN_INCLUDE,  PTR(la_parse_loadfile) },

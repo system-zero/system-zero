@@ -30,7 +30,6 @@ keywords and Operators (reserved keywords):
 #  var         -  variable definition
 #  const       -  constant definition
 #  func        -  function definition
-#  lambda      -  lambda function
 #  Type        -  user defined type
 #  New         -  initializer for user defined types
 #  if          -  if conditional
@@ -127,6 +126,9 @@ Comments.
   # Multiply statements in one line without a semicolon at the end, may work
   # or may not work, as there are a couple of obvious ambiquities, so in that
   # case a semicolon is required.
+
+  # Note that it is preferable to leave out the semicolon and fix any potential
+  # cases that are not handled.
 
   # If a variable is not initialized with some value at the declaration time,
   # as it happened above, it is initialized with the `null` value, so `v' and
@@ -261,29 +263,28 @@ Comments.
   # This value is `null` by default. For C functions this is guarranteed by the
   # function signature, which is always a VALUE type.
 
-  # Functions can be anonymous.
+  # Functions can be called on the fly.
 
-  var v = lambda (x, y) { return x * y } (10, 100) # => 1000
+  var v = func (x, y) { return x * y } (10, 100) # => 1000
 
-  # A lambda function, it is like a function without a name, but it is called
-  # immediately. After the call releases its resources. It is illegal to store
-  # a lambda in a variable. It is also illegal to omit the argument list after
-  # the body, even if it is an empty list, so a pair of parentheses is obligatory
-  # after the body.
+  # Such anonymous function, it is like a function without a name, but it is called
+  # immediately. After the call releases its resources. It is illegal to omit the 
+  # argument list after the body, even if it is an empty list, so a pair of parentheses
+  # is obligatory after the body.
 
-  # Lambdas like functions, can be nested in arbitrary level, though they
-  # can be complicated to parse, but legal:
+  # Such functions, can be nested in arbitrary level, though they can be complicated
+  # to parse, but legal:
 
-  var r = lambda (x, y) {
+  var r = func (x, y) {
     var xl = x + y
 
-    return lambda (k) {
+    return func (k) {
       return k * 2
     } (x) +
 
-    lambda (z) {
+    func (z) {
       var i =
-        lambda (x) {
+        func (x) {
           return x + 100
         } (z)
 
@@ -294,11 +295,9 @@ Comments.
 
   println ("${r}") # => 650
 
-  # Note that this interface is weak, and it is only used to develop instant
-  # logic, like the statement expressions in C11 (though with arguments) and
-  # so it neither captures up values nor it can be stored for reuse, and the
-  # worst of all probably `lambda' is misleading (though we want to implement
-  # them properly someday).
+  # Note that this interface is only used to develop instant logic, like the statement
+  # expressions in C11 (though with arguments).
+
 
   # Statements and loops:
 
@@ -780,11 +779,7 @@ Probably this will be a very messy output."
   # without them, a binary operation would be performed, between `1' and the
   # result of (100: to_string (10)).
 
-  # Functions should accept at least one argument and functions can be also
-  # lambdas:
-  println (12342 :
-      lambda (x) { return x: to_string (10) } ():
-      lambda (x) { return x: to_integer () } ())  # 12342
+  # Functions should accept at least one argument.
 
   # The value on the stack, can be an operand of a conditional expression,
   # which is an `if/then/[orelse]/end' construct. Here the `end` keyword is

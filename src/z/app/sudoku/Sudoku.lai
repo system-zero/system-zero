@@ -1,0 +1,141 @@
+import ("sys")
+import ("file")
+import ("path")
+import ("sudoku")
+include ("argparse")
+
+var prog = __file__: path_basename_sans_extname ()
+
+var argparse = New Argparse (5, 0, prog + " [option[s]]")
+argparse.add ("generate", 'g', "generate", "generate a puzzle", BooleanType, 0) 
+argparse.add ("print_solved", 0, "print-solved=", "print solved (default is yes, use 0 to disable)", IntegerType, ARG_VALUE_REQUIRED; defval : 1)
+argparse.add ("play", 0, "play", "play", BooleanType, 0)
+argparse.add ("load", 'l', "load=", "load puzzle", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+argparse.set.help (`
+  UI:
+    - a topline that (for now) displays the difficulty level of the generated puzzle
+
+    - a 9x9 board with 3x3 separated squares (development note: every glyph of those
+       separators occupies three bytes)
+
+    - an info line that displays the number of uncovered cells, the number of mistakes
+       and the time that has been spend so far
+
+    - a msg line (the last line on screen)
+
+  Usage:
+
+    At the initialization the cursor is positioning at the first upper left cell.
+
+    Navigation:
+      - DOWN_ARROW  or 'j'  go down  one row
+      - UP_ARROW    or 'k'  go up    one row
+      - LEFT_ARROW  or 'h'  go left  one cell
+      - RIGHT_ARROW or 'l'  go right one cell
+
+    When the cursor is onto a visible cell, this highlights every cell with the same
+    number.
+
+    Main loop:
+    Keys:
+      - 'q' quits the game if the puzzle has been solved
+
+      - 'Q' quits the game unconditionally
+
+      - 'p' generate a new puzzle
+
+      - 'r' replay the current puzzle
+
+      - 's' save current puzzle
+
+      - 'S' set quality
+
+      - ' ' (pauses game) use ' ' again to unpause
+
+      - [1...9]:
+        if a cell is visible, this does nothing
+        else if it is a mistake then a msg is displayed
+        else it uncovers current cell
+
+      - '.' insert last succesfull number on the focused cell
+
+  Notes:
+    - if the puzzle has been solved, then the points are calculated and
+      a msg is displayed with this information (note that the highest score
+      is the one that is closest to zero (the formula is under consideration))
+
+    - there is no way to loose in this game if you are determinated
+`S2)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+const datadir = Sys.get ("DATADIR") + "/sudoku"
+
+if argparse.results.play {
+  exit (Sudoku.play (;
+    datadir : datadir
+    name    : Sys.get ("USERNAME"))
+}
+
+if argparse.results.load isnot null {
+  var fn = argparse.results.load
+  ifnot fn: file_exists () {
+    fn = datadir: path_concat (argparse.results.load)
+    ifnot fn: file_exists () {
+      println (stderr, "${argparse.results.load} : doesn't exists")
+      exit 1
+    }
+  }
+
+  var m = evalfile (fn)
+
+  exit (Sudoku.play (;
+    datadir : datadir
+    name    : Sys.get ("USERNAME")
+    sudoku  : m)
+}
+
+ifnot argparse.results.generate then exit (0)
+
+var m = Sudoku.generate ()
+
+func print_sudoku (s) {
+  var separator    = "│"
+  var upper_line   = " ┌─────┬─────┬─────┐"
+  var central_line = " ├─────┼─────┼─────┤"
+  var last_line    = " └─────┴─────┴─────┘"
+
+  var i, j, k, c
+  var ind = 0
+
+  print ("${upper_line}\n ${separator}")
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {     # 3 x 3 squares
+      for 3 times {               # line
+        for (k = 0; k < 3; k++) { # square row
+          c = s[ind++]
+          ifnot c then print (" ") orelse print ("${c}")
+          ifnot k is 2 then print (" ")
+        }
+
+        print (separator)
+      }
+
+      ifnot j is 2 then print ("\n ${separator}") orelse println ("")
+    }
+
+    ifnot i is 2 then print ("${central_line}\n ${separator}")
+  }
+
+  println (last_line)
+}
+
+println (" Difficulty ${m.difficulty}")
+print_sudoku (m.grid)
+
+if argparse.results.print_solved then print_sudoku (m.solved)

@@ -281,7 +281,7 @@ Type Packman {
 
     var archive = this.sources_dir: path_concat (this.spec.archive)
 
-    var is_eq = this.spec.md: lambda (x) {
+    var is_eq = func (x) {
       return x is
         if md_type is MD5TYPE then
           archive: crypt_md5sum_file ()
@@ -290,7 +290,7 @@ Type Packman {
             archive: crypt_sha256sum_file ()
           orelse
             archive: crypt_sha512sum_file ()
-    } ()
+    } (this.spec.md)
 
     if verb then
       if is_eq then
@@ -628,7 +628,7 @@ Type Packman {
           }
 
           ifnot d: file_exists () {
-            var r = d: dir_make (d, m; err : 1)
+            var r = d: dir_make (m; err : 1)
             break 2 if r is notok
           }
 

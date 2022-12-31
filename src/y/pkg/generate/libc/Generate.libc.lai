@@ -74,7 +74,7 @@ include ("argparse")
   var licenceFile = outputDir: concat_with ("LICENSES")
   var commentFile = outputDir: concat_with ("comments")
 
-  var dotsToLibc = lambda (d) {
+  var dotsToLibc = func (d) {
     var def = LIBCSRCDIR
     return def if d: path_is_absolute ()
 

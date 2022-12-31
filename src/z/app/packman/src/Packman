@@ -39,7 +39,7 @@ if bootstrap is true {
 include ("packman")
 
 if false is bootstrap {
-  package = lambda {
+  package = func {
     ifnot (argparse.argc) {
       if ((settings is false and list_specs is false) or spec_info is true) {
         println (stderr, "No package has been specified")

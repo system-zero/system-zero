@@ -149,8 +149,8 @@ func zero_semantics () {
   retval = fuc (10, 20, 30)
   assert_true ("testing function nesting and scope", retval is 60)
 
-  var fue = func (c) {
-    var fuda = func (b) return a + b + c
+  func fue (c) {
+    func fuda (b) return a + b + c
     return fuda (c)
   }
 
@@ -198,26 +198,26 @@ func zero_semantics () {
   retval = fibo_recursive (12)
   assert_true ("testing recursive function", retval is 144)
 
-  retval = lambda (x, y) {
+  retval = func (x, y) {
     if x <= 100 { return x * 2 } else { return y * 2 }} (100, 200)
 
-  assert_true ("testing lambda", retval is 200)
+  assert_true ("testing anon func", retval is 200)
 
-  retval = lambda (x) { return x * 2 } (10) +
-           lambda (y) { return y / 2 } (20) +
-           lambda (z) { return z % 2 } (21) + 11
+  retval = func (x) { return x * 2 } (10) +
+           func (y) { return y / 2 } (20) +
+           func (z) { return z % 2 } (21) + 11
 
-  assert_true ("testing sequential lambdas", retval is 42)
+  assert_true ("testing sequential anon funcs", retval is 42)
 
-  retval = lambda (x, y) {
+  retval = func (x, y) {
     var xl = x + y
-    return lambda (k) { return k * 2 } (x) +
-           lambda (z) {
-             var i = lambda (x) { return x + 100 } (z)
+    return func (k) { return k * 2 } (x) +
+           func (z) {
+             var i = func (x) { return x + 100 } (z)
              return (z * 2) + i } (xl)
   } (50, 100)
 
-  assert_true ("testing complex nested lambdas", retval is 650)
+  assert_true ("testing complex nested anon funcs", retval is 650)
 
   retval -= 50
   assert_true ("testing binary assignment operator [-=]", retval is 600)
@@ -254,7 +254,7 @@ func zero_semantics () {
   assert_false ("testing bitwise operators",
       (retval & v1 isnot 1) or (retval & v2 isnot 2) or (retval & v3 isnot 4))
 
-  var nifelse = func (n) {
+  func nifelse (n) {
     if n isnot 10 {
       return false
     } else {
@@ -282,7 +282,7 @@ func zero_semantics () {
      nifelse (10) is true and
      nifelse (11) is false)
 
-  var felseifnot = func (n) {
+  func felseifnot (n) {
     if n isnot 10 {
       return false
     } else ifnot n is 10 {
@@ -353,14 +353,14 @@ func zero_semantics () {
         r is 231 and
         rr is 45)
 
-    var fassign = func (s) return s * 2
+    func fassign (s) return s * 2
     r = fassign (40)
     assert_true ("testing function assignment to a variable", r is 80)
 
     func tassign (f, i) return f (i)
     r = tassign (fassign, 400)
 
-    var fu = func (x, y) return x * y
+    func fu (x, y) return x * y
     r = fu (10, 100)
     assert_true ("testing assignment function to a variable", r is 1000)
   }
@@ -792,7 +792,7 @@ func self_semantics () {
       ds is 1000 and
       dt is 100000000)
 
-  var sum = lambda {
+  var sum = func {
     var s = 0
     for (var i = 1; i < 100 ; s += i, i++) {}
     return s
@@ -800,7 +800,7 @@ func self_semantics () {
 
   assert_true ("testing `for` loop", sum is 4950)
 
-  sum = lambda { var s = 0
+  sum = func { var s = 0
     for (var i = 1; i < 100 ; i++) {
       var ign = 0
       var ign_str = "a"
@@ -812,7 +812,7 @@ func self_semantics () {
 
   assert_true ("testing `for` loop continue statement", sum is 4940)
 
-  sum = lambda {
+  sum = func {
     var s = 0
     for (var i = 1; i < 100 ; s += i, i++) break if i is 10
     return s
@@ -820,7 +820,7 @@ func self_semantics () {
 
   assert_true ("testing `for` loop break statement", sum is 45)
 
-  sum = lambda {
+  sum = func {
     var s = 0
     for (var i = 1; i < 100 ; s += i, i++) return s if i is 10
     return s
@@ -828,7 +828,7 @@ func self_semantics () {
 
   assert_true ("testing `for` loop return statement", sum is 45)
 
-  sum = lambda {
+  sum = func {
     var s = 0; var i = 0;
     for 100 times {s += i; i++}
     return s
@@ -836,7 +836,7 @@ func self_semantics () {
 
   assert_true ("testing `for times` loop", sum is 4950)
 
-  sum = lambda {
+  sum = func {
     var s = 0; var i = 0;
     for 100 times {
       var ign = 0
@@ -856,7 +856,7 @@ func self_semantics () {
 
   var num = 100
 
-  sum = lambda {
+  sum = func {
     var s = 0; var i = 0;
     for num times {
       break if i is 10
@@ -867,7 +867,7 @@ func self_semantics () {
 
   assert_true ("testing `for times` loop break statement", sum is 45)
 
-  sum = lambda {
+  sum = func {
     var s = 0; var i = 0;
     for 100 times {
       return s if i is 10
@@ -878,7 +878,7 @@ func self_semantics () {
 
   assert_true ("testing `loop` loop return statement", sum is 45)
 
-  sum = lambda {
+  sum = func {
     var s = 0; var i = 0;
     forever { s += i; i++; break if i is 100 }
     return s
@@ -886,7 +886,7 @@ func self_semantics () {
 
   assert_true ("testing `forever` loop", sum is 4950)
 
-  sum = lambda {
+  sum = func {
    var s = 0; var i = 0
     do {
       s += i
@@ -899,7 +899,7 @@ func self_semantics () {
 
   assert_true ("testing `do/while` loop", sum is 4950)
 
-  sum = lambda { var s = 0; var i = 0;
+  sum = func { var s = 0; var i = 0;
     do {
       var ign = 0
       var ign_str = "a"
@@ -913,7 +913,7 @@ func self_semantics () {
 
   assert_true ("testing `do/while` loop continue statement", sum is 4940)
 
-  sum = lambda {
+  sum = func {
     var s = 0; var i = 0
     do {
       break if i is 10
@@ -925,7 +925,7 @@ func self_semantics () {
 
   assert_true ("testing `do/while` loop break statement", sum is 45)
 
-  sum = lambda {
+  sum = func {
     var s = 0; var i = 0;
     do {
       append i in s
@@ -959,7 +959,7 @@ func self_semantics () {
   map_sum.calc (0)
   assert_true ("testing nested loops", map_sum.res is 36)
 
-  var if_short = func (n) {
+  func if_short (n) {
     if n is 10 or n is 11 then
       if n isnot 20 then
         ifnot n is 20 then
@@ -1912,16 +1912,14 @@ func self_semantics () {
       empt_i = integer[0],
       empt_n = number[0],
       empt_a = array[0],
-      empt_m = map[0],
-      vn_arr = string[2]: lambda (x) {x[0] = "a"; x[1] = "b"; return x } ()
+      empt_m = map[0]
 
     assert_true ("testing empty arrays",
         typeof (empt_s) is ArrayType and typeofArray (empt_s) is StringType and empt_s: len () is 0 and
         typeof (empt_i) is ArrayType and typeofArray (empt_i) is IntegerType and empt_i: len () is 0 and
         typeof (empt_n) is ArrayType and typeofArray (empt_n) is NumberType and empt_n: len () is 0 and
         typeof (empt_a) is ArrayType and typeofArray (empt_a) is ArrayType and empt_a: len () is 0 and
-        typeof (empt_m) is ArrayType and typeofArray (empt_m) is MapType and empt_m: len () is 0 and
-        typeof (vn_arr) is ArrayType and typeofArray (vn_arr) is StringType and vn_arr: len () is 2 and vn_arr[0] is "a" and vn_arr[1] is "b")
+        typeof (empt_m) is ArrayType and typeofArray (empt_m) is MapType and empt_m: len () is 0)
 
     func x (s, a) {
       if s: typeof () is StringType then
@@ -2400,7 +2398,6 @@ func self_semantics () {
     var xm = {k : 1, l : 2, sub : {ka : 1, ar : [1, 1, 3] } }
     var xk = xm:keys (): len ()
     var mx = {k : 1, l : 2}: len ()
-    var ll = 12342: lambda (x) { return x: to_string (10) } (): lambda (x) { return x: to_integer () } () - 12300
     var ms = xm.sub: keys (): len ()
     var mp = xm.sub.ar: where (1): len ()
     var mm = xm.k: if x is 1 then 11 end
@@ -2432,7 +2429,6 @@ func self_semantics () {
         bb is "0b00100000" and
         hh is "0x20" and
         oo is "040" and
-        ll is 42 and
         wi is "44" and
         wu is "ok" and
         wv is 10 and
