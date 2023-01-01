@@ -1,0 +1,22 @@
+#@
+  depends_on ("String",  LIBRARY)
+  depends_on ("Cstring", LIBRARY)
+  depends_on ("Vstring", LIBRARY)
+  depends_on ("Ustring", LIBRARY)
+  depends_on ("File",    LIBRARY)
+  depends_on ("Dir",     LIBRARY)
+  depends_on ("Path",    LIBRARY)
+  depends_on ("Error",   LIBRARY)
+  depends_on ("Vmap",    LIBRARY)
+  depends_on ("Imap",    LIBRARY)
+#
+
+var m = New Make (__file__, LIBRARY; z_library)
+
+m.set.library.to_linkagainst ([
+  "string", "cstring", "vstring", "ustring", "file", "dir", "path",
+  "error", "imap", "vmap"]; append_version)
+m.set.library.to_linkagainst ("dl")
+m.set.library.cflag ([`-DZLIBDIR="` + ZLIBDIR + `"`, `-DDATADIR="` + SYSDATADIR + `"`]) 
+
+return m

@@ -38,6 +38,8 @@
 
 #define NS_GLOBAL          "global"
 #define NS_GLOBAL_LEN      6
+#define NS_PRIVATE         "private"
+#define NS_PRIVATE_LEN     7
 #define NS_STD             "std"
 #define NS_STD_LEN         3
 #define NS_LOOP_BLOCK      "__block_loop__"
@@ -211,6 +213,9 @@
 #define LIST_APPEND       1
 #define LIST_PREPEND      0
 
+#define NOT_INTO_MAPDECL 0
+#define INTO_MAPDECL     1
+
 typedef struct la_string {
   uint len;
   const char *ptr;
@@ -335,6 +340,7 @@ struct la_t {
   funT *datatypes;
   funT *macros;
   funT *curScope;
+  funT *private_maps;
 
   fun_stack funstack[1];
   symbol_stack symbolstack[1];
@@ -4880,7 +4886,7 @@ static int map_set_append_rout (la_t *this, Vmap_t *map, char *key, int token) {
   return LA_OK;
 }
 
-static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
+static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope, int into_map_decl) {
   int err;
   VALUE v;
 
@@ -4888,6 +4894,7 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
 
   while (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
+  int is_priv = 0;
   if (TOKEN is TOKEN_FUNCDEF) {
     Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
 
@@ -4897,8 +4904,28 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
     this->curFunName[0] = '\0';
     THROW_ERR_IF_ERR(err);
 
+    if (TOKEN is TOKEN_PAREN_OPEN) {
+      funT *uf = this->curFunDef;
+
+      if (into_map_decl) {
+        sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, MAP(map), 0);
+        THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on `this` declaration");
+      }
+
+      UNGET_BYTE();
+
+      this->funcState |= MAP_METHOD_STATE;
+      err = la_parse_func_call (this, &v, NULL, uf, v);
+      THROW_ERR_IF_ERR(err);
+      NEXT_TOKEN();
+      goto assign;
+    }
+
     v = PTR(this->curFunDef);
     v.type = UFUNCTION_TYPE;
+
+    ifnot (into_map_decl) is_priv = 1;
+
     goto assign;
   }
 
@@ -4955,6 +4982,11 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope) {
 
   if ((v.type is ARRAY_TYPE or v.type is LIST_TYPE) and TOKEN is TOKEN_INDEX_CLOS)
     NEXT_TOKEN();
+
+  if (v.type is UFUNCTION_TYPE and is_priv) {
+    VALUE *val = (VALUE *) Vmap.get (map, key);
+    val->sym->scope = this->private_maps;
+  }
 
   return err;
 }
@@ -5104,7 +5136,7 @@ theend:
   return LA_OK;
 }
 
-static int la_parse_map_members (la_t *this, VALUE map) {
+static int la_parse_map_members (la_t *this, VALUE map, int into_map_decl) {
   int err;
   this->curState |= MAP_STATE;
   this->scopeState = PUBLIC_SCOPE;
@@ -5147,7 +5179,7 @@ static int la_parse_map_members (la_t *this, VALUE map) {
 
     IGNORE_UNTIL_KNOWN_BYTE(TOKEN_COLON);
 
-    err = map_set_rout (this, AS_MAP(map), key, this->scopeState is PUBLIC_SCOPE);
+    err = map_set_rout (this, AS_MAP(map), key, this->scopeState is PUBLIC_SCOPE, into_map_decl);
     this->scopeState = scope;
     THROW_ERR_IF_ERR(err);
 
@@ -5197,7 +5229,8 @@ static int la_parse_map (la_t *this, VALUE *vp) {
     return LA_NOTOK;
   }
 #endif
-  int err = la_parse_map_members (this, MAP(map));
+
+  int err = la_parse_map_members (this, MAP(map), INTO_MAPDECL);
   THROW_ERR_IF_ERR(err);
 
   PARSEPTR = saved_ptr;
@@ -5389,8 +5422,11 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
         fun_release (&fun);
         this->curScope = curScope;
       } else {
-        sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
-        THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
+        ifnot (v->sym->scope is this->private_maps) {
+          sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+          THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
+        }
+
         this->funcState |= MAP_METHOD_STATE;
         err = la_parse_func_call (this, vp, NULL, uf, *v);
       }
@@ -5604,7 +5640,7 @@ static int la_parse_map_set (la_t *this) {
   } else
     return map_set_append_rout (this, map, key, c);
 
-  return map_set_rout (this, map, key, scope);
+  return map_set_rout (this, map, key, scope, NOT_INTO_MAPDECL);
 }
 
 
@@ -5801,7 +5837,7 @@ parse_members:
         RESET_TOKEN;
 
         this->exprList++;
-        err = la_parse_map_members (this, MAP(map));
+        err = la_parse_map_members (this, MAP(map), NOT_INTO_MAPDECL);
         this->exprList--;
         THROW_ERR_IF_ERR(err);
 
@@ -5968,7 +6004,6 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
   int c = TOKEN;
 
   if (c isnot TOKEN_PAREN_OPEN) {
-//    UNGET_BYTE();
     VALUE v;
     if (uf isnot NULL) {
       int l = GETSTRLEN(TOKENSTR);
@@ -5976,10 +6011,10 @@ static int la_parse_func_call (la_t *this, VALUE *vp, CFunc op, funT *uf, VALUE 
       v = PTR(uf);
       v.type |= UFUNCTION_TYPE;
     } else {
-//      NEXT_TOKEN();
       v = PTR(op);
       v.type = value.sym->type;
     }
+
     v.sym = value.sym;
     *vp = v;
     return LA_OK;
@@ -11989,6 +12024,7 @@ static void la_release (la_t **thisp) {
   fun_release (&this->function);
   fun_release (&this->datatypes);
   fun_release (&this->macros);
+  fun_release (&this->private_maps);
 
   la_release_stdns (this);
 
@@ -12226,6 +12262,9 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
 
   Fun_new (this,
       funNew (.name = NS_GLOBAL, .namelen = NS_GLOBAL_LEN, .num_symbols = 256));
+
+  this->private_maps = fun_new (
+      funNew (.name = NS_PRIVATE, .namelen = NS_PRIVATE_LEN, .num_symbols = 1));
 
   for (i = 0; la_defs[i].name; i++) {
     err = la_define (this, la_defs[i].name, la_defs[i].toktype, la_defs[i].val);

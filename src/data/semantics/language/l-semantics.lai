@@ -1961,32 +1961,45 @@ func self_semantics () {
 
     m.a = 1
     m.b = "string"
-    m.c = func return this.a + 999
+    m.c = func return m.a + 999
+    m.d = func (x) { return m.a * x } (10)
+    m.e = `"bqstring`
 
     assert_true ("testing map",
         m.a is 1 and
         m.b is "string" and
-        m.c () is 1000)
+        m.c () is 1000 and
+        m.d is 10 and
+        m.e is `"bqstring`)
 
     var mapa = {
       private
       one : 1
       three : "three"
       fun : func return (this.one + this.two) * 10000
-      threefun : func return this.three
 
       public
-      two : 2,
+      four : func (x) { return this.one * x } (10)
+      two : 2
       fn : func (x) return x * this.fun ()
     }
 
-    assert_true ("testing map functions", mapa.fn (2) is 60000 and mapa.two is 2)
+    mapa.five = func (x) { return x * mapa.four } (10)
+    mapa.six  = func (x) { return mapa.four * x}
+
+    assert_true ("testing map functions",
+        mapa.fn (2) is 60000 and
+        mapa.two is 2 and
+        mapa.four is 10 and
+        mapa.five is 100 and
+        mapa.six (20) is 200)
 
     mapa.new = "new"
     assert_true ("testing map extension", mapa.new is "new")
 
-    mapa.newfun = func (x) return (x * 2) + this.one
-    assert_true ("testing map new function and visibility", mapa.newfun (10) is 21)
+    mapa.newfun = func (x) return (x * 2) + mapa.two
+    assert_true ("testing map new function and visibility",
+        mapa.newfun (10) is 22)
 
     func x (m) return m.two
 
@@ -2031,8 +2044,8 @@ func self_semantics () {
         mc.next.next.next.next.key is "string")
 
     var mm = {
-      a : 11,
-      b : 22,
+      a : 11
+      b : 22
       c : 33
     }
 
@@ -2081,7 +2094,7 @@ func self_semantics () {
         sum_p is 31 and sum_pa is 21)
 
     var mapp = {
-      i : 1,
+      i : 1
       a : integer[2] = [0, 1]
     }
 
@@ -2125,6 +2138,7 @@ func self_semantics () {
       mm.da is "DA")
 
     }
+
     xxx ()
 
     var mmma = {
@@ -2318,7 +2332,7 @@ func self_semantics () {
     #define {m : "m", n : 11} as v
     var g5 = (#get v).m
 
-    assert_true ("testing directives",
+    assert_true ("testing directives [deprecated]",
       isdef is 1 and
       g1 is "asd" and
       g2 is 0 and
