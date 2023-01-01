@@ -2308,41 +2308,6 @@ func self_semantics () {
 
   types ()
 
-  func test_directives () {
-
-    var isdef = 0
-    #define "asd" as "vaa"
-
-    if #isdefined "vaa" then isdef = 1
-
-    var v = "vaa"
-    var g1 = #get v
-
-    #undef v
-    var g2 = #isdefined v
-
-    #define "asdf" as v
-    var g3 = #get v
-
-    #undef v
-
-    #define [1, 2, 3] as "ar"
-    var g4 =  (#get "ar")[2]
-
-    #define {m : "m", n : 11} as v
-    var g5 = (#get v).m
-
-    assert_true ("testing directives [deprecated]",
-      isdef is 1 and
-      g1 is "asd" and
-      g2 is 0 and
-      g3 is "asdf" and
-      g4 is 3 and
-      g5 is "m")
-  }
-
-  test_directives()
-
   func append_builtin () {
     var key = "key"
     var m = {}

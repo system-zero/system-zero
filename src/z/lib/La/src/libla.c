@@ -205,16 +205,11 @@
 #define TOKEN_MINUS_MINUS 1010
 #define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
 
-#define TOKEN_D_DEFINE    1011
-#define TOKEN_D_UNDEF     1012
-#define TOKEN_D_ISDEFINED 1013
-#define TOKEN_D_GET       1014
-
 #define LIST_APPEND       1
 #define LIST_PREPEND      0
 
-#define NOT_INTO_MAPDECL 0
-#define INTO_MAPDECL     1
+#define NOT_INTO_MAPDECL  0
+#define INTO_MAPDECL      1
 
 typedef struct la_string {
   uint len;
@@ -2772,111 +2767,6 @@ static inline int parse_number (la_t *this, int c, int *token_type) {
   return LA_OK;
 }
 
-static int la_parse_directive (la_t *this, VALUE *vp, int tok) {
-  int err;
-
-  this->curState |= MALLOCED_STRING_STATE;
-  NEXT_TOKEN();
-  if (TOKEN is TOKEN_PAREN_OPEN)
-    NEXT_TOKEN();
-  this->curState &= ~MALLOCED_STRING_STATE;
-
-  VALUE v;
-  err = la_parse_expr (this, &v);
-  if (TOKEN is TOKEN_PAREN_CLOS)
-    NEXT_TOKEN();
-
-  THROW_ERR_IF_ERR(err);
-
-  switch (tok) {
-    case TOKEN_D_ISDEFINED:
-      THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
-        "error while parsing #isdefined directive: awaiting a string");
-      *vp = INT(NULL isnot ns_lookup_symbol (this->macros, AS_STRING_BYTES(v)));
-      return OK;
-
-    case TOKEN_D_DEFINE:
-      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_AS,
-        "error while parsing define directive: awaiting as");
-
-      this->curState |= MALLOCED_STRING_STATE;
-      NEXT_TOKEN();
-      this->curState &= ~MALLOCED_STRING_STATE;
-
-      VALUE as;
-      err = la_parse_expr (this, &as);
-      THROW_ERR_IF_ERR(err);
-      THROW_SYNTAX_ERR_IF(as.type isnot STRING_TYPE,
-        "error while parsing #define directive: awaiting a string");
-      THROW_SYNTAX_ERR_FMT_IF(NULL isnot ns_lookup_symbol (this->macros, AS_STRING_BYTES(as)),
-        "error while parsing #define directive: %s, is already defined", AS_STRING_BYTES(as));
-      THROW_SYNTAX_ERR_FMT_IF(NULL is la_define_symbol (this, this->macros, AS_STRING_BYTES(as), v.type, v, 1),
-        "error while parsing #define directive: %s, cannot define", AS_STRING_BYTES(as));
-      return OK;
-
-    case TOKEN_D_UNDEF: {
-      THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
-        "error while parsing #undef directive: awaiting a string");
-
-      sym_t *sym = Vmap.pop (this->macros->symbols, AS_STRING_BYTES(v));
-      THROW_SYNTAX_ERR_FMT_IF(NULL is sym,
-        "error while parsing is undef directive: %s, is not defined", AS_STRING_BYTES(v));
-      la_release_sym (sym);
-      return OK;
-    }
-
-    case TOKEN_D_GET: {
-      THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE,
-        "error while parsing #get directive: awaiting a string");
-
-      sym_t *sym = ns_lookup_symbol (this->macros, AS_STRING_BYTES(v));
-      if (NULL is sym) {
-        *vp = NULL_VALUE;
-        return OK;
-      }
-
-      *vp = sym->value;
-
-      switch (TOKEN) {
-        case TOKEN_INDEX_OPEN:
-          switch (vp->type) {
-            case STRING_TYPE:
-              TOKEN = TOKEN_STRING;
-              TOKENVAL = *vp;
-              UNGET_BYTE();
-              return la_parse_primary (this, vp);
-
-            case ARRAY_TYPE:
-              TOKEN = TOKEN_ARRAY;
-              TOKENVAL = *vp;
-              UNGET_BYTE();
-              return la_parse_primary (this, vp);
-
-            default:
-              la_release_val (this, *vp);
-              THROW_SYNTAX_ERR("unexpected open index");
-          }
-
-        case TOKEN_DOT:
-          THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE, "awaiting a map");
-          TOKEN = TOKEN_MAP;
-          TOKENVAL = *vp;
-          UNGET_BYTE();
-          return la_parse_primary (this, vp);
-      }
-
-      *vp = la_copy_value (sym->value);
-
-      return OK;
-    }
-
-    default:
-      THROW_SYNTAX_ERR("unknown directive");
-  }
-
-  return OK;
-}
-
 static int la_get_annotated_block (la_t *this, string *s) {
   int c = GET_BYTE();
 
@@ -2970,36 +2860,6 @@ static int la_do_next_token (la_t *this, int israw) {
         c = la_get_annotated_block (this, NULL);
         THROW_ERR_IF_ERR(c);
         return la_do_next_token (this, israw);
-
-      case 'i':
-      case 'd':
-      case 'u':
-      case 'g': {
-        char *sp = (char *) GETSTRPTR(PARSEPTR) - 1;
-        int tok = 0;
-        int n = 0;
-
-        if (Cstring.eq_n (sp, "isdefined ", 10)) {
-          tok = TOKEN_D_ISDEFINED;
-          n = 9;
-        } else if (Cstring.eq_n (sp, "define ", 7)) {
-          tok = TOKEN_D_DEFINE;
-          n = 6;
-        } else if (Cstring.eq_n (sp, "undef ", 6)) {
-          tok = TOKEN_D_UNDEF;
-          n = 5;
-        } else if (Cstring.eq_n (sp, "get ", 4)) {
-          tok = TOKEN_D_GET;
-          n = 3;
-        }
-
-        ifnot (n) goto consume_comment;
-
-        for (int i = 0; i < n; i++) GET_BYTE();
-
-        TOKEN = tok;
-        return tok;
-      }
     }
 
     consume_comment:
@@ -6991,10 +6851,6 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
     case TOKEN_ANNOTATION:
       return la_parse_annotation (this, vp);
 
-    case TOKEN_D_ISDEFINED:
-    case TOKEN_D_GET:
-      return la_parse_directive (this, vp, c);
-
     case TOKEN_EVALFILE: {
       this->funcState |= EVAL_UNIT_STATE;
       err = la_parse_loadfile (this);
@@ -7643,12 +7499,6 @@ static int la_parse_stmt (la_t *this) {
     case TOKEN_PLUS_PLUS: {
       VALUE v;
       return la_parse_prefix (this, &v, c);
-    }
-
-    case TOKEN_D_DEFINE:
-    case TOKEN_D_UNDEF: {
-      VALUE v;
-      return la_parse_directive (this, &v, c);
     }
 
     case TOKEN_COMMA:
