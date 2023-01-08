@@ -629,6 +629,11 @@ public int __init_std_module__ (la_t *this) {
       return err;
   }
 
+  if (La.def_std (this, "BINARY",  INTEGER_TYPE, INT(2),  1)) return LA_NOTOK;
+  if (La.def_std (this, "OCTAL",   INTEGER_TYPE, INT(8),  1)) return LA_NOTOK;
+  if (La.def_std (this, "DECIMAL", INTEGER_TYPE, INT(10), 1)) return LA_NOTOK;
+  if (La.def_std (this, "HEX",     INTEGER_TYPE, INT(16), 1)) return LA_NOTOK;
+
   const char evalString[] = EvalString (
     public var Map = {
        set : map_set,

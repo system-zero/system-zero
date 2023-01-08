@@ -2571,6 +2571,28 @@ static int la_get_string (la_t *this, char chr) {
     attributes:
     c = *ptr;
 
+    if (c is 'F') {
+      ifnot (*str->bytes is '"' + (str->bytes[str->num_bytes - 1] is '"')) {
+        String.prepend_byte (str, '"');
+        String.append_byte (str, '"');
+      }
+
+      String.prepend_byte (str, '(');
+      String.append_byte (str, ')');
+
+      la_string savepc = PARSEPTR;
+      PARSEPTR = StringNew (str->bytes);
+      VALUE v;
+      int err = la_parse_format (this, &v);
+      THROW_ERR_IF_ERR(err);
+
+      PARSEPTR = savepc;
+      ptr++;
+      c = *(ptr + 1);
+      if (c is ':') { ptr++; c = *ptr; }
+      String.replace_with (str, AS_STRING_BYTES(v));
+    }
+
     if (c is 'S') {
       ptr++;
 
@@ -2630,6 +2652,9 @@ static int la_get_string (la_t *this, char chr) {
           break;
         }
       }
+
+      if (*(ptr + 1) is ':') { ptr++; goto attributes; }
+
     }
 
   } else {
@@ -2663,6 +2688,11 @@ static int la_get_string (la_t *this, char chr) {
       if (c is TOKEN_DQUOTE) break;
 
       String.append_byte (str, c);
+    }
+    c = *(ptr + 1);
+    if (c is 'F' or c is 'S') {
+      ptr++;
+      goto attributes;
     }
   }
 

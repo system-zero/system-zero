@@ -1,0 +1,22 @@
+#@
+  depends_on ("Sys",     LIBRARY)
+  depends_on ("Error",   LIBRARY)
+  depends_on ("String",  LIBRARY)
+  depends_on ("Cstring", LIBRARY)
+  depends_on ("Vstring", LIBRARY)
+  depends_on ("Ustring", LIBRARY)
+  depends_on ("File",    LIBRARY)
+  depends_on ("Dir",     LIBRARY)
+  depends_on ("Term",    LIBRARY)
+  depends_on ("Readline",LIBRARY)
+  depends_on ("Video",    LIBRARY)
+#
+
+var m = New Make (__file__, LIBRARY; z_library)
+
+m.set.library.to_linkagainst ([
+  "sys", "error", "string", "cstring", "vstring", "ustring",
+  "file", "dir", "term", "readline", "video"]; append_version)
+m.set.library.cflag ([`-DTMPDIR="` + TMPDIR + `"`, `-DDATADIR="` + SYSDATADIR + `"`]) 
+
+return m

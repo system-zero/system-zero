@@ -24,7 +24,7 @@ include ("packman")
           public const func Make (argv) {
 
 func argparseNew () {
-  var argparse = New Argparse (32, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (33, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -39,6 +39,7 @@ func argparseNew () {
   argparse.add ("force", 'f', "force", "force making targets", BooleanType, 0)
   argparse.add ("recursive", 'R', "recursive", "apply the 'force' option recursively", BooleanType, 0)
   argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)
+  argparse.add ("platform", 0, "platform=", "operating system (default: Os.platform ())", StringType, ARG_VALUE_REQUIRED; defval : Os.platform ())
   argparse.add ("version", 0, "version=", "set version", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("march", 0, "march=", "set march (default native)", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("optimization", 0, "optimization=", "set optimization (default -O2)", StringType, ARG_VALUE_REQUIRED)
@@ -82,6 +83,7 @@ const char              = integer_char
 const advance           = string_advance
 const isregular         = file_is_reg
 
+const PLATFORM
 const VERSION           = "0.3"
 const Z                 = "z"
 const Y                 = "y"
@@ -138,6 +140,7 @@ const VERBOSE           = true
 const NOVERBOSE         = false
 
 const IGNORE            = -2
+const NONE              = 0
 const ALL               = (1 << 1)
 const SHARED_LIBRARY    = (1 << 2)
 const SHARED_EXECUTABLE = (1 << 3)
@@ -163,7 +166,7 @@ const STATIC_TYPE       = 2
 
 const ARGPARSE          = null
 
-Type Make {
+        Type Make {
   private
   retval          : ok
   sh              : New Shell ()
@@ -1474,6 +1477,7 @@ Type Make {
   }
 
   main : func {
+    return ok if this.targets is NONE
     return ok if this.targets is IGNORE
 
     if this.targets & PACKAGE {
@@ -1936,6 +1940,13 @@ func make_dependencies (f) {
       if p: isdirectory () then p: concat_with (CUR_SPECNAME): realpath ()
       orelse p: realpath ()
 
+    ifnot file: exists () {
+      file =
+        ifnot p: isdirectory () then p: concat_with (PLATFORM + CUR_SPECNAME): realpath ()
+        orelse null
+    }
+
+    return null if file is null
     return null ifnot file: exists ()
     return file
   }
@@ -2046,6 +2057,8 @@ func make_dependencies (f) {
 
   return notok ifnot ok is ARGPARSE.process (argv, start_index)
   return ok if ARGPARSE.exit is true
+
+  PLATFORM = ARGPARSE.results.platform
 
   var pkg = ifnot ARGPARSE.argc then Dir.current () orelse ARGPARSE.argv[0]
 

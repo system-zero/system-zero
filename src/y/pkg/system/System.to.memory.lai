@@ -1,0 +1,2 @@
+import ("system")
+exit (System.to.memory ())

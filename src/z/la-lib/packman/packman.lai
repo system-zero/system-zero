@@ -52,21 +52,22 @@ Type PackmanBuild {
 
 Type PackmanSpec {
   private
+  md
   name
   home
-  type
   repo
-  build
+  type
   descr
-  md
+  build
   md_type
   license
   baseurl
   version
   archive
+  sources
+  extension
   webarchive
   build_dirname
-  extension
 
   init : func (name) this.name = name
 
@@ -77,16 +78,16 @@ Type PackmanSpec {
     repo          : func (repo)  this.repo = repo
     type          : func (type)  this.type = type
     descr         : func (descr) this.descr = descr
-    md_type       : func (type)  this.md_type = type
     build         : func (build) this.build = build
+    md_type       : func (type)  this.md_type = type
     license       : func (lic)   this.license = lic
     baseurl       : func (url)   this.baseurl = url
     version       : func (vers)  this.version = vers
     archive       : func (arch)  this.archive = arch
-    webarchive    : func (arch)  this.webarchive = arch
     sources       : func (src)   this.sources = src
     extension     : func (ext)   this.extension = ext
-    build_dirname : func (dir)  this.build_dirname = dir
+    webarchive    : func (arch)  this.webarchive = arch
+    build_dirname : func (dir)   this.build_dirname = dir
   }
 
   get : {
@@ -464,7 +465,7 @@ Type Packman {
     var curdir = Dir.current ()
 
     return notok if notok is Dir.change (
-      this.sources_dir: path_concat (this.spec.sources)
+      this.sources_dir: path_concat (this.spec.sources))
 
     var com = this.git_exec + " " + this.pull_args
     var retval = this.sh:exec (com)
