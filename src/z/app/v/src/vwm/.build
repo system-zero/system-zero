@@ -1,0 +1,15 @@
+#@
+  depends_on ("Vwm", LIBRARY)
+#
+
+var m = New Make (__file__, EXECUTABLE; name : "vwm")
+
+m.set.executable.source ("V.wm.c"; clear)
+m.set.shared.executable.to_linkagainst (["vwm", "io", "term", "argparse", "vui"]; append_version, clear)
+m.set.static.executable.to_linkagainst (["vwm", "vui",
+  "io", "sys", "error", "dir", "path", "term", "file", "random",
+  "video", "readline", "argparse", "os", "smap",
+  "string", "vstring", "cstring", "ustring" ]; append_version, clear)
+m.set.executable.cflags (`-DVERSION_STRING="` + VERSION + `"`)
+m.set.executable.output ("V.wm")
+return m

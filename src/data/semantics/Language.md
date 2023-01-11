@@ -78,13 +78,14 @@ keywords and Operators (reserved keywords):
 #                   else if the second operand is an integer type, then it
 #                   appends a byte if it is within the ascii range or else a
 #                   multibyte sequence to form the character
-#  -=          -  decrement variable and assign the result
-#  *=          -  multiply          -||-
-#  /=          -  divide            -||-
-#  %=          -  modulo            -||-
-#  |=          -  bit or            -||-
-#  &=          -  bit and           -||-
-#  ^=          -  bit xor           -||-
+#  -=          -  decrement variable value and assign the result
+#  *=          -  multiply                    -||-
+#  /=          -  divide                      -||-
+#  %=          -  modulo                      -||-
+#  |=          -  bit or                      -||-
+#  &=          -  bit and                     -||-
+#  ^=          -  bit xor                     -||-
+#  :=          -  pass the current value to the next function and assign the result
 #  ok          - 0
 #  notok       - -1
 #  true        - 1

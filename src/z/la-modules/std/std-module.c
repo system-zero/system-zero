@@ -327,6 +327,26 @@ static VALUE string_bytes_in_str (la_t *this, VALUE v_str, VALUE v_bytes) {
   return STRING(result);
 }
 
+static VALUE string_delete_substr (la_t *this, VALUE v_str, VALUE v_substr) {
+  ifnot (IS_STRING(v_str)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+  ifnot (IS_STRING(v_substr)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  string *s = AS_STRING(v_str);
+  char *str = s->bytes;
+  char *substr = AS_STRING_BYTES(v_substr);
+
+  string *new = String.dup (s);
+  VALUE r = STRING(new);
+
+  char *sp = Cstring.bytes_in_str (str, substr);
+  if (NULL is sp) return r;
+
+  int idx = sp - str;
+  int len = bytelen (substr);
+  String.delete_numbytes_at (new, len, idx);
+  return r;
+}
+
 /* this function serves as a prototype and it'll be used in the 'y' namespace */
 
 // name: we may leave this unimplemented for the parser (but see this as one
@@ -614,6 +634,7 @@ public int __init_std_module__ (la_t *this) {
     { "string_to_integer",  PTR(string_to_integer), 1 },
     { "string_byte_in_str", PTR(string_byte_in_str), 2 },
     { "string_bytes_in_str", PTR(string_bytes_in_str), 2 },
+    { "string_delete_substr", PTR(string_delete_substr), 2 },
     { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
     { "string_advance_after_bytes", PTR(string_advance_after_bytes), 3},
     { "string_trim_byte_at_end", PTR(string_trim_byte_at_end), 2},
@@ -665,6 +686,7 @@ public int __init_std_module__ (la_t *this) {
        to_integer : string_to_integer,
        byte_in_str : string_byte_in_str,
        bytes_in_str : string_bytes_in_str,
+       delete_substr : string_delete_substr,
        advance_on_byte : string_advance_on_byte,
        advance_after_bytes : string_advance_after_bytes,
        trim_byte_at_end : string_trim_byte_at_end

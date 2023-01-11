@@ -52,7 +52,7 @@
 #define NS_ANON_LEN        9
 #define LA_EXTENSION       "lai"
 #define LA_STRING_NS       "__string__"
-#define LA_OPERATORS       "=+-!/*%<>&|^"
+#define LA_OPERATORS       "=+-!/*%<>&|^:"
 
 #define MALLOCED_STRING_STATE         (1 << 0)
 #define LOOP_STATE                    (1 << 1)
@@ -203,7 +203,8 @@
 #define TOKEN_ASSIGN_XOR  1008
 #define TOKEN_PLUS_PLUS   1009
 #define TOKEN_MINUS_MINUS 1010
-#define TOKEN_ASSIGN_LAST_VAL TOKEN_MINUS_MINUS
+#define TOKEN_REASSIGN    1011
+#define TOKEN_ASSIGN_LAST_VAL TOKEN_REASSIGN
 
 #define LIST_APPEND       1
 #define LIST_PREPEND      0
@@ -2960,8 +2961,14 @@ static int la_do_next_token (la_t *this, int israw) {
     if (TOKENSYM) {
       TOKEN = TOKENSYM->type;
       TOKENVAL = TOKENSYM->value;
-    } else
+    } else {
+      if (c is TOKEN_COLON) {
+        TOKEN = c;
+        return TOKEN;
+      }
+
       TOKEN = TOKEN_SYNTAX_ERR;
+    }
 
     return TOKEN;
   }
@@ -7342,6 +7349,14 @@ static int la_parse_stmt (la_t *this) {
         THROW_SYNTAX_ERR_IFNOT(symbol->value.type is NULL_TYPE,
           "can not reassign to a constant");
 
+      if (token is TOKEN_REASSIGN) {
+        symbol->value.sym = NULL; // let the function to handle resources
+        err = la_parse_chain (this, &symbol->value);
+        THROW_ERR_IF_ERR(err);
+        symbol->value.sym = symbol;
+        return LA_OK;
+      }
+
       NEXT_TOKEN();
 
       int is_un = TOKEN is TOKEN_UNARY;
@@ -11436,6 +11451,7 @@ static struct def {
   { "&=",      TOKEN_ASSIGN_AND,  NULL_VALUE },
   { "|=",      TOKEN_ASSIGN_BAR,  NULL_VALUE },
   { "^=",      TOKEN_ASSIGN_XOR,  NULL_VALUE },
+  { ":=",      TOKEN_REASSIGN,    NULL_VALUE },
   { "++",      TOKEN_PLUS_PLUS,   NULL_VALUE },
   { "--",      TOKEN_MINUS_MINUS, NULL_VALUE },
   { "NullType",    INTEGER_TYPE,  INT(NULL_TYPE) },

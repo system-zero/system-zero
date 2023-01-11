@@ -1,0 +1,12 @@
+#@
+  build_from ("v", "vwm", ALL)
+  depends_on ("V", LIBRARY)
+#
+var m = New Make (__file__, EXECUTABLE; z_app)
+
+m.set.shared.executable.to_linkagainst (["argparse", "vui"]; append_version)
+m.set.static.executable.to_linkagainst (["vwm", "la", "sys",
+  "vmap", "imap", "smap", "io", "dir", "path", "term", "file",
+  "error", "os", "random", "string", "vstring", "cstring", "ustring",
+  "readline", "argparse", "vui", "video"]; append_version)
+return m

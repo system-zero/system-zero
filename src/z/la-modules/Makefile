@@ -39,7 +39,7 @@ clean-shared: clean-path-shared clean-file-shared clean-std-shared\
               clean-net-shared
 
 #-----------------------------------------------------------
-MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -g -O2 -fPIC
+MOD_FLAGS = -L$(SYSLIBDIR) -L$(SYSZLIBDIR) -I$(SYSINCDIR) -Wl,-rpath=$(SYSZLIBDIR) -g -O2 -fPIC
 DEBUG_FLAGS   := -Wextra -Wshadow -Wall -Wunused-result -Wunused-function -Wunused-macros -Wno-override-init
 
 DEBUG := 0

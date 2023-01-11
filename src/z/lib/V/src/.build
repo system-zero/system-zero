@@ -17,7 +17,7 @@ var m = New Make (__file__, LIBRARY; z_library)
 
 m.set.library.to_linkagainst ([
   "vwm", "error", "string", "cstring", "vstring", "ustring",
-  "file", "dir", "path", "vmap", "la"]; append_version)
+  "file", "dir", "path", "vmap", "la", "argparse"]; append_version)
 m.set.library.to_linkagainst (["util"])
 
 return m

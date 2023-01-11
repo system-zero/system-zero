@@ -1068,9 +1068,6 @@ func self_semantics () {
   assert_true ("testing string byte iteration form",
       sum_i is 414 and  s_c is "asdf" and n_bytes is 4)
 
-  retval = __argc is 1
-  assert_equal ("testing __argc and __argv", __argv[0], "src/data/semantics/language/l-semantics.lai")
-
   assert_equal_msg ("testing __func__",
       format ("awaiting |assert_equal_msg|, got |${%s, __func__}|"),
       __func__, "assert_equal_msg")
@@ -1329,6 +1326,10 @@ func self_semantics () {
       assert_true ("testing the advance_after_bytes method",
         stre is "ok")
 
+      var strf = "asdf"
+      var strg = String.delete_substr (strf, "sdf")
+      assert_true ("testing the delete_substr method", strg is "a")
+
       assert_true ("testing the to_upper method",
           String.to_upper ("uPper") is "UPPER")
 
@@ -1526,6 +1527,10 @@ func self_semantics () {
   }
 
   import_test ()
+
+  var farg = Dir.current(): path_concat (__argv[0])
+  assert_true ("testing __argc and __argv",
+      __argc is 1 and farg is __file__)
 
   func reassingment_and_multiline_assignments () {
     var s = {1 : 1}
@@ -2388,6 +2393,8 @@ func self_semantics () {
     var we = "asdf": if x:eq ("asdfg") then "ok" end
     var wa = ["a", "b", "c"]: if x[2] is "c" then "ok" end
     var wc = ["a", "b", "c"]: ifnot x[2] is "c" then "ok" end
+    var wd = "asdf"
+    wd := delete_substr ("sd")
 
     assert_true ("testing chained functions",
         wa is "ok" and
@@ -2412,7 +2419,8 @@ func self_semantics () {
         wu is "ok" and
         wv is 10 and
         ws is "notok" and
-        we is "asdf")
+        we is "asdf" and
+        wd is "af")
   }
 
   chains ()
