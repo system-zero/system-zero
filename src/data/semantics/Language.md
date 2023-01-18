@@ -101,10 +101,8 @@ Comments.
     [Note about the significant whitespace:
       while it is mostly about a free form syntax  (we appreciate indentation and
       it is practiced rigorously in our code (in C and in our language), there is
-      not enforcement: but we might use them to denote blocks in future, since is
-      about consistency also and should be rewarded with a way - as this is about
-      readability and crystal clear expression of the underlying intention (well
-      almost boring and expected expression actually)]
+      not any kind of enforcement: but we might use them to denote blocks in future,
+      since consistency should be rewarded with a way
 
   Multiline comments that start with '##[', and end up with '##]'. Those can nest.
 
@@ -171,8 +169,8 @@ Comments.
 
   const cv
 
-  # has the value of null and can be assigned. From that point though it can not
-  # be modified.
+  # has the value of null and can be assigned. From that assignment point though it
+  # can not be modified.
 
 
   # The following is a function declaration. Functions and function arguments
@@ -1270,6 +1268,7 @@ Probably this will be a very messy output."
     # IntegerType[] String.to_array (StringType str)
     # IntegerType   String.to_integer (StringType str)
     # StringType    String.byte_in_str (StringType str, IntegerType byte)
+    # StringType    String.delete_substr (StringType str, StringType substr)
     # StringType    String.advance_on_byte (StringType str, IntegerType c)
     # StringType    String.advance_after_bytes (StringType str, StringType bytes, IntegerType repeat)
     # StringType    String.trim_byte_at_end (StringType a, StringType b)

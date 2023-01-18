@@ -164,7 +164,7 @@ const COMPILE_ASSEMBLE      = 2
 const SHARED_TYPE       = 1
 const STATIC_TYPE       = 2
 
-const ARGPARSE          = null
+const ARGPARSE
 
         Type Make {
   private
@@ -345,9 +345,8 @@ const ARGPARSE          = null
     append "-Wall"                                   in this.cflags
     append "-Wno-override-init"                      in this.cflags
 
-    if this.cc is "clang" {
+    if this.cc is "clang" then
       append "-Wno-unused-command-line-argument"     in this.cflags
-    }
 
     if this.cc is "gcc" {
       append "-Wimplicit-fallthrough"                in this.cflags
@@ -473,6 +472,7 @@ const ARGPARSE          = null
       var base = base64_encode (v)
       this.recorded.$(v) = { mtime : st.st_mtime, base : base }
     }
+
     var v = this.specname
     var st = v: stat ()
     var base = base64_encode (v)
@@ -539,7 +539,7 @@ const ARGPARSE          = null
 
     var args = exec: concat_with ("args")
     if args: exists () then
-      copy (args, targetdir; verbose : this.verbose + 1, force : 1)
+      return notok if notok is copy (args, targetdir; verbose : this.verbose + 1, force : 1)
 
     var flags = exec: concat_with ("flags")
     if flags: exists () then
@@ -547,7 +547,7 @@ const ARGPARSE          = null
 
     var literal_args = exec: concat_with ("literal_args")
     if literal_args: exists () then
-      copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
+      return notok if notok is copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
   }
 
   endbuild : func (retval) {
@@ -572,6 +572,7 @@ const ARGPARSE          = null
       if this.local_env and (is_z_library or is_z_app or is_z_module) {
         var base_name = dir: dirname (): basename ()
         this.orig_name = base_name
+
         if is_z_app {
           name = base_name
           cap_name = (char (name[0] - ('a' - 'A')) + if name: len () > 1 then advance (name, 1) orelse ""
@@ -589,6 +590,8 @@ const ARGPARSE          = null
         this.orig_name = name
         cap_name = (char (name[0] - ('a' - 'A')) + if name: len () > 1 then advance (name, 1) orelse ""
       }
+    } else {
+      this.orig_name = name
     }
 
     this.name = name
@@ -695,6 +698,8 @@ const ARGPARSE          = null
       }
 
       r = copy (this.header.sources, to; verbose : this.verbose + 1, force : 1)
+      return notok if r is notok
+
       this.header.install = false
       return this.endbuild (r)
     }
@@ -740,7 +745,6 @@ const ARGPARSE          = null
 
         for v in sources {
           ifnot v: exists () then return this.error (v + " source doesn't exists")
-
 
           var read_fd = open (v, O_RDONLY, 0)
           if null is read_fd then return this.error ("unable to open() " + v)
@@ -802,7 +806,7 @@ const ARGPARSE          = null
 
           output = targets[idx++]
 
-          write_fd  = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
+          write_fd = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
           if null is write_fd then return this.error ("unable to open() " + output)
 
           this.script.executable.curoutput = output
@@ -1097,6 +1101,8 @@ const ARGPARSE          = null
         for v in this.cflags                     if v isnot null append " " + v in com
         for v in this.shared.module.cflags       if v isnot null append " " + v in com
         for v in this.shared.module.linkagainst  if v isnot null append " " + v in com
+
+        if this.rpath then append " -Wl,-rpath=" + this.libdir      in com
 
         append " -shared -fPIC" in com
         append " -lla -lstring -lvmap -lvstring" in com
@@ -1915,6 +1921,32 @@ const ARGPARSE          = null
 
 const DEPENDENCIES = {}
 func make_dependencies (f) {
+  func get_dep_dir (d) {
+    if d: exists () {
+      if d: isdirectory return d
+      return null
+    }
+
+    var p = d
+
+    var n = JSRCPKGDIR: concat_with(d)
+    ifnot n: exists () {
+      n = YSRCPKGDIR: concat_with (d)
+      ifnot n: exists () {
+        n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+        ifnot n: exists () {
+          n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
+          if 0 is n: exists () or ARGPARSE.results.shared_module {
+            n = ZSRCMODDIR: concat_with (d)
+            return null ifnot n: exists ()
+          }
+        }
+      }
+    }
+
+    return if n: isdirectory () then n orelse null
+  }
+
   func get_dep_spec (d) {
     var p = d
     ifnot d: exists () {
@@ -2021,16 +2053,57 @@ func make_dependencies (f) {
     return ok ifnot len (s)
 
     func depends_on (dep, targets) {
-      ifnot null is dep {
-        for k, v in Dependencies {
-          for d in v.deps
-            if dep is d then return append_target (d, targets)
+      if null is dep return ok
+
+      for k, v in Dependencies {
+        for d in v.deps {
+          if dep is d {
+            __retval = append_target (d, targets)
+            return __retval
+          }
         }
-
-        append dep in Dependencies.$(file).deps
-
-        return notok if notok is append_target (dep, targets)
       }
+
+      append dep in Dependencies.$(file).deps
+
+      return notok if notok is append_target (dep, targets)
+    }
+
+    func build_from (base, subdir, targets) {
+      if null is base or null is subdir return ok
+      var spec = get_dep_dir (base)
+      if null is spec {
+        println (stderr, "${base}: namespace hasn't been found")
+        __retval = notok
+        return __retval
+      }
+
+      var n = spec: concat_with (subdir)
+
+      ifnot n: exists () {
+        println (stderr, "${n}: doesn't exists")
+         __retval = notok
+         return __retval
+      }
+
+      ifnot n: isdirectory () {
+        println (stderr, "${n}: is not a directoty")
+         __retval = notok
+         return __retval
+      }
+
+      spec = n: concat_with (CUR_SPECNAME): realpath ()
+
+      ifnot spec: exists ()
+        spec = n: concat_with (PLATFORM + CUR_SPECNAME): realpath ()
+
+      if spec is null or 0 is spec: exists () {
+        println (stderr, "${spec}: doesn't exists")
+        __retval = notok
+        return __retval
+      }
+
+      return depends_on (spec, targets)
     }
 
     return notok if notok is eval (an)
@@ -2162,6 +2235,7 @@ func make_dependencies (f) {
     init_argparse_results (DEPENDENCIES.$(v).targets, is_the_last)
 
     var r = ok
+
     var s = evalfile (v)
 
     if null is s {
@@ -2170,7 +2244,7 @@ func make_dependencies (f) {
     } else {
       ifnot s.get.targets () is IGNORE then
         println ("# Making: [\e[33m ${s.get.orig_name ()} \e[m]")
-      r =  s.main ()
+      r = s.main ()
     }
 
     if r isnot ok then println (" \e[31mfailed\e[m")

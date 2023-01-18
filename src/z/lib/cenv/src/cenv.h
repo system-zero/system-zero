@@ -393,23 +393,26 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 #endif /* VA_ARGS_GET_FMT_STR */
 
 /* deprecated as gcc-12.2.0 raises a warning (with a right) */
-#ifndef STR_FMT_WITH_LEN
-#define STR_FMT_WITH_LEN(len_, fmt_, ...)                             \
-({                                                                    \
-  char buf_[len_];                                                    \
-  snprintf (buf_, len_, fmt_, __VA_ARGS__);                           \
-  buf_;                                                               \
-})
-#endif
+#if 0
+  #ifndef STR_FMT_WITH_LEN
+  #define STR_FMT_WITH_LEN(len_, fmt_, ...)                             \
+  ({                                                                    \
+    char buf_[len_];                                                    \
+    snprintf (buf_, len_, fmt_, __VA_ARGS__);                           \
+    buf_;                                                               \
+  })
+  #endif
 
-#ifndef STR_FMT
-#define STR_FMT(fmt_, ...)                                            \
-({                                                                    \
-  char buf_[MAXLEN_LINE];                                             \
-  snprintf (buf_, MAXLEN_LINE, fmt_, __VA_ARGS__);                    \
-  buf_;                                                               \
-})
+  #ifndef STR_FMT
+  #define STR_FMT(fmt_, ...)                                            \
+  ({                                                                    \
+    char buf_[MAXLEN_LINE];                                             \
+    snprintf (buf_, MAXLEN_LINE, fmt_, __VA_ARGS__);                    \
+    buf_;                                                               \
+  })
+  #endif
 #endif
+/* and removed the day of my uncle's celebration and my son's birthday */
 
 #ifndef STRING_FMT
 #define STRING_FMT(buf_, size_, fmt_, ...)                            \

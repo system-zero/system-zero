@@ -334,7 +334,6 @@ struct la_t {
   funT *function;
   funT *std;
   funT *datatypes;
-  funT *macros;
   funT *curScope;
   funT *private_maps;
 
@@ -865,9 +864,9 @@ static void la_restore_token_state (la_t *this, tokenState tokenstate) {
   TOKEN     = tokenstate.curToken;
   PREVTOKEN = tokenstate.prevToken;
   TOKENARGS = tokenstate.tokenArgs;
+  TOKENSTR  = tokenstate.tokenStr;
   TOKENVAL  = tokenstate.tokenVal;
   TOKENSYM  = tokenstate.tokenSym;
-  TOKENSTR  = tokenstate.tokenStr;
   PARSEPTR  = tokenstate.parsePtr;
 }
 
@@ -1271,7 +1270,7 @@ static VALUE la_get_qualifier (la_t *this, const char *key, VALUE v_defval) {
   while (it) {
     if (Cstring.eq (it->name, this->curCFunName)) {
       VALUE *v = (VALUE *) Vmap.get (it->qualifiers, key);
-      if (NULL is v)  return v_defval;
+      if (NULL is v) return v_defval;
       return *v;
     }
 
@@ -1385,7 +1384,8 @@ static VALUE list_release (la_t *this, VALUE v_list) {
   }
 
   free (list);
-  return OK_VALUE;
+  return OK_VALUE; // not really needed (only the test on null can be meaningfull here,
+                   // as it is dictated (at least for now) by the C_THROW macro)
 }
 
 static VALUE list_set (la_t *this, VALUE v_list, VALUE v_item, int what) {
@@ -1408,7 +1408,7 @@ static VALUE list_set (la_t *this, VALUE v_list, VALUE v_item, int what) {
   else
     DListPrepend(list, node);
 
-  return OK_VALUE;
+  return v_list;
 }
 
 static VALUE list_prepend (la_t *this, VALUE v_list, VALUE v_item) {
@@ -1445,7 +1445,8 @@ static VALUE list_insert_at (la_t *this, VALUE v_list, VALUE v_idx, VALUE v_v) {
   *vp = v;
   node->value = vp;
   DListInsertAt(list, node, idx);
-  return OK_VALUE;
+
+  return v_list;
 }
 
 static int la_parse_list_get (la_t *this, VALUE *vp) {
@@ -1593,25 +1594,48 @@ static int la_parse_list_set (la_t *this) {
 
   if (c is '=') {
     sym_t *sym = v_list.sym;
-    if (sym isnot NULL) {
-      sym->type = NULL_TYPE;
-      sym->value = NULL_VALUE;
-    }
+
+    THROW_SYNTAX_ERR_IF(sym is NULL, "unexpected error, variable is not associated with a symbol");
+    THROW_SYNTAX_ERR_IF(sym->is_const, "can not reassign a new value, to a constant declared list");
+    sym->type = NULL_TYPE;
+    sym->value = NULL_VALUE;
 
     this->curMsg[0] = '\0';
-    VALUE rv = list_release (this, v_list);
-    THROW_SYNTAX_ERR_FMT_IF(IS_NULL(rv), "%s\n", this->curMsg);
 
+    VALUE rv = la_release_val (this, v_list);
+    THROW_SYNTAX_ERR_FMT_IF(IS_NULL(rv), "%s\n", this->curMsg);
     return LA_MMT_REASSIGN;
   }
 
+  int err;
+
   NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_REASSIGN) {
+    VALUE v = v_list;
+    sym_t *sym = v.sym;
+    THROW_SYNTAX_ERR_IF(sym->is_const, "can not reassign a new value, to a constant declared list");
+
+    sym->value = v;
+
+    err = la_parse_chain (this, &v);
+    THROW_ERR_IF_ERR(err);
+
+    ifnot (v.refcount) // this condition almost? guarrantees that this is not our list
+      la_release_val (this, v_list); // so release it
+
+    v.refcount = 0;   // the chain function increments refcount, so zero it 
+    sym->value = v;
+    sym->type = v.type;
+    return err;
+  }
+
   THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_OPEN, "list set, awaiting [");
 
   NEXT_TOKEN();
 
   VALUE ix;
-  int err = la_parse_expr (this, &ix);
+  err = la_parse_expr (this, &ix);
   THROW_ERR_IF_ERR(err);
   THROW_SYNTAX_ERR_IF(ix.type isnot INTEGER_TYPE, "awaiting an integer expression, when getting list index");
   THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_INDEX_CLOS, "list set: awaiting ]");
@@ -1842,7 +1866,8 @@ static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
   la_release_val (this, *node->value);
   free (node->value);
   free (node);
-  return OK_VALUE;
+
+  return v_list;
 }
 
 static VALUE list_clear (la_t *this, VALUE v_list) {
@@ -1861,7 +1886,7 @@ static VALUE list_clear (la_t *this, VALUE v_list) {
     free (node);
   }
 
-  return OK_VALUE;
+  return v_list;
 }
 
 static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
@@ -3974,22 +3999,38 @@ static int la_parse_array_set (la_t *this) {
   if (c is '=') {
     VALUE v = TOKENVAL;
     sym_t *sym = v.sym;
-    if (sym isnot NULL) {
-      sym->type = NULL_TYPE;
-      sym->value = NULL_VALUE;
-    }
+
+    THROW_SYNTAX_ERR_IF(sym is NULL, "unexpected error, variable is not associated with a symbol");
+    THROW_SYNTAX_ERR_IF(sym->is_const, "can not reassign a new value, to a constant declared list");
+    sym->type = NULL_TYPE;
+    sym->value = NULL_VALUE;
 
     array_release (v);
 
     return LA_MMT_REASSIGN;
   }
 
-  VALUE ix = INT(0);
-
   VALUE ary = TOKENVAL;
 
   int err;
+
   NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_REASSIGN) {
+    VALUE v = ary;
+    sym_t *sym = v.sym;
+    THROW_SYNTAX_ERR_IF(sym->is_const, "can not reassign a new value, to a constant declared array");
+    ary.sym = NULL;
+    err = la_parse_chain (this, &ary);
+    THROW_ERR_IF_ERR(err);
+    ary.sym = sym;
+    sym->value = ary;
+    sym->type = ary.type;
+    return err;
+  }
+
+  VALUE ix = INT(0);
+
   c = TOKEN;
 
   VALUE last_ix = INT(-1);
@@ -5391,24 +5432,39 @@ static int la_parse_map_set (la_t *this) {
   if (c is '=') {
     VALUE v = TOKENVAL;
     sym_t *sym = v.sym;
-    if (sym isnot NULL) {
-      sym->type = NULL_TYPE;
-      sym->value = NULL_VALUE;
-    }
+    THROW_SYNTAX_ERR_IF(sym is NULL, "unexpected error, variable is not associated with a symbol");
+    THROW_SYNTAX_ERR_IF(sym->is_const, "can not reassign a new value, to a constant declared list");
+    sym->type = NULL_TYPE;
+    sym->value = NULL_VALUE;
 
     Vmap.release (map);
 
     return LA_MMT_REASSIGN;
   }
 
+  int err;
+
   NEXT_TOKEN();
+
+  if (TOKEN is TOKEN_REASSIGN) {
+    VALUE v = map_par;
+    sym_t *sym = v.sym;
+    THROW_SYNTAX_ERR_IF(sym->is_const, "can not reassign a new value, to a constant declared map");
+    map_par.sym = NULL;
+    err = la_parse_chain (this, &map_par);
+    THROW_ERR_IF_ERR(err);
+    sym->value = map_par;
+    map_par.sym = sym;
+    sym->type = map_par.type;
+    return err;
+  }
+
   c = TOKEN;
 
   if (c isnot TOKEN_DOT)
     THROW_SYNTAX_ERR("awaiting .");
 
   int submap = 0;
-  int err;
 
   redo: {}
   char key[MAXLEN_SYMBOL + 1];
@@ -7346,8 +7402,8 @@ static int la_parse_stmt (la_t *this) {
 
       int is_const = symbol->is_const;
       if (is_const)
-        THROW_SYNTAX_ERR_IFNOT(symbol->value.type is NULL_TYPE,
-          "can not reassign to a constant");
+          THROW_SYNTAX_ERR_IFNOT(symbol->value.type is NULL_TYPE,
+            "can not reassign a value to a constant declared symbol");
 
       if (token is TOKEN_REASSIGN) {
         symbol->value.sym = NULL; // let the function to handle resources
@@ -11919,7 +11975,6 @@ static void la_release (la_t **thisp) {
 
   fun_release (&this->function);
   fun_release (&this->datatypes);
-  fun_release (&this->macros);
   fun_release (&this->private_maps);
 
   la_release_stdns (this);
@@ -12152,9 +12207,6 @@ static int la_init (la_T *interp, la_t *this, la_opts opts) {
 
   this->datatypes = fun_new (
       funNew (.name = "__types__", .namelen = 9, .num_symbols = 256));
-
-  this->macros = fun_new (
-      funNew (.name = "__macros__", .namelen = 10, .num_symbols = 256));
 
   Fun_new (this,
       funNew (.name = NS_GLOBAL, .namelen = NS_GLOBAL_LEN, .num_symbols = 256));

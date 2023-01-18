@@ -1532,23 +1532,23 @@ func self_semantics () {
   assert_true ("testing __argc and __argv",
       __argc is 1 and farg is __file__)
 
-  func reassingment_and_multiline_assignments () {
+  func reassignment_and_multiline_assignments () {
     var s = {1 : 1}
 
     s = 2
-    assert_true ("testing reassingment map to integer", s is 2)
+    assert_true ("testing reassignment map to integer", s is 2)
 
     s = {k : 3}
-    assert_true ("testing reassingment integer to map", s.k is 3)
+    assert_true ("testing reassignment integer to map", s.k is 3)
 
     s = [4]
-    assert_true ("testing reassingment map to array", s[0] is 4)
+    assert_true ("testing reassignment map to array", s[0] is 4)
 
     s = "string"
-    assert_true ("testing reassingment array to string", s is "string")
+    assert_true ("testing reassignment array to string", s is "string")
 
     s = {k : "stringkey"}
-    assert_true ("testing reassingment string to map", s.k is "stringkey")
+    assert_true ("testing reassignment string to map", s.k is "stringkey")
 
     var v1 = 1, v2 = 2, v3 = "s", v4 = null,
         v5 = 5, v6 = 6,
@@ -1559,7 +1559,7 @@ func self_semantics () {
         v6 is 6 and v7 is 7)
   }
 
-  reassingment_and_multiline_assignments ()
+  reassignment_and_multiline_assignments ()
 
   func integers () {
     assert_true ("testing integers in hexadecimal/octal/binary notation",
@@ -1957,6 +1957,12 @@ func self_semantics () {
         axc is "c" and
         axd is "d" and
         axe is "e")
+
+    var av = ["z", "b", "x"]
+    av := sort (): len ()
+    av = "reassignment"
+    assert_true ("testing array reassignment",
+        av is "reassignment")
   }
 
   test_array (10)
@@ -2138,7 +2144,7 @@ func self_semantics () {
          return xx.da
        }
 
-     assert_true ("testing map reassingment",
+     assert_true ("testing map reassignment",
        a () is "DA" and
       mm.da is "DA")
 
@@ -2196,7 +2202,7 @@ func self_semantics () {
 
     var marray = { ar : [0, 1, 2] }
     manip (marray.ar)
-    assert_true ("testing manipulate a map array field, through a function call",
+    assert_true ("testing manipulation of a map array field, through a function call",
     marray.ar: len () is 4 and
     marray.ar[-1] is 3)
   }
@@ -2204,7 +2210,7 @@ func self_semantics () {
   test_maps ()
 
   func test_lists () {
-    var l = {[]}
+    const l = {[]}
     list_append (l, 21)
     list_append (l, "12")
     list_prepend(l, 1)
@@ -2221,17 +2227,26 @@ func self_semantics () {
       if typeof (v) is IntegerType then append v in sum
     }
 
-    var sa = l: pop_at (1)
-    var e = l[0]
+   const sa = l: pop_at (1)
+   const e = l[0]
 
-    var lal = {[10, "str"]}
+    const lal = {[10, "str"]}
     lal[0] += 100
     lal[1] += "ing"
     var lala = lal[1] + "igy"
-    var lla = {[10]}
+    const lla = {[10]}
     lla[0] *= 2
     lla[0] /= 5
-    var llaa = ++lla[0]
+    const llaa = ++lla[0]
+
+    var lola = {["reassignment"]}
+    var s = typeof(lola)
+
+    lola := pop_at (0)
+    lola = "reassignment"
+
+    var lolo = {[1]}
+    lolo = 11
 
     assert_true ("testing lists",
         llaa is 5 and
@@ -2244,9 +2259,11 @@ func self_semantics () {
         typeof (sa) is ArrayType and
         typeof (e) is StringType and
         typeof (l[0]) is StringType and
-        e is "two")
+        e is "two" and
+        lola is "reassignment" and
+        lolo is 11)
 
-    var la = {[1, "one"]}
+    const la = {[1, "one"]}
     var la_l = la: len ()
     var laa_l = {[1, "one"]}: len ()
 
@@ -2395,6 +2412,11 @@ func self_semantics () {
     var wc = ["a", "b", "c"]: ifnot x[2] is "c" then "ok" end
     var wd = "asdf"
     wd := delete_substr ("sd")
+    var av = ["z", "b", "x"]
+    av := sort ()
+    var mv = {x, a, b}
+    mv := keys (): sort ()
+    mv = "reassignment"
 
     assert_true ("testing chained functions",
         wa is "ok" and
@@ -2420,7 +2442,9 @@ func self_semantics () {
         wv is 10 and
         ws is "notok" and
         we is "asdf" and
-        wd is "af")
+        wd is "af" and
+        av[0] is "b" and av[1] is "x" and av[2] is "z" and
+        mv is "reassignment")
   }
 
   chains ()
