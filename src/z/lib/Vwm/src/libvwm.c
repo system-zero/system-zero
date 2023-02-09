@@ -956,11 +956,6 @@ static int vt_video_line_to_str (int *line, char *buf, int len) {
   return idx;
 }
 
-static void vt_write (char *buf, FILE *fp) {
-  fprintf (fp, "%s", buf);
-  fflush (fp);
-}
-
 static string_t *vt_insline (string_t *buf, int num) {
   return String.append_with_fmt (buf, "\033[%dL", num);
 }
@@ -2362,7 +2357,7 @@ static void win_set_frame (vwm_win *this, vwm_frame *frame) {
         vt_altcharset (frame->render, i, frame->charset[i]);
   }
 
-  vt_write (frame->render->bytes, stdout);
+  IO.fd.write (1, frame->render->bytes, frame->render->num_bytes);
 }
 
 static void frame_process_output (vwm_frame *this, char *buf, int len) {
@@ -2376,7 +2371,7 @@ static void frame_process_output_cb (vwm_frame *this, char *buf, int len) {
   while (len--)
     this->process_char_cb (this, this->render, (uchar) *buf++);
 
-  vt_write (this->render->bytes, stdout);
+  IO.fd.write (1, this->render->bytes, this->render->num_bytes);
 }
 #else
 static void frame_process_output_cb (vwm_frame *this, char *buf, int len) {
@@ -2411,7 +2406,8 @@ proceed:
 
   fflush (fout);
 
-  vt_write (this->render->bytes, stdout);
+  IO.fd.write (1, this->render-bytes, this->render->num_bytes);
+
 }
 #endif /* DEBUG */
 
@@ -2594,7 +2590,7 @@ static void frame_clear (vwm_frame *this, int state) {
     if (this->logfd isnot -1)
       ftruncate (this->logfd, 0);
 
-  vt_write (render->bytes, stdout);
+  IO.fd.write (1, render->bytes, render->num_bytes);
 }
 
 static int frame_check_pid (vwm_frame *this) {
@@ -2994,7 +2990,8 @@ static int win_set_separators (vwm_win *this, int draw) {
   }
 
   if (DRAW is draw)
-    vt_write (this->separators_buf->bytes, stdout);
+    IO.fd.write (1, this->separators_buf->bytes,
+                    this->separators_buf->num_bytes);
 
   return OK;
 }
@@ -3086,7 +3083,7 @@ static void win_draw (vwm_win *this) {
   frame = this->current;
   vt_goto (render, frame->row_pos + frame->first_row - 1, frame->col_pos);
 
-  vt_write (render->bytes, stdout);
+  IO.fd.write (1, render->bytes, render->num_bytes);
 }
 
 static void win_on_resize (vwm_win *this, int draw) {

@@ -1,9 +1,12 @@
 // provides: int vsnprintf (char *, size_t, const char *, va_list)
+// requires: std/stdarg.h
+// requires: string/strlen.c
+// requires: ctype/toupper.c
 
 // Copyright (C) 2019 Miroslaw Toton, mirtoto@gmail.com
 // License should be included within the source directory of this unit
 
-#include <stdint.h>
+//#include <stdint.h>
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -433,7 +436,7 @@ static void decimal(struct DATA *p, long long ll) {
   inttoa(ll, *p->pf == 'i' || *p->pf == 'd', p->precision, 10,
     number, sizeof(number));
 
-  p->width -= STRING_BYTELEN(number);
+  p->width -= bytelen(number);
   PAD_RIGHT(p);
 
   PUT_PLUS(ll, p);
@@ -451,7 +454,7 @@ static void octal(struct DATA *p, long long ll) {
   char number[MAX_INTEGRAL_SIZE], *pnumber = number;
   inttoa(ll, 0, p->precision, 8, number, sizeof(number));
 
-  p->width -= STRING_BYTELEN(number);
+  p->width -= bytelen(number);
   PAD_RIGHT(p);
 
   if (p->is_square && *number != '\0') { /* prefix '0' for octal */
@@ -470,7 +473,7 @@ static void hex(struct DATA *p, long long ll) {
   char number[MAX_INTEGRAL_SIZE], *pnumber = number;
   inttoa(ll, 0, p->precision, 16, number, sizeof(number));
 
-  p->width -= STRING_BYTELEN(number);
+  p->width -= bytelen(number);
   PAD_RIGHT(p);
 
   if (p->is_square && *number != '\0') { /* prefix '0x' for hex */
@@ -479,7 +482,7 @@ static void hex(struct DATA *p, long long ll) {
   }
 
   for (; *pnumber != '\0'; pnumber++) {
-    PUT_CHAR((*p->pf == 'X' ? (char)TO_UPPER(*pnumber) : *pnumber), p);
+    PUT_CHAR((*p->pf == 'X' ? (char)toupper(*pnumber) : *pnumber), p);
   }
 
   PAD_LEFT(p);
@@ -487,7 +490,7 @@ static void hex(struct DATA *p, long long ll) {
 
 /** Format @p str string according to @p p flags. */
 static void strings(struct DATA *p, const char *s) {
-  int len = (int)STRING_BYTELEN(s);
+  int len = (int)bytelen(s);
   if (p->precision != PRECISION_UNSET && len > p->precision) { /* the smallest number */
     len = p->precision;
   }
@@ -519,7 +522,7 @@ static void floating(struct DATA *p, double d) {
   if (d > 0. && p->align == ALIGN_RIGHT) {
     p->width -= 1;
   }
-  p->width -= p->is_space + (int)STRING_BYTELEN(integral) + p->precision + 1;
+  p->width -= p->is_space + (int)bytelen(integral) + p->precision + 1;
   if (p->precision == 0) {
     p->width += 1;
   }
@@ -538,7 +541,7 @@ static void floating(struct DATA *p, double d) {
 
   if (*p->pf == 'g' || *p->pf == 'G') { /* smash the trailing zeros */
     size_t i;
-    for (i = STRING_BYTELEN(fraction); i > 0 && fraction[i - 1] == '0'; i--) {
+    for (i = bytelen(fraction); i > 0 && fraction[i - 1] == '0'; i--) {
       fraction[i - 1] = '\0';
     }
   }
@@ -585,7 +588,7 @@ static void exponent(struct DATA *p, double d) {
 
   if (*p->pf == 'g' || *p->pf == 'G') { /* smash the trailing zeros */
     size_t i;
-    for (i = STRING_BYTELEN(fraction); i > 0 && fraction[i - 1] == '0'; i--) {
+    for (i = bytelen(fraction); i > 0 && fraction[i - 1] == '0'; i--) {
       fraction[i - 1] = '\0';
     }
   }

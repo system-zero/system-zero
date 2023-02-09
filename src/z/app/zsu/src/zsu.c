@@ -54,7 +54,14 @@ int main (int argc, char **argv) {
   int nargc = 0;
   for (int i = 0; i < argc; i++) {
     if (Cstring.eq_n (argv[i], "--chdir=", 8)) {
-      Cstring.cp (dir, MAXLEN_DIR, argv[i] + 8, MAXLEN_DIR);
+      size_t len = bytelen (argv[i]) - 8;
+      if (len >= MAXLEN_DIR) {
+        Stderr.print_fmt ("%s length (%d): exceeded maximum length (%d)\n",
+           argv[i] + 8, len, MAXLEN_DIR - 1);
+        return 1;
+      }
+
+      Cstring.cp (dir, MAXLEN_DIR, argv[i] + 8, len);
       continue;
     }
 
@@ -224,18 +231,30 @@ stat_again:
     }
   }
 
-  if (dir[0]) chdir (dir);
+  if (dir[0]) {
+    if (-1 is chdir (dir)) {
+      Stderr.print_fmt ("%s: failed to change directory, %s\n",
+          dir, Error.errno_string (errno));
+      goto theend;
+    }
+  }
 
-    #ifdef OPEN_MAX
+#ifdef OPEN_MAX
   int maxfd = OPEN_MAX;
-    #else
+#else
   int maxfd = sysconf (_SC_OPEN_MAX);
-    #endif
+#endif
 
   for (int fd = STDERR_FILENO + 1; fd < maxfd; fd++) {
     errno = 0;
-    if (close (fd) is -1 and errno is EBADF)
-      break;
+    if (-1 is close (fd)) {
+      if (errno is EBADF)
+        break;
+
+      Stderr.print_fmt ("%d: failed to close file descriptor, %s\n",
+          fd, Error.errno_string (errno));
+      goto theend;
+    }
   }
 
   proc_t *this = Proc.new ();

@@ -1,5 +1,5 @@
-// provides: long sys_execve (const char *, const char **, char **)
+// provides: long execve (const char *, char *const *, char **)
 
-long sys_execve (const char* exe, const char **argv, char **envp) {
+long execve (const char* exe, char *const *argv, char **envp) {
   return syscall3 (NR_execve, (long) exe, (long) argv, (long) envp);
 }

@@ -1,9 +1,6 @@
-// provides: long sys_fork (void)
+// provides: long fork (void)
+// requires: signal/signal.h
 
-#ifndef SIGCHLD
-#define SIGCHLD 17
-#endif
-
-long sys_fork (void) {
+long fork (void) {
   return syscall5 (NR_clone, SIGCHLD, 0, 0, 0, 0);
 }

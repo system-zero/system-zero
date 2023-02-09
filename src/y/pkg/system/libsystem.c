@@ -1,8 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
+//#include <stdio.h>
+//#include <stdlib.h>
 
 #define REQUIRE_FILE_EXISTS
 #define REQUIRE_STRLEN
+#define REQUIRE_SNPRINTF
+#define REQUIRE_SYSTEM
+
 #include "../../../zlibc/zlibc.c"
 
 #include <system.h>
@@ -23,7 +26,7 @@ int init_system (system_t *this, const char *file) {
   if (NULL is file) return -1;
   ifnot (file_exists (file)) return -1;
   this->power_state_filelen = bytelen (file);
-  this->power_state_file = malloc (this->power_state_filelen + 1);
+ // this->power_state_file = malloc (this->power_state_filelen + 1);
   snprintf (this->power_state_file, this->power_state_filelen + 1, "%s", file);
   return 0;
 }

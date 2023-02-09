@@ -2,7 +2,7 @@
 #define SYSTEM_HDR
 
 typedef struct system_t {
-  char *power_state_file;
+  char power_state_file[MAXLEN_PATH];
   size_t power_state_filelen;
 } system_t;
 

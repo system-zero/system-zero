@@ -14,7 +14,6 @@ static VALUE system_to_memory (la_t *this) {
   const char state[] = "/sys/power/state";
   if (-1 == init_system (&s, state)) return NOTOK_VALUE;
   int r = sys_to_memory_linux (&s);
-  free (s.power_state_file);
   return (r == -1 ? NOTOK_VALUE : OK_VALUE);
 }
 

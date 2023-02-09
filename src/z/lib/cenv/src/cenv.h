@@ -141,6 +141,10 @@ typedef unsigned long ulong;
 #define PATH_MAX 4096  /* bytes in a path name */
 #endif
 
+#ifndef OPEN_MAX
+#define OPEN_MAX 1024
+#endif
+
 /* for consistency and fulfill expectations and be kind with
  * the human memory, we'll try to impose MAXLEN_* as prefix
  * to all those common macros */
