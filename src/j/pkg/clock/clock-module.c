@@ -3,9 +3,9 @@
 #define REQUIRE_OPEN
 #define REQUIRE_CLOSE
 #define REQUIRE_IOCTL
-#define REQUIRE_Z_TYPES
+#define REQUIRE_Z_ENV
 
-#include "../../../zlibc/zlibc.c"
+#include <libc.h>
 
 MODULE(clock);
 

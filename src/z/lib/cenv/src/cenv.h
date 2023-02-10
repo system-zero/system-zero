@@ -1795,9 +1795,6 @@ do {                             \
 
   #define COLOR_BOX         COLOR_YELLOW
 
-  // deprecated as gcc-12.2.0 raises rightly a warning
-  #define TERM_MAKE_COLOR(clr) \
-  ({char b__[8];snprintf (b__, 8, TERM_SET_COLOR_FMT, (clr));b__;})
   #define TERM_SEND_ESC_SEQ(seq_) IO.fd.write (this->out_fd, seq_, seq_ ## _LEN)
   #define SEND_ESC_SEQ(fd_, seq_) IO.fd.write ((fd_), seq_, seq_ ## _LEN)
 

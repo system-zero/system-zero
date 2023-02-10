@@ -8,7 +8,7 @@
 #define REQUIRE_READ
 #define REQUIRE_ACCESS
 
-#include "../../../zlibc/zlibc.c"
+#include <libc.h>
 
 #include <z/filetype.h>
 

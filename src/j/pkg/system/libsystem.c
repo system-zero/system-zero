@@ -1,12 +1,10 @@
-//#include <stdio.h>
-//#include <stdlib.h>
 
 #define REQUIRE_FILE_EXISTS
 #define REQUIRE_STRLEN
 #define REQUIRE_SNPRINTF
 #define REQUIRE_SYSTEM
 
-#include "../../../zlibc/zlibc.c"
+#include <libc.h>
 
 #include <system.h>
 

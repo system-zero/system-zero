@@ -1,6 +1,5 @@
 ```C
-/* This is an oversimplified tiny libc for x86 and x86_64. The underlying
- * development name is zlibc.
+/* This is an oversimplified tiny libc for x86 and x86_64.
  *
  * It is based on syscalls and it is meant just for a primitive and
  * straight forward way to execute some code, without any intermediator.
@@ -25,7 +24,7 @@ I also heavily looked (or got code from them) at the following libc implementati
 
 Their licenses should be lying withing the Licenses directory except from neatlibc
 that has no license attached at it's repo. And as it is my primary source from
-many years now, eitther as looking around those admirable projects by the same
+many years now, either by looking around those admirable projects by the same
 author, or because I got a way too much from this tiny libc, it deserves a special
 treatmeant here.
 

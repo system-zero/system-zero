@@ -73,6 +73,9 @@ GROUPNAME := $(shell id -gn)
 HOME      := $(HOME)
 TERM      := $(TERM)
 
+CURPATH    = $(PATH)
+PATH      := $(SYSBINDIR):$(CURPATH)
+
 #-----------------------------------------------#
 #             zero namespace
 

@@ -49,7 +49,7 @@
 #define public  __attribute__ ((visibility ("default")))
 #define UNUSED  __attribute__ ((unused))
 
-#ifdef REQUIRE_Z_TYPES
+#ifdef REQUIRE_Z_ENV
 
 #ifndef DECLARE
 #define DECLARE 1
@@ -947,8 +947,6 @@ do {                             \
 
   #define COLOR_BOX         COLOR_YELLOW
 
-  #define TERM_MAKE_COLOR(clr) \
-  ({char b__[8];snprintf (b__, 8, TERM_SET_COLOR_FMT, (clr));b__;})
   #define TERM_SEND_ESC_SEQ(seq_) IO.fd.write (this->out_fd, seq_, seq_ ## _LEN)
   #define SEND_ESC_SEQ(fd_, seq_) IO.fd.write ((fd_), seq_, seq_ ## _LEN)
 
@@ -1253,4 +1251,4 @@ do {                             \
     return 1;          \
   }
 
-#endif /* REQUIRE_Z_TYPES */
+#endif /* REQUIRE_Z_ENV */

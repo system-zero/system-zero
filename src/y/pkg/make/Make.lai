@@ -118,8 +118,8 @@ const ZMODDIR           = ZLIBDIR: concat_with ("la-modules")
 const YLIBDIR           = LIBDIR:  concat_with (Y)
 const YINCDIR           = INCDIR:  concat_with (Y)
 const YMODDIR           = YLIBDIR: concat_with ("l-modules")
-const LIBCDEFNAME       = "zlibc"
-const LIBCDEFDIR        = SRCDIR:  concat_with (LIBCDEFNAME)
+const LIBCDEFNAME       = "libc"
+const LIBCDEFDIR        = ZINCDIR
 const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
 const RPATH             = true
@@ -1300,7 +1300,8 @@ const ARGPARSE
 
       this.libc.force = ARGPARSE.results.force
 
-      var output = LIBCDEFDIR: concat_with (LIBCDEFNAME + ".c")
+      var output = LIBCDEFDIR: concat_with (LIBCDEFNAME + ".h")
+        println (output)
       var r = this.should_make (output, this.libc.sources, this.libc.force)
 
       return notok if r is notok

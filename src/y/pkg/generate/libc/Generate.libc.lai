@@ -24,13 +24,14 @@ include ("argparse")
   Y           = "y",
   PKG         = "pkg",
   LIBCSRCNAME = "libc",
-  LIBCOUTNAME = "zlibc",
+  LIBCOUTNAME = "libc",
   SRCDIR      = Sys.get ("SRCDIR"),
+  SYSDIR      = Sys.get ("SYSDIR"),
   YSRCDIR     = SRCDIR: concat_with (Y),
   YPKGDIR     = YSRCDIR: concat_with (PKG),
   LIBCDIR     = YPKGDIR: concat_with (LIBCSRCNAME),
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
-  LIBCOUTDIR  =  SRCDIR: concat_with (LIBCOUTNAME)
+  LIBCOUTDIR  =  SYSDIR: concat_with ("include/z")
 
   const string[14] libcdirs = [
     "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
@@ -70,9 +71,9 @@ include ("argparse")
   ifnot outputDir: file_exists () then mkdir (outputDir, 0755; verbose : verbose)
   ifnot outputDir: is_directory () then return error (outputDir + ": is not a directory")
 
-  var outputFile  = outputDir: concat_with (outputName + ".c")
-  var licenceFile = outputDir: concat_with ("LICENSES")
-  var commentFile = outputDir: concat_with ("comments")
+  var outputFile  = outputDir: concat_with (outputName + ".h")
+  var licenceFile = outputDir: concat_with ("Licenses_libc")
+  var commentFile = outputDir: concat_with ("Comments_libc")
 
   var dotsToLibc = func (d) {
     var def = LIBCSRCDIR

@@ -30,7 +30,7 @@ packman: Env install-data
 	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/specs  || $(MKDIR) $(SYSDATADIR)/$(NAME)/specs
 	@$(CP) specs/*    $(SYSDATADIR)/$(NAME)/specs
 	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/data   || $(MKDIR) $(SYSDATADIR)/$(NAME)/data
-	@$(CP_R)  data/*  $(SYSDATADIR)/$(NAME)/data
+	@$(TEST) ! -d data || $(CP_R)  data/*  $(SYSDATADIR)/$(NAME)/data
 	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/db     || $(MKDIR) $(SYSDATADIR)/$(NAME)/db
 
 clean:

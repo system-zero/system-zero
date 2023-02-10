@@ -108,6 +108,9 @@ m.set.libc.source ([
   "libc/signal/sigaction.h",
   "libc/signal/sigprocmask.c",
   "libc/signal/sigset.h",
+  "libc/signal/signal.h",
+  "libc/signal/sigemptyset.c",
+  "libc/signal/sigaddset.c",
   "libc/std/environ.h",
   "libc/std/errno.h",
   "libc/std/stdarg.h",
@@ -115,6 +118,9 @@ m.set.libc.source ([
   "libc/std/zenv.h",
   "libc/stdlib/alloc.c",
   "libc/stdlib/atoi.c",
+  "libc/stdlib/_exit.c",
+  "libc/stdlib/qsort.c",
+  "libc/stdlib/system.c",
   "libc/stdlib/getenv.c",
   "libc/string/memcpy.c",
   "libc/string/memset.c",
@@ -141,6 +147,10 @@ m.set.libc.source ([
   "libc/sys/stat.h",
   "libc/sys/types.h",
   "libc/sys/waitpid.c",
+  "libc/sys/sysinfo.c",
+  "libc/sys/sysinfo.h",
+  "libc/sys/uname.c",
+  "libc/sys/uname.h",
   "libc/syscall/syscall.c",
   "libc/time/gettimeofday.c",
   "libc/time/localtime.c",
@@ -176,6 +186,7 @@ m.set.libc.source ([
   "libc/ustring/ustring_character.c",
   "libc/ustring/ustring_charlen.c",
   "libc/ustring/ustring_validate.c",
-  "libc/ustring/ustring_case.c"])
+  "libc/ustring/ustring_case.c",
+  "libc/file/exists.c"])
 
 return m
