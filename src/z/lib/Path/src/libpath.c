@@ -152,13 +152,13 @@ static int path_is_absolute (const char *path) {
  * SUCH DAMAGE.
  */
 
-static char *path_real (const char *path, char resolved[PATH_MAX]) {
+static char *path_real (const char *path, char resolved[MAXLEN_PATH]) {
   struct stat sb;
   char *p, *q, *s;
   size_t left_len, resolved_len;
   unsigned symlinks;
   int serrno, slen;
-  char left[PATH_MAX], next_token[PATH_MAX], symlink[PATH_MAX];
+  char left[MAXLEN_PATH], next_token[MAXLEN_PATH], symlink[MAXLEN_PATH];
 
   serrno = errno;
   symlinks = 0;
@@ -171,19 +171,19 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
       return (resolved);
 
     resolved_len = 1;
-    left_len = Cstring.cp (left, PATH_MAX, path + 1, PATH_MAX - 1);
+    left_len = Cstring.cp (left, MAXLEN_PATH, path + 1, MAXLEN_PATH - 1);
   } else {
-    if (getcwd (resolved, PATH_MAX) is NULL) {
+    if (getcwd (resolved, MAXLEN_PATH) is NULL) {
       errno = ECANNOTGETCWD;
-      Cstring.cp (resolved, PATH_MAX,  ".", 1);
+      Cstring.cp (resolved, MAXLEN_PATH,  ".", 1);
       return NULL;
     }
 
     resolved_len = bytelen (resolved);
-    left_len = Cstring.cp (left, PATH_MAX, path, PATH_MAX -1);
+    left_len = Cstring.cp (left, MAXLEN_PATH, path, MAXLEN_PATH -1);
   }
 
-  if (left_len >= PATH_MAX or resolved_len >= PATH_MAX) {
+  if (left_len >= MAXLEN_PATH or resolved_len >= MAXLEN_PATH) {
     errno = ENAMETOOLONG;
     return NULL;
   }
@@ -194,7 +194,7 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
     p = Cstring.byte.in_str (left, '/');
     s = p ? p : left + left_len;
 
-    if (s - left >= PATH_MAX) {
+    if (s - left >= MAXLEN_PATH) {
       errno = ENAMETOOLONG;
       return NULL;
     }
@@ -213,10 +213,10 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
     left_len -= s - left;
 
     if (p isnot NULL)
-      Cstring.byte.mv (left, PATH_MAX, 0, s + 1 - left, left_len + 1);
+      Cstring.byte.mv (left, MAXLEN_PATH, 0, s + 1 - left, left_len + 1);
 
     if (resolved[resolved_len - 1] isnot '/') {
-      if (resolved_len + 1 >= PATH_MAX)  {
+      if (resolved_len + 1 >= MAXLEN_PATH)  {
         errno = ENAMETOOLONG;
         return NULL;
       }
@@ -242,8 +242,8 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
 
     /* Append the next path component and lstat() it. If lstat() fails we still
      * can return successfully if there are no more path components left */
-    resolved_len = Cstring.cat (resolved, PATH_MAX, next_token);
-    if (resolved_len >= PATH_MAX) {
+    resolved_len = Cstring.cat (resolved, MAXLEN_PATH, next_token);
+    if (resolved_len >= MAXLEN_PATH) {
       errno = ENAMETOOLONG;
       return NULL;
     }
@@ -262,7 +262,7 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
         return NULL;
       }
 
-      slen = readlink (resolved, symlink, PATH_MAX - 1);
+      slen = readlink (resolved, symlink, MAXLEN_PATH - 1);
       if (slen < 0)
         return NULL;
 
@@ -282,7 +282,7 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
        * The result is placed in `left'. */
       if (p isnot NULL) {
         if (symlink[slen - 1] isnot '/') {
-          if (slen + 1 >= PATH_MAX) {
+          if (slen + 1 >= MAXLEN_PATH) {
             errno = ENAMETOOLONG;
             return NULL;
           }
@@ -290,13 +290,13 @@ static char *path_real (const char *path, char resolved[PATH_MAX]) {
           symlink[slen] = '/';
           symlink[slen + 1] = 0;
         }
-        left_len = Cstring.cat (symlink, PATH_MAX, left);
-        if (left_len >= PATH_MAX) {
+        left_len = Cstring.cat (symlink, MAXLEN_PATH, left);
+        if (left_len >= MAXLEN_PATH) {
           errno = ENAMETOOLONG;
           return NULL;
         }
       }
-     left_len = Cstring.cp (left, PATH_MAX, symlink, PATH_MAX - 1);
+     left_len = Cstring.cp (left, MAXLEN_PATH, symlink, MAXLEN_PATH - 1);
     }
   }
 

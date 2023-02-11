@@ -413,7 +413,7 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
         return errno;
       }
 
-    char p[PATH_MAX + 1];
+    char p[MAXLEN_PATH + 1];
     sp = Path.real (path, p);
 
     if (sp is NULL) {

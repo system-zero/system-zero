@@ -82,7 +82,7 @@ static dirlist_t *dir_list (const char *dir, int flags) {
   dirlist_t *dlist = Alloc (sizeof (dirlist_t));
   dlist->release = dir_list_release;
   dlist->list = Vstring.new ();
-  Cstring.cp (dlist->dir, PATH_MAX, dir, PATH_MAX - 1);
+  Cstring.cp (dlist->dir, MAXLEN_PATH, dir, MAXLEN_PATH - 1);
   size_t dirlen = bytelen (dlist->dir);
 
   while (1) {
@@ -164,7 +164,7 @@ static int dir_walk_on_error_def (dirwalk_t *this, const char *msg, const char *
 static dirwalk_t *dir_walk_new (DirProcessDir_cb process_dir, DirProcessFile_cb process_file) {
   dirwalk_t *this = Alloc (sizeof (dirwalk_t));
   this->orig_depth = this->depth = 0;
-  this->dir = String.new (PATH_MAX);
+  this->dir = String.new (MAXLEN_PATH);
   this->files = NULL;
   this->process_dir = (NULL is process_dir ? dir_walk_process_dir_def : process_dir);
   this->process_file = (NULL is process_file ? dir_walk_process_file_def : process_file);
@@ -175,7 +175,7 @@ static dirwalk_t *dir_walk_new (DirProcessDir_cb process_dir, DirProcessFile_cb 
   return this;
 }
 
-static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
+static int __dir_walk_run__ (dirwalk_t *this, const char *dir, size_t dirlen) {
   if (NOTOK is this->status) return this->status;
 
   int depth = 0;
@@ -213,7 +213,7 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
 
   struct dirent *dp;
 
-  string_t *new = String.new (PATH_MAX);
+  string_t *new = String.new (MAXLEN_PATH);
 
   while (1) {
     errno = 0;
@@ -232,7 +232,14 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
       if (len is 1 or dp->d_name[1] is '.')
         continue;
 
-    String.replace_with_fmt (new, "%s/%s", dir, dp->d_name);
+    /* this clause is to avoid duplication of DIR_SEP when
+     * the dir argument is DIR_SEP */
+    if (dirlen > 1 or *dir isnot DIR_SEP) {
+      String.replace_with_fmt (new, "%s%c%s", dir, DIR_SEP, dp->d_name);
+    } else {
+      this->orig_depth--;
+      String.replace_with_fmt (new, "%c%s", DIR_SEP, dp->d_name);
+    }
 
     ifnot (OK is (this->status = this->stat_file (new->bytes, &st))) {
       if (NOTOK is this->on_error (this, "stat()", new->bytes, errno))
@@ -245,7 +252,7 @@ static int __dir_walk_run__ (dirwalk_t *this, const char *dir) {
       case DT_UNKNOWN:
         this->status = this->process_dir (this, new->bytes, &st);
         if (1 is this->status) {
-          if (NOTOK is __dir_walk_run__ (this, new->bytes))
+          if (NOTOK is __dir_walk_run__ (this, new->bytes, new->num_bytes))
             goto theend;
         } else if (NOTOK is this->status)
           goto theend;
@@ -265,26 +272,42 @@ theend:
   return this->status;
 }
 
-static int dir_walk_run (dirwalk_t *this, const char *dir) {
+static int dir_walk_run (dirwalk_t *this, const char *dirp) {
+  if (NULL is dirp) {
+    this->on_error (this, "directory is a NULL pointer", "", ENOENT);
+    return NOTOK;
+  }
+
+  char p[MAXLEN_PATH + 1];
+  char *dir = Path.real (dirp, p);
+  if (NULL is dir) {
+    this->on_error (this, "path_real()", dirp, errno);
+    return NOTOK;
+  }
+
+  size_t len = bytelen (dir);
+
+  ifnot (len) return OK;
+
+  String.replace_with_len (this->dir, dir, len);
+
   if (NULL is this->files)
     this->files = Vstring.new ();
 
-  String.replace_with (this->dir, dir);
-  char *sp = (char *) dir;
-  size_t len = 0;
+  char *sp = dir;
+
   while (*sp) {
-    len++;
     if (*sp is DIR_SEP) this->orig_depth++;
     sp++;
   }
 
-  if (dir[len-1] is DIR_SEP)
+  if (len > 1 and dir[len-1] is DIR_SEP)
     //dir[len-1] = '\0';
     String.trim_end (this->dir, DIR_SEP);
   else
     this->orig_depth++;
 
-  __dir_walk_run__ (this, this->dir->bytes);
+  __dir_walk_run__ (this, this->dir->bytes, this->dir->num_bytes);
   return OK;
 }
 
