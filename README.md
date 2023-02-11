@@ -1016,7 +1016,7 @@ So far, we've implemented:
   - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
   - a very early draft of a [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility](data/docs/zs.md)
   - an early draft of a sudo like utility (audit review required)
-  - a tiny [interpreter](data/docs/i.md), that has been later [evolved](data/docs/la.md) significantly
+  - a tiny [interpreter](data/docs/i.md), that has been later [evolved](src/data/semantics/Language.md) significantly
   - a couple of commands that initialize the libraries (for development reasons)
 
 ## ZERO_POINT_ZERO_CONCLUSION
@@ -1183,9 +1183,9 @@ hacks though, and quite possible in a such way that it might make this fragile
 code even more complex to maintain and evolve. Not quite possible. For certain.
 
 For this new code, that was placed in a Namespase called `La` (for Language),
-there is a special [test unit](data/tests/la-semantics.lai), which is a copy of
+there is a special [test unit](src/data/semantics/language/l-semantics.lai), which is a copy of
 the old tests, plus specific tests, like tests on function pointers and doubles,
-and as well its own [documentation](data/docs/la.md).
+and as well its own [documentation](src/data/semantics/Language.md).
 
 ## 0.0.1 DEVELOPMENT
 
@@ -1251,7 +1251,7 @@ have been implemented:
   - a [terminal multiplexer](https://en.wikipedia.org/wiki/Terminal_multiplexer) [window manager](data/docs/v.md)
   - a very early draft of a [shell](https://en.wikipedia.org/wiki/Shell_(computing)) [utility](data/docs/zs.md)
   - an early draft of a sudo like utility (audit review required)
-  - a [programming language](data/docs/la.md)
+  - a [programming language](src/data/semantics/Language.md)
   - a little bit more than a couple of commands that initialize the libraries and
     for first time the programming language
 
@@ -1350,7 +1350,7 @@ To do that use:
    state: rather stable  
    crashes: not with current usage, but quite possible there are unhandled cases
 
-  - a [programming language](data/docs/la.md) called as:
+  - a [programming language](src/data/semantics/Language.md) called as:
 
      La or La-static [options] [filename[s]]  
      La --help  # for options  

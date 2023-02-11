@@ -133,9 +133,19 @@ that does just the basics with a decent interactivity.
   Builtin commands:  
     cd:  
       Changes the current working directory. Without arguments the user's home directory  
-      is assumed. With a "-[digit*]" as argument, then it tries to change to the given
-      depth of previously working directories. When succesful the value of the current working directory  
-      it is exported in the environment as "PWD".
+      is assumed.
+      
+      With a "-[digit*]" as argument, then the command tries to change to the given
+      depth of previously working directories.
+
+      When the command succeeds, the value of the current working directory it is
+      exported in the environment as "PWD".
+      
+      Note that, if the length of the argument list is 1 and the first item on the
+      list is a directory, it is also considered as a "cd" command and the item it is
+      the intented directory.
+      
+      Note that even infinity ../../.. that goes way behind / it is considered as / (zsh does the same)
    
    pwd:  
      This prints the current working directory.  
@@ -145,7 +155,7 @@ that does just the basics with a decent interactivity.
    exit:  
      Exits back to the environment. Without argument it exits with a zero value. If
      the argument is less than zero, it returns 1, otherwise it returns the value
-     of the argument.
+     of the argument, unless is greater than 127 and which in that case it is 127.
 
   Syntax:  
    

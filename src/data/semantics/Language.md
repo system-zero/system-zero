@@ -6,7 +6,7 @@ The code that should support the below claims with accuracy lies at [language/l-
 [Note that probably needs a consideration and minor revisions to match the exact latest
 develpment and decisions]
 
-[Note that the implementddation isnot the safest ever, as it is a hand written language
+[Note that the implementation isnot the safest ever, as it is a hand written language
 from someone, that never ever has done something like this before]
 
 Basic DataTypes:
@@ -99,8 +99,8 @@ Comments.
   misinterpreted.
 
     [Note about the significant whitespace:
-      while it is mostly about a free form syntax  (we appreciate indentation and
-      it is practiced rigorously in our code (in C and in our language), there is
+      while it is mostly about a free form syntax (we appreciate indentation and
+      it is practiced rigorously in our code (in C and in our language)), there is
       not any kind of enforcement: but we might use them to denote blocks in future,
       since consistency should be rewarded with a way
 
@@ -189,14 +189,6 @@ Comments.
   # and accessible only from the nested blocks.
 
   # Blocks are considered also the loops and conditional statements and expressions.
-
-  # You can associate a function with a symbol and use it with the same way
-  # you use a function.
-
-  var funname = func println ("howl")
-  # [Note: that this is under consideration as in practice it never being used
-     even once, plus there some posibilities if this was dissallowed, so do not
-     has to be used (so for now it is just at demonstration fancy level)]
 
   # A Function can be redefined, unless it is attributed with the const
   # keyword.
@@ -343,20 +335,21 @@ Comments.
   # for nth times { block }
 
   sum = 1
-  for 10 times { sum *= 2; println (sum) } # 1024
+  for 10 times sum *= 2
+  println (sum)   # 1024
 
   # forever loop (like a for (;;) or while (true) in C):
 
   #  forever { block }
 
-  # do/while loop
+  # repeat/until loop
 
-  func whiledo (x) {
+  func repeatuntil (x) {
     var i = 0
-    do {
+    repeat {
       sum += i
       i++
-    }  while i < x
+    }  until i < x
   }
 
   print ("all the results should be ${sum}\n")
@@ -399,7 +392,7 @@ Comments.
   # - as an identifier. In this case it is constructed only by valid identifiers
   #   [_a-zA-Z] and digits.
   # - as an integer
-  # - as an expression, using $(expession)
+  # - as an expression, using $(expession) form
 
   # A key length can be upto 255 bytes.
 
@@ -421,16 +414,18 @@ Comments.
     "again visible" : "Visibility it is still public."
 
     private
-    "back_to_privacy" : "So and the next properties until a public attribute."
-    "summary" : 0
+    back_to_privacy : "So and the next properties until a public attribute."
+    it_is_still_private : 1
 
     public
     "exposed_fun" : func {
       println ("I am a function method, and I can see you them all.")
       return this.private_prop + " " + this.metoo
       # Some Interpreted Languages they refer to this self object as self,
-      # some as this. We use this, and which has sence only inside map methods.
+      # some as this. We use this, and which has sence only inside map methods,
+      # at the time of the construction
     }
+    summary : 0
   }
 
   # Testing for string equality for a public property.
@@ -441,15 +436,16 @@ Comments.
   # SYNTAX ERROR: back_to_privacy, symbol has private scope
 
   # Accessing map properties is through a dot ('.'), the same way C access its
-  # structures. The properties can be eithers strings, identifiers or expressions.
+  # structures.
 
   # You can append a property or a method to a map at runtime:
 
   dadamap.sumfun = func (x) {
-    this.summary += x
-    return this.summary
+    dadamap.summary += x
+    return dadamap.summary
+    # note that it is not legal to use "this" here, as in this case it
+    # could be possible to access private members
   }
-
   println (dadamap.sumfun (10)) # => 10
 
   # But it is not possible to override a method. This it will raises an error:
@@ -575,6 +571,9 @@ Probably this will be a very messy output."
 
   println (code_string_for_evaluation)
 
+  # Another useful attribute is F (for format), that can interpret the string
+  # as an interpolation expression.
+
   # Other attributes may added in future, but for those cases there is a
   # more expressive way implememted in the language, that can filter a value
   # through a series of function calls and expressions.
@@ -583,7 +582,7 @@ Probably this will be a very messy output."
 
   var ar = ["a", "b"] # StringType array with two members
 
-  # But arrays have a fixed size and type. In the above code those have been
+  # Arrays have a fixed size and type. In the above code those have been
   # determinated by the parsing. The first element gives the type. It is an
   # error to mix types in an array, except for memory managment types, like
   # strings or maps, that can have null elements.
@@ -607,13 +606,13 @@ Probably this will be a very messy output."
 
   # Now it can be initialized with an algorithm:
 
-  for var i = 0; i < len (int_ar); i++ int_ar[i] = i
+  for (var i = 0; i < len (int_ar); i++) int_ar[i] = i
 
   # Here we've used the `len` C native function, that returns the length
   # of the datatypes. In that case it is the number of elements of the array,
   # for strings is the number of bytes, for maps is the number of keys.
 
-  for var i = 0; i < len (int_ar); i++ println (int_ar[i])
+  for (var i = 0; i < len (int_ar); i++) println (int_ar[i])
 
   # We can access array elements, like C does.
   # Indices start from zero and can be negative, where -1 points to the
@@ -640,9 +639,9 @@ Probably this will be a very messy output."
 
   # or
 
-  int_ar[0:] = [1, 1, 1, 1]  # if the second idx is ommited, then assumed array length - 1
+  int_ar[0:] = [1, 1, 1, 1]  # if the second idx is ommited, then it is assumed array length - 1
 
-  # In any case if the number of expressions doesn't match or any idx is >= length
+  # In any case, if the number of expressions doesn't match or any idx is >= length
   # the array, the interpreter should raise an OUT_OF_BOUNDS error.
 
   # For such cases a more short form exists:
@@ -667,7 +666,7 @@ Probably this will be a very messy output."
 
   append 1 in l
 
-  # access it
+  # and access it
 
   println (l[0])
   l[0] += 10
@@ -720,9 +719,7 @@ Probably this will be a very messy output."
   var x = null
   var v = if x is null then "null" orelse "notnull" # => "null"
   # in a function call argument list:
-  func f (arg) {
-    return arg * 2
-  }
+  func f (arg)  return arg * 2
 
   var res = f (if v isnot null then 1 orelse 0) # => an argument of value 1
 
@@ -901,8 +898,8 @@ Probably this will be a very messy output."
   # be set explicitly (with a given `count` that follows the statement), to break
   # to `count` outer loop levels.
 
-  for var i = 1; i < 10; i++
-    for var j = 0; j < 100; j++
+  for (var i = 1; i < 10; i++)
+    for (var j = 0; j < 100; j++)
       if j is 5 break 2
 
   # this will pass control to the first loop level. In other words "break"
@@ -916,7 +913,7 @@ Probably this will be a very messy output."
   # However both can be expressed in a boolean context. That means that they
   # get executed only if the condition is true:
 
-  for var i = 1; i < 10; i++ {
+  for (var i = 1; i < 10; i++) {
     continue ifnot i is 5
     println ("only ${i}")
   } # => "only 5"
@@ -1544,6 +1541,6 @@ sample unit, that map to their corresponded static declared functions in the
 library unit, as there isn't and probably will never be an API documentation,
 unless a god exists.
 
-[Note that this a copy of the previous document, which it was under heavy for
-quite some time development, and which is located in data/docs/la.md at the
+[Note that this a copy of the previous document, which it was under heavy (for
+quite some time) development, and which is located in data/docs/la.md at the
 root of the distribution].

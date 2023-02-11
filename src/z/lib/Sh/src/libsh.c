@@ -314,17 +314,37 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
 
   if (NULL is argv or NULL is argv[0]) return retval;
 
-  if (Cstring.eq (argv[0], "exit")) {
+  char *com = argv[0];
+
+  size_t len = bytelen (com);
+
+  ifnot (len) return retval;
+
+  size_t arlen = 0;
+  int idx = 0;
+  while (argv[idx++] isnot NULL) arlen++;
+
+  if (Cstring.eq (com, "exit")) {
     sh->should_exit = 1;
-    if (argv[1] isnot NULL)
-      sh->exit_val = atoi (argv[1]);
-    else
-      sh->exit_val  = 0;
+
+    if (argv[1] isnot NULL) {
+      int r = atoi (argv[1]);
+      ifnot (r) {
+        if (bytelen (argv[1]) isnot 1 or *argv[1] isnot '0')
+          r = 1;
+      }
+
+      if (r < 0) r = -r;
+      if (r > 127) r = 127;
+
+      sh->exit_val = r;
+    } else
+      sh->exit_val = 0;
 
     return SH_EXIT_NOW;
   }
 
-  if (Cstring.eq (argv[0], "pwd")) {
+  if (Cstring.eq (com, "pwd")) {
     char *curdir = Dir.current ();
     if (NULL is curdir) {
       fprintf (stderr, "couldn't get current working directory\n");
@@ -338,9 +358,29 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
     return retval;
   }
 
-  if (Cstring.eq (argv[0], "cd")) {
+  if (Cstring.eq (argv[0], "unsetenv")) {
+    if (argv[1] is NULL) {
+      fprintf (stderr, "unsetenv: awaiting a environment name\n");
+      return 1;
+    }
+
+    retval = unsetenv (argv[1]);
+
+    if (retval isnot 0) {
+      retval = 1;
+      fprintf (stderr, "unsetenv: %s\n", Error.errno_string (errno));
+    }
+
+    return retval;
+  }
+
+  int autochdir = arlen is 1 and Dir.is_directory (com);
+  /* note that even infinity ../../.. that goes way behind / it is
+   * considered as / (zsh does the same) */
+
+  if (Cstring.eq (com, "cd") or autochdir) {
     char *sp = NULL;
-    char *path = argv[1];
+    char *path = autochdir ? com : argv[1];
 
     if (path is NULL) {
       path = Sys.get.env_value ("HOME");
@@ -405,22 +445,6 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
 
     Vstring.append_with ($my(cdpath), sp);
     return 0;
-  }
-
-  if (Cstring.eq (argv[0], "unsetenv")) {
-    if (argv[1] is NULL) {
-      fprintf (stderr, "unsetenv: awaiting a environment name\n");
-      return 1;
-    }
-
-    retval = unsetenv (argv[1]);
-
-    if (retval isnot 0) {
-      retval = 1;
-      fprintf (stderr, "unsetenv: %s\n", Error.errno_string (errno));
-    }
-
-    return retval;
   }
 
   return retval;
@@ -772,12 +796,12 @@ theerror:
 }
 
 static int sh_exec (sh_t *this, char *buf) {
-  $my(error)[0] = '\0';
-
   if (NULL is this) {
     Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "INTERNAL ERROR, got NULL shell instance", SH_MAXLEN_ERROR);
     return NOTOK;
   }
+
+  $my(error)[0] = '\0';
 
   if (NOTOK is sh_parse (this, buf))
     return NOTOK;
