@@ -75,7 +75,7 @@ typedef struct zs_t {
   rline_t *rline;
 } zs_t;
 
-static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, void *userdata) {
+static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, void *userdata) {
   zs_t *zs = (zs_t *) userdata;
   rline_t *rline = zs->rline;
   Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
@@ -86,6 +86,16 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
 
   dirlist_t *dlist = NULL;
   char *dirname = NULL;
+  char *basename = NULL;
+  size_t dirlen;
+  size_t bname_len;
+
+  char *buf = (char *) bufp;
+
+  while (*buf is ' ') {
+    buf++;
+    curpos--;
+  }
 
   const char *lptr = buf + curpos;
   size_t lptrlen = bytelen (lptr);
@@ -93,6 +103,19 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
   size_t buflen = bytelen (buf) - lptrlen;
 
   char ptrbuf[buflen + 1];
+
+  char *ptr = (char *) lptr;
+  int ptrlen = 0;
+  int is_arg = 0;
+  int arglen = 0;
+  int is_filename = 0;
+
+  while (ptr isnot buf) {
+    if (*(ptr - 1) is ' ')
+      break;
+    ptr--;
+    arglen++;
+  }
 
   if (buf[0] is '\0') {
     Command *it = zs->command_head;
@@ -122,7 +145,122 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
     goto theend;
   }
 
-  if (buf[buflen-1] is '.') { // adjust code to count if it is really a command and not a hidden file
+  if (ptr is buf and
+       ((*ptr is '.' and (*(ptr+1) is DIR_SEP or *(ptr+1) is '.')) or *ptr is DIR_SEP)) {
+    char *sp = (char *) buf;
+    char *tmp = sp;
+    ptrlen = 0;
+    while (*sp and *(sp + 1) isnot ' ') {
+      ptrlen++;
+      sp++;
+    }
+
+    Cstring.cp (ptrbuf, ptrlen + 1, tmp, ptrlen);
+
+    dirname = Path.dirname (ptrbuf);
+    basename = Path.basename (ptrbuf);
+    dirlen = bytelen (dirname);
+    bname_len = bytelen (basename);
+
+    if (bname_len and Cstring.eq (basename, "." DIR_SEP_STR) is 0) {
+      string *d = NULL;
+      int is_dir = Dir.is_directory (basename);
+
+      ifnot (is_dir) {
+        d = String.new_with (dirname);
+        if (d->bytes[d->num_bytes-1] isnot DIR_SEP and *basename isnot DIR_SEP)
+          String.append_byte (d, DIR_SEP);
+        else
+          if (Cstring.eq (dirname, DIR_SEP_STR) and *basename is DIR_SEP)
+            String.clear (d);
+
+        String.append_with_len (d, basename, bname_len);
+
+        is_dir = Dir.is_directory (d->bytes);
+      }
+
+      if (is_dir) {
+        if (d is NULL) {
+          if (Cstring.eq (dirname, ".") and Cstring.eq_n (basename, "..", 2))
+            d = String.new (bname_len);
+          else
+            d = String.new_with (dirname);
+
+          if (d->num_bytes and (d->bytes[d->num_bytes-1] isnot DIR_SEP and *basename isnot DIR_SEP))
+            String.append_byte (d, DIR_SEP);
+          else
+            if (Cstring.eq (dirname, DIR_SEP_STR) and *basename is DIR_SEP)
+              String.clear (d);
+
+          String.append_with_len (d, basename, bname_len);
+        }
+
+        dlist  = Dir.list (d->bytes, DIRLIST_LNK_IS_DIRECTORY);
+
+      } else {
+        dlist  = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
+      }
+
+      if (NULL is dlist) {
+        String.release (d);
+        goto theend;
+      }
+
+      vstring_t *it = dlist->list->head;
+
+      while (it) {
+        ifnot (is_dir) {
+          if (Cstring.eq_n (basename, it->data->bytes, bname_len)) {
+            zs->num_items++;
+            String.prepend_with (arg, dirname);
+            if (arg->bytes[arg->num_bytes-1] isnot DIR_SEP)
+              String.append_byte (arg, DIR_SEP);
+            String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
+            String.append_with_len (arg, lptr, lptrlen);
+            Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+            String.clear (arg);
+            zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
+          }
+        } else {
+          zs->num_items++;
+          String.append_with_len (arg, d->bytes, d->num_bytes);
+          if (arg->bytes[arg->num_bytes-1] isnot DIR_SEP)
+            String.append_byte (arg, DIR_SEP);
+
+          String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
+          String.append_with_len (arg, lptr, lptrlen);
+          Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+          zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
+          String.clear (arg);
+        }
+
+        it = it->next;
+      }
+
+      String.release (d);
+    } else {
+      dlist  = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
+      if (NULL is dlist) goto theend;
+
+      vstring_t *it = dlist->list->head;
+
+      while (it) {
+        zs->num_items++;
+        if (Cstring.eq_n (ptrbuf, "." DIR_SEP_STR, 2))
+          String.prepend_with (arg, "." DIR_SEP_STR);
+        String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
+        String.append_with_len (arg, lptr, lptrlen);
+        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes);
+        String.clear (arg);
+        zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
+        it = it->next;
+      }
+    }
+
+    goto theend;
+  }
+
+  if (buflen > 2 and buf[buflen-1] is '.') { // adjust code to count if it is really a command and not a hidden file
     Command *it = zs->command_head;
 
     while (it) {
@@ -141,17 +279,6 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
     }
 
     goto theend;
-  }
-
-  char *ptr = (char *) lptr;
-  int is_arg = 0;
-  int arglen = 0;
-
-  while (ptr isnot buf) {
-    if (*(ptr - 1) is ' ')
-      break;
-    ptr--;
-    arglen++;
   }
 
   if (ptr isnot buf and *ptr is '-') {
@@ -318,9 +445,9 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
   }
 
   ptr = (char *) buf + buflen;
-  int ptrlen = buflen;
+  ptrlen = buflen;
 
-  int is_filename = 0;
+  is_filename = 0;
   while (ptrlen--) {
     char c = *(ptr-1);
     if (('0' <= c and c <= '9') or
@@ -339,8 +466,8 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
     break;
   }
 
-  // half command
   if (-1 is ptrlen) {
+    // half command
     Command *it = zs->command_head;
     sp = (char *) buf;
 
@@ -406,7 +533,7 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
   Cstring.cp (ptrbuf, ptrlen + 1, ptr, ptrlen);
 
   dirname = Path.dirname (ptrbuf);
-  char *basename = Path.basename (ptrbuf);
+  basename = Path.basename (ptrbuf);
 
   is_filename = 0;
 
@@ -425,7 +552,7 @@ static void zs_completion (const char *buf, int curpos, rlineCompletions *lc, vo
   } else ifnot (ptrlen) {
 get_current: {}
     char *cwd = Dir.current ();
-    if (NULL is cwd) return;
+    if (NULL is cwd) goto theend;
     dlist = Dir.list (cwd, 0);
     free (cwd);
   } else {
@@ -440,8 +567,8 @@ get_current: {}
 
   vstring_t *it = dlist->list->head;
 
-  size_t dirlen = bytelen (dirname);
-  size_t bname_len = bytelen (basename);
+  dirlen = bytelen (dirname);
+  bname_len = bytelen (basename);
 
   if (1 is dirlen and *dirname is '.' and 0 is bname_len + is_filename) {
     while (it) {
@@ -495,8 +622,8 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
 
   int c = *ch;
 
-  // complete command
   if (0 is curpos and buf[0] is '\0') {
+    // complete command
     if (('A' <= c and c <= 'Z')) { // or ('a' <= c and c <= 'z') or c is '_') {
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
       String.replace_with_len (prevLine, newbuf, 1);
