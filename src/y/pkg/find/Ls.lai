@@ -48,6 +48,7 @@ var qualif = {
   uid              : argparse.results.match_uid
   gid              : argparse.results.match_gid
   max_depth        : 0
+  realpath         : 0
 }
 
 var types = ""

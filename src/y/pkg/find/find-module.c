@@ -37,6 +37,13 @@ MODULE(find);
   AS_INT(_v_tostdout);                                                      \
 })
 
+#define GET_OPT_REALPATH() ({                                               \
+  VALUE _v_realpath = La.get.qualifier (this, "realpath", INT(1));          \
+  ifnot (IS_INT(_v_realpath))                                               \
+    THROW(LA_ERR_TYPE_MISMATCH, "realpath, awaiting an integer qualifier"); \
+  AS_INT(_v_realpath);                                                      \
+})
+
 typedef struct find_t {
   int type;
   int tostdout;
@@ -363,20 +370,21 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
   int tostdout = GET_OPT_TOSTDOUT();
   int match_uid = GET_OPT_UID();
   int match_gid = GET_OPT_GID();
+  int realpath =  GET_OPT_REALPATH();
 
   if (sort_by_mtime) sort_type = SORT_MTIME;
   if (sort_by_atime) {
-    if (sort_type) {fprintf (stderr, "already had a sorted option\n"); return NULL_VALUE;}
+    if (sort_type) {fprintf (stderr, "already set a sorted option\n"); return NULL_VALUE;}
     sort_type = SORT_ATIME;
   }
 
   if (sort_by_ctime) {
-    if (sort_type) {fprintf (stderr, "already had a sorted option\n"); return NULL_VALUE;}
+    if (sort_type) {fprintf (stderr, "already set a sorted option\n"); return NULL_VALUE;}
     sort_type = SORT_CTIME;
   }
 
   if (sort_by_size) {
-    if (sort_type) {fprintf (stderr, "already had a sorted option\n"); return NULL_VALUE;}
+    if (sort_type) {fprintf (stderr, "already set a sorted option\n"); return NULL_VALUE;}
     sort_type = SORT_SIZE;
   }
 
@@ -450,6 +458,8 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
   dw->depth = max_depth;
   dw->files = NULL;
   dw->stat_file = lstat;
+  dw->realpath = realpath;
+
   Dir.walk.run (dw, dir);
 
   if (NULL isnot re) Re.release (re);

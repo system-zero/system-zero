@@ -899,6 +899,7 @@ fatal:
     if (tcsetattr(current->fd,TCSADRAIN,&raw) < 0) {
         goto fatal;
     }
+
     rawmode = 1;
     return 0;
 }
@@ -2579,6 +2580,16 @@ static void rline_add_completion (rline_t *this, rlineCompletions *lc, char *ite
   linenoiseAddCompletion (lc, item, pos);
 }
 
+static rlineCompletions *rline_release_completions (rline_t *this, rlineCompletions *lc) {
+  (void) this;
+  freeCompletions (lc);
+  lc->flags = 0;
+  lc->cvec = NULL;
+  lc->len = 0;
+  lc->pos = NULL;
+  return lc;
+}
+
 static void rline_set_completion_cb (rline_t *this, RlineCompletion_cb cb, void *userdata) {
   $my(completion_cb) = cb;
   linenoiseSetCompletionCallback (cb, userdata);
@@ -2597,6 +2608,16 @@ static void rline_set_accept_one_item_cb (rline_t *this, AcceptOneItem_cb cb) {
 static void rline_set_on_carriage_return_cb (rline_t *this, OnCarriageReturn_cb cb) {
   (void) this;
   linenoiseOnCarriageReturnCallback = cb;
+}
+
+static char **rline_get_array (rline_t *this, rlineCompletions *lc) {
+  (void) this;
+  return lc->cvec;
+}
+
+static size_t rline_get_arraylen (rline_t *this, rlineCompletions *lc) {
+  (void) this;
+  return lc->len;
 }
 
 static void rline_set_hints_cb (rline_t *this, RlineHints_cb cb, void *userdata) {
@@ -2618,15 +2639,12 @@ static void rline_set_prompt (rline_t *this, const char *prompt) {
 
 static void rline_set_curpos (rline_t *this, rlineCompletions *lc, int pos) {
   (void) this;
-  currentLine *current = lc->current;
-  current->pos = pos;
+  lc->current->pos = pos;
 }
 
 static void rline_set_current (rline_t *this, rlineCompletions *lc, const char *buf) {
   (void) this;
-  currentLine *current = lc->current;
-  set_current (current, buf);
-  lc->current = current;
+  set_current (lc->current, buf);
 }
 
 static void rline_unset_flags (rline_t *this, rlineCompletions *lc, int flags) {
@@ -2674,6 +2692,18 @@ static void rline_history_release (rline_t *this) {
   linenoiseHistoryFree ();
 }
 
+static int rline_fd_read (rline_t *this, int fd) {
+  (void) this;
+  struct currentLine current;
+  current.fd = fd;
+  return fd_read (&current);
+}
+
+static int rline_check_special (rline_t *this, int fd) {
+  (void) this;
+  return check_special (fd);
+}
+
 public rline_T __init_rline__ (void) {
   __INIT__ (string);
   __INIT__ (cstring);
@@ -2684,6 +2714,9 @@ public rline_T __init_rline__ (void) {
       .edit = rline_edit,
       .release = rline_release,
       .add_completion = rline_add_completion,
+      .release_completions = rline_release_completions,
+      .fd_read = rline_fd_read,
+      .check_special = rline_check_special,
       .set = (rline_set_self) {
         .flags = rline_set_flags,
         .prompt = rline_set_prompt,
@@ -2694,6 +2727,10 @@ public rline_T __init_rline__ (void) {
         .completion_cb = rline_set_completion_cb,
         .accept_one_item_cb =rline_set_accept_one_item_cb,
         .on_carriage_return_cb = rline_set_on_carriage_return_cb
+      },
+      .get = (rline_get_self) {
+        .array = rline_get_array,
+        .arraylen = rline_get_arraylen
       },
       .unset = (rline_unset_self) {
         .flags = rline_unset_flags

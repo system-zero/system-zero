@@ -67,9 +67,6 @@ that does just the basics with a decent interactivity.
       This is done automatically if the line is empty and the first char is at  
       the [A-Z] range.  
   
-    Note that in the case of multiply completion items, a hint that indicates the number  
-    of items is printed right to the cursor.
-
     The underlying machine is linenoise with UTF-8 support, but in this implementation  
     the API is incompatible, just to support tab completion at any cursor point in the line,  
     and not just at the end of the line.
@@ -186,10 +183,6 @@ Quirks:
   A filename with embedded whitespace should be enclosed into double quotes.  
   Also in this same case, filename completion stops if the filename is a directory.  
   
-  When tab completion returns more than one item, a hint that shows the number  
-  of items, is displayed to the right of the cursor. There is no way to display  
-  more than one item at once. This is a crucial missing feature!  
-
   There is no job managment.  
 
   There is no language.  

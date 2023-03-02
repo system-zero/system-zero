@@ -48,6 +48,11 @@ typedef struct rline_history_set_self {
   int (*length) (rline_t *, int);
 } rline_history_set_self;
 
+typedef struct rline_get_self {
+  char ** (*array) (rline_t *, rlineCompletions *);
+  size_t (*arraylen) (rline_t *, rlineCompletions *);
+} rline_get_self;
+
 typedef struct rline_history_get_self {
   char **(*lines) (rline_t *);
   int (*length) (rline_t *);
@@ -68,6 +73,8 @@ typedef struct rline_history_self {
 
 typedef struct rline_self {
   rline_set_self set;
+  rline_get_self get;
+
   rline_unset_self unset;
   rline_history_self history;
 
@@ -75,9 +82,14 @@ typedef struct rline_self {
     (*release) (rline_t *),
     (*add_completion) (rline_t *, rlineCompletions *, char *, int);
 
+  rlineCompletions *
+    (*release_completions) (rline_t *, rlineCompletions *);
+
   char *(*edit) (rline_t *);
 
   rline_t *(*new) (void);
+  int (*fd_read) (rline_t *, int);
+  int (*check_special) (rline_t *, int);
 } rline_self;
 
 typedef struct rline_T {

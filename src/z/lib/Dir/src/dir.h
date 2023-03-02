@@ -48,6 +48,7 @@ struct dirwalk_t {
   int
     depth,
     status,
+    realpath,
     orig_depth;
 
   string_t *dir;

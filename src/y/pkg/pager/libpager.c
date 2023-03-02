@@ -897,7 +897,7 @@ Me *pager_new (string **lines, size_t array_len, pager_opts opts) {
   My->cur_buf = buf;
   My->num_buf = 1;
 
-  buf_release_input (buf); // we do need this anymore, free it if it is allowed
+  buf_release_input (buf); // we don't need this anymore, free it if it is allowed
 
   return My;
 }

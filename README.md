@@ -669,8 +669,7 @@ looks, that soon or later, you will reach in a point, that will be not possible
 to memorize, all these tools, and their arguments.
 
 Fortunatelly modern shells offer all, a mechanism that is called autocompletion,
-which is usually triggered by pressing Tab. Our shell doesn't really support this
-great flexibility though for now.
+which is usually triggered by pressing Tab.
 
 Using an  autocompletion mechanism, simplifies a  lot of things and  mutates a
 crucial and valid  objection for our system. Since we want to create for  every

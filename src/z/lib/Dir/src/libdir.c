@@ -278,12 +278,16 @@ static int dir_walk_run (dirwalk_t *this, const char *dirp) {
     return NOTOK;
   }
 
-  char p[MAXLEN_PATH + 1];
-  char *dir = Path.real (dirp, p);
-  if (NULL is dir) {
-    this->on_error (this, "path_real()", dirp, errno);
-    return NOTOK;
-  }
+  char *dir = NULL;
+  if (this->realpath) {
+    char p[MAXLEN_PATH + 1];
+    dir = Path.real (dirp, p);
+    if (NULL is dir) {
+      this->on_error (this, "path_real()", dirp, errno);
+      return NOTOK;
+    }
+  } else
+    dir = (char *) dirp;
 
   size_t len = bytelen (dir);
 

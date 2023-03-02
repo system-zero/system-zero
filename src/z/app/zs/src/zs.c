@@ -1,16 +1,16 @@
-// APPLICATION "zs"
-
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_STDARG
 #define REQUIRE_TIME
 #define REQUIRE_SYS_STAT
 #define REQUIRE_SIGNAL
+#define REQUIRE_TERMIOS
 
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_SYS_TYPE     DECLARE
+#define REQUIRE_TERM_TYPE    DECLARE
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_RLINE_TYPE   DECLARE
@@ -18,9 +18,26 @@
 #define REQUIRE_STRING_TYPE  DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_CSTRING_TYPE DECLARE
+#define REQUIRE_USTRING_TYPE DECLARE
+#define REQUIRE_LIST_MACROS
+#define REQUIRE_TERM_MACROS
 #define REQUIRE_KEYS_MACROS
 
 #include <z/cenv.h>
+
+/* to match rline's ones */
+#undef  ARROW_UP_KEY
+#define ARROW_UP_KEY   -20
+#undef  ARROW_DOWN_KEY
+#define ARROW_DOWN_KEY -21
+#undef  HOME_KEY
+#define HOME_KEY       -25
+#undef  END_KEY
+#define END_KEY        -26
+#undef  PAGE_UP_KEY
+#define PAGE_UP_KEY    -28
+#undef  PAGE_DOWN_KEY
+#define PAGE_DOWN_KEY  -29
 
 #define DEFAULT_ROOT_PROMPT "\033[31m$\033[m "
 #define DEFAULT_USER_PROMPT "\033[32m$\033[m "
@@ -41,6 +58,119 @@
 
 #define MAXNUM_LAST_COMPONENTS 20
 
+typedef struct zs_t zs_t;
+
+/* (rather crude completion ui)
+ * this code is from src/y/pkg/pager, slowly adapted for this environment
+ */
+
+#define DEFAULT_TABWIDTH 2
+
+enum {
+  PAGER_PROCESS_CHAR = 0,
+  PAGER_CONTINUE,
+  PAGER_EXIT
+};
+
+typedef struct pager_t pager_t;
+
+typedef int (*PagerOnInput) (pager_t *, int *);
+
+typedef struct video_t {
+  int fd;
+  int num_rows;
+  int row_pos;
+  int col_pos;
+  int first_col;
+  string **rows;
+  string *render;
+} video_t;
+
+typedef struct line_t {
+  int first_col_idx;
+  int cur_col_idx;
+  size_t num_bytes;
+  Ustring_t *data;
+} line_t;
+
+typedef struct Buf {
+  int cur_row_idx;
+  int row_pos;
+  int col_pos;
+  int num_rows;
+  int num_cols;
+  int first_row;
+  int first_col;
+  int last_row;
+  int last_col;
+  int video_first_row_idx;
+  int has_statusline;
+  int tabwidth;
+
+  size_t  array_len;
+
+  int     input_should_be_freed;
+  string  **input;
+
+  line_t  **lines;
+  line_t  *cur_line;
+  line_t  *prev_line;
+
+  string  *tmp_buf;
+  string  *empty_line;
+
+  video_t *video;
+  term_t  *term;
+} Buf;
+
+struct pager_t {
+  int     first_row;
+  int     first_col;
+  int     last_row;
+  int     last_col;
+  int     num_cols;
+  int     num_rows;
+
+  video_t *video;
+  string  **video_rows;
+
+  term_t  *term;
+  Buf     *buf;
+};
+
+typedef struct pager_opts {
+  int first_row;
+  int first_col;
+  int last_col;
+  int last_row;
+  int input_should_be_freed;
+  int buf_has_statusline;
+} pager_opts;
+
+#define PagerOpts(...) (pager_opts) {  \
+  .first_row  = -1,                    \
+  .first_col  = -1,                    \
+  .last_row   = -1,                    \
+  .last_col   = -1,                    \
+  .input_should_be_freed = 0,          \
+  .buf_has_statusline = 0,             \
+  __VA_ARGS__                          \
+}
+
+typedef struct completion_t {
+  zs_t *zs;
+  rline_t *rline;
+  string **ar;
+  size_t arlen;
+  rlineCompletions *lc;
+  int idx;
+  string *arg;
+  const char *prefix;
+  size_t prefix_len;
+  const char *suffix;
+  size_t suffix_len;
+} completion_t;
+
 typedef struct LastComp LastComp;
 struct LastComp {
   char *lastcomp;
@@ -54,8 +184,10 @@ struct Command {
   Command *next;
 };
 
-typedef struct zs_t {
+struct zs_t {
   Command *command_head;
+  int num_commands;
+
   LastComp *lastcomp_head;
   int numLastComp;
 
@@ -73,7 +205,553 @@ typedef struct zs_t {
     *comdir;
 
   rline_t *rline;
-} zs_t;
+  term_t *term;
+  pager_t *pager;
+  completion_t *completion;
+};
+
+/* ui implementation (some more lines overhead that have no usage other
+   than a completion ui, so they have no actual relationship with a shell
+   (but useful anyways and almost a prerequisite for a shell these days)) */
+
+#define DONE             0
+#define DONE_NEEDS_DRAW  1
+#define NOTHING_TODO     2
+
+#define GOTO(r,c) Term.cursor.set_pos (My->term, r, c)
+#define ONE_PAGE(__buf__)  ((__buf__->last_row - __buf__->first_row) + 1)
+#define CUR_COL My->cur_line->data->current
+
+static video_t *video_new (int fd, int nrows, int ncols) {
+  video_t *video = Alloc (sizeof (video_t));
+  video->fd = fd;
+  video->num_rows = nrows;
+  video->render = String.new (512);
+  video->rows = Alloc (nrows * sizeof (string));
+  for (int i = 0; i < nrows; i++)
+    video->rows[i] = String.new (ncols);
+  return video;
+}
+
+static void video_release (video_t *video) {
+  String.release (video->render);
+  for (int i = 0; i < video->num_rows; i++)
+    String.release (video->rows[i]);
+  free (video->rows);
+  free (video);
+}
+
+static void buf_clear_input (Buf *My) {
+  for (size_t i = 0; i < My->array_len; i++)
+    String.release (My->input[i]);
+}
+
+static void buf_release_input (Buf *My) {
+  ifnot (My->input_should_be_freed) return;
+
+  if (My->input is NULL) return;
+
+  buf_clear_input (My);
+
+  free (My->input);
+  My->input = NULL;
+}
+
+static void buf_clear_lines (Buf *My) {
+  if (My->lines is NULL) return;
+
+  for (size_t i = 0; i < My->array_len; i++) {
+    Ustring.release (My->lines[i]->data);
+    free (My->lines[i]);
+  }
+}
+
+static void buf_clear (Buf *My) {
+  buf_release_input (My);
+  buf_clear_lines (My);
+  free (My->lines);
+  My->lines = NULL;
+}
+
+static void buf_release (Buf *My) {
+  buf_clear (My);
+  String.release (My->empty_line);
+  String.release (My->tmp_buf);
+  free (My);
+}
+
+static void pager_release (pager_t *My) {
+  video_release (My->video);
+  buf_release (My->buf);
+  free (My);
+}
+
+static void buf_set_lines (Buf *My) {
+  for (size_t i = 0; i < My->array_len; i++) {
+    My->lines[i] = Alloc (sizeof (line_t));
+    Ustring_t *u = Ustring.new ();
+    Ustring.encode (u, My->input[i]->bytes,
+                       My->input[i]->num_bytes, 1, My->tabwidth, 0);
+    My->lines[i]->data = u;
+    My->lines[i]->first_col_idx = 0;
+    My->lines[i]->cur_col_idx = 0;
+    My->lines[i]->num_bytes = My->input[i]->num_bytes;
+  }
+}
+
+static void set_video_row (Buf *My, size_t vidx, size_t idx) {
+  String.clear (My->tmp_buf);
+
+  if (idx >= My->array_len) {
+    String.replace_with (My->video->rows[vidx], My->empty_line->bytes);
+    return;
+  }
+
+  line_t *line = My->lines[idx];
+  ustring_t *it = line->data->head;
+
+  int cidx = 0;
+  while (it) {
+    if (cidx is line->first_col_idx) break;
+    cidx += it->len;
+    it = it->next;
+  }
+
+  int num = 0;
+  while (it and num < My->num_cols) {
+    num += it->width;
+    if (it->code is '\t') {
+      for (int j = 0; j < it->width; j++)
+        String.append_byte (My->tmp_buf, ' ');
+    } else
+      String.append_with_len (My->tmp_buf, it->buf, it->len);
+
+    it = it->next;
+  }
+
+  String.replace_with (My->video->rows[vidx], My->tmp_buf->bytes);
+}
+
+static void buf_set_render_row (Buf *My, int row_pos) {
+  String.append_with_fmt (My->video->render,
+    "%s" TERM_GOTO_PTR_POS_FMT "%s%s%s" TERM_GOTO_PTR_POS_FMT,
+      TERM_CURSOR_HIDE, row_pos, My->first_col, TERM_LINE_CLR_EOL,
+      My->video->rows[row_pos-1]->bytes, TERM_CURSOR_SHOW, My->row_pos, My->col_pos);
+}
+
+// not used currently
+static int buf_set_statusline (Buf *My) {
+  ifnot (My->has_statusline) return NOTHING_TODO;
+
+  int cur_col_idx = (My->cur_line->cur_col_idx is -1 ? 0 : My->cur_line->cur_col_idx);
+  int chr = (CUR_COL is NULL ? 0 : CUR_COL->code);
+
+  string *s = My->video->rows[My->last_row];
+  String.replace_with_fmt (s,
+    "(line: %zd/%zd idx: %d len: %d chr: %d)",
+    My->cur_row_idx + 1, My->array_len,
+    cur_col_idx, My->cur_line->num_bytes, chr);
+
+  size_t num = s->num_bytes;
+  for (size_t i = num; i < (size_t) My->num_cols; i++)
+    String.prepend_byte (s, ' ');
+
+  buf_set_render_row (My, My->last_row + 1);
+  return DONE;
+}
+
+static void buf_draw_statusline_and_set_pos (Buf *My) {
+  String.clear (My->video->render);
+  if (DONE is buf_set_statusline (My)) {
+    IO.fd.write (My->video->fd, My->video->render->bytes, My->video->render->num_bytes);
+    return;
+  }
+
+  GOTO(My->row_pos, My->col_pos);
+}
+
+static void buf_set_rows (Buf *My) {
+  size_t vidx = My->first_row - 1;
+  size_t fidx = My->video_first_row_idx;
+  size_t lidx = My->video_first_row_idx + My->num_rows - 1;
+  for (; fidx <= lidx; fidx++)
+    set_video_row (My, vidx++, fidx);
+}
+
+static void buf_set_rows_and_draw (Buf *My) {
+  buf_set_rows (My);
+  String.clear (My->video->render);
+  for (int i = My->first_row; i <= My->last_row; i++)
+    buf_set_render_row (My, i);
+
+  buf_set_statusline (My);
+
+  IO.fd.write (My->video->fd, My->video->render->bytes, My->video->render->num_bytes);
+}
+
+static int buf_home (Buf *My) {
+  ifnot (My->video_first_row_idx + My->cur_row_idx)
+    if (My->row_pos is My->first_row)
+      return NOTHING_TODO;
+
+  My->row_pos = My->first_row;
+  My->video_first_row_idx = 0;
+  My->cur_row_idx = 0;
+  My->prev_line = My->cur_line;
+  My->cur_line  = My->lines[My->cur_row_idx];
+  return DONE_NEEDS_DRAW;
+}
+
+static int buf_eof (Buf *My) {
+  if ((size_t) My->video_first_row_idx is My->array_len - 1 or
+      (size_t) My->cur_row_idx is My->array_len - 1)
+    return NOTHING_TODO;
+
+  My->cur_row_idx = My->array_len - 1;
+
+  My->prev_line = My->cur_line;
+  My->cur_line  = My->lines[My->cur_row_idx];
+
+  if ((size_t) ONE_PAGE(My) > My->array_len) {
+    My->row_pos = My->first_row + My->array_len - 1;
+    return DONE;
+  }
+
+  My->video_first_row_idx = (My->array_len - ONE_PAGE(My));
+  My->row_pos = My->last_row;
+  return DONE_NEEDS_DRAW;
+}
+
+static int buf_page_down (Buf *My) {
+  if ((size_t) (My->video_first_row_idx + My->num_rows) >= My->array_len)
+    return NOTHING_TODO;
+
+  My->video_first_row_idx += My->num_rows;
+  My->cur_row_idx         += My->num_rows;
+
+  while ((size_t) My->cur_row_idx >= My->array_len)
+    My->cur_row_idx--;
+
+  My->prev_line = My->cur_line;
+  My->cur_line  = My->lines[My->cur_row_idx];
+
+  int n = (My->array_len - (size_t) My->video_first_row_idx) + 1;
+  while (My->row_pos > n) My->row_pos--;
+
+  return DONE_NEEDS_DRAW;
+}
+
+static int buf_page_up (Buf *My) {
+  ifnot (My->video_first_row_idx) return NOTHING_TODO;
+
+  int n = My->num_rows;
+  while (n) {
+    My->video_first_row_idx--;
+    n--;
+    ifnot (My->video_first_row_idx) break;
+  }
+
+  My->cur_row_idx -= (My->num_rows - n);
+  My->prev_line    = My->cur_line;
+  My->cur_line     = My->lines[My->cur_row_idx];
+
+  return DONE_NEEDS_DRAW;
+}
+
+static int buf_up (Buf *My) {
+  if (My->row_pos > My->first_row) {
+    My->row_pos--;
+    My->cur_row_idx--;
+    My->prev_line = My->cur_line;
+    My->cur_line  = My->lines[My->cur_row_idx];
+    return DONE;
+  }
+
+  if (My->row_pos is My->first_row and My->video_first_row_idx > 0) {
+    My->cur_row_idx--;
+    My->prev_line = My->cur_line;
+    My->cur_line  = My->lines[My->cur_row_idx];
+    My->video_first_row_idx--;
+    return DONE_NEEDS_DRAW;
+  }
+
+  return NOTHING_TODO;
+}
+
+static int buf_down (Buf *My) {
+  if (My->row_pos < My->last_row and (size_t) My->cur_row_idx < My->array_len - 1) {
+    My->row_pos++;
+    My->cur_row_idx++;
+    My->prev_line = My->cur_line;
+    My->cur_line  = My->lines[My->cur_row_idx];
+    return DONE;
+  }
+
+  if (My->row_pos is My->last_row and
+      (size_t) My->cur_row_idx + 1 < My->array_len) {
+    My->cur_row_idx++;
+    My->prev_line = My->cur_line;
+    My->cur_line  = My->lines[My->cur_row_idx];
+    My->video_first_row_idx++;
+    return DONE_NEEDS_DRAW;
+  }
+
+  return NOTHING_TODO;
+}
+
+static char *pager_main (pager_t *My, int idx, rline_t *rline) {
+  Buf *buf = My->buf;
+
+  char *match = NULL;
+
+  string *s = String.new (8);
+
+  buf_set_rows_and_draw (buf);
+
+  int c;
+  int r;
+
+  for (;;)  {
+    if (buf->array_len is 1) {
+      match = buf->input[0]->bytes;
+      goto theend;
+    }
+
+    c = Rline.fd_read (rline, 0);
+
+    if (c is -1) break;
+
+    if (c is 127) c = BACKSPACE_KEY;
+
+    if (c is ESCAPE_KEY)
+      c = Rline.check_special (rline, 0);
+
+    switch (c) {
+      case ESCAPE_KEY:
+        goto theend;
+
+      case ' ': // make it an option (we need a specific type here anyway)
+      case '\r':
+        match = buf->input[buf->cur_row_idx]->bytes;
+        goto theend;
+
+      case CTRL('f'):
+      case PAGE_DOWN_KEY:
+        r = buf_page_down (buf);
+        if (r is NOTHING_TODO) continue;
+
+        buf_set_rows_and_draw (buf);
+
+        continue;
+
+      case CTRL('b'):
+      case PAGE_UP_KEY:
+        r = buf_page_up (buf);
+        if (r is NOTHING_TODO) continue;
+
+        buf_set_rows_and_draw (buf);
+
+        continue;
+
+      case '\t':
+      case ARROW_DOWN_KEY:
+        r = buf_down (buf);
+        if (r isnot NOTHING_TODO) {
+          if (r is DONE_NEEDS_DRAW)
+            buf_set_rows_and_draw (buf);
+          else
+            buf_draw_statusline_and_set_pos (buf);
+
+          continue;
+        }
+        // else goto the first item in list
+        // fallthrough
+
+      case HOME_KEY:
+        r = buf_home (buf);
+        if (r is NOTHING_TODO or r is DONE) continue;
+
+        buf_set_rows_and_draw (buf);
+
+        continue;
+
+      case ARROW_UP_KEY:
+        r = buf_up (buf);
+        if (r isnot NOTHING_TODO) {
+          if (r is DONE_NEEDS_DRAW)
+            buf_set_rows_and_draw (buf);
+          else
+            buf_draw_statusline_and_set_pos (buf);
+
+          continue;
+        }
+        // else goto the last item in list
+        // fallthrough
+
+      case END_KEY:
+        r = buf_eof (buf);
+        if (r is NOTHING_TODO)  continue;
+
+        if (r is DONE_NEEDS_DRAW)
+          buf_set_rows_and_draw (buf);
+        else
+          buf_draw_statusline_and_set_pos (buf);
+
+        continue;
+
+      default:
+        // we may need to handle backspace
+        if (('a' <= c and c <= 'z') or ('A' <= c and c <= 'Z') or c is '_' or c is '.' or
+            c is BACKSPACE_KEY or ('0' <= c and c <= '9') or c is '-') {
+          if (c is BACKSPACE_KEY) {
+            ifnot (idx) goto theend;
+            for (size_t i = 0; i < buf->array_len; i++)
+              String.clear_at (buf->input[i], idx);
+            idx--;
+            buf_clear_lines (buf);
+            free (buf->lines);
+            buf->lines = Alloc (sizeof (line_t) * buf->array_len);
+            buf_set_lines (buf);
+
+            buf->cur_row_idx = 0;
+            buf->video_first_row_idx = 0;
+            buf->row_pos = My->first_row;
+            buf->col_pos = My->first_col;
+            buf_set_rows_and_draw (buf);
+            continue;
+          }
+
+          char t[idx+2];
+          int i = 0;
+          for (; i < idx; i++) t[i] = buf->input[0]->bytes[i];
+          t[i++] = c;
+          idx = i;
+
+          string **tmp = Alloc (sizeof (string) * buf->array_len);
+          size_t tidx = 0;
+          for (size_t j = 0; j < buf->array_len; j++) {
+            if (Cstring.eq_n (buf->input[j]->bytes, t, idx)) {
+              tmp[tidx++] = String.new_with_len (buf->input[j]->bytes, buf->input[j]->num_bytes);
+            }
+          }
+
+          int len = tidx;
+
+          ifnot (len) {
+            free (tmp);
+            goto theend;
+          }
+
+          buf_clear_lines (buf);
+          free (buf->lines);
+
+          buf_clear_input (buf);
+          free (buf->input);
+          buf->input = tmp;
+          buf->array_len = len;
+
+          buf->lines = Alloc (sizeof (line_t) * buf->array_len);
+          buf_set_lines (buf);
+
+          buf->cur_row_idx = 0;
+          buf->video_first_row_idx = 0;
+          buf->row_pos = My->first_row;
+          buf->col_pos = My->first_col;
+          buf_set_rows_and_draw (buf);
+        }
+    }
+  }
+
+theend:
+  String.release (s);
+  return match;
+}
+
+static pager_t *pager_new (zs_t *zs, string **lines, size_t array_len, pager_opts opts) {
+  pager_t *My = zs->pager;
+
+  int first_row = opts.first_row;
+  int first_col = opts.first_col;
+  int last_row  = opts.last_row;
+  int last_col  = opts.last_col;
+
+  My->first_row = (first_row is -1 ? 1 : first_row);
+  My->last_row  = (last_row is -1 ? My->term->num_rows : last_row);
+  My->last_col  = (last_col is -1 ? My->term->num_cols : last_col);
+  My->num_rows  = My->last_row - My->first_row + 1;
+  My->num_cols  = My->last_col - My->first_col + 1;
+
+  Buf *buf = My->buf;
+
+  buf->cur_row_idx = 0;
+  buf->first_col = first_col;
+  buf->video_first_row_idx = 0;
+  buf->array_len = array_len;
+  buf->has_statusline = opts.buf_has_statusline;
+  buf->input_should_be_freed = opts.input_should_be_freed;
+  buf->input = lines;
+  buf->cur_line = NULL;
+  buf->prev_line = NULL;
+  buf->lines = Alloc (sizeof (line_t) * array_len);
+  buf->row_pos   = My->first_row;
+  buf->col_pos   = My->first_col;
+  buf->first_row = My->first_row;
+  buf->last_row  = My->last_row - buf->has_statusline;
+  buf->last_col  = My->last_col;
+  buf->num_rows  = My->num_rows - buf->has_statusline;
+  buf->num_cols  = My->num_cols;
+
+  buf->tabwidth = DEFAULT_TABWIDTH;
+
+  buf_set_lines (buf);
+
+  buf->cur_line = buf->prev_line = buf->lines[0];
+
+  buf_release_input (buf); // we don't need this anymore, free it if it is allowed
+
+  return My;
+}
+
+static int completion_pager (completion_t *this) {
+  term_t *term = this->zs->term;
+
+  ifnot (this->arlen) return -1;
+  Term.cursor.get_pos (term, &term->orig_curs_row_pos, &term->orig_curs_col_pos);
+
+  pager_t *p = pager_new (this->zs, this->ar, this->arlen, PagerOpts (
+    .first_row = 1,
+    .first_col = 1,
+    ));
+
+  Term.screen.save (term);
+  // Term.screen.clear (term); (no need)
+
+  term->is_initialized = 1; // fake it
+
+  char *command = pager_main (p, this->idx, this->rline);
+
+  int r = NULL isnot command;
+
+  if (r) {
+    this->zs->num_items = 1;
+    Rline.set.flags (this->rline, this->lc, RLINE_ACCEPT_ONE_ITEM);
+    String.clear (this->arg);
+
+    if (this->prefix) String.append_with_len (this->arg, this->prefix, this->prefix_len);
+    String.append_with (this->arg, command);
+    if (this->suffix) String.append_with_len (this->arg, this->suffix, this->suffix_len);
+    Rline.add_completion (this->rline, this->lc, this->arg->bytes, -1);
+    this->zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
+  }
+
+  Term.cursor.set_pos (term, term->orig_curs_row_pos, term->orig_curs_col_pos);
+  Term.screen.restore (term);
+  term->is_initialized = 0;
+
+  p->buf->input_should_be_freed = 1;
+  buf_clear (p->buf);
+  return r;
+}
 
 static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, void *userdata) {
   zs_t *zs = (zs_t *) userdata;
@@ -83,6 +761,9 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
   zs->num_items = 0;
   string *arg = zs->arg;
   String.clear (arg);
+
+  completion_t *completion = zs->completion;
+  completion->lc = lc;
 
   dirlist_t *dlist = NULL;
   char *dirname = NULL;
@@ -120,26 +801,84 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
   if (buf[0] is '\0') {
     Command *it = zs->command_head;
 
+    string **ar = Alloc (sizeof (string));
+    int idx = 0;
+
     while (it) {
+      ar = Realloc (ar, sizeof (string) * (idx + 1));
+      ar[idx] = String.new (4);
       char *name = it->name;
       while (*name) {
-        String.append_byte (arg, *name);
+        String.append_byte (ar[idx], *name);
         if (*name++ is '.') break;
       }
 
-      zs->num_items++;
-      Rline.add_completion (rline, lc, arg->bytes, -1);
-      zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
       while (it->next) {
-        if (Cstring.eq_n (arg->bytes, it->next->name, arg->num_bytes)) {
+        if (*(name - 1) is '.' and Cstring.eq_n (ar[idx]->bytes, it->next->name, ar[idx]->num_bytes)) {
           it = it->next;
           continue;
         }
         break;
       }
 
-      String.clear (arg);
       it = it->next;
+      idx++;
+    }
+
+    completion->ar = ar;
+    completion->arlen = idx;
+    completion->idx = 0;
+    completion->prefix = NULL;
+    completion->suffix = NULL;
+
+    int r = completion_pager (completion);
+
+    if (r is -1) free (ar);
+
+    if (1 is r) {
+
+      if (arg->bytes[arg->num_bytes-1] is '.') {
+        it = zs->command_head;
+        ar = Alloc (sizeof (string));
+        idx = 0;
+
+        while (it) {
+          if (Cstring.eq_n (it->name, arg->bytes, arg->num_bytes)) {
+            ar = Realloc (ar, sizeof (string) * (idx + 1));
+            ar[idx++] = String.new_with (it->name + arg->num_bytes);
+          }
+          it = it->next;
+        }
+
+        if (1 is idx) {
+          Rline.release_completions (rline, lc);
+          zs->num_items = 1;
+          ifnot (Cstring.eq_n (ar[0]->bytes, arg->bytes, arg->num_bytes)) {
+            String.append_with_len (arg, ar[0]->bytes, ar[0]->num_bytes);
+            Rline.add_completion (rline, lc, arg->bytes, -1);
+          } else
+            Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+
+          zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
+          String.release (ar[0]);
+          free (ar);
+          goto theend;
+        }
+
+        Rline.release_completions (rline, lc);
+        char prefix[arg->num_bytes + 1];
+        Cstring.cp (prefix, arg->num_bytes + 1, arg->bytes, arg->num_bytes);
+
+        completion->ar = ar;
+        completion->arlen = idx;
+        completion->idx = 0;
+        completion->prefix = prefix;
+        completion->suffix = NULL;
+        completion->prefix_len = arg->num_bytes;
+
+        r = completion_pager (completion);
+        if (-1 is r) free (ar);
+      }
     }
 
     goto theend;
@@ -161,6 +900,10 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
     basename = Path.basename (ptrbuf);
     dirlen = bytelen (dirname);
     bname_len = bytelen (basename);
+
+    int lidx = 0;
+    int idx = 0;
+    string **ar = Alloc (sizeof (string));
 
     if (bname_len and Cstring.eq (basename, "." DIR_SEP_STR) is 0) {
       string *d = NULL;
@@ -184,7 +927,7 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
           if (Cstring.eq (dirname, ".") and Cstring.eq_n (basename, "..", 2))
             d = String.new (bname_len);
           else
-            d = String.new_with (dirname);
+            d = String.new_with_len (dirname, dirlen);
 
           if (d->num_bytes and (d->bytes[d->num_bytes-1] isnot DIR_SEP and *basename isnot DIR_SEP))
             String.append_byte (d, DIR_SEP);
@@ -196,9 +939,10 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
         }
 
         dlist  = Dir.list (d->bytes, DIRLIST_LNK_IS_DIRECTORY);
-
+        lidx = d->num_bytes;
       } else {
         dlist  = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
+        lidx = dirlen;
       }
 
       if (NULL is dlist) {
@@ -211,27 +955,26 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
       while (it) {
         ifnot (is_dir) {
           if (Cstring.eq_n (basename, it->data->bytes, bname_len)) {
-            zs->num_items++;
-            String.prepend_with (arg, dirname);
-            if (arg->bytes[arg->num_bytes-1] isnot DIR_SEP)
-              String.append_byte (arg, DIR_SEP);
-            String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
-            String.append_with_len (arg, lptr, lptrlen);
-            Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
-            String.clear (arg);
-            zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
-          }
-        } else {
-          zs->num_items++;
-          String.append_with_len (arg, d->bytes, d->num_bytes);
-          if (arg->bytes[arg->num_bytes-1] isnot DIR_SEP)
-            String.append_byte (arg, DIR_SEP);
+            ar = Realloc (ar, sizeof (string) * (idx + 1));
+            ar[idx] = String.new_with (dirname);
+            if (ar[idx]->bytes[ar[idx]->num_bytes-1] isnot DIR_SEP)
+              String.append_byte (ar[idx], DIR_SEP);
+            String.append_with_len (ar[idx], it->data->bytes, it->data->num_bytes);
 
-          String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
-          String.append_with_len (arg, lptr, lptrlen);
-          Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
-          zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
-          String.clear (arg);
+            idx++;
+            lidx = dirlen + bname_len + (dirname[dirlen - 1] isnot DIR_SEP);
+          }
+
+        } else {
+          ar = Realloc (ar, sizeof (string) * (idx + 1));
+          ar[idx] = String.new_with_len (d->bytes, d->num_bytes);
+          if (ar[idx]->bytes[ar[idx]->num_bytes-1] isnot DIR_SEP)
+            String.append_byte (ar[idx], DIR_SEP);
+
+          String.append_with_len (ar[idx], it->data->bytes, it->data->num_bytes);
+
+          idx++;
+          lidx = d->num_bytes - 1 + (d->bytes[d->num_bytes - 1] isnot DIR_SEP) + 1;
         }
 
         it = it->next;
@@ -245,39 +988,64 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
       vstring_t *it = dlist->list->head;
 
       while (it) {
-        zs->num_items++;
+        ar = Realloc (ar, sizeof (string) * (idx + 1));
+        ar[idx] = String.new (8);
+
         if (Cstring.eq_n (ptrbuf, "." DIR_SEP_STR, 2))
-          String.prepend_with (arg, "." DIR_SEP_STR);
-        String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
-        String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes);
-        String.clear (arg);
-        zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
+          String.append_with_len (ar[idx], "." DIR_SEP_STR, 2);
+
+        ifnot (lidx) lidx = ar[idx]->num_bytes;
+
+        String.append_with_len (ar[idx], it->data->bytes, it->data->num_bytes);
+
+        idx++;
         it = it->next;
       }
     }
 
+    ifnot (idx) {
+      free (ar);
+      goto theend;
+    }
+
+    zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
+    completion->ar = ar;
+    completion->arlen = idx;
+    completion->idx = lidx;
+    completion->prefix = NULL;
+    completion->prefix_len = 0;
+    completion->suffix = lptr;
+    completion->suffix_len = lptrlen;
+
+    int r = completion_pager (completion);
+    if (-1 is r) free (ar);
     goto theend;
   }
 
   if (buflen > 2 and buf[buflen-1] is '.') { // adjust code to count if it is really a command and not a hidden file
     Command *it = zs->command_head;
 
+    string **ar = Alloc (sizeof (string));
+    size_t idx = 0;
     while (it) {
       if (Cstring.eq_n (it->name, buf, buflen)) {
-        zs->num_items++;
-        String.replace_with (arg, it->name);
-        if (buf + buflen -1 is lptr) {
-          lptr++; lptrlen--;
-        }
-
-        String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
-        zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
+        ar = Realloc (ar, sizeof (string) * (idx + 1));
+        ar[idx++] = String.new_with (it->name + buflen);
       }
       it = it->next;
     }
 
+    completion->ar = ar;
+    completion->arlen = idx;
+    completion->idx = 0;
+    completion->prefix = buf;
+    completion->prefix_len = buflen;
+    completion->suffix = lptr;
+    completion->suffix_len = lptrlen;
+
+    int r = completion_pager (completion);
+
+    if (r is -1) free (ar);
     goto theend;
   }
 
@@ -303,8 +1071,12 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
   }
   com[comlen] = '\0';
 
+  string **argar = NULL;
+  int argidx = 0;
+
   if (0 is is_arg and comlen) {
     Command *it = zs->command_head;
+
     while (it) {
       if (Cstring.eq (it->name, com)) {
         if (it->flags & ZS_COMMAND_HAS_NO_FILENAME_ARG) {
@@ -329,7 +1101,7 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
           char *args = NULL;
           size_t argslen;
           ssize_t nread;
-          String.append_with_len (arg, buf, lbuflen);
+          String.replace_with_len (arg, buf, lbuflen);
 
           while (-1 isnot (nread = getline (&args, &argslen, fp))) {
             args[nread - 1] = '\0';
@@ -343,9 +1115,11 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
             if (arg->num_bytes > lbuflen) {
               if (Cstring.eq_n (ptr, arg->bytes + lbuflen, arglen)) {
-                zs->num_items++;
-                String.append_with_len (arg, lptr, lptrlen);
-                Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+                if (NULL is argar)
+                  argar = Alloc (sizeof (string));
+                argar = Realloc (argar, sizeof (string) * (argidx + 1));
+                argar[argidx] = String.new_with_len (arg->bytes + lbuflen, arg->num_bytes - lbuflen);
+                argidx++;
                 zs->arg_type = ZS_RLINE_ARG_IS_ARG;
               }
 
@@ -409,9 +1183,10 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
         if (*sp is ',') {
           if (arg->num_bytes > buflen) {
             if (Cstring.eq_n (ptr, arg->bytes + buflen, arglen)) {
-              zs->num_items++;
-              String.append_with_len (arg, lptr, lptrlen);
-              Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+              if (NULL is argar)
+                argar = Alloc (sizeof (string));
+              argar[argidx] = String.new_with_len (arg->bytes + buflen, arg->num_bytes - buflen);
+              argidx++;
               zs->arg_type = ZS_RLINE_ARG_IS_ARG;
             }
 
@@ -427,9 +1202,11 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
       if (arg->num_bytes > buflen) {
         if (Cstring.eq_n (ptr, arg->bytes + buflen, arglen)) {
-          zs->num_items++;
-          String.append_with_len (arg, lptr, lptrlen);
-          Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+          if (NULL is argar)
+            argar = Alloc (sizeof (string));
+          argar = Realloc (argar, sizeof (string) * (argidx + 1));
+          argar[argidx] = String.new_with_len (arg->bytes + buflen, arg->num_bytes - buflen);
+          argidx++;
           zs->arg_type = ZS_RLINE_ARG_IS_ARG;
         }
 
@@ -440,6 +1217,18 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
     fclose (fp);
     ifnot (NULL is args)
       free (args);
+
+    completion->ar = argar;
+    completion->arlen = argidx;
+    completion->idx = arglen;
+    completion->prefix = buf;
+    completion->prefix_len = buflen;
+    completion->suffix = lptr;
+    completion->suffix_len = lptrlen;
+
+    int r = completion_pager (completion);
+
+    if (r is -1) free (argar);
 
     goto theend;
   }
@@ -474,51 +1263,142 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
     while (*sp) {
       if (*sp is '.') {
         sp++;
+
+        string **ar = Alloc (sizeof (string));
+        int idx = 0;
+
         while (it) {
           if (Cstring.eq_n (it->name, buf, buflen)) {
-            zs->num_items++;
-            String.replace_with (arg, it->name);
+            ar[idx++] = String.new_with (it->name);
             if (sp - 1 is lptr) {
               lptr++; lptrlen--;
             }
-
-            String.append_with_len (arg, lptr, lptrlen);
-            Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
-            zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
           }
 
           it = it->next;
         }
 
+        if (1 is idx) {
+          zs->num_items = 1;
+          Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+          zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
+
+          String.release (ar[0]);
+          free (ar);
+          goto theend;
+        }
+
+        completion->ar = ar;
+        completion->arlen = idx;
+        completion->idx = 0;
+        completion->prefix = NULL;
+        completion->suffix = lptr;
+        completion->suffix_len = lptrlen;
+
+        if (-1 is completion_pager (completion))
+          free (ar);
+
         goto theend;
       }
+
       sp++;
     }
 
+    string **ar = Alloc (sizeof (string));
+    size_t idx = 0;
     while (it) {
       char *name = it->name;
+
       if (Cstring.eq_n (name, buf, buflen)) {
+        ar = Realloc (ar, sizeof (string) * (idx + 1));
+
+        ar[idx] = String.new_with_len (name, buflen);
+        name += buflen;
         while (*name) {
-          String.append_byte (arg, *name);
+          String.append_byte (ar[idx], *name);
           if (*name++ is '.') break;
         }
 
-        zs->num_items++;
-        Rline.add_completion (rline, lc, arg->bytes, -1);
-        zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
-
-        while (it->next) {
-          if (Cstring.eq_n (arg->bytes, it->next->name, arg->num_bytes)) {
-            it = it->next;
-            continue;
+        if (*(name - 1) is '.') {
+          while (it->next) {
+            if (Cstring.eq_n (ar[idx]->bytes, it->next->name, ar[idx]->num_bytes)) {
+              it = it->next;
+              continue;
+            }
+            break;
           }
-          break;
         }
 
-        String.clear (arg);
+        idx++;
       }
 
       it = it->next;
+    }
+
+    if (1 is idx) {
+      zs->num_items = 1;
+      Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+      zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
+
+      String.release (ar[0]);
+      free (ar);
+      goto theend;
+    }
+
+    completion->ar = ar;
+    completion->arlen = idx;
+    completion->idx = buflen;
+    completion->prefix = NULL;
+    completion->suffix = lptr;
+    completion->suffix_len = lptrlen;
+
+    int r = completion_pager (completion);
+    if (r is -1) free (ar);
+
+    if (1 is r) {
+      if (arg->bytes[arg->num_bytes-1] is '.') {
+        it = zs->command_head;
+        ar = Alloc (sizeof (string));
+        idx = 0;
+
+        while (it) {
+          if (Cstring.eq_n (it->name, arg->bytes, arg->num_bytes)) {
+            ar = Realloc (ar, sizeof (string) * (idx + 1));
+            ar[idx++] = String.new_with (it->name + arg->num_bytes);
+          }
+          it = it->next;
+        }
+
+        if (1 is idx) {
+          Rline.release_completions (rline, lc);
+          zs->num_items = 1;
+          ifnot (Cstring.eq_n (ar[0]->bytes, arg->bytes, arg->num_bytes)) { // duck
+            String.append_with_len (arg, ar[0]->bytes, ar[0]->num_bytes);
+            Rline.add_completion (rline, lc, arg->bytes, -1);
+          } else
+            Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+
+          zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
+          String.release (ar[0]);
+          free (ar);
+          goto theend;
+        }
+
+        Rline.release_completions (rline, lc);
+        char prefix[arg->num_bytes + 1];
+        Cstring.cp (prefix, arg->num_bytes + 1, arg->bytes, arg->num_bytes);
+
+        completion->ar = ar;
+        completion->arlen = idx;
+        completion->idx = 0;
+        completion->prefix = buf;
+        completion->prefix_len = arg->num_bytes;
+        completion->suffix = lptr;
+        completion->suffix_len = lptrlen;
+
+        if (-1 is completion_pager (completion))
+          free (ar);
+      }
     }
 
     goto theend;
@@ -571,44 +1451,93 @@ get_current: {}
   bname_len = bytelen (basename);
 
   if (1 is dirlen and *dirname is '.' and 0 is bname_len + is_filename) {
+    string **ar = Alloc (sizeof (string));
+    int idx = 0;
+    if (argidx) {
+      for (int i = 0; i < argidx; i++) {
+        ar = Realloc (ar, sizeof (string) * (idx + 1));
+        ar[idx] = argar[i];
+        idx++;
+      }
+      free (argar);
+    }
+
     while (it) {
       if (it->data->bytes[0] isnot '.') {
-        zs->num_items++;
-        String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
-        String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
+        ar = Realloc (ar, sizeof (string) * (idx + 1));
+        ar[idx++] = String.new_with_len (it->data->bytes, it->data->num_bytes);
         zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
-        String.clear_at (arg, buflen);
       }
       it = it->next;
     }
+
+    completion->ar = ar;
+    completion->arlen = idx;
+    completion->idx = 0;
+    completion->prefix = buf;
+    completion->prefix_len = buflen;
+    completion->suffix = lptr;
+    completion->suffix_len = lptrlen;
+
+    if (-1 is completion_pager (completion))
+      free (ar);
+    goto theend;
+
   } else {
+    string **ar = Alloc (sizeof (string));
+    int lidx = bname_len;
+
+    String.replace_with_len (arg, buf, buflen);
+
+    int idx = 0;
+    if (argidx) {
+      for (int i = 0; i < argidx; i++) {
+        ar = Realloc (ar, sizeof (string) * (idx + 1));
+        ar[idx] = argar[i];
+        idx++;
+      }
+
+      free (argar);
+    }
+
     while (it) {
+      ar = Realloc (ar, sizeof (string) * (idx + 1));
       if (is_filename) {
-        zs->num_items++;
-        String.append_with_fmt (arg, "%s%s%s", ptrbuf,
-            (ptrbuf[ptrlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
-        String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
-        zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
-        String.clear_at (arg, buflen);
+        lidx = 0;
+        ifnot (idx) {
+          ifnot (' ' is buf[buflen-1])
+            String.append_byte (arg, ' ');
+          String.append_with_len (arg, ptrbuf, ptrlen);
+        }
+
+        ar[idx++] = String.new_with_len (it->data->bytes, it->data->num_bytes);
 
       } else if (Cstring.eq_n (it->data->bytes, basename, bname_len)) {
-        zs->num_items++;
-        if (dirlen is 1 and *dirname is '.')
-          String.append_with_len (arg, it->data->bytes, it->data->num_bytes);
-        else
-          String.append_with_fmt (arg, "%s%s%s", dirname,
-            (dirname[dirlen-1] is DIR_SEP ? "" : DIR_SEP_STR), it->data->bytes);
+        ifnot (idx)
+          if (dirlen isnot 1 and *dirname isnot '.')
+            String.append_with_fmt (arg, "%s%s", dirname,
+              (dirname[dirlen-1] is DIR_SEP ? "" : DIR_SEP_STR));
 
-        String.append_with_len (arg, lptr, lptrlen);
-        Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes - lptrlen);
-        zs->arg_type = ZS_RLINE_ARG_IS_FILENAME;
-        String.clear_at (arg, buflen);
+        ar[idx++] = String.new_with_len (it->data->bytes, it->data->num_bytes);
       }
 
       it = it->next;
     }
+
+    size_t prefixlen = arg->num_bytes;
+    char prefix[prefixlen + 1];
+    Cstring.cp (prefix, prefixlen + 1, arg->bytes, arg->num_bytes);
+    completion->ar = ar;
+    completion->arlen = idx;
+    completion->idx = lidx;
+    completion->prefix = prefix;
+    completion->prefix_len = prefixlen;
+    completion->suffix = lptr;
+    completion->suffix_len = lptrlen;
+
+    if (-1 is completion_pager (completion))
+      free (ar);
+    goto theend;
   }
 
 theend:
@@ -624,7 +1553,7 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
 
   if (0 is curpos and buf[0] is '\0') {
     // complete command
-    if (('A' <= c and c <= 'Z')) { // or ('a' <= c and c <= 'z') or c is '_') {
+    if (('A' <= c and c <= 'Z') or ('a' <= c and c <= 'z') or DIR_SEP is c) { // or ('a' <= c and c <= 'z') or c is '_') {
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
       String.replace_with_len (prevLine, newbuf, 1);
       zs_completion (newbuf, 1, lc, userdata);
@@ -632,6 +1561,8 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
       *ch = 0;
       return 0;
     }
+
+    if (c is '~') goto handle_tilda;
 
     return c;
   }
@@ -672,27 +1603,26 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
   }
 
   if (c is '~') {
-    if (curpos > 0) {
-      if (buf[curpos - 1] is ' ') {
-        zs->num_items = 1;
-        Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
-        string *arg = zs->arg;
+    if (buf[curpos - 1] is ' ' or 0 is curpos) {
+handle_tilda:
+      zs->num_items = 1;
+      Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
+      string *arg = zs->arg;
 
-        const char *ptr = buf + curpos;
-        size_t ptrlen = bytelen (ptr);
-        size_t len = bytelen (buf) - ptrlen;
+      const char *ptr = buf + curpos;
+      size_t ptrlen = bytelen (ptr);
+      size_t len = bytelen (buf) - ptrlen;
 
-        String.replace_with_len (arg, buf, len);
-        char *home = Sys.get.env_value ("HOME");
-        size_t homlen = bytelen (home);
-        String.append_with_len (arg, home, homlen);
-        String.append_byte (arg, DIR_SEP);
-        String.append_with_len (arg, ptr, ptrlen);
-        Rline.add_completion (rline, lc, arg->bytes, curpos + homlen + 1);
-        zs->arg_type = ZS_RLINE_ARG_IS_DIRECTORY;
-        String.clear_at (arg, len);
-        return 0;
-      }
+      String.replace_with_len (arg, buf, len);
+      char *home = Sys.get.env_value ("HOME");
+      size_t homlen = bytelen (home);
+      String.append_with_len (arg, home, homlen);
+      String.append_byte (arg, DIR_SEP);
+      String.append_with_len (arg, ptr, ptrlen);
+      Rline.add_completion (rline, lc, arg->bytes, curpos + homlen + 1);
+      zs->arg_type = ZS_RLINE_ARG_IS_DIRECTORY;
+      String.clear_at (arg, len);
+      return 0;
     }
   }
 
@@ -766,6 +1696,8 @@ static char *zs_hints (const char *buf, int *color, int *bold, void *userdata) {
 }
 
 static void init_rline_commands (zs_t *this) {
+  this->num_commands = 0;
+
   Command *comit;
   Command *head = Alloc (sizeof (Command));
   head->name = Cstring.dup ("exit", 4);
@@ -780,6 +1712,18 @@ static void init_rline_commands (zs_t *this) {
   next->name = Cstring.dup ("pwd", 3);
   comit->next = next;
   comit = next;
+
+  next = Alloc (sizeof (Command));
+  next->name = Cstring.dup ("unsetenv", 8);
+  comit->next = next;
+  comit = next;
+
+  next = Alloc (sizeof (Command));
+  next->name = Cstring.dup ("rehash", 6);
+  comit->next = next;
+  comit = next;
+
+  this->num_commands = 5;
 
   char *flags = NULL;
   dirlist_t *dlist = NULL; // silence clang
@@ -822,6 +1766,7 @@ static void init_rline_commands (zs_t *this) {
     comit->next = next;
     comit = next;
     it = it->next;
+    this->num_commands++;
   }
 
 theend:
@@ -882,6 +1827,10 @@ static zs_t *zs_init_rline (void) {
 
   zs->lastcomp_head = NULL;
   zs->numLastComp = 0;
+  zs->completion = Alloc (sizeof (completion_t));
+  zs->completion->zs = zs;
+  zs->completion->rline = this;
+  zs->completion->arg = zs->arg;
   return zs;
 }
 
@@ -901,11 +1850,31 @@ static int zs_commands (zs_t *this, sh_t *sh, const char *line, int *retval) {
   return ZS_NO_COMMAND;
 }
 
+static zs_t *init (void) {
+  zs_t *this = zs_init_rline ();
+
+  this->term = Term.new ();
+  this->term->mode = 's';
+  Term.init_size (this->term, &this->term->num_rows, &this->term->num_cols);
+
+  this->pager = Alloc (sizeof (pager_t));
+  this->pager->term = this->term;
+  this->pager->video = video_new (1, this->term->num_rows, this->term->num_cols);
+  this->pager->buf = Alloc (sizeof (Buf));
+  this->pager->buf->term = this->term;
+  this->pager->buf->video = this->pager->video;
+  this->pager->buf->tmp_buf = String.new (this->term->num_cols);
+  this->pager->buf->empty_line = String.new (this->term->num_cols);
+  for (size_t i = 0; i < (size_t) this->pager->buf->num_cols; i++)
+    String.append_byte (this->pager->buf->empty_line, ' ');
+  return this;
+}
+
 static int zs_interactive (sh_t *this) {
   int retval = OK;
   char *line;
 
-  zs_t *zs = zs_init_rline ();
+  zs_t *zs = init ();
 
   rline_t *rline = zs->rline;
 
@@ -950,6 +1919,9 @@ static int zs_interactive (sh_t *this) {
   String.release (zs->arg);
   deinit_commands (zs->command_head);
   deinit_lastcomp (zs->lastcomp_head);
+  Term.release (&zs->term);
+  pager_release (zs->pager);
+  free (zs->completion);
   free (zs);
 
   return retval;
@@ -967,6 +1939,10 @@ int main (int argc, char **argv) {
   __INIT__ (string);
   __INIT__ (vstring);
   __INIT__ (cstring);
+
+
+  __INIT__(ustring);
+  __INIT__(term);
 
   Sys.init_environment (SysEnvOpts());
 
@@ -1005,7 +1981,7 @@ int main (int argc, char **argv) {
       }
 
       fnamelen = bytelen (argv[i]);
-      fprintf (stderr, "%s, i %d arg %s\n", __func__, i, argv[i]);
+
       if (fnamelen > MAXLEN_DIR) {
         Stderr.print_fmt ("%s, path name is too long", argv[i]);
         retval = 1;
@@ -1063,8 +2039,6 @@ int main (int argc, char **argv) {
     goto get_exit_val;
   }
 
-  for (int i = idx; i < argc;i++)
-    fprintf(stderr, "idx %d, arg %s\n", i, argv[i]);
   retval = Sh.exec_file (this, fname);
 
   if (retval is NOTOK) {

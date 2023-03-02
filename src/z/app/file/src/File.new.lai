@@ -25,7 +25,7 @@ var mode    = argparse.results.mode
 var fnames = null
 
 ifnot argparse.argc {
-  if STDIN_FILENO: isatty ()
+  if STDIN_FILENO: isatty () {
     argparse.usage ()
     exit (1)
   }

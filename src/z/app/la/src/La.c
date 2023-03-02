@@ -88,7 +88,7 @@
 #endif
 
 const char *keywords[] = {
-  "for (", "for |", "exit (", "var ", "import (\"", "if (", "ifnot (",
+  "for ", "exit (", "var ", "import (\"", "if (", "ifnot (",
   "include (\"", "print (", "println (", NULL
 };
 
