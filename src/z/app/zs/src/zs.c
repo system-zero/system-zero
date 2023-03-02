@@ -104,7 +104,6 @@ typedef struct Buf {
   int last_row;
   int last_col;
   int video_first_row_idx;
-  int has_statusline;
   int tabwidth;
 
   size_t  array_len;
@@ -130,6 +129,7 @@ struct pager_t {
   int     last_col;
   int     num_cols;
   int     num_rows;
+  int     c;
 
   video_t *video;
   string  **video_rows;
@@ -144,7 +144,6 @@ typedef struct pager_opts {
   int last_col;
   int last_row;
   int input_should_be_freed;
-  int buf_has_statusline;
 } pager_opts;
 
 #define PagerOpts(...) (pager_opts) {  \
@@ -153,7 +152,6 @@ typedef struct pager_opts {
   .last_row   = -1,                    \
   .last_col   = -1,                    \
   .input_should_be_freed = 0,          \
-  .buf_has_statusline = 0,             \
   __VA_ARGS__                          \
 }
 
@@ -220,7 +218,6 @@ struct zs_t {
 
 #define GOTO(r,c) Term.cursor.set_pos (My->term, r, c)
 #define ONE_PAGE(__buf__)  ((__buf__->last_row - __buf__->first_row) + 1)
-#define CUR_COL My->cur_line->data->current
 
 static video_t *video_new (int fd, int nrows, int ncols) {
   video_t *video = Alloc (sizeof (video_t));
@@ -339,37 +336,6 @@ static void buf_set_render_row (Buf *My, int row_pos) {
       My->video->rows[row_pos-1]->bytes, TERM_CURSOR_SHOW, My->row_pos, My->col_pos);
 }
 
-// not used currently
-static int buf_set_statusline (Buf *My) {
-  ifnot (My->has_statusline) return NOTHING_TODO;
-
-  int cur_col_idx = (My->cur_line->cur_col_idx is -1 ? 0 : My->cur_line->cur_col_idx);
-  int chr = (CUR_COL is NULL ? 0 : CUR_COL->code);
-
-  string *s = My->video->rows[My->last_row];
-  String.replace_with_fmt (s,
-    "(line: %zd/%zd idx: %d len: %d chr: %d)",
-    My->cur_row_idx + 1, My->array_len,
-    cur_col_idx, My->cur_line->num_bytes, chr);
-
-  size_t num = s->num_bytes;
-  for (size_t i = num; i < (size_t) My->num_cols; i++)
-    String.prepend_byte (s, ' ');
-
-  buf_set_render_row (My, My->last_row + 1);
-  return DONE;
-}
-
-static void buf_draw_statusline_and_set_pos (Buf *My) {
-  String.clear (My->video->render);
-  if (DONE is buf_set_statusline (My)) {
-    IO.fd.write (My->video->fd, My->video->render->bytes, My->video->render->num_bytes);
-    return;
-  }
-
-  GOTO(My->row_pos, My->col_pos);
-}
-
 static void buf_set_rows (Buf *My) {
   size_t vidx = My->first_row - 1;
   size_t fidx = My->video_first_row_idx;
@@ -383,8 +349,6 @@ static void buf_set_rows_and_draw (Buf *My) {
   String.clear (My->video->render);
   for (int i = My->first_row; i <= My->last_row; i++)
     buf_set_render_row (My, i);
-
-  buf_set_statusline (My);
 
   IO.fd.write (My->video->fd, My->video->render->bytes, My->video->render->num_bytes);
 }
@@ -506,9 +470,10 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
 
   string *s = String.new (8);
 
+  buf->col_pos = idx + 1;
+
   buf_set_rows_and_draw (buf);
 
-  int c;
   int r;
 
   for (;;)  {
@@ -517,20 +482,20 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
       goto theend;
     }
 
-    c = Rline.fd_read (rline, 0);
+    My->c = Rline.fd_read (rline, 0);
 
-    if (c is -1) break;
+    if (My->c is -1) break;
 
-    if (c is 127) c = BACKSPACE_KEY;
+    if (My->c is 127) My->c = BACKSPACE_KEY;
 
-    if (c is ESCAPE_KEY)
-      c = Rline.check_special (rline, 0);
+    if (My->c is ESCAPE_KEY)
+      My->c = Rline.check_special (rline, 0);
 
-    switch (c) {
+    switch (My->c) {
       case ESCAPE_KEY:
         goto theend;
 
-      case ' ': // make it an option (we need a specific type here anyway)
+      case ' ':
       case '\r':
         match = buf->input[buf->cur_row_idx]->bytes;
         goto theend;
@@ -560,7 +525,7 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
           if (r is DONE_NEEDS_DRAW)
             buf_set_rows_and_draw (buf);
           else
-            buf_draw_statusline_and_set_pos (buf);
+            GOTO(buf->row_pos, buf->col_pos);
 
           continue;
         }
@@ -581,7 +546,7 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
           if (r is DONE_NEEDS_DRAW)
             buf_set_rows_and_draw (buf);
           else
-            buf_draw_statusline_and_set_pos (buf);
+            GOTO(buf->row_pos, buf->col_pos);
 
           continue;
         }
@@ -595,36 +560,25 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
         if (r is DONE_NEEDS_DRAW)
           buf_set_rows_and_draw (buf);
         else
-          buf_draw_statusline_and_set_pos (buf);
+          GOTO(buf->row_pos, buf->col_pos);
 
         continue;
 
       default:
-        // we may need to handle backspace
-        if (('a' <= c and c <= 'z') or ('A' <= c and c <= 'Z') or c is '_' or c is '.' or
-            c is BACKSPACE_KEY or ('0' <= c and c <= '9') or c is '-') {
-          if (c is BACKSPACE_KEY) {
+        if (('a' <= My->c and My->c <= 'z') or ('A' <= My->c and My->c <= 'Z') or My->c is '_' or My->c is '.' or
+            My->c is BACKSPACE_KEY or ('0' <= My->c and My->c <= '9') or My->c is '-') {
+          if (My->c is BACKSPACE_KEY) { // not really useful, in reality is unhandled
             ifnot (idx) goto theend;
-            for (size_t i = 0; i < buf->array_len; i++)
-              String.clear_at (buf->input[i], idx);
             idx--;
-            buf_clear_lines (buf);
-            free (buf->lines);
-            buf->lines = Alloc (sizeof (line_t) * buf->array_len);
-            buf_set_lines (buf);
-
-            buf->cur_row_idx = 0;
-            buf->video_first_row_idx = 0;
-            buf->row_pos = My->first_row;
-            buf->col_pos = My->first_col;
-            buf_set_rows_and_draw (buf);
+            buf->col_pos--;
+            GOTO(buf->row_pos, buf->col_pos);
             continue;
           }
 
           char t[idx+2];
           int i = 0;
           for (; i < idx; i++) t[i] = buf->input[0]->bytes[i];
-          t[i++] = c;
+          t[i++] = My->c;
           idx = i;
 
           string **tmp = Alloc (sizeof (string) * buf->array_len);
@@ -656,7 +610,7 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
           buf->cur_row_idx = 0;
           buf->video_first_row_idx = 0;
           buf->row_pos = My->first_row;
-          buf->col_pos = My->first_col;
+          buf->col_pos = idx + 1;
           buf_set_rows_and_draw (buf);
         }
     }
@@ -687,7 +641,6 @@ static pager_t *pager_new (zs_t *zs, string **lines, size_t array_len, pager_opt
   buf->first_col = first_col;
   buf->video_first_row_idx = 0;
   buf->array_len = array_len;
-  buf->has_statusline = opts.buf_has_statusline;
   buf->input_should_be_freed = opts.input_should_be_freed;
   buf->input = lines;
   buf->cur_line = NULL;
@@ -696,9 +649,9 @@ static pager_t *pager_new (zs_t *zs, string **lines, size_t array_len, pager_opt
   buf->row_pos   = My->first_row;
   buf->col_pos   = My->first_col;
   buf->first_row = My->first_row;
-  buf->last_row  = My->last_row - buf->has_statusline;
+  buf->last_row  = My->last_row;
   buf->last_col  = My->last_col;
-  buf->num_rows  = My->num_rows - buf->has_statusline;
+  buf->num_rows  = My->num_rows;
   buf->num_cols  = My->num_cols;
 
   buf->tabwidth = DEFAULT_TABWIDTH;
@@ -724,7 +677,7 @@ static int completion_pager (completion_t *this) {
     ));
 
   Term.screen.save (term);
-  // Term.screen.clear (term); (no need)
+  Term.screen.clear (term);
 
   term->is_initialized = 1; // fake it
 
@@ -753,7 +706,7 @@ static int completion_pager (completion_t *this) {
   return r;
 }
 
-static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, void *userdata) {
+static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, void *userdata) {
   zs_t *zs = (zs_t *) userdata;
   rline_t *rline = zs->rline;
   Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
@@ -790,6 +743,8 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
   int is_arg = 0;
   int arglen = 0;
   int is_filename = 0;
+
+  int c = 0;
 
   while (ptr isnot buf) {
     if (*(ptr - 1) is ' ')
@@ -835,6 +790,11 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
     if (r is -1) free (ar);
 
+    if (zs->pager->c is '\r') {
+      c = zs->pager->c;
+      goto theend;
+    }
+
     if (1 is r) {
 
       if (arg->bytes[arg->num_bytes-1] is '.') {
@@ -878,6 +838,8 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
         r = completion_pager (completion);
         if (-1 is r) free (ar);
+
+        if (zs->pager->c is '\r') c = zs->pager->c;
       }
     }
 
@@ -1019,6 +981,8 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
     int r = completion_pager (completion);
     if (-1 is r) free (ar);
+    if (zs->pager->c is '\r') c = zs->pager->c;
+
     goto theend;
   }
 
@@ -1046,6 +1010,8 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
     int r = completion_pager (completion);
 
     if (r is -1) free (ar);
+    if (zs->pager->c is '\r') c = zs->pager->c;
+
     goto theend;
   }
 
@@ -1230,6 +1196,8 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
     if (r is -1) free (argar);
 
+    if (zs->pager->c is '\r') c = zs->pager->c;
+
     goto theend;
   }
 
@@ -1238,16 +1206,16 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
   is_filename = 0;
   while (ptrlen--) {
-    char c = *(ptr-1);
-    if (('0' <= c and c <= '9') or
-        ('a' <= c and c <= 'z') or
-        ('A' <= c and c <= 'Z') or
-        c is '_' or c is '.' or c is '-') {
+    char ch = *(ptr-1);
+    if (('0' <= ch and ch <= '9') or
+        ('a' <= ch and ch <= 'z') or
+        ('A' <= ch and ch <= 'Z') or
+        ch is '_' or ch is '.' or ch is '-') {
       ptr--;
       continue;
     }
 
-    if (c is '/') {
+    if (ch is '/') {
       is_filename = 1;
       ptr--;
       continue;
@@ -1297,6 +1265,8 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
         if (-1 is completion_pager (completion))
           free (ar);
+
+        if (zs->pager->c is '\r') c = zs->pager->c;
 
         goto theend;
       }
@@ -1355,6 +1325,11 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
     int r = completion_pager (completion);
     if (r is -1) free (ar);
 
+    if (zs->pager->c is '\r') {
+      c = zs->pager->c;
+      goto theend;
+    }
+
     if (1 is r) {
       if (arg->bytes[arg->num_bytes-1] is '.') {
         it = zs->command_head;
@@ -1398,6 +1373,8 @@ static void zs_completion (const char *bufp, int curpos, rlineCompletions *lc, v
 
         if (-1 is completion_pager (completion))
           free (ar);
+
+        if (zs->pager->c is '\r') c = zs->pager->c;
       }
     }
 
@@ -1481,6 +1458,9 @@ get_current: {}
 
     if (-1 is completion_pager (completion))
       free (ar);
+
+    if (zs->pager->c is '\r') c = zs->pager->c;
+
     goto theend;
 
   } else {
@@ -1514,7 +1494,7 @@ get_current: {}
 
       } else if (Cstring.eq_n (it->data->bytes, basename, bname_len)) {
         ifnot (idx)
-          if (dirlen isnot 1 and *dirname isnot '.')
+          if ((dirlen is 1 and *dirname is DIR_SEP) or (dirlen isnot 1 and *dirname isnot '.'))
             String.append_with_fmt (arg, "%s%s", dirname,
               (dirname[dirlen-1] is DIR_SEP ? "" : DIR_SEP_STR));
 
@@ -1537,12 +1517,16 @@ get_current: {}
 
     if (-1 is completion_pager (completion))
       free (ar);
+
+    if (zs->pager->c is '\r') c = zs->pager->c;
+
     goto theend;
   }
 
 theend:
   ifnot (NULL is dlist) dlist->release (dlist);
   ifnot (NULL is dirname) free (dirname);
+  return c;
 }
 
 static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, rlineCompletions *lc, void *userdata) {

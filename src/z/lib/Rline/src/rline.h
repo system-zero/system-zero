@@ -8,7 +8,7 @@ typedef struct currentLine currentLine;
 
 typedef struct rlineCompletions rlineCompletions;
                 /* incompatible API */
-typedef void (*RlineCompletion_cb) (const char *, int, rlineCompletions *, void *);
+typedef int (*RlineCompletion_cb) (const char *, int, rlineCompletions *, void *);
 /* this is to support tab completions even if the pointer is not at the end
  * of the line */
 

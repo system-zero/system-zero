@@ -1,7 +1,6 @@
-This is a quite minimal shell implementation, at very early stage of development,
-that does just the basics with a decent interactivity.  
+This is a quite minimal shell implementation, that does just the basics with a
+decent interactivity.  
   
-
 ## Semantics: 
 <pre>
   Shell functionality:  
@@ -74,7 +73,7 @@ that does just the basics with a decent interactivity.
     Also there are two more callback functions, one that is called immediately after
     a received input and before any processing, and the other on a carriage return.  
 
-    Generally speaking, the tendency is for a bit aggressive interaction.  
+    Generally speaking, the tendency is for an aggressive interaction.  
   
   Word expansion:  
     Tilde expansion:  
@@ -166,7 +165,7 @@ that does just the basics with a decent interactivity.
       The fist character in the name should be in [a-zA-Z] range. The rest could also
       be in the 0-9 range or '_'.
     
-      The `NAME' it should be followed by an '='.  
+      `NAME' should be followed by '='.  
 
       The value of `VALUE' starts imediatelly after the '=' and ends up to the first
       encountered space. It should be composed with characters in the [a-zA-z0-9]
@@ -178,10 +177,26 @@ that does just the basics with a decent interactivity.
         $name=$(which ls)  
         $name=$(ls / | grep usr)  
         $name=${var}/${another_var}  
+
+  Selection Menu:
+    This is a simple UI that displays one item per line and it is performed when  
+    there are more than one item in the completion list.  
+  
+    keys:  
+      ' '   : returns the selected item  
+      '\r'  : likewise but it executes immediately the command line, included the selection  
+      '\t'  :  
+      DOWN  : next item (if it is the last item, this is the first item)  
+        UP  : prev item (if it is the first item, this is the last item)  
+      HOME  : focused to the first item  
+      END   : focused to the last item  
+      CTRL-f   :  
+      PAGE_DOWN: scrolls one page down  
+      CTRL-b   :  
+      PAGE_UP  : scrolls one page up  
     
 Quirks:  
   A filename with embedded whitespace should be enclosed into double quotes.  
-  Also in this same case, filename completion stops if the filename is a directory.  
   
   There is no job managment.  
 

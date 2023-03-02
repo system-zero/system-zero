@@ -1264,11 +1264,6 @@ static linenoiseHintsCallback *hintsCallback = NULL;
 static linenoiseFreeHintsCallback *freeHintsCallback = NULL;
 static void *hintsUserdata = NULL;
 
-static void beep() {
-    fprintf(stderr, "\x7");
-    fflush(stderr);
-}
-
 static void freeCompletions(linenoiseCompletions *lc) {
     size_t i;
     for (i = 0; i < lc->len; i++)
@@ -1301,7 +1296,6 @@ static int drawCompletions (rline_t *this, linenoiseCompletions *lc, currentLine
     switch(c) {
       case '\t':
         i = (i + 1) % (lc->len + 1);
-        if (i is lc->len) beep ();
         break;
 
       case CHAR_ESCAPE:
@@ -1333,9 +1327,13 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
     const char *curbuf = sb_str(current->buf);
     int curpos = utf8_index(curbuf, current->pos);
     int c = 0;
-    if (ch == 0)
-      completionCallback(curbuf, curpos, &lc, completionUserdata);
-    else { // ADDITION
+    if (ch == 0) {
+      c = completionCallback(curbuf, curpos, &lc, completionUserdata);
+      if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and c is '\r') {
+        set_current (current, lc.cvec[0]);
+        goto theend;
+      }
+    } else { // ADDITIONS
       int r = linenoiseOnInputCallback (curbuf, prevLine, &ch, curpos, &lc, completionUserdata);
 
       if (r == -1) {
@@ -1354,7 +1352,6 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
     }
 
     if (lc.len == 0) {
-        beep ();
         goto theend;
     }
 

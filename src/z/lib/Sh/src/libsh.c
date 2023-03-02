@@ -589,12 +589,36 @@ static int sh_parse (sh_t *this, char *buf) {
   int is_in_dolar_paren = 0;
   int should_set_pipe_cb = 0;
 
+  int prev = 0;
   while (*sp) {
     if (*sp is '#') {
       sp++;
-      while (*sp and *sp isnot '\n')
+      while (*sp and *sp isnot '\n') {
+        prev = *sp;
         sp++;
-      if (*sp is '\n') sp++;
+      }
+
+      if (*sp is '\n') {
+        prev = *sp;
+        sp++;
+      }
+
+      continue;
+    }
+
+    if (*sp is '"') {
+      sp++;
+      while (*sp) {
+        if (*sp is '"')
+          if (prev isnot '\\')
+            break;
+
+        prev = *sp;
+        sp++;
+      }
+
+      prev = 0;
+      sp++;
       continue;
     }
 
@@ -782,6 +806,7 @@ static int sh_parse (sh_t *this, char *buf) {
       ifnot (*sp)
         goto theend;
 
+    prev = *sp;
     next: sp++;
   }
 
