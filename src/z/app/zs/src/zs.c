@@ -200,6 +200,7 @@ struct zs_t {
 
   string
     *arg,
+    *completion_command,
     *comdir;
 
   rline_t *rline;
@@ -684,7 +685,6 @@ static int completion_pager (completion_t *this) {
   char *command = pager_main (p, this->idx, this->rline);
 
   int r = NULL isnot command;
-
   if (r) {
     this->zs->num_items = 1;
     Rline.set.flags (this->rline, this->lc, RLINE_ACCEPT_ONE_ITEM);
@@ -694,6 +694,8 @@ static int completion_pager (completion_t *this) {
     String.append_with (this->arg, command);
     if (this->suffix) String.append_with_len (this->arg, this->suffix, this->suffix_len);
     Rline.add_completion (this->rline, this->lc, this->arg->bytes, -1);
+    String.replace_with (this->zs->completion_command, command); // leave it at the end of the block
+                                                                 // as it might be used before
     this->zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
   }
 
@@ -1248,6 +1250,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
         if (1 is idx) {
           zs->num_items = 1;
+          if (lptrlen)
+            String.append_with_fmt (ar[0], " %s", lptr);
           Rline.add_completion (rline, lc, ar[0]->bytes, -1);
           zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
 
@@ -1307,6 +1311,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
     if (1 is idx) {
       zs->num_items = 1;
+      if (lptrlen)
+        String.append_with_fmt (ar[0], " %s", lptr);
       Rline.add_completion (rline, lc, ar[0]->bytes, -1);
       zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
 
@@ -1331,15 +1337,15 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     }
 
     if (1 is r) {
-      if (arg->bytes[arg->num_bytes-1] is '.') {
+      if (zs->completion_command->bytes[zs->completion_command->num_bytes-1] is '.') {
         it = zs->command_head;
         ar = Alloc (sizeof (string));
         idx = 0;
 
         while (it) {
-          if (Cstring.eq_n (it->name, arg->bytes, arg->num_bytes)) {
+          if (Cstring.eq_n (it->name, zs->completion_command->bytes, zs->completion_command->num_bytes)) {
             ar = Realloc (ar, sizeof (string) * (idx + 1));
-            ar[idx++] = String.new_with (it->name + arg->num_bytes);
+            ar[idx++] = String.new_with (it->name + zs->completion_command->num_bytes);
           }
           it = it->next;
         }
@@ -1347,11 +1353,16 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
         if (1 is idx) {
           Rline.release_completions (rline, lc);
           zs->num_items = 1;
-          ifnot (Cstring.eq_n (ar[0]->bytes, arg->bytes, arg->num_bytes)) { // duck
-            String.append_with_len (arg, ar[0]->bytes, ar[0]->num_bytes);
-            Rline.add_completion (rline, lc, arg->bytes, -1);
-          } else
+          ifnot (Cstring.eq_n (ar[0]->bytes, zs->completion_command->bytes, zs->completion_command->num_bytes)) { // duck
+            String.append_with_len (zs->completion_command, ar[0]->bytes, ar[0]->num_bytes);
+            if (lptrlen)
+              String.append_with_fmt (zs->completion_command, " %s", lptr);
+            Rline.add_completion (rline, lc, zs->completion_command->bytes, -1);
+          } else {
+            if (lptrlen)
+              String.append_with_fmt (ar[0], " %s", lptr);
             Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+          }
 
           zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
           String.release (ar[0]);
@@ -1360,14 +1371,12 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
         }
 
         Rline.release_completions (rline, lc);
-        char prefix[arg->num_bytes + 1];
-        Cstring.cp (prefix, arg->num_bytes + 1, arg->bytes, arg->num_bytes);
 
         completion->ar = ar;
         completion->arlen = idx;
         completion->idx = 0;
-        completion->prefix = buf;
-        completion->prefix_len = arg->num_bytes;
+        completion->prefix = zs->completion_command->bytes;
+        completion->prefix_len = zs->completion_command->num_bytes;
         completion->suffix = lptr;
         completion->suffix_len = lptrlen;
 
@@ -1540,8 +1549,14 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
     if (('A' <= c and c <= 'Z') or ('a' <= c and c <= 'z') or DIR_SEP is c) { // or ('a' <= c and c <= 'z') or c is '_') {
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
       String.replace_with_len (prevLine, newbuf, 1);
-      zs_completion (newbuf, 1, lc, userdata);
+      int r = zs_completion (newbuf, 1, lc, userdata);
+
       ifnot (zs->num_items) return -1;
+      if (r is '\r') {
+        *ch = '\r';
+        return '\r';
+      }
+
       *ch = 0;
       return 0;
     }
@@ -1793,6 +1808,7 @@ static zs_t *zs_init_rline (void) {
   Rline.history.load (this);
 
   zs->arg = String.new (32);
+  zs->completion_command = String.new (32);
 
   ifnot (getuid ())
     Rline.set.prompt (this, DEFAULT_ROOT_PROMPT);
@@ -1901,6 +1917,7 @@ static int zs_interactive (sh_t *this) {
   Rline.release (rline);
   String.release (zs->comdir);
   String.release (zs->arg);
+  String.release (zs->completion_command);
   deinit_commands (zs->command_head);
   deinit_lastcomp (zs->lastcomp_head);
   Term.release (&zs->term);

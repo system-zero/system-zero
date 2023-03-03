@@ -1,4 +1,4 @@
-#define LIBRARY "Rline"
+//#define LIBRARY "Rline"
 
 #define REQUIRE_STD_DEFAULT_SOURCE
 #define REQUIRE_STDIO
@@ -1327,17 +1327,26 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
     const char *curbuf = sb_str(current->buf);
     int curpos = utf8_index(curbuf, current->pos);
     int c = 0;
+
     if (ch == 0) {
       c = completionCallback(curbuf, curpos, &lc, completionUserdata);
+
       if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and c is '\r') {
         set_current (current, lc.cvec[0]);
         goto theend;
       }
+
     } else { // ADDITIONS
       int r = linenoiseOnInputCallback (curbuf, prevLine, &ch, curpos, &lc, completionUserdata);
 
       if (r == -1) {
         c = ch;
+        goto theend;
+      }
+
+      if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and r is '\r') {
+        set_current (current, lc.cvec[0]);
+        c = r;
         goto theend;
       }
 
