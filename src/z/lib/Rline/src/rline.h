@@ -80,6 +80,7 @@ typedef struct rline_self {
 
   void
     (*release) (rline_t *),
+    (*refresh_line) (rline_t *, rlineCompletions *),
     (*add_completion) (rline_t *, rlineCompletions *, char *, int);
 
   rlineCompletions *

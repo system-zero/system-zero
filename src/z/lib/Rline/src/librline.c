@@ -53,6 +53,8 @@ OnInput_cb linenoiseOnInputCallback;
 OnCarriageReturn_cb linenoiseOnCarriageReturnCallback;
 AcceptOneItem_cb linenoiseAcceptOneItemCallback;
 
+static rlineCompletions *rline_release_completions (rline_t *, rlineCompletions *);
+
 static int linenoiseHistoryAdd(const char *);
 static int linenoiseHistorySave(const char *);
 static int linenoiseHistorySetMaxLen(int);
@@ -1285,6 +1287,11 @@ static int drawCompletions (rline_t *this, linenoiseCompletions *lc, currentLine
     } else
       refreshLine (current);
 
+    if (curChar is '\t') {
+      c = curChar;
+      goto theswitch;
+    }
+
     c = fd_read (current);
 
     if (c is -1) break;
@@ -1293,6 +1300,7 @@ static int drawCompletions (rline_t *this, linenoiseCompletions *lc, currentLine
 
     if (c is CHAR_ESCAPE) c = check_special (current->fd);
 
+    theswitch:
     switch(c) {
       case '\t':
         i = (i + 1) % (lc->len + 1);
@@ -1329,11 +1337,25 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
     int c = 0;
 
     if (ch == 0) {
+      int repeats = -1;
+      completioncallback:
+      repeats++;
       c = completionCallback(curbuf, curpos, &lc, completionUserdata);
 
       if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and c is '\r') {
         set_current (current, lc.cvec[0]);
         goto theend;
+      }
+
+      if (repeats and c is CHAR_ESCAPE)
+        refreshLine (current);
+
+      if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and c is '\t') {
+        set_current (current, lc.cvec[0]);
+        curbuf = sb_str(current->buf);
+        curpos = utf8_index(curbuf, current->pos);
+        rline_release_completions (this, &lc);
+        goto completioncallback;
       }
 
     } else { // ADDITIONS
@@ -1344,7 +1366,7 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
         goto theend;
       }
 
-      if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and r is '\r') {
+      if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and (r is '\r' or r is '\t')) {
         set_current (current, lc.cvec[0]);
         c = r;
         goto theend;
@@ -1993,9 +2015,8 @@ static int reverseIncrementalSearch(struct currentLine *current)
             continue;
         }
 
-        if (c == CHAR_ESCAPE) {
+        if (c == CHAR_ESCAPE)
             c = check_special(current->fd);
-        }
 
         if (c == ctrl('P') || c == SPECIAL_UP) {
             /* Search for the previous (earlier) match */
@@ -2101,9 +2122,8 @@ static int linenoiseEdit (rline_t *this, struct currentLine *current) {
          * there was an error reading from fd. Otherwise it will return the
          * character that should be handled next. */
         //if (c == '\t' && current->pos == sb_chars(current->buf) && completionCallback != NULL) {
-        if (c == '\t' && completionCallback != NULL) {
+        if (c == '\t' && completionCallback != NULL)
             c = completeLine (this, current, prevLine, 0);
-        }
 
         if (c == ctrl('R')) {
             /* reverse incremental search will provide an alternative keycode or 0 for none */
@@ -2111,9 +2131,8 @@ static int linenoiseEdit (rline_t *this, struct currentLine *current) {
             /* go on to process the returned char normally */
         }
 
-        if (c == CHAR_ESCAPE) {   /* escape sequence */
+        if (c == CHAR_ESCAPE)   /* escape sequence */
             c = check_special(current->fd);
-        }
 
         if (c == -1) {
             /* Return on errors */
@@ -2596,6 +2615,16 @@ static rlineCompletions *rline_release_completions (rline_t *this, rlineCompleti
   return lc;
 }
 
+static char **rline_get_array (rline_t *this, rlineCompletions *lc) {
+  (void) this;
+  return lc->cvec;
+}
+
+static size_t rline_get_arraylen (rline_t *this, rlineCompletions *lc) {
+  (void) this;
+  return lc->len;
+}
+
 static void rline_set_completion_cb (rline_t *this, RlineCompletion_cb cb, void *userdata) {
   $my(completion_cb) = cb;
   linenoiseSetCompletionCallback (cb, userdata);
@@ -2616,19 +2645,14 @@ static void rline_set_on_carriage_return_cb (rline_t *this, OnCarriageReturn_cb 
   linenoiseOnCarriageReturnCallback = cb;
 }
 
-static char **rline_get_array (rline_t *this, rlineCompletions *lc) {
-  (void) this;
-  return lc->cvec;
-}
-
-static size_t rline_get_arraylen (rline_t *this, rlineCompletions *lc) {
-  (void) this;
-  return lc->len;
-}
-
 static void rline_set_hints_cb (rline_t *this, RlineHints_cb cb, void *userdata) {
   $my(hints_cb) = cb;
   linenoiseSetHintsCallback (cb, userdata);
+}
+
+static void rline_refresh_line (rline_t *this, rlineCompletions *lc) {
+  (void) this;
+  refreshLine (lc->current);
 }
 
 static void rline_set_flags (rline_t *this, rlineCompletions *lc, int flags) {
@@ -2718,11 +2742,12 @@ public rline_T __init_rline__ (void) {
     .self = (rline_self) {
       .new = rline_new,
       .edit = rline_edit,
+      .fd_read = rline_fd_read,
       .release = rline_release,
+      .refresh_line = rline_refresh_line,
+      .check_special = rline_check_special,
       .add_completion = rline_add_completion,
       .release_completions = rline_release_completions,
-      .fd_read = rline_fd_read,
-      .check_special = rline_check_special,
       .set = (rline_set_self) {
         .flags = rline_set_flags,
         .prompt = rline_set_prompt,

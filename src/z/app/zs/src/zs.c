@@ -167,6 +167,7 @@ typedef struct completion_t {
   size_t prefix_len;
   const char *suffix;
   size_t suffix_len;
+  const char *curbuf;
 } completion_t;
 
 typedef struct LastComp LastComp;
@@ -478,11 +479,6 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
   int r;
 
   for (;;)  {
-    if (buf->array_len is 1) {
-      match = buf->input[0]->bytes;
-      goto theend;
-    }
-
     My->c = Rline.fd_read (rline, 0);
 
     if (My->c is -1) break;
@@ -497,6 +493,7 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
         goto theend;
 
       case ' ':
+      case '\t':
       case '\r':
         match = buf->input[buf->cur_row_idx]->bytes;
         goto theend;
@@ -519,7 +516,6 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
 
         continue;
 
-      case '\t':
       case ARROW_DOWN_KEY:
         r = buf_down (buf);
         if (r isnot NOTHING_TODO) {
@@ -566,16 +562,7 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
         continue;
 
       default:
-        if (('a' <= My->c and My->c <= 'z') or ('A' <= My->c and My->c <= 'Z') or My->c is '_' or My->c is '.' or
-            My->c is BACKSPACE_KEY or ('0' <= My->c and My->c <= '9') or My->c is '-') {
-          if (My->c is BACKSPACE_KEY) { // not really useful, in reality is unhandled
-            ifnot (idx) goto theend;
-            idx--;
-            buf->col_pos--;
-            GOTO(buf->row_pos, buf->col_pos);
-            continue;
-          }
-
+        if (' ' < My->c) {
           char t[idx+2];
           int i = 0;
           for (; i < idx; i++) t[i] = buf->input[0]->bytes[i];
@@ -685,6 +672,7 @@ static int completion_pager (completion_t *this) {
   char *command = pager_main (p, this->idx, this->rline);
 
   int r = NULL isnot command;
+
   if (r) {
     this->zs->num_items = 1;
     Rline.set.flags (this->rline, this->lc, RLINE_ACCEPT_ONE_ITEM);
@@ -693,9 +681,16 @@ static int completion_pager (completion_t *this) {
     if (this->prefix) String.append_with_len (this->arg, this->prefix, this->prefix_len);
     String.append_with (this->arg, command);
     if (this->suffix) String.append_with_len (this->arg, this->suffix, this->suffix_len);
+
+    if (p->c is '\t')
+      if (Cstring.eq (this->curbuf, this->arg->bytes)) {
+         p->c = 0;
+         return 0;
+       }
+
     Rline.add_completion (this->rline, this->lc, this->arg->bytes, -1);
     String.replace_with (this->zs->completion_command, command); // leave it at the end of the block
-                                                                 // as it might be used before
+                                                                // as it might be used before
     this->zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
   }
 
@@ -719,6 +714,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
   completion_t *completion = zs->completion;
   completion->lc = lc;
+  completion->curbuf = bufp;
+  zs->pager->c = 0;
 
   dirlist_t *dlist = NULL;
   char *dirname = NULL;
@@ -745,8 +742,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   int is_arg = 0;
   int arglen = 0;
   int is_filename = 0;
-
-  int c = 0;
 
   while (ptr isnot buf) {
     if (*(ptr - 1) is ' ')
@@ -792,13 +787,10 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
     if (r is -1) free (ar);
 
-    if (zs->pager->c is '\r') {
-      c = zs->pager->c;
+    if (zs->pager->c is '\r' or zs->pager->c is '\t')
       goto theend;
-    }
 
     if (1 is r) {
-
       if (arg->bytes[arg->num_bytes-1] is '.') {
         it = zs->command_head;
         ar = Alloc (sizeof (string));
@@ -840,8 +832,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
         r = completion_pager (completion);
         if (-1 is r) free (ar);
-
-        if (zs->pager->c is '\r') c = zs->pager->c;
       }
     }
 
@@ -977,13 +967,11 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     completion->arlen = idx;
     completion->idx = lidx;
     completion->prefix = NULL;
-    completion->prefix_len = 0;
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
 
-    int r = completion_pager (completion);
-    if (-1 is r) free (ar);
-    if (zs->pager->c is '\r') c = zs->pager->c;
+    if (-1 is completion_pager (completion))
+      free (ar);
 
     goto theend;
   }
@@ -1012,7 +1000,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     int r = completion_pager (completion);
 
     if (r is -1) free (ar);
-    if (zs->pager->c is '\r') c = zs->pager->c;
 
     goto theend;
   }
@@ -1198,8 +1185,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
     if (r is -1) free (argar);
 
-    if (zs->pager->c is '\r') c = zs->pager->c;
-
     goto theend;
   }
 
@@ -1270,8 +1255,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
         if (-1 is completion_pager (completion))
           free (ar);
 
-        if (zs->pager->c is '\r') c = zs->pager->c;
-
         goto theend;
       }
 
@@ -1331,10 +1314,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     int r = completion_pager (completion);
     if (r is -1) free (ar);
 
-    if (zs->pager->c is '\r') {
-      c = zs->pager->c;
+    if (zs->pager->c is '\r' or zs->pager->c is '\t')
       goto theend;
-    }
 
     if (1 is r) {
       if (zs->completion_command->bytes[zs->completion_command->num_bytes-1] is '.') {
@@ -1382,8 +1363,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
         if (-1 is completion_pager (completion))
           free (ar);
-
-        if (zs->pager->c is '\r') c = zs->pager->c;
       }
     }
 
@@ -1445,6 +1424,7 @@ get_current: {}
         ar[idx] = argar[i];
         idx++;
       }
+
       free (argar);
     }
 
@@ -1467,8 +1447,6 @@ get_current: {}
 
     if (-1 is completion_pager (completion))
       free (ar);
-
-    if (zs->pager->c is '\r') c = zs->pager->c;
 
     goto theend;
 
@@ -1527,15 +1505,13 @@ get_current: {}
     if (-1 is completion_pager (completion))
       free (ar);
 
-    if (zs->pager->c is '\r') c = zs->pager->c;
-
     goto theend;
   }
 
 theend:
   ifnot (NULL is dlist) dlist->release (dlist);
   ifnot (NULL is dirname) free (dirname);
-  return c;
+  return zs->pager->c;
 }
 
 static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, rlineCompletions *lc, void *userdata) {
@@ -1546,15 +1522,15 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
 
   if (0 is curpos and buf[0] is '\0') {
     // complete command
-    if (('A' <= c and c <= 'Z') or ('a' <= c and c <= 'z') or DIR_SEP is c) { // or ('a' <= c and c <= 'z') or c is '_') {
+    if (('A' <= c and c <= 'Z') or ('a' <= c and c <= 'z') or c is DIR_SEP) { // or ('a' <= c and c <= 'z') or c is '_') {
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
       String.replace_with_len (prevLine, newbuf, 1);
       int r = zs_completion (newbuf, 1, lc, userdata);
 
       ifnot (zs->num_items) return -1;
-      if (r is '\r') {
-        *ch = '\r';
-        return '\r';
+      if (r is '\r' or r is '\t') {
+        *ch = r;
+        return r;
       }
 
       *ch = 0;
@@ -1567,8 +1543,8 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
   }
 
   // escape: (maybe vi mode?)
-  if (c is 033)
-    return 033;
+  if (c is ESCAPE_KEY)
+    return c;
 
   // CTRL('/') or CTRL('-') instead of ALT('.')
   if (c is 037 and zs->numLastComp) {
@@ -1618,10 +1594,9 @@ handle_tilda:
       String.append_with_len (arg, home, homlen);
       String.append_byte (arg, DIR_SEP);
       String.append_with_len (arg, ptr, ptrlen);
-      Rline.add_completion (rline, lc, arg->bytes, curpos + homlen + 1);
-      zs->arg_type = ZS_RLINE_ARG_IS_DIRECTORY;
+      Rline.set.current (rline, lc, arg->bytes);
       String.clear_at (arg, len);
-      return 0;
+      return '\t';
     }
   }
 
