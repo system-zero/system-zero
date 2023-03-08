@@ -807,6 +807,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
         if (1 is idx) {
           Rline.release_completions (rline, lc);
           zs->num_items = 1;
+          Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
+
           ifnot (Cstring.eq_n (ar[0]->bytes, arg->bytes, arg->num_bytes)) {
             String.append_with_len (arg, ar[0]->bytes, ar[0]->num_bytes);
             Rline.add_completion (rline, lc, arg->bytes, -1);
@@ -1235,6 +1237,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
         if (1 is idx) {
           zs->num_items = 1;
+          Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
+
           if (lptrlen)
             String.append_with_fmt (ar[0], " %s", lptr);
           Rline.add_completion (rline, lc, ar[0]->bytes, -1);
@@ -1294,6 +1298,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
     if (1 is idx) {
       zs->num_items = 1;
+      Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
+
       if (lptrlen)
         String.append_with_fmt (ar[0], " %s", lptr);
       Rline.add_completion (rline, lc, ar[0]->bytes, -1);
@@ -1334,14 +1340,18 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
         if (1 is idx) {
           Rline.release_completions (rline, lc);
           zs->num_items = 1;
+          Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
+
           ifnot (Cstring.eq_n (ar[0]->bytes, zs->completion_command->bytes, zs->completion_command->num_bytes)) { // duck
             String.append_with_len (zs->completion_command, ar[0]->bytes, ar[0]->num_bytes);
             if (lptrlen)
               String.append_with_fmt (zs->completion_command, " %s", lptr);
+
             Rline.add_completion (rline, lc, zs->completion_command->bytes, -1);
           } else {
             if (lptrlen)
               String.append_with_fmt (ar[0], " %s", lptr);
+
             Rline.add_completion (rline, lc, ar[0]->bytes, -1);
           }
 
@@ -1899,7 +1909,6 @@ static int zs_interactive (sh_t *this) {
   pager_release (zs->pager);
   free (zs->completion);
   free (zs);
-
   return retval;
 }
 
