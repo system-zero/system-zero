@@ -168,6 +168,7 @@ typedef struct completion_t {
   const char *suffix;
   size_t suffix_len;
   const char *curbuf;
+  int quote_arg;
 } completion_t;
 
 typedef struct LastComp LastComp;
@@ -465,7 +466,7 @@ static int buf_down (Buf *My) {
   return NOTHING_TODO;
 }
 
-static char *pager_main (pager_t *My, int idx, rline_t *rline) {
+static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
   Buf *buf = My->buf;
 
   char *match = NULL;
@@ -496,6 +497,7 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline) {
       case '\t':
       case '\r':
         match = buf->input[buf->cur_row_idx]->bytes;
+        *comlen = buf->input[buf->cur_row_idx]->num_bytes;
         goto theend;
 
       case CTRL('f'):
@@ -669,7 +671,8 @@ static int completion_pager (completion_t *this) {
 
   term->is_initialized = 1; // fake it
 
-  char *command = pager_main (p, this->idx, this->rline);
+  size_t comlen = 0;
+  char *command = pager_main (p, this->idx, this->rline, &comlen);
 
   int r = NULL isnot command;
 
@@ -679,7 +682,7 @@ static int completion_pager (completion_t *this) {
     String.clear (this->arg);
 
     if (this->prefix) String.append_with_len (this->arg, this->prefix, this->prefix_len);
-    String.append_with (this->arg, command);
+    String.append_with_len (this->arg, command, comlen);
     if (this->suffix) String.append_with_len (this->arg, this->suffix, this->suffix_len);
 
     if (p->c is '\t')
@@ -687,6 +690,30 @@ static int completion_pager (completion_t *this) {
          p->c = 0;
          return 0;
        }
+
+    if (this->quote_arg) {
+      if (Cstring.byte.in_str (command, ' ')) {
+        int offset = 0;
+        ifnot (NULL is this->prefix) {
+          char *s = (char *) this->prefix + this->prefix_len;
+          char *t = s;
+          ifnot (*(s - 1) is '"') {
+            ifnot (*(s - 1) is ' ') {
+              s--;
+              while (s > this->prefix) {
+                if (*(s - 1) is ' ') break;
+                s--;
+              }
+            }
+
+            offset = 1;
+            String.insert_byte_at (this->arg, '"', this->prefix_len - (t - s));
+          }
+        }
+
+        String.insert_byte_at (this->arg, '"', this->prefix_len + offset + comlen);
+      }
+    }
 
     Rline.add_completion (this->rline, this->lc, this->arg->bytes, -1);
     String.replace_with (this->zs->completion_command, command); // leave it at the end of the block
@@ -715,6 +742,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   completion_t *completion = zs->completion;
   completion->lc = lc;
   completion->curbuf = bufp;
+  completion->quote_arg = 0;
   zs->pager->c = 0;
 
   dirlist_t *dlist = NULL;
@@ -1457,6 +1485,7 @@ get_current: {}
     completion->prefix_len = buflen;
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
+    completion->quote_arg = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);
@@ -1514,6 +1543,7 @@ get_current: {}
     completion->prefix_len = prefixlen;
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
+    completion->quote_arg = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);

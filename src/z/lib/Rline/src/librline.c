@@ -1,5 +1,3 @@
-//#define LIBRARY "Rline"
-
 #define REQUIRE_STD_DEFAULT_SOURCE
 #define REQUIRE_STDIO
 #define REQUIRE_CTYPE

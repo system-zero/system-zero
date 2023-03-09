@@ -172,7 +172,8 @@ decent interactivity.
       range or with any of the '_', '/', ':', '~' characters.  
       It can also be surrounded by a pair of double quotes. In this case it can
       contain any character included embedded spaces.  
-      The `VALUE' can be also subject for word expansion, like:  
+
+      `VALUE' can be also subject for word expansion, like:  
 
         $name=$(which ls)  
         $name=$(ls / | grep usr)  
@@ -196,7 +197,8 @@ decent interactivity.
       PAGE_UP  : scrolls one page up  
     
 Quirks:  
-  A filename with embedded whitespace should be enclosed into double quotes.  
+  A filename with embedded whitespace should be surrounded with double quotes (note
+  that the autocompletion mechanism should do this without doing anything special).  
   
   There is no job managment.  
 
