@@ -1186,6 +1186,9 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     int r = completion_pager (completion);
 
     if (r is -1) free (argar);
+    if (r and zs->pager->c is ' ' and
+        '=' is zs->completion_command->bytes[zs->completion_command->num_bytes - 1])
+      zs->pager->c = ' ' - 1; // this is enough to ignore the extra space
 
     goto theend;
   }
@@ -1538,9 +1541,10 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
       int r = zs_completion (newbuf, 1, lc, userdata);
 
       ifnot (zs->num_items) return -1;
-      if (r is '\r' or r is '\t') {
+      if (r is '\r' or r is '\t' or (zs->num_items is 1 and r is ' ')) {
+        // also allow an extra space after the command
         *ch = r;
-        return r;
+        return *ch;
       }
 
       *ch = 0;

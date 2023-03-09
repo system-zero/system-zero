@@ -36,8 +36,24 @@ struct rline_t {
 #define $myprop this->prop
 #define $my(__v__) $myprop->__v__
 
+/* ag:
+ * note: that original indentation was a mix of tabs and four spaces,
+ * and i've tried in the beggining to keep it, but it was in vain.
+ * Our own editor in C units, inserts automatically two spaces, so slowly
+ * i've intoduced space inconsistencies. Of course after many different function
+ * signatures and quite many different programming logic (to adopt the library
+ * to our environment), and many new lines of code, this unit and the exposed
+ * interface is totally incompatible with original upstream's one.
+ * Perhaps one day will remove those inconsistencies, but i hate to see
+ * git diffs of just spaces, and so I plead guilty that i didn't remove them,
+ * at the very first introduction of this unit into the distribution.
+ *
+ * Specific licenses into their specific sections. This is a linenoise fork, from:
+ * https://github.com/msteveb/linenoise (Steve's Bennet fork)
+ */
+
 struct rlineCompletions {
-  int flags;  // ADDITION
+  int flags;
   currentLine *current;
   size_t len;
   char **cvec;
@@ -402,15 +418,15 @@ static int utf8_width(int ch)
  */
 
 typedef struct {
-	int remaining;	/**< Allocated, but unused space */
-	int last;		/**< Index of the null terminator (and thus the length of the string) */
-	int chars;		/**< Count of characters */
-	char *data;		/**< Allocated memory containing the string or NULL for empty */
+  int remaining;  /**< Allocated, but unused space */
+  int last;    /**< Index of the null terminator (and thus the length of the string) */
+  int chars;    /**< Count of characters */
+  char *data;    /**< Allocated memory containing the string or NULL for empty */
 } stringbuf;
 
 
 static inline int sb_len(stringbuf *sb) {
-	return sb->last;
+  return sb->last;
 }
 
 /**
@@ -419,7 +435,7 @@ static inline int sb_len(stringbuf *sb) {
  * Returns 0 for both a NULL buffer and an empty buffer.
  */
 static inline int sb_chars(stringbuf *sb) {
-	return sb->chars;
+  return sb->chars;
 }
 
 /**
@@ -433,66 +449,66 @@ static inline int sb_chars(stringbuf *sb) {
  */
 static inline char *sb_str(const stringbuf *sb)
 {
-	return sb->data;
+  return sb->data;
 }
 
 #define SB_INCREMENT 200
 
 static stringbuf *sb_alloc (void)
 {
-	stringbuf *sb = (stringbuf *)malloc(sizeof(*sb));
-	sb->remaining = 0;
-	sb->last = 0;
-	sb->chars = 0;
-	sb->data = NULL;
+  stringbuf *sb = (stringbuf *)malloc(sizeof(*sb));
+  sb->remaining = 0;
+  sb->last = 0;
+  sb->chars = 0;
+  sb->data = NULL;
 
-	return(sb);
+  return(sb);
 }
 
 static void sb_free(stringbuf *sb)
 {
-	if (sb) {
-		free(sb->data);
-	}
-	free(sb);
+  if (sb) {
+    free(sb->data);
+  }
+  free(sb);
 }
 
 static void sb_realloc(stringbuf *sb, int newlen)
 {
-	sb->data = (char *)realloc(sb->data, newlen);
-	sb->remaining = newlen - sb->last;
+  sb->data = (char *)realloc(sb->data, newlen);
+  sb->remaining = newlen - sb->last;
 }
 
 static void sb_append_len(stringbuf *sb, const char *str, int len)
 {
-	if (sb->remaining < len + 1) {
-		sb_realloc(sb, sb->last + len + 1 + SB_INCREMENT);
-	}
-	memcpy(sb->data + sb->last, str, len);
-	sb->data[sb->last + len] = 0;
+  if (sb->remaining < len + 1) {
+    sb_realloc(sb, sb->last + len + 1 + SB_INCREMENT);
+  }
+  memcpy(sb->data + sb->last, str, len);
+  sb->data[sb->last + len] = 0;
 
-	sb->last += len;
-	sb->remaining -= len;
-	sb->chars += utf8_strlen(str, len);
+  sb->last += len;
+  sb->remaining -= len;
+  sb->chars += utf8_strlen(str, len);
 }
 
 static void sb_append(stringbuf *sb, const char *str)
 {
-	sb_append_len(sb, str, strlen(str));
+  sb_append_len(sb, str, strlen(str));
 }
 
 static char *sb_to_string(stringbuf *sb)
 {
-	if (sb->data == NULL) {
-		/* Return an allocated empty string, not null */
-		return strdup("");
-	}
-	else {
-		/* Just return the data and free the stringbuf structure */
-		char *pt = sb->data;
-		free(sb);
-		return pt;
-	}
+  if (sb->data == NULL) {
+    /* Return an allocated empty string, not null */
+    return strdup("");
+  }
+  else {
+    /* Just return the data and free the stringbuf structure */
+    char *pt = sb->data;
+    free(sb);
+    return pt;
+  }
 }
 
 /* Insert and delete operations */
@@ -504,16 +520,16 @@ static char *sb_to_string(stringbuf *sb)
  */
 static void sb_insert_space(stringbuf *sb, int pos, int len)
 {
-	/* Make sure there is enough space */
-	if (sb->remaining < len) {
-		sb_realloc(sb, sb->last + len + SB_INCREMENT);
-	}
-	/* Now move it up */
-	memmove(sb->data + pos + len, sb->data + pos, sb->last - pos);
-	sb->last += len;
-	sb->remaining -= len;
-	/* And null terminate */
-	sb->data[sb->last] = 0;
+  /* Make sure there is enough space */
+  if (sb->remaining < len) {
+    sb_realloc(sb, sb->last + len + SB_INCREMENT);
+  }
+  /* Now move it up */
+  memmove(sb->data + pos + len, sb->data + pos, sb->last - pos);
+  sb->last += len;
+  sb->remaining -= len;
+  /* And null terminate */
+  sb->data[sb->last] = 0;
 }
 
 /**
@@ -522,29 +538,29 @@ static void sb_insert_space(stringbuf *sb, int pos, int len)
  */
 static void sb_delete_space(stringbuf *sb, int pos, int len)
 {
-	sb->chars -= utf8_strlen(sb->data + pos, len);
+  sb->chars -= utf8_strlen(sb->data + pos, len);
 
-	/* Now move it up */
-	memmove(sb->data + pos, sb->data + pos + len, sb->last - pos - len);
-	sb->last -= len;
-	sb->remaining += len;
-	/* And null terminate */
-	sb->data[sb->last] = 0;
+  /* Now move it up */
+  memmove(sb->data + pos, sb->data + pos + len, sb->last - pos - len);
+  sb->last -= len;
+  sb->remaining += len;
+  /* And null terminate */
+  sb->data[sb->last] = 0;
 }
 
 static void sb_insert(stringbuf *sb, int index, const char *str)
 {
-	if (index >= sb->last) {
-		/* Inserting after the end of the list appends. */
-		sb_append(sb, str);
-	}
-	else {
-		int len = strlen(str);
+  if (index >= sb->last) {
+    /* Inserting after the end of the list appends. */
+    sb_append(sb, str);
+  }
+  else {
+    int len = strlen(str);
 
-		sb_insert_space(sb, index, len);
-		memcpy(sb->data + index, str, len);
-		sb->chars += utf8_strlen(str, len);
-	}
+    sb_insert_space(sb, index, len);
+    memcpy(sb->data + index, str, len);
+    sb->chars += utf8_strlen(str, len);
+  }
 }
 
 /**
@@ -553,24 +569,24 @@ static void sb_insert(stringbuf *sb, int index, const char *str)
  */
 static void sb_delete(stringbuf *sb, int index, int len)
 {
-	if (index < sb->last) {
-		char *pos = sb->data + index;
-		if (len < 0) {
-			len = sb->last;
-		}
+  if (index < sb->last) {
+    char *pos = sb->data + index;
+    if (len < 0) {
+      len = sb->last;
+    }
 
-		sb_delete_space(sb, pos - sb->data, len);
-	}
+    sb_delete_space(sb, pos - sb->data, len);
+  }
 }
 
 static void sb_clear(stringbuf *sb)
 {
-	if (sb->data) {
-		/* Null terminate */
-		sb->data[0] = 0;
-		sb->last = 0;
-		sb->chars = 0;
-	}
+  if (sb->data) {
+    /* Null terminate */
+    sb->data[0] = 0;
+    sb->last = 0;
+    sb->chars = 0;
+  }
 }
 /* linenoise.c -- guerrilla line editing library against the idea that a
  * line editing lib needs to be 20,000 lines of C code.
@@ -1338,8 +1354,10 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
 
     if (ch == 0) {
       int repeats = -1;
+
       completioncallback:
       repeats++;
+
       c = completionCallback(curbuf, curpos, &lc, completionUserdata);
 
       if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and c is '\r') {
@@ -1358,7 +1376,7 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
         goto completioncallback;
       }
 
-    } else { // ADDITIONS
+    } else {
       int r = linenoiseOnInputCallback (curbuf, prevLine, &ch, curpos, &lc, completionUserdata);
 
       if (r == -1) {
@@ -1366,27 +1384,24 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
         goto theend;
       }
 
+      c = r;
+
       if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and (r is '\r' or r is '\t')) {
         set_current (current, lc.cvec[0]);
-        c = r;
         goto theend;
       }
 
-      if (r != 0) {
-        c = r;
+      if (r < 0)
         goto theend;
-      }
 
-      if (ch is 0) {
+      if (ch is 0)
         ch = '\t';
-      }
     }
 
-    if (lc.len == 0) {
-        goto theend;
-    }
+    if (lc.len == 0)
+      goto theend;
 
-    if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM) { /* ADDITION */
+    if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM) {
         int accept = 1;
 
         ifnot (NULL is linenoiseAcceptOneItemCallback)
@@ -2145,7 +2160,7 @@ static int linenoiseEdit (rline_t *this, struct currentLine *current) {
             break;
         case '\r':    /* enter/CR */
         case '\n':    /* LF */
-            if (linenoiseOnCarriageReturnCallback) // ADDITION
+            if (linenoiseOnCarriageReturnCallback)
                 linenoiseOnCarriageReturnCallback (sb_str(current->buf), completionUserdata);
 
             history_len--;
@@ -2529,7 +2544,7 @@ int linenoiseHistoryLoad(const char *filename) {
         /* Take the stringbuf and decode backslash escaped values */
         char *buf = sb_to_string(sb);
 
-        ifnot (bytelen (buf)) { // ADDITION
+        ifnot (bytelen (buf)) {
           sb_free(sb);
           continue;
         }
