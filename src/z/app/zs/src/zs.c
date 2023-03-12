@@ -169,6 +169,7 @@ typedef struct completion_t {
   size_t suffix_len;
   const char *curbuf;
   int quote_arg;
+  int tab_completes;
 } completion_t;
 
 typedef struct LastComp LastComp;
@@ -466,7 +467,7 @@ static int buf_down (Buf *My) {
   return NOTHING_TODO;
 }
 
-static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
+static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen, int tab_completes) {
   Buf *buf = My->buf;
 
   char *match = NULL;
@@ -488,6 +489,10 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
 
     if (My->c is ESCAPE_KEY)
       My->c = Rline.check_special (rline, 0);
+
+    if (My->c is '\t')
+      ifnot (tab_completes)
+        My->c = ARROW_DOWN_KEY;
 
     switch (My->c) {
       case ESCAPE_KEY:
@@ -672,7 +677,7 @@ static int completion_pager (completion_t *this) {
   term->is_initialized = 1; // fake it
 
   size_t comlen = 0;
-  char *command = pager_main (p, this->idx, this->rline, &comlen);
+  char *command = pager_main (p, this->idx, this->rline, &comlen, this->tab_completes);
 
   int r = NULL isnot command;
 
@@ -743,6 +748,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   completion->lc = lc;
   completion->curbuf = bufp;
   completion->quote_arg = 0;
+  completion->tab_completes = 0;
   zs->pager->c = 0;
 
   dirlist_t *dlist = NULL;
@@ -999,6 +1005,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     completion->prefix = NULL;
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
+    completion->tab_completes = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);
@@ -1486,6 +1493,7 @@ get_current: {}
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
     completion->quote_arg = 1;
+    completion->tab_completes = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);
@@ -1544,6 +1552,7 @@ get_current: {}
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
     completion->quote_arg = 1;
+    completion->tab_completes = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);

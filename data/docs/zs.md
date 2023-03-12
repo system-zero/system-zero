@@ -186,7 +186,7 @@ decent interactivity.
     keys:  
       ' '   : returns the selected item  
       '\r'  : likewise but it executes immediately the command line, included the selection  
-      '\t'  : likewise but it continues with the autocompletion  
+      '\t'  : likewise but it continues with the autocompletion for filenames
       DOWN  : next item (if it is the last item, this is the first item)  
         UP  : prev item (if it is the first item, this is the last item)  
       HOME  : focused to the first item  
