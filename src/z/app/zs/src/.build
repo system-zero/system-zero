@@ -26,5 +26,5 @@ m.set.executable.to_linkagainst ([
 m.set.static.executable.to_linkagainst ([
   "proc", "os", "random"]; append_version)
 m.set.executable.source ("zs.c"; clear)
-m.set.executable.output ("Zs")
+m.set.executable.output ("Z.sh")
 return m

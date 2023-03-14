@@ -2544,6 +2544,7 @@ int linenoiseHistoryLoad(const char *filename) {
 
         ifnot (bytelen (buf)) {
           sb_free(sb);
+          free (buf);
           continue;
         }
 

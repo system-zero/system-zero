@@ -49,6 +49,8 @@ typedef struct sh_prop {
   int exit_val;
   int should_exit;
   int is_a_pipe;
+  int repeat_command;
+
   string **pipe_output;
   Vstring_t *cdpath;
 
@@ -358,6 +360,45 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
     return retval;
   }
 
+  if (Cstring.eq (com, "repeat")) {
+    if (arlen <= 2) {
+      fprintf (stderr, "repeat: command is missing\n");
+      return -1;
+    }
+
+    int num = 0;
+
+    char *ptr = argv[1];
+    int c;
+    while ((c = *ptr)) {
+      if ('0' <= c and c <= '9') {
+        num = 10 * num + (c - '0');
+        ptr++;
+        continue;
+      }
+
+      fprintf (stderr, "%s: not a number\n", argv[1]);
+      return -1;
+    }
+
+    size_t argc = arlen - 2;
+    char **nargv = Alloc (sizeof (char *) * (argc));
+    for (size_t i = 0; i < argc; i++) {
+      size_t arglen = bytelen (argv[i + 2]);
+      nargv[i] = Alloc (arglen + 1);
+      Cstring.cp (nargv[i], arglen + 1, argv[i+2], arglen);
+    }
+
+    Proc.release_argv (proc);
+
+    Proc.set.argv (proc, argc, (const char **) nargv);
+    for (size_t i = 0; i < argc; i++) free (nargv[i]);
+    free (nargv);
+    $my(repeat_command) = num;
+    sh->type = COMMAND_TYPE;
+    return retval;
+  }
+
   if (Cstring.eq (argv[0], "unsetenv")) {
     if (argv[1] is NULL) {
       fprintf (stderr, "unsetenv: awaiting a environment name\n");
@@ -488,7 +529,19 @@ static int sh_interpret (proc_t *proc) {
       if ($my(is_a_pipe) and Proc.get.next (proc) is NULL)
         Proc.set.read_stream_cb (proc, PROC_READ_STDOUT, sh_read_pipe_cb);
 
-      retval = Proc.exec (proc, NULL);
+      ifnot ($my(repeat_command)) {
+        retval = Proc.exec (proc, NULL);
+      } else {
+        do {
+          retval = Proc.exec (proc, NULL);
+          if (retval) {
+            $my(repeat_command) = 0;
+            break;
+          }
+
+          $my(repeat_command)--;
+        } while ($my(repeat_command) > 0);
+      }
 
       if ($my(is_a_pipe) and Proc.get.next (proc) is NULL)
         Proc.set.read_stream_cb (proc, PROC_READ_STDOUT, NULL);
@@ -545,6 +598,7 @@ static sh_t *sh_new (void) {
   $my(head) = $my(tail) = $my(current) = NULL;
   $my(cur_idx) = -1; $my(num_items) = 0;
   $my(exit_val) = 0; $my(is_a_pipe) = 0;
+  $my(repeat_command) = 0;
   $my(pipe_output) = NULL;
   $my(cdpath) = Vstring.new ();
 

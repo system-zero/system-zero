@@ -929,7 +929,7 @@ static void proc_set_read_stream_cb (proc_t *this, int stream_flags, ProcRead_cb
 }
 
 static void proc_set_argv (proc_t *this, int argc, const char **argv) {
-  $my(argv) = Alloc (sizeof (char *) * (argc));
+  $my(argv) = Alloc (sizeof (char *) * (argc + 1));
   for (int i = 0; i < argc; i++) {
     size_t len = bytelen (argv[i]);
     $my(argv)[i] = Alloc (len + 1);
@@ -1005,6 +1005,7 @@ public proc_T __init_proc__ (void) {
       .exec = proc_exec,
       .parse = proc_parse,
       .release = proc_release,
+      .release_argv = proc_release_argv,
       .add_env = proc_add_env,
       .set = (proc_set_self) {
         .argv = proc_set_argv,

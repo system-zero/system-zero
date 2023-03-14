@@ -1729,28 +1729,37 @@ static void init_rline_commands (zs_t *this) {
   Command *head = Alloc (sizeof (Command));
   head->name = Cstring.dup ("exit", 4);
   comit = head;
+  this->num_commands++;
 
   Command *next = Alloc (sizeof (Command));
   next->name = Cstring.dup ("cd", 2);
   comit->next = next;
   comit = next;
+  this->num_commands++;
 
   next = Alloc (sizeof (Command));
   next->name = Cstring.dup ("pwd", 3);
   comit->next = next;
   comit = next;
+  this->num_commands++;
 
   next = Alloc (sizeof (Command));
   next->name = Cstring.dup ("unsetenv", 8);
   comit->next = next;
   comit = next;
+  this->num_commands++;
 
   next = Alloc (sizeof (Command));
   next->name = Cstring.dup ("rehash", 6);
   comit->next = next;
   comit = next;
+  this->num_commands++;
 
-  this->num_commands = 5;
+  next = Alloc (sizeof (Command));
+  next->name = Cstring.dup ("repeat", 6);
+  comit->next = next;
+  comit = next;
+  this->num_commands++;
 
   char *flags = NULL;
   dirlist_t *dlist = NULL; // silence clang

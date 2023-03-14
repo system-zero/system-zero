@@ -128,45 +128,50 @@ decent interactivity.
 
   Builtin commands:  
     cd:  
-      Changes the current working directory. Without arguments the user's home directory  
+      Changes the current working directory. Without arguments the user's home directory
       is assumed.
-      
+  
       With a "-[digit*]" as argument, then the command tries to change to the given
       depth of previously working directories.
 
       When the command succeeds, the value of the current working directory it is
       exported in the environment as "PWD".
-      
+  
       Note that, if the length of the argument list is 1 and the first item on the
       list is a directory, it is also considered as a "cd" command and the item it is
       the intented directory.
-      
+  
       Note that even infinity ../../.. that goes way behind / it is considered as / (zsh does the same)
-   
+  
+  repeat:  
+    Repeat for `count` times `command ...`.
+    If `count` is missing, or `count` is not a number, or `command` is missing,
+    it is considered as an error and it returns 1 to the environment.
+  
    pwd:  
-     This prints the current working directory.  
-   
-   unsetenv: Deletes the argument `name' from the environment.  
-   
+     This prints the current working directory.
+  
+   unsetenv: Deletes the argument `name' from the environment.
+  
    exit:  
-     Exits back to the environment. Without argument it exits with a zero value. If
-     the argument is less than zero, it returns 1, otherwise it returns the value
+     Exits back to the environment. Without an argument it exits with a zero value.
+     If the argument is less than zero, it returns 1, otherwise it returns the value
      of the argument, unless is greater than 127 and which in that case it is 127.
 
   Syntax:  
-   
+  
     A '#' anywhere it denotes a comment, and all the input until a new line character
     is consumed.
-    
+  
     $NAME=VALUE
       This adds `NAME' to the environment. If `NAME' already exists, the previous
       value it is overriden.
-    
+  
       The fist character in the name should be in [a-zA-Z] range. The rest could also
       be in the 0-9 range or '_'.
-    
+  
       `NAME' should be followed by '='.  
-
+  
       The value of `VALUE' starts imediatelly after the '=' and ends up to the first
       encountered space. It should be composed with characters in the [a-zA-z0-9]
       range or with any of the '_', '/', ':', '~' characters.  
