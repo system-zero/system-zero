@@ -87,7 +87,7 @@ enum vt_keystate {
   appl
 };
 
-typedef string_t *(*FrameProcessChar_cb) (vwm_frame *, string_t *, int);
+typedef string *(*FrameProcessChar_cb) (vwm_frame *, string *, int);
 
 struct vwm_frame {
   char
@@ -136,7 +136,7 @@ struct vwm_frame {
 
   pid_t pid;
 
-  string_t
+  string
     *logfile,
     *render;
 
@@ -160,7 +160,7 @@ struct vwm_win {
   char
     *name;
 
-  string_t
+  string
     *render,
     *separators_buf;
 
@@ -205,7 +205,7 @@ struct vwm_prop {
 
   char mode_key;
 
-  string_t
+  string
     *shell,
     *editor,
     *tmpdir,
@@ -578,7 +578,7 @@ static void vwm_history_write (vwm_t *this) {
 
   readline_hist_item_t *hrl = $my(readline_history)->tail;
   while (hrl) {
-    string_t *line = Vstring.join (hrl->data->line, "");
+    string *line = Vstring.join (hrl->data->line, "");
     fprintf (fp, "%s\n", line->bytes);
     String.release (line);
     hrl = hrl->prev;
@@ -956,114 +956,114 @@ static int vt_video_line_to_str (int *line, char *buf, int len) {
   return idx;
 }
 
-static string_t *vt_insline (string_t *buf, int num) {
+static string *vt_insline (string *buf, int num) {
   return String.append_with_fmt (buf, "\033[%dL", num);
 }
 
-static string_t *vt_insertchar (string_t *buf, int numcols) {
+static string *vt_insertchar (string *buf, int numcols) {
   return String.append_with_fmt (buf, "\033[%d@", numcols);
 }
 
-static string_t *vt_savecursor (string_t *buf) {
+static string *vt_savecursor (string *buf) {
   return String.append_with_len (buf, "\0337", 2);
 }
 
-static string_t *vt_restcursor (string_t *buf) {
+static string *vt_restcursor (string *buf) {
   return String.append_with_len (buf, "\0338", 2);
 }
 
-static string_t *vt_clreol (string_t *buf) {
+static string *vt_clreol (string *buf) {
   return String.append_with_len (buf, "\033[K", 3);
 }
 
-static string_t *vt_clrbgl (string_t *buf) {
+static string *vt_clrbgl (string *buf) {
   return String.append_with_len (buf, "\033[1K", 4);
 }
 
-static string_t *vt_clrline (string_t *buf) {
+static string *vt_clrline (string *buf) {
   return String.append_with_len (buf, "\033[2K", 4);
 }
 
-static string_t *vt_delunder (string_t *buf, int num) {
+static string *vt_delunder (string *buf, int num) {
   return String.append_with_fmt (buf, "\033[%dP", num);
 }
 
-static string_t *vt_delline (string_t *buf, int num) {
+static string *vt_delline (string *buf, int num) {
   return String.append_with_fmt (buf, "\033[%dM", num);
 }
 
-static string_t *vt_attr_reset (string_t *buf) {
+static string *vt_attr_reset (string *buf) {
   return String.append_with_len (buf, "\033[m", 3);
 }
 
-static string_t *vt_reverse (string_t *buf, int on) {
+static string *vt_reverse (string *buf, int on) {
   return String.append_with_fmt (buf, "\033[%sm", (on ? "7" : "27"));
 }
 
-static string_t *vt_underline (string_t *buf, int on) {
+static string *vt_underline (string *buf, int on) {
   return String.append_with_fmt (buf, "\033[%sm", (on ? "4" : "24"));
 }
 
-static string_t *vt_bold (string_t *buf, int on) {
+static string *vt_bold (string *buf, int on) {
   return String.append_with_fmt (buf, "\033[%sm", (on ? "1" : "22"));
 }
 
-static string_t *vt_italic (string_t *buf, int on) {
+static string *vt_italic (string *buf, int on) {
   return String.append_with_fmt (buf, "\033[%sm", (on ? "3" : "23"));
 }
 
-static string_t *vt_blink (string_t *buf, int on) {
+static string *vt_blink (string *buf, int on) {
   return String.append_with_fmt (buf, "\033[%sm", (on ? "5" : "25"));
 }
 
-static string_t *vt_bell (string_t *buf) {
+static string *vt_bell (string *buf) {
   return String.append_with_len (buf, "\007", 1);
 }
 
-static string_t *vt_setfg (string_t *buf, int color) {
+static string *vt_setfg (string *buf, int color) {
   return String.append_with_fmt (buf, "\033[%d;1m", color);
 }
 
-static string_t *vt_setbg (string_t *buf, int color) {
+static string *vt_setbg (string *buf, int color) {
   return String.append_with_fmt (buf, "\033[%d;1m", color);
 }
 
-static string_t *vt_left (string_t *buf, int count) {
+static string *vt_left (string *buf, int count) {
   return String.append_with_fmt (buf, "\033[%dD", count);
 }
 
-static string_t *vt_right (string_t *buf, int count) {
+static string *vt_right (string *buf, int count) {
   return String.append_with_fmt (buf, "\033[%dC", count);
 }
 
-static string_t *vt_up (string_t *buf, int numrows) {
+static string *vt_up (string *buf, int numrows) {
   return String.append_with_fmt (buf, "\033[%dA", numrows);
 }
 
-static string_t *vt_down (string_t *buf, int numrows) {
+static string *vt_down (string *buf, int numrows) {
   return String.append_with_fmt (buf, "\033[%dB", numrows);
 }
 
-static string_t *vt_irm (string_t *buf) {
+static string *vt_irm (string *buf) {
   return String.append_with_len (buf, "\033[4l", 4);
 }
 
-static string_t *vt_revscroll (string_t *buf) {
+static string *vt_revscroll (string *buf) {
   return String.append_with_len (buf, "\033M", 2);
 }
 
-static string_t *vt_setscroll (string_t *buf, int first, int last) {
+static string *vt_setscroll (string *buf, int first, int last) {
   if (0 is first and 0 is last)
     return String.append_with_len (buf, "\033[r", 3);
   else
     return String.append_with_fmt (buf, "\033[%d;%dr", first, last);
 }
 
-static string_t *vt_goto (string_t *buf, int row, int col) {
+static string *vt_goto (string *buf, int row, int col) {
   return String.append_with_fmt (buf, "\033[%d;%dH", row, col);
 }
 
-static string_t *vt_attr_check (string_t *buf, int pixel, int lastattr, uchar *currattr) {
+static string *vt_attr_check (string *buf, int pixel, int lastattr, uchar *currattr) {
   uchar
     simplepixel,
     lastpixel,
@@ -1154,7 +1154,7 @@ checkchange:
   return buf;
 }
 
-static string_t *vt_attr_set (string_t *buf, int textattr) {
+static string *vt_attr_set (string *buf, int textattr) {
   vt_attr_reset (buf);
 
   if (textattr & BOLD)
@@ -1203,7 +1203,7 @@ static void vt_frame_video_rshift (vwm_frame *frame, int numcols) {
   }
 }
 
-static string_t *vt_frame_ech (vwm_frame *frame, string_t *buf, int num_cols) {
+static string *vt_frame_ech (vwm_frame *frame, string *buf, int num_cols) {
   for (int i = 0; i + frame->col_pos <= frame->num_cols and i < num_cols; i++) {
     frame->videomem[frame->row_pos-1][frame->col_pos - i - 1] = 0;
     frame->colors[frame->row_pos-1][frame->col_pos - i - 1] = COLOR_FG_NORMAL;
@@ -1213,7 +1213,7 @@ static string_t *vt_frame_ech (vwm_frame *frame, string_t *buf, int num_cols) {
 }
 
 /*
-static string_t *vt_frame_cha (vwm_frame *frame, string_t *buf, int param) {
+static string *vt_frame_cha (vwm_frame *frame, string *buf, int param) {
   if (param < 2)
     frame->col_pos = 1;
   else {
@@ -1283,13 +1283,13 @@ static void vt_frame_video_scroll_back (vwm_frame *frame, int numlines) {
   }
 }
 
-static string_t *vt_frame_attr_set (vwm_frame *frame, string_t *buf) {
+static string *vt_frame_attr_set (vwm_frame *frame, string *buf) {
   uchar on = NORMAL;
   vt_attr_reset (buf);
   return vt_attr_check (buf, 0, frame->textattr, &on);
 }
 
-static string_t *vt_append (vwm_frame *frame, string_t *buf, utf8 c) {
+static string *vt_append (vwm_frame *frame, string *buf, utf8 c) {
   if (frame->col_pos > frame->num_cols) {
     if (frame->row_pos < frame->last_row)
       frame->row_pos++;
@@ -1311,14 +1311,14 @@ static string_t *vt_append (vwm_frame *frame, string_t *buf, utf8 c) {
   return buf;
 }
 
-static string_t *vt_keystate_print (string_t *buf, int application) {
+static string *vt_keystate_print (string *buf, int application) {
   if (application)
     return String.append_with(buf, "\033=\033[?1h");
 
   return String.append_with(buf, "\033>\033[?1l");
 }
 
-static string_t *vt_altcharset (string_t *buf, int charset, int type) {
+static string *vt_altcharset (string *buf, int charset, int type) {
   switch (type) {
     case UK_CHARSET:
       String.append_with_fmt (buf, "\033%cA", (charset is G0 ? '(' : ')'));
@@ -1337,7 +1337,7 @@ static string_t *vt_altcharset (string_t *buf, int charset, int type) {
   return buf;
 }
 
-static string_t *vt_esc_scan (vwm_frame *, string_t *, int);
+static string *vt_esc_scan (vwm_frame *, string *, int);
 
 static void vt_frame_esc_set (vwm_frame *frame) {
   frame->process_char_cb = vt_esc_scan;
@@ -1364,7 +1364,7 @@ static void frame_reset (vwm_frame *frame) {
   vt_frame_esc_set (frame);
 }
 
-static string_t *vt_esc_brace_q (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_esc_brace_q (vwm_frame *frame, string *buf, int c) {
   if (IS_DIGIT (c)) {
     *frame->cur_param *= 10;
     *frame->cur_param += (c - '0');
@@ -1447,7 +1447,7 @@ static string_t *vt_esc_brace_q (vwm_frame *frame, string_t *buf, int c) {
   return buf;
 }
 
-static string_t *vt_esc_lparen (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_esc_lparen (vwm_frame *frame, string *buf, int c) {
   /* Return inside the switch to prevent reset_esc() */
   switch (c) {
     case '\030': /* Processed as escape cancel */
@@ -1482,7 +1482,7 @@ static string_t *vt_esc_lparen (vwm_frame *frame, string_t *buf, int c) {
   return buf;
 }
 
-static string_t *vt_esc_rparen (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_esc_rparen (vwm_frame *frame, string *buf, int c) {
   switch (c) {
     case '\030': /* Processed as escape cancel */
     case '\032':
@@ -1515,7 +1515,7 @@ static string_t *vt_esc_rparen (vwm_frame *frame, string_t *buf, int c) {
   return buf;
 }
 
-static string_t *vt_esc_pound (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_esc_pound (vwm_frame *frame, string *buf, int c) {
   switch (c)   /* Line attributes not supported */ {
     case '3':  /* Double height (top half) */
     case '4':  /* Double height (bottom half) */
@@ -1530,7 +1530,7 @@ static string_t *vt_esc_pound (vwm_frame *frame, string_t *buf, int c) {
   return buf;
 }
 
-static string_t *vt_process_m (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_process_m (vwm_frame *frame, string *buf, int c) {
   int idx;
 
   switch (c) {
@@ -1630,7 +1630,7 @@ static string_t *vt_process_m (vwm_frame *frame, string_t *buf, int c) {
   return buf;
 }
 
-static string_t *vt_esc_brace (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_esc_brace (vwm_frame *frame, string *buf, int c) {
   int
     i,
     newx,
@@ -1991,7 +1991,7 @@ frame->unimplemented_cb (frame, "brace why", c, frame->esc_param[0]);
         }
         break;
 
-    case 'c': /* Request terminal identification string_t */
+    case 'c': /* Request terminal identification string */
       /* Respond with "I am a vt102" */
       write (frame->fd, "\033[?6c", 5);
       break;
@@ -2014,7 +2014,7 @@ frame->unimplemented_cb (frame, "brace why", c, frame->esc_param[0]);
   return buf;
 }
 
-static string_t *vt_esc_e (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_esc_e (vwm_frame *frame, string *buf, int c) {
   /* Return inside the switch to prevent reset_esc() */
   switch (c) {
     case '\030': /* Processed as escape cancel */
@@ -2106,7 +2106,7 @@ static string_t *vt_esc_e (vwm_frame *frame, string_t *buf, int c) {
       frame->tabstops[frame->col_pos - 1] = 1;
       break;
 
-    case 'Z': /* Request terminal identification string_t */
+    case 'Z': /* Request terminal identification string */
       /* Respond with "I am a vt102" */
       write (frame->fd, "\033[?6c", 5);
       break;
@@ -2124,7 +2124,7 @@ static string_t *vt_esc_e (vwm_frame *frame, string_t *buf, int c) {
   return buf;
 }
 
-static string_t *vt_esc_scan (vwm_frame *frame, string_t *buf, int c) {
+static string *vt_esc_scan (vwm_frame *frame, string *buf, int c) {
   switch (c) {
     case '\000': /* NULL (fill character) */
       break;
@@ -2565,7 +2565,7 @@ static char *frame_get_logfile (vwm_frame *this) {
 static void frame_clear (vwm_frame *this, int state) {
   if (NULL is this) return;
 
-  string_t *render = this->render;
+  string *render = this->render;
 
   String.clear (render);
   vt_goto (render, this->first_row, 1);
@@ -2954,7 +2954,7 @@ static void win_release_frame_at (vwm_win *this, int idx) {
   free (frame);
 }
 
-static void vwm_make_separator (string_t *render, const char *color, int cells, int row, int col) {
+static void vwm_make_separator (string *render, const char *color, int cells, int row, int col) {
   vt_goto (render, row, col);
   String.append_with(render, color);
   for (int i = 0; i < cells; i++)
@@ -3018,7 +3018,7 @@ static void win_draw (vwm_win *this) {
   uchar on = NORMAL;
   utf8 chr = 0;
 
-  string_t *render = this->render;
+  string *render = this->render;
   String.clear (render);
   String.append_with(render, TERM_SCREEN_CLEAR);
   vt_setscroll (render, 0, 0);
@@ -4254,7 +4254,7 @@ static int readline_tab_completion (readline_t *rl) {
   vwm_win *win = rl->user_data[1];
   (void) win;
 
-  string_t *currline = NULL;  // otherwise segfaults on certain conditions
+  string *currline = NULL;  // otherwise segfaults on certain conditions
 redo:;
   currline = Vstring.join (rl->line, "");
   char *sp = currline->bytes + rl->line->cur_idx;
@@ -4390,8 +4390,8 @@ theend:
   return READLINE_OK;
 }
 
-static string_t *filter_readline (string_t *);
-static string_t *filter_readline (string_t *line) {
+static string *filter_readline (string *);
+static string *filter_readline (string *line) {
   char *sp = Cstring.bytes_in_str (line->bytes, "--fname=");
   if (NULL is sp) return line;
   String.delete_numbytes_at (line, 8, sp - line->bytes);
@@ -4431,7 +4431,7 @@ static readline_t *vwm_readline_edit (vwm_t *this, vwm_win *win,
 }
 
 static int vwm_command_mode (vwm_t *this, vwm_win *win, vwm_frame *frame) {
-  string_t *com = NULL;
+  string *com = NULL;
   int retval = NOTOK;
   int win_changed = 0;
   readline_t *rl;
@@ -4459,9 +4459,9 @@ static int vwm_command_mode (vwm_t *this, vwm_win *win, vwm_frame *frame) {
 
 parse:
   if (Cstring.eq (com->bytes, "win_new")) {
-    string_t *a_draw = Readline.get.anytype_arg (rl, "draw");
-    string_t *a_focus = Readline.get.anytype_arg (rl, "focus");
-    string_t *a_num_frames = Readline.get.anytype_arg (rl, "num-frames");
+    string *a_draw = Readline.get.anytype_arg (rl, "draw");
+    string *a_focus = Readline.get.anytype_arg (rl, "focus");
+    string *a_num_frames = Readline.get.anytype_arg (rl, "num-frames");
     Vstring_t *a_commands  = Readline.get.anytype_args (rl, "command");
 
     int draw  = (NULL is a_draw  ? 1 : atoi (a_draw->bytes));
@@ -4514,8 +4514,8 @@ parse:
 
   } else if (Cstring.eq (com->bytes, "frame_clear")) {
     $my(state) |= (VFRAME_CLEAR_VIDEO_MEM|VFRAME_CLEAR_LOG);
-    string_t *clear_log = Readline.get.anytype_arg (rl, "clear-log");
-    string_t *clear_mem = Readline.get.anytype_arg (rl, "clear-video-mem");
+    string *clear_log = Readline.get.anytype_arg (rl, "clear-log");
+    string *clear_mem = Readline.get.anytype_arg (rl, "clear-video-mem");
 
     ifnot (NULL is clear_log)
       if (atoi (clear_log->bytes) is 0)
@@ -4534,7 +4534,7 @@ parse:
     vwm_frame *n_frame = Vwin.add_frame (win, 0, NULL, DRAW);
     if (NULL is n_frame) goto theend;
 
-    string_t *command = Readline.get.anytype_arg (rl, "command");
+    string *command = Readline.get.anytype_arg (rl, "command");
     if (NULL is command) {
       Vframe.set.command (n_frame, self(get.default_app));
     } else {
@@ -4548,7 +4548,7 @@ parse:
     goto theend;
 
   } else if (Cstring.eq (com->bytes, "set")) {
-    string_t *log_file = Readline.get.anytype_arg (rl, "log-file");
+    string *log_file = Readline.get.anytype_arg (rl, "log-file");
     if (NULL is log_file) goto theend;
 
     int set_log = atoi (log_file->bytes);
@@ -4642,25 +4642,25 @@ getc_again:
       Vframe.fork (frame);
       break;
 
-    case 'n': {
-        ifnot (param)
-          param = 1;
-        else
-          if (param > MAX_FRAMES)
+    case 'n':
+      ifnot (param)
+        param = 1;
+      else
+        if (param > MAX_FRAMES)
             param = MAX_FRAMES;
 
-        win_opts w_opts = WinOpts (
-            .num_rows = $my(num_rows),
-            .num_cols = $my(num_cols),
-            .num_frames = param,
-            .draw = 1,
-            .focus = 1);
+      win_opts w_opts = WinOpts (
+        .num_rows = $my(num_rows),
+        .num_cols = $my(num_cols),
+        .num_frames = param,
+        .draw = 1,
+        .focus = 1);
 
-        for (int i = 0; i < param; i++)
-          w_opts.frame_opts[i].command = $my(default_app)->bytes;
+      for (int i = 0; i < param; i++)
+        w_opts.frame_opts[i].command = $my(default_app)->bytes;
 
-        win = self(new.win, NULL, w_opts);
-        }
+      win = self(new.win, NULL, w_opts);
+
       break;
 
     case 'K':
@@ -4758,16 +4758,7 @@ getc_again:
       }
       break;
 
-    case '0':
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':
+    case '0' ... '9':
       param *= 10;
       param += (c - '0');
       goto getc_again;

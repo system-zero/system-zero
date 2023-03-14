@@ -2,14 +2,14 @@
   The V environment consists of two applications. One that does window managment
   and one that  extends it with [de]attach capabilities.
 
-  Window Managment Application (invoked as V.wm and requires a `command` argument:
+  Window Managment Application (invoked as V.wm and requires a `command` argument):
 
   Key bindings:
 
   MODKEY-q           : quit the application
   MODKEY-K           : kill the current procedure in the current frame
-  MODKEY-!           : open the default shell (by default zs-static)
-  MODKEY-c           : open the default application (by default zs-static)
+  MODKEY-!           : open the default shell (by default our shell)
+  MODKEY-c           : open the default application
   MODKEY-[up|down|w] : switch to the upper|lower frame respectively
   MODKEY-[j|k]       : likewise
   MODKEY-[left|right]: switch to the prev|next window respectively
@@ -19,7 +19,7 @@
   MODKEY-[param]-    : decrease the size of the current frame (default count 1)
   MODKEY-[param]=    : set the lines (param) of the current frame
   MODKEY-[param]n    : create and switch to a new window with `count' frames (default 1)
-  MODKEY-E|PageUp    : edit the log file (if it is has been set)
+  MODKEY-E|PageUp    : edit the log file (if it has been set)
   MODKEY-s           : split the window and add a new frame
   MODKEY-S[!ec]      : likewise, but also fork with a shell or an editor or the default application respectively (without a param is like MODE_KEY-s)
   MODKEY-d           : delete current frame
@@ -64,9 +64,7 @@
       --draw=[0|1]      if 0 donot draw the new window (default yes)
 
 
-  The V application extends the vwm utility.
-
-  It is invoked as V (V --help):
+  The V application extends the vwm utility (it is invoked as V) (V --help):
     Usage: v -s,--sockname= [options] [command] [command arguments]
 
       -h, --help            show this help message and exit
@@ -91,7 +89,7 @@
       --log-file=[0|1]       if not zero, enable logging (if logging is enabled
                                MODKEY-[E|PageUp] can edit the output (default editor is E-static),
                                modifications will be honored)
-      --save-imgage=[0|1]    save an image of the current layout automatically at exit
+      --save-imgage=[0|1]    save an image of the current layout at exit
       --image-file=`file'    use `file' when saving
       --image-name=`as'      save it under a standard directory as `as' (preferable)
       --always-connect=[1|0] always try to connect to a socket (e.g., if exists but

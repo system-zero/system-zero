@@ -7,6 +7,6 @@
 #
 
 var m = New Make (__file__, MODULE|SCRIPT_EXECUTABLE)
-m.set.shared.module.to_linkagainst (["dir", "re", "file", "path", "os"])
+m.set.shared.module.to_linkagainst (["dir", "re", "file", "path", "os", "error"])
 m.set.script.source (["Ls", "Find"]; clear)
 return m

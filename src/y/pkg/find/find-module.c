@@ -8,6 +8,7 @@
 #define REQUIRE_FILE_TYPE    DECLARE
 #define REQUIRE_PATH_TYPE    DECLARE
 #define REQUIRE_STRING_TYPE  DECLARE
+#define REQUIRE_ERROR_TYPE   DECLARE
 #define REQUIRE_VSTRING_TYPE DECLARE
 #define REQUIRE_LIST_MACROS
 
@@ -214,6 +215,84 @@ static string *long_format (const char *o, size_t len, struct stat *st, int isln
   return s;
 }
 
+static VALUE ls_file (find_t *find, const char *f) {
+  char *file = (char *) f;
+  struct stat st;
+  if (-1 is lstat (file, &st)) {
+    fprintf (stderr, "%s: %s\n", file, Error.errno_string (errno));
+    return NULL_VALUE;
+  }
+
+  if (-1 isnot find->match_uid and st.st_uid isnot find->uid)
+    return NULL_VALUE;
+  if (-1 isnot find->match_gid and st.st_gid isnot find->gid)
+    return NULL_VALUE;
+
+
+  size_t len = bytelen (file);
+
+  char *bname = path_basename (file, len);
+
+  char indicator = '\0';
+
+  do {
+    if (find->type is EXECUTABLE) {
+      if (st.st_mode & S_IXUSR or st.st_mode & S_IXGRP or st.st_mode & S_IXOTH) {
+        indicator = '*';
+        break;
+      } else
+        return NULL_VALUE;
+    }
+
+    if (find->type & REG_TYPE  and S_ISREG(st.st_mode))  { indicator = 'f'; break; }
+    if (find->type & LNK_TYPE  and S_ISLNK(st.st_mode))  { indicator = '@'; break; }
+    if (find->type & FIFO_TYPE and S_ISFIFO(st.st_mode)) { indicator = '|'; break; }
+    if (find->type & SOCK_TYPE and S_ISSOCK(st.st_mode)) { indicator = '='; break; }
+    if (find->type & BLK_TYPE  and S_ISBLK(st.st_mode)) break;
+    if (find->type & CHR_TYPE  and S_ISCHR(st.st_mode)) break;
+    return NULL_VALUE;
+  } while (0);
+
+  ifnot (NULL is find->re)
+    ifnot (Re.exec (find->re, bname,  len - (bname - file)) >= 0)
+      return NULL_VALUE;
+
+  string *s = NULL;
+  char *tmp = NULL;
+
+  ifnot (find->long_format) {
+    s = String.new_with (file);
+    tmp = s->bytes;
+  } else
+    s = long_format (file, len, &st, indicator is '@', &tmp);
+
+  if (find->append_indicator) {
+    switch (indicator) {
+      case '\0': break;
+
+      case 'f':
+        if (st.st_mode & S_IXUSR or st.st_mode & S_IXGRP or st.st_mode & S_IXOTH)
+          String.append_byte (s, '*');
+        break;
+
+      case '@':
+        if (find->long_format) break;
+        // fall through
+
+      default:
+        String.append_byte (s, indicator);
+    }
+  }
+
+  if (find->tostdout) {
+    fprintf (stdout, "%s\n", s->bytes);
+    String.release (s);
+    return TRUE_VALUE;
+  }
+
+  return STRING(s);
+}
+
 static int process_file (dirwalk_t *dw, const char *f, struct stat *st) {
   find_t *find = dw->user_data;
   if (-1 isnot find->match_uid and st->st_uid isnot find->uid) return 0;
@@ -341,8 +420,8 @@ static int process_dir (dirwalk_t *dw, const char *d, struct stat *st) {
   return 1;
 }
 
-static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
-  ifnot (IS_STRING(v_dir)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+static VALUE find_dir (la_t *this, VALUE v_o, VALUE v_type) {
+  ifnot (IS_STRING(v_o)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *type = NULL;
 
   if (IS_STRING(v_type))
@@ -350,11 +429,7 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
   else ifnot (IS_NULL(v_type))
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null");
 
-  char *dir = AS_STRING_BYTES(v_dir);
-  ifnot (Dir.is_directory (dir)) {
-    fprintf (stderr, "%s: not a directory\n", dir);
-    return NULL_VALUE;
-  }
+  char *dir = AS_STRING_BYTES(v_o);
 
   int sort_type = 0;
   int max_depth = GET_OPT_MAX_DEPTH();
@@ -448,6 +523,9 @@ static VALUE find_dir (la_t *this, VALUE v_dir, VALUE v_type) {
     .sorted_string = NULL
   };
 
+  ifnot (Dir.is_directory (dir))
+    return ls_file (&find, dir);
+
   ifnot (tostdout)
     find.files = Vstring.new ();
 
@@ -487,6 +565,7 @@ public int __init_find_module__ (la_t *this) {
   __INIT__(dir);
   __INIT__(file);
   __INIT__(path);
+  __INIT__(error);
   __INIT__(string);
   __INIT__(vstring);
 

@@ -73,7 +73,7 @@ typedef struct VwmReadlineArgs {
 
   readline_t *rl;
 
-  string_t *com;
+  string *com;
   vwm_t *vwm;
   vwm_win *win;
   vwm_frame *frame;

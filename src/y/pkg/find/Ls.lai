@@ -68,6 +68,9 @@ if argparse.results.tostdout then exit (intOrarray)
 
 if null is intOrarray then exit (1)
 
-for v in intOrarray println (v)
+if intOrarray: typeof () is StringType then
+  println (intOrarray)
+orelse
+  for v in intOrarray println (v)
 
 exit (0)
