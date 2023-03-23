@@ -576,7 +576,7 @@ static void ed_add_command_arg (readline_com_t *rlcom, int flags) {
 }
 */
 
-static void readline_append_command (readline_t  *rl, const char *com, char **args, int num_args) {
+static void readline_append_command (readline_t  *rl, const char *com, const char **args, int num_args) {
   rl->num_commands++;
 
   ifnot (rl->num_commands - 1)
@@ -607,9 +607,9 @@ static void readline_append_command (readline_t  *rl, const char *com, char **ar
 static readline_t *pager_new_readline (Me *My, int has_command_line) {
   ifnot (has_command_line) return NULL;
   readline_t *rl = readline_new (My, My->term, IO.input.getkey, My->term->num_rows - 1, 1, My->term->num_cols, My->video);
-  char *w_args[] = {"--no=", "--na"};
+  const char *w_args[] = {"--no=", "--na"};
   readline_append_command (rl, "write", w_args, 2);
-  char *t_args[] = {"--do=", "--du"};
+  const char *t_args[] = {"--do=", "--du"};
   readline_append_command (rl, "test", t_args, 2);
   return rl;
 }

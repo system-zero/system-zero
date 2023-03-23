@@ -719,6 +719,7 @@ static int readline_exec (readline_t *this) {
   return READLINE_OK;
 }
 
+#if 0
 static void readline_reset (readline_t *this) {
   String.clear (this->render);
   String.clear (this->shared_str);
@@ -733,6 +734,7 @@ static void readline_reset (readline_t *this) {
   this->opts  |= (READLINE_OPT_HAS_HISTORY_COMPLETION|READLINE_OPT_HAS_TAB_COMPLETION);
   this->opts  |= (READLINE_OPT_CLEAR_PROMPTLINE_AT_END);
 }
+#endif
 
 static void readline_release_members (readline_t *this) {
   Vstring.release (this->line);
@@ -749,11 +751,29 @@ static void readline_release_members (readline_t *this) {
   this->cur_idx = 0;
 }
 
+static void readline_release_commands (readline_t *this) {
+  for (int i = 0; i < this->num_commands; i++) {
+    free (this->commands[i]->com);
+    if (this->commands[i]->args isnot NULL) {
+      int j = 0;
+      while (this->commands[i]->args[j])
+        free (this->commands[i]->args[j++]);
+
+      free (this->commands[i]->args);
+    }
+
+    free (this->commands[i]);
+  }
+  free (this->commands);
+}
+
 static void readline_release (readline_t *this) {
   readline_release_members (this);
+  readline_release_commands (this);
   String.release (this->render);
   String.release (this->shared_str);
   String.release (this->command);
+  String.release (this->cur_line);
   free (this);
 }
 

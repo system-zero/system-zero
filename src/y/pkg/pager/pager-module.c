@@ -1,4 +1,5 @@
 #define REQUIRE_STDIO
+#define REQUIRE_UNISTD
 #define REQUIRE_TERMIOS
 
 #define REQUIRE_STD_MODULE
@@ -89,6 +90,7 @@ static VALUE __pager_new (la_t *this, VALUE v_lines) {
   string **lines = NULL;
   size_t array_len = 0;
   int input_should_be_freed = 0;
+
   ifnot (IS_ARRAY(v_lines)) {
     if (IS_STRING(v_lines)) {
       input_should_be_freed = 1;
@@ -134,8 +136,8 @@ static VALUE __pager_new (la_t *this, VALUE v_lines) {
       THROW(LA_ERR_TYPE_MISMATCH, "awaiting a StringType array");
 
     array_len = array->len;
-    lines = (string **) AS_ARRAY(array->value);
     ifnot (array_len) return OK_VALUE;
+    lines = (string **) AS_ARRAY(array->value);
   }
 
   int first_row = GET_OPT_FIRST_ROW();
@@ -164,6 +166,50 @@ static VALUE __pager_new (la_t *this, VALUE v_lines) {
   return OBJECT(o);
 }
 
+static VALUE pager_new_from_stdin (la_t *this) {
+  VALUE r = NULL_VALUE;
+
+  if (isatty (STDIN_FILENO)) return r;
+
+  int ifd = dup (STDIN_FILENO);
+
+  FILE *fpa = freopen ("/dev/tty", "r", stdin);
+  if (NULL is fpa) return r;
+
+  FILE *fp = fdopen (ifd, "r");
+
+  int alen = 0;
+  ArrayType *array = ARRAY_INIT_WITH_LEN(STRING_TYPE, alen);
+
+  char *buf = NULL;
+  ssize_t nread;
+  size_t len;
+
+  while (-1 isnot (nread = getline (&buf, &len, fp))) {
+    buf[nread] = '\0';
+    VALUE sv = STRING(String.new_with_len (buf, nread));
+    array = ARRAY_APPEND(array, sv);
+  }
+
+  fclose (fp);
+
+  ifnot (NULL is buf)
+    free (buf);
+
+  string **ary = (string **) AS_ARRAY(array->value);
+
+  ifnot (array->len) goto theend;
+
+  r = __pager_new (this, ARRAY(array));
+
+theend:
+  for (size_t i = 0; i < array->len; i++) String.release (ary[i]);
+  free (ary);
+  free (array);
+
+  return r;
+}
+
 public int __init_pager_module__ (la_t *this) {
   __INIT_MODULE__(this);
   __INIT__(cstring);
@@ -171,6 +217,7 @@ public int __init_pager_module__ (la_t *this) {
   LaDefCFun lafuns[] = {
     { "pager_new",  PTR(__pager_new), 1 },
     { "pager_main", PTR(__pager_main), 1 },
+    { "pager_new_from_stdin",  PTR(pager_new_from_stdin), 0 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -183,7 +230,8 @@ public int __init_pager_module__ (la_t *this) {
   const char evalString[] = EvalString (
     public var Pager = {
       new  : pager_new,
-      main : pager_main
+      main : pager_main,
+      new_from_stdin : pager_new_from_stdin
      }
    );
 

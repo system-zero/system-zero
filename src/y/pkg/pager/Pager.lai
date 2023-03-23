@@ -1,9 +1,21 @@
 import ("pager")
 import ("file")
 
-if __argc is 1 then exit (1)
+const exists = file_exists
 
-var file = __argv[1]
-var lines = file: file_readlines ()
-var p = Pager.new (lines)
-Pager.main (p)
+var p
+
+if __argc is 1 {
+  p = Pager.new_from_stdin ()
+} else {
+  var file = __argv[1]
+  ifnot file: exists () then exit (1)
+
+  var lines = file: file_readlines ()
+  if lines is null or lines: len () is 0 then exit (1)
+  p = Pager.new (lines)
+}
+
+if null is p then exit (1)
+
+exit (Pager.main (p))
