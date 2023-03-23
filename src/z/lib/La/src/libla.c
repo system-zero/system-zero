@@ -630,7 +630,7 @@ static int la_parse_string_set_char (la_t *, VALUE, int);
 static inline sym_t *ns_lookup_symbol (funT *, const char *);
 static sym_t *la_lookup_symbol (la_t *, la_string);
 static sym_t *la_define_symbol (la_t *, funT *, const char *, int, VALUE, int);
-static VALUE la_release_val (la_t *, VALUE);
+static VALUE la_release_value (la_t *, VALUE);
 static VALUE string_release (VALUE);
 static VALUE la_copy_map (VALUE);
 static VALUE map_release (VALUE);
@@ -1149,9 +1149,7 @@ static VALUE la_is_defined (la_t *this, VALUE v_val) {
   return FALSE_VALUE;
 }
 
-static VALUE la_set_qualifiers (la_t *this, VALUE v_qual, funT *uf) {
-  ifnot (IS_MAP(v_qual)) C_THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map as qualifiers");
-
+static void _la_set_qualifiers (la_t *this, VALUE v_qual, funT *uf) {
   qualifier_t *q = Alloc (sizeof (qualifier_t));
   q->qualifiers = AS_MAP(v_qual);
   if (uf)
@@ -1160,8 +1158,15 @@ static VALUE la_set_qualifiers (la_t *this, VALUE v_qual, funT *uf) {
     Cstring.cp (q->name, MAXLEN_SYMBOL + 1, this->curCFunName, bytelen (this->curCFunName));
 
   ListStackPush (this->qualifiers_stack, q);
+}
 
-  return OK_VALUE;
+
+static void la_set_qualifiers (la_t *this, Vmap_t *qual, const char *funname) {
+  qualifier_t *q = Alloc (sizeof (qualifier_t));
+  q->qualifiers = qual;
+  Cstring.cp (q->name, MAXLEN_SYMBOL + 1, funname, bytelen (funname));
+
+  ListStackPush (this->qualifiers_stack, q);
 }
 
 static void la_release_qualifiers (la_t *this, char *name) {
@@ -1377,7 +1382,7 @@ static VALUE list_release (la_t *this, VALUE v_list) {
 
   while (it) {
     listNode *tmp = it->next;
-    la_release_val (this, *(it->value));
+    la_release_value (this, *(it->value));
     free (it->value);
     free (it);
     it = tmp;
@@ -1602,7 +1607,7 @@ static int la_parse_list_set (la_t *this) {
 
     this->curMsg[0] = '\0';
 
-    VALUE rv = la_release_val (this, v_list);
+    VALUE rv = la_release_value (this, v_list);
     THROW_SYNTAX_ERR_FMT_IF(IS_NULL(rv), "%s\n", this->curMsg);
     return LA_MMT_REASSIGN;
   }
@@ -1622,7 +1627,7 @@ static int la_parse_list_set (la_t *this) {
     THROW_ERR_IF_ERR(err);
 
     ifnot (v.refcount) // this condition almost? guarrantees that this is not our list
-      la_release_val (this, v_list); // so release it
+      la_release_value (this, v_list); // so release it
 
     v.refcount = 0;   // the chain function increments refcount, so zero it 
     sym->value = v;
@@ -1808,7 +1813,7 @@ static int la_parse_list_set (la_t *this) {
   err = la_parse_expr (this, &v);
   THROW_ERR_IF_ERR(err);
 
-  la_release_val (this, *node->value);
+  la_release_value (this, *node->value);
 
   switch (v.refcount) {
     case STRING_LITERAL:
@@ -1863,7 +1868,7 @@ static VALUE list_delete_at (la_t *this, VALUE v_list, VALUE v_idx) {
   }
 
   listNode *node = DListPopAt(list, listNode, idx);
-  la_release_val (this, *node->value);
+  la_release_value (this, *node->value);
   free (node->value);
   free (node);
 
@@ -1881,7 +1886,7 @@ static VALUE list_clear (la_t *this, VALUE v_list) {
     if (NULL == node)
       break;
 
-    la_release_val (this, *node->value);
+    la_release_value (this, *node->value);
     free (node->value);
     free (node);
   }
@@ -1908,7 +1913,7 @@ static VALUE list_pop_at (la_t *this, VALUE v_list, VALUE v_idx) {
   listNode *node = DListPopAt(list, listNode, idx);
 
   VALUE v = la_copy_value (*node->value);
-  la_release_val (this, *node->value);
+  la_release_value (this, *node->value);
   free (node->value);
   free (node);
   return v;
@@ -2254,7 +2259,7 @@ theend:
   return result;
 }
 
-static VALUE la_release_val (la_t *this, VALUE value) {
+static VALUE la_release_value (la_t *this, VALUE value) {
   (void) this;
   VALUE result = INT(LA_OK);
   if (value.type < STRING_TYPE) return result;
@@ -2334,7 +2339,7 @@ static void la_release_sym (void *sym) {
       fun_release (&f);
     }
   } else
-    la_release_val (NULL, v);
+    la_release_value (NULL, v);
 
   free (this);
   this = NULL;
@@ -3125,6 +3130,11 @@ static VALUE la_copy_value (VALUE v) {
   return new;
 }
 
+static VALUE _la_copy_value (la_t *this, VALUE v) {
+  (void) this;
+  return la_copy_value (v);
+}
+
 static void *la_clone_sym_item (void *item, void *obj) {
   (void) obj;
   sym_t *sym = (sym_t *) item;
@@ -3536,7 +3546,7 @@ static int la_parse_anon_array (la_t *this, VALUE *vp) {
       if (v.sym is NULL and
           v.refcount isnot MALLOCED_STRING and
           0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
-        la_release_val (this, v);
+        la_release_value (this, v);
         this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
       }
 
@@ -3556,7 +3566,7 @@ static int la_parse_anon_array (la_t *this, VALUE *vp) {
       listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(ar);
       listArrayMember *item = l_ar[0];
       ifnot (NULL is item)
-        la_release_val (this, LIST(item));
+        la_release_value (this, LIST(item));
 
       l_ar[0] = LIST_ARRAY_MEMBER(v);
       break;
@@ -3786,7 +3796,7 @@ static int la_array_set_as_string (la_t *this, VALUE ar, integer len, integer id
         if (val.sym is NULL and
             val.refcount isnot MALLOCED_STRING and
             0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
-          la_release_val (this, val);
+          la_release_value (this, val);
           this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
         }
 
@@ -4085,7 +4095,7 @@ static int la_parse_array_set (la_t *this) {
           }
 
           if (NULL is ar_val.sym)
-            la_release_val (this, ar_val);
+            la_release_value (this, ar_val);
 
           return LA_OK;
         }
@@ -4094,12 +4104,12 @@ static int la_parse_array_set (la_t *this) {
           listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(array->value);
           for (size_t i = 0; i < array->len; i++) {
             ifnot (NULL is l_ar[i])
-               la_release_val (this, LIST(l_ar[i]));
+               la_release_value (this, LIST(l_ar[i]));
             l_ar[i] = LIST_ARRAY_MEMBER(la_copy_value (ar_val));
           }
 
           if (NULL is ar_val.sym)
-            la_release_val (this, ar_val);
+            la_release_value (this, ar_val);
 
           return LA_OK;
         }
@@ -4659,7 +4669,7 @@ static int la_array_eq (VALUE x, VALUE y) {
 static void la_release_map_val (void *v) {
   VALUE *val = (VALUE *) v;
   free (val->sym);
-  la_release_val (NULL, *val);
+  la_release_value (NULL, *val);
   free (val);
 }
 
@@ -5769,7 +5779,7 @@ parse_qualifiers:
       err = la_parse_map (this, &v);
       THROW_ERR_IF_ERR(err);
 
-      la_set_qualifiers (this, v, uf);
+      _la_set_qualifiers (this, v, uf);
 
     } else if (TOKEN is TOKEN_MAP) {
       this->exprList++;
@@ -5780,7 +5790,7 @@ parse_qualifiers:
       VALUE val = la_copy_map (v);
       v = val;
 
-      la_set_qualifiers (this, v, uf);
+      _la_set_qualifiers (this, v, uf);
 
     } else {
       if (PEEK_NTH_TOKEN(0) is TOKEN_COLON) {
@@ -5797,7 +5807,7 @@ parse_members:
         THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_PAREN_CLOS,
           "error while getting qualifiers, awaiting )");
 
-        la_set_qualifiers (this, MAP(map), uf);
+        _la_set_qualifiers (this, MAP(map), uf);
 
       } else {
         if (NULL is TOKENSYM) goto parse_members;
@@ -5809,7 +5819,7 @@ parse_members:
             THROW_ERR_IF_ERR(err);
 
             if (v.type is MAP_TYPE) {
-              la_set_qualifiers (this, v, uf);
+              _la_set_qualifiers (this, v, uf);
               goto theend;
             }
 
@@ -6212,7 +6222,7 @@ again:
         continue;
 
     if (v.sym is NULL)
-      la_release_val (this, v);
+      la_release_value (this, v);
   }
 
   la_release_qualifiers (this, this->curCFunName);
@@ -6415,12 +6425,12 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
     if (save_v.sym is NULL) {
       if (save_v.refcount > -1) {
-        la_release_val (this, save_v);
+        la_release_value (this, save_v);
       } else if (save_v.refcount is ARRAY_LITERAL) {
         if (vp->refcount is ARRAY_LITERAL + 1) // care as ARRAY_LITERAL < 0
           vp->refcount--; // though it is the opposite, it matches with the code above
         else              // and with the how the if_in_chain() handles it
-          la_release_val (this, save_v);
+          la_release_value (this, save_v);
       }
     }
 
@@ -6601,7 +6611,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
               *vp = STRING_NEW_WITH_LEN(str->bytes, str->num_bytes);
             }
 
-            la_release_val (this, saved_val);
+            la_release_value (this, saved_val);
             return err;
           }
 
@@ -7039,7 +7049,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
             this->objectState &= ~MAP_MEMBER;
           }
 
-          la_release_val (this, mapval);
+          la_release_value (this, mapval);
         }
       }
 
@@ -7073,7 +7083,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
             this->objectState &= ~MAP_MEMBER;
           }
 
-          la_release_val (this, mapval);
+          la_release_value (this, mapval);
         }
       }
 
@@ -7460,7 +7470,7 @@ static int la_parse_stmt (la_t *this) {
         switch (symbol->value.type) {
           case STRING_TYPE:
             //if (Cstring.eq (symbol->scope->funname, scope->funname))
-            la_release_val (this, symbol->value);
+            la_release_value (this, symbol->value);
             break;
 
           default:
@@ -7470,7 +7480,7 @@ static int la_parse_stmt (la_t *this) {
               break;
             }
 
-            la_release_val (this, symbol->value);
+            la_release_value (this, symbol->value);
         }
 
         if (val.sym isnot NULL) {
@@ -7587,7 +7597,7 @@ static int la_parse_stmt (la_t *this) {
       THROW_ERR_IF_ERR(err);
 
       if (val.sym is NULL) // plain function call without reason
-        la_release_val (this, val);
+        la_release_value (this, val);
 
       return err;
 
@@ -7787,12 +7797,12 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
 
     if (sv_lhs.type isnot STRING_TYPE) {
       if (sv_lhs.sym is NULL)
-        la_release_val (this, sv_lhs);
+        la_release_value (this, sv_lhs);
     }
 
     if (rhs.sym is NULL) {
       if (rhs.type isnot STRING_TYPE) {
-        la_release_val (this, rhs);
+        la_release_value (this, rhs);
       } else {
         ifnot (this->objectState & RHS_STRING_RELEASED) {
           if (rhs.refcount is STRING_LITERAL) {
@@ -9795,7 +9805,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
               if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
                   value.refcount isnot MALLOCED_STRING and
                   0 is (this->objectState & (MAP_MEMBER|ARRAY_MEMBER)))) {
-                la_release_val (this, value);
+                la_release_value (this, value);
               }
 
               this->fmtState &= ~FMT_LITERAL;
@@ -9844,7 +9854,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
             if ((this->fmtState & FMT_LITERAL) or (value.sym is NULL and
                 value.refcount isnot MALLOCED_STRING and
                0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))) {
-                la_release_val (this, value);
+                la_release_value (this, value);
             }
             this->fmtState &= ~FMT_LITERAL;
             this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
@@ -10045,7 +10055,7 @@ static int la_parse_print (la_t *this) {
             if (v.sym is NULL and
                 v.refcount isnot MALLOCED_STRING and
                 0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)))
-              la_release_val (this, v);
+              la_release_value (this, v);
 
           this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
         }
@@ -12361,6 +12371,8 @@ public la_T *__init_la__ (void) {
       .def =  la_define,
       .def_std = la_def_std,
       .release = la_release,
+      .release_value = la_release_value,
+      .release_qualifiers = la_release_qualifiers,
       .eval_file = la_eval_file,
       .eval_expr = la_eval_expr,
       .load_file = la_load_file,
@@ -12371,6 +12383,7 @@ public la_T *__init_la__ (void) {
       .remove_instance = la_remove_instance,
       .append_instance = la_append_instance,
       .qualifier_exists = la_C_qualifier_exists,
+      .copy_value = _la_copy_value,
       .get = (la_get_self) {
         .root = la_get_root,
         .message = la_get_message,

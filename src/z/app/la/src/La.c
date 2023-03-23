@@ -92,7 +92,7 @@ const char *keywords[] = {
   "include (\"", "print (", "println (", NULL
 };
 
-static void la_completion (const char *buf, int curpos, rlineCompletions *lc, void *userdata) {
+static int la_completion (const char *buf, int curpos, rlineCompletions *lc, void *userdata) {
   rline_t *this = (rline_t *) userdata;
 
   dirlist_t *dlist = NULL;
@@ -111,7 +111,7 @@ static void la_completion (const char *buf, int curpos, rlineCompletions *lc, vo
       i++;
     }
 
-    return;
+    return 0;
   }
 
   string *arg = String.new (buflen);
@@ -221,7 +221,7 @@ static void la_completion (const char *buf, int curpos, rlineCompletions *lc, vo
   } else ifnot (ptrlen) {
     get_current: {}
     char *cwd = Dir.current ();
-    if (NULL is cwd) return;
+    if (NULL is cwd) return 0;
     dlist = Dir.list (cwd, 0);
     free (cwd);
   } else {
@@ -277,6 +277,7 @@ theend:
   ifnot (NULL is dlist) dlist->release (dlist);
   ifnot (NULL is dirname) free (dirname);
   String.release (arg);
+  return 0;
 }
 
 static char *la_hints (const char *buf, int *color, int *bold, void *userdata) {

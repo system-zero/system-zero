@@ -1,5 +1,6 @@
 // provides: int system (const char *)
 // requires: sys/waitpid.c
+// requires: std/environ.h
 // requires: signal/sigset.h
 // requires: signal/sigaction.h
 // requires: signal/sigaction.c
@@ -12,8 +13,6 @@
 // requires: stdlib/_exit.c
 
 /* diet-libc implementation */
-
-extern char **environ;
 
 int system (const char *line) {
   struct sigaction sa, intr, quit;

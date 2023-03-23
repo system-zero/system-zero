@@ -1,0 +1,8 @@
+--as=
+-s,--sockname=
+--loadfile=
+-a,--attach
+--force
+--send
+--exit
+--remove-socket

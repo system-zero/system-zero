@@ -408,9 +408,9 @@ typedef struct la_set_self {
     (*user_data) (la_t *, void *),
     (*CFuncError) (la_t *, int),
     (*define_funs_cb) (la_t *, LaDefineFuns_cb),
+    (*qualifiers) (la_t *, Vmap_t *, const char *),
     (*function_curMsg) (la_t *, const char *, const char *);
 
-  VALUE (*qualifiers) (la_t *, VALUE, funT *);
 } la_set_self;
 
 typedef struct la_object_self {
@@ -434,6 +434,7 @@ typedef struct la_self {
 
   void
     (*release) (la_t **),
+    (*release_qualifiers) (la_t *, char *),
     (*remove_instance) (la_T *, la_t *);
 
   la_t
@@ -452,6 +453,8 @@ typedef struct la_self {
     (*qualifier_exists) (la_t *, const char *);
 
   VALUE
+    (*copy_value) (la_t *, VALUE),
+    (*release_value) (la_t *, VALUE),
     (*print_byte) (la_t *, char),
     (*print_bytes) (la_t *, const char *);
 

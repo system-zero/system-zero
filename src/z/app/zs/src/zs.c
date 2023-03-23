@@ -661,12 +661,30 @@ static pager_t *pager_new (zs_t *zs, string **lines, size_t array_len, pager_opt
 }
 
 static int completion_pager (completion_t *this) {
-  term_t *term = this->zs->term;
-
   ifnot (this->arlen) return -1;
+
+  int r = 0;
+  char *command = NULL;
+  size_t comlen = 0;
+
+  pager_t *p = this->zs->pager;
+  term_t *term = this->zs->term;
+  int termrestore = 1;
+
+  if (this->arlen is 1) {
+    Buf *buf = p->buf;
+    buf->input = this->ar;
+    buf->array_len = 1;
+    command = this->ar[0]->bytes;
+    comlen = this->ar[0]->num_bytes;
+    this->zs->pager->c = 0;
+    termrestore = 0;
+    goto add_completion;
+  }
+
   Term.cursor.get_pos (term, &term->orig_curs_row_pos, &term->orig_curs_col_pos);
 
-  pager_t *p = pager_new (this->zs, this->ar, this->arlen, PagerOpts (
+  p = pager_new (this->zs, this->ar, this->arlen, PagerOpts (
     .first_row = 1,
     .first_col = 1,
     ));
@@ -676,12 +694,13 @@ static int completion_pager (completion_t *this) {
 
   term->is_initialized = 1; // fake it
 
-  size_t comlen = 0;
-  char *command = pager_main (p, this->idx, this->rline, &comlen, this->tab_completes);
+  comlen = 0;
+  command = pager_main (p, this->idx, this->rline, &comlen, this->tab_completes);
 
-  int r = NULL isnot command;
+  r = NULL isnot command;
 
   if (r) {
+add_completion:
     this->zs->num_items = 1;
     Rline.set.flags (this->rline, this->lc, RLINE_ACCEPT_ONE_ITEM);
     String.clear (this->arg);
@@ -726,12 +745,15 @@ static int completion_pager (completion_t *this) {
     this->zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
   }
 
-  Term.cursor.set_pos (term, term->orig_curs_row_pos, term->orig_curs_col_pos);
-  Term.screen.restore (term);
-  term->is_initialized = 0;
+  if (termrestore) {
+    Term.cursor.set_pos (term, term->orig_curs_row_pos, term->orig_curs_col_pos);
+    Term.screen.restore (term);
+    term->is_initialized = 0;
+  }
 
   p->buf->input_should_be_freed = 1;
   buf_clear (p->buf);
+
   return r;
 }
 
@@ -1965,19 +1987,17 @@ static int zs_interactive (sh_t *this) {
 }
 
 int main (int argc, char **argv) {
-  __INIT__ (io);
-  __INIT__ (sh);
-  __INIT__ (sys);
-  __INIT__ (dir);
-  __INIT__ (path);
-  __INIT__ (file);
-  __INIT__ (error);
-  __INIT__ (rline);
-  __INIT__ (string);
-  __INIT__ (vstring);
-  __INIT__ (cstring);
-
-
+  __INIT__(io);
+  __INIT__(sh);
+  __INIT__(sys);
+  __INIT__(dir);
+  __INIT__(path);
+  __INIT__(file);
+  __INIT__(error);
+  __INIT__(rline);
+  __INIT__(string);
+  __INIT__(vstring);
+  __INIT__(cstring);
   __INIT__(ustring);
   __INIT__(term);
 
