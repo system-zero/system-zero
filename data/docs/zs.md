@@ -17,7 +17,13 @@ decent interactivity.
   
     - pipes:  
   
-      ls | grep pat  
+      command | command  
+      This redirects standard output of the first command, to standard input
+      of the second command.
+  
+      command |& command  
+      This redirects both standard output and standard error of the first command,
+      to standard input of the second command.
   
     - supported redirection (operators):  
   

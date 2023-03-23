@@ -734,7 +734,14 @@ static int sh_parse (sh_t *this, char *buf) {
 
       type = PIPE_TYPE;
       *sp = '\0';
+
+      if (*(sp+1) is '&') {
+        sp++;
+        redir_stderr_to_stdout = 1;
+      }
+
       sp++;
+
       goto add_proc;
     }
 
