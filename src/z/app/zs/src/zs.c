@@ -705,9 +705,16 @@ add_completion:
     Rline.set.flags (this->rline, this->lc, RLINE_ACCEPT_ONE_ITEM);
     String.clear (this->arg);
 
-    if (this->prefix) String.append_with_len (this->arg, this->prefix, this->prefix_len);
+    int cur_pos = this->prefix_len;
+
+    if (this->prefix)
+      String.append_with_len (this->arg, this->prefix, this->prefix_len);
+
     String.append_with_len (this->arg, command, comlen);
-    if (this->suffix) String.append_with_len (this->arg, this->suffix, this->suffix_len);
+    cur_pos += comlen;
+
+    if (this->suffix)
+      String.append_with_len (this->arg, this->suffix, this->suffix_len);
 
     if (p->c is '\t')
       if (Cstring.eq (this->curbuf, this->arg->bytes)) {
@@ -732,14 +739,16 @@ add_completion:
 
             offset = 1;
             String.insert_byte_at (this->arg, '"', this->prefix_len - (t - s));
+            cur_pos++;
           }
         }
 
         String.insert_byte_at (this->arg, '"', this->prefix_len + offset + comlen);
+        cur_pos++;
       }
     }
 
-    Rline.add_completion (this->rline, this->lc, this->arg->bytes, -1);
+    Rline.add_completion (this->rline, this->lc, this->arg->bytes, cur_pos);
     String.replace_with (this->zs->completion_command, command); // leave it at the end of the block
                                                                 // as it might be used before
     this->zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
@@ -780,8 +789,10 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   size_t bname_len;
 
   char *buf = (char *) bufp;
+  int buf_isallocated = 0;
+  size_t buflen;
 
-  while (*buf is ' ') {
+  while (*buf is ' ' and curpos) {
     buf++;
     curpos--;
   }
@@ -789,7 +800,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   const char *lptr = buf + curpos;
   size_t lptrlen = bytelen (lptr);
 
-  size_t buflen = bytelen (buf) - lptrlen;
+  buflen = bytelen (buf) - lptrlen;
 
   char ptrbuf[buflen + 1];
 
@@ -837,6 +848,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     completion->arlen = idx;
     completion->idx = 0;
     completion->prefix = NULL;
+    completion->prefix_len = 0;
     completion->suffix = NULL;
 
     int r = completion_pager (completion);
@@ -867,9 +879,9 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
           ifnot (Cstring.eq_n (ar[0]->bytes, arg->bytes, arg->num_bytes)) {
             String.append_with_len (arg, ar[0]->bytes, ar[0]->num_bytes);
-            Rline.add_completion (rline, lc, arg->bytes, -1);
+            Rline.add_completion (rline, lc, arg->bytes, arg->num_bytes);
           } else
-            Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+            Rline.add_completion (rline, lc, ar[0]->bytes, ar[0]->num_bytes);
 
           zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
           String.release (ar[0]);
@@ -900,8 +912,9 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
        ((*ptr is '.' and (*(ptr+1) is DIR_SEP or *(ptr+1) is '.')) or *ptr is DIR_SEP)) {
     char *sp = (char *) buf;
     char *tmp = sp;
-    ptrlen = 0;
-    while (*sp and *(sp + 1) isnot ' ') {
+    ptrlen = 1;
+    sp++;
+    while (*sp and *sp isnot ' ' and *(sp + 1) isnot ' ') {
       ptrlen++;
       sp++;
     }
@@ -1025,6 +1038,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     completion->arlen = idx;
     completion->idx = lidx;
     completion->prefix = NULL;
+    completion->prefix_len = 0;
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
     completion->tab_completes = 1;
@@ -1273,6 +1287,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   }
 
   if (-1 is ptrlen) {
+    half_command:
     // half command
     Command *it = zs->command_head;
     sp = (char *) buf;
@@ -1299,9 +1314,14 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
           zs->num_items = 1;
           Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
 
+          int cur_pos = ar[0]->num_bytes + 1;
+
           if (lptrlen)
             String.append_with_fmt (ar[0], " %s", lptr);
-          Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+          else
+            String.append_byte (ar[0], ' ');
+
+          Rline.add_completion (rline, lc, ar[0]->bytes, cur_pos);
           zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
 
           String.release (ar[0]);
@@ -1313,6 +1333,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
         completion->arlen = idx;
         completion->idx = 0;
         completion->prefix = NULL;
+        completion->prefix_len = 0;
         completion->suffix = lptr;
         completion->suffix_len = lptrlen;
 
@@ -1360,9 +1381,27 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
       zs->num_items = 1;
       Rline.set.flags (rline, lc, RLINE_ACCEPT_ONE_ITEM);
 
+      int isnot_dot = ar[0]->bytes[ar[0]->num_bytes - 1] isnot '.';
+      int cur_pos = ar[0]->num_bytes + isnot_dot;
+
       if (lptrlen)
         String.append_with_fmt (ar[0], " %s", lptr);
-      Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+      else
+        if (isnot_dot)
+          String.append_byte (ar[0], ' ');
+
+      ifnot (isnot_dot) {
+        buflen = cur_pos;
+        buf = Alloc (buflen + 1);
+        Cstring.cp (buf, buflen + 1, ar[0]->bytes, buflen);
+        buf_isallocated = 1;
+        String.release (ar[0]);
+        free (ar);
+        goto half_command;
+      }
+
+      Rline.add_completion (rline, lc, ar[0]->bytes, cur_pos);
+
       zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
 
       String.release (ar[0]);
@@ -1374,6 +1413,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     completion->arlen = idx;
     completion->idx = buflen;
     completion->prefix = NULL;
+    completion->prefix_len = 0;
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
 
@@ -1404,15 +1444,18 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
           ifnot (Cstring.eq_n (ar[0]->bytes, zs->completion_command->bytes, zs->completion_command->num_bytes)) { // duck
             String.append_with_len (zs->completion_command, ar[0]->bytes, ar[0]->num_bytes);
+            int cur_pos = zs->completion_command->num_bytes;
+
             if (lptrlen)
               String.append_with_fmt (zs->completion_command, " %s", lptr);
 
-            Rline.add_completion (rline, lc, zs->completion_command->bytes, -1);
+            Rline.add_completion (rline, lc, zs->completion_command->bytes, cur_pos);
           } else {
+            int cur_pos = ar[0]->num_bytes;
             if (lptrlen)
               String.append_with_fmt (ar[0], " %s", lptr);
 
-            Rline.add_completion (rline, lc, ar[0]->bytes, -1);
+            Rline.add_completion (rline, lc, ar[0]->bytes, cur_pos);
           }
 
           zs->arg_type = ZS_RLINE_ARG_IS_COMMAND;
@@ -1585,6 +1628,8 @@ get_current: {}
 theend:
   ifnot (NULL is dlist) dlist->release (dlist);
   ifnot (NULL is dirname) free (dirname);
+  if (buf_isallocated)
+    free (buf);
   return zs->pager->c;
 }
 
@@ -1668,8 +1713,10 @@ handle_tilda:
       size_t homlen = bytelen (home);
       String.append_with_len (arg, home, homlen);
       String.append_byte (arg, DIR_SEP);
+      int cur_pos = arg->num_bytes;
       String.append_with_len (arg, ptr, ptrlen);
       Rline.set.current (rline, lc, arg->bytes);
+      Rline.set.curpos (rline, lc, cur_pos);
       String.clear_at (arg, len);
       return '\t';
     }
@@ -1678,11 +1725,9 @@ handle_tilda:
   return -1;
 }
 
-static int zs_accept_one_item (const char *buf, void *userdata) {
+static int zs_accept_one_item (const char *buf, rlineCompletions *lc, void *userdata) {
   zs_t *zs = (zs_t *) userdata;
-  (void) zs; (void) buf;
-
-//  if (zs->arg_type is ZS_RLINE_ARG_IS_COMMAND)
+  (void) zs; (void) buf; (void) lc;
 //    if ('a' <= *buf and *buf <= 'z')
 //      return -1;
 

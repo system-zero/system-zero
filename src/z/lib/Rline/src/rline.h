@@ -20,7 +20,7 @@ typedef int   (*OnInput_cb) (const char *, string *, int *, int, rlineCompletion
 /* ADDITION: if not NULL this is called when a carriage return is received */
 typedef void  (*OnCarriageReturn_cb) (const char *, void *);
 /* ADDITION: if not NULL this is called on tab completion and there is just one match */ 
-typedef int   (*AcceptOneItem_cb) (const char *, void *);
+typedef int   (*AcceptOneItem_cb) (const char *, rlineCompletions *, void *);
 
 /* this is our API, a little bit more than merely a wrapper around linenoise */
 typedef struct rline_set_self {

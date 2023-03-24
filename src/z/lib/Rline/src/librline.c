@@ -1369,7 +1369,11 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
       if (lc.len == 1 and lc.flags & RLINE_ACCEPT_ONE_ITEM and c is '\t') {
         set_current (current, lc.cvec[0]);
         curbuf = sb_str(current->buf);
-        curpos = utf8_index(curbuf, current->pos);
+        if (lc.pos[0] >= 0)
+          curpos = lc.pos[0];
+        else
+          curpos = utf8_index(curbuf, current->pos);
+
         rline_release_completions (this, &lc);
         goto completioncallback;
       }
@@ -1403,7 +1407,7 @@ static int completeLine (rline_t *this, currentLine *current, string *prevLine, 
         int accept = 1;
 
         ifnot (NULL is linenoiseAcceptOneItemCallback)
-            accept = linenoiseAcceptOneItemCallback (lc.cvec[0],  completionUserdata);
+            accept = linenoiseAcceptOneItemCallback (lc.cvec[0], &lc, completionUserdata);
 
         if (accept > 0) {
             set_current (current, lc.cvec[0]);
