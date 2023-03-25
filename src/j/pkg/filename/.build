@@ -1,0 +1,4 @@
+var m = New Make (__file__, MODULE|SCRIPT_EXECUTABLE)
+m.set.script.executable.source ("Filename.strip.ws"; clear : 1)
+m.set.script.executable.source ("Filename.strip.nonsense")
+return m

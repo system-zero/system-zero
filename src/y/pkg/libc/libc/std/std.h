@@ -231,6 +231,10 @@ typedef signed int utf8;
 #define IS_DIR_SEP(c_)   (c_ == DIR_SEP)
 #endif
 
+#ifndef IS_NOT_DIR_SEP
+#define IS_NOT_DIR_SEP(c_) (0 == IS_DIR_SEP (c_))
+#endif
+
 #ifndef IS_DIGIT
 #define IS_DIGIT(c_)    ('0' <= (c_) && (c_) <= '9')
 #endif

@@ -1,0 +1,43 @@
+import ("path")
+import ("filename")
+include ("argparse")
+
+const basename = path_basename
+var me = __file__: basename ()
+
+var argparse = New Argparse (4, 0, me + " [option[s]] filename")
+argparse.add ("char", 0, "char=", "replaceable character (default _)", StringType, ARG_VALUE_REQUIRED; defval : "_")
+argparse.add ("no_verbose", 0, "no-verbose", "verbose off", BooleanType, 0)
+argparse.add ("no_stop", 0, "do-not-stop-on-error", "do not stop the operation on error", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg, usage) {
+  ifnot null is msg then println (msg)
+  if true is usage then argparse.usage ()
+  exit (1)
+}
+
+if (argparse.argc < 1)
+  exit_error ( format ("${%s, me}: missing filename"), true)
+
+var qual = {
+  char : argparse.results.char[0]
+  verbose : if argparse.results.no_verbose then 0 orelse 1
+}
+
+var retval = 0
+
+for v in argparse.argv {
+  continue ifnot v: len ()
+  var r = Filename.strip.ws (v; qual)
+  if r is notok {
+    retval = 1
+    break if argparse.results.no_stop
+  }
+}
+
+exit (retval)

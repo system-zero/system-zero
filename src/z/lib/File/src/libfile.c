@@ -73,7 +73,7 @@ static int file_is_readable (const char *fname) {
 }
 
 static int file_is_writable (const char *fname) {
-  return (0 is access (fname, R_OK));
+  return (0 is access (fname, W_OK));
 }
 
 static int file_is_rwx (const char *fname) {

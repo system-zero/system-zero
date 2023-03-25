@@ -11273,6 +11273,11 @@ static int buf_file_mode_actions_cb (buf_t **thisp, utf8 c, char *action) {
        retval = buf_com_validate_utf8 (thisp, NULL);
        break;
 
+     case 'q':
+       int idx = $my(parent)->cur_idx;
+       retval = buf_delete (thisp, idx, 0);
+       break;
+
      case '@':
       retval = NOTOK;
       ifnot ($OurRoots(uid)) break;
@@ -11329,6 +11334,7 @@ static void ed_set_file_mode_actions_default (ed_t *this) {
   utf8 chars[] = {'w', 'v', '@'};
   char actions[] =
      "write buffer\n"
+     "quit buffer\n"
      "validate file for invalid utf8 sequences\n"
      "@evaluate buffer\n"
      "Spell file";

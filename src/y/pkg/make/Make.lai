@@ -1301,7 +1301,7 @@ const ARGPARSE
       this.libc.force = ARGPARSE.results.force
 
       var output = LIBCDEFDIR: concat_with (LIBCDEFNAME + ".h")
-        println (output)
+
       var r = this.should_make (output, this.libc.sources, this.libc.force)
 
       return notok if r is notok
