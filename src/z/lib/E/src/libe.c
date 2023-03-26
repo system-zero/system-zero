@@ -11274,8 +11274,7 @@ static int buf_file_mode_actions_cb (buf_t **thisp, utf8 c, char *action) {
        break;
 
      case 'q':
-       int idx = $my(parent)->cur_idx;
-       retval = buf_delete (thisp, idx, 0);
+       retval = buf_delete (thisp, $my(parent)->cur_idx, 0);
        break;
 
      case '@':
@@ -11339,7 +11338,6 @@ static void ed_set_file_mode_actions_default (ed_t *this) {
      "@evaluate buffer\n"
      "Spell file";
   self(set.file_mode_actions, chars, ARRLEN(chars), actions, buf_file_mode_actions_cb);
-
 }
 
 static void ed_release_at_exit_cbs (ed_t *this) {
@@ -11677,6 +11675,7 @@ handle_com:
       retval = ed_interpr_record (ed, NUM_RECORDS);
       break;
 
+    case ESCAPE_KEY:
     case ':':
       {
       readline_t *rl = Ed.readline.new (ed);

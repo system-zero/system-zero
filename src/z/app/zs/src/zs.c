@@ -1287,8 +1287,8 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   }
 
   if (-1 is ptrlen) {
-    half_command:
-    // half command
+    half_command: {}
+
     Command *it = zs->command_head;
     sp = (char *) buf;
 
@@ -1593,10 +1593,10 @@ get_current: {}
         }
 
         ar[idx++] = String.new_with_len (it->data->bytes, it->data->num_bytes);
-
       } else if (Cstring.eq_n (it->data->bytes, basename, bname_len)) {
         ifnot (idx)
-          if ((dirlen is 1 and *dirname is DIR_SEP) or (dirlen isnot 1 and *dirname isnot '.'))
+          if ((dirlen is 1 and *dirname is DIR_SEP) or (dirlen isnot 1 and *dirname isnot '.') or
+               Cstring.eq_n (dirname, "..", 2))
             String.append_with_fmt (arg, "%s%s", dirname,
               (dirname[dirlen-1] is DIR_SEP ? "" : DIR_SEP_STR));
 
@@ -1609,6 +1609,7 @@ get_current: {}
     size_t prefixlen = arg->num_bytes;
     char prefix[prefixlen + 1];
     Cstring.cp (prefix, prefixlen + 1, arg->bytes, arg->num_bytes);
+
     completion->ar = ar;
     completion->arlen = idx;
     completion->idx = lidx;
