@@ -1,5 +1,6 @@
-#define REQUIRE_STRCAT
+#define REQUIRE_STR_CAT
 #define REQUIRE_STRLEN
+#define REQUIRE_STR_CHR
 #define REQUIRE_STR_EQ_N
 #define REQUIRE_STR_COPY
 #define REQUIRE_LSTAT
@@ -85,7 +86,7 @@ static int shebang (char *buf, char type[MAXLEN_FILETYPE]) {
 
   if (str_eq_n (sp, "/bin/env ", 9) ||
       str_eq_n (sp, "/usr/bin/env ", 13))
-    sp = strchr (sp, ' ') + 1;
+    sp = str_chr (sp, ' ') + 1;
 
   int i = 0;
   while (*sp != '\n' && i < MAXLEN_FILETYPE)
@@ -287,7 +288,7 @@ int filetype (const char *file, char type[MAXLEN_FILETYPE]) {
     return FILETYPE_SOCKET;
   }
 
-  int fd = open (file, O_RDONLY);
+  int fd = sys_open (file, O_RDONLY);
   if (-1 == fd) return FILETYPE_ERROR;
 
   char buf[512];
@@ -302,7 +303,7 @@ int filetype (const char *file, char type[MAXLEN_FILETYPE]) {
 
   int r = filetype_from_string (buf, nread, type);
 
-  if (0 == access (file, X_OK))
+  if (0 == sys_access (file, X_OK))
     str_cat (type, MAXLEN_FILETYPE, " executable");
 
   return r;

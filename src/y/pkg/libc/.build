@@ -117,6 +117,7 @@ m.set.libc.source ([
   "libc/file/is_writable.c",
   "libc/fs/fs.h",
   "libc/path/basename.c",
+  "libc/rtc/rtc.h",
   "libc/signal/sigaction.c",
   "libc/signal/sigaction.h",
   "libc/signal/sigprocmask.c",

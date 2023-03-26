@@ -1,6 +1,11 @@
 #@
   depends_on ("E", LIBRARY)
   depends_on ("y", ALL)
+  depends_on ("convert", ALL)
+  depends_on ("clock", ALL)
+  depends_on ("filetype", ALL)
+  depends_on ("system", ALL)
+  depends_on ("libc", LIBC)
 #
 
 return New Make (__file__, IGNORE)

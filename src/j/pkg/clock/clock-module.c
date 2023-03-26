@@ -3,63 +3,15 @@
 #define REQUIRE_OPEN
 #define REQUIRE_CLOSE
 #define REQUIRE_IOCTL
+#define REQUIRE_RTC_H
 #define REQUIRE_Z_ENV
 
 #include <libc.h>
 
 MODULE(clock);
 
-// from <linux/rtc.h>
-struct rtc_time {
-  int tm_sec;
-  int tm_min;
-  int tm_hour;
-  int tm_mday;
-  int tm_mon;
-  int tm_year;
-  int tm_wday;
-  int tm_yday;
-  int tm_isdst;
-};
-
-#ifndef _IOC_WRITE
-#define _IOC_WRITE  1U
-#endif
-
-#ifndef _IOC_READ
-#define _IOC_READ  2U
-#endif
-
-#ifndef _IOC_SIZEBITS
-#define _IOC_SIZEBITS  14
-#endif
-
-#define _IOC_NRBITS    8
-#define _IOC_TYPEBITS  8
-#define _IOC_NRSHIFT   0
-
-#define _IOC_TYPESHIFT  (_IOC_NRSHIFT   + _IOC_NRBITS)
-#define _IOC_SIZESHIFT  (_IOC_TYPESHIFT + _IOC_TYPEBITS)
-#define _IOC_DIRSHIFT   (_IOC_SIZESHIFT + _IOC_SIZEBITS)
-
-#define _IOC(dir,type,nr,size)  \
-  (((dir)  << _IOC_DIRSHIFT)  | \
-   ((type) << _IOC_TYPESHIFT) | \
-   ((nr)   << _IOC_NRSHIFT)   | \
-   ((size) << _IOC_SIZESHIFT))
-
-#define _IOC_TYPECHECK(t) (sizeof(t))
-
-#define _IOR(type,nr,size)  _IOC(_IOC_READ,(type),(nr),(_IOC_TYPECHECK(size)))
-#define _IOW(type,nr,size)  _IOC(_IOC_WRITE,(type),(nr),(_IOC_TYPECHECK(size)))
-
-#define RTC_RD_TIME   _IOR('p', 0x09, struct rtc_time) /* Read RTC time   */
-#define RTC_SET_TIME  _IOW('p', 0x0a, struct rtc_time) /* Set RTC time    */
-
-#define RTCDEVICE "/dev/rtc"
-
 static VALUE clock_readhw (la_t *this) {
-  int fd = open (RTCDEVICE, O_RDONLY);
+  int fd = sys_open (RTCDEVICE, O_RDONLY);
   if (fd is -1) {
     La.set.Errno (this, errno);
     return NULL_VALUE;
@@ -111,7 +63,7 @@ static VALUE clock_sethw (la_t *this, VALUE v_rtc) {
   rtc.tm_year -= 1900;
   rtc.tm_mon--;
 
-  int fd = open (RTCDEVICE, O_WRONLY);
+  int fd = sys_open (RTCDEVICE, O_WRONLY);
   if (fd is -1) {
     La.set.Errno (this, sys_errno);
     return NOTOK_VALUE;
