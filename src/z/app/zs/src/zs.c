@@ -1663,7 +1663,7 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
     return c;
   }
 
-  // escape: (maybe vi mode?)
+  // escape: (maybe vi mode?) (no probably not)
   if (c is ESCAPE_KEY)
     return c;
 
@@ -1698,6 +1698,32 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
     return 0;
   }
 
+  if (c is '-') {
+    if (buf[curpos - 1] is ' ') {
+      const char *ptr = buf + curpos;
+      size_t buflen = bytelen (buf);
+      size_t ptrlen = buflen - curpos;
+      size_t len = curpos;
+
+      char newbuf[buflen + 2];
+      Cstring.cp (newbuf, buflen + 2, buf, len);
+      newbuf[len] = c;
+      Cstring.cp (newbuf + len + 1, ptrlen + 1, ptr, ptrlen);
+      String.replace_with_len (prevLine, newbuf, 1);
+      int r = zs_completion (newbuf, curpos + 1, lc, userdata);
+
+      ifnot (zs->num_items) return -1;
+      if (r is '\r' or r is '\t' or (zs->num_items is 1 and r is ' ')) {
+        *ch = r;
+        return *ch;
+      }
+
+      *ch = 0;
+      return 0;
+    }
+
+  }
+
   if (c is '~') {
     if (buf[curpos - 1] is ' ' or 0 is curpos) {
 handle_tilda:
@@ -1706,8 +1732,9 @@ handle_tilda:
       string *arg = zs->arg;
 
       const char *ptr = buf + curpos;
-      size_t ptrlen = bytelen (ptr);
-      size_t len = bytelen (buf) - ptrlen;
+      size_t buflen = bytelen (buf);
+      size_t ptrlen = buflen - curpos;
+      size_t len = curpos;
 
       String.replace_with_len (arg, buf, len);
       char *home = Sys.get.env_value ("HOME");

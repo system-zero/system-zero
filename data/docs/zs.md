@@ -72,14 +72,8 @@ decent interactivity.
       This is done automatically if the line is empty and the first char is at  
       the [A-Z] range.  
   
-    The underlying machine is linenoise with UTF-8 support, but in this implementation  
-    the API is incompatible, just to support tab completion at any cursor point in the line,  
-    and not just at the end of the line.
-   
-    Also there are two more callback functions, one that is called immediately after
-    a received input and before any processing, and the other on a carriage return.  
-
-    Generally speaking, the tendency is for an aggressive interaction.  
+    Generally speaking, the tendency is for an aggressive interaction, as many completions
+    are triggered automatically. 
   
   Word expansion:  
     Tilde expansion:  
