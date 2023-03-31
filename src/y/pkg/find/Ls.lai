@@ -31,7 +31,16 @@ ifnot ok is argparse.process (__argv, 1) then exit (1)
 
 if argparse.exit is true then exit (0)
 
-var object = ifnot argparse.argc then "." orelse argparse.argv[0] end
+var objects = string[ifnot argparse.argc then 1 orelse argparse.argc]
+
+ifnot argparse.argc {
+  objects[0] = "."
+} else {
+  for i, v in argparse.argv {
+    break ifnot v: len ()
+    objects[i] = v
+  }
+}
 
 var qualif = {
   sort_by_size     : argparse.results.sort_by_size
@@ -62,15 +71,27 @@ if argparse.results.socks then append "s" in types
 
 ifnot types: len () then types = null
 
-var intOrarray = object: find_dir (types; qualif)
+var ar = string[0]
+var exit_val = 0
+var should_exit = argparse.results.tostdout
 
-if argparse.results.tostdout then exit (intOrarray)
+for object in objects {
+  var r = object: find_dir (types; qualif)
 
-if null is intOrarray then exit (1)
+  if null is r {
+    exit_val = 1
+    continue
+  }
 
-if intOrarray: typeof () is StringType then
-  println (intOrarray)
-orelse
-  for v in intOrarray println (v)
+  ifnot should_exit then
+    if r: typeof () is StringType then
+      append r in ar
+    orelse
+      for v in r append v in ar
+}
 
-exit (0)
+if should_exit then exit (exit_val)
+
+for v in ar println (v)
+
+exit (exit_val)

@@ -319,8 +319,10 @@ static void set_video_row (Buf *My, size_t vidx, size_t idx) {
   }
 
   int num = 0;
-  while (it and num < My->num_cols) {
+  while (it) {
     num += it->width;
+    if (num > My->num_cols) break; // we might loose accuracy but stay safe
+                                   // as our demand is too simple
     if (it->code is '\t') {
       for (int j = 0; j < it->width; j++)
         String.append_byte (My->tmp_buf, ' ');
@@ -626,6 +628,7 @@ static pager_t *pager_new (zs_t *zs, string **lines, size_t array_len, pager_opt
 
   My->first_row = (first_row is -1 ? 1 : first_row);
   My->last_row  = (last_row is -1 ? My->term->num_rows : last_row);
+  My->first_col = (first_col is -1 ? 1 : first_col);
   My->last_col  = (last_col is -1 ? My->term->num_cols : last_col);
   My->num_rows  = My->last_row - My->first_row + 1;
   My->num_cols  = My->last_col - My->first_col + 1;
