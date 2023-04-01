@@ -684,10 +684,10 @@ func self_semantics () {
 
   iex = -1
   var ifnotsum2 = 0
-  do {
+  repeat {
     break ifnot ++iex < 7
     append iex in ifnotsum2
-  } while iex < 10
+  } until iex < 10
 
   var ifnotsum3 = 0
   for (var i = 0; i < 10; i++) {
@@ -887,56 +887,61 @@ func self_semantics () {
   assert_true ("testing `forever` loop", sum is 4950)
 
   sum = func {
-   var s = 0; var i = 0
-    do {
+    var s = 0
+    var i = 0
+    repeat {
       s += i
       i++
-    } while i < 100
+    } until i < 100
 
     return s
    } ()
 
 
-  assert_true ("testing `do/while` loop", sum is 4950)
+  assert_true ("testing `repeat/until` loop", sum is 4950)
 
-  sum = func { var s = 0; var i = 0;
-    do {
+  sum = func {
+    var s = 0
+    var i = 0
+    repeat {
       var ign = 0
       var ign_str = "a"
       if i is 10 { i++; continue }
       append i in s
       i++
-    } while (
+    } until (
       i < 100) # testing condition within parens
     return s
    } ()
 
-  assert_true ("testing `do/while` loop continue statement", sum is 4940)
+  assert_true ("testing `repeat/until` loop continue statement", sum is 4940)
 
   sum = func {
-    var s = 0; var i = 0
-    do {
+    var s = 0
+    var i = 0
+    repeat {
       break if i is 10
       append i in s
       i++
-    } while i < 100; # testing condition ending with a semicolon
+    } until i < 100; # testing condition ending with a semicolon
     return s
    } ()
 
-  assert_true ("testing `do/while` loop break statement", sum is 45)
+  assert_true ("testing `repeat/until` loop break statement", sum is 45)
 
   sum = func {
-    var s = 0; var i = 0;
-    do {
+    var s = 0
+    var i = 0
+    repeat {
       append i in s
       i++
       return s if i is 10
-    } while
+    } until
        i < 100 # testing condition in the next line
     return s
    } ()
 
-  assert_true ("testing `do/while` loop return statement", sum is 45)
+  assert_true ("testing `repeat/until` loop return statement", sum is 45)
 
   var map_sum = {
     res  : 0

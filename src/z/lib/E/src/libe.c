@@ -760,7 +760,7 @@ const char *lai_keywords[] = {
   "array V", "map V", "string T", "integer T", "number T", "list T",
   "stdout V", "stderr V", "stdin V",
   "qualifier F", "qualifiers F", "qualifier_exists F",
-  "lambda F", "loop I", "forever I", "do I",
+  "lambda F", "loop I", "forever I", "repeat I", "until I",
   "Type V", "New V", "override V",
   "public V", "private V", "import F", "include F", "loadfile F", "evalfile F",
   "typeof F", "typeofArray F", "typeAsString F", "typeArrayAsString F",

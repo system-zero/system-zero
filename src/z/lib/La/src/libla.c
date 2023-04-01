@@ -117,9 +117,10 @@
 #define TOKEN_SYMBOL     'A'
 #define TOKEN_BUILTIN    'B'
 #define TOKEN_CHAR       'C'
-#define TOKEN_DO         'D'
+#define TOKEN_REPEAT     'D'
 #define TOKEN_ELSEIF     'E'
 #define TOKEN_FUNCDEF    'F'
+#define TOKEN_UNTIL      'G'
 #define TOKEN_FORMAT     'H'
 #define TOKEN_IFNOT      'I'
 #define TOKEN_ORELSE     'J'
@@ -658,7 +659,7 @@ static int la_parse_func_call (la_t *, VALUE *, CFunc, funT *, VALUE);
 static int la_parse_map_get (la_t *, VALUE *);
 static int la_parse_map_set (la_t *);
 static int la_map_set_value (la_t *, Vmap_t *, const char *, VALUE, int);
-static int la_parse_loadfile (la_t *);
+static int la_parse_include (la_t *);
 static int la_parse_chain (la_t *, VALUE *);
 static void la_set_CFuncError (la_t *, int);
 static void la_set_curMsg (la_t *, const char *);
@@ -6956,7 +6957,7 @@ static int la_parse_primary (la_t *this, VALUE *vp) {
 
     case TOKEN_EVALFILE: {
       this->funcState |= EVAL_UNIT_STATE;
-      err = la_parse_loadfile (this);
+      err = la_parse_include (this);
       this->funcState &= ~EVAL_UNIT_STATE;
       THROW_ERR_IF_ERR(err);
 
@@ -8404,12 +8405,12 @@ theend:
   return LA_OK;
 }
 
-static int la_parse_do (la_t *this) {
+static int la_parse_repeat (la_t *this) {
   int err;
   this->loopCount++;
 
   NEXT_TOKEN();
-  err = la_parse_block (this, "do/while");
+  err = la_parse_block (this, "repeat/until");
   THROW_ERR_IF_ERR(err);
 
   integer bodylen = GETSTRLEN(TOKENSTR);
@@ -8421,7 +8422,7 @@ static int la_parse_do (la_t *this) {
     int idx = 0;
     const char *ptr = tmp_ptr;
     while (idx++ < bodylen - 4) {
-      if (*ptr is 'w' and Cstring.eq_n (ptr, "while", 5)) {
+      if (*ptr is 'u' and Cstring.eq_n (ptr, "until", 5)) {
         bodylen = (ptr - tmp_ptr) - 1;
         PARSEPTR = StringNew (ptr);
         break;
@@ -8438,10 +8439,9 @@ static int la_parse_do (la_t *this) {
   la_string body_str = StringNewLen (body, bodylen);
 
   NEXT_TOKEN();
-  int c = TOKEN;
 
-  if (c isnot TOKEN_WHILE)
-    THROW_SYNTAX_ERR("error while parsing do/while loop, awaiting while");
+  if (TOKEN isnot TOKEN_UNTIL)
+    THROW_SYNTAX_ERR("error while parsing repeat/until loop, awaiting until");
 
   const char *orig_ptr = GETSTRPTR(PARSEPTR);
   tmp_ptr = orig_ptr;
@@ -8468,7 +8468,7 @@ static int la_parse_do (la_t *this) {
   int prev_c = *ptr;
   char str_tok = 0;
 
-  THROW_SYNTAX_ERR_IF(has_a_nl and *ptr is TOKEN_NL, "error while parsing do/while condition: found two consecutive new lines");
+  THROW_SYNTAX_ERR_IF(has_a_nl and *ptr is TOKEN_NL, "error while parsing repeat/until condition: found two consecutive new lines");
 
   while (*ptr) {
     if (*ptr is TOKEN_NL) {
@@ -8514,7 +8514,7 @@ static int la_parse_do (la_t *this) {
   }
 
   ifnot (*ptr)
-    THROW_SYNTAX_ERR("unended do/while loop");
+    THROW_SYNTAX_ERR("unended repeat/until loop");
 
   TOKEN = TOKEN_PAREN_OPEN;
 
@@ -8553,7 +8553,7 @@ static int la_parse_do (la_t *this) {
       err = la_parse_stmt (this);
       if (TOKEN > TOKEN_EOF and TOKEN isnot TOKEN_SEMICOLON) {
         la_print_current_line (this,
-          "[WARNING]: extra tokens detected after the end of a do/while statement\n",
+          "[WARNING]: extra tokens detected after the end of a repeat/until statement\n",
           NULL);
       }
 
@@ -10626,7 +10626,7 @@ static VALUE la_annotate_get (la_t *this, VALUE v_buf) {
   return STRING(s);
 }
 
-static int la_parse_loadfile (la_t *this) {
+static int la_parse_include (la_t *this) {
   NEXT_TOKEN();
   int c = TOKEN;
   int err;
@@ -11463,7 +11463,8 @@ static struct def {
   { "as",      TOKEN_AS,       NULL_VALUE },
   { "times",   TOKEN_TIMES,    NULL_VALUE },
   { "time",    TOKEN_TIMES,    NULL_VALUE },
-  { "do",      TOKEN_DO,       PTR(la_parse_do) },
+  { "repeat",  TOKEN_REPEAT,   PTR(la_parse_repeat) },
+  { "until",   TOKEN_UNTIL,    NULL_VALUE },
   { "for",     TOKEN_FOR,      PTR(la_parse_for) },
   { "while",   TOKEN_WHILE,    PTR(la_parse_while) },
   { "forever", TOKEN_FOREVER,  PTR(la_parse_forever) },
@@ -11472,7 +11473,7 @@ static struct def {
   { "func",    TOKEN_FUNCDEF,  PTR(la_parse_func_def) },
   { "return",  TOKEN_RETURN,   PTR(la_parse_return) },
   { "import",  TOKEN_IMPORT,   PTR(la_parse_import) },
-  { "include", TOKEN_INCLUDE,  PTR(la_parse_loadfile) },
+  { "include", TOKEN_INCLUDE,  PTR(la_parse_include) },
   { "Annotation", TOKEN_ANNOTATION, NULL_VALUE },
   { "evalfile",TOKEN_EVALFILE, NULL_VALUE },
   { "New",     TOKEN_NEW,      NULL_VALUE },

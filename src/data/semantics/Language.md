@@ -163,8 +163,8 @@ Comments.
   # can be repeated usually in another compilation unit.
   # In all the other cases it is considered a fatal error.
 
-  # As you may not know the value of a constant untill the runtime, it may left
-  # uninitialized, untill the first time that will be initialized with a value
+  # As you may not know the value of a constant until the runtime, it may left
+  # uninitialized, until the first time that will be initialized with a value
   # other than `null`, so:
 
   const cv
@@ -349,7 +349,7 @@ Comments.
     repeat {
       sum += i
       i++
-    }  until i < x
+    } until i < x
   }
 
   print ("all the results should be ${sum}\n")

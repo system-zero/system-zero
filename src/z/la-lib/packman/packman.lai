@@ -745,11 +745,11 @@ public const Packman = {
 
               var i = 1
               var k = i: to_string (10)
-              do {
+              repeat {
                 append s.build.$(k) in build
                 i++
                 k = i: to_string (10)
-              } while s.build: haskey (k)
+              } until s.build: haskey (k)
 
               specnew.set.build (build)
 
