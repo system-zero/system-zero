@@ -972,6 +972,8 @@ Probably this will be a very messy output."
 
   # Prefix and postfix [in|de]crement operators ++, --:
   # Those should have the same semantics with C.
+  # For arrays of Integer and Number types, and only for the postfix
+  # operators, they [in|de]crement all the members of the array.
 
   # Lexical Scope and visibility order
 

@@ -4227,26 +4227,38 @@ static int la_parse_array_set (la_t *this) {
             (token is TOKEN_PLUS_PLUS ? "++" : "--"));
       }
 
-      ArrayType *array = (ArrayType *) AS_ARRAY(ary);
       int idx = AS_INT(ix);
+      ArrayType *array = (ArrayType *) AS_ARRAY(ary);
 
       switch (array->type) {
         case INTEGER_TYPE: {
           integer *i_ar = (integer *) AS_ARRAY(array->value);
-          i_ar[idx] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          ifnot (is_index) {
+            for (size_t i = 0; i < array->len; i++)
+              i_ar[i] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          } else {
+            i_ar[idx] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          }
+
           NEXT_TOKEN();
           return LA_OK;
         }
 
         case NUMBER_TYPE: {
           number *n_ar = (number *) AS_ARRAY(array->value);
-          n_ar[idx] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          ifnot (is_index) {
+            for (size_t i = 0; i < array->len; i++)
+              n_ar[i] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          } else {
+            n_ar[idx] += (token is TOKEN_PLUS_PLUS ? 1 : -1);
+          }
+
           NEXT_TOKEN();
           return LA_OK;
         }
 
         default:
-          THROW_SYNTAX_ERR("awaiting an integer or a number");
+          THROW_SYNTAX_ERR("awaiting an array of Integer or a Number Type");
       }
     }
 

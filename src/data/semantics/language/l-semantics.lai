@@ -563,6 +563,18 @@ func self_semantics () {
       dardilada is 3 and
       dardi.k is 2)
 
+  var ar_t = [1, 2, 3]
+  ar_t++
+  var ar_s = [1, 2, 3]
+  ar_s--
+  assert_true ("testing prefix --,++ operators for arrays",
+    ar_t[0] is 2 and
+    ar_t[1] is 3 and
+    ar_t[2] is 4 and
+    ar_s[0] is 0 and
+    ar_s[1] is 1 and
+    ar_s[2] is 2)
+
   func loop_test_break (limit) {
     var i = 1
     while i {
