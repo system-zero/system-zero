@@ -78,7 +78,9 @@ keywords and Operators (reserved keywords):
 #                   else if the second operand is an integer type, then it
 #                   appends a byte if it is within the ascii range or else a
 #                   multibyte sequence to form the character
-#  -=          -  decrement variable value and assign the result
+#                 for arrays this appends the second operand to all the members
+#                   of the array
+#  -=          -  decrement variable value and assign the result (likewise with += for arrays)
 #  *=          -  multiply                    -||-
 #  /=          -  divide                      -||-
 #  %=          -  modulo                      -||-

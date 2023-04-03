@@ -4283,27 +4283,115 @@ static int la_parse_array_set (la_t *this) {
     ArrayType *array = (ArrayType *) AS_ARRAY(ary);
     int idx = AS_INT(ix);
     VALUE val;
-    switch (array->type) {
-      case STRING_TYPE: {
-        string **s_ar = (string **) AS_ARRAY(array->value);
-        val = STRING(s_ar[idx]);
-        break;
+
+    ifnot (is_index) {
+      switch (array->type) {
+        case INTEGER_TYPE: {
+          THROW_SYNTAX_ERR_IF(v.type isnot INTEGER_TYPE, "binary operation error in array, awaiting an integer");
+          integer *i_ar = (integer *) AS_ARRAY(array->value);
+          int vi = AS_INT(v);
+
+          for (size_t i = 0; i < array->len; i++) {
+            switch (token) {
+              case TOKEN_ASSIGN_APP:
+                i_ar[i] += vi; break;
+              case TOKEN_ASSIGN_SUB:
+                i_ar[i] -= vi; break;
+              case TOKEN_ASSIGN_DIV:
+                i_ar[i] /= vi; break;
+              case TOKEN_ASSIGN_MUL:
+                i_ar[i] *= vi; break;
+              case TOKEN_ASSIGN_MOD:
+                i_ar[i] %= vi; break;
+              case TOKEN_ASSIGN_BAR:
+                i_ar[i] |= vi; break;
+              case TOKEN_ASSIGN_AND:
+                i_ar[i] &= vi; break;
+              case TOKEN_ASSIGN_XOR:
+                i_ar[i] ^= vi; break;
+            }
+          }
+          return LA_OK;
+        }
+
+        case NUMBER_TYPE: {
+          THROW_SYNTAX_ERR_IF(v.type isnot NUMBER_TYPE, "binary operation error in array, awaiting a number");
+          number *n_ar = (number *) AS_ARRAY(array->value);
+          double vn = AS_NUMBER(v);
+          for (size_t i = 0; i < array->len; i++) {
+            switch (token) {
+              case TOKEN_ASSIGN_APP:
+                n_ar[i] += vn; break;
+              case TOKEN_ASSIGN_SUB:
+                n_ar[i] -= vn; break;
+              case TOKEN_ASSIGN_DIV:
+                n_ar[i] /= vn; break;
+              case TOKEN_ASSIGN_MUL:
+                n_ar[i] *= vn; break;
+              default:
+                THROW_SYNTAX_ERR("only adding/substracting/division/multiplication implemented for number arrays");
+            }
+          }
+          return LA_OK;
+        }
+
+        case STRING_TYPE: {
+          THROW_SYNTAX_ERR_IF(v.type isnot STRING_TYPE and v.type isnot INTEGER_TYPE, "binary operation error in a string array, awaiting a string or an integer");
+          THROW_SYNTAX_ERR_IF(token isnot TOKEN_ASSIGN_APP, "binary operation error in string array, only append is implemented");
+
+          string **s_ar = (string **) AS_ARRAY(array->value);
+          if (v.type is STRING_TYPE) {
+            string *s = AS_STRING(v);
+            for (size_t i = 0; i < array->len; i++)
+              if (s_ar[i] isnot NULL)
+                String.append_with_len (s_ar[i], s->bytes, s->num_bytes);
+
+            if (v.sym is NULL and v.refcount isnot MALLOCED_STRING and
+              0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER))) {
+              string_release (v);
+              this->objectState |= RHS_STRING_RELEASED;
+              this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
+            }
+
+          } else {
+            char buf[8];
+            int len;
+            Ustring.character (AS_INT(v), buf, &len);
+            for (size_t i = 0; i < array->len; i++)
+              if (s_ar[i] isnot NULL)
+                String.append_with_len (s_ar[i], buf, len);
+          }
+
+          return LA_OK;
+        }
+
+        default:
+          THROW_SYNTAX_ERR("binary operation error in array, only implemented for string, integer and number types");
       }
 
-      case INTEGER_TYPE: {
-        integer *i_ar = (integer *) AS_ARRAY(array->value);
-        val = INT(i_ar[idx]);
-        break;
-      }
+    } else {
+      switch (array->type) {
+        case STRING_TYPE: {
+          string **s_ar = (string **) AS_ARRAY(array->value);
+          val = STRING(s_ar[idx]);
+          break;
+        }
 
-      case NUMBER_TYPE: {
-        number *n_ar = (number *) AS_ARRAY(array->value);
-        val = NUMBER(n_ar[idx]);
-        break;
-      }
+        case INTEGER_TYPE: {
+          integer *i_ar = (integer *) AS_ARRAY(array->value);
+          val = INT(i_ar[idx]);
+          break;
+        }
 
-      default:
-        THROW_A_TYPE_MISMATCH(array->type, "is not allowd for a binary operation");
+        case NUMBER_TYPE: {
+          number *n_ar = (number *) AS_ARRAY(array->value);
+          val = NUMBER(n_ar[idx]);
+          break;
+        }
+
+        default:
+          THROW_A_TYPE_MISMATCH(array->type, " is not allowed for a binary operation for arrays");
+      }
     }
 
     VALUE result;
@@ -4331,7 +4419,7 @@ static int la_parse_array_set (la_t *this) {
     }
 
     if (result.type is NULL_TYPE)
-       THROW_SYNTAX_ERR("unxpected operation");
+       THROW_SYNTAX_ERR("unxpected array operation");
 
     switch (array->type) {
       case STRING_TYPE: {
@@ -11526,6 +11614,7 @@ static struct def {
   { "+=",      TOKEN_ASSIGN_APP,  NULL_VALUE },
   { "-=",      TOKEN_ASSIGN_SUB,  NULL_VALUE },
   { "/=",      TOKEN_ASSIGN_DIV,  NULL_VALUE },
+  { "%=",      TOKEN_ASSIGN_MOD,  NULL_VALUE },
   { "*=",      TOKEN_ASSIGN_MUL,  NULL_VALUE },
   { "&=",      TOKEN_ASSIGN_AND,  NULL_VALUE },
   { "|=",      TOKEN_ASSIGN_BAR,  NULL_VALUE },

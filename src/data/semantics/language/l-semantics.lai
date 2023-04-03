@@ -222,34 +222,37 @@ func zero_semantics () {
   retval -= 50
   assert_true ("testing binary assignment operator [-=]", retval is 600)
   retval /= 20
-  assert_true ("testing binary assignment assignment operator [/=]", retval is 30)
+  assert_true ("testing binary assignment operator [/=]", retval is 30)
   retval *= 20
-  assert_true ("testing binary assignment assignment operator [*=]", retval is 600)
-  retval += -600
-  assert_true ("testing binary assignment assignment operator [+=]", retval is 0)
+  assert_true ("testing binary assignment operator [*=]", retval is 600)
+  retval += -580
+  assert_true ("testing binary assignment operator [+=]", retval is 20)
+  retval %= 3
+  assert_true ("testing binary assignment operator [%=]", retval is 2)
+  retval -= 2
 
   var v1 = (1 << 0)
   var v2 = (1 << 1)
   var v3 = (1 << 2)
 
   retval |= v1
-  assert_true ("testing binary assignment assignment operator [|=]", retval is 1)
+  assert_true ("testing binary assignment operator [|=]", retval is 1)
   retval |= v2
-  assert_true ("testing binary assignment assignment operator [|=]", retval is 3)
+  assert_true ("testing binary assignment operator [|=]", retval is 3)
   retval &= v2
-  assert_true ("testing binary assignment assignment operator [&=]", retval is 2)
+  assert_true ("testing binary assignment operator [&=]", retval is 2)
   retval |= v3
-  assert_true ("testing binary assignment assignment operator [|=]", retval is 6)
+  assert_true ("testing binary assignment operator [|=]", retval is 6)
   retval &= ~(v3|v1|v2)
-  assert_true ("testing binary assignment assignment operator [&=]", retval is 0)
+  assert_true ("testing binary assignment operator [&=]", retval is 0)
   retval |= (v3|v1|v2)
-  assert_false ("testing binary assignment assignment operator [|=]",
+  assert_false ("testing binary assignment operator [|=]",
       (retval & v1 is 0) or (retval & v2 is 0) or (retval & v3 is 0))
   var rxo = 0
   rxo ^= 100
   var rxoc = rxo
   rxoc ^= 99
-  assert_true ("testing binary assignment assignment operator [^=]",
+  assert_true ("testing binary assignment operator [^=]",
       rxo is 100 and rxoc is 7)
   assert_false ("testing bitwise operators",
       (retval & v1 isnot 1) or (retval & v2 isnot 2) or (retval & v3 isnot 4))
@@ -1980,6 +1983,64 @@ func self_semantics () {
     av = "reassignment"
     assert_true ("testing array reassignment",
         av is "reassignment")
+
+    var arv = [10, 20, 40]
+    arv += 20
+    assert_true ("testing binary assignment operator [+=] for arrays",
+        arv[0] is 30 and
+        arv[1] is 40 and
+        arv[2] is 60)
+
+    arv -= 10
+    assert_true ("testing binary assignment operator [-=] for arrays",
+        arv[0] is 20 and
+        arv[1] is 30 and
+        arv[2] is 50)
+
+    arv ^= 2
+    assert_true ("testing binary assignment operator [^=] for arrays",
+        arv[0] is 22 and
+        arv[1] is 28 and
+        arv[2] is 48)
+
+    arv /= 2
+
+    assert_true ("testing binary assignment operator [/=] for arrays",
+        arv[0] is 11 and
+        arv[1] is 14 and
+        arv[2] is 24)
+
+    arv *= 20
+    assert_true ("testing binary assignment operator [*=] for arrays",
+        arv[0] is 220 and
+        arv[1] is 280 and
+        arv[2] is 480)
+
+    arv |= 10
+    assert_true ("testing binary assignment operator [|=] for arrays",
+        arv[0] is 222 and
+        arv[1] is 282 and
+        arv[2] is 490)
+
+    arv %= 100
+    assert_true ("testing binary assignment operator [%=] for arrays",
+        arv[0] is 22 and
+        arv[1] is 82 and
+        arv[2] is 90)
+
+    arv &= 12
+    assert_true ("testing binary assignment operator [&=] for arrays",
+        arv[0] is 4 and
+        arv[1] is 0 and
+        arv[2] is 8)
+
+    var arvs = ["a", "b", "c"]
+    arvs += "def"
+    arvs += 'α'
+    assert_true ("testing binary assignment operator [+=] for string arrays",
+        arvs[0] is "adefα" and
+        arvs[1] is "bdefα" and
+        arvs[2] is "cdefα")
   }
 
   test_array (10)
