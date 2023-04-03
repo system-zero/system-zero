@@ -50,6 +50,9 @@
 #define ZS_COMMAND_HAS_NO_FILENAME_ARG (1 << 0)
 #define ZS_COMMAND_HAS_LITERAL_ARG     (1 << 1)
 
+#define ZS_NO_COMMAND 0
+#define ZS_COMMAND    1
+
 #define ZS_RLINE_ARG_IS_COMMAND        1
 #define ZS_RLINE_ARG_IS_ARG            2
 #define ZS_RLINE_ARG_IS_DIRECTORY      3
@@ -169,7 +172,6 @@ typedef struct completion_t {
   size_t suffix_len;
   const char *curbuf;
   int quote_arg;
-  int tab_completes;
 } completion_t;
 
 typedef struct LastComp LastComp;
@@ -203,8 +205,9 @@ struct zs_t {
 
   string
     *arg,
-    *completion_command,
-    *comdir;
+    *comdir,
+    *origin_directory,
+    *completion_command;
 
   rline_t *rline;
   term_t *term;
@@ -470,7 +473,7 @@ static int buf_down (Buf *My) {
   return NOTHING_TODO;
 }
 
-static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen, int tab_completes) {
+static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
   Buf *buf = My->buf;
 
   char *match = NULL;
@@ -493,16 +496,11 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen, i
     if (My->c is ESCAPE_KEY)
       My->c = Rline.check_special (rline, 0);
 
-    if (My->c is '\t')
-      ifnot (tab_completes)
-        My->c = ARROW_DOWN_KEY;
-
     switch (My->c) {
       case ESCAPE_KEY:
         goto theend;
 
       case ' ':
-      case '\t':
       case '\r':
         match = buf->input[buf->cur_row_idx]->bytes;
         *comlen = buf->input[buf->cur_row_idx]->num_bytes;
@@ -526,6 +524,7 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen, i
 
         continue;
 
+      case '\t':
       case ARROW_DOWN_KEY:
         r = buf_down (buf);
         if (r isnot NOTHING_TODO) {
@@ -699,7 +698,7 @@ static int completion_pager (completion_t *this) {
   term->is_initialized = 1; // fake it
 
   comlen = 0;
-  command = pager_main (p, this->idx, this->rline, &comlen, this->tab_completes);
+  command = pager_main (p, this->idx, this->rline, &comlen);
 
   r = NULL isnot command;
 
@@ -783,7 +782,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   completion->lc = lc;
   completion->curbuf = bufp;
   completion->quote_arg = 0;
-  completion->tab_completes = 0;
   zs->pager->c = 0;
 
   dirlist_t *dlist = NULL;
@@ -967,9 +965,11 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
           String.append_with_len (d, basename, bname_len);
         }
 
+        String.clear (zs->origin_directory);
         dlist  = Dir.list (d->bytes, DIRLIST_LNK_IS_DIRECTORY);
         lidx = d->num_bytes;
       } else {
+        String.clear (zs->origin_directory);
         dlist  = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
         lidx = dirlen;
       }
@@ -1011,6 +1011,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
       String.release (d);
     } else {
+      String.replace_with_len (zs->origin_directory, dirname, dirlen);
       dlist  = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
       if (NULL is dlist) goto theend;
 
@@ -1045,11 +1046,19 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     completion->prefix_len = 0;
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
-    completion->tab_completes = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);
 
+    if (zs->pager->c is ' ') {
+      if (zs->origin_directory->bytes[zs->origin_directory->num_bytes - 1] isnot DIR_SEP)
+        String.append_byte (zs->origin_directory, DIR_SEP);
+
+      String.append_with_len (zs->origin_directory, zs->completion_command->bytes,
+          zs->completion_command->num_bytes);
+      if (Dir.is_directory (zs->origin_directory->bytes))
+        zs->pager->c = '\t';
+    }
     goto theend;
   }
 
@@ -1510,11 +1519,17 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     }
 
     is_filename = 1;
+
+    String.replace_with_len (zs->origin_directory, ptrbuf, ptrlen);
+
     dlist  = Dir.list (ptrbuf, DIRLIST_LNK_IS_DIRECTORY);
   } else ifnot (ptrlen) {
 get_current: {}
     char *cwd = Dir.current ();
     if (NULL is cwd) goto theend;
+
+    String.replace_with (zs->origin_directory, cwd);
+
     dlist = Dir.list (cwd, 0);
     free (cwd);
   } else {
@@ -1522,6 +1537,7 @@ get_current: {}
         0 is File.is_lnk (dirname) and Dir.lnk_is_directory (dirname)))
       goto get_current;
 
+    String.replace_with (zs->origin_directory, dirname);
     dlist = Dir.list (dirname, DIRLIST_LNK_IS_DIRECTORY);
   }
 
@@ -1562,10 +1578,20 @@ get_current: {}
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
     completion->quote_arg = 1;
-    completion->tab_completes = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);
+
+    if (zs->pager->c is ' ') {
+      if (zs->origin_directory->bytes[zs->origin_directory->num_bytes - 1] isnot DIR_SEP)
+        String.append_byte (zs->origin_directory, DIR_SEP);
+
+      String.append_with_len (zs->origin_directory, zs->completion_command->bytes,
+          zs->completion_command->num_bytes);
+
+      if (Dir.is_directory (zs->origin_directory->bytes))
+        zs->pager->c = '\t';
+    }
 
     goto theend;
 
@@ -1622,11 +1648,20 @@ get_current: {}
     completion->suffix = lptr;
     completion->suffix_len = lptrlen;
     completion->quote_arg = 1;
-    completion->tab_completes = 1;
 
     if (-1 is completion_pager (completion))
       free (ar);
 
+    if (zs->pager->c is ' ') {
+      if (zs->origin_directory->bytes[zs->origin_directory->num_bytes - 1] isnot DIR_SEP)
+        String.append_byte (zs->origin_directory, DIR_SEP);
+
+      String.append_with_len (zs->origin_directory, zs->completion_command->bytes,
+          zs->completion_command->num_bytes);
+
+      if (Dir.is_directory (zs->origin_directory->bytes))
+        zs->pager->c = '\t';
+    }
     goto theend;
   }
 
@@ -1729,7 +1764,6 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
     completion->lc = lc;
     completion->curbuf = buf;
     completion->quote_arg = 0;
-    completion->tab_completes = 0;
     zs->pager->c = 0;
     completion->ar = ar;
     completion->arlen = idx - 1;
@@ -1796,6 +1830,7 @@ handle_tilda:
       String.append_with_len (arg, ptr, ptrlen);
       Rline.set.current (rline, lc, arg->bytes);
       Rline.set.curpos (rline, lc, cur_pos);
+      Rline.refresh_line (rline, lc);
       String.clear_at (arg, len);
       return '\t';
     }
@@ -1991,6 +2026,7 @@ static zs_t *zs_init_rline (void) {
   Rline.history.load (this);
 
   zs->arg = String.new (32);
+  zs->origin_directory = String.new (128);
   zs->completion_command = String.new (32);
 
   ifnot (getuid ())
@@ -2016,9 +2052,6 @@ static zs_t *zs_init_rline (void) {
   zs->completion->arg = zs->arg;
   return zs;
 }
-
-#define ZS_NO_COMMAND 0
-#define ZS_COMMAND    1
 
 static int zs_commands (zs_t *this, sh_t *sh, const char *line, int *retval) {
   (void) sh;
@@ -2102,6 +2135,7 @@ static int zs_interactive (sh_t *this) {
   Rline.release (rline);
   String.release (zs->comdir);
   String.release (zs->arg);
+  String.release (zs->origin_directory);
   String.release (zs->completion_command);
   deinit_commands (zs->command_head);
   deinit_lastcomp (zs->lastcomp_head);
