@@ -210,6 +210,7 @@ struct zs_t {
   term_t *term;
   pager_t *pager;
   completion_t *completion;
+  sh_t *sh;
 };
 
 /* ui implementation (some more lines overhead that have no usage other
@@ -1697,8 +1698,55 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
     }
 
     ifnot (zs->num_items) return -1;
-
     return 0;
+  }
+
+  if (Cstring.eq_n (buf, "cd -", curpos + 1)) {
+    const char *lptr = buf + curpos;
+    size_t lptrlen = bytelen (lptr);
+    size_t buflen = bytelen (buf) - 1 - lptrlen;
+
+    string **ar = Alloc (sizeof (string));
+    int idx = 1;
+    while (1) {
+      char *p = Sh.get.cdpath_at (zs->sh, idx);
+      if (NULL is p) break;
+      ar = Realloc (ar, sizeof (string) * (idx));
+      ar[idx - 1] = String.new_with (p);
+      idx++;
+    }
+
+    ifnot (idx - 1) {
+      free (ar);
+      return -1;
+    }
+
+    zs->num_items = 0;
+    string *arg = zs->arg;
+    String.clear (arg);
+
+    completion_t *completion = zs->completion;
+    completion->lc = lc;
+    completion->curbuf = buf;
+    completion->quote_arg = 0;
+    completion->tab_completes = 0;
+    zs->pager->c = 0;
+    completion->ar = ar;
+    completion->arlen = idx - 1;
+    completion->idx = 0;
+    completion->prefix = buf;
+    completion->prefix_len = buflen;
+    completion->suffix = lptr;
+    completion->suffix_len = lptrlen;
+
+    int r = completion_pager (completion);
+
+    if (r is -1) {
+      free (ar);
+      return -1;
+    }
+
+    return zs->pager->c;
   }
 
   if (c is '-') {
@@ -1985,8 +2033,10 @@ static int zs_commands (zs_t *this, sh_t *sh, const char *line, int *retval) {
   return ZS_NO_COMMAND;
 }
 
-static zs_t *init (void) {
+static zs_t *init (sh_t *sh) {
   zs_t *this = zs_init_rline ();
+
+  this->sh = sh;
 
   this->term = Term.new ();
   this->term->mode = 's';
@@ -2009,7 +2059,7 @@ static int zs_interactive (sh_t *this) {
   int retval = OK;
   char *line;
 
-  zs_t *zs = init ();
+  zs_t *zs = init (this);
 
   rline_t *rline = zs->rline;
 

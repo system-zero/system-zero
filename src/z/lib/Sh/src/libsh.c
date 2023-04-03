@@ -141,6 +141,15 @@ static void sh_release (sh_t *this) {
   this = NULL;
 }
 
+static char *sh_get_cdpath_at (sh_t *this, int at) {
+  vstring_t *it = $my(cdpath)->tail;
+  for (int i = 0; i < at and it; i++)
+    it = it->prev;
+
+  if (it is NULL) return NULL;
+  return it->data->bytes;
+}
+
 static int sh_get_exit_val (sh_t *this) {
   return $my(exit_val);
 }
@@ -468,8 +477,8 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
     if (NULL is curdir) {
       fprintf (stderr, "couldn't get current working directory\n");
       return 1;
-    }  else {
-      if (Cstring.eq (curdir, sp)) { //$my(cdpath)->tail->data->bytes)) {
+    } else {
+      if (Cstring.eq (curdir, sp)) {
         free (curdir);
         return 0;
       }
@@ -1052,7 +1061,8 @@ public sh_T __init_sh__ (void) {
       .release_list = sh_release_list,
       .get = (sh_get_self) {
         .error = sh_get_error,
-        .exit_val = sh_get_exit_val
+        .exit_val = sh_get_exit_val,
+        .cdpath_at = sh_get_cdpath_at
       }
     }
   };

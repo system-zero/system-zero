@@ -6,10 +6,11 @@
 typedef struct sh_t sh_t;
 
 typedef struct sh_get_self {
-  char *(*error) (sh_t *);
+  char
+    *(*error) (sh_t *),
+    *(*cdpath_at) (sh_t *, int);
 
-  int
-    (*exit_val) (sh_t *);
+  int (*exit_val) (sh_t *);
 } sh_get_self;
 
 typedef struct sh_self {
