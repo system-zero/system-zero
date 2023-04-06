@@ -1,30 +1,32 @@
 
 #define REQUIRE_FILE_EXISTS
-#define REQUIRE_STRLEN
-#define REQUIRE_SNPRINTF
-#define REQUIRE_SYSTEM
+#define REQUIRE_BYTELEN
+#define REQUIRE_STR_COPY
+#define REQUIRE_FD_INTERFACE
 
 #include <libc.h>
 
 #include <system.h>
 
-int sys_to_memory_linux (system_t *this) {
+int sys_to_memory (system_t *this) {
   if (NULL is this->power_state_file) return -1;
 
-  size_t comlen = this->power_state_filelen + 1 + 256;
+  int fd = sys_open (this->power_state_file, O_RDWR);
+  if (fd is -1) return -1;
 
-  char com[comlen + 1];
-  snprintf (com, comlen + 1,
-      "/bin/sh -c \"/bin/printf \"mem\" >%s\"",
-      this->power_state_file);
-  return system (com);
+  const char *mem = "mem\n";
+  sys_write (fd, mem, sizeof (mem));
+  sys_close (fd);
+  return 0;
 }
 
-int init_system (system_t *this, const char *file) {
-  if (NULL is file) return -1;
+int init_system (system_t *this, SystemOpts_t opts) {
+  if (NULL is opts.power_state_file) return -1;
+  const char *file = opts.power_state_file;
   ifnot (file_exists (file)) return -1;
-  this->power_state_filelen = bytelen (file);
- // this->power_state_file = malloc (this->power_state_filelen + 1);
-  snprintf (this->power_state_file, this->power_state_filelen + 1, "%s", file);
+  size_t len = bytelen (file);
+  if (len + 1 > MAXLEN_PATH) return -1;
+  str_copy (this->power_state_file, MAXLEN_PATH, file, len);
+
   return 0;
 }

@@ -1,19 +1,34 @@
-
-#define REQUIRE_STDIO
-
 #define REQUIRE_STD_MODULE
+#define REQUIRE_SLEEP
+#define REQUIRE_Z_ENV
 
-#include <z/cenv.h>
+#include <libc.h>
 #include <z/system.h>
 
 MODULE(system);
 
+#ifndef POWER_STATE_FILE
+#define POWER_STATE_FILE "/sys/power/state"
+#endif
+
+static VALUE system_sleep (la_t *this, VALUE v_sec) {
+  ifnot (IS_INT(v_sec)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  int sec = AS_INT(v_sec);
+
+  if (sec < 0) return NOTOK_VALUE;
+  ifnot (sec)  return OK_VALUE;
+
+  int r = sys_sleep (sec);
+  return INT(r);
+}
+
 static VALUE system_to_memory (la_t *this) {
   (void) this;
   system_t s;
-  const char state[] = "/sys/power/state";
-  if (-1 == init_system (&s, state)) return NOTOK_VALUE;
-  int r = sys_to_memory_linux (&s);
+  if (-1 == init_system (&s, SystemOpts(.power_state_file = POWER_STATE_FILE)))
+    return NOTOK_VALUE;
+
+  int r = sys_to_memory (&s);
   return (r == -1 ? NOTOK_VALUE : OK_VALUE);
 }
 
@@ -22,6 +37,7 @@ public int __init_system_module__ (la_t *this) {
 
   LaDefCFun lafuns[] = {
     { "system_to_memory", PTR(system_to_memory), 0 },
+    { "system_sleep",     PTR(system_sleep), 1 },
     { NULL, NULL_VALUE, 0}
   };
 
@@ -35,7 +51,8 @@ public int __init_system_module__ (la_t *this) {
     public var System = {
       to : {
         memory : system_to_memory
-      }
+      },
+      sleep : system_sleep
     }
   );
 

@@ -115,10 +115,72 @@ include ("argparse")
     #define REQUIRE_ERRORS_H
     #endif
 
-    #ifndef WITHOUT_ZENV
-    #ifndef REQUIRE_ZENV_H
-    #define REQUIRE_ZENV_H
+    #ifndef WITHOUT_Z_C_SYNTAX
+      #ifdef OK
+      #undef OK
+      #endif
+
+      #ifdef NOTOK
+      #undef NOTOK
+      #endif
+
+      #ifdef ifnot
+      #undef ifnot
+      #endif
+
+      #ifdef is
+      #undef is
+      #endif
+
+      #ifdef isnot
+      #undef isnot
+      #endif
+
+      #ifdef or
+      #undef or
+      #endif
+
+      #ifdef and
+      #undef and
+      #endif
+
+      #define OK     0
+      #define NOTOK -1
+      #define is    ==
+      #define isnot !=
+      #define or    ||
+      #define and   &&
+      #define ifnot(__expr__) if (0 == (__expr__))
+
+      #ifdef private
+      #undef private
+      #endif
+
+      #ifdef public
+      #undef public
+      #endif
+
+      #ifdef UNUSED
+      #undef UNUSED
+      #endif
+
+      #define private __attribute__ ((visibility ("hidden")))
+      #define public  __attribute__ ((visibility ("default")))
+      #define UNUSED  __attribute__ ((unused))
+    #endif /* WITHOUT_Z_C_SYNTAX */
+
+    #ifndef WITHOUT_Z_ENV
+      #ifndef REQUIRE_Z_ENV_H
+        #define REQUIRE_Z_ENV_H
+      #endif
     #endif
+
+    /* Interfaces */
+
+    #ifdef REQUIRE_FD_INTERFACE
+      #define REQUIRE_OPEN
+      #define REQUIRE_WRITE
+      #define REQUIRE_CLOSE
     #endif
 
     /* Tracking Dependencies */

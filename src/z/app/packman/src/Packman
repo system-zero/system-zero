@@ -31,10 +31,7 @@ var bootstrap   = argparse.results.bootstrap
 
 var package = null
 
-if bootstrap is true {
-  #define  1 as "BOOTSTRAP"
-   install = true
-} 
+if bootstrap is true then install = true
 
 include ("packman")
 

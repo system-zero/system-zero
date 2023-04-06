@@ -3,7 +3,6 @@
 #define REQUIRE_STDIO
 #define REQUIRE_UNISTD
 #define REQUIRE_SYS_STAT
-#define REQUIRE_SYS_PARAM  /* for MAXSYMLINKS */
 
 #define REQUIRE_LIST_MACROS
 #define REQUIRE_STRING_TYPE   DONOT_DECLARE
@@ -12,6 +11,8 @@
 #define REQUIRE_PATH_TYPE     DONOT_DECLARE
 
 #include <z/cenv.h>
+
+#define MAXSYMLINKS 8
 
 static char *path_basename (char *name) {
   if (NULL is name) return NULL;

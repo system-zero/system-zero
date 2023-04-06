@@ -2,5 +2,6 @@ ifnot PLATFORM: eq ("Linux") return New Make (__file__, NONE)
 
 var m = New Make (__file__, MODULE|SHARED_LIBRARY|SCRIPT_EXECUTABLE)
 m.set.script.executable.source ("System.to.memory"; clear)
+m.set.script.executable.source ("System.sleep")
 return m
 

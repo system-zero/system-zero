@@ -1,0 +1,27 @@
+import ("path")
+import ("system")
+include ("argparse")
+
+const basename = path_basename
+var me = __file__: basename ()
+
+var argparse = New Argparse (2, 0, me + " [option[s]]")
+argparse.add ("sec", 0, "seconds=", "seconds", IntegerType, ARG_VALUE_REQUIRED)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg, usage) {
+  ifnot null is msg then println (msg)
+  if true is usage then argparse.usage ()
+  exit (1)
+}
+
+var sec = argparse.results.sec
+ifnot sec then exit_error (null, true)
+
+var r = System.sleep (sec)
+
+exit (if r is notok then 1 orelse r)

@@ -1,4 +1,4 @@
---force
+-f,--force
 -R,--recursive
 --remove-cache
 --version=
