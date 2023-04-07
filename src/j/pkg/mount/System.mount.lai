@@ -1,0 +1,40 @@
+import ("path")
+import ("mount")
+include ("argparse")
+
+const basename = path_basename
+var me = __file__: basename ()
+
+var argparse = New Argparse (5, 0, me + " [option[s]] device mountpoint")
+argparse.add ("fstype", 0, "fstype=", "filesystem type (default ext4)", StringType, ARG_VALUE_REQUIRED; defval : "ext4")
+argparse.add ("noexec", 0, "no-exec", "disallow program execution", BooleanType, 0)
+argparse.add ("nosuid", 0, "no-suid", "ignore suid and sgid bits", BooleanType, 0)
+argparse.add ("nodev",  0, "no-dev",  "disallow access to device special files", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg, usage) {
+  ifnot null is msg then println (msg)
+  if true is usage then argparse.usage ()
+  exit (1)
+}
+
+if argparse.argc isnot 2 then exit_error (null, true)
+
+var device = argparse.argv[0]
+var target = argparse.argv[1]
+var fstype = argparse.results.fstype
+
+var q = {
+  noexec : argparse.results.noexec
+  nosuid : argparse.results.nosuid
+  nodev  : argparse.results.nodev
+}
+
+var r = System.mount (device, target, fstype; q)
+if notok is r then println (errno_string (errno))
+
+exit (if notok is r then 1 orelse r)

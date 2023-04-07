@@ -1,0 +1,50 @@
+import ("path")
+import ("file")
+import ("os")
+include ("argparse")
+
+const basename = path_basename
+var me = __file__: basename ()
+
+var argparse = New Argparse (2, 0, me + " [option[s]]")
+argparse.add ("all", 'a', "all", "show all the mounted points", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+argparse.set.help ("This is a Linux only implementation")
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg, usage) {
+  ifnot null is msg then println (msg)
+  if true is usage then argparse.usage ()
+  exit (1)
+}
+
+if Os.platform () isnot "Linux" then exit_error (null, true)
+
+const mountfile = "/proc/mounts"
+
+ifnot mountfile: file_exists () then exit_error (format ("${mountfile}: doesn't exists"), false)
+ifnot mountfile: file_is_readable () then exit_error (format ("${mountfile}: is not readbale"), false)
+
+var a = mountfile: file_readlines ()
+
+ifnot argparse.results.all {
+  for i, v in a {
+    if v: eq_n ("proc", 4) or
+       v: eq_n ("tmpfs ", 6) or
+       v: eq_n ("sysfs ", 6) or
+       v: eq_n ("cgroup ", 7) or
+       v: eq_n ("devpts ", 7) or
+       v: eq_n ("cgroup2 ", 8) or
+       v: eq_n ("devtmpfs ", 9) or
+       v: eq_n ("securityfs ", 11) {
+       a[i] = null
+    }
+  }
+}
+
+for v in a  ifnot null is v then println (v)
+
+exit (0)

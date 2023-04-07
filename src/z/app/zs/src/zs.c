@@ -1226,6 +1226,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
             if (Cstring.eq_n (ptr, arg->bytes + buflen, arglen)) {
               if (NULL is argar)
                 argar = Alloc (sizeof (string));
+              argar = Realloc (argar, sizeof (string) * (argidx + 1));
               argar[argidx] = String.new_with_len (arg->bytes + buflen, arg->num_bytes - buflen);
               argidx++;
               zs->arg_type = ZS_RLINE_ARG_IS_ARG;

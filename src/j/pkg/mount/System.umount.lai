@@ -1,0 +1,33 @@
+import ("path")
+import ("mount")
+include ("argparse")
+
+const basename = path_basename
+var me = __file__: basename ()
+
+var argparse = New Argparse (2, 0, me + " [option[s]] mountpoint")
+argparse.add ("force", 0, "force", "force umounting", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+func exit_error (msg, usage) {
+  ifnot null is msg then println (msg)
+  if true is usage then argparse.usage ()
+  exit (1)
+}
+
+if argparse.argc isnot 1 then exit_error (null, true)
+
+var target = argparse.argv[0]
+
+var q = {
+  force : argparse.results.force
+}
+
+var r = System.umount (target; q)
+if notok is r then println (errno_string (errno))
+
+exit (if notok is r then 1 orelse r)

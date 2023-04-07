@@ -884,6 +884,21 @@ public la_T *la_get_root (la_t *);
   _tt_;                                                                   \
 })
 
+#define GET_OPT_RDONLY() ({                                               \
+  int _read_only = La.qualifier_exists (this, "read_only");               \
+  if (_read_only) {                                                       \
+    VALUE _v_read_only = La.get.qualifier (this, "read_only", INT(0));    \
+    if (0 == IS_INT(_v_read_only)) {                                      \
+      if (IS_NULL(_v_read_only))                                          \
+        _read_only = 1;                                                   \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "read_only, awaiting an integer qualifier"); \
+     } else                                                               \
+    _read_only = AS_INT(_v_read_only);                                    \
+  }                                                                       \
+  _read_only;                                                             \
+})
+
 #endif /* WITHOUT_LA_FUNCTIONS */
 
 #endif /* LA_HDR */

@@ -5,6 +5,7 @@
   depends_on ("clock", ALL)
   depends_on ("filetype", ALL)
   depends_on ("system", ALL)
+  depends_on ("mount", ALL)
   depends_on ("libc", LIBC)
 #
 

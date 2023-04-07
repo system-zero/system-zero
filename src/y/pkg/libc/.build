@@ -158,6 +158,8 @@ m.set.libc.source ([
   "libc/sys/lstat.c",
   "libc/sys/mman.c",
   "libc/sys/mman.h",
+  "libc/sys/mount.h",
+  "libc/sys/mount.c",
   "libc/sys/pid.h",
   "libc/sys/stat.c",
   "libc/sys/stat.h",

@@ -48,11 +48,16 @@ public int __init_system_module__ (la_t *this) {
   }
 
   const char evalString[] = EvalString (
-    public var System = {
-      to : {
-        memory : system_to_memory
-      },
-      sleep : system_sleep
+    if is_defined ("System") {
+      append {memory : system_to_memory} in System as "to";
+      append system_sleep in System as "sleep";
+    } else {
+      public var System = {
+        to : {
+          memory : system_to_memory
+        },
+        sleep : system_sleep
+      }
     }
   );
 

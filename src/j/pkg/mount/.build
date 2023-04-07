@@ -1,0 +1,7 @@
+var m = New Make (__file__, MODULE|SCRIPT_EXECUTABLE)
+
+m.set.script.executable.source ("System.mount";clear)
+m.set.script.executable.source ("System.umount")
+m.set.script.executable.source ("System.mounts")
+
+return m
