@@ -10,9 +10,12 @@ const concat_with = path_concat
 const basename    = path_basename
 const exists      = file_exists
 const mkdir       = dir_make
+const mkdir_all   = dir_make_parents
 const isdirectory = dir_is_directory
 const open        = Io.open
 const write       = Io.fd.write
+const char        = integer_char
+const advance     = string_advance
 
 const SRCDIR      = Sys.get ("SRCDIR")
 
@@ -41,7 +44,7 @@ argparse.add ("module", 0, "module", "generate module", BooleanType, 0)
 argparse.add ("script", 0, "script", "generate script", BooleanType, 0)
 argparse.add ("dir", 0, "directory=", "under directory", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("name", 0, "name=", "name", StringType, ARG_VALUE_REQUIRED)
-argparse.add ("ns", 0, "namespace=", "namespace", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("ns", 0, "namespace=", "namespace", StringType, ARG_VALUE_REQUIRED; defval : NS)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 argparse.set.help (`
@@ -71,14 +74,14 @@ ifnot argparse.results.module + argparse.results.script then
 if argparse.results.name is null then exit_error (null, true)
 
 unit  = argparse.results.name
-ns    = ifnot null is argparse.results.ns then argparse.results.ns orelse NS
+ns    = argparse.results.ns
 dir   = ifnot null is argparse.results.dir then argparse.results.dir orelse unit
 nsdir = if ns isnot NS then SRCDIR: concat_with (ns) orelse NSDIR
 
 unitdir = nsdir: concat_with (type): concat_with (dir)
 
 func generate_module (unit, unitdir) {
-  ifnot unitdir: exists () then mkdir (unitdir, 0755; verbose : 1)
+  ifnot unitdir: exists () then mkdir_all (unitdir, 0755; verbose : 1)
   ifnot unitdir: isdirectory () then exit_error (unitdir + ": is not a directory", false)
 
   ifnot ok is Dir.change (unitdir) then exit_error (unitdir + ": couldn't change to the directory")
@@ -91,15 +94,24 @@ func generate_module (unit, unitdir) {
 
     #define REQUIRE_STD_MODULE
 
+    //#define REQUIRE_Z_ENV
+
+    //#include <libc.h>
+
     #include <z/cenv.h>
 
     MODULE(`S4 + unit + `);
+
+    static VALUE `S4 + unit + `_ (la_t *this) {
+      ifnot (IS_STRING(v_)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+      ifnot (IS_INT(v_)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+    }
 
     public int __init_`S4 + unit + `_module__ (la_t *this) {
       __INIT_MODULE__(this);
 
       LaDefCFun lafuns[] = {
-        { , PTR(), 0 },
+        { "`S4 + unit + `_" , PTR(`S4 + unit + `_), 0 },
         { NULL, NULL_VALUE, 0}
       };
 
@@ -110,7 +122,10 @@ func generate_module (unit, unitdir) {
       }
 
       const char evalString[] = EvalString (
-        public var  = {
+        public var `S4 + 
+          char (unit[0] - ('a' - 'A')) +
+          if unit: len () > 1 then advance (unit, 1) orelse "" end +
+             ` {
           : ,
          }
        );

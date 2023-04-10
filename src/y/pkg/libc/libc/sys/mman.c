@@ -1,8 +1,6 @@
 // provides: void *sys_mmap (void *, size_t, int, int, int, size_t)
 // provides: void *sys_mremap (void *, size_t, size_t, int)
 // provides: long sys_munmap (void *, unsigned long)
-// provides: #define mmap sys_mmap
-// provides: #define munmap sys_munmap
 // requires: sys/mman.h
 
 void *sys_mmap (void *addr, size_t length, int prot, int flags, int fd, size_t offset) {

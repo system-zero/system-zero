@@ -82,6 +82,7 @@
 
 #if __WORDSIZE == 64
 
+#define SIZE_MAX      (18446744073709551615UL)
 #define INTPTR_MIN    INT64_MIN
 #define INTPTR_MAX    INT64_MAX
 #define UINTPTR_MAX   UINT64_MAX
@@ -90,6 +91,7 @@
 
 #else
 
+#define SIZE_MAX      (4294967295U)
 #define INTPTR_MIN    INT32_MIN
 #define INTPTR_MAX    INT32_MAX
 #define UINTPTR_MAX   UINT32_MAX
@@ -109,10 +111,10 @@
 #endif
 
 typedef __SIZE_TYPE__    size_t;
+typedef __SIZE_TYPE__    uintptr_t;
 typedef __PTRDIFF_TYPE__ ssize_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 typedef __PTRDIFF_TYPE__ intptr_t;
-typedef __SIZE_TYPE__    uintptr_t;
 
 typedef signed char            int8_t;
 typedef short int              int16_t;

@@ -1,5 +1,5 @@
 // provides: void _exit (int)
-
+// provides: #define exit _exit
 // from rt0
 
 void _exit (int r) {

@@ -698,7 +698,12 @@ public int __init_std_module__ (la_t *this) {
        to_string : integer_to_string
      };
 
-    public const Std = false
+    public const Std = {
+      string  : String,
+      integer : Integer,
+      map     : Map,
+      array   : Array
+    }
  );
 
   err = La.eval_string (this, evalString);
