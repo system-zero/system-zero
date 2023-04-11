@@ -5,10 +5,9 @@
 #define REQUIRE_STR_COPY
 #define REQUIRE_STR_EQ
 #define REQUIRE_BYTELEN
+#define REQUIRE_VSNPRINTF
+#define REQUIRE_TOUPPER
 #define REQUIRE_DECIMAL_TO_STRING
-
-//#define WITHOUT_FILE
-//#include <stdio.h>
 
 #define MEM_ZERO_FREED
 #define MEM_ZERO_ON_REALLOC
@@ -17,73 +16,7 @@
 
 MODULE(memtest);
 
-#define MAX_LEN_MSG 128
-int failedTests = 0;
-int okTests = 0;
-int numTests = 0;
-char msgStr[MAX_LEN_MSG];
-decimal_t decString;
-
-#define INTRO(__m__, __mlen__) do {                  \
-  numTests++;                                        \
-  char *nstr = int_to_string (&decString, numTests); \
-  sys_write (1, "[", 1);                             \
-  sys_write (1, nstr, decString.size);               \
-  sys_write (1, "] ", 2);                            \
-  sys_write (1, __m__, __mlen__);                    \
-} while (0)
-
-#define N_FUNC_TEST_TO_STR(__n__) ({                 \
-  __n__++;                                           \
-  size_t num = bytelen (__func__);                   \
-  str_copy (msgStr, MAX_LEN_MSG, __func__, num);     \
-  msgStr[num++] = ' ';                               \
-  char *nstr = int_to_string (&decString, __n__);    \
-  str_copy (msgStr + num, MAX_LEN_MSG - num, nstr, decString.size); \
-  num += decString.size;                             \
-  num;                                               \
-})
-
-#define SUMMARY() do {                               \
-  char *nstr = int_to_string (&decString, numTests); \
-  sys_write (1, "NumTests : [", 12);                 \
-  sys_write (1, nstr, decString.size);               \
-  sys_write (1, "]\n", 2);                           \
-  nstr = int_to_string (&decString, failedTests);    \
-  sys_write (1, "Failed : [", 10);                   \
-  sys_write (1, nstr, decString.size);               \
-  sys_write (1, "]\n", 2);                           \
-  nstr = int_to_string (&decString, okTests);        \
-  sys_write (1, "Passed : [", 10);                   \
-  sys_write (1, nstr, decString.size);               \
-  sys_write (1, "]\n", 2);                           \
-} while (0)
-
-static void test_str_eq (const char *a, const char *b, const char *msg, size_t len) {
-  INTRO(msg, len);
-
-  ifnot (str_eq (a, b)) {
-    sys_write (2, ": failed\n", 9);
-    failedTests++;
-    return;
-  }
-
-  sys_write (1, ": ok\n", 5);
-  okTests++;
-}
-
-static void test_int_eq (int a, int b, const char *msg, size_t len) {
-  INTRO(msg, len);
-
-  ifnot (a is b) {
-    sys_write (2, ": failed\n", 9);
-    failedTests++;
-    return;
-  }
-
-  sys_write (1, ": ok\n", 5);
-  okTests++;
-}
+#include "../CommonTests/tests.c"
 
 static void test_init () {
   int n = 0;

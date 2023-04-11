@@ -1,4 +1,4 @@
-// provides: void *memcpy (void *, const void *, size_t)
+// provides: void *mem_copy (void *, const void *, size_t)
 
 /*-
  * Copyright (c) 1990, 1993
@@ -9,8 +9,6 @@
  *
  * License should be included within the source directory of this unit
  */
-
-//#include <stdint.h>
 
 /*
  * sizeof(word) MUST BE A POWER OF TWO
@@ -27,7 +25,7 @@ typedef	int word;		/* "word" used for optimal copy speed */
  * (the portable versions of) bcopy, memcpy, and memmove.
  */
 
-void *memcpy (void *dst0, const void *src0, size_t length) {
+void *mem_cppy (void *dst0, const void *src0, size_t length) {
 	char *dst = dst0;
 	const char *src = src0;
 	size_t t;

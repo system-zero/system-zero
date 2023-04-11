@@ -1,6 +1,7 @@
 This 'd' namespace is for development (early draft). Its format is matter
 for itself development (development (programming) interface).
 
+It also stores packages intented for further and testing development.
 
 #
   Generate:
@@ -13,6 +14,8 @@ for itself development (development (programming) interface).
       detect also circular dependencies at the same time)
 
       record dependencies on shared/static libraries (the library as a key)
+
+      source other specs  m.source (s; from : ns, dir : ......)
 
   La:
      emphasize that we do not want chained functions to have size effects

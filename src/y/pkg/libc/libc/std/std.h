@@ -143,9 +143,13 @@ typedef unsigned long ulong;
 #undef NULL
 #endif
 
-#ifndef NULL
 #define NULL ((void *) 0)
+
+#ifdef EOF
+#undef
 #endif
+
+#define EOF (-1)
 
 #ifdef bool
 #undef bool

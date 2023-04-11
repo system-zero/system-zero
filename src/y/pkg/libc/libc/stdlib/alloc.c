@@ -191,8 +191,8 @@ static memChunkT *increaseAllocation (memChunkT *lastptr, unsigned int size) {
   curbreak->size = size;
   curbreak->is_available = 0;
   curbreak->next = NULL;
-  curbreak->prev = lastVisitedPtr;
-  lastptr->next = curBreak;
+  curbreak->prev = lastptr;
+  lastptr->next = curbreak;
 
   if (curbreak->size > size)
     splitChunk (curbreak, size);

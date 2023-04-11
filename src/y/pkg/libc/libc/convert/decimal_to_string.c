@@ -4,7 +4,7 @@
 // provides: char *ulong_to_string (decimal_t *, ulong)
 // provides: char *int64_to_string (decimal_t *, int64_t)
 // provides: char *uint64_to_string (decimal_t *, uint64_t)
-// requires: string/memset.c
+// requires: string/mem_set.c
 // requires: convert/decimal.h
 
 static void decimal_prepend (decimal_t* dec, char c) {
@@ -13,7 +13,7 @@ static void decimal_prepend (decimal_t* dec, char c) {
 
 static char *unsigned64_to_string (decimal_t* dec, uint64_t u, int minus) {
   dec->size = 0;
-  memset (dec->digits, 0, DECIMAL_NUM_DIGITS + 1);
+  mem_set (dec->digits, 0, DECIMAL_NUM_DIGITS + 1);
 
   if (u == 0) {
     decimal_prepend (dec, '0');

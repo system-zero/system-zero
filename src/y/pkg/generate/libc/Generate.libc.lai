@@ -115,6 +115,11 @@ include ("argparse")
     #define REQUIRE_ERRORS_H
     #endif
 
+    // include unconditionally - no reason not to - some functions signatures thy like va_list
+    #ifndef REQUIRE_STDARG_H
+    #define REQUIRE_STDARG_H
+    #endif
+
     #ifndef WITHOUT_Z_C_SYNTAX
       #ifdef OK
       #undef OK
