@@ -4,6 +4,8 @@
 // provides: int sys_fflush  (FILE *)
 // provides: size_t sys_fwrite (const void *, size_t, size_t, FILE *)
 // provides: size_t sys_fread (void *, size_t, size_t, FILE *)
+// provides: int fileptr_init_output (FILE *, size_t)
+// provides: int fileptr_init_input  (FILE *, size_t)
 // requires: stdio/stdio.h
 // requires: string/str_chr.c
 // requires: string/mem_set.c
@@ -15,6 +17,7 @@
 // requires: unistd/fcntl.h
 // requires: unistd/open.c
 // requires: unistd/close.c
+// requires: sys/stat.h
 
 static char
    _ibuf[BUFSIZ],
@@ -31,62 +34,69 @@ FILE *sys_stderr = &_stderr;
 
 FILE *sys_fopen (const char *path, const char *mode) {
   FILE *fp;
-  int flags;
+  int flags = 0;
 
-  if (str_chr(mode, '+'))
-    flags = O_RDWR;
-  else
-    flags = *mode == 'r' ? O_RDONLY : O_WRONLY;
+  switch (*mode) {
+    case 'w': flags |= O_WRONLY|O_CREAT|O_TRUNC; break;
+    case 'a': flags |= O_WRONLY|O_CREAT|O_APPEND; break;
+    case 'r': flags |= O_RDONLY; break;
 
-  if (*mode != 'r') flags |= O_CREAT;
-  if (*mode == 'w') flags |= O_TRUNC;
-  if (*mode == 'a') flags |= O_APPEND;
+    default:
+      sys_errno = EINVAL;
+      return NULL;
+  }
+
+  switch (*(mode + 1)) {
+    case '\0': break;
+    case '+' : flags |= O_RDWR; break;
+
+    default:
+      sys_errno = EINVAL;
+      return NULL;
+  }
 
   fp = Alloc (sizeof (FILE));
-  mem_set(fp, 0, sizeof (FILE));
 
-  fp->fd = sys_open3 (path, flags, 0600);
+  mem_set(fp, 0, sizeof (FILE)); // zero everything
+
+  int modebits = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH; // man fopen()
+
+  fp->fd = sys_open3 (path, flags, modebits);
 
   if (fp->fd < 0) {
     Release(fp);
     return NULL;
   }
 
-  fp->out_buflen = 0;
-  fp->out_bufsize = BUFSIZ;
-  fp->out_buf = Alloc (fp->out_bufsize);
-
-  fp->in_bufsize = BUFSIZ;
-  fp->in_buflen = 0;
-  fp->in_cur = 0;
-  fp->in_buf = Alloc (fp->in_bufsize);
-
   fp->bufferingType = _IOFBF;
 
   return fp;
-}
-
-int sys_fclose (FILE *fp) {
-  int ret = sys_close (fp->fd);
-
-  Release (fp->out_buf);
-  Release (fp->in_buf);
-  Release (fp);
-
-  return ret;
 }
 
 int sys_fflush (FILE *fp) {
   if (fp->fd < 0) return 0;
 
   // we may want to make sure that this is an uncovered error by checking errno 
-  // probably a higher interface but elsewhere not here
+  // probably with a higher interface than sys_write(), but elsewhere not here
   if (sys_write (fp->fd, fp->out_buf, fp->out_buflen) isnot fp->out_buflen)
     return EOF;
 
   fp->out_buflen = 0;
 
   return 0;
+}
+
+int sys_fclose (FILE *fp) {
+  sys_fflush (fp); // flush first anything in buffer
+
+  int ret = sys_close (fp->fd);
+
+  ifnot (NULL is fp->out_buf) Release (fp->out_buf);
+  ifnot (NULL is fp->in_buf)  Release (fp->in_buf);
+
+  Release (fp);
+
+  return ret;
 }
 
 static int fileptr_append_or_flush (FILE *fp, int c) {
@@ -119,7 +129,42 @@ static void fileptrWriteUnbuffered (fmtType *p, int c) {
   p->counter += (sys_write (fp->fd, fp->out_buf, 1) isnot EOF);
 }
 
+int fileptr_init_output (FILE *fp, size_t size) {
+  if (fp->out_bufsize > 0) return 0;
+
+  if (size < 1) {
+    sys_errno = EINVAL;
+    return -1;
+  }
+
+  fp->out_buflen = 0;
+  fp->out_bufsize = size;
+  fp->out_buf = Alloc (fp->out_bufsize);
+
+  return (NULL is fp->out_buf ? -1 : 0); // normally never reached here on alloc failure
+}
+
+int fileptr_init_input (FILE *fp, size_t size) {
+  if (fp->in_bufsize > 0) return 0;
+
+  if (size < 1) {
+    sys_errno = EINVAL;
+    return -1;
+  }
+
+  fp->in_cur = 0;
+  fp->in_buflen = 0;
+  fp->in_bufsize = size;
+  fp->in_buf = Alloc (fp->out_bufsize);
+
+  return (NULL is fp->in_buf ? -1 : 0);
+}
+
 int sys_fprintf (FILE *fp, const char *fmt, ...) {
+  if (NULL is fp or fp->fd < 0) return -1;
+
+  if (-1 is fileptr_init_output (fp, BUFSIZ)) return -1;
+
   fmtType s;
   s.output_char = (fp->bufferingType is _IONBF ? fileptrWriteUnbuffered : fileptrWriteBuffered);
   s.user_data = fp;
@@ -129,12 +174,16 @@ int sys_fprintf (FILE *fp, const char *fmt, ...) {
   int n = str_format (&s, NULL, 0, fmt, ap);
   va_end(ap);
 
-  sys_fflush (fp);
+  sys_fflush (fp); // flush unconditionally
 
   return n;
 }
 
 size_t sys_fwrite (const void *v, size_t size, size_t nmemb, FILE *fp) {
+  if (NULL is fp or fp->fd < 0) return -1;
+
+  if (-1 is fileptr_init_output (fp, BUFSIZ)) return -1;
+
   uchar *s = (uchar *) v;
   size_t i = nmemb * size;
 
@@ -145,10 +194,7 @@ size_t sys_fwrite (const void *v, size_t size, size_t nmemb, FILE *fp) {
   return nmemb * size;
 }
 
-
 static int fileptr_input_char (FILE *fp) {
-  if (fp->fd < 0) return EOF;
-
   if (fp->in_cur is fp->in_buflen) {
     int n = sys_read (fp->fd, fp->in_buf, fp->in_bufsize);
     if (n <= 0) return EOF;
@@ -160,8 +206,11 @@ static int fileptr_input_char (FILE *fp) {
   return fp->in_cur < fp->in_buflen ? (unsigned char) fp->in_buf[fp->in_cur++] : EOF;
 }
 
-
 size_t sys_fread (void *v, size_t size, size_t nmemb, FILE *fp) {
+  if (NULL is fp or fp->fd < 0) return 0;
+
+  if (-1 is fileptr_init_input (fp, BUFSIZ)) return 0;
+
   char *s = v;
 
   size_t n = nmemb * size;

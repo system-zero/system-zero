@@ -8,7 +8,6 @@
 #define REQUIRE_VSNPRINTF
 #define REQUIRE_TOUPPER
 #define REQUIRE_DECIMAL_TO_STRING
-
 #define REQUIRE_STDIO
 
 #include <libc.h>
@@ -45,7 +44,7 @@ static void test_fclose_ok (FILE *fp) {
 static void first (void) {
   int numbytes = 0;
 
-  FILE *fp = test_fopen_ok (FNAME_1, "w+");
+  FILE *fp = test_fopen_ok (FNAME_1, "w");
   if (NULL is fp)
     exit_hard ("fatal fopen error", FOPEN_ERROR);
 
@@ -56,7 +55,7 @@ static void first (void) {
 
   test_fclose_ok (fp);
 
-  fp = test_fopen_ok (FNAME_1, "r+");
+  fp = test_fopen_ok (FNAME_1, "r");
   if (NULL is fp)
     exit_hard ("fatal fopen error", FOPEN_ERROR);
 

@@ -115,64 +115,71 @@ include ("argparse")
     #define REQUIRE_ERRORS_H
     #endif
 
+    #ifndef REQUIRE_ERROR_LIST_H
+    #define REQUIRE_ERROR_LIST_H
+    #endif
+
+    #ifndef REQUIRE_ERRNO_STRING
+    #define REQUIRE_ERRNO_STRING
+    #endif
+
     // include unconditionally - no reason not to - some functions signatures thy like va_list
     #ifndef REQUIRE_STDARG_H
     #define REQUIRE_STDARG_H
     #endif
 
-    #ifndef WITHOUT_Z_C_SYNTAX
-      #ifdef OK
-      #undef OK
-      #endif
+    #ifdef OK
+    #undef OK
+    #endif
 
-      #ifdef NOTOK
-      #undef NOTOK
-      #endif
+    #ifdef NOTOK
+    #undef NOTOK
+    #endif
 
-      #ifdef ifnot
-      #undef ifnot
-      #endif
+    #ifdef ifnot
+    #undef ifnot
+    #endif
 
-      #ifdef is
-      #undef is
-      #endif
+    #ifdef is
+    #undef is
+    #endif
 
-      #ifdef isnot
-      #undef isnot
-      #endif
+    #ifdef isnot
+    #undef isnot
+    #endif
 
-      #ifdef or
-      #undef or
-      #endif
+    #ifdef or
+    #undef or
+    #endif
 
-      #ifdef and
-      #undef and
-      #endif
+    #ifdef and
+    #undef and
+    #endif
 
-      #define OK     0
-      #define NOTOK -1
-      #define is    ==
-      #define isnot !=
-      #define or    ||
-      #define and   &&
-      #define ifnot(__expr__) if (0 == (__expr__))
+    #define OK     0
+    #define NOTOK -1
+    #define is    ==
+    #define isnot !=
+    #define or    ||
+    #define and   &&
+    #define ifnot(__expr__) if (0 == (__expr__))
 
-      #ifdef private
-      #undef private
-      #endif
+    #ifdef private
+    #undef private
+    #endif
 
-      #ifdef public
-      #undef public
-      #endif
+    #ifdef public
+    #undef public
+    #endif
 
-      #ifdef UNUSED
-      #undef UNUSED
-      #endif
+    #ifdef UNUSED
+    #undef UNUSED
+    #endif
 
-      #define private __attribute__ ((visibility ("hidden")))
-      #define public  __attribute__ ((visibility ("default")))
-      #define UNUSED  __attribute__ ((unused))
-    #endif /* WITHOUT_Z_C_SYNTAX */
+    #define private __attribute__ ((visibility ("hidden")))
+    #define public  __attribute__ ((visibility ("default")))
+    #define UNUSED  __attribute__ ((unused))
+
 
     #ifndef WITHOUT_Z_ENV
       #ifndef REQUIRE_Z_ENV_H
