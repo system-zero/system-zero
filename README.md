@@ -1532,6 +1532,7 @@ gained consience. Hopefully one day.
 * [Contain: A simple implementation of containers for Linux.](https://github.com/arachsys/containers)
 * [OpenDoas.](https://github.com/Duncaen/OpenDoas)
 * [Man utility.](https://github.com/rofl0r/hardcore-utils/blob/master/man.c)
+* [Scdoc man page generator.](https://git.sr.ht/~sircmpwn/scdoc)
 * [Suckless sbase.](https://core.suckless.org/sbase/)
 * [Libdeflate.](https://github.com/ebiggers/libdeflate)
 * [Microtar.](https://github.com/rxi/microtar)

@@ -1,0 +1,2 @@
+var m = New Make (__file__, SHARED_LIBRARY|MODULE)
+return m
