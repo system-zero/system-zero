@@ -1537,6 +1537,7 @@ gained consience. Hopefully one day.
 * [Microtar.](https://github.com/rxi/microtar)
 * [Par.](https://bitbucket.org/amc-nicemice/par)
 * [Super Light Regular Expression Library.](https://github.com/cesanta/slre)
+* [Lightweight snprintf implementation.](https://github.com/mirtoto/snprintf)
 * [Mini snprintf.](https://github.com/tatetian/mini-snprintf)
 * [utf8.h.](https://github.com/sheredom/utf8.h)
 * [Libtree: ldd into a tree.](https://github.com/haampie/libtree)

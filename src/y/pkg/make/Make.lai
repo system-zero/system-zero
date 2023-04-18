@@ -123,6 +123,7 @@ const YINCDIR           = INCDIR:  concat_with (Y)
 const YMODDIR           = YLIBDIR: concat_with ("l-modules")
 const LIBCDEFNAME       = "libc"
 const LIBCDEFDIR        = ZINCDIR
+const LIBCOUTPUT        = LIBCDEFDIR: concat_with (LIBCDEFNAME + ".h")
 const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
 const RPATH             = true
@@ -309,6 +310,7 @@ const ARGPARSE
   libc : {
     sources : {[]}
     force : false
+    output
     pre_exec
     post_exec
   }
@@ -614,18 +616,19 @@ const ARGPARSE
     if this.targets & MODULE and (this.targets & SHARED_LIBRARY or this.targets & SHARED) then
       this.set.shared.module.to_linkagainst (this.name; append_version)
 
-    this.set.libname                          (name)
-    this.set.liboutput                        (name)
-    this.set.builddir                         (dir)
-    this.set.cached_file                      (this.builddir: concat_with (CACHEDNAME))
-    this.set.header.source                    (name + ".h")
-    this.set.library.source                   ("lib" + name + ".c")
-    this.set.executable.source                (cap_name + ".c")
-    this.set.executable.output                (cap_name)
-    this.set.shared.module.source             (name + "-module.c")
-    this.set.shared.module.output             (name)
-    this.set.script.executable.source         (cap_name)
-    this.set.script.library.source            (cap_name)
+    this.set.libname                   (name)
+    this.set.liboutput                 (name)
+    this.set.builddir                  (dir)
+    this.set.cached_file               (this.builddir: concat_with (CACHEDNAME))
+    this.set.header.source             (name + ".h")
+    this.set.library.source            ("lib" + name + ".c")
+    this.set.executable.source         (cap_name + ".c")
+    this.set.executable.output         (cap_name)
+    this.set.shared.module.source      (name + "-module.c")
+    this.set.shared.module.output      (name)
+    this.set.script.executable.source  (cap_name)
+    this.set.script.library.source     (cap_name)
+    this.set.libc.output               (LIBCOUTPUT)
 
     this.init_local_cflags ()
     this.init_include_dirs ()
@@ -1303,9 +1306,7 @@ const ARGPARSE
 
       this.libc.force = ARGPARSE.results.force
 
-      var output = LIBCDEFDIR: concat_with (LIBCDEFNAME + ".h")
-
-      var r = this.should_make (output, this.libc.sources, this.libc.force)
+      var r = this.should_make (this.libc.output, this.libc.sources, this.libc.force)
 
       return notok if r is notok
       return ok if r is false
@@ -1318,7 +1319,8 @@ const ARGPARSE
 
       include ("Generate.libc")
 
-      r = generate_libc (2, ["", if this.verbose then "--verbose" orelse ""]);
+      r = generate_libc (2, ["", if this.verbose then "--verbose" orelse "",
+         "--outputDir=" + this.libc.output: dirname ()]);
 
       if r is notok return this.error ("failed to generate libc")
 
@@ -1773,6 +1775,7 @@ const ARGPARSE
         this.append_value (v, this.libc.sources)
       }
 
+      output    : func (o) ifnot null is o then this.libc.output = o
       pre_exec  : func (f) ifnot null is f then this.libc.pre_exec = f as callback
       post_exec : func (f) ifnot null is f then this.libc.post_exec = f as callback
     }

@@ -1,10 +1,13 @@
-// provides: void tzset (void)
-// provides: long timezone
+// provides: long sys_tzset (void)
 // requires: time/time.h
 // requires: time/gettimeofday.c
 
-void tzset (void) {
+
+long sys_tzset (void) {
+  static long time_zone = -1;
+  if (time_zone isnot -1) return time_zone;
+
   struct timezone tz;
-  gettimeofday(0, &tz);
-  timezone = tz.tz_minuteswest * 60;
+  sys_gettimeofday (0, &tz);
+  return tz.tz_minuteswest * 60;
 }

@@ -59,7 +59,7 @@ FILE *sys_fopen (const char *path, const char *mode) {
 
   mem_set(fp, 0, sizeof (FILE)); // zero everything
 
-  int modebits = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH; // man fopen()
+  int modebits = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH; // man fopen
 
   fp->fd = sys_open3 (path, flags, modebits);
 

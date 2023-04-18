@@ -103,7 +103,16 @@ static int process_file_dryrun (dirwalk_t *dw, const char *file, struct stat *st
   Cstring.cp_fmt (dest, len + 1, "%s%s%s", syncdir->dest,
     (syncdir->dest_has_dir_sep ? "" : DIR_SEP_STR), bn);
 
-  fprintf (stdout, "%s -> %s\n", file, dest);
+  int should_not_print = File.exists (dest);
+  if (should_not_print) {
+    struct stat dest_st;
+    lstat (dest, &dest_st);
+    should_not_print = (st->st_size is dest_st.st_size or
+      st->st_mtime < dest_st.st_mtime);
+  }
+
+  ifnot (should_not_print)
+    fprintf (stdout, "%s -> %s\n", file, dest);
 
   return 1;
 }

@@ -2,6 +2,7 @@
 
 char *ustring_character (utf8 c, char *buf, int *len) {
   *len = 1;
+
   if (c < 0x80) {
     buf[0] = (char) c;
   } else if (c < 0x800) {
@@ -19,8 +20,10 @@ char *ustring_character (utf8 c, char *buf, int *len) {
     buf[2] = ((c >> 6) & 0x3F) | 0x80;
     buf[3] = (c & 0x3F) | 0x80;
     (*len) += 3;
-  } else
-    return 0;
+  } else {
+    *len = 0;
+    return NULL;
+  }
 
   buf[*len] = '\0';
   return buf;

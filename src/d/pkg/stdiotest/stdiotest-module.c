@@ -20,6 +20,7 @@ MODULE(stdiotest);
 
 static int fprintf_num_tests = 0;
 static int fread_num_tests = 0;
+static int fwrite_num_tests = 0;
 
 static FILE *test_fopen_ok (const char *fname, const char *mode) {
   static int n = 0;
@@ -61,6 +62,30 @@ static void first (void) {
 
   char readbuf[numwritten + 1];
   size_t readbytes = sys_fread (readbuf, 1, numwritten, fp);
+  readbuf[readbytes] = '\0';
+
+  numbytes = N_TEST_TO_STR("test_fread", fread_num_tests);
+
+  test_str_eq (readbuf, __func__, msgStr, numbytes);
+
+  test_fclose_ok (fp);
+
+  fp = test_fopen_ok (FNAME_1, "w");
+  if (NULL is fp)
+    exit_hard ("fatal fopen error", FOPEN_ERROR);
+
+  numbytes = N_TEST_TO_STR("test_fwrite", fwrite_num_tests);
+  numwritten = sys_fwrite (__func__, 1, bytelen (__func__), fp);
+
+  test_int_eq (numwritten, bytelen (__func__), msgStr, numbytes);
+
+  test_fclose_ok (fp);
+
+  fp = test_fopen_ok (FNAME_1, "r");
+  if (NULL is fp)
+    exit_hard ("fatal fopen error", FOPEN_ERROR);
+
+  readbytes = sys_fread (readbuf, 1, numwritten, fp);
   readbuf[readbytes] = '\0';
 
   numbytes = N_TEST_TO_STR("test_fread", fread_num_tests);

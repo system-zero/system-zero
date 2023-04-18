@@ -3,7 +3,10 @@
 // provides: int str_format (fmtType *, char *, size_t, const char *, va_list)
 // requires: string/bytelen.c
 // requires: ctype/toupper.c
+// requires: ctype/isspace.c
+// requires: ctype/isdigit.c
 // requires: string/fmt.h
+// requires: string/vsnprintf.h
 
 #define MAX_INTEGRAL_SIZE (99 + 1)
 #define MAX_FRACTION_SIZE (29 + 1)
@@ -78,19 +81,19 @@ static inline void fmt_output_char (struct fmtType *p, int c) {
   p->counter++;
 }
 
-static int strtoi(const char *a, int *res) {
+static int strtoi (const char *a, int *res) {
   int i = 0;
 
   *res = 0;
 
-  for (; a[i] != '\0' && IS_DIGIT(a[i]); i++) {
+  for (; a[i] != '\0' && isdigit (a[i]); i++) {
     *res = *res * 10 + (a[i] - '0');
   }
 
   return i;
 }
 
-static void inttoa(long long nr, int is_signed, int precision, int base,
+static void inttoa (long long nr, int is_signed, int precision, int base,
     char *output, size_t output_size) {
   size_t i = 0, j;
 
@@ -100,20 +103,20 @@ static void inttoa(long long nr, int is_signed, int precision, int base,
     unsigned long long n;
 
     if (is_signed && nr < 0) {
-      n = (unsigned long long)-nr;
+      n = (unsigned long long) -nr;
       output_size--; /* for '-' character */
     } else {
-      n = (unsigned long long)nr;
+      n = (unsigned long long) nr;
     }
 
     while (n != 0 && i < output_size) {
-      int r = (int)(n % (unsigned long long)(base));
-      output[i++] = (char)r + (r < 10 ? '0' : 'a' - 10);
-      n /= (unsigned long long)(base);
+      int r = (int) (n % (unsigned long long) (base));
+      output[i++] = (char) r + (r < 10 ? '0' : 'a' - 10);
+      n /= (unsigned long long) (base);
     }
 
     if (precision > 0) { /* precision defined ? */
-      for (; i < (size_t)precision && i < output_size; i++) {
+      for (; i < (size_t) precision && i < output_size; i++) {
         output[i] = '0';
       }
     }
@@ -133,14 +136,14 @@ static void inttoa(long long nr, int is_signed, int precision, int base,
     }
   } else {
     precision = precision < 0 ? 1 : precision;
-    for (i = 0; i < (size_t)precision && i < output_size; i++) {
+    for (i = 0; i < (size_t) precision && i < output_size; i++) {
       output[i] = '0';
     }
     output[i] = '\0';
   }
 }
 
-static double pow_10(int n) {
+static double pow_10 (int n) {
   int i = 1;
   double p = 1., m;
 
@@ -158,7 +161,7 @@ static double pow_10(int n) {
   return p;
 }
 
-static int log_10(double r) {
+static int log_10 (double r) {
   int i = 0;
   double result = 1.;
 
@@ -187,7 +190,7 @@ static int log_10(double r) {
   return i;
 }
 
-static double integral(double real, double *ip) {
+static double integral (double real, double *ip) {
   int log;
   double real_integral = 0.;
 
@@ -209,8 +212,8 @@ static double integral(double real, double *ip) {
   }
 
   /* the real work :-) */
-  for (log = log_10(real); log >= 0; log--) {
-    double i = 0., p = pow_10(log);
+  for (log = log_10 (real); log >= 0; log--) {
+    double i = 0., p = pow_10 (log);
     double s = (real - real_integral) / p;
     for (; i + 1. <= s; i++) {}
     real_integral += i * p;
@@ -220,7 +223,7 @@ static double integral(double real, double *ip) {
   return (real - real_integral);
 }
 
-static void floattoa(double nr, int precision,
+static void floattoa (double nr, int precision,
     char *output_integral, size_t output_integral_size,
     char *output_fraction, size_t output_fraction_size) {
 
@@ -244,7 +247,7 @@ static void floattoa(double nr, int precision,
     output_integral_size--; /* sign consume one digit */
   }
 
-  fraction = integral(nr, &ip);
+  fraction = integral (nr, &ip);
   nr = ip;
   /* do the integral part */
   if (ip == 0.) {
@@ -254,8 +257,8 @@ static void floattoa(double nr, int precision,
     for (i = 0; i < output_integral_size - 1 && nr != 0.; ++i) {
       nr /= 10;
       /* force to round */
-      output_integral[i] = (char)((integral(nr, &ip) + PRECISION) * 10) + '0';
-      if (!IS_DIGIT(output_integral[i])) { /* bail out overflow !! */
+      output_integral[i] = (char) ((integral (nr, &ip) + PRECISION) * 10) + '0';
+      if (!isdigit (output_integral[i])) { /* bail out overflow !! */
         break;
       }
       nr = ip;
@@ -285,8 +288,8 @@ static void floattoa(double nr, int precision,
 
   /* the fractional part */
   for (i = 0, fp = fraction; precision > 0 && i < output_fraction_size - 1; i++, precision--) {
-    output_fraction[i] = (char)(int)((fp + PRECISION) * 10. + '0');
-    if (!IS_DIGIT(output_fraction[i])) { /* underflow ? */
+    output_fraction[i] = (char)(int) ((fp + PRECISION) * 10. + '0');
+    if (!isdigit (output_fraction[i])) { /* underflow ? */
       break;
     }
 
@@ -295,12 +298,12 @@ static void floattoa(double nr, int precision,
   output_fraction[i] = '\0';
 }
 
-static void decimal(struct fmtType *p, long long ll) {
+static void decimal (struct fmtType *p, long long ll) {
   char nr[MAX_INTEGRAL_SIZE], *pnumber = nr;
-  inttoa(ll, *p->pf == 'i' || *p->pf == 'd', p->precision, 10,
+  inttoa (ll, *p->pf == 'i' || *p->pf == 'd', p->precision, 10,
     nr, sizeof(nr));
 
-  p->width -= bytelen(nr);
+  p->width -= bytelen (nr);
   PAD_RIGHT(p);
 
   PUT_PLUS(ll, p);
@@ -313,11 +316,11 @@ static void decimal(struct fmtType *p, long long ll) {
   PAD_LEFT(p);
 }
 
-static void octal(struct fmtType *p, long long ll) {
+static void octal (struct fmtType *p, long long ll) {
   char nr[MAX_INTEGRAL_SIZE], *pnumber = nr;
-  inttoa(ll, 0, p->precision, 8, nr, sizeof(nr));
+  inttoa (ll, 0, p->precision, 8, nr, sizeof(nr));
 
-  p->width -= bytelen(nr);
+  p->width -= bytelen (nr);
   PAD_RIGHT(p);
 
   if (p->is_square && *nr != '\0') { /* prefix '0' for octal */
@@ -331,11 +334,11 @@ static void octal(struct fmtType *p, long long ll) {
   PAD_LEFT(p);
 }
 
-static void hex(struct fmtType *p, long long ll) {
+static void hex (struct fmtType *p, long long ll) {
   char nr[MAX_INTEGRAL_SIZE], *pnumber = nr;
-  inttoa(ll, 0, p->precision, 16, nr, sizeof(nr));
+  inttoa (ll, 0, p->precision, 16, nr, sizeof(nr));
 
-  p->width -= bytelen(nr);
+  p->width -= bytelen (nr);
   PAD_RIGHT(p);
 
   if (p->is_square && *nr != '\0') { /* prefix '0x' for hex */
@@ -344,14 +347,14 @@ static void hex(struct fmtType *p, long long ll) {
   }
 
   for (; *pnumber != '\0'; pnumber++) {
-    PUT_CHAR((*p->pf == 'X' ? (char)toupper(*pnumber) : *pnumber), p);
+    PUT_CHAR((*p->pf == 'X' ? (char) toupper (*pnumber) : *pnumber), p);
   }
 
   PAD_LEFT(p);
 }
 
-static void strings(struct fmtType *p, const char *s) {
-  int len = (int)bytelen(s);
+static void strings (struct fmtType *p, const char *s) {
+  int len = (int) bytelen (s);
   if (p->precision != PRECISION_UNSET && len > p->precision) { /* the smallest number */
     len = p->precision;
   }
@@ -367,13 +370,13 @@ static void strings(struct fmtType *p, const char *s) {
   PAD_LEFT(p);
 }
 
-static void floating(struct fmtType *p, double d) {
+static void floating (struct fmtType *p, double d) {
   char integral[MAX_INTEGRAL_SIZE], *pintegral = integral;
   char fraction[MAX_FRACTION_SIZE], *pfraction = fraction;
 
   d = ROUND_TO_PRECISION(d, p);
-  floattoa(d, p->precision,
-    integral, sizeof(integral), fraction, sizeof(fraction));
+  floattoa (d, p->precision,
+    integral, sizeof (integral), fraction, sizeof (fraction));
 
   /* calculate the padding. 1 for the dot */
   if (d > 0. && p->align == ALIGN_RIGHT) {
@@ -398,7 +401,7 @@ static void floating(struct fmtType *p, double d) {
 
   if (*p->pf == 'g' || *p->pf == 'G') { /* smash the trailing zeros */
     size_t i;
-    for (i = bytelen(fraction); i > 0 && fraction[i - 1] == '0'; i--) {
+    for (i = bytelen (fraction); i > 0 && fraction[i - 1] == '0'; i--) {
       fraction[i - 1] = '\0';
     }
   }
@@ -410,15 +413,15 @@ static void floating(struct fmtType *p, double d) {
   PAD_LEFT(p);
 }
 
-static void exponent(struct fmtType *p, double d) {
+static void exponent (struct fmtType *p, double d) {
   char integral[MAX_INTEGRAL_SIZE], *pintegral = integral;
   char fraction[MAX_FRACTION_SIZE], *pfraction = fraction;
-  int log = log_10(d);
-  d /= pow_10(log); /* get the Mantissa */
+  int log = log_10 (d);
+  d /= pow_10 (log); /* get the Mantissa */
   d = ROUND_TO_PRECISION(d, p);
 
-  floattoa(d, p->precision,
-    integral, sizeof(integral), fraction, sizeof(fraction));
+  floattoa (d, p->precision,
+    integral, sizeof (integral), fraction, sizeof (fraction));
   /* 1 for unit, 1 for the '.', 1 for 'e|E',
    * 1 for '+|-', 2 for 'exp' */
   /* calculate how much padding need */
@@ -441,7 +444,7 @@ static void exponent(struct fmtType *p, double d) {
 
   if (*p->pf == 'g' || *p->pf == 'G') { /* smash the trailing zeros */
     size_t i;
-    for (i = bytelen(fraction); i > 0 && fraction[i - 1] == '0'; i--) {
+    for (i = bytelen (fraction); i > 0 && fraction[i - 1] == '0'; i--) {
       fraction[i - 1] = '\0';
     }
   }
@@ -459,7 +462,7 @@ static void exponent(struct fmtType *p, double d) {
     PUT_CHAR('+', p);
   }
 
-  inttoa(log, 1, 2, 10, integral, sizeof(integral));
+  inttoa (log, 1, 2, 10, integral, sizeof (integral));
   for (pintegral = integral; *pintegral != '\0'; pintegral++) { /* exponent */
     PUT_CHAR(*pintegral, p);
   }
@@ -467,7 +470,7 @@ static void exponent(struct fmtType *p, double d) {
   PAD_LEFT(p);
 }
 
-static void conv_flags(struct fmtType *p) {
+static void conv_flags (struct fmtType *p) {
   p->width = WIDTH_UNSET;
   p->precision = PRECISION_UNSET;
   p->is_star_w = p->is_star_p = 0;
@@ -528,7 +531,7 @@ static void conv_flags(struct fmtType *p) {
       case '7':
       case '8':
       case '9': /* get all the digits */
-        p->pf += strtoi(p->pf,
+        p->pf += strtoi (p->pf,
           p->width == WIDTH_UNSET ? &p->width : &p->precision) - 1;
         break;
 
@@ -561,7 +564,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
   for (; *p->pf != '\0' && (p->counter < p->ps_size); p->pf++) {
     if (*p->pf == '%') { /* we got a magic % cookie */
       int is_continue = 1;
-      conv_flags(p); /* initialise format flags */
+      conv_flags (p); /* initialise format flags */
       while (*p->pf != '\0' && is_continue) {
         switch (*(++p->pf)) {
           case '\0': /* a NULL here ? ? bail out */
@@ -569,13 +572,13 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
             if (p->ps != NULL) {
               *p->ps = '\0';
             }
-            return (int)p->counter;
+            return (int) p->counter;
 
           case 'f':
           case 'F': { /* decimal floating point */
             double d;
             DOUBLE_ARG(p, d);
-            floating(p, d);
+            floating (p, d);
             is_continue = 0;
             break;
           }
@@ -584,7 +587,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
           case 'E': { /* scientific (exponential) floating point */
             double d;
             DOUBLE_ARG(p, d);
-            exponent(p, d);
+            exponent (p, d);
             is_continue = 0;
             break;
           }
@@ -594,14 +597,14 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
             int log;
             double d;
             DOUBLE_ARG(p, d);
-            log = log_10(d);
+            log = log_10 (d);
             /* use decimal floating point (%f / %F) if exponent is in the range
                [-4,precision] exclusively else use scientific floating
                point (%e / %E) */
             if (-4 < log && log < p->precision) {
-              floating(p, d);
+              floating (p, d);
             } else {
-              exponent(p, d);
+              exponent (p, d);
             }
             is_continue = 0;
             break;
@@ -610,7 +613,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
           case 'u': { /* unsigned decimal integer */
             long long ll;
             INTEGER_ARG(p, unsigned, ll);
-            decimal(p, ll);
+            decimal (p, ll);
             is_continue = 0;
             break;
           }
@@ -619,7 +622,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
           case 'd': { /* signed decimal integer */
             long long ll;
             INTEGER_ARG(p, signed, ll);
-            decimal(p, ll);
+            decimal (p, ll);
             is_continue = 0;
             break;
           }
@@ -627,7 +630,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
           case 'o': { /* octal (always unsigned) */
             long long ll;
             INTEGER_ARG(p, unsigned, ll);
-            octal(p, ll);
+            octal (p, ll);
             is_continue = 0;
             break;
           }
@@ -636,7 +639,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
           case 'X': { /* hexadecimal (always unsigned) */
             long long ll;
             INTEGER_ARG(p, unsigned, ll);
-            hex(p, ll);
+            hex (p, ll);
             is_continue = 0;
             break;
           }
@@ -650,7 +653,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
 
           case 's': /* string of characters */
             WIDTH_AND_PRECISION_ARGS(p);
-            strings(p, va_arg(args, char *));
+            strings (p, va_arg(args, char *));
             is_continue = 0;
             break;
 
@@ -658,9 +661,9 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
             void *v = va_arg(args, void *);
             p->is_square = 1;
             if (v == NULL) {
-              strings(p, "(nil)");
+              strings (p, "(nil)");
             } else {
-              hex(p, (intptr_t) v);
+              hex (p, (intptr_t) v);
             }
             is_continue = 0;
             break;
@@ -708,7 +711,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
           case '7':
           case '8':
           case '9':
-            conv_flags(p);
+            conv_flags (p);
             break;
 
           default:
@@ -727,7 +730,7 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
     *p->ps = '\0'; /* the end ye ! */
   }
 
-  return (int)p->counter;
+  return (int) p->counter;
 }
 
 int vsnprintf (char *buf, size_t bufsize, const char *fmt, va_list args) {
@@ -747,14 +750,3 @@ int snprintf (char *buf, size_t bufsize, const char *fmt, ...) {
 
   return n;
 }
-
-#ifndef STRING_FORMAT_SIZE
-#define STRING_FORMAT_SIZE(__fmt__)                                   \
-({                                                                    \
-  int size_ = 0;                                                      \
-  va_list ap; va_start(ap, fmt_);                                     \
-  size_ = vsnprintf (NULL, 0, __fmt__, ap);                           \
-  va_end(ap);                                                         \
-  size_;                                                              \
-})
-#endif

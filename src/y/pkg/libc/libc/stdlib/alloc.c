@@ -14,7 +14,7 @@
    It should be noted that initially has been tried the code from:
    https://github.com/RAGUL1902/Dynamic-Memory-Allocation-in-C
    with the exact logic. This is condireded as an important factor
-   to the realization off the mechanics.
+   to the realization of the mechanics.
 
    Equally thank both and anyone involved.
 */
@@ -128,7 +128,12 @@
  */
 
 #define STRUCT_SIZE   (sizeof (memChunkT))
+#if __WORDSIZE == 64
+#define STRUCT_OFFSET (STRUCT_SIZE - 8)
+#elif
 #define STRUCT_OFFSET (STRUCT_SIZE - 4)
+#endif
+
 #define ALIGN_SIZE 8
 #define ALIGN(__sz__) (((__sz__) + (ALIGN_SIZE - 1)) & ~(ALIGN_SIZE - 1))
 
@@ -285,6 +290,7 @@ void *sys_malloc (size_t size) {
 
   if (freechunk is NULL) {
     freechunk = increaseAllocation (lastVisited, sz);
+
     if (freechunk is NULL) {
       // pthread_mutex_unlock (&lock);
     #ifndef MEM_DO_NOT_EXIT_ON_FAILURE
@@ -321,6 +327,7 @@ void *sys_realloc (void *ptr, size_t size) {
   memChunkT *oldchunk = (memChunkT *) ((char *) old_p - STRUCT_OFFSET);
 
   size_t i = 0;
+
   for (; i < oldchunk->size and i < newchunk->size; i++)
     new_p[i] = old_p[i];
 

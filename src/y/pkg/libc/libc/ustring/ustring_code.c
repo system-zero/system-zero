@@ -3,7 +3,7 @@
 // requires: ustring/ustring.h
 
 utf8 ustring_code_and_len (const char *buf, int *len) {
-  if (NULL is buf or 0 is *buf) return -1;
+  if (NULL is buf or '\0' is *buf) return -1;
 
   int code = 0;
   *len = 0;
@@ -21,5 +21,5 @@ utf8 ustring_code_and_len (const char *buf, int *len) {
 
 utf8 ustring_code (const char *src) {
   int len = 0;
-  return ustring_get_code (src, &len);
+  return ustring_code_and_len (src, &len);
 }
