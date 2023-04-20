@@ -1,6 +1,6 @@
-// provides: int ustring_width (const char *, int)
+// provides: int utf8_width (const char *, int)
 // provides: int cwidth (utf8)
-// requires: ustring/ustring_code.c
+// requires: utf8/utf8_code.c
 
 /*
  * https://github.com/termux/wcwidth
@@ -476,9 +476,9 @@ int cwidth (utf8 c) {
      ? 2 : 1;
 }
 
-int ustring_width (const char *s, int tabwidth) {
-  if (s[0] >= ' ' and s[0] <= '~') return 1;
-  if (s[0] is '\t') return tabwidth;
-  return cwidth (ustring_code (s));
+int utf8_width (const char *s, int tabwidth) {
+  if (' ' <= *s and *s] <= '~') return 1;  // common case
+  if (*s is '\t') return tabwidth;
+  return cwidth (utf8_code (s));
 }
 

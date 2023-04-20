@@ -104,7 +104,7 @@ long str_ftime (char *s, long n, const char *f, struct tm *tm) {
         break;
 
       case 'D':
-        s += str_ftime (s, e - s, "%m/%d/%y", tm);
+        s += str_ftime (s, e - s, "%m-%d-%y", tm);
         break;
 
       case 'e':
@@ -112,7 +112,7 @@ long str_ftime (char *s, long n, const char *f, struct tm *tm) {
         break;
 
       case 'F':
-        s += str_ftime (s, e - s, "%Y/%m/%d", tm);
+        s += str_ftime (s, e - s, "%Y-%m-%d", tm);
         break;
 
       case 'H':

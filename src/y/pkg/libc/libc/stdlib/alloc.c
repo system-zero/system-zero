@@ -130,7 +130,7 @@
 #define STRUCT_SIZE   (sizeof (memChunkT))
 #if __WORDSIZE == 64
 #define STRUCT_OFFSET (STRUCT_SIZE - 8)
-#elif
+#else
 #define STRUCT_OFFSET (STRUCT_SIZE - 4)
 #endif
 

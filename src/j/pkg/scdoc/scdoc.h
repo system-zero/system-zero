@@ -35,6 +35,8 @@ typedef struct ScdocParser {
     fmt_col,
     fmt_line;
 
+  utf8 c;
+
   uint32_t
     flags,
     queue[32];

@@ -1,14 +1,14 @@
-// provides: utf8 ustring_to_lower (utf8)
-// provides: utf8 ustring_to_upper (utf8)
-// provides: int ustring_is_lower (utf8)
-// provides: int ustring_is_upper (utf8)
+// provides: utf8 utf8_to_lower (utf8)
+// provides: utf8 utf8_to_upper (utf8)
+// provides: int utf8_is_lower (utf8)
+// provides: int utf8_is_upper (utf8)
 
 /* almost all of this following 'case' code is from the utf8.h project:
  * https://github.com/sheredom/utf8.h.git 
- * This is free and unencumbered software released into the public domain.
+ * This is a free and unencumbered software released into the public domain.
  */
 
-utf8 ustring_to_lower (utf8 cp) {
+utf8 utf8_to_lower (utf8 cp) {
   if (((0x0041 <= cp) && (0x005a >= cp)) ||
       ((0x00c0 <= cp) && (0x00d6 >= cp)) ||
       ((0x00d8 <= cp) && (0x00de >= cp)) ||
@@ -84,7 +84,7 @@ utf8 ustring_to_lower (utf8 cp) {
   return cp;
 }
 
-utf8 ustring_to_upper (utf8 cp) {
+utf8 utf8_to_upper (utf8 cp) {
   if (((0x0061 <= cp) && (0x007a >= cp)) ||
       ((0x00e0 <= cp) && (0x00f6 >= cp)) ||
       ((0x00f8 <= cp) && (0x00fe >= cp)) ||
@@ -160,10 +160,10 @@ utf8 ustring_to_upper (utf8 cp) {
   return cp;
 }
 
-int ustring_is_lower (utf8 chr) {
-  return chr != ustring_to_upper (chr);
+int utf8_is_lower (utf8 chr) {
+  return chr != utf8_to_upper (chr);
 }
 
-int ustring_is_upper (utf8 chr) {
-  return chr != ustring_to_lower (chr);
+int utf8_is_upper (utf8 chr) {
+  return chr != utf8_to_lower (chr);
 }

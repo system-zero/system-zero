@@ -33,16 +33,19 @@ include ("argparse")
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
   LIBCOUTDIR  =  SYSDIR: concat_with ("include/z")
 
-  const string[20] libcdirs = [
+  const string[19] libcdirs = [
     "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
-    "time", "error", "convert", "stringbuf", "ustring", "file", "fs", "dev",
+    "time", "error", "convert", "utf8", "file", "fs", "dev",
     "stdio", "dir", "path", "rtc"]
 
   const
+  metapkg_str    = "MetaPackage",
+  metapkg_len    = metapkg_str: len (),
   provide_str    = " provides: ",
   require_str    = "// requires: ",
   comment_str    = "// comment: ",
   end_str        = "// end",
+  end_len        = end_str: len (),
   as_str         = "// as: "
 
   var me = __file__: basename ()
@@ -209,6 +212,7 @@ include ("argparse")
     exttype
     funname
     depends
+
     init : func (abspath, header, basedir, endidx, exttype, funname) {
       this.abspath = abspath
       this.header  = header
@@ -269,23 +273,24 @@ include ("argparse")
       var f_ext = f: extname (): to_upper (): advance (1)
       var f_hdr = f: basename_without_extname (): to_upper ()
 
+      var lines_len = lines: len ()
       var idx = 0;
       var num_found = 0
 
       if "C" is f_ext {
-        var length = lines: len ()
         var line = lines[idx]
         var sp = line: bytes_in_str (as_str)
+        var is_meta = 0;
 
         ifnot null is sp {
-          sp = sp: advance_after_bytes (as_str, 1)
+          sp := advance_after_bytes (as_str, 1)
 
           ifnot sp: len () then return error (v + "/" + f + ": [as] missing header name")
           f_hdr = sp: to_upper ()
           idx++
         }
 
-        for (var i = idx; i < length; i++) {
+        for (var i = idx; i < lines_len; i++) {
           var line = lines[idx]
           var sp = line: bytes_in_str (provide_str)
 
@@ -296,29 +301,34 @@ include ("argparse")
 
           num_found++
 
-          sp = sp: advance_after_bytes (provide_str, 1)
+          sp := advance_after_bytes (provide_str, 1)
 
           ifnot sp: len () then return error (v + "/" + f + ": missing function signature")
 
-          ifnot num_found - 1 then
-            append format ("\n#ifdef REQUIRE_${f_hdr}\n#ifndef ${f_hdr}_FD\n#define ${f_hdr}_FD\n\n") in funcSigns
+          is_meta = sp: eq_n (metapkg_str, metapkg_len)
 
-          append sp + if sp: eq_n ("#define ", 8) then "\n" orelse ";\n" end in funcSigns
+          ifnot is_meta {
+            ifnot num_found - 1 then
+              append format ("\n#ifdef REQUIRE_${f_hdr}\n#ifndef ${f_hdr}_FD\n#define ${f_hdr}_FD\n\n") in funcSigns
+
+            append sp + if sp: eq_n ("#define ", 8) then "\n" orelse ";\n" end in funcSigns
+          }
 
           idx++
         }
 
-        if num_found then append "\n#endif /* " + f_hdr + "_FD */\n#endif\n" in funcSigns
+        ifnot is_meta then
+          if num_found then append "\n#endif /* " + f_hdr + "_FD */\n#endif\n" in funcSigns
       }
 
       num_found = 0
 
-      for (var i = idx; i < lines: len (); i++) {
+      for (var i = idx; i < lines_len; i++) {
         var line = lines[idx]
         var sp = line: bytes_in_str (require_str)
         break if null is sp
 
-        sp = sp: advance_after_bytes (require_str, 1)
+        sp := advance_after_bytes (require_str, 1)
         var tok = sp: tokenize ("/")
         break if tok: len () < 1
 
@@ -346,16 +356,16 @@ include ("argparse")
 
       if num_found then append "#endif\n\n" in libcHdrs
 
-      for (var i = idx; i < lines: len (); i++) {
+      for (var i = idx; i < lines_len; i++) {
         var line = lines[idx]
         var sp = line: bytes_in_str (comment_str)
         break if null is sp
-        sp = sp: advance_after_bytes (comment_str, 1)
+        sp := advance_after_bytes (comment_str, 1)
         append sp + "\n" in comments
         idx++
       }
 
-      for (var i = idx; i < lines: len (); i++) {
+      for (var i = idx; i < lines_len; i++) {
         break if lines[i]: len ()
         idx++
       }
@@ -371,23 +381,27 @@ include ("argparse")
         append "#ifndef " + f_hdr + "_TD\n#define " + f_hdr + "_TD\n" in libcTypes
         append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcTypes
 
-        for (var i = idx; i < lines: len (); i++) {
-          break if lines[i]: eq_n ("// end", 6)
+        for (var i = idx; i < lines_len; i++) {
+          break if lines[i]: eq_n (end_str, end_len)
           append lines[i] + '\n' in libcTypes
         }
 
         append "\n#endif /* " + f_hdr + "_TD */\n#endif\n" in libcTypes
       } else {
-        append "\n#ifdef REQUIRE_" + f_hdr + "\n" in libcFuns
-        append "#ifndef " + f_hdr + "_F\n#define " + f_hdr + "_F\n" in libcFuns
-        append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcFuns
-        for (var i = idx; i < lines: len (); i++) {
-          break if lines[i]: eq_n ("// end", 6)
-          append lines[i] + '\n' in libcFuns
-        }
 
-        append "\n#endif /* " + f_hdr + "_F */\n" in libcFuns
-        append "#endif\n" in libcFuns
+        if lines_len - idx {
+          append "\n#ifdef REQUIRE_" + f_hdr + "\n" in libcFuns
+          append "#ifndef " + f_hdr + "_F\n#define " + f_hdr + "_F\n" in libcFuns
+          append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcFuns
+
+          for (var i = idx; i < lines_len; i++) {
+            break if lines[i]: eq_n (end_str, end_len)
+            append lines[i] + '\n' in libcFuns
+          }
+
+          append "\n#endif /* " + f_hdr + "_F */\n" in libcFuns
+          append "#endif\n" in libcFuns
+        }
       }
     }
 
@@ -396,13 +410,14 @@ include ("argparse")
 
   for k, v in filelist {
     var lines = v.abspath: filelines ()
+    var lines_len = lines: len ()
     var idx = v.endidx
 
     append "\n#ifdef REQUIRE_" + v.header + "_H\n" in libcTypes
     append "#ifndef " + v.header + "_T\n#define " + v.header + "_T\n" in libcTypes
     append format ("/* ${dotsToLibc}/${v.basedir}/${v.funname} */\n\n") in libcTypes
 
-    for (var i = idx; i < lines: len (); i++) {
+    for (var i = idx; i < lines_len; i++) {
       break if lines[i]: eq_n (end_str, 6)
       append lines[i] + '\n' in libcTypes
     }

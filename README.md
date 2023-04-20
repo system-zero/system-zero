@@ -1541,6 +1541,7 @@ gained consience. Hopefully one day.
 * [Lightweight snprintf implementation.](https://github.com/mirtoto/snprintf)
 * [Mini snprintf.](https://github.com/tatetian/mini-snprintf)
 * [utf8.h.](https://github.com/sheredom/utf8.h)
+* [is_utf8.](https://github.com/JulienPalard/is_utf8)
 * [Libtree: ldd into a tree.](https://github.com/haampie/libtree)
 * [Frexx CPP C Preprocessor.](http://daniel.haxx.se/projects/fcpp)
 * [PCG Random Number Generation for C.](https://github.com/imneme/pcg-c-basic)

@@ -1,6 +1,6 @@
-// provides: char *ustring_character (utf8, char *, int *)
+// provides: char *utf8_character (utf8, char *, int *)
 
-char *ustring_character (utf8 c, char *buf, int *len) {
+char *utf8_character (utf8 c, char *buf, int *len) {
   *len = 1;
 
   if (c < 0x80) {

@@ -1,4 +1,4 @@
-// provides: size_t ustring_validate (unsigned char *, size_t, char **, int *)
+// provides: size_t utf8_validate (unsigned char *, size_t, char **, int *)
 
 /* The following function is from the is_utf8 project at:
    https://github.com/JulienPalard/is_utf8
@@ -59,7 +59,7 @@ SUCH DAMAGE.
   -----------------------------------------------------------------------------
 */
 
-size_t ustring_validate (unsigned char *str, size_t len,  char **message, int *faulty_bytes) {
+size_t utf8_validate (unsigned char *str, size_t len,  char **message, int *faulty_bytes) {
   size_t i = 0;
   *message = NULL;
   *faulty_bytes = 0;

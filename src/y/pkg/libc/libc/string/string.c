@@ -28,7 +28,7 @@
 // requires: string/str_copy.c
 // requires: string/str_byte_copy.c
 // requires: string/str_byte_move.c
-// requires: ustring/ustring_character.c
+// requires: utf8/utf8_character.c
 // requires: stdlib/alloc.c
 // requires: string/vsnprintf.c
 
@@ -239,7 +239,7 @@ string *string_replace_with_fmt (string *this, const char *fmt, ...) {
 string *string_append_utf8 (string *this, int code) {
   char buf[8];
   int len = 0;
-  ustring_character (code, buf, &len);
+  utf8_character (code, buf, &len);
   if (len)
     string_append_with_len (this, buf, len);
   return this;

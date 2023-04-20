@@ -5,7 +5,6 @@
 #define REQUIRE_BYTELEN
 #define REQUIRE_ISDIGIT
 #define REQUIRE_TOUPPER
-
 #define REQUIRE_Z_ENV
 
 #include <libc.h>
@@ -17,6 +16,7 @@ static VALUE _scdoc_parse (la_t *this, VALUE v_input) {
   ifnot (IS_STRING(v_input)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
 
   string *input = AS_STRING(v_input);
+
   ScdocParser s;
   string *r = scdoc_parse (&s, input->bytes, input->num_bytes);
   if (r) return STRING(r);
