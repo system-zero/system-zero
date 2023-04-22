@@ -1,13 +1,26 @@
+/* This revealed the following bug in logic:
+ * When compiling modules that link against libraries that is using the
+ * memory interface from own libc, and when the library allocates an object
+ * (like string *) and returns it to the module, and the module reuses this
+ * object to return back to the caller, the language (that has been compiled
+ * against the standard memory interface from standard libc), it will send 
+ * this chunk of memory to standard free (), that it doesn't know how to handle
+ * it, as there is no compatibility.
+ */
+
+/* so avoid libc functions and duplicate the output string to scdoc_parse()
+ */
 
 #define REQUIRE_STDIO
-#define REQUIRE_ALLOC
+//#define REQUIRE_ALLOC
 #define REQUIRE_STD_MODULE
-#define REQUIRE_BYTELEN
-#define REQUIRE_ISDIGIT
-#define REQUIRE_TOUPPER
-#define REQUIRE_Z_ENV
+//#define REQUIRE_BYTELEN
+//#define REQUIRE_ISDIGIT
+//#define REQUIRE_TOUPPER
+//#define REQUIRE_Z_ENV
 
-#include <libc.h>
+#include <z/cenv.h>
+//#include <libc.h>
 #include <scdoc.h>
 
 MODULE(scdoc);
@@ -19,8 +32,12 @@ static VALUE _scdoc_parse (la_t *this, VALUE v_input) {
 
   ScdocParser s;
   string *r = scdoc_parse (&s, input->bytes, input->num_bytes);
-  if (r) return STRING(r);
-  return NULL_VALUE;
+
+  if (r) r = String.dup (r);
+
+  scdoc_release (&s);
+
+  return (r isnot NULL ? STRING(r) : NULL_VALUE);
 }
 
 public int __init_scdoc_module__ (la_t *this) {

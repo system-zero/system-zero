@@ -34,9 +34,9 @@ include ("argparse")
   LIBCOUTDIR  =  SYSDIR: concat_with ("include/z")
 
   const string[19] libcdirs = [
-    "syscall", "std", "ctype", "signal", "stdlib", "string", "sys", "unistd",
-    "time", "error", "convert", "utf8", "file", "fs", "dev",
-    "stdio", "dir", "path", "rtc"]
+    "syscall", "std", "stdio", "stdlib", "ctype", "signal", "string", "sys",
+    "unistd",  "time", "error", "convert", "utf8", "file", "fs", "dev",
+    "dir", "path", "rtc"]
 
   const
   metapkg_str    = "MetaPackage",

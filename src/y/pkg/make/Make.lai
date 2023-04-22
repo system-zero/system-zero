@@ -56,7 +56,7 @@ func argparseNew () {
   argparse.add ("dump_commands", 0, "dump-commands", "dump commands only", BooleanType, 0)
   argparse.add ("namespace", 0, "namespace=", "namespace (default z)", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("local_spec", 0, "local-spec", "use .local.build and .local_cached.build", BooleanType, 0)
-  argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
+  argparse.add ("no_verbose", 0, "no-verbose", "unset verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
   return argparse
 }
@@ -423,7 +423,7 @@ const ARGPARSE
       if this.cached_file: exists () then
         remove (this.cached_file)
 
-    this.verbose = ARGPARSE.results.verbose
+    this.verbose = if ARGPARSE.results.no_verbose then 0 orelse 1
 
     this.cc           = if ARGPARSE.results.cc           isnot null then ARGPARSE.results.cc  orelse CC
     this.std          = if ARGPARSE.results.std          isnot null then ARGPARSE.results.std orelse STD11
@@ -898,7 +898,7 @@ const ARGPARSE
           }
 
           if notok is copy (v, output; verbose : 2, force : 1) then
-            return this.error ("can not install la library")
+            return this.error ("can not install library")
 
           if null isnot this.script.library.post_exec {
             r = this.script.library.post_exec ()
@@ -2148,7 +2148,7 @@ func make_dependencies (f) {
 
   var pkg = ifnot ARGPARSE.argc then Dir.current () orelse ARGPARSE.argv[0]
 
-  var verbose          = ARGPARSE.results.verbose
+  var verbose          = if ARGPARSE.results.no_verbose then 0 orelse 1
   var DO_ALL           = ARGPARSE.results.all
   var FORCE            = ARGPARSE.results.force
   var RECUR            = ARGPARSE.results.recursive

@@ -1,28 +1,29 @@
-// provides: string *string_append_byte (string *, char)
-// provides: void string_release (string *)
 // provides: void string_clear (string *)
 // provides: void string_clear_at (string *, int)
+// provides: void string_release (string *)
 // provides: string *string_new (size_t)
-// provides: string *string_new_with_len (const char *, size_t)
-// provides: string *string_new_with (const char *)
-// provides: string *string_new_with_fmt (const char *, ...)
-// provides: string *string_insert_at_with_len (string *, int, const char *, size_t)
-// provides: string *string_insert_at_with (string *, int, const char *)
-// provides: string *string_append_byte (string *, char)
-// provides: string *string_insert_byte_at (string *, char, int)
-// provides: string *string_prepend_byte (string *, char)
-// provides: string *string_append_with (string *, const char *)
-// provides: string *string_append_with_len (string *, const char *, size_t)
-// provides: string *string_prepend_with (string *, const char *)
-// provides: string *string_append_with_fmt (string *, const char *, ...)
-// provides: string *string_prepend_with_fmt (string *, const char *, ...)
 // provides: string *string_dup (string *)
+// provides: string *string_trim_end (string *, char)
+// provides: string *string_new_with (const char *)
+// provides: string *string_new_with_len (const char *, size_t)
+// provides: string *string_new_with_fmt (const char *, ...)
+// provides: string *string_insert_at_with (string *, int, const char *)
+// provides: string *string_insert_at_with_len (string *, int, const char *, size_t)
+// provides: string *string_insert_byte_at (string *, char, int)
+// provides: string *string_append_byte (string *, char)
+// provides: string *string_append_with (string *, const char *)
+// provides: string *string_append_with_fmt (string *, const char *, ...)
+// provides: string *string_append_with_len (string *, const char *, size_t)
+// provides: string *string_prepend_byte (string *, char)
+// provides: string *string_prepend_with (string *, const char *)
+// provides: string *string_prepend_with_fmt (string *, const char *, ...)
 // provides: int string_delete_numbytes_at (string *, int, int)
 // provides: string *string_replace_numbytes_at_with (string *, int, int, const char *)
 // provides: string *string_replace_with (string *, const char *)
 // provides: string *string_replace_with_len (string *, const char *, size_t)
 // provides: string *string_replace_with_fmt (string *, const char *, ...)
 // provides: string *string_append_utf8 (string *, int code)
+// provides: string *string_new_with_allocated (const char *, size_t, size_t)
 // requires: string/string.h
 // requires: string/bytelen.c
 // requires: string/str_copy.c
@@ -243,4 +244,27 @@ string *string_append_utf8 (string *this, int code) {
   if (len)
     string_append_with_len (this, buf, len);
   return this;
+}
+
+string *string_trim_end (string *this, char c) {
+  char *sp = this->bytes + this->num_bytes - 1;
+
+  while (1) {
+    if (*sp-- isnot c) break;
+    string_clear_at (this, -1);
+    ifnot (this->num_bytes) break;
+  }
+
+  return this;
+}
+
+string *string_new_with_allocated (const char *allocated, size_t len, size_t size) {
+  if (len >= size) return NULL;
+
+  string *s = Alloc (sizeof (string));
+  s->bytes = (char *) allocated;
+  s->num_bytes = len;
+  s->mem_size = size;
+  s->bytes[len] = '\0';
+  return s;
 }

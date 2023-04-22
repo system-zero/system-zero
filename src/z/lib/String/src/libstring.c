@@ -267,11 +267,15 @@ static string_t *string_trim_end (string_t *this, char c) {
   return this;
 }
 
+// a bit weak interface, as it assumes that size is len + 1
+// it is being used three times in the distribution, usually from modules to
+// send back a string. As long it is being used from modules it's ok,
+// but in libc we require an extra size_t argument.
 static string_t *string_new_with_allocated (const char *allocated, size_t len) {
   string_t *s = Alloc (sizeof (string_t));
   s->bytes = (char *) allocated;
   s->num_bytes = len;
-  s->mem_size = len;
+  s->mem_size = len + 1;
   s->bytes[len] = '\0';
   return s;
 }
@@ -292,13 +296,13 @@ public string_T __init_string__ (void) {
       .insert_at_with = string_insert_at_with,
       .insert_at_with_len  = string_insert_at_with_len,
       .insert_byte_at = string_insert_byte_at,
+      .append_byte = string_append_byte,
       .append_with = string_append_with,
       .append_with_fmt = string_append_with_fmt,
       .append_with_len = string_append_with_len,
-      .append_byte = string_append_byte,
+      .prepend_byte = string_prepend_byte,
       .prepend_with = string_prepend_with,
       .prepend_with_fmt = string_prepend_with_fmt,
-      .prepend_byte = string_prepend_byte,
       .delete_numbytes_at = string_delete_numbytes_at,
       .replace_numbytes_at_with = string_replace_numbytes_at_with,
       .replace_with = string_replace_with,

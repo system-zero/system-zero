@@ -1453,6 +1453,128 @@ Probably this will be a very messy output."
        # verbose : [0|1], year : IntegerType, month : IntegerType,
        # day : IntegerType
 
+  # Below modules are outside the standard interface and require the Make utility
+  # to build.
+
+  # Re Module
+   # IntegerType Re.match (StringType string, StringType pat)
+
+  # Search Module
+   # IntegerType|NullType|ArrayType Search.file (StringType file, StringType pat)
+     # qualifiers
+       # recursive : [0:1]
+       # max_depth : IntegerType
+       # without_filename : StringType
+       # with_line_number : [0:1]
+       # tostdout : [0:1]
+     # this is like grep options
+     # ifnot tostdout, then the returned value is either NULL or an array
+
+  # Uuid Module
+   # StringType Uuid.generate ()
+
+  # Find Module
+   # ArrayType|IntegerType Find.dir (StringType dir, StringType type)
+     # qualifiers
+       # max_depth : IntegerType
+       # append_indicator : [0|1]
+       # show_hidden : [0:1]
+       # long_format : [0:1]
+       # reverse : [0:1]
+       # sort_by_mtime : [0:1]
+       # sort_by_atime : [0:1]
+       # sort_by_ctime : [0:1]
+       # sort_by_size  : [0:1]
+       # tostdout  : [0:1]
+       # realpath  : [0:1]
+       # match_uid : [0:1]
+       # match_gid : [0:1]
+       # only_executables : [0:1]
+
+     # this is like find options plus extensions
+     # ifnot tostdout, then the returned value is either NULL or an array
+
+  # Syncdir Module
+   # IntegerType Sync.dir (StringType src, StringType dest)
+     # qualifiers
+       # verbose : [0|1]
+       # interactive : [0:1]
+       # dryrun : [0:1]
+       # exclude_dirs  : ArrayType
+       # exclude_files : ArrayType
+
+  # Pager Module
+   # ObjectType (pager) Pager.new (ArrayType lines)
+     # qualifiers
+       # first_row  : IntegerType
+       # first_col  : IntegerType
+       # last_row   : IntegerType
+       # last_col   : IntegerType
+       # tabwidth   : IntegerType
+       # has_statusline : [0:1]
+       # term       : ObjectType term
+
+   # ObjectType Pager.new_from_stdin (ArrayType lines)
+     # qualifiers likewise with above
+
+   # IntegerType Pager.main (ObjectType pager)
+
+  # Archive Module
+   # IntegerType Archive.extract.file (StringType file)
+
+  # Par Module
+   # ObjectType (par) Par.new ()
+     # qualifiers
+       # width    : IntegerType
+       # tabwidth : IntegerType
+       # just     : IntegerType
+
+   # IntegerType Par.parse_argv (ObjectType par, ArrayType argv)
+
+   # StringType|IntegerType Par.process (ObjectType par)
+     # qualifiers
+       # tostdout  : [0:1]
+     # ifnot tostdout, then the returned value is either NULL or an array
+
+  # Generate Errno Module
+   # MapType Generate.errno ()
+
+  # Clock Module
+   # IntegerType Clock.settime (IntegerType seconds)
+
+   # ObjectType (rtc) Clock.readhw ()
+
+   # IntegerType Clock.sethw (ObjectType rtc)
+
+  # Dev Module
+   # IntegerType Dev.blksize (StringType device)
+     # qualifiers
+       # print : [0:1]
+
+  # Convert Module
+   # IntegerType Convert.string_to_hexstring (StringType s)
+   # IntegerType Convert.hexstring_to_string (StringType s)
+
+  # System Module
+   # IntegerType System.sleep (IntegerType seconds)
+   # IntegerType System.to.memory ()
+
+  # System Module (appended functions)
+   # IntegerType System.mount (StringType device, StringType mountpoint, StringType fstype)
+     # qualifiers
+       # mount_data : StringType
+       # mount_flags: IntegerType
+       # read_only  : [0|1]
+       # no_exec    : [0|1]
+       # no_dev     : [0|1]
+       # no_suid    : [0|1]
+
+  # Scdoc Module
+   # StringType Scdoc.parse (StringType input)
+
+  # Filetype Module
+   # StringType filetype (StringType file)
+
   (notes on modules):
      - most of them are self explanatory, as they correspond to standard C functions
 

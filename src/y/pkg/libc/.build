@@ -135,6 +135,7 @@ m.set.libc.source ([
   "libc/stdio/stdio.h",
   "libc/stdio/stdio.c",
   "libc/stdlib/alloc.c",
+  "libc/stdlib/alloc.h",
   "libc/stdlib/atoi.c",
   "libc/stdlib/getenv.c",
   "libc/stdlib/qsort.c",

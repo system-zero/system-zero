@@ -8,7 +8,7 @@ ifnot __argc - 1 {
 }
 
 var file = __argv[1]
-var s = filetype (file)
+var s = File.type (file)
 println ("${file}: ${s}")
 
 exit (if s is null then 1 orelse 0)

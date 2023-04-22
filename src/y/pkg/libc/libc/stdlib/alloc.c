@@ -6,6 +6,7 @@
 // provides: int  mem_deinit (void)
 // requires: sys/brk.c
 // requires: stdlib/_exit.c
+// requires: stdlib/alloc.h
 
 /* this pulled from:
    https://github.com/miguelperes/custom-malloc
@@ -384,39 +385,3 @@ uint sys_free (void *ptr) {
   // pthread_mutex_unlock (&lock);
   return 1;
 }
-
-#ifndef WITHOUT_ALLOC_INTERFACE
-  #ifdef Alloc
-  #undef Alloc
-  #endif
-
-  #ifdef Realloc
-  #undef Realloc
-  #endif
-
-  #ifdef Release
-  #undef Release
-  #endif
-
-  #ifdef MemInit
-  #undef MemInit
-  #endif
-
-  #ifdef MemDeinit
-  #undef MemDeinit
-  #endif
-
-  #define Alloc(__sz__) sys_calloc (1, __sz__)
-
-  #define Realloc sys_realloc
-
-  #define Release(__p__) ({    \
-    int r_ = sys_free (__p__); \
-    ifnot (r_) __p__ = NULL;   \
-    r_;                        \
-  })
-
-  #define MemInit mem_init
-  #define MemDeinit mem_deinit
-
-#endif /* WITHOUT_ALLOC_INTERFACE */

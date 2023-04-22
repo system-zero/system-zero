@@ -1,15 +1,15 @@
 #define REQUIRE_STD_MODULE
+#define REQUIRE_Z_ENV
+
 #define REQUIRE_FILE_EXISTS
 #define REQUIRE_FILE_IS_WRITABLE
 #define REQUIRE_BYTELEN
 #define REQUIRE_RENAME
 #define REQUIRE_DIR_IS_DIRECTORY
 #define REQUIRE_PATH_BASENAME
-#define REQUIRE_WRITE
 #define REQUIRE_STR_COPY
 #define REQUIRE_STR_EQ
-#define REQUIRE_ERRNO_STRING
-#define REQUIRE_Z_ENV
+#define REQUIRE_STDIO
 
 #include <libc.h>
 
@@ -31,36 +31,29 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
   size_t fnamelen = AS_STRING(v_fname)->num_bytes;
 
   char *fname = AS_STRING_BYTES(v_fname);
+
   ifnot (file_exists (fname)) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": doesn't exists\n", 17);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: doesn't exists\n", fname);
     return NOTOK_VALUE;
   }
 
   if (dir_is_directory (fname)) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": is a directory\n", 17);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: is a directory\n", fname);
     return NOTOK_VALUE;
   }
 
   ifnot (file_is_writable (fname)) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": is not writable\n", 18);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: is not writable\n", fname);
     return NOTOK_VALUE;
   }
 
   char *basename = path_basename (fname);
   if (NULL is basename) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": can not get the basename\n", 27);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: can not get the basename\n", fname);
     return NOTOK_VALUE;
   }
 
@@ -106,22 +99,12 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
   if (str_eq (fname, new)) return OK_VALUE;
 
   int r = sys_rename (fname, new);
+
   if (verbose) {
-    if (-1 is r) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": ", 2);
-      char *err = errno_string (sys_errno);
-      size_t len = bytelen (err);
-      char errmsg[len+2];
-      str_copy (errmsg, len + 1, err, len);
-      sys_write (STDERR_FILENO, errmsg, len);
-      sys_write (STDERR_FILENO, "\n", 1);
-    } else {
-      sys_write (STDOUT_FILENO, fname, fnamelen);
-      sys_write (STDOUT_FILENO, " -> ", 4);
-      sys_write (STDOUT_FILENO, new, fnamelen);
-      sys_write (STDOUT_FILENO, "\n", 1);
-    }
+    if (-1 is r)
+      sys_fprintf (sys_stderr, "%s: %s\n", fname, errno_string (sys_errno));
+    else
+      sys_fprintf (sys_stderr, "%s -> %s\n", fname, new);
   }
 
   return INT(r);
@@ -135,35 +118,27 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
 
   char *fname = AS_STRING_BYTES(v_fname);
   ifnot (file_exists (fname)) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": doesn't exists\n", 17);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: doesn't exists\n", fname);
     return NOTOK_VALUE;
   }
 
   if (dir_is_directory (fname)) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": is a directory\n", 17);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: is a directory\n", fname);
     return NOTOK_VALUE;
   }
 
   ifnot (file_is_writable (fname)) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": is not writable\n", 18);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: is not writable\n", fname);
     return NOTOK_VALUE;
   }
 
   char *basename = path_basename (fname);
   if (NULL is basename) {
-    if (verbose) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": can not get the basename\n", 27);
-    }
+    if (verbose)
+      sys_fprintf (sys_stderr, "%s: can not get the basename\n", fname);
     return NOTOK_VALUE;
   }
 
@@ -187,21 +162,10 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
 
   int r = sys_rename (fname, new);
   if (verbose) {
-    if (-1 is r) {
-      sys_write (STDERR_FILENO, fname, fnamelen);
-      sys_write (STDERR_FILENO, ": ", 2);
-      char *err = errno_string (sys_errno);
-      size_t len = bytelen (err);
-      char errmsg[len+2];
-      str_copy (errmsg, len + 1, err, len);
-      sys_write (STDERR_FILENO, errmsg, len);
-      sys_write (STDERR_FILENO, "\n", 1);
-    } else {
-      sys_write (STDOUT_FILENO, fname, fnamelen);
-      sys_write (STDOUT_FILENO, " -> ", 4);
-      sys_write (STDOUT_FILENO, new, fnamelen);
-      sys_write (STDOUT_FILENO, "\n", 1);
-    }
+    if (-1 is r)
+      sys_fprintf (sys_stderr, "%s: %s\n", fname, errno_string (sys_errno));
+    else
+      sys_fprintf (sys_stderr, "%s -> %s\n", fname, new);
   }
 
   return INT(r);

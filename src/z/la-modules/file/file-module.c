@@ -18,14 +18,6 @@
 
 MODULE(file)
 
-#define IS_TMPNAME(__v__)({ int _r_ = 0; \
-  if (IS_OBJECT(__v__)) { object *_o_ = AS_OBJECT(__v__); _r_ = Cstring.eq (_o_->name, "TmpnameType");}\
-  _r_;\
-})
-
-#define AS_TMPNAME(__v__)\
-({object *_o_ = AS_OBJECT(__v__); tmpfname_t *_s_ = (tmpfname_t *) AS_OBJECT (_o_->value); _s_;})
-
 static VALUE file_exists (la_t *this, VALUE v_file) {
   ifnot (IS_STRING(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
   char *file = AS_STRING_BYTES(v_file);
@@ -42,6 +34,40 @@ static VALUE file_size (la_t *this, VALUE v_file) {
 
   char *file = AS_STRING_BYTES(v_file);
   return INT(File.size (file));
+}
+
+static VALUE file_read (la_t *this, VALUE v_file) {
+  (void) this;
+
+  char *file;
+  ifnot (IS_STRING(v_file)) {
+    ifnot (IS_TMPNAME(v_file)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string");
+    tmpfname_t *tmp = AS_TMPNAME(v_file);
+    file = tmp->fname->bytes;
+  } else
+    file = AS_STRING_BYTES(v_file);
+
+  size_t size = File.size (file);
+  ifnot (size)
+    return NULL_VALUE;
+
+  int fd = open (file, O_RDONLY);
+  if (fd is -1)
+    return NULL_VALUE;
+
+  char *buf = Alloc (size + 1);
+
+  idx_t nbytes =  IO.fd.read (fd, buf, size);
+
+  close (fd);
+
+  if (NOTOK is nbytes or nbytes isnot (idx_t) size) {
+    free (buf);
+    return NULL_VALUE;
+  }
+
+  string *n = String.new_with_allocated (buf, size);
+  return STRING(n);
 }
 
 static VALUE file_readlink (la_t *this, VALUE v_file) {
@@ -797,6 +823,7 @@ public int __init_file_module__ (la_t *this) {
     { "file_copy",       PTR(file_copy), 2 },
     { "file_stat",       PTR(file_stat), 1 },
     { "file_size",       PTR(file_size), 1 },
+    { "file_read",       PTR(file_read), 1 },
     { "file_lstat",      PTR(file_lstat), 1 },
     { "file_chown",      PTR(file_chown), 3 },
     { "file_chmod",      PTR(file_chmod), 2 },
@@ -855,42 +882,80 @@ public int __init_file_module__ (la_t *this) {
   if (La.def_std (this, "S_IXOTH", INTEGER_TYPE, INT(S_IXOTH), -1)) return LA_NOTOK;
 
   const char evalString[] = EvalString (
-    public var File = {
-      "new"  : file_new,
-      "copy" : file_copy,
-      "stat" : file_stat,
-      "size" : file_size,
-      "lstat" : file_lstat,
-      "chown" : file_chown,
-      "chmod" : file_chmod,
-      "write" : file_write,
-      "append" : file_append,
-      "remove" : file_remove,
-      "exists" : file_exists,
-      "access" : file_access,
-      "mkfifo" : file_mkfifo,
-      "rename" : file_rename,
-      "tmpname" : file_tmpname,
-      "symlink" : file_symlink,
-      "hardlink" : file_hardlink,
-      "readlink" : file_readlink,
-      "is_rwx" : file_is_rwx,
-      "is_reg" : file_is_reg,
-      "is_lnk" : file_is_lnk,
-      "is_fifo" : file_is_fifo,
-      "is_sock" : file_is_sock,
-      "is_readable" : file_is_readable,
-      "is_writable" : file_is_writable,
-      "is_executable" : file_is_executable,
-      "readlines"     : file_readlines,
-      "writelines"    : file_writelines,
-      "read_num_bytes": file_read_num_bytes,
-      "type_to_string" : file_type_to_string,
-      "mode"           : file_mode,
-      "mode_to_string" : file_mode_to_string,
-      "mode_to_octal_string" : file_mode_to_octal_string
-     }
-   );
+    if is_defined ("File") {
+      append file_new in File as "new";
+      append file_copy in File as "copy";
+      append file_stat in File as "stat";
+      append file_read in File as "read";
+      append file_size in File as "size";
+      append file_lstat in File as "lstat";
+      append file_chown in File as "chown";
+      append file_chmod in File as "chmod";
+      append file_write in File as "write";
+      append file_append in File as "append";
+      append file_remove in File as "remove";
+      append file_exists in File as "exists";
+      append file_access in File as "access";
+      append file_mkfifo in File as "mkfifo";
+      append file_rename in File as "rename";
+      append file_tmpname in File as "tmpname";
+      append file_symlink in File as "symlink";
+      append file_hardlink in File as "hardlink";
+      append file_readlink in File as "readlink";
+      append file_is_rwx in File as "is_rwx";
+      append file_is_reg in File as "is_reg";
+      append file_is_lnk in File as "is_lnk";
+      append file_is_fifo in File as "is_fifo";
+      append file_is_sock in File as "is_sock";
+      append file_is_readable in File as "is_readable";
+      append file_is_writable in File as "is_writable";
+      append file_is_executable in File as "is_executable";
+      append file_readlines in File as "readlines";
+      append file_writelines in File as "writelines";
+      append file_read_num_bytes in File as "read_num_bytes";
+      append file_type_to_string in File as "type_to_string";
+      append file_mode in File as "mode";
+      append file_mode_to_string in File as "mode_to_string";
+      append file_mode_to_octal_string in File as "mode_to_octal_string";
+    } else {
+      public var File = {
+        "new"  : file_new,
+        "copy" : file_copy,
+        "stat" : file_stat,
+        "read" : file_read,
+        "size" : file_size,
+        "lstat" : file_lstat,
+        "chown" : file_chown,
+        "chmod" : file_chmod,
+        "write" : file_write,
+        "append" : file_append,
+        "remove" : file_remove,
+        "exists" : file_exists,
+        "access" : file_access,
+        "mkfifo" : file_mkfifo,
+        "rename" : file_rename,
+        "tmpname" : file_tmpname,
+        "symlink" : file_symlink,
+        "hardlink" : file_hardlink,
+        "readlink" : file_readlink,
+        "is_rwx" : file_is_rwx,
+        "is_reg" : file_is_reg,
+        "is_lnk" : file_is_lnk,
+        "is_fifo" : file_is_fifo,
+        "is_sock" : file_is_sock,
+        "is_readable" : file_is_readable,
+        "is_writable" : file_is_writable,
+        "is_executable" : file_is_executable,
+        "readlines"     : file_readlines,
+        "writelines"    : file_writelines,
+        "read_num_bytes": file_read_num_bytes,
+        "type_to_string" : file_type_to_string,
+        "mode"           : file_mode,
+        "mode_to_string" : file_mode_to_string,
+        "mode_to_octal_string" : file_mode_to_octal_string
+      }
+    }
+  );
 
   err = La.eval_string (this, evalString);
   if (err isnot LA_OK) return err;

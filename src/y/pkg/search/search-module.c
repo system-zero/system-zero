@@ -153,11 +153,13 @@ static VALUE search_file (la_t *this, VALUE v_file, VALUE v_pat) {
   ifnot (tostdout)
     args.result = Vstring.new ();
 
-  VALUE retvalue = NULL_VALUE;
+  int retval = 0;
+  VALUE retvalue;
 
   if (Dir.is_directory (file)) {
     if (0 is recursive and max_depth >= 0) {
       fprintf (stderr, "%s: is a directory and recursive hasn't been set\n", file);
+      retval = -1;
       goto theend;
     }
 
@@ -168,26 +170,39 @@ static VALUE search_file (la_t *this, VALUE v_file, VALUE v_pat) {
     dw->user_data = &args;
     dw->depth = max_depth;
     dw->files = &unused;
-    retvalue = INT(Dir.walk.run (dw, file));
+    retval = Dir.walk.run (dw, file);
     dw->files = NULL;
     Dir.walk.release (&dw);
     goto theend;
   }
 
   struct stat st;
-  if (-1 is lstat (file, &st)) return NULL_VALUE;
+  if (-1 is lstat (file, &st)) {
+    retval = -1;
+    goto theend;
+  }
+
   args.st = &st;
   args.file = file;
 
-  retvalue = INT(__search_file (&args));
+  retval = __search_file (&args);
 
 theend:
   Re.release (args.re);
 
   ifnot (tostdout) {
-    array = VSTRING_TO_ARRAY(args.result);
+    ifnot (retval) {
+      array = VSTRING_TO_ARRAY(args.result);
+      retvalue = ARRAY(array);
+    } else
+      retvalue = NULL_VALUE;
+
     Vstring.release (args.result);
-    return ARRAY(array);
+  } else {
+    ifnot (retval)
+      retvalue = OK_VALUE;
+    else
+      retvalue = NOTOK_VALUE;
   }
 
   return retvalue;

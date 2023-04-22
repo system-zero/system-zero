@@ -899,6 +899,21 @@ public la_T *la_get_root (la_t *);
   _read_only;                                                             \
 })
 
+#define IS_TMPNAME(__v__)({                                               \
+  int _r_ = 0;                                                            \
+  if (IS_OBJECT(__v__)) {                                                 \
+    object *_o_ = AS_OBJECT(__v__);                                       \
+    _r_ = Cstring.eq (_o_->name, "TmpnameType");                          \
+  }                                                                       \
+  _r_;                                                                    \
+})
+
+#define AS_TMPNAME(__v__) ({                                              \
+  object *_o_ = AS_OBJECT(__v__);                                         \
+  tmpfname_t *_s_ = (tmpfname_t *) AS_OBJECT (_o_->value);                \
+  _s_;                                                                    \
+})
+
 #endif /* WITHOUT_LA_FUNCTIONS */
 
 #endif /* LA_HDR */

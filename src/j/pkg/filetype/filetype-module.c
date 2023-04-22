@@ -33,6 +33,19 @@ public int __init_filetype_module__ (la_t *this) {
       return err;
   }
 
+  const char evalString[] = EvalString (
+    if is_defined ("File") {
+      append filetype in File as "type";
+    } else {
+      public var File = {
+        type : filetype
+      }
+    }
+  );
+
+  err = La.eval_string (this, evalString);
+  if (err isnot LA_OK) return err;
+
   return LA_OK;
 }
 
