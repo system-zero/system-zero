@@ -34,7 +34,7 @@ var run_development_tests = argparse.results.run_development_tests
 
 var test_num = 0
 
-var integer[256] RESULTS
+var integer[280] RESULTS
 RESULTS[*] = ok
 
 var EXPECTED_TO_FAIL = 1
@@ -1014,7 +1014,7 @@ func self_semantics () {
   func ifyf () return ["3"]
   func ifxf () return "4"
   var ifa = ["1"]
-  var ifb = if true  then ifa orelse ["2"]
+  var ifb = if true then ifa orelse ["2"]
   var ifc = if false then ifa orelse ["2"]
   var ifd = if false then ifa orelse ifyf ()
   var ife = if false then ifa orelse [ifxf ()]
@@ -1057,7 +1057,115 @@ func self_semantics () {
       xa (18) is 9 and
       xar[ifnot false then 0 orelse 1] is 31 and
       xar[if true then 1 orelse 0] is 41 and
-      x_y (if true then 10 orelse 0, 21) is 31)
+      x_y (if true then 10 orelse 0 end, 21) is 31 and
+      x_y ((if true then 10 orelse 0), 21) is 31)
+
+  func tblafun (va) {
+    var n = 0
+    var t = typeof (va)
+    if t is ArrayType then
+      for v in va
+        append (if v: len () then 10 orelse 0) in n
+    orelse
+      n += va
+
+    return n
+  }
+
+  var rtba = tblafun (10)
+  var rtbb = tblafun (["", "a", "b", "c", "", "d"])
+
+  func tblbfun (va) {
+    var n = 0
+    var t = typeof (va)
+    if t is ArrayType
+      if va: typeofArray () is IntegerType
+        for v in va
+          if (v > 2) then
+            append v in n
+          orelse
+            append v / 2 in n
+
+
+    if t is IntegerType
+      if va > 2 then
+        if va > 8 then
+          n += va
+        orelse
+          append va / 2 in n
+      orelse
+        n += 1
+
+    return n
+  }
+
+  var rtbc = tblbfun (10)
+  var rtbd = tblbfun (8)
+  var rtbe = tblbfun (2)
+
+  func tblcfun (va) {
+    var n = 0
+    var t = typeof (va)
+    if t is ArrayType
+      if va: typeofArray () is IntegerType {
+        for v in va
+          if (v > 2) then
+            append v in n
+          orelse
+            append v / 2 in n
+       }
+
+    if t is IntegerType
+      if va > 2 {
+        if va > 8 then
+          n += va
+        orelse
+          append va / 2 in n
+      } else {
+        n += 1
+      }
+
+    return n
+  }
+
+  var rtbf = tblcfun (10)
+  var rtbg = tblcfun (8)
+  var rtbh = tblcfun (2)
+
+  func tbldfun (va) {
+    var n = 0
+    var t = typeof (va)
+
+    if t is ArrayType then
+      for i, v in va
+        append 10 + va[i] + (if v > 2 then 10 orelse 2) in n
+    orelse
+      if t is StringType then
+        append 10 + (if va: len () > 1 then 10 orelse 2) in n
+      orelse
+         append 10 in n
+
+    return n
+  }
+
+  var rtbi = tbldfun ([1, 2, 3])
+  var rtbj = tbldfun (1)
+  var rtbk = tbldfun ("ab")
+  var rtbl = tbldfun ("a")
+
+  assert_true ("testing (not supported) block free form expressions",
+      rtba is 10 and
+      rtbb is 40 and
+      rtbc is 10 and
+      rtbd is 4  and
+      rtbe is 1  and
+      rtbf is 10 and
+      rtbg is 4  and
+      rtbh is 1  and
+      rtbi is 50 and
+      rtbj is 10 and
+      rtbk is 20 and
+      rtbl is 12)
 
   var str_iter = "κοάξasd"
   var sum_i = 0

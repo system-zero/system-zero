@@ -3,6 +3,6 @@ include ("./Make")
 var argv = ["all", "make"]
 
 for i, v in __argv
-  if v is "-v" or v is "--verbose" or v is "-f" then append v in argv
+  if v is "-f" or v is "--force" then append v in argv
 
 exit (if ok is Make (argv) then 0 orelse 1)

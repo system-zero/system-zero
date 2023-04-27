@@ -384,6 +384,8 @@ struct la_t {
     exprList,
     conditionState;
 
+  int consumed_ws;
+
   size_t anon_id;
 
   string
@@ -558,10 +560,16 @@ do {                                                        \
 #define PEEK_NTH_BYTE(_n_) la_peek_nth_byte (this, _n_)
 #define PEEK_NTH_BYTE_NOWS_NONL(_n_) la_peek_nth_byte_nows_nonl (this, _n_)
 #define PEEK_NTH_BYTE_NOWS_INLINE(_n_) la_peek_nth_byte_nows_inline (this, _n_)
+#define PEEK_NUM_WS() la_peek_num_ws(this)
 #define NEXT_BYTE_NOWS_NONL() la_next_byte_nows_nonl (this)
 #define NEXT_BYTE_NOWS() la_next_byte_nows (this)
 #define IS_NEXT_BYTE( _c_) (*GETSTRPTR(PARSEPTR) == _c_)
 #define ISNOT_NEXT_BYTE( _c_) (*GETSTRPTR(PARSEPTR) != _c_)
+
+#define IGNORE_NEXT_NUM_BYTES(_n_) do {           \
+  SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + _n_); \
+  SETSTRLEN(PARSEPTR, GETSTRLEN(PARSEPTR) - _n_); \
+} while (0)
 
 #define IGNORE_NEXT_BYTE do {                   \
   SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + 1); \
@@ -905,16 +913,28 @@ static int la_get_byte (la_t *this) {
   return c;
 }
 
+static int la_peek_num_ws (la_t *this) {
+  int n = 0;
+  const char *ptr = GETSTRPTR(PARSEPTR);
+  while (is_space (*ptr++)) n++;
+  return n;
+}
+
 static int la_ignore_ws (la_t *this) {
   int c;
+
+  this->consumed_ws = 0;
 
   for (;;) {
     c = GET_BYTE();
 
     if (is_space (c)) {
       RESET_TOKEN;
-    } else
-      break;
+      this->consumed_ws++;
+      continue;
+    }
+
+    break;
   }
 
   return c;
@@ -7513,8 +7533,9 @@ static int la_parse_stmt (la_t *this) {
 
       int is_const = symbol->is_const;
       if (is_const)
-          THROW_SYNTAX_ERR_IFNOT(symbol->value.type is NULL_TYPE,
-            "can not reassign a value to a constant declared symbol");
+          THROW_SYNTAX_ERR_FMT_IFNOT(symbol->value.type is NULL_TYPE,
+            "%s: can not reassign a value to a constant declared symbol",
+             cur_msg_str (this, name));
 
       if (token is TOKEN_REASSIGN) {
         symbol->value.sym = NULL; // let the function to handle resources
@@ -7944,7 +7965,12 @@ static int la_parse_block (la_t *this, const char *descr) {
 
   THROW_SYNTAX_ERR_FMT_IF(TOKEN is TOKEN_EOF, "unended %s block", descr);
 
-  if (TOKEN is TOKEN_NL) NEXT_TOKEN();
+  int leading_ws = 0;
+
+  if (TOKEN is TOKEN_NL) {
+    leading_ws = PEEK_NUM_WS();
+    NEXT_TOKEN();
+  }
 
   THROW_SYNTAX_ERR_FMT_IF(TOKEN is TOKEN_NL, "%s: expecting a block, found two consecutive new lines", descr);
 
@@ -7953,6 +7979,7 @@ static int la_parse_block (la_t *this, const char *descr) {
   int c = 0;
   int prev_c;
   char str_tok = 0;
+  int num_block = 1;
 
   while (1) {
     prev_c = c;
@@ -7985,7 +8012,33 @@ static int la_parse_block (la_t *this, const char *descr) {
           continue;
         break;
 
-      case TOKEN_NL:
+      case TOKEN_BLOCK_OPEN:
+        if (parens or in_str)
+          continue;
+        num_block++;
+        continue;
+
+      case TOKEN_BLOCK_CLOS:
+        if (parens or in_str)
+          continue;
+
+        num_block--;
+        ifnot (num_block)
+         break;
+
+        continue;
+
+      case TOKEN_NL: {
+          int n = PEEK_NUM_WS();
+          if (leading_ws and n >= leading_ws)
+            continue;
+
+          if (TOKEN_BLOCK_CLOS is *(GETSTRPTR(PARSEPTR) + n)) {
+            GET_BYTE();
+            continue;
+          }
+        }
+
         UNGET_BYTE();
 
       case TOKEN_EOF:
@@ -8032,7 +8085,7 @@ static int la_consume_ifelse (la_t *this) {
   return LA_OK;
 }
 
-static int la_consume_iforelse (la_t *this, int break_at_orelse) {
+static int la_consume_iforelse (la_t *this, int break_at_orelse, int leading_ws) {
   int levels = 1;
   this->curState |= CONSUME_STATE;
 
@@ -8047,17 +8100,33 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
     switch (TOKEN) {
       case TOKEN_COLON:
         ifnot (this->curState & INDEX_STATE)
-          break;
+          continue;
+
+      // fall through
+      case TOKEN_NL:
+        if (leading_ws) {  // we play with fire here
+          int n = PEEK_NUM_WS();
+
+          if (TOKEN_NL is *(GETSTRPTR(PARSEPTR) + (n + 1)))
+            goto theend;
+
+          if (n >= leading_ws) {
+            IGNORE_NEXT_NUM_BYTES(n);
+            continue;
+          }
+
+          goto theend;
+        }
 
       // fall through
       case TOKEN_SEMICOLON:
-      case TOKEN_NL:
-        if (paren_open) break;
+        if (paren_open)
+          continue;
 
       // fall through
       case TOKEN_EOF:
         if (this->funcState & CHAIN_STATE)
-          break;
+          continue;
         goto theend;
 
       case TOKEN_END:
@@ -8068,40 +8137,37 @@ static int la_consume_iforelse (la_t *this, int break_at_orelse) {
       case TOKEN_ORELSE:
         if (break_at_orelse)
           if (levels is 1) goto theend;
-        break;
+        continue;
 
       case TOKEN_THEN:
         levels++;
         NEXT_TOKEN();
-        while (TOKEN is TOKEN_NL) NEXT_TOKEN();
+        if (TOKEN is TOKEN_NL) NEXT_TOKEN();
         goto check;
 
       case TOKEN_PAREN_OPEN:
         paren_open++;
-        break;
+        continue;
 
       case TOKEN_PAREN_CLOS:
         ifnot (paren_open) {
           ifnot (index_open) goto theend;
-          break;
+          continue;
         }
 
         paren_open--;
-        break;
-
-      case TOKEN_COMMA:
-        ifnot (paren_open + index_open) goto theend;
-        break;
+        continue;
 
       case TOKEN_INDEX_OPEN:
         index_open++;
-        break;
+        continue;
 
       case TOKEN_INDEX_CLOS:
         ifnot (index_open) goto theend;
         index_open--;
-        break;
+        continue;
     }
+
   }
 
 theend:
@@ -8117,7 +8183,14 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
 
   this->curState |= MALLOCED_STRING_STATE;
   NEXT_TOKEN();
-  while (TOKEN is TOKEN_NL) NEXT_TOKEN();
+
+  int leading_ws = 0;
+
+  if (TOKEN is TOKEN_NL) {
+    NEXT_TOKEN();
+    leading_ws = this->consumed_ws;
+  }
+
   this->curState &= ~MALLOCED_STRING_STATE;
 
   THROW_SYNTAX_ERR_IF(TOKEN is TOKEN_EOF, "unended if/orelse");
@@ -8126,8 +8199,11 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
     if (TOKEN is TOKEN_ORELSE)
       return la_parse_iforelse (this, 1, vp);
 
-    err = la_consume_iforelse (this, 1);
+    err = la_consume_iforelse (this, 1, leading_ws);
     THROW_ERR_IF_ERR(err);
+
+    if (TOKEN is TOKEN_NL and PEEK_NTH_TOKEN(0) is TOKEN_ORELSE)
+      NEXT_TOKEN();
 
     if (TOKEN is TOKEN_ORELSE)
       return la_parse_iforelse (this, 1, vp);
@@ -8174,8 +8250,7 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
   }
 
   if (TOKEN isnot TOKEN_NL and
-      TOKEN isnot TOKEN_SEMICOLON and
-      TOKEN isnot TOKEN_EOF) {
+      TOKEN isnot TOKEN_SEMICOLON and TOKEN isnot TOKEN_EOF) {
     if (TOKEN is TOKEN_ORELSE) {
       goto consume;
 
@@ -8186,9 +8261,6 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
        (TOKEN is TOKEN_COLON and this->curState is INDEX_STATE)) {
       goto theend;
 
-    } else if (TOKEN is TOKEN_END) {
-      NEXT_TOKEN();
-      goto theend;
     } else {
       THROW_SYNTAX_ERR("awaiting a new line or ;");
     }
@@ -8201,8 +8273,11 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
     }
 
     if (p0 is TOKEN_NL)
-      if (PEEK_NTH_TOKEN(1) is TOKEN_ORELSE)
+      if (PEEK_NTH_TOKEN(1) is TOKEN_ORELSE) {
+        NEXT_TOKEN();
+        NEXT_TOKEN();
         goto consume;
+      }
   }
 
   save = SAVE_TOKENSTATE();
@@ -8224,11 +8299,17 @@ static int la_parse_iforelse (la_t *this, int cond, VALUE *vp) {
 
     NEXT_TOKEN();
 
-    while (TOKEN is TOKEN_NL) NEXT_TOKEN();
+    if (TOKEN is TOKEN_NL) NEXT_TOKEN();
 
-    int lerr = la_consume_iforelse (this, 0);
+    int lerr = la_consume_iforelse (this, 0, leading_ws);
 
     THROW_ERR_IF_ERR(lerr);
+
+    // if (lerr > 1) {
+    //   lerr = la_consume_iforelse (this, 0, leading_ws);
+
+    //   THROW_ERR_IF_ERR(lerr);
+    // }
 
     save = SAVE_TOKENSTATE();
 
@@ -8796,7 +8877,7 @@ static int la_parse_foreach (la_t *this) {
       break;
 
     default:
-      THROW_A_TYPE_MISMATCH(type, "map or array or string or list: illegal foreach type");
+      THROW_A_TYPE_MISMATCH(type, "awaiting a map or an array or a string or a list: illegal foreach type");
   }
 
   err = la_parse_block (this, "for each");

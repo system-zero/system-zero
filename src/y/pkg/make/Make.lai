@@ -380,7 +380,8 @@ const ARGPARSE
   change_to_build_directory : func {
     return ok if null is this.builddir
     this.retval = this.builddir: change ()
-    if notok is this.retval then println (errno_string (errno))
+    if notok is this.retval
+       println (errno_string (errno))
     return this.retval
   }
 
@@ -409,18 +410,20 @@ const ARGPARSE
       this.static.executable.make = true
     }
 
-    if ARGPARSE.results.shared_module or ARGPARSE.results.shared_executable then
+    if ARGPARSE.results.shared_module or ARGPARSE.results.shared_executable
       this.shared.library.make = true
 
-    if ARGPARSE.results.static_executable then
+    if ARGPARSE.results.static_executable
       this.static.library.make = true
 
-    if this.shared.library.make or this.static.library.make then this.header.install = true
+    if this.shared.library.make or this.static.library.make
+      this.header.install = true
 
-    ifnot null is ARGPARSE.results.version then this.version = ARGPARSE.results.version
+    ifnot null is ARGPARSE.results.version
+      this.version = ARGPARSE.results.version
 
-    if ARGPARSE.results.remove_cache then
-      if this.cached_file: exists () then
+    if ARGPARSE.results.remove_cache
+      if this.cached_file: exists ()
         remove (this.cached_file)
 
     this.verbose = if ARGPARSE.results.no_verbose then 0 orelse 1
@@ -433,19 +436,27 @@ const ARGPARSE
     this.debug        = if ARGPARSE.results.no_debug     then NODEBUG orelse DEBUG
     this.rpath        = if ARGPARSE.results.no_rpath     then NORPATH orelse RPATH
 
-    if this.script.executable.install is false and ARGPARSE.results.all then this.script.executable.install = true
-    if this.script.library.install is false and ARGPARSE.results.all then this.script.library.install = true
+    if this.script.executable.install is false and ARGPARSE.results.all
+      this.script.executable.install = true
 
-    if ARGPARSE.results.libdir  isnot null then this.set.libdir  (ARGPARSE.results.libdir)
-    if ARGPARSE.results.incdir  isnot null then this.set.incdir  (ARGPARSE.results.incdir)
-    if ARGPARSE.results.bindir  isnot null then this.set.bindir  (ARGPARSE.results.bindir)
-    if ARGPARSE.results.moddir  isnot null then this.set.moddir  (ARGPARSE.results.moddir)
+    if this.script.library.install is false and ARGPARSE.results.all
+      this.script.library.install = true
+
+    if ARGPARSE.results.libdir  isnot null
+      this.set.libdir  (ARGPARSE.results.libdir)
+    if ARGPARSE.results.incdir  isnot null
+      this.set.incdir  (ARGPARSE.results.incdir)
+    if ARGPARSE.results.bindir  isnot null
+      this.set.bindir  (ARGPARSE.results.bindir)
+    if ARGPARSE.results.moddir  isnot null
+      this.set.moddir  (ARGPARSE.results.moddir)
     if ARGPARSE.results.datadir isnot null {
       this.set.datadir (ARGPARSE.results.datadir)
       this.set.shelldatadir (ARGPARSE.results.datadir: concat_with (SHELL + "/commands"))
     }
 
-    if ARGPARSE.results.dump_commands is true then this.set.dump_commands (true)
+    if ARGPARSE.results.dump_commands is true
+      this.set.dump_commands (true)
 
     if ARGPARSE.results.local_spec is true {
       this.specname = LOCAL_SPECNAME
@@ -457,18 +468,26 @@ const ARGPARSE
 
     return ifnot ARGPARSE.results.force
 
-    if ARGPARSE.results.shared or ARGPARSE.results.shared_library    or ARGPARSE.results.all then this.shared.library.force = true
-    if ARGPARSE.results.shared or ARGPARSE.results.shared_module     or ARGPARSE.results.all then this.shared.module.force = true
-    if ARGPARSE.results.shared or ARGPARSE.results.shared_executable or ARGPARSE.results.all then this.shared.executable.force = true
-    if ARGPARSE.results.static or ARGPARSE.results.static_library    or ARGPARSE.results.all then this.static.library.force = true
-    if ARGPARSE.results.static or ARGPARSE.results.static_executable or ARGPARSE.results.all then this.static.executable.force = true
-    if ARGPARSE.results.shared_library or ARGPARSE.results.static_library or ARGPARSE.results.install_header or ARGPARSE.results.all then this.header.force = true
-    if ARGPARSE.results.all    or ARGPARSE.results.install_script_exec then this.script.executable.force = true
-    if ARGPARSE.results.all    or ARGPARSE.results.install_script_lib  then this.script.library.force = true
+    if ARGPARSE.results.shared or ARGPARSE.results.shared_library    or ARGPARSE.results.all
+      this.shared.library.force = true
+    if ARGPARSE.results.shared or ARGPARSE.results.shared_module     or ARGPARSE.results.all
+      this.shared.module.force = true
+    if ARGPARSE.results.shared or ARGPARSE.results.shared_executable or ARGPARSE.results.all
+      this.shared.executable.force = true
+    if ARGPARSE.results.static or ARGPARSE.results.static_library    or ARGPARSE.results.all
+      this.static.library.force = true
+    if ARGPARSE.results.static or ARGPARSE.results.static_executable or ARGPARSE.results.all
+      this.static.executable.force = true
+    if ARGPARSE.results.shared_library or ARGPARSE.results.static_library or ARGPARSE.results.install_header or ARGPARSE.results.all
+      this.header.force = true
+    if ARGPARSE.results.all or ARGPARSE.results.install_script_exec
+      this.script.executable.force = true
+    if ARGPARSE.results.all or ARGPARSE.results.install_script_lib
+      this.script.library.force = true
   }
 
   record : func (sources) {
-    if this.recorded is null then this.recorded = {}
+    if this.recorded is null this.recorded = {}
 
     for v in sources {
       continue if key_exists (this.recorded, v)
@@ -502,11 +521,11 @@ const ARGPARSE
     return true if force
 
     var type = target: typeof ()
-    if type is ArrayType or type is ListType {
-      for v in target return true ifnot v: exists ()
-    } else {
+    if type is ArrayType or type is ListType then
+      for v in target
+        return true ifnot v: exists ()
+    orelse
       return true ifnot target: exists ()
-    }
 
     return true ifnot this.cached_file: exists ()
 
@@ -538,20 +557,20 @@ const ARGPARSE
     ifnot targetdir: exists () then mkdir (targetdir, 0700)
     ifnot targetdir: isdirectory () then return this.error (targetdir + ": not a directory")
 
-    ifnot this.verbose then
-      ifnot this.dump_commands then
+    ifnot this.verbose
+      ifnot this.dump_commands
         println ("  install data")
 
     var args = exec: concat_with ("args")
-    if args: exists () then
+    if args: exists ()
       return notok if notok is copy (args, targetdir; verbose : this.verbose + 1, force : 1)
 
     var flags = exec: concat_with ("flags")
-    if flags: exists () then
+    if flags: exists ()
       copy (flags, targetdir; verbose : this.verbose + 1, force : 1)
 
     var literal_args = exec: concat_with ("literal_args")
-    if literal_args: exists () then
+    if literal_args: exists ()
       return notok if notok is copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
   }
 
@@ -638,37 +657,39 @@ const ARGPARSE
 
   append_value : func (v, l) {
     return if null is v
+
     var t = v: typeof ()
+
     if t is ArrayType then
-      for f in v append f in l
+      for f in v
+        append f in l
     orelse
-      if t is StringType then append v in l
+      if t is StringType then
+        append v in l
   }
 
   append_linkagainst_value : func (v, l) {
     return if null is v
+
     var append_version = qualifier_exists ("append_version")
     var t = v: typeof ()
 
-    if t is ArrayType {
-      for f in v append "-l" + f + if append_version then "-" + this.version orelse "" end in l
-    } else {
-      if t is StringType {
-        append "-l" + v + if append_version then "-" + this.version orelse "" end in l
-      } else {
-        println (stderr, "append_linkagainst_value: ${typeAsString (v) is not a valid type")
-      }
-    }
+    if t is ArrayType then
+      for f in v append "-l" + f + (if append_version then "-" + this.version orelse "") in l
+    orelse
+      if t is StringType then
+        append "-l" + v + (if append_version then "-" + this.version orelse "") in l
+      orelse
+         println (stderr, "append_linkagainst_value: ${typeAsString (v) is not a valid type")
   }
 
   make_objects_build_dir : func {
     ifnot "build": exists () then mkdir ("build", 0700)
-    ifnot "build": isdirectory () {
+    ifnot "build": isdirectory ()
       if false is this.dump_commands {
         println ("build: is not a directory")
         return notok
       }
-    }
 
     return ok
   }
@@ -683,12 +704,11 @@ const ARGPARSE
       return ok if null is this.header.sources
 
       ifnot this.incdir: exists () then mkdir (this.incdir, 0755; verbose : this.verbose + 1)
-      ifnot this.incdir: isdirectory () {
+      ifnot this.incdir: isdirectory ()
         if false is this.dump_commands {
           println ("${this.incdir}: is not a directory")
           return notok
         }
-      }
 
       var to = this.incdir: concat_with (this.header.sources);
 
@@ -884,7 +904,8 @@ const ARGPARSE
         var idx = 0
 
         for v in sources {
-          ifnot v: exists () then return this.error (v + " source doesn't exists")
+          ifnot v: exists ()
+            return this.error (v + " source doesn't exists")
 
           var output = targets[idx++]
 
@@ -929,12 +950,11 @@ const ARGPARSE
            this.shared.library.compile_type > COMPILE_ASSEMBLE
 
         ifnot this.libdir: exists () then mkdir (this.libdir, 0755; verbose : this.verbose + 1)
-        ifnot this.libdir: isdirectory () {
+        ifnot this.libdir: isdirectory ()
           if false is this.dump_commands {
             println ("${this.libdir}: is not a directory")
             return notok
           }
-        }
 
         if this.shared.library.compile_type is COMPILE_ASSEMBLE then
           return this.compile.shared.library.objects ()
@@ -951,7 +971,6 @@ const ARGPARSE
         } 
 
         var com = this.cc + " -std=" + this.std
-
         append " " + this.march        in com
         append " " + this.optimization in com
 
@@ -964,7 +983,9 @@ const ARGPARSE
         append " -shared -fPIC" in com
         append " -o " + output  in com
 
-        for v in this.shared.library.sources if v isnot null then append " " + v in com
+        for v in this.shared.library.sources
+          if v isnot null then
+            append " " + v in com
 
         if this.dump_commands {
           println ("# making the shared library")
@@ -972,19 +993,24 @@ const ARGPARSE
           return ok
         }
 
-        if this.verbose then println (com) orelse println ("  making the shared library")
+        if this.verbose then
+          println (com)
+        orelse
+          println ("  making the shared library")
 
         r = this.sh: exec (com)
 
         var to = this.libdir: concat_with ("lib" + this.libname + ".so")
+
         if ok is r then
           symlink (this.liboutput + ".so", to; verbose : this.verbose + 1, force : 1)
 
         this.shared.library.make = false
 
-        if r is notok then println (" \e[31mfailed\e[m") orelse
+        if r is notok then
+          println (" \e[31mfailed\e[m")
+        orelse
           ifnot this.verbose then println ("  \e[32mdone\e[m")
-
 
         if r is ok and null isnot this.shared.library.post_exec {
           r = this.shared.library.post_exec ()
@@ -992,7 +1018,7 @@ const ARGPARSE
           return ok if r > ok
         } 
 
-        return this.endbuild (if r isnot ok then notok orelse ok end)
+        return this.endbuild (if r isnot ok then notok orelse ok)
       }
 
       executable : func {
@@ -1003,12 +1029,12 @@ const ARGPARSE
         return ok if false is this.shared.executable.make
 
         ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
-        ifnot this.bindir: isdirectory () {
+
+        ifnot this.bindir: isdirectory ()
           if false is this.dump_commands {
             println ("${this.bindir}: is not a directory")
             return notok
           }
-        }
 
         var output = this.bindir: concat_with (this.shared.executable.output + "-shared")
 
@@ -1051,7 +1077,6 @@ const ARGPARSE
 
         if ok is r {
           symlink (this.shared.executable.output + "-shared", to; verbose : this.verbose + 1, force : 1)
-
           if this.shared.executable.completion is true then
             this.install_data (this.shared.executable.output)
         }
@@ -1982,8 +2007,10 @@ func make_dependencies (f) {
     }
 
     var file =
-      if p: isdirectory () then p: concat_with (CUR_SPECNAME): realpath ()
-      orelse p: realpath ()
+      if p: isdirectory () then
+        p: concat_with (CUR_SPECNAME): realpath ()
+      orelse
+        p: realpath ()
 
     ifnot file: exists () {
       file =
