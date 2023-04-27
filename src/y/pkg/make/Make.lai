@@ -89,6 +89,7 @@ const Z                 = "z"
 const Y                 = "y"
 const J                 = "j"
 const D                 = "d"
+const L                 = "l"
 const CC                = "gcc"
 const STD11             = "c11"
 const STD99             = "c99"
@@ -105,12 +106,17 @@ const ZSRCDIR           = SRCDIR:  concat_with (Z)
 const YSRCDIR           = SRCDIR:  concat_with (Y)
 const JSRCDIR           = SRCDIR:  concat_with (J)
 const DSRCDIR           = SRCDIR:  concat_with (D)
+const LSRCDIR           = SRCDIR:  concat_with (L)
+println (LSRCDIR)
 const ZSRCLIBDIR        = ZSRCDIR: concat_with ("lib")
 const ZSRCAPPDIR        = ZSRCDIR: concat_with ("app")
 const ZSRCMODDIR        = ZSRCDIR: concat_with ("la-modules")
 const YSRCPKGDIR        = YSRCDIR: concat_with ("pkg")
 const JSRCPKGDIR        = JSRCDIR: concat_with ("pkg")
 const DSRCPKGDIR        = DSRCDIR: concat_with ("pkg")
+const LSRCPKGDIR        = LSRCDIR: concat_with ("pkg")
+println (LSRCPKGDIR)
+
 const LIBDIR            = SYSDIR:  concat_with ("lib")
 const BINDIR            = SYSDIR:  concat_with ("bin")
 const INCDIR            = SYSDIR:  concat_with ("include")
@@ -1344,7 +1350,7 @@ const ARGPARSE
 
       include ("Generate.libc")
 
-      r = generate_libc (2, ["", if this.verbose then "--verbose" orelse "",
+      r = generate_libc (2, ["", (if this.verbose then "--verbose" orelse ""),
          "--outputDir=" + this.libc.output: dirname ()]);
 
       if r is notok return this.error ("failed to generate libc")
@@ -1967,12 +1973,15 @@ func make_dependencies (f) {
       ifnot n: exists () {
         n = DSRCPKGDIR: concat_with (d)
         ifnot n: exists () {
-          n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+          n = LSRCPKGDIR: concat_with (d)
           ifnot n: exists () {
-            n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
-            if 0 is n: exists () or ARGPARSE.results.shared_module {
-              n = ZSRCMODDIR: concat_with (d)
-              return null ifnot n: exists ()
+            n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+            ifnot n: exists () {
+              n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
+              if 0 is n: exists () or ARGPARSE.results.shared_module {
+                n = ZSRCMODDIR: concat_with (d)
+                return null ifnot n: exists ()
+              }
             }
           }
         }
@@ -1991,12 +2000,15 @@ func make_dependencies (f) {
         ifnot n: exists () {
           n = DSRCPKGDIR: concat_with (d)
           ifnot n: exists () {
-            n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+            n = LSRCPKGDIR: concat_with (d)
             ifnot n: exists () {
-              n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
-              if 0 is n: exists () or ARGPARSE.results.shared_module {
-                n = ZSRCMODDIR: concat_with (d)
-                return null ifnot n: exists ()
+              n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+              ifnot n: exists () {
+                n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
+                if 0 is n: exists () or ARGPARSE.results.shared_module {
+                  n = ZSRCMODDIR: concat_with (d)
+                  return null ifnot n: exists ()
+                }
               }
             }
           }

@@ -17,7 +17,9 @@ typedef struct _FILE {
   int   in_buflen;
   char *in_buf;
   int   in_cur;
+  int   in_prevbyte;
 
+  void *user_data;
 } FILE;
 
 FILE *sys_stdin;

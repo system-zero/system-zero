@@ -25,7 +25,7 @@ typedef	int word;		/* "word" used for optimal copy speed */
  * (the portable versions of) bcopy, memcpy, and memmove.
  */
 
-void *mem_cppy (void *dst0, const void *src0, size_t length) {
+void *mem_copy (void *dst0, const void *src0, size_t length) {
 	char *dst = dst0;
 	const char *src = src0;
 	size_t t;

@@ -1,9 +1,14 @@
 // provides: FILE *sys_fopen (const char *, const char *)
 // provides: int sys_fprintf (FILE *, const char *, ...)
+// provides: int sys_vfprintf (FILE *, const char *, va_list)
 // provides: int sys_fclose  (FILE *)
 // provides: int sys_fflush  (FILE *)
+// provides: int sys_fgetc (FILE *)
+// provides: int sys_ungetc (int, FILE *)
 // provides: size_t sys_fwrite (const void *, size_t, size_t, FILE *)
 // provides: size_t sys_fread (void *, size_t, size_t, FILE *)
+// provides: FILE *sys_init_file (int, int)
+// provides: FILE *sys_fdopen (int, const char *)
 // provides: int fileptr_init_output (FILE *, size_t)
 // provides: int fileptr_init_input  (FILE *, size_t)
 // requires: stdio/stdio.h
@@ -24,53 +29,64 @@ static char
    _obuf[BUFSIZ],
    _ebuf[BUFSIZ];
 
-static FILE _stdin  = {0,      0,      0, 0,  NULL, BUFSIZ, 0, _ibuf, 0};
-static FILE _stdout = {1, _IOLBF, BUFSIZ, 0, _obuf,      0, 0,  NULL, 0};
-static FILE _stderr = {2, _IONBF, BUFSIZ, 0, _ebuf,      0, 0,  NULL, 0};
+static FILE _stdin  = {0,      0,      0, 0,  NULL, BUFSIZ, 0, _ibuf, 0, 0, 0};
+static FILE _stdout = {1, _IOLBF, BUFSIZ, 0, _obuf,      0, 0,  NULL, 0, 0, 0};
+static FILE _stderr = {2, _IONBF, BUFSIZ, 0, _ebuf,      0, 0,  NULL, 0, 0, 0};
 
 FILE *sys_stdin  = &_stdin;
 FILE *sys_stdout = &_stdout;
 FILE *sys_stderr = &_stderr;
 
-FILE *sys_fopen (const char *path, const char *mode) {
-  FILE *fp;
+static int sys_file_parse_mode (const char *mode) {
   int flags = 0;
 
   switch (*mode) {
     case 'w': flags |= O_WRONLY|O_CREAT|O_TRUNC; break;
     case 'a': flags |= O_WRONLY|O_CREAT|O_APPEND; break;
     case 'r': flags |= O_RDONLY; break;
-
     default:
       sys_errno = EINVAL;
-      return NULL;
+      return -1;
   }
 
   switch (*(mode + 1)) {
     case '\0': break;
     case '+' : flags |= O_RDWR; break;
-
     default:
       sys_errno = EINVAL;
-      return NULL;
+      return -1;
   }
 
-  fp = Alloc (sizeof (FILE));
+  return flags;
+}
 
-  mem_set(fp, 0, sizeof (FILE)); // zero everything
-
-  int modebits = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH; // man fopen
-
-  fp->fd = sys_open3 (path, flags, modebits);
-
-  if (fp->fd < 0) {
-    Release(fp);
+FILE *sys_init_file (int fd, int buftype) {
+  if (fd < 0) {
+    sys_errno = EBADF;
     return NULL;
   }
 
-  fp->bufferingType = _IOFBF;
+  FILE *fp = Alloc (sizeof (FILE));
+  mem_set(fp, 0, sizeof (FILE));
 
+  fp->fd = fd;
+  fp->bufferingType = buftype;
   return fp;
+}
+
+FILE *sys_fopen (const char *path, const char *mode) {
+  int flags = sys_file_parse_mode (mode);
+
+  if (-1 is flags) return NULL;
+
+  int modebits = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH; // man fopen
+
+  int fd = sys_open3 (path, flags, modebits);
+
+  if (fd < 0)
+    return NULL; // let this specific sys_errno and not EBADF from init_file()
+
+  return sys_init_file (fd, _IOFBF);
 }
 
 int sys_fflush (FILE *fp) {
@@ -87,14 +103,21 @@ int sys_fflush (FILE *fp) {
 }
 
 int sys_fclose (FILE *fp) {
+  FILE *fpa = sys_fopen ("/tmp/fclose", "w");
+sys_fprintf(fpa, "ok-\n");
   sys_fflush (fp); // flush first anything in buffer
 
+sys_fprintf(fpa, "ok\n");
   int ret = sys_close (fp->fd);
 
+sys_fprintf(fpa, "ok1\n");
   ifnot (NULL is fp->out_buf) Release (fp->out_buf);
+sys_fprintf(fpa, "ok2\n");
   ifnot (NULL is fp->in_buf)  Release (fp->in_buf);
+sys_fprintf(fpa, "ok3\n");
 
   Release (fp);
+sys_fprintf(fpa, "ok4\n");
 
   return ret;
 }
@@ -179,6 +202,22 @@ int sys_fprintf (FILE *fp, const char *fmt, ...) {
   return n;
 }
 
+int sys_vfprintf (FILE *fp, const char *fmt, va_list args) {
+  if (NULL is fp or fp->fd < 0) return -1;
+
+  if (-1 is fileptr_init_output (fp, BUFSIZ)) return -1;
+
+  fmtType s;
+  s.output_char = (fp->bufferingType is _IONBF ? fileptrWriteUnbuffered : fileptrWriteBuffered);
+  s.user_data = fp;
+
+  int n = str_format (&s, NULL, 0, fmt, args);
+
+  sys_fflush (fp); // flush unconditionally
+
+  return n;
+}
+
 size_t sys_fwrite (const void *v, size_t size, size_t nmemb, FILE *fp) {
   if (NULL is fp or fp->fd < 0) return -1;
 
@@ -194,7 +233,26 @@ size_t sys_fwrite (const void *v, size_t size, size_t nmemb, FILE *fp) {
   return nmemb * size;
 }
 
-static int fileptr_input_char (FILE *fp) {
+int sys_ungetc (int c, FILE *fp) {
+  if (NULL is fp or fp->fd < 0) return 0;
+
+  if (-1 is fileptr_init_input (fp, BUFSIZ)) return 0;
+
+  fp->in_prevbyte = c;
+  return c;
+}
+
+int sys_fgetc (FILE *fp) {
+  if (NULL is fp or fp->fd < 0) return EOF;
+
+  if (-1 is fileptr_init_input (fp, BUFSIZ)) return EOF;
+
+  if (fp->in_prevbyte) {
+    int c = fp->in_prevbyte;
+    fp->in_prevbyte = 0;
+    return c;
+  }
+
   if (fp->in_cur is fp->in_buflen) {
     int n = sys_read (fp->fd, fp->in_buf, fp->in_bufsize);
     if (n <= 0) return EOF;
@@ -216,7 +274,7 @@ size_t sys_fread (void *v, size_t size, size_t nmemb, FILE *fp) {
   size_t n = nmemb * size;
 
   while (n-- > 0) {
-    *s = fileptr_input_char (fp);
+    *s = sys_fgetc (fp);
     if (*s++ is EOF)
       return (nmemb * size) - n - 1;
   }
@@ -224,3 +282,10 @@ size_t sys_fread (void *v, size_t size, size_t nmemb, FILE *fp) {
   return nmemb * size;
 }
 
+FILE *sys_fdopen (int fd, const char *mode) {
+  int flags = sys_file_parse_mode (mode);
+
+  if (-1 is flags) return NULL; // however we do not check if fd->flags they agree
+
+  return sys_init_file (fd, _IOFBF);
+}

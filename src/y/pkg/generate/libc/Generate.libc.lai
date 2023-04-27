@@ -22,6 +22,7 @@ include ("argparse")
 
   const
   Y           = "y",
+  Z           = "z",
   PKG         = "pkg",
   LIBCSRCNAME = "libc",
   LIBCOUTNAME = "libc",
@@ -31,7 +32,14 @@ include ("argparse")
   YPKGDIR     = YSRCDIR: concat_with (PKG),
   LIBCDIR     = YPKGDIR: concat_with (LIBCSRCNAME),
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
-  LIBCOUTDIR  =  SYSDIR: concat_with ("include/z")
+  SYSBINDIR   = SYSDIR: concat_with ("bin"),
+  SYSLIBDIR   = SYSDIR: concat_with ("lib"),
+  ZSYSLIBDIR  = SYSLIBDIR: concat_with (Z),
+  SYSINCDIR   = SYSDIR: concat_with ("include"),
+  ZSYSINCDIR  = SYSINCDIR: concat_with (Z),
+  SYSSHAREDDIR= SYSDIR: concat_with ("share"),
+  SYSMANPATH  = "/share/man:" + SYSSHAREDDIR: concat_with ("man") + ":/usr/local/share/man:/usr/share/man",
+  LIBCOUTDIR  = ZSYSINCDIR
 
   const string[19] libcdirs = [
     "syscall", "std", "stdio", "stdlib", "ctype", "signal", "string", "sys",
@@ -49,9 +57,10 @@ include ("argparse")
   as_str         = "// as: "
 
   var me = __file__: basename ()
-  var argparse = New Argparse (4, 0, me)
+  var argparse = New Argparse (5, 0, me)
   argparse.add ("outputName",  0,  "outputName=",  "set output file name (default " + LIBCOUTNAME + ")",  StringType, ARG_VALUE_REQUIRED)
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
+  argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
@@ -78,6 +87,8 @@ include ("argparse")
   var outputFile  = outputDir: concat_with (outputName + ".h")
   var licenceFile = outputDir: concat_with ("Licenses_libc")
   var commentFile = outputDir: concat_with ("Comments_libc")
+
+  var withoutSysHdrs = argparse.results.withoutSys
 
   var dotsToLibc = func (d) {
     var def = LIBCSRCDIR
@@ -190,17 +201,23 @@ include ("argparse")
       #endif
     #endif
 
-    /* Interfaces */
-
-    #ifdef REQUIRE_FD_INTERFACE
-      #define REQUIRE_OPEN
-      #define REQUIRE_WRITE
-      #define REQUIRE_CLOSE
-    #endif
-
-    /* Tracking Dependencies */
-
   `S4
+
+  ifnot withoutSysHdrs {
+    append "/* SYS_CONSTANTS */\n" in libcHdrs
+    append "#define SYSDIR \""   + SYSDIR       + "\"\n" in libcHdrs
+    append "#define SHAREDIR \"" + SYSSHAREDDIR + "\"\n" in libcHdrs
+    append "#define LIBDIR \""   + SYSLIBDIR    + "\"\n" in libcHdrs
+    append "#define ZLIBDIR \""  + ZSYSLIBDIR   + "\"\n" in libcHdrs
+    append "#define INCDIR \""   + SYSINCDIR    + "\"\n" in libcHdrs
+    append "#define ZINCDIR \""  + ZSYSINCDIR   + "\"\n" in libcHdrs
+    append "#define BINDIR \""   + SYSBINDIR    + "\"\n" in libcHdrs
+    append "#define MANPATH \""  + SYSMANPATH   + "\"\n" in libcHdrs
+
+    append "\n" in libcHdrs
+  }
+
+  append "/* Tracking Dependencies */\n" in libcHdrs
 
   var filelist = {}
 

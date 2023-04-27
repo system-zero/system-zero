@@ -979,7 +979,7 @@ static void print_doc_footer (man_t *man) {
 
 man_t *manInit (man_t *man) {
   STRING_CP(man->defaultPath, MAN_DEFAULT_PATH_LEN + 1,
-    "/usr/local/share/man:/usr/share/man", MAN_DEFAULT_PATH_LEN );
+    "/usr/local/share/man:/usr/share/man", MAN_DEFAULT_PATH_LEN);
   STRING_CP(man->defaultSection, MAN_DEFAULT_SECTION_LEN + 1,
     "2:3p:3:1p:1:4:5:6:7:8:0p", MAN_DEFAULT_SECTION_LEN);
   STRING_CP(man->defaultSuffix, MAN_DEFAULT_SUFFIX_LEN + 1,

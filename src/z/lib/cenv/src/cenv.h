@@ -365,7 +365,7 @@ mutable public void __alloc_error_handler__ (int err, size_t size,
 
 #endif /* ALLOC_HDR */
 
-#ifndef VA_ARGS_GET_FMT_STR
+#ifndef VA_ARGS_FMT_SIZE
 /* from man printf(3) Linux Programmer's Manual */
 #define VA_ARGS_FMT_SIZE(fmt_)                                        \
 ({                                                                    \

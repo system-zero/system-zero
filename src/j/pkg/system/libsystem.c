@@ -2,7 +2,7 @@
 #define REQUIRE_FILE_EXISTS
 #define REQUIRE_BYTELEN
 #define REQUIRE_STR_COPY
-#define REQUIRE_FD_INTERFACE
+#define REQUIRE_FD
 
 #include <libc.h>
 

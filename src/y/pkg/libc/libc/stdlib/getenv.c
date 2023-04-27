@@ -1,16 +1,16 @@
-// provides: char *getenv (const char *)
-// requires: string/strlen.c
+// provides: char *sys_getenv (const char *)
+// requires: string/bytelen.c
 // requires: string/str_eq_n.c
 // requires: std/NULL.h
 // requires: std/environ.h
 
-char *getenv (const char *s) {
-  if (!environ || !s) return NULL;
+char *sys_getenv (const char *s) {
+  if (NULL is environ or NULL is s) return NULL;
 
-  size_t len = strlen(s);
+  size_t len = bytelen (s);
 
   for (int i = 0; environ[i]; i++)
-    if ((str_eq_n (environ[i], s, len)) && (environ[i][len] == '='))
+    if ((str_eq_n (environ[i], s, len)) and (environ[i][len] is '='))
       return environ[i] + len + 1;
 
   return NULL;
