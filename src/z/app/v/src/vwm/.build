@@ -10,6 +10,6 @@ m.set.static.executable.to_linkagainst (["vwm", "vui",
   "io", "sys", "error", "dir", "path", "term", "file", "random",
   "video", "readline", "argparse", "os", "smap",
   "string", "vstring", "cstring", "ustring" ]; append_version, clear)
-m.set.executable.cflags (`-DVERSION_STRING="` + VERSION + `"`)
+m.set.executable.cflag ("-DVERSION_STRING=\"" + m.get.version () + "\"")
 m.set.executable.output ("V.wm")
 return m

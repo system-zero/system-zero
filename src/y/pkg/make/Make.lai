@@ -107,7 +107,6 @@ const YSRCDIR           = SRCDIR:  concat_with (Y)
 const JSRCDIR           = SRCDIR:  concat_with (J)
 const DSRCDIR           = SRCDIR:  concat_with (D)
 const LSRCDIR           = SRCDIR:  concat_with (L)
-println (LSRCDIR)
 const ZSRCLIBDIR        = ZSRCDIR: concat_with ("lib")
 const ZSRCAPPDIR        = ZSRCDIR: concat_with ("app")
 const ZSRCMODDIR        = ZSRCDIR: concat_with ("la-modules")
@@ -115,7 +114,6 @@ const YSRCPKGDIR        = YSRCDIR: concat_with ("pkg")
 const JSRCPKGDIR        = JSRCDIR: concat_with ("pkg")
 const DSRCPKGDIR        = DSRCDIR: concat_with ("pkg")
 const LSRCPKGDIR        = LSRCDIR: concat_with ("pkg")
-println (LSRCPKGDIR)
 
 const LIBDIR            = SYSDIR:  concat_with ("lib")
 const BINDIR            = SYSDIR:  concat_with ("bin")
@@ -527,6 +525,7 @@ const ARGPARSE
     return true if force
 
     var type = target: typeof ()
+
     if type is ArrayType or type is ListType then
       for v in target
         return true ifnot v: exists ()
@@ -536,6 +535,7 @@ const ARGPARSE
     return true ifnot this.cached_file: exists ()
 
     var r = this.read_cached_file ()
+
     return notok if r is notok
     return true  if r is true
 
@@ -559,9 +559,14 @@ const ARGPARSE
   install_data : func (exec) {
     return ok if null is exec
     return notok if notok is this.change_to_build_directory ()
+
     var targetdir = this.shelldatadir: concat_with (exec)
-    ifnot targetdir: exists () then mkdir (targetdir, 0700)
-    ifnot targetdir: isdirectory () then return this.error (targetdir + ": not a directory")
+
+    ifnot targetdir: exists ()
+      mkdir (targetdir, 0700)
+
+    ifnot targetdir: isdirectory ()
+      return this.error (targetdir + ": not a directory")
 
     ifnot this.verbose
       ifnot this.dump_commands
@@ -569,7 +574,8 @@ const ARGPARSE
 
     var args = exec: concat_with ("args")
     if args: exists ()
-      return notok if notok is copy (args, targetdir; verbose : this.verbose + 1, force : 1)
+      return notok if
+        notok is copy (args, targetdir; verbose : this.verbose + 1, force : 1)
 
     var flags = exec: concat_with ("flags")
     if flags: exists ()
@@ -577,7 +583,8 @@ const ARGPARSE
 
     var literal_args = exec: concat_with ("literal_args")
     if literal_args: exists ()
-      return notok if notok is copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
+      return notok if
+        notok is copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
   }
 
   endbuild : func (retval) {
@@ -967,6 +974,7 @@ const ARGPARSE
 
         var output = this.libdir: concat_with (this.liboutput + ".so")
         var r = this.should_make (output, this.shared.library.sources, this.shared.library.force)
+
         return notok if r is notok
         return ok if r is false
 
@@ -1833,7 +1841,7 @@ const ARGPARSE
     }
 
     executable : {
-      cflags : func (v) {
+      cflag : func (v) {
         this.set.shared.executable.cflag (v)
         this.set.static.executable.cflag (v)
       }

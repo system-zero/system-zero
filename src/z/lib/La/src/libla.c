@@ -565,6 +565,7 @@ do {                                                        \
 #define NEXT_BYTE_NOWS() la_next_byte_nows (this)
 #define IS_NEXT_BYTE( _c_) (*GETSTRPTR(PARSEPTR) == _c_)
 #define ISNOT_NEXT_BYTE( _c_) (*GETSTRPTR(PARSEPTR) != _c_)
+#define IS_NEXT_BYTE_NOWS(_c_) la_is_next_byte_nows(this, _c_)
 
 #define IGNORE_NEXT_NUM_BYTES(_n_) do {           \
   SETSTRPTR(PARSEPTR, GETSTRPTR(PARSEPTR) + _n_); \
@@ -890,6 +891,12 @@ static int la_peek_token (la_t *this, uint n) {
   int retval = TOKEN;
   RESTORE_TOKENSTATE(save);
   return retval;
+}
+
+static int la_is_next_byte_nows (la_t *this, int c) {
+  const char *ptr = GETSTRPTR(PARSEPTR);
+  while (is_space (*ptr)) ptr++;
+  return *ptr is c;
 }
 
 static int la_peek_nth_byte (la_t *this, uint n) {
@@ -10391,6 +10398,9 @@ static int la_parse_return (la_t *this) {
     tokenState save = SAVE_TOKENSTATE();
 
     NEXT_TOKEN();
+
+    if (IS_NEXT_BYTE_NOWS(TOKEN_NL))
+      NEXT_TOKEN();
 
     err = la_parse_cond (this, token is TOKEN_IFNOT);
     THROW_ERR_IF_ERR(err);
