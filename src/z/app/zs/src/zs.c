@@ -2057,7 +2057,7 @@ static zs_t *zs_init_rline (void) {
 static int zs_commands (zs_t *this, sh_t *sh, const char *line, int *retval) {
   (void) sh;
 
-  if (Cstring.eq (line, "rehash")) {
+  if (Cstring.eq_n (line, "rehash", 6) and (*(line + 6) is '\0' or *(line + 6) is ' ')) {
     deinit_commands (this->command_head);
     init_rline_commands (this);
     *retval = 0;

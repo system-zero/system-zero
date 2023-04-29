@@ -2,4 +2,7 @@
  depends_on ("libc", LIBC)
 #
 
-return New Make (__file__, SHARED|STATIC|MODULE|SCRIPT_EXECUTABLE)
+var m = New Make (__file__, SHARED|STATIC|MODULE|SCRIPT_EXECUTABLE)
+m.set.executable.output ("File.type")
+m.set.script.executable.source ("File.type"; clear)
+return m

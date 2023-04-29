@@ -103,21 +103,14 @@ int sys_fflush (FILE *fp) {
 }
 
 int sys_fclose (FILE *fp) {
-  FILE *fpa = sys_fopen ("/tmp/fclose", "w");
-sys_fprintf(fpa, "ok-\n");
   sys_fflush (fp); // flush first anything in buffer
 
-sys_fprintf(fpa, "ok\n");
   int ret = sys_close (fp->fd);
 
-sys_fprintf(fpa, "ok1\n");
   ifnot (NULL is fp->out_buf) Release (fp->out_buf);
-sys_fprintf(fpa, "ok2\n");
   ifnot (NULL is fp->in_buf)  Release (fp->in_buf);
-sys_fprintf(fpa, "ok3\n");
 
   Release (fp);
-sys_fprintf(fpa, "ok4\n");
 
   return ret;
 }

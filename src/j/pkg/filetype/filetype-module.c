@@ -37,7 +37,7 @@ public int __init_filetype_module__ (la_t *this) {
     if is_defined ("File") {
       append filetype in File as "type";
     } else {
-      public var File = {
+      public const File = {
         type : filetype
       }
     }

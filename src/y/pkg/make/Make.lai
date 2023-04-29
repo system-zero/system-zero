@@ -1,13 +1,20 @@
-# An oversimplified make like utility, which is quite specific for this
-# environment and its development flow (though there is some kind of an
-# abstraction), so its nothing new and excited, but it has a nice grammar!
+##[
+  An oversimplified make like utility, which is quite specific for this
+  environment and its development flow (though there is some kind of an
+  abstraction), so its nothing new and excited, but it has a nice grammar!
+##]
 
-# It can be used both as the main utility if it will be installed by itself,
-# or as a library if the MAKE_AS_LIBRARY const/var has been declared before
-# include it. If it is being used as an executable, the argv argument comes
-# from the environment and the argument parsing starts from index 1, otherwise
-# the argv argument is an array of strings and parsing starts from index zero.
-# Other than that difference, the interface is the same.
+##[
+  It can be used both as the main utility if it will be installed by itself,
+  or as a library if the MAKE_AS_LIBRARY const/var has been declared before
+  include it. If it is being used as an executable, the argv argument comes
+  from the environment and the argument parsing starts from index 1, otherwise
+  the argv argument is an array of strings and parsing starts from index zero.
+ Other than that difference, the interface is the same.
+##]
+
+# Note that since this unit is also a vehicle for development, some constructs
+# are sometimes by purpose, more complicated than they could be written
 
 import ("io")
 import ("os")
@@ -494,8 +501,11 @@ const ARGPARSE
     if this.recorded is null this.recorded = {}
 
     for v in sources {
-      continue if key_exists (this.recorded, v)
-      continue ifnot v: exists ()
+      continue if
+        key_exists (this.recorded, v)
+      continue ifnot
+         v: exists ()
+
       var st = v: stat ()
       var base = base64_encode (v)
       this.recorded.$(v) = { mtime : st.st_mtime, base : base }
@@ -510,12 +520,16 @@ const ARGPARSE
   read_cached_file : func {
     if this.cached is null {
       var fd = open (this.cached_file, O_RDONLY, 0)
-      return true if fd is null
+      return true if
+         fd is null
 
       var s = read (fd)
-      if s is null then return this.error ("can not read() " + this.cached_file)
+      if s is null
+        return this.error ("can not read() " + this.cached_file)
+
       var r = eval (s)
-      if r isnot ok then return this.error (this.cached_file + " evaluation error")
+      if r isnot ok
+        return this.error (this.cached_file + " evaluation error")
     }
 
     return false
@@ -528,9 +542,11 @@ const ARGPARSE
 
     if type is ArrayType or type is ListType then
       for v in target
-        return true ifnot v: exists ()
+        return true ifnot
+          v: exists ()
     orelse
-      return true ifnot target: exists ()
+      return true ifnot
+        target: exists ()
 
     return true ifnot this.cached_file: exists ()
 
@@ -747,7 +763,9 @@ const ARGPARSE
       executable : func {
         return ok if this.dump_commands
         return notok if notok is this.change_to_build_directory ()
-        if null is this.script.executable.sources then return this.error ("script executable sources is null")
+
+        if null is this.script.executable.sources
+          return this.error ("script executable sources is null")
 
         var sources = {[]}
         for v in this.script.executable.sources append v + ".lai" in sources
@@ -756,10 +774,12 @@ const ARGPARSE
 
         return ok if false is this.script.executable.install
 
-        ifnot this.bindir: exists () then mkdir (this.bindir, 0755; verbose : this.verbose + 1)
+        ifnot this.bindir: exists ()
+          mkdir (this.bindir, 0755; verbose : this.verbose + 1)
 
-        ifnot this.bindir: isdirectory () then
-          if false is this.dump_commands then return this.error (this.bindir + " is not a directory")
+        ifnot this.bindir: isdirectory ()
+          if false is this.dump_commands
+            return this.error (this.bindir + " is not a directory")
 
         var targets = {[]}
 
@@ -1522,8 +1542,10 @@ const ARGPARSE
 
   public
   error : func (msg) {
-    ifnot null then println (stderr, msg)
-    if errno then println (stderr, errno_string (errno))
+    if msg isnot null
+      println (stderr, msg)
+    if errno
+       println (stderr, errno_string (errno))
     return notok
   }
 

@@ -616,7 +616,9 @@ func self_semantics () {
 
   func if_break (x) {
     var i
-    for (i = 0; i < 1000; i++) break if i is x
+    for (i = 0; i < 1000; i++)
+      break if
+        i is x
 
     return i
   }
@@ -732,7 +734,8 @@ func self_semantics () {
 
   var ifnotsum3 = 0
   for (var i = 0; i < 10; i++) {
-    break ifnot i < 7
+    break ifnot
+      i < 7
     append i in ifnotsum3
   }
 
@@ -762,13 +765,15 @@ func self_semantics () {
 
   var ifsum = 0
   for (var i = 0; i < 10; i++) {
-    continue if i is 1 or i is 3 or i is 9
+    continue if
+      i is 1 or i is 3 or i is 9
     append i in ifsum
   }
 
   var ifnotsum = 0
   for (var i = 0; i < 10; i++) {
-    continue ifnot i is 2 or i is 4 or i is 8 or i is 9
+    continue ifnot
+      i is 2 or i is 4 or i is 8 or i is 9
     append i in ifnotsum
   }
 
@@ -787,7 +792,8 @@ func self_semantics () {
 
   var dada = 1
   func dalida (x) {
-    return if x is 0
+    return if
+      x is 0
     dada *= x
     return dada
   }
@@ -845,7 +851,8 @@ func self_semantics () {
     for (var i = 1; i < 100 ; i++) {
       var ign = 0
       var ign_str = "a"
-      continue if i is 10
+      continue if
+        i is 10
       s += i
     }
     return s

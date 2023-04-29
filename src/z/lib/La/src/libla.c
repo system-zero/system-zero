@@ -7282,12 +7282,12 @@ static int la_parse_boolean_stmt (la_t *this, int tok) {
     int isspace = 0;
     int isif = -1;
 
-    if ('(' is *ptr or (isspace = is_space (*ptr))) {
+    if ('(' is *ptr or (isspace = is_space (*ptr)) or *ptr is TOKEN_NL) {
       isif = 1;
     } else if (len - (ptr - Ptr) > 5 and (
       'n' is *ptr and 'o' is *(++ptr) and 't' is *(++ptr))) {
       ptr++;
-      if ('(' is *ptr or (isspace = is_space (*ptr)))
+      if ('(' is *ptr or (isspace = is_space (*ptr)) or *ptr is TOKEN_NL)
         isif = 0;
     }
 
@@ -7295,8 +7295,10 @@ static int la_parse_boolean_stmt (la_t *this, int tok) {
 
     if (isspace) {
       ptr++;
-      while (*ptr and (is_space (*ptr) or *ptr is TOKEN_NL)) ptr++;
+      while (is_space (*ptr)) ptr++;
     }
+
+    if (*ptr is TOKEN_NL) ptr++;
 
     len -= ptr - Ptr;
     PARSEPTR = StringNew (ptr);

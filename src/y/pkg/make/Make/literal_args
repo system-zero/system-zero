@@ -9,3 +9,4 @@ install-header
 install-script-executable
 install-script-library
 all
+libc
