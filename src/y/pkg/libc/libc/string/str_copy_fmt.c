@@ -8,7 +8,7 @@ size_t str_copy_fmt (char *dest, size_t dest_len, const char *fmt, ...) {
 
   va_list ap;
   va_start(ap, fmt);
-  int r = vsnprintf (bytes, len + 1, fmt, ap);
+  int r = sys_vsnprintf (bytes, len + 1, fmt, ap);
   va_end(ap);
 
   /* since is a variable length thing, truncation might occurs

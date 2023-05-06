@@ -41,10 +41,10 @@ include ("argparse")
   SYSMANPATH  = "/share/man:" + SYSSHAREDDIR: concat_with ("man") + ":/usr/local/share/man:/usr/share/man",
   LIBCOUTDIR  = ZSYSINCDIR
 
-  const string[19] libcdirs = [
+  const string[20] libcdirs = [
     "syscall", "std", "stdio", "stdlib", "ctype", "signal", "string", "sys",
     "unistd",  "time", "error", "convert", "utf8", "file", "fs", "dev",
-    "dir", "path", "rtc"]
+    "dir", "path", "rtc", "map"]
 
   const
   metapkg_str    = "MetaPackage",
@@ -137,7 +137,7 @@ include ("argparse")
     #define REQUIRE_ERRNO_STRING
     #endif
 
-    // include unconditionally - no reason not to - some functions signatures thy like va_list
+    // include unconditionally - no reason not to - some functions signatures they like va_list
     #ifndef REQUIRE_STDARG_H
     #define REQUIRE_STDARG_H
     #endif
@@ -249,6 +249,7 @@ include ("argparse")
 
   for v in libcdirs {
     if v isnot "syscall" append format ("/* ${v} */") in libcFuns
+
     var dir = LIBCSRCDIR: concat_with (v)
     var arr = dir: dir_list ()
 
@@ -287,8 +288,10 @@ include ("argparse")
         continue
       }
 
-      var f_ext = f: extname (): to_upper (): advance (1)
-      var f_hdr = f: basename_without_extname (): to_upper ()
+      var f_unit = f: basename ()
+      var f_ext  = f: extname (): to_upper (): advance (1)
+      var f_name = f: basename_without_extname ()
+      var f_hdr  = f_name: to_upper ()
 
       var lines_len = lines: len ()
       var idx = 0;
@@ -346,6 +349,11 @@ include ("argparse")
         break if null is sp
 
         sp := advance_after_bytes (require_str, 1)
+
+        var req = LIBCSRCDIR: concat_with (sp)
+        ifnot req: exists ()
+          println (stderr, "\e[31mWarning: ${v}/${f_unit} requires ${sp} which is missing\e[m") 
+
         var tok = sp: tokenize ("/")
         break if tok: len () < 1
 
@@ -373,14 +381,24 @@ include ("argparse")
 
       if num_found then append "#endif\n\n" in libcHdrs
 
+      var num_comments = 0
       for (var i = idx; i < lines_len; i++) {
         var line = lines[idx]
         var sp = line: bytes_in_str (comment_str)
         break if null is sp
+
+        ifnot num_comments
+          append "/* " + f_name + ":\n" in comments
+
+        num_comments++
+
         sp := advance_after_bytes (comment_str, 1)
-        append sp + "\n" in comments
+        append " * " + sp + "\n" in comments
         idx++
       }
+
+      if num_comments
+        append " */\n\n" in comments
 
       for (var i = idx; i < lines_len; i++) {
         break if lines[i]: len ()

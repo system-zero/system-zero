@@ -1,6 +1,6 @@
 // provides: int sys_isatty (int)
 // requires: sys/ioctl.c
-// requires: sys/termios.h
+// requires: unistd/termios.h
 
 int sys_isatty (int fd) {
   struct termios dummy;

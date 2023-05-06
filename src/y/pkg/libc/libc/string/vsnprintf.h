@@ -3,7 +3,7 @@
 ({                                                                    \
   int size_ = 0;                                                      \
   va_list ap; va_start(ap, __fmt__);                                  \
-  size_ = vsnprintf (NULL, 0, __fmt__, ap);                           \
+  size_ = sys_vsnprintf (NULL, 0, __fmt__, ap);                       \
   va_end(ap);                                                         \
   size_;                                                              \
 })

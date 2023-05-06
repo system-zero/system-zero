@@ -1,6 +1,8 @@
-// provides: int atoi (const char *)
+// provides: int str_to_int (const char *)
+// comment: alias atoi
 
-int atoi (const char *s) {
+
+int str_to_int (const char *s) {
   int has_neg_sign = 0;
 
   switch (*s) {

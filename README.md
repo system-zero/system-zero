@@ -32,7 +32,8 @@ reality, as such it should be considered a missing ring in the chain.
 
 The result of this zero branch, was a shell, an editor, a scripting language,
 development tools, most of the system administration utilities and a rich set
-of essential libraries.
+of essential libraries. What we want to achieve is to migrate our code to use
+our own libc.
 
 Most of this code has been written from scratch, but we've also used many small
 and mostly unknown published libraries, or specific algorithms, pulled from the
@@ -53,11 +54,25 @@ are awaiting a C compiler, a libc, a linker, the make utility and probably a cou
 It is crucial to record this whole path to completion, for educational purposes,
 and though this happens automatically by git, we would like in future to document it.
 
-We give extensive focus, to unite the execution namespace and the source code, as
-we believe that both are interdependent and interchangeable, as the wise path to
-evolution and quite probably to our freedom finally. For every bit of code, it is
-utterly important to understand the "why" and the intentions. We let then our actual will
-(filtered by our logic) and the fascination to lead and give the fuel to this eternal path.
+Our code usually prefers the obvious algorithm that can be read with clarity, instead
+of an optimized one, even if we know that we sacrificy performance, though even slow C
+can not be beaten. We give extensive focus to respect resources, though we are really
+want our datatypes to be clear, without magic C trycks, so we want them rich and self
+explained by their specific type and name, to ease our development process, because in
+such enormous system, you really want to understand the code after it was well written.
+
+We give extensive focus, to unite the execution namespace and the source code, as we
+believe that both are interdependent and interchangeable, as the wise path to evolution
+and quite probably to our freedom finally. For every bit of code, it is utterly important
+to understand the "why" and the intentions. We let then our actual will (filtered by our
+logic) and the fascination, to lead and give the fuel to this eternal path. So there has
+to be an obvious fast path and where to lookup to locate those bits that has been used to
+implemented this "why" in the source code, and then act accordingly by modifiying or just
+accept it's decision by realizing the intention.
+
+For those reasons we favor clarity instead of magic in our code. The code is, and it will
+always be and our definite documentation, though it would be cool to record the semantics,
+and we'll do it if we will be blessed with generous time.
 
 The layout of this README, ended up mostly like a blog, and it is really quite
 complicated unfortunately, and so its not your blame, if you don't understand.
@@ -85,7 +100,7 @@ Implemented:
   - a package manager
   - a make kind utility
   - a container
-  - a tiny libc
+  - a C library
   - a primitive http[s] client
   - a game (sudoku)
   - and some old C code from early ninities (there is a special interest)
@@ -96,7 +111,7 @@ without libpam, but we have to implement crypt() first.
 
 Unimplemented:  
 For a standalone system:
-  - init command
+  - init
   - device managment
   - network managment
   - system configuration (timezone/password/groups)
@@ -106,13 +121,13 @@ Functionality:
   - mail managment
   - process viewer
   - a chat/file-sharing server/client
-  - a gemini server/client
+  - a gemini server/client (an almost sane protocol)
   
 Development:
-  - scdoc man page generator
+  - scdoc man page generator (done)
   - SSL library
   - libgit2
-  - mir or|and tcc or|and probably tagha or|and gcc and a linker
+  - mir or|and tcc or|and probably tagha or|and gcc or zig, and a linker
   
 Interesting to integrate in this system:
   - very old C codebases

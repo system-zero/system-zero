@@ -221,6 +221,10 @@ typedef signed int utf8;
 #define MAXLEN_NAME   16
 #endif
 
+#ifndef MAXSYMLINKS
+#define MAXSYMLINKS 20
+#endif
+
 #ifndef PATH_SEP
 #define PATH_SEP        ':'
 #endif
@@ -239,6 +243,10 @@ typedef signed int utf8;
 
 #ifndef IS_NOT_DIR_SEP
 #define IS_NOT_DIR_SEP(c_) (0 == IS_DIR_SEP (c_))
+#endif
+
+#ifndef IS_DIR_ABS
+#define IS_DIR_ABS(d_)   IS_DIR_SEP (*d_)
 #endif
 
 #ifndef IS_DIGIT

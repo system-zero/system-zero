@@ -36,13 +36,13 @@
 typedef string string_t;
 
 void string_release (string *this) {
-  if (this is NULL) return;
+  if (this == NULL) return;
   if (this->mem_size) Release (this->bytes);
   Release (this);
 }
 
 void string_clear (string *this) {
-  ifnot (this->num_bytes) return;
+  if (!this->num_bytes) return;
   this->bytes[0] = '\0';
   this->num_bytes = 0;
 }
@@ -89,7 +89,7 @@ string *string_new_with_len (const char *bytes, size_t len) {
 }
 
 string *string_new_with (const char *bytes) {
-  size_t len = (NULL is bytes ? 0 : bytelen (bytes));
+  size_t len = (NULL == bytes ? 0 : bytelen (bytes));
   return string_new_with_len (bytes, len); /* this succeeds even if bytes is NULL */
 }
 
@@ -97,18 +97,18 @@ string *string_new_with_fmt (const char *fmt, ...) {
   size_t len = STRING_FORMAT_SIZE(fmt);
   char bytes[len + 1];
   va_list ap; va_start(ap, fmt);
-  vsnprintf (bytes, len + 1, fmt, ap);
+  sys_vsnprintf (bytes, len + 1, fmt, ap);
   va_end(ap);
 
   return string_new_with_len (bytes, len);
 }
 
 string *string_insert_at_with_len (string *this,
-                     int idx, const char *bytes, size_t len) {
+         int idx, const char *bytes, size_t len) {
   size_t bts = this->num_bytes + len;
   if (bts >= this->mem_size) string_reallocate (this, bts - this->mem_size + 1);
 
-  if (idx is (int) this->num_bytes) {
+  if (idx == (int) this->num_bytes) {
     str_byte_copy (this->bytes + this->num_bytes, bytes, len);
   } else {
     str_byte_move (this->bytes, this->mem_size - 1, idx + len, idx, this->num_bytes - idx);
@@ -126,7 +126,7 @@ string *string_insert_at_with (string *this, int idx, const char *bytes) {
     return this;
 
   size_t len = bytelen (bytes);
-  ifnot (len) return this;
+  if (!len) return this;
 
   return string_insert_at_with_len (this, idx, bytes, len);
 }
@@ -160,7 +160,7 @@ string *string_append_with (string *this, const char *bytes) {
 }
 
 string *string_append_with_len (string *this, const char *bytes,
-                                                                 size_t len) {
+                                                     size_t len) {
   return string_insert_at_with_len (this, this->num_bytes, bytes, len);
 }
 
@@ -172,7 +172,7 @@ string *string_append_with_fmt (string *this, const char *fmt, ...) {
   size_t size = STRING_FORMAT_SIZE(fmt);
   char bytes[size + 1];
   va_list ap; va_start(ap, fmt);
-  vsnprintf (bytes, size + 1, fmt, ap);
+  sys_vsnprintf (bytes, size + 1, fmt, ap);
   va_end(ap);
 
   return string_insert_at_with_len (this, this->num_bytes, bytes, size);
@@ -182,7 +182,7 @@ string *string_prepend_with_fmt (string *this, const char *fmt, ...) {
   size_t len = STRING_FORMAT_SIZE(fmt);
   char bytes[len + 1];
   va_list ap; va_start(ap, fmt);
-  vsnprintf (bytes, len + 1, fmt, ap);
+  sys_vsnprintf (bytes, len + 1, fmt, ap);
   va_end(ap);
 
   return string_insert_at_with_len (this, 0, bytes, len);
@@ -194,13 +194,13 @@ string *string_dup (string *this) {
 
 int string_delete_numbytes_at (string *this, int num, int idx) {
   if (num < 0) return NOTOK;
-  ifnot (num) return OK;
+  if(!num) return OK;
 
   if (idx < 0 or idx >= (int) this->num_bytes or
       idx + num > (int) this->num_bytes)
     return EINDEX;
 
-  if (idx + num isnot (int) this->num_bytes)
+  if (idx + num != (int) this->num_bytes)
     str_byte_copy (this->bytes + idx, this->bytes + idx + num,
         this->num_bytes - (idx + num - 1));
 
@@ -211,7 +211,7 @@ int string_delete_numbytes_at (string *this, int num, int idx) {
 
 string *string_replace_numbytes_at_with (
         string *this, int num, int idx, const char *bytes) {
-  if (string_delete_numbytes_at (this, num, idx) isnot OK)
+  if (string_delete_numbytes_at (this, num, idx) != OK)
     return this;
   return string_insert_at_with (this, idx, bytes);
 }
@@ -231,7 +231,7 @@ string *string_replace_with_fmt (string *this, const char *fmt, ...) {
   size_t len = STRING_FORMAT_SIZE(fmt);
   char bytes[len + 1];
   va_list ap; va_start(ap, fmt);
-  vsnprintf (bytes, len + 1, fmt, ap);
+  sys_vsnprintf (bytes, len + 1, fmt, ap);
   va_end(ap);
 
   return string_replace_with_len (this, bytes, len);
@@ -239,8 +239,7 @@ string *string_replace_with_fmt (string *this, const char *fmt, ...) {
 
 string *string_append_utf8 (string *this, int code) {
   char buf[8];
-  int len = 0;
-  utf8_character (code, buf, &len);
+  int len = utf8_character (code, buf, 8);
   if (len)
     string_append_with_len (this, buf, len);
   return this;
@@ -250,9 +249,9 @@ string *string_trim_end (string *this, char c) {
   char *sp = this->bytes + this->num_bytes - 1;
 
   while (1) {
-    if (*sp-- isnot c) break;
+    if (*sp-- != c) break;
     string_clear_at (this, -1);
-    ifnot (this->num_bytes) break;
+    if (!this->num_bytes) break;
   }
 
   return this;

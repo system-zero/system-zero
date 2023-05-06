@@ -46,7 +46,11 @@ static char *dir_current (void) {
   char *dir = NULL;
 
   while ((dir = getcwd (buf, size)) is NULL) {
-    if (errno isnot ERANGE) break;
+    if (errno isnot ERANGE) {
+      free (buf);
+      return NULL;
+    }
+
     size += (size / 2);
     buf = Realloc (buf, size);
   }

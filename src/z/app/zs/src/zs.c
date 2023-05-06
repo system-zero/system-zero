@@ -2226,8 +2226,6 @@ int main (int argc, char **argv) {
     Cstring.cat (command, MAXLEN_COMMAND_LINE + 1, argv[i]);
   }
 
-  this = Sh.new ();
-
   curdir = Dir.current ();
   if (NULL is curdir) {
     Stderr.print ("cannot determinate current working directory\n");
@@ -2246,6 +2244,8 @@ int main (int argc, char **argv) {
     setenv ("PWD", dir, 1);
   } else
     setenv ("PWD", curdir, 1);
+
+  this = Sh.new ();
 
   ifnot (comlen + fnamelen) {
     retval = zs_interactive (this);

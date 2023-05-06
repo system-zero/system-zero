@@ -6,13 +6,13 @@
 // requires: unistd/fcntl.c
 // requires: unistd/fork.c
 // requires: unistd/pipe.c
-// requires: unistd/waitpid.c
+// requires: sys/waitpid.c
 // requires: stdio/stdio.c
 // requires: stdio/stdio.h
 // requires: sys/pid.h
 
 FILE *sys_popen (const char *command, const char *mode) {
-  if (NULL is command or NULL is mode) return NULL;
+  if (NULL == command || NULL == mode) return NULL;
 
   int is_read = 0;
   int close_on_exec = 0;
@@ -35,12 +35,12 @@ FILE *sys_popen (const char *command, const char *mode) {
 
   int fds[2];
 
-  if (-1 is sys_pipe (fds))
+  if (-1 == sys_pipe (fds))
     return NULL;
 
   FILE *fp = sys_fdopen (fds[!is_read], mode);
 
-  if (NULL is fp) {
+  if (NULL == fp) {
     sys_close (fds[0]);
     sys_close (fds[1]);
     sys_fclose (fp);
@@ -49,14 +49,14 @@ FILE *sys_popen (const char *command, const char *mode) {
 
   int pid = sys_fork ();
 
-  if (-1 is pid) {
+  if (-1 == pid) {
     sys_close (fds[0]);
     sys_close (fds[1]);
     sys_fclose (fp);
     return NULL;
   }
 
-  ifnot (pid) {
+  if (0 == pid) {
     sys_close (fds[!is_read]);
     sys_close (is_read);
 

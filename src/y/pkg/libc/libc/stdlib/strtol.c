@@ -3,6 +3,7 @@
 // requires: ctype/isalpha.c
 // requires: ctype/isdigit.c
 // requires: ctype/isupper.c
+// comment: alias strtol
 
 long str_to_long (const char *nptr, char **endptr, int base) {
   const char *s;

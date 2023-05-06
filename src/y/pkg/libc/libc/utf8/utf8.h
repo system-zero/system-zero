@@ -8,3 +8,10 @@ const utf8 offsetsFromUTF8[6] = {
  * (this code and the functions that make use of it,
  * is atleast 10 years old, lying (during a non network season))
  */
+
+typedef struct {
+  char buf[5];
+  int len;
+  int width;
+  utf8 code;
+} utf8_char;

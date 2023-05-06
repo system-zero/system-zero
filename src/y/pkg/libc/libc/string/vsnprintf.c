@@ -1,5 +1,5 @@
-// provides: int vsnprintf (char *, size_t, const char *, va_list)
-// provides: int snprintf (char *, size_t, const char *, ...)
+// provides: int sys_vsnprintf (char *, size_t, const char *, va_list)
+// provides: int sys_snprintf (char *, size_t, const char *, ...)
 // provides: int str_format (fmtType *, char *, size_t, const char *, va_list)
 // requires: string/bytelen.c
 // requires: ctype/toupper.c
@@ -733,13 +733,13 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
   return (int) p->counter;
 }
 
-int vsnprintf (char *buf, size_t bufsize, const char *fmt, va_list args) {
+int sys_vsnprintf (char *buf, size_t bufsize, const char *fmt, va_list args) {
   struct fmtType s;
   s.output_char = fmt_output_char;
   return str_format (&s, buf, bufsize, fmt, args);
 }
 
-int snprintf (char *buf, size_t bufsize, const char *fmt, ...) {
+int sys_snprintf (char *buf, size_t bufsize, const char *fmt, ...) {
   fmtType s;
   s.output_char = fmt_output_char;
 

@@ -1,5 +1,5 @@
 // provides: int utf8_width (const char *, int)
-// provides: int cwidth (utf8)
+// provides: int utf8_char_width (utf8)
 // requires: utf8/utf8_code.c
 
 /*
@@ -460,7 +460,7 @@ static int intable (struct width_interval* table, int table_length, int c) {
   return 0;
 }
 
-int cwidth (utf8 c) {
+int utf8_char_width (utf8 c) {
   if (c == 0 || c == 0x034F || (0x200B <= c && c <= 0x200F) ||
       c == 0x2028 || c == 0x2029 || (0x202A <= c && c <= 0x202E) ||
       (0x2060 <= c && c <= 0x2063)) {
@@ -477,8 +477,7 @@ int cwidth (utf8 c) {
 }
 
 int utf8_width (const char *s, int tabwidth) {
-  if (' ' <= *s and *s] <= '~') return 1;  // common case
-  if (*s is '\t') return tabwidth;
-  return cwidth (utf8_code (s));
+  if (' ' <= *s && *s <= '~') return 1;  // common case
+  if (*s == '\t') return tabwidth;
+  return utf8_char_width (utf8_code (s));
 }
-

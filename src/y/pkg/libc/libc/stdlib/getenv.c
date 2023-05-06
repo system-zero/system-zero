@@ -1,7 +1,6 @@
 // provides: char *sys_getenv (const char *)
 // requires: string/bytelen.c
 // requires: string/str_eq_n.c
-// requires: std/NULL.h
 // requires: std/environ.h
 
 char *sys_getenv (const char *s) {

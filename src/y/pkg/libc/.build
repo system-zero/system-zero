@@ -83,11 +83,15 @@ func libc_pre_exec (s) {
   if write_fd is null then return exit_error ("can not open(): " + f)
 
   if notok is write (write_fd, "// provides: char *errno_string (int)\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "// provides: char *errno_name (int)\n") then return exit_error ("couldn't write to " + f)
   if notok is write (write_fd, "// requires: error/errors.h\n") then return exit_error ("couldn't write to " + f)
   if notok is write (write_fd, "// requires: error/error_list.h\n\n") then return exit_error ("couldn't write to " + f)
   if notok is write (write_fd, "char *errno_string (int errnum) {\n") then return exit_error ("couldn't write to " + f)
   if notok is write (write_fd, "  errnum = get_error_num (errnum);\n") then return exit_error ("couldn't write to " + f)
-  if notok is write (write_fd, "  return (char *) sys_errorlist[errnum].msg;\n}\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "  return (char *) sys_errorlist[errnum].msg;\n}\n\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "char *errno_name (int errnum) {\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "  errnum = get_error_num (errnum);\n") then return exit_error ("couldn't write to " + f)
+  if notok is write (write_fd, "  return (char *) sys_errorlist[errnum].name;\n}\n") then return exit_error ("couldn't write to " + f)
 
   return ok
 }
@@ -111,13 +115,22 @@ m.set.libc.source ([
   "libc/ctype/toupper.c",
   "libc/dev/blksize.c",
   "libc/dir/is_directory.c",
+  "libc/dir/make_dir.c",
   "libc/error/errors.h",
   "libc/error/error_list.h",
   "libc/error/errno_string.c",
   "libc/file/exists.c",
+  "libc/file/is_reg.c",
   "libc/file/is_writable.c",
   "libc/fs/fs.h",
+  "libc/map/map.h",
+  "libc/map/map.c",
   "libc/path/basename.c",
+  "libc/path/basename_sans_extname.c",
+  "libc/path/dirname.c",
+  "libc/path/extname.c",
+  "libc/path/is_absolute.c",
+  "libc/path/realpath.c",
   "libc/rtc/rtc.h",
   "libc/signal/sigaction.c",
   "libc/signal/sigaction.h",
@@ -128,8 +141,10 @@ m.set.libc.source ([
   "libc/signal/sigset.h",
   "libc/std/environ.h",
   "libc/std/errno.h",
+  "libc/std/mkdir.c",
   "libc/std/stdarg.h",
   "libc/std/std.h",
+  "libc/std/umask.c",
   "libc/std/z_env.h",
   "libc/stdio/popen.c",
   "libc/stdio/rename.c",
@@ -141,6 +156,7 @@ m.set.libc.source ([
   "libc/stdlib/atoi.c",
   "libc/stdlib/getenv.c",
   "libc/stdlib/qsort.c",
+  "libc/stdlib/strtod.c",
   "libc/stdlib/strtol.c",
   "libc/stdlib/system.c",
   "libc/string/bytelen.c",
@@ -149,7 +165,6 @@ m.set.libc.source ([
   "libc/string/mem_set.c",
   "libc/string/str_byte_copy.c",
   "libc/string/str_byte_move.c",
-  "libc/string/str_bytes_in_str.c",
   "libc/string/str_cat.c",
   "libc/string/str_chr.c",
   "libc/string/str_chr_r.c",
@@ -158,6 +173,9 @@ m.set.libc.source ([
   "libc/string/str_copy_fmt.c",
   "libc/string/str_eq.c",
   "libc/string/str_eq_n.c",
+  "libc/string/str_get_substr_at.c",
+  "libc/string/str_new.c",
+  "libc/string/str_str.c",
   "libc/string/string.c",
   "libc/string/string.h",
   "libc/string/vsnprintf.c",
@@ -199,10 +217,12 @@ m.set.libc.source ([
   "libc/unistd/fcntl.h",
   "libc/unistd/fd.c",
   "libc/unistd/fork.c",
+  "libc/unistd/getcwd.c",
   "libc/unistd/isatty.c",
   "libc/unistd/open.c",
   "libc/unistd/pipe.c",
   "libc/unistd/read.c",
+  "libc/unistd/readlink.c",
   "libc/unistd/termios.h",
   "libc/unistd/unistd.h",
   "libc/unistd/write.c",
@@ -212,7 +232,10 @@ m.set.libc.source ([
   "libc/utf8/utf8_character.c",
   "libc/utf8/utf8_charlen.c",
   "libc/utf8/utf8_code.c",
-  "libc/utf8/utf8_cwidth.c",
-  "libc/utf8/utf8_validate.c"])
+  "libc/utf8/utf8_encode.c",
+  "libc/utf8/utf8_get_nth_character.c",
+  "libc/utf8/utf8_len.c",
+  "libc/utf8/utf8_validate.c",
+  "libc/utf8/utf8_width.c"])
 
 return m

@@ -122,9 +122,9 @@ func generate_module (unit, unitdir) {
       }
 
       const char evalString[] = EvalString (
-        public var `S4 + 
+        public const `S4 + 
           char (unit[0] - ('a' - 'A')) +
-          if unit: len () > 1 then advance (unit, 1) orelse "" end +
+          if unit: len () > 1 then advance (unit, 1) orelse "" end + " = " +
              ` {
           : ,
          }

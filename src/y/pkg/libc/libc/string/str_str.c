@@ -1,6 +1,6 @@
-// provides: char *str_bytes_in_str (const char *, const char *)
+// provides: char *str_str (const char *, const char *)
 
-char *str_bytes_in_str (const char *str, const char *substr) {
+char *str_str (const char *str, const char *substr) {
   while (*str != '\0') {
     if (*str == *substr) {
       const char *spa = str + 1;
