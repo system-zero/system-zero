@@ -4986,11 +4986,11 @@ static int map_set_rout (la_t *this, Vmap_t *map, char *key, int scope, int into
       if (into_map_decl) {
         sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, MAP(map), 0);
         THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on `this` declaration");
+        this->funcState |= MAP_METHOD_STATE;
       }
 
       UNGET_BYTE();
 
-      this->funcState |= MAP_METHOD_STATE;
       err = la_parse_func_call (this, &v, NULL, uf, v);
       THROW_ERR_IF_ERR(err);
       NEXT_TOKEN();
@@ -5501,9 +5501,9 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
         ifnot (v->sym->scope is this->private_maps) {
           sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
           THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
+          this->funcState |= MAP_METHOD_STATE;
         }
 
-        this->funcState |= MAP_METHOD_STATE;
         err = la_parse_func_call (this, vp, NULL, uf, *v);
       }
 
