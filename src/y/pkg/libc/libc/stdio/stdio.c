@@ -91,7 +91,8 @@ FILE *sys_fopen (const char *path, const char *mode) {
 }
 
 int sys_fflush (FILE *fp) {
-  if (fp->fd < 0) return 0;
+  if (fp->fd < 0 || NULL == fp->out_buf)
+    return 0;
 
   // we may want to make sure that this is an uncovered error by checking errno 
   // probably with a higher interface than sys_write(), but elsewhere not here
@@ -172,7 +173,7 @@ int fileptr_init_input (FILE *fp, size_t size) {
   fp->in_cur = 0;
   fp->in_buflen = 0;
   fp->in_bufsize = size;
-  fp->in_buf = Alloc (fp->out_bufsize);
+  fp->in_buf = Alloc (fp->in_bufsize);
 
   return (NULL == fp->in_buf ? -1 : 0);
 }
@@ -237,9 +238,11 @@ int sys_ungetc (int c, FILE *fp) {
 }
 
 int sys_fgetc (FILE *fp) {
-  if (NULL == fp || fp->fd < 0) return EOF;
+  if (NULL == fp || fp->fd < 0)
+    return EOF;
 
-  if (-1 == fileptr_init_input (fp, BUFSIZ)) return EOF;
+  if (-1 == fileptr_init_input (fp, BUFSIZ))
+    return EOF;
 
   if (fp->in_prevbyte) {
     int c = fp->in_prevbyte;
@@ -249,7 +252,8 @@ int sys_fgetc (FILE *fp) {
 
   if (fp->in_cur == fp->in_buflen) {
     int n = sys_read (fp->fd, fp->in_buf, fp->in_bufsize);
-    if (n <= 0) return EOF;
+    if (n <= 0)
+      return EOF;
 
     fp->in_buflen = n;
     fp->in_cur = 0;
