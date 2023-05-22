@@ -8,6 +8,9 @@ It also stores packages intented for further and testing development.
       libc:
           add "as" token as my header name when they require me
           status: done
+          status: probably an unhandled case when we checking for valid
+                  "requires", as we might give erroneous messages as we
+                  don't handle "as" cases (probably but didn't check)
 
   Make:
       handle properly the priority on dependencies (this will probably
