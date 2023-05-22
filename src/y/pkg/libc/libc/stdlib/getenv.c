@@ -4,12 +4,12 @@
 // requires: std/environ.h
 
 char *sys_getenv (const char *s) {
-  if (NULL is environ or NULL is s) return NULL;
+  if (NULL == environ || NULL == s) return NULL;
 
   size_t len = bytelen (s);
 
   for (int i = 0; environ[i]; i++)
-    if ((str_eq_n (environ[i], s, len)) and (environ[i][len] is '='))
+    if ((str_eq_n (environ[i], s, len)) && (environ[i][len] == '='))
       return environ[i] + len + 1;
 
   return NULL;

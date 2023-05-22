@@ -1,4 +1,4 @@
-// provides: void qsort (void *, size_t, size_t, int (*cmp) (const void *,const void *))
+// provides: void quick_sort (void *, size_t, size_t, int (*cmp) (const void *,const void *))
 
 /* $OpenBSD: qsort.c,v 1.10 2005/08/08 08:05:37 espie Exp $ */
 /*-
@@ -30,16 +30,10 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <stdlib.h>
-
-static __inline char *med3 (char *, char *, char *, int (*) (const void *, const void *));
-static __inline void swapfunc (char *, char *, int, int);
-
-#define min(a, b) (a) < (b) ? a : b
 /*
 * Qsort routine from Bentley & McIlroy's "Engineering a Sort Function".
 */
+
 #define swapcode(TYPE, parmi, parmj, n) { \
   long i = (n) / sizeof (TYPE);           \
   TYPE *pi = (TYPE *) (parmi);            \
@@ -54,7 +48,7 @@ static __inline void swapfunc (char *, char *, int, int);
 #define SWAPINIT(a, es) swaptype = ((char *)a - (char *)0) % sizeof(long) || \
   es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
 
-static __inline void swapfunc(char *a, char *b, int n, int swaptype) {
+static inline void swapfunc(char *a, char *b, int n, int swaptype) {
   if (swaptype <= 1)
     swapcode (long, a, b, n)
   else
@@ -70,11 +64,12 @@ static __inline void swapfunc(char *a, char *b, int n, int swaptype) {
     swapfunc (a, b, es, swaptype)
 
 #define vecswap(a, b, n) if ((n) > 0) swapfunc (a, b, n, swaptype)
-static __inline char *med3 (char *a, char *b, char *c, int (*cmp) (const void *, const void *)) {
+
+static inline char *med3 (char *a, char *b, char *c, int (*cmp) (const void *, const void *)) {
   return cmp (a, b) < 0 ? (cmp (b, c) < 0 ? b : (cmp (a, c) < 0 ? c : a )): (cmp (b, c) > 0 ? b : (cmp (a, c) < 0 ? a : c ));
 }
 
-void qsort (void *aa, size_t n, size_t es, int (*cmp) (const void *,const void *)) {
+void quick_sort (void *aa, size_t n, size_t es, int (*cmp) (const void *,const void *)) {
   char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
   int d, r, swaptype, swap_cnt;
   char *a = aa;
@@ -141,12 +136,12 @@ void qsort (void *aa, size_t n, size_t es, int (*cmp) (const void *,const void *
   }
 
   pn = (char *) a + n * es;
-  r = min (pa - (char *) a, pb - pa);
+  r = MIN (pa - (char *) a, pb - pa);
   vecswap (a, pb - r, r);
-  r = min (pd - pc, pn - pd - (int) es);
+  r = MIN (pd - pc, pn - pd - (int) es);
   vecswap (pb, pn - r, r);
   if ((r = pb - pa) > (int) es)
-    qsort (a, r / es, es, cmp);
+    quick_sort (a, r / es, es, cmp);
 
   if ((r = pd - pc) > (int) es) {
   /* Iterate rather than recurse to save stack space */
