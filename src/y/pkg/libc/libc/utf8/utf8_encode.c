@@ -4,8 +4,14 @@
 
 utf8_char *utf8_encode (utf8_char *chr, const char *bytes, int tabwidth) {
   char *sp = (char *) bytes;
-
   uchar c = (uchar) *sp;
+
+  ifnot (c) {
+    chr->len = chr->code = chr->width = 0;
+    chr->buf[0] = '\0';
+    return chr;
+  }
+
   chr->code = c;
   chr->width = chr->len = 1;
   chr->buf[0] = *sp;
