@@ -1,9 +1,10 @@
 // provides: Map_Type *map_new (uint32_t)
-// provides: map_type *map_get (Map_Type *m, const char *)
-// provides: void *map_get_value (Map_Type *m, const char *)
-// provides: void *map_pop_value (Map_Type *m, const char *)
+// provides: map_type *map_get (Map_Type *, const char *)
+// provides: void *map_get_value (Map_Type *, const char *)
+// provides: void *map_pop_value (Map_Type *, const char *)
 // provides: void *map_set_by_callback (Map_Type *, char *, MapReleaseCb, MapSetValueCb)
-// provides: int map_set (Map_Type *, char *, void *, MapReleaseCb cb)
+// provides: int map_set (Map_Type *, char *, void *, MapReleaseCb)
+// provides: int map_set_with_key_allocated (Map_Type *, char *, void *, MapReleaseCb)
 // provides: int map_key_exists (Map_Type *, char *)
 // provides: Map_Type *map_clone (Map_Type *, MapCopyCb, void *)
 // provides: void map_clear (Map_Type *)
@@ -43,6 +44,7 @@ void map_clear (Map_Type *m) {
   for (uint32_t i = 0; i < m->num_slots; i++) {
     if (NULL == m->slots[i])
       continue;
+
     map_release_slot (m->slots[i]);
     m->slots[i] = NULL;
   }
@@ -53,6 +55,7 @@ void map_clear (Map_Type *m) {
 void map_release (Map_Type **m) {
   if (NULL == *m)
     return;
+
   map_clear (*m);
   Release ((*m)->slots);
   Release (*m);
@@ -61,8 +64,9 @@ void map_release (Map_Type **m) {
 
 Map_Type *map_new (uint32_t num_slots) {
    Map_Type *new = Alloc (sizeof (Map_Type));
-   new->slots = Alloc (sizeof (map_type) * num_slots);
-   mem_set (new->slots, 0, num_slots);
+   size_t size = sizeof (map_type) * num_slots;
+   new->slots = Alloc (size);
+   mem_set (new->slots, 0, size);
    new->num_keys = 0;
    new->num_slots = num_slots;
    return new;
@@ -70,9 +74,11 @@ Map_Type *map_new (uint32_t num_slots) {
 
 static map_type *__map_get (Map_Type *m, const char *key, uint32_t hash) {
   map_type *it = m->slots[hash];
+
   while (it) {
     if (str_eq (it->key, key))
       return it;
+
     it = it->next;
   }
 
@@ -107,9 +113,8 @@ static map_type *__map_set (Map_Type *m, char *key) {
   }
 
   new = Alloc (sizeof (map_type));
-  new->key = key;
-
   new->next = m->slots[hash];
+  new->key = str_new_with (key);
   new->value = 0;
   m->slots[hash] = new;
   m->num_keys++;
@@ -118,6 +123,13 @@ static map_type *__map_set (Map_Type *m, char *key) {
 }
 
 int map_set (Map_Type *m, char *key, void *value, MapReleaseCb cb) {
+  map_type *map = __map_set (m, key);
+  map->value = value;
+  map->release = cb;
+  return 0;
+}
+
+int map_set_with_key_allocated (Map_Type *m, char *key, void *value, MapReleaseCb cb) {
   map_type *map = __map_set (m, key);
   map->value = value;
   map->release = cb;
@@ -146,13 +158,33 @@ int map_key_exists (Map_Type *m, char *key) {
 void *map_pop_value (Map_Type *m, const char *key) {
   uint32_t hash = MAP_HASH_KEY(m, key);
 
-  map_type *map = __map_get (m, key, hash);
+  map_type *it = m->slots[hash];
+  map_type *ti = NULL;
 
-  if (NULL != map) {
-    void *value = map->value;
-    Release (map->key);
-    Release (map);
-    return value;
+  while (it) {
+    if (str_eq (it->key, key)) {
+      void *value = it->value;
+
+      map_type *next = it->next;
+      if (ti)
+        ti->next = next;
+      else {
+        if (next)
+          m->slots[hash] = next;
+        else
+          m->slots[hash] = NULL;
+      }
+
+      Release (it->key);
+      Release (it);
+
+      m->num_keys--;
+
+      return value;
+    }
+
+    ti = it;
+    it = it->next;
   }
 
   return NULL;
