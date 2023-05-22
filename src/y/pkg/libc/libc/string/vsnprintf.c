@@ -674,6 +674,10 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
             is_continue = 0;
             break;
 
+          case 'z':
+            p->a_long = INT_LEN_LONG_LONG;
+            break;
+
           case 'l': /* long or long long */
             if (p->a_long == INT_LEN_LONG) {
               p->a_long = INT_LEN_LONG_LONG;
