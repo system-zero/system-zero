@@ -19,7 +19,7 @@
   #undef MemDeinit
   #endif
 
-  #define Alloc(__sz__) sys_calloc (1, __sz__)
+  #define Alloc(__sz__) sys_malloc (__sz__)
 
   #define Realloc sys_realloc
 

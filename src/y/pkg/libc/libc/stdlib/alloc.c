@@ -1,5 +1,4 @@
 // provides: void *sys_malloc (size_t)
-// provides: void *sys_calloc (size_t, size_t)
 // provides: void *sys_realloc (void *, size_t)
 // provides: uint sys_free (void *)
 // provides: int  mem_init (size_t)
@@ -32,14 +31,14 @@
    desired allocation by using this interface. This is for total user control.
 
    Additionaly implemented and exposed
-      realloc(), calloc(), mem_init(), mem_deinit()
+      realloc(), mem_init(), mem_deinit()
 
    Also, we now exit on sys_sbrk() failure. This can be disabled with the:
    MEM_DO_NOT_EXIT_ON_FAILURE macro definition before including this libc.
 
    Also, when merging chunks, we don't longer stop to the first one to the
    lhs and rhs chunks of the current freed object, but we continue to loop
-   until we find a NULL chunk pointer or the chunk is not available.
+   until we find a NULL chunk pointer or a chunk that is not available.
 
    For now when the requested size is zero, then eight bytes are allocated.
    Haven't settled down on this and how to handle properly. The user should
@@ -49,7 +48,8 @@
 
 /* Function Interface and Semantics:
      sys_malloc (size)
-       returns NULL or calll exit() on failure, a void pointer otherwise
+       returns NULL or calll exit() on failure, a void pointer otherwise and
+         fills whith zero the allocated space
 
      sys_realloc(ptr, size)
        when ptr is NULL it calls malloc (size)
@@ -59,12 +59,6 @@
             has been defined
           release pointer
           set pointer to the allocated memory address 
-
-     sys_calloc(nmemb, size)
-       checks for integer overflows, if the macro MEM_WITHOUT_INT_OVERFLOW_CHECK
-         hasn't been defined
-       returns NULL or call exit() on failure, a void pointer otherwise and
-       fills whith zero the allocated space
 
      sys_free (ptr)
        this free() returns an unsigned int, which is greater than zero on failure
@@ -77,10 +71,10 @@
        1 on success
 
        This was meant to be called on the application initialization.
-       It doesn'r required to be called at any point.
+       It doesn't required to be called at any point.
 
      mem_deinit ()
-       deinitialize the memory arena by setting the breakoint to the initial value
+       deinitialize the memory arena by setting the breakpoint to the initial value
        returns zero if the arena has already been deinitialized or on success, and
        -1 on failure
 
@@ -105,7 +99,7 @@
 
 /* Macros: this is the recomended way to use the interface
 
-     Alloc(size)  : this actually calls calloc() with 1 as nmemb.
+     Alloc(size)
 
      Realloc(ptr, size)
 
@@ -118,7 +112,6 @@
      MEM_DO_NOT_EXIT_ON_FAILURE: this doesn't calls exit() on failure
      MEM_ZERO_FREED: this fills ptr, with zero when the memory is being freed 
      MEM_ZERO_ON_REALLOC: this fills the extra allocated space on ptr, with zero
-     MEM_WITHOUT_INT_OVERFLOW_CHECK: this avoids the check for overflows
 */
 
 /* This is probably the simplest thing one can do to get a dynamic memory interface.
@@ -147,49 +140,125 @@ typedef struct memChunkT {
 } memChunkT;
 
 memChunkT *memHead = NULL;
-memChunkT *lastVisited = NULL;
+memChunkT *lastChunk = NULL;
 void *endBreakPoint = NULL;
 
 /* not ready
    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 */
 
-static memChunkT *findChunk (memChunkT *chunkptr, uint size) {
+static intptr_t mem_arena_size (void *beg, void *end) {
+  return (char *) end - (char *) beg;
+}
+
+#ifdef MEM_DEBUG
+static int memnumBrks = 0;
+static size_t memnumSize = 0;
+
+static int mem_validate (void) {
+  memChunkT* ptr = memHead;
+  memChunkT* prev = ptr;
+
+  while (ptr != NULL) {
+    if (ptr->next != NULL) {
+      if (ptr->next <= ptr) {
+        sys_fprintf (sys_stderr, "ERROR ptr %p, next %p\n", ptr, ptr->next);
+        return -1;
+      }
+    }
+
+    ptr = ptr->next;
+    if (ptr != NULL && (char *) prev + prev->size != (char *) ptr) {
+        sys_fprintf (sys_stderr, "ERROR prev + size is not ptr %p, next %p prev %p diff %d prev-size %u\n",
+         prev + prev->size, ptr, prev, (char *) ptr - (char *) prev, prev->size);
+        return -1;
+     }
+
+    prev = ptr;
+
+  }
+
+  if (prev)
+   if ((char *) prev + prev->size != (char *) endBreakPoint) {
+    sys_fprintf (sys_stderr, "ERROR last one isnot endBreakpoin %p, size %p, endbrkp %p diff %u\n",
+    prev, prev->size, endBreakPoint, (char *) endBreakPoint- (char *) prev);
+    return -1;
+   }
+
+  return 0;
+}
+#endif
+
+static memChunkT *findChunk (memChunkT *chunkptr, uint size, memChunkT **lastchunk) {
   memChunkT* ptr = chunkptr;
 
   while (ptr != NULL) {
-    if (ptr->size >= (size + STRUCT_SIZE) and ptr->is_available)
+    if (ptr->is_available && ptr->size >= size){
       return ptr;
+    }
 
-    lastVisited = ptr; // this should be the tail of the list if ptr->next is NULL
+    *lastchunk = ptr;
     ptr = ptr->next;
   }
 
   return ptr;
 }
 
-static void splitChunk (memChunkT* ptr, unsigned int size) {
-  memChunkT *newchunk;
+static void splitChunk (memChunkT *cur, size_t size) {
+  size_t atleast = ALIGN_SIZE + STRUCT_SIZE;
+  size_t newsz = cur->size - size;
 
-  newchunk = (memChunkT *) (ptr->end + size);
-  newchunk->size = ptr->size - size - STRUCT_SIZE;
+  if (cur->size < size || newsz < atleast)
+    return;
+
+  memChunkT *newchunk = (memChunkT *) ((char *) cur + size);
+
+  newchunk->size = newsz;
   newchunk->is_available = 1;
-  newchunk->next = ptr->next;
-  newchunk->prev = ptr;
 
- if (newchunk->next != NULL)
-   newchunk->next->prev = newchunk;
+  newchunk->next = cur->next;
+  if (newchunk->next != NULL)
+    newchunk->next->prev = newchunk;
 
-  ptr->size = size;
-  ptr->is_available = 0;
-  ptr->next = newchunk;
+  newchunk->prev = cur;
+  cur->next = newchunk;
+
+  cur->size = size;
+  cur->is_available = 0;
 }
 
-static memChunkT *increaseAllocation (memChunkT *lastptr, unsigned int size) {
-  endBreakPoint = sys_sbrk (0);
+static void mergeChunks (memChunkT *freed) {
+  memChunkT *cur = freed;
+  memChunkT *prev = cur->prev;
+
+  while (prev != NULL && prev->is_available) {
+    prev->size += cur->size;
+    prev->next = cur->next;
+
+    if (cur->next != NULL)
+      cur->next->prev = prev;
+
+    cur = prev;
+    prev = prev->prev;
+  }
+
+  memChunkT *next = cur->next;
+
+  while (next != NULL && next->is_available) {
+    cur->size += next->size;
+    cur->next = next->next;
+
+    if (next->next != NULL)
+      next->next->prev = cur;
+
+    next = next->next;
+  }
+}
+
+static memChunkT *increaseAllocation (memChunkT *lastchunk, size_t size) {
   memChunkT* curbreak = endBreakPoint;
 
-  if (sys_sbrk (size + STRUCT_SIZE) == (void *) -1) {
+  if (sys_sbrk (size) == (void *) -1) {
     sys_errno = ENOMEM;
     return NULL;
   }
@@ -197,65 +266,50 @@ static memChunkT *increaseAllocation (memChunkT *lastptr, unsigned int size) {
   curbreak->size = size;
   curbreak->is_available = 0;
   curbreak->next = NULL;
-  curbreak->prev = lastptr;
-  lastptr->next = curbreak;
+  curbreak->prev = lastchunk;
 
-  if (curbreak->size > size)
-    splitChunk (curbreak, size);
+  if (lastchunk != NULL)
+  lastchunk->next = curbreak;
+
+  if (memHead == NULL)
+    memHead = curbreak;
+
+#ifdef MEM_DEBUG
+  memnumBrks++;
+  memnumSize += size;
+  if (-1 == mem_validate ())
+    exit (1);
+#endif
+
+  endBreakPoint = sys_sbrk (0);
 
   return curbreak;
-}
-
-static void mergeChunkPrev (memChunkT *freed) {
-  memChunkT *cur = freed;
-  memChunkT *prev = freed->prev;
-
-  while (prev != NULL and prev->is_available) {
-    prev->size += (cur->size + STRUCT_SIZE);
-    prev->next = cur->next;
-    if(cur->next != NULL)
-      cur->next->prev = prev;
-    cur = prev;
-    prev = prev->prev;
-  }
-}
-
-static void mergeChunkNext (memChunkT *freed) {
-  memChunkT *next;
-  next = freed->next;
-  while (next != NULL and next->is_available) {
-    freed->size += (STRUCT_SIZE + next->size);
-    freed->next = next->next;
-    if (next->next != NULL)
-      next->next->prev = freed;
-    next = next->next;
-  }
 }
 
 int mem_deinit (void) {
   if (memHead == NULL) return 0;
 
-  endBreakPoint = sys_sbrk (0);
-
-  intptr_t sz = (char *) endBreakPoint - (char *) memHead;
+  intptr_t sz = mem_arena_size (memHead, endBreakPoint);
 
   if ((void *) -1 == sys_sbrk (-sz))
     return -1;
 
   endBreakPoint = sys_sbrk (0);
+
   memHead = NULL;
 
   return 0;
 }
 
-int mem_init (size_t size) {
+int mem_init (size_t sz) {
   if (memHead != NULL)
     return 0;
 
   endBreakPoint = sys_sbrk (0);
 
   // pthread_mutex_lock (&lock);
-  if (sys_sbrk (size) == (void*) -1) {
+
+  if (sys_sbrk (sz) == (void *) -1) {
     // pthread_mutex_unlock (&lock);
     sys_errno = ENOMEM;
     #ifndef MEM_DO_NOT_EXIT_ON_FAILURE
@@ -265,53 +319,81 @@ int mem_init (size_t size) {
   }
 
   memHead = endBreakPoint;
-  memHead->size = size - STRUCT_SIZE;
-  memHead->is_available = 0;
+  memHead->size = sz;
+  memHead->is_available = 1;
   memHead->next = NULL;
   memHead->prev = NULL;
 
+  endBreakPoint = sys_sbrk (0);
+
   // pthread_mutex_unlock (&lock);
+
   return 1;
 }
 
+static void *mem_zero (void *mem, size_t size) {
+  char *sp = (char *) mem;
+  for (size_t i = 0; i < size; i++)
+    sp[i] = 0;
+
+  return mem;
+}
+
 void *sys_malloc (size_t size) {
-  if (0 == size) size = ALIGN_SIZE;
+  size_t sz = ALIGN(size + STRUCT_SIZE);
 
-  unsigned int sz = ALIGN(size);
+  switch (mem_init (sz)) {
+    case  1: {
+      splitChunk (memHead, sz);
+      memHead->is_available = 0;
+      return mem_zero (memHead->end, sz - STRUCT_SIZE);
+    }
 
-  switch (mem_init (sz + STRUCT_SIZE)) {
-    case  1: return memHead->end;
-    case -1: return NULL;
+    case -1:
+    #ifndef MEM_DO_NOT_EXIT_ON_FAILURE
+      exit (1);
+    #endif
+
+    return NULL;
   }
 
   // pthread_mutex_lock (&lock);
 
   memChunkT *freechunk = NULL;
-  freechunk = findChunk (memHead, sz);
+  memChunkT *lastchunk = NULL;
+
+  freechunk = findChunk (memHead, sz, &lastchunk);
 
   if (freechunk == NULL) {
-    freechunk = increaseAllocation (lastVisited, sz);
+    freechunk = increaseAllocation (lastchunk, sz);
 
     if (freechunk == NULL) {
       // pthread_mutex_unlock (&lock);
     #ifndef MEM_DO_NOT_EXIT_ON_FAILURE
       exit (1);
     #endif
+
       return NULL;
     }
 
     // pthread_mutex_unlock (&lock);
-    return freechunk->end;
+    return mem_zero (freechunk->end, sz - STRUCT_SIZE);
   }
 
-  if (freechunk->size > sz)
-    splitChunk (freechunk, sz);
+  freechunk->is_available = 0;
+
+  splitChunk (freechunk, sz);
 
   // pthread_mutex_unlock (&lock);    
-  return freechunk->end;
+
+  return mem_zero (freechunk->end, sz - STRUCT_SIZE);
 }
 
 void *sys_realloc (void *ptr, size_t size) {
+  char *old_p = (char *) ptr;
+  memChunkT *oldchunk = (memChunkT *) (old_p - STRUCT_OFFSET);
+  size_t osz = oldchunk->size - STRUCT_SIZE;
+
   void *p = sys_malloc (size);
 
   if (p == NULL) return NULL;
@@ -323,62 +405,46 @@ void *sys_realloc (void *ptr, size_t size) {
 
   // pthread_mutex_lock (&lock);
   char *new_p = (char *) p;
-  memChunkT *newchunk = (memChunkT *) ((char *) new_p - STRUCT_OFFSET);
-  char *old_p = (char *) ptr;
-  memChunkT *oldchunk = (memChunkT *) ((char *) old_p - STRUCT_OFFSET);
+  memChunkT *newchunk = (memChunkT *) (new_p - STRUCT_OFFSET);
+  size_t nsz = newchunk->size - STRUCT_SIZE;
 
   size_t i = 0;
-
-  for (; i < oldchunk->size and i < newchunk->size; i++)
+  for (; i < osz && i < nsz; i++)
     new_p[i] = old_p[i];
-
-  #ifdef MEM_ZERO_ON_REALLOC
-  for (; i < newchunk->size; i++)
-    new_p[i] = 0;
-  #endif
 
   sys_free (ptr);
   ptr = p;
+
   newchunk->is_available = 0;
 
   // pthread_mutex_unlock (&lock);    
+
   return ptr;
 }
 
-void *sys_calloc (size_t nmemb, size_t size) {
-  #ifndef MEM_WITHOUT_INT_OVERFLOW_CHECK
-  if (nmemb and size) {
-    /* this is from picolibc/newlib/libc/stdlib/mul_overflow.h */
-    if ((nmemb > SIZE_MAX / size) or (size > SIZE_MAX / nmemb)) {
-      sys_errno = EINTEGEROVERFLOW;
-      return NULL;
-    }
-  }
-  #endif
-
-  void *s = sys_malloc (nmemb * size);
-  if (s == NULL) return NULL;
-
-  char *sp = (char *) s;
-  for (size_t i = 0; i < size; i++) sp[i] = 0;
-
-  return s;
-}
 
 uint sys_free (void *ptr) {
   // pthread_mutex_lock (&lock);
-  memChunkT *toFree = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
+  memChunkT *chunk = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
+
+  if (chunk->is_available) {
+    sys_fprintf (sys_stderr, "Double free pointer %p\n", chunk);
+    exit (1);
+  }
+
   #ifdef MEM_ZERO_FREED
   char *sp = (char *) ptr;
-  for (size_t i = 0; i < toFree->size; i++)
+  size_t sz = chunk->size - STRUCT_SIZE;
+  for (size_t i = 0; i < sz; i++)
     sp[i] = 0;
   #endif
 
-  if (toFree >= memHead and toFree <= (memChunkT *) endBreakPoint) {
-    toFree->is_available = 1;
-    mergeChunkNext (toFree);
-    mergeChunkPrev (toFree);
+  if ((char *) chunk >= (char *) memHead && (char *) chunk < (char *) endBreakPoint) {
+    chunk->is_available = 1;
+
+    mergeChunks (chunk);
     // pthread_mutex_unlock (&lock);
+
     return 0;
   }
 
