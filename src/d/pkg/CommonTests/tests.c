@@ -9,6 +9,7 @@ decimal_t decString;
 
 #define INTRO(__m__, __mlen__) do {                  \
   numTests++;                                        \
+  decString.base = 10;                               \
   char *nstr = int_to_string (&decString, numTests); \
   size_t _len = decString.size + 3 + __mlen__ + 1;   \
   char buf[_len + 1];                                \
@@ -22,6 +23,7 @@ decimal_t decString;
   size_t num = bytelen (__func__);                   \
   str_copy (msgStr, MAX_LEN_MSG, __func__, num);     \
   msgStr[num++] = ' ';                               \
+  decString.base = 10;                               \
   char *nstr = int_to_string (&decString, __n__);    \
   str_copy (msgStr + num, MAX_LEN_MSG - num, nstr, decString.size); \
   num += decString.size;                             \
@@ -33,6 +35,7 @@ decimal_t decString;
   size_t num = bytelen (__f__);                      \
   str_copy (msgStr, MAX_LEN_MSG, __f__, num);        \
   msgStr[num++] = ' ';                               \
+  decString.base = 10;                               \
   char *nstr = int_to_string (&decString, __n__);    \
   str_copy (msgStr + num, MAX_LEN_MSG - num, nstr, decString.size); \
   num += decString.size;                             \
@@ -46,6 +49,7 @@ decimal_t decString;
 })
 
 #define SUMMARY() do {                               \
+  decString.base = 10;                               \
   char *nstr = int_to_string (&decString, numTests); \
   size_t _len = 1024;                                \
   char buf[_len];                                    \

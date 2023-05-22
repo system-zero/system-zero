@@ -7,23 +7,33 @@
 // requires: string/mem_set.c
 // requires: convert/decimal.h
 
-static void decimal_prepend (decimal_t* dec, char c) {
+static void decimal_prepend (decimal_t *dec, char c) {
   dec->digits[DECIMAL_NUM_DIGITS - (++dec->size)] = c;
 }
 
-static char *unsigned64_to_string (decimal_t* dec, uint64_t u, int minus) {
+static char *unsigned64_to_string (decimal_t *dec, uint64_t u, int minus) {
   dec->size = 0;
   mem_set (dec->digits, 0, DECIMAL_NUM_DIGITS + 1);
+
+  switch (dec->base) {
+    case 2 ... 36:
+      break;
+
+    default:
+      return dec->digits + (DECIMAL_NUM_DIGITS - dec->size);
+   }
 
   if (u == 0) {
     decimal_prepend (dec, '0');
     return dec->digits + (DECIMAL_NUM_DIGITS - dec->size);
   }
 
+  const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+
   while (u) {
-    char digit = '0' + (u % 10);
+    char digit = digits[(u % dec->base)];
     decimal_prepend (dec, digit);
-    u /= 10;
+    u /= dec->base;
   }
 
   if (minus) decimal_prepend (dec, '-');
