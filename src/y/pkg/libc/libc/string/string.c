@@ -258,7 +258,7 @@ string *string_trim_end (string *this, char c) {
 }
 
 string *string_new_with_allocated (const char *allocated, size_t len, size_t size) {
-  if (len >= size) return NULL;
+  if (len > size) return NULL;
 
   string *s = Alloc (sizeof (string));
   s->bytes = (char *) allocated;
