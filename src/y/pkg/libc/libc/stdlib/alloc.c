@@ -112,6 +112,8 @@
      MEM_DO_NOT_EXIT_ON_FAILURE: this doesn't calls exit() on failure
      MEM_ZERO_FREED: this fills ptr, with zero when the memory is being freed 
      MEM_ZERO_ON_REALLOC: this fills the extra allocated space on ptr, with zero
+     MEM_DO_NOT_EXIT_ON_DOUBLE_FREE_POINTER: do not exit on double freed pointer
+     MEM_DO_NOT_EXIT_ON_NULL_POINTER: do not exit on NULL pointer
 */
 
 /* This is probably the simplest thing one can do to get a dynamic memory interface.
@@ -155,7 +157,8 @@ static intptr_t mem_arena_size (void *beg, void *end) {
 static int memnumBrks = 0;
 static size_t memnumSize = 0;
 
-static int mem_validate (void) {
+int mem_validate (void);
+int mem_validate (void) {
   memChunkT* ptr = memHead;
   memChunkT* prev = ptr;
 
@@ -298,6 +301,11 @@ int mem_deinit (void) {
 
   memHead = NULL;
 
+#ifdef MEM_DEBUG
+  sys_fprintf (sys_stdout, "Num of brk() system calls %d\n", memnumBrks);
+  sys_fprintf (sys_stdout, "Total allocated size %u\n", memnumSize);
+#endif
+
   return 0;
 }
 
@@ -323,6 +331,11 @@ int mem_init (size_t sz) {
   memHead->is_available = 1;
   memHead->next = NULL;
   memHead->prev = NULL;
+
+#ifdef MEM_DEBUG
+  memnumBrks++;
+  memnumSize += sz;
+#endif
 
   endBreakPoint = sys_sbrk (0);
 
@@ -424,12 +437,21 @@ void *sys_realloc (void *ptr, size_t size) {
 
 
 uint sys_free (void *ptr) {
+  if (ptr == NULL) {
+  #ifndef MEM_DO_NOT_EXIT_ON_NULL_POINTER
+    sys_fprintf (sys_stderr, "%s: argument is a NULL pointer\n", __func__);
+    exit (1);
+  #endif
+    return 1;
+  }
   // pthread_mutex_lock (&lock);
   memChunkT *chunk = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
 
   if (chunk->is_available) {
+  #ifndef MEM_DO_NOT_EXIT_ON_DOUBLE_FREE_POINTER
     sys_fprintf (sys_stderr, "Double free pointer %p\n", chunk);
     exit (1);
+  #endif
   }
 
   #ifdef MEM_ZERO_FREED

@@ -1,0 +1,2883 @@
+##[
+  Wed May 11 00:44:03 2022: this is the code that should obey to the language 
+  document. For now it is the copy from the tests from the first development,
+  and some of those tests that assume the top root directory they might fail.
+  So still they have to be written again with the established and stabilized
+  development, and so they might not correspond to the declared intentions of
+  the document.
+  For real code, there is z/app/packman/src/packman.lai or y/pkg/make/Make.lai,
+  as the code in this unit, it is intented to catch corner cases, and test old
+  bugs, and so it is not really representative.
+##]
+
+include ("argparse")
+
+# For testing reasons, this should be called from the root directory of the
+# distribution. If not a couple of tests may fail like the __argv tests.
+
+var argparse = New Argparse (5, 0, "La src/data/semantics/language/l-semantics.lai [options]")
+
+argparse.add ("run_invalid_memory_read_tests", 0, "run-invalid-memory-read-tests", "run invalid memory read tests", BooleanType, 0)
+argparse.add ("run_fileptr_tests", 0, "run-fileptr-tests", "run fileptr tests", BooleanType, 0)
+argparse.add ("run_valgrind_tests", 0, "run-valgrind-tests", "run valgrind tests", BooleanType, 0)
+argparse.add ("run_development_tests", 0, "run-development-tests", "run development tests", BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+if notok is argparse.process (__argv, 0) then exit (1)
+
+if argparse.exit then exit (0)
+
+var run_invalid_memory_read_tests = argparse.results.run_invalid_memory_read_tests
+var run_fileptr_tests = argparse.results.run_fileptr_tests
+var run_valgrind_tests = argparse.results.run_valgrind_tests
+var run_development_tests = argparse.results.run_development_tests
+
+var test_num = 0
+
+var integer[280] RESULTS
+RESULTS[*] = ok
+
+var EXPECTED_TO_FAIL = 1
+
+const OK = "\e[32m"
+const NOTOK = "\e[31m"
+const RESET = "\e[m"
+
+func assert_true (msg, expr) {
+  print ("[${++test_num}] ${msg} - ")
+  if expr is false {
+    println (stderr, "${NOTOK}[NOTOK] awaiting true got false${RESET}")
+    RESULTS[test_num - 1] = notok
+    return
+  }
+
+  println ("${OK}[OK]${RESET}")
+}
+
+func assert_true_msg (msg, msg_on_error, expr) {
+  print ("[${++test_num}] ${msg} - ")
+  if expr is false {
+    RESULTS[test_num - 1] = notok
+    println (stderr, "${NOTOK}[NOTOK] ${msg_on_error}${RESET}")
+    return
+  }
+
+  println ("${OK}[OK]${RESET}")
+}
+
+func assert_false (msg, expr) {
+  print ("[${++test_num}] ${msg} - ")
+  if expr {
+    RESULTS[test_num - 1] = notok
+    println (stderr, "${NOTOK}[NOTOK] awaiting false got true${RESET}")
+    return
+  }
+
+  println ("${OK}[OK]${RESET}")
+}
+
+func assert_equal (msg, a_expr, b_expr) {
+  print ("[${++test_num}] ${msg} - ")
+  if a_expr isnot b_expr {
+    RESULTS[test_num - 1] = notok
+    println (stderr, "${NOTOK}[NOTOK] awaiting equality${RESET}")
+    return
+  }
+
+  println ("${OK}[OK]${RESET}")
+}
+
+func assert_not_equal (msg, a_expr, b_expr) {
+  print ("[${++test_num}] ${msg} - ")
+  if a_expr is b_expr {
+    RESULTS[test_num - 1] = notok
+    println (stderr, "${NOTOK}[NOTOK] awaiting equality${RESET}")
+    return
+  }
+
+  println ("${OK}[OK]${RESET}")
+}
+
+func assert_equal_msg (msg, msg_on_error, a_expr, b_expr) {
+  print ("[${++test_num}] ${msg} - ")
+  if a_expr isnot b_expr {
+    RESULTS[test_num - 1] = notok
+    println (stderr, "${NOTOK}[NOTOK] ${msg_on_error}${RESET}")
+    return
+  }
+
+  println ("${OK}[OK]${RESET}")
+}
+
+func expected_to_fail (msg, msg_on_error, a_expr, b_expr) {
+  print ("[${++test_num}] ${msg} - ")
+  if a_expr isnot b_expr {
+    RESULTS[test_num - 1] = EXPECTED_TO_FAIL
+    println (stderr, "${NOTOK}[NOTOK] ${msg_on_error}${RESET}")
+    return
+  }
+
+  println ("${OK}[OK]${RESET}")
+}
+
+func zero_semantics () {
+  var retval
+  var a = 1
+
+  func fu (a) return a
+
+  retval = fu (11)
+  assert_true ("testing scope", retval is 11)
+
+  var b = 2
+
+  func fua (a, b) return b + a
+
+  retval = fua (11, 12)
+  assert_true ("testing scope", retval is 23)
+
+  func fub (b) return a + b
+
+  retval = fub (10)
+  assert_true ("testing scope", retval is 11)
+
+  func fuc (a, b, c) {
+    func fud (a, b, c) return a + b + c
+    return fud (a, b, c)
+  }
+
+  retval = fuc (10, 20, 30)
+  assert_true ("testing function nesting and scope", retval is 60)
+
+  a = 2
+  func fue (c) {
+    func fuda (b) return a + b + c
+    return fuda (c)
+  }
+
+  retval = fue (20)
+  assert_true ("testing function nesting and scope", retval is 42)
+
+  var rba = 1 is 1 and 1 is 1 and
+      (1 is 1 and 2 is 2) and (1 isnot 2 and 1 isnot 2)
+  var rn = null
+  var rbaa = rn isnot null and rn is true
+  var rbae
+  if rn isnot null and rn is true then
+    rbae = notok
+  orelse
+    rbae = ok
+
+  assert_true ("testing logical AND",
+      rba is true and
+      rbaa is false and
+      rbae is ok)
+
+  var vor = 2 < 1 or 2 > 2 or 1 isnot 1 or 2 isnot 2 or 2 < 2 or 1 > 2
+  var vora = 2 < 1 or 2 > 2 or 1 isnot 1 or 2 isnot 2 or 2 < 2 or 1 > 2 or 2 is 2
+  var vorb = 2 < 1 or 2 is 2 or 1 isnot 1 or 2 isnot 2 or 2 < 2 or 1 > 2
+  assert_true ("testing logical OR",
+      vor is false and
+      vora is true and
+      vorb is true)
+
+  func treturn_stmt (x) {
+    return 1 if x is 1
+    return 2 if
+      x is 2
+    return 3 ifnot x isnot 4
+    return 4 ifnot x isnot 3
+    return if x is 5
+    return if
+      x is 6
+    return ifnot x is 9
+    return if
+      x is 8
+    return x
+  }
+
+  assert_true ("testing return statement",
+      treturn_stmt (1) is 1 and
+      treturn_stmt (2) is 2 and
+      treturn_stmt (4) is 3 and
+      treturn_stmt (3) is 4 and
+      treturn_stmt (5) is null and
+      treturn_stmt (6) is null and
+      treturn_stmt (7) is null and
+      treturn_stmt (8) is null and
+      treturn_stmt (9) is 9)
+
+  func fibo_tail (n, a, b) {
+    return a ifnot n
+    return b if n is 1
+
+    return fibo_tail (n - 1, b, a + b)
+  }
+
+  retval = fibo_tail (32, 0, 1)
+  assert_true ("testing recursive function", retval is 2178309)
+
+  func fibo_recursive (n) {
+    return n if n < 2
+    return fibo_recursive (n - 1) + fibo_recursive (n - 2)
+  }
+
+#  retval = fibo_recursive (12)
+#  assert_true ("testing recursive function", retval is 144)
+
+  retval = func (x, y) {
+    if x <= 100 { return x * 2 } else { return y * 2 }} (100, 200)
+
+  assert_true ("testing anon func", retval is 200)
+
+  retval = func (x) { return x * 2 } (10) +
+           func (y) { return y / 2 } (20) +
+           func (z) { return z % 2 } (21) + 11
+
+  assert_true ("testing sequential anon funcs", retval is 42)
+
+  retval = func (x, y) {
+    var xl = x + y
+    return func (k) { return k * 2 } (x) +
+           func (z) {
+             var i = func (x) { return x + 100 } (z)
+             return (z * 2) + i } (xl)
+  } (50, 100)
+
+  assert_true ("testing complex nested anon funcs", retval is 650)
+
+  retval -= 50
+  assert_true ("testing binary assignment operator [-=]", retval is 600)
+  retval /= 20
+  assert_true ("testing binary assignment operator [/=]", retval is 30)
+  retval *= 20
+  assert_true ("testing binary assignment operator [*=]", retval is 600)
+  retval += -580
+  assert_true ("testing binary assignment operator [+=]", retval is 20)
+  retval %= 3
+  assert_true ("testing binary assignment operator [%=]", retval is 2)
+  retval -= 2
+
+  var v1 = (1 << 0)
+  var v2 = (1 << 1)
+  var v3 = (1 << 2)
+
+  retval |= v1
+  assert_true ("testing binary assignment operator [|=]", retval is 1)
+  retval |= v2
+  assert_true ("testing binary assignment operator [|=]", retval is 3)
+  retval &= v2
+  assert_true ("testing binary assignment operator [&=]", retval is 2)
+  retval |= v3
+  assert_true ("testing binary assignment operator [|=]", retval is 6)
+  retval &= ~(v3|v1|v2)
+  assert_true ("testing binary assignment operator [&=]", retval is 0)
+  retval |= (v3|v1|v2)
+  assert_false ("testing binary assignment operator [|=]",
+      (retval & v1 is 0) or (retval & v2 is 0) or (retval & v3 is 0))
+  var rxo = 0
+  rxo ^= 100
+  var rxoc = rxo
+  rxoc ^= 99
+  assert_true ("testing binary assignment operator [^=]",
+      rxo is 100 and rxoc is 7)
+  assert_false ("testing bitwise operators",
+      (retval & v1 isnot 1) or (retval & v2 isnot 2) or (retval & v3 isnot 4))
+
+  func nifelse (n) {
+    if n isnot 10 {
+      return false
+    } else {
+      if n isnot 10 {
+        return false
+      } else {
+        if n isnot 10 {
+          return false
+        } else {
+          if n isnot 10 {
+            return false
+          } else {
+            if n is 10 {
+              return true
+            } else {
+              return false
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert_true ("testing nested if/else",
+     nifelse (10) is true and
+     nifelse (11) is false)
+
+  func felseifnot (n) {
+    if n isnot 10 {
+      return false
+    } else ifnot n is 10 {
+      return false
+    } else {
+      ifnot n is 10 {
+        return false
+      } else if n is 10 {
+        return true
+      }
+    }
+  }
+
+  assert_true ("testing else if[not]",
+      felseifnot (10) is true and
+      felseifnot (11) is false)
+
+  var r = (-12 + -30)
+  assert_true ("testing signed addition", r is -42)
+
+  r = (-12 - -30)
+  assert_true ("testing signed substraction", r is 18)
+
+  r = (-168 / -4)
+  assert_true ("testing signed division", r is 42)
+
+  r = (-12 * -30)
+  assert_true ("testing signed multiplication", r is 360)
+
+  r = (2 * -30)
+  assert_true ("testing mixed unsigned and signed multiplication", r is -60)
+
+  r = (-12 % -30)
+  assert_true ("testing mixed unsigned and signed modulo", r is -12)
+
+  var c = 'α'
+  assert_true ("testing char '' (utf8)", c is 945)
+
+  var cc = '\x{3b1}'
+  assert_true ("testing char '' in hexadecimal notation", cc is 945)
+
+  c = '\''
+  assert_true ("testing single quote as char", c is 39)
+
+  func funptr {
+    func f1 (f, i, ia, f1, f2) return f (i, ia, f1, f2)
+
+    func f5 (i) return i - i + 1
+
+    func f4 (i, f) return (i * 2) + f (i)
+
+    func f3 (i, f, f1) return (i + 100) + f (i, f1)
+
+    func f2 (i, ia, f, f1)return (i * 2) + f (ia, f1, f5)
+
+    var r = f1 (f2, 20, 30, f3, f4)
+
+    func f9 (v1, v2, v3, v4, v5, v6, v7, v8, b9)
+      return (v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + b9)
+
+    func ff (f)
+      return f (1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+    var s = f9
+    var rr = ff (s)
+
+    assert_true ("testing function references as function arguments",
+        r is 231 and
+        rr is 45)
+
+    func fassign (s) return s * 2
+    func tassign (f, i) return f (i)
+    r = tassign (fassign, 400)
+
+    func fu (x, y) return x * y
+    r = fu (10, 100)
+    assert_true ("testing assignment function to a variable", r is 1000)
+  }
+
+  funptr ()
+
+  var astr = "ταυtoughstuff"
+  var bstr = "ταυtoughstuffenough"
+  var cstr = "ταυtoughstuffenough"
+
+  assert_not_equal ("testing string equality", astr, bstr)
+  assert_equal ("testing string equality", bstr, cstr)
+
+  retval = len (astr)
+  assert_true ("testing string length", retval is 16)
+
+  var str = "asdf"
+  retval = str[-1]
+  assert_true ("testing string indices [get]", retval is 'f')
+
+  str[-1] = 'g'
+  retval = str[-1]
+  assert_true ("testing string indices [set]", retval is 'g')
+
+  retval = 200 - (str[0] + 3)
+  assert_true ("testing string indices [statement]", retval is 100)
+
+  var str_h = "ba"
+  str_h += "μπάκι"
+  str_h += 'α'
+  var s_str = " and μπακακάκια"
+  str_h += s_str
+
+  assert_true ("testing string appending operator [+=]", str_h is "baμπάκια and μπακακάκια")
+
+  assert_true_msg ("testing string appending operator [+=]",
+     "probably a freed variable that shouldn't be freed",  s_str is " and μπακακάκια")
+
+  var str_hh = "κοάξ"
+
+  str_h = '"' + "Βρεκεκεκὲ" + 'ξ' + ' ' + "κοὰξ" + ' ' + str_hh + '"'
+
+  assert_true ("testing string concatenation using the [+] operator",
+      str_h is "\"Βρεκεκεκὲξ κοὰξ κοάξ\"")
+
+  func call_by_reference () {  # this is not final
+    var s = "asdf"
+    var a = ["zzsdf"]
+    var m = {key : "zzzsdf"}
+
+    func x (xx) xx[0] = 'b'
+
+    x (s)
+    var r_a = s is "bsdf"
+
+    x (a[0])
+    var r_b = a[0] is "bzsdf"
+
+    x (m.key)
+    var r_c = m.key is "bzzsdf"
+
+    func aa (x) { x[0] = s }
+    aa (a)
+    var r_d = a[0] is "bsdf"
+
+    func mm (xx)  xx.key = s
+
+    mm (m)
+    var r_e = m.key is "bsdf"
+
+    assert_true ("testing call by reference values",
+        r_a and r_b and r_c and r_d and r_e)
+  }
+
+  call_by_reference ()
+
+}
+
+zero_semantics ()
+
+func self_semantics () {
+  var retval
+
+  var rba = 1 is 1 and 1 is 1 and
+      (1 is 1 and 2 is 2) and (1 isnot 2 and 1 isnot 2)
+  var rn = null
+  var rbaa = rn isnot null and rn is true
+  var rbac = if rn isnot null and rn is true then notok orelse ok
+  var rbad = if rn isnot null and rn is true then notok
+  var rbae
+  if rn isnot null and rn is true then rbae = notok
+  orelse rbae = ok
+
+  var rblues
+  if rn isnot null and rn is true or
+      notreached_here and also_here or
+      here and
+      a_bit_far then
+    this statement will not evaluate you could write whatever you like
+  orelse
+    rblues = `anything can happen, the destination and the scratch of the
+       time at the same time`S8
+
+  var is_blues = rblues is
+"anything can happen, the destination and the scratch of the time at the same time" and
+    rblues isnot null
+
+  assert_true ("testing logical AND",
+      rba is true and
+      rbaa is false and
+      rbac is ok and
+      rbad is null and
+      rbae is ok and
+      is_blues is ok)
+
+  var pm_map = {key : 1}
+  func p_m (x) {
+    if x is 10 {
+      return x++
+    } else if x++ is 20 {
+      return x--
+    } else if x-- is 32 {
+      x--
+      return x++
+    } else if x++ is 39 {
+      return x++: if xx++ is 40 then xx++ + 1 orelse notok end
+    } else {
+      return pm_map.key++
+    }
+  }
+
+  var pi_iama = [1, 2]
+  func p_ap (x) {
+    pi_iama[x]++
+    return pi_iama[x]++
+  }
+
+  var pm_ar = [1, 2]
+  func p_am (x) {
+    pm_ar[x]--
+    return pm_ar[x]--
+  }
+
+  var lis = {[10]}
+  var lm = lis[0]++
+  var lmm = lis[0]
+  var pm_10 = p_m (10)
+  var pm_21 = p_m (20)
+  var pm_30 = p_m (31)
+  var pm_42 = p_m (39)
+  var pm_k  = p_m (100)
+  var pm_at_0 = p_ap (0)
+  var pm_dt_1 = p_am (1)
+  assert_true ("testing postfix [de|in]crement --,++ operators",
+      lm    is 10 and
+      lmm   is 11 and
+      pm_10 is 10 and
+      pm_21 is 21 and
+      pm_30 is 30 and
+      pm_42 is 42 and
+      pm_k is 1 and
+      pm_map.key is 2 and
+      pm_at_0 is 2 and
+      pi_iama[0] is 3 and
+      pm_dt_1 is 1 and
+      pm_ar[1] is 0)
+
+  var didy = 3
+  var dady = ++didy
+  var dar = [2, 3]
+  var dard = --dar[0]
+  var dardi = {k : 3}
+  var dardilada = --dardi.k
+  var lpf = ++lis[0]
+  var lpff = lis[0]
+
+  assert_true ("testing prefix --,++ operators for expressions",
+      lpf is 12 and
+      lpff is 12 and
+      dady is 4 and
+      didy is 4 and
+      dard is 1 and
+      dar[0] is 1 and
+      dardilada is 2 and
+      dardi.k is 2)
+  ++didy
+  dady = didy
+  --didy
+  ++dar[0]
+  dard = dar[0]
+  --dar[0]
+  ++dardi.k
+  dardilada = dardi.k
+  --dardi.k
+  assert_true ("testing prefix --,++ operators for statements",
+      dady is 5 and
+      didy is 4 and
+      dard is 2 and
+      dar[0] is 1 and
+      dardilada is 3 and
+      dardi.k is 2)
+
+  var ar_t = [1, 2, 3]
+  ar_t++
+  var ar_s = [1, 2, 3]
+  ar_s--
+  assert_true ("testing prefix --,++ operators for arrays",
+    ar_t[0] is 2 and
+    ar_t[1] is 3 and
+    ar_t[2] is 4 and
+    ar_s[0] is 0 and
+    ar_s[1] is 1 and
+    ar_s[2] is 2)
+
+  func loop_test_break (limit) {
+    var i = 1
+    while i {
+      break if i is limit
+      i++
+    }
+
+    return i
+  }
+
+  func if_break (x) {
+    var i
+    for (i = 0; i < 1000; i++)
+      break if
+        i is x
+
+    return i
+  }
+
+  retval = loop_test_break (50)
+  assert_true ("testing break statement",
+      retval is 50 and
+      if_break (10) is 10)
+
+  var tsum = 0
+  var aar = [1, 2, 3]
+  var bar = [4, 5, 6]
+  var car = [7, 8, 9]
+
+  for v in aar {
+    for i, va in bar {
+      for ii, vaa in car {
+        append vaa in tsum
+        break 1 if ii is 1
+      }
+
+      append va in tsum
+      break 1 if i is 1
+    }
+
+    append v in tsum
+  }
+
+  var first_sum = tsum
+  var first_sum_should_be = 123
+
+  tsum = 0
+
+  for v in aar {
+    for i, j in bar {
+      for ii, k in car {
+        append k in tsum
+        break 3 if ii is 2
+      }
+
+      append j in tsum
+      break 2 if i is 1
+    }
+
+    append v in tsum
+  }
+
+  var second_sum = tsum
+  var second_sum_should_be = 24
+
+  for v in aar {
+    for i, j in bar {
+      for ii, k in car {
+        append k in tsum
+        break 1 if ii is 1
+      }
+
+      append j in tsum
+      break 2 if i is 1
+    }
+
+    append v in tsum
+  }
+
+  var third_sum = tsum
+  var third_sum_should_be = 63
+
+  tsum = 0
+  for v in aar {
+    for i, j in bar {
+      for ii, k in car {
+        append k in tsum
+        break 2 if ii is 1
+      }
+
+      append j in tsum
+      break 2 if i is 1
+    }
+
+    append v in tsum
+  }
+
+  var fourth_sum = tsum
+  var fourth_sum_should_be = 51
+
+  assert_true ("testing break statement with explicit break levels",
+      first_sum is first_sum_should_be and
+      second_sum is second_sum_should_be and
+      third_sum is third_sum_should_be and
+      fourth_sum is fourth_sum_should_be)
+
+  var bifnotsum = 0
+  var aa = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  for v in aa {
+    break ifnot v < 7
+    append v in bifnotsum
+  }
+
+  var ifnotsum1 = 0
+  var iex = -1
+  while iex < 10 {
+    iex++
+    break ifnot iex < 7
+    append iex in ifnotsum1
+  }
+
+  iex = -1
+  var ifnotsum2 = 0
+  repeat {
+    break ifnot ++iex < 7
+    append iex in ifnotsum2
+  } until iex < 10
+
+  var ifnotsum3 = 0
+  for (var i = 0; i < 10; i++) {
+    break ifnot
+      i < 7
+    append i in ifnotsum3
+  }
+
+  assert_true ("testing boolean break",
+      bifnotsum is 21 and
+      ifnotsum1 is 21 and
+      ifnotsum2 is 21 and
+      ifnotsum3 is 21)
+
+  func loop_test_continue (ar) {
+    var i = 0;
+    var sum = 0;
+    while i < len (ar) {
+      var ign = 0
+      var ign_str = "a"
+      if i is 2 { i++; continue }
+      append ar[i++] in sum
+    }
+
+    return sum
+  }
+
+  var xi = [1, 10, 20, 30, 40]
+  retval = loop_test_continue (xi)
+
+  assert_true ("testing continue statement", retval is 81)
+
+  var ifsum = 0
+  for (var i = 0; i < 10; i++) {
+    continue if
+      i is 1 or i is 3 or i is 9
+    append i in ifsum
+  }
+
+  var ifnotsum = 0
+  for (var i = 0; i < 10; i++) {
+    continue ifnot
+      i is 2 or i is 4 or i is 8 or i is 9
+    append i in ifnotsum
+  }
+
+  var aaa = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  var ifsum1 = 0
+  for i in aaa {
+    continue if i is 7
+    break if i is 8
+    append i in ifsum1
+  }
+
+  assert_true ("testing boolean continue",
+      ifsum is 32 and
+      ifnotsum is 23 and
+      ifsum1 is 21)
+
+  var dada = 1
+  func dalida (x) {
+    return if
+      x is 0
+    dada *= x
+    return dada
+  }
+
+  dalida (1000)
+  var df = dada
+  dalida (0)
+  var ds = dada
+  dalida (100000)
+  var dt = dada
+
+  var rval = 20
+  func rfunc (x) {
+    return if x is 10
+    append x in rval
+  }
+
+  rfunc (100)
+  rfunc (10)
+  var rval1 = rval
+
+  func rfunc1 (x) {
+    return x if x is 10
+    return rval if x is 100
+    var r = x * 20
+    return r if x is 200
+    return r
+  }
+
+  func rfunc2 (x)
+    return if x is 10 then x * 100 orelse x * 10
+
+  assert_true ("testing return statement",
+      rval is 120 and
+      rval1 is 120 and
+      rfunc1 (10) is 10 and
+      rfunc1 (100) is 120 and
+      rfunc1 (200) is 4000 and
+      rfunc1 (20) is 400 and
+      rfunc2 (10) is 1000 and
+      rfunc2 (1000) is 10000 and
+      df is 1000 and
+      ds is 1000 and
+      dt is 100000000)
+
+  var sum = func {
+    var s = 0
+    for (var i = 1; i < 100 ; s += i, i++) {}
+    return s
+   } ()
+
+  assert_true ("testing `for` loop", sum is 4950)
+
+  sum = func { var s = 0
+    for (var i = 1; i < 100 ; i++) {
+      var ign = 0
+      var ign_str = "a"
+      continue if
+        i is 10
+      s += i
+    }
+    return s
+   } ()
+
+  assert_true ("testing `for` loop continue statement", sum is 4940)
+
+  sum = func {
+    var s = 0
+    for (var i = 1; i < 100 ; s += i, i++) break if i is 10
+    return s
+   } ()
+
+  assert_true ("testing `for` loop break statement", sum is 45)
+
+  sum = func {
+    var s = 0
+    for (var i = 1; i < 100 ; s += i, i++) return s if i is 10
+    return s
+   } ()
+
+  assert_true ("testing `for` loop return statement", sum is 45)
+
+  sum = func {
+    var s = 0; var i = 0;
+    for 100 times {s += i; i++}
+    return s
+   } ()
+
+  assert_true ("testing `for times` loop", sum is 4950)
+
+  sum = func {
+    var s = 0; var i = 0;
+    for 100 times {
+      var ign = 0
+      var ign_str = "a"
+      if i is 10 {
+        i++
+        continue
+      }
+      s += i
+      i++
+    }
+
+    return s
+   } ()
+
+  assert_true ("testing `for times` loop continue statement", sum is 4940)
+
+  var num = 100
+
+  sum = func {
+    var s = 0; var i = 0;
+    for num times {
+      break if i is 10
+      s += i; i++
+    }
+    return s
+   } ()
+
+  assert_true ("testing `for times` loop break statement", sum is 45)
+
+  sum = func {
+    var s = 0; var i = 0;
+    for 100 times {
+      return s if i is 10
+      s += i; i++
+    }
+    return s
+   } ()
+
+  assert_true ("testing `loop` loop return statement", sum is 45)
+
+  sum = func {
+    var s = 0; var i = 0;
+    forever { s += i; i++; break if i is 100 }
+    return s
+   } ()
+
+  assert_true ("testing `forever` loop", sum is 4950)
+
+  sum = func {
+    var s = 0
+    var i = 0
+    repeat {
+      s += i
+      i++
+    } until i < 100
+
+    return s
+   } ()
+
+
+  assert_true ("testing `repeat/until` loop", sum is 4950)
+
+  sum = func {
+    var s = 0
+    var i = 0
+    repeat {
+      var ign = 0
+      var ign_str = "a"
+      if i is 10 { i++; continue }
+      append i in s
+      i++
+    } until (
+      i < 100) # testing condition within parens
+    return s
+   } ()
+
+  assert_true ("testing `repeat/until` loop continue statement", sum is 4940)
+
+  sum = func {
+    var s = 0
+    var i = 0
+    repeat {
+      break if i is 10
+      append i in s
+      i++
+    } until i < 100; # testing condition ending with a semicolon
+    return s
+   } ()
+
+  assert_true ("testing `repeat/until` loop break statement", sum is 45)
+
+  sum = func {
+    var s = 0
+    var i = 0
+    repeat {
+      append i in s
+      i++
+      return s if i is 10
+    } until
+       i < 100 # testing condition in the next line
+    return s
+   } ()
+
+  assert_true ("testing `repeat/until` loop return statement", sum is 45)
+
+  var map_sum = {
+    res  : 0
+    ara  : [1, 2, 3]
+    arb  : [1, 2, 3]
+    arc  : [1, 2, 3]
+    calc : func (v) {
+      this.res = v
+      for i in this.ara {
+        for j in this.arb {
+          for k in this.arc {
+            continue if i is 3 or j is 3 or k is 3
+            this.res += (i + j + k)
+          }
+        }
+      }
+    }
+  }
+
+  map_sum.calc (0)
+  assert_true ("testing nested loops", map_sum.res is 36)
+
+  func if_short (n) {
+    if n is 10 or n is 11 then
+      if n isnot 20 then
+        ifnot n is 20 then
+          if n is 100 then
+            return -1
+          orelse
+            if n < 10 or n > 11 then
+              return -1
+            orelse
+              if n is 10 then
+                return n
+              orelse
+                ifnot n is 1000 then
+                  if n isnot 2000 then
+                    ifnot n isnot 11 then
+                      return n
+                    orelse
+                      return -1
+
+    return -1
+  }
+
+  assert_true ("testing if/then/orelse",
+      if_short (10) is 10 and
+      if_short (11) is 11)
+
+  var fvar = if null then null orelse "notnull"
+  var svar = ifnot fvar is null then "notnull" orelse fvar
+  var tvar = if svar is fvar then if svar is null then ok orelse notok
+  var evar = if tvar is ok then ifnot fvar is null then notok orelse ok
+
+  func ifyf () return ["3"]
+  func ifxf () return "4"
+  var ifa = ["1"]
+  var ifb = if true then ifa orelse ["2"]
+  var ifc = if false then ifa orelse ["2"]
+  var ifd = if false then ifa orelse ifyf ()
+  var ife = if false then ifa orelse [ifxf ()]
+
+  func xxx (y)
+    return if y < 10 then notok orelse if y is 10 then ok orelse true
+
+  assert_true ("testing if/then/orelse expressions",
+      fvar is null and
+      svar is null and
+      tvar is ok and
+      evar is ok and
+      xxx (9) is notok and
+      xxx (10) is ok and
+      xxx (11) is true and
+      ifb[0] is "1" and
+      ifc[0] is "2" and
+      ifd[0] is "3" and
+      ife[0] is "4")
+
+  var integer[2] xar
+  xar[if true then 0 orelse 1 : ifnot false then 1 orelse 100] = [31, 41]
+
+  func xa (xa)
+    return if xa > 22 then xa * 2 orelse xa / 2
+
+  var xif = "asdfg" + if true then "hjklm" orelse ""
+  var xifb = "asdfg" + (if true then "hjklm" orelse "") + "12345"
+
+  var m = {"k" : "mapkey"}
+  var xifc = m.$(if false then "ka" orelse "k")
+
+  func x_y (x, y) return x + y
+
+  assert_true ("testing complex if/then/orelse expressions",
+      xif is "asdfghjklm" and
+      xifb is "asdfghjklm12345" and
+      xifc is "mapkey" and
+      xa (24) is 48 and
+      xa (18) is 9 and
+      xar[ifnot false then 0 orelse 1] is 31 and
+      xar[if true then 1 orelse 0] is 41 and
+      x_y (if true then 10 orelse 0 end, 21) is 31 and
+      x_y ((if true then 10 orelse 0), 21) is 31)
+
+  func tblafun (va) {
+    var n = 0
+    var t = typeof (va)
+    if t is ArrayType then
+      for v in va
+        append (if v: len () then 10 orelse 0) in n
+    orelse
+      n += va
+
+    return n
+  }
+
+  var rtba = tblafun (10)
+  var rtbb = tblafun (["", "a", "b", "c", "", "d"])
+
+  func tblbfun (va) {
+    var n = 0
+    var t = typeof (va)
+    if t is ArrayType
+      if va: typeofArray () is IntegerType
+        for v in va
+          if (v > 2) then
+            append v in n
+          orelse
+            append v / 2 in n
+
+
+    if t is IntegerType
+      if va > 2 then
+        if va > 8 then
+          n += va
+        orelse
+          append va / 2 in n
+      orelse
+        n += 1
+
+    return n
+  }
+
+  var rtbc = tblbfun (10)
+  var rtbd = tblbfun (8)
+  var rtbe = tblbfun (2)
+
+  func tblcfun (va) {
+    var n = 0
+    var t = typeof (va)
+    if t is ArrayType
+      if va: typeofArray () is IntegerType {
+        for v in va
+          if (v > 2) then
+            append v in n
+          orelse
+            append v / 2 in n
+       }
+
+    if t is IntegerType
+      if va > 2 {
+        if va > 8 then
+          n += va
+        orelse
+          append va / 2 in n
+      } else {
+        n += 1
+      }
+
+    return n
+  }
+
+  var rtbf = tblcfun (10)
+  var rtbg = tblcfun (8)
+  var rtbh = tblcfun (2)
+
+  func tbldfun (va) {
+    var n = 0
+    var t = typeof (va)
+
+    if t is ArrayType then
+      for i, v in va
+        append 10 + va[i] + (if v > 2 then 10 orelse 2) in n
+    orelse
+      if t is StringType then
+        append 10 + (if va: len () > 1 then 10 orelse 2) in n
+      orelse
+         append 10 in n
+
+    return n
+  }
+
+  var rtbi = tbldfun ([1, 2, 3])
+  var rtbj = tbldfun (1)
+  var rtbk = tbldfun ("ab")
+  var rtbl = tbldfun ("a")
+
+  assert_true ("testing (not supported) block free form expressions",
+      rtba is 10 and
+      rtbb is 40 and
+      rtbc is 10 and
+      rtbd is 4  and
+      rtbe is 1  and
+      rtbf is 10 and
+      rtbg is 4  and
+      rtbh is 1  and
+      rtbi is 50 and
+      rtbj is 10 and
+      rtbk is 20 and
+      rtbl is 12)
+
+  var str_iter = "κοάξasd"
+  var sum_i = 0
+  var width = 0
+  var s_iter = ""
+  var n_chars = 0
+
+  for c, v, w in str_iter {
+    sum_i += c
+    s_iter += v
+    width += w
+    n_chars++
+  }
+
+  var n_bytes = 0
+  sum_i = 0
+  var s_b = "asdf"
+  var s_c = ""
+  for c in s_b {
+    n_bytes++
+    sum_i += c
+    s_c += c
+  }
+
+  assert_true ("testing string byte iteration form",
+      sum_i is 414 and  s_c is "asdf" and n_bytes is 4)
+
+  assert_equal_msg ("testing __func__",
+      format ("awaiting |assert_equal_msg|, got |${%s, __func__}|"),
+      __func__, "assert_equal_msg")
+
+  include ("loaded")
+
+  retval = loaded_f (10)
+  assert_true ("testing include function", retval is 20)
+
+  var fmt = format ("${%s, load_va} ${%s, format (load_vc)}")
+  assert_true ("testing format function with an embedded call",  fmt is "string is 6 bytes length")
+
+  fmt = format ("${%s, load_va} ${%s, load_vd}")
+  assert_true ("testing format function", fmt is "string is 6 bytes length")
+
+  var dollars = "$$$$$$$$$$$${ are 12 dollars and {"
+  assert_true ("testing format function with escaped characters", load_vf is dollars)
+
+  var fmtexp = format ("${10 * 100 / 2 - 500 + 100 - [1, 2, 50][2] - 8}")
+  assert_true ("testing expressions to the format function", "42" is fmtexp)
+
+  assert_true ("testing stdin and fileno", 0 is fileno (stdin))
+
+  func tail_call_rec (n, a, b) {
+    return a ifnot n
+    return b if n is 1
+    return self (--n, b, a + b)
+  }
+  var rtc = tail_call_rec (92, 0, 1)
+
+  func tail_call_rec_str_double (n, s) {
+    return s ifnot n
+    var ns = s + s
+    return self (--n, ns)
+  }
+  var rtcs = tail_call_rec_str_double (4, "a")
+
+  #func tail_call_long (n) {
+  #  return n ifnot n
+  #  return self (--n)
+  #}
+
+  # var trcl = tail_call_long (1000000)
+
+  assert_true ("testing self as a recursive tail call",
+      rtc is 7540113804746346429 and
+      rtcs is "aaaaaaaaaaaaaaaa")
+
+  var definedV
+
+  assert_true ("testing is_defined() function",
+    is_defined ("definedV") is true and
+    is_defined ("definedVV") is false)
+
+  func import_test () {
+    func path_module () {
+
+      # on static builds this will throw a syntax error if the modules hasn't been initialized
+      import ("path")
+
+      assert_true ("testing the Path module and the basename method",
+         Path.basename ("/path/t.ext") is "t.ext" and
+         Path.basename (null) is null)
+      assert_true ("testing the sans_extname method",
+         Path.basename_sans_extname ("/path/t.ext") is "t" and
+         Path.basename_sans_extname ("/path/t.ta.ext") is "t.ta" and
+         Path.basename_sans_extname ("/path/t.ta.ta.ext") is "t.ta.ta" and
+         Path.basename_sans_extname (".ext") is "" and
+         Path.basename_sans_extname (".") is "" and
+         Path.basename_sans_extname ("") is "" and
+         Path.basename_sans_extname (null) is null)
+      assert_equal ("testing the extname method", Path.extname ("/t.ext"), ".ext")
+      assert_equal ("testing the dirname method", Path.dirname ("/home/aga/t.ext"), "/home/aga")
+      assert_equal ("testing the is_absolute method", Path.is_absolute ("t"), 0)
+      var spl = Path.split ("/home/aga/t")
+      assert_true ("testing the split method", len (spl) is 4 and spl[0] is "/" and
+        spl[1] is "home" and spl[2] is "aga" and spl[3] is "t")
+      assert_equal ("testing the real method", Path.real ("/home/../usr/../usr/lib/../../usr/lib/../lib"), "/usr/lib")
+      assert_equal ("testing the concat method", Path.concat ("/usr///", "///bin"), "/usr/bin")
+    }
+
+    path_module ()
+
+    func file_module () {
+      import ("file")
+      var tmp_file = "/tmp/test_file_module"
+      var fp = fopen (tmp_file, "w")
+      if fp is null {
+        println (stderr, "fatal error while testing the file module");
+        return
+      } else {
+        println (fp, "101010101")
+        fclose (fp)
+      }
+
+      assert_true ("testing the File module and the exists method",
+         File.exists (tmp_file))
+
+      assert_true ("testing the is_reg method",
+         File.is_reg (tmp_file))
+
+      var m = File.stat (tmp_file)
+      assert_true ("testing the stat method and size method",
+          typeof (m) is MapType and m.st_size is 10 and
+          File.size (tmp_file) is 10)
+
+      assert_true ("testing the access method",
+          File.access (tmp_file, W_OK|R_OK) is 0 and
+          File.access (tmp_file, X_OK) is -1)
+
+      assert_true ("testing the chmod method",
+          File.chmod (tmp_file, S_IRWXU) is 0 and
+          File.access (tmp_file, X_OK) is 0)
+
+      assert_true ("testing the is_executable method",
+         File.is_executable (tmp_file))
+
+      assert_true ("testing the is_rwx method",
+         File.is_rwx (tmp_file))
+
+      var slink = "/tmp/test_file_module_link"
+      assert_true ("testing the symlink method",
+          File.symlink (tmp_file, slink) is ok)
+
+      assert_true ("testing the readlink method",
+          File.readlink (slink) is tmp_file)
+
+      assert_true ("testing the is_lnk method",
+          File.is_lnk (slink))
+
+      var ma = File.lstat (slink)
+      assert_true ("testing the lstat method",
+          ma.st_mode is 0xa1ff)
+
+      var new = "/tmp/test_file_module_new"
+      assert_true ("testing the rename method",
+          File.rename (tmp_file, new) is ok)
+
+      var fifname = "/tmp/test_file_module_fifo"
+
+      assert_true ("testing the mkfifo and is_fifo methods",
+          File.mkfifo (fifname, 0600) is ok and
+          File.is_fifo (fifname))
+
+      var far = ["asdfghjkl", "qwertyuiop", "zxcvbnm,."]
+      var farfn = "/tmp/test_file_write_and_read"
+      var rv = File.writelines (farfn, far)
+      var farb = File.readlines (farfn)
+
+      assert_true ("testing the writelines and readlines methods",
+          rv is ok and far is farb)
+
+      var cpfn = "/tmp/test_file_copy"
+      rv = File.copy (farfn, cpfn)
+      farb = File.readlines (cpfn)
+      assert_true ("testing the copy method",
+          rv is ok and far is farb)
+
+      assert_true ("testing the remove method",
+          File.remove (slink) is ok and
+          File.remove (new) is ok and
+          File.remove (fifname) is ok and
+          File.remove (farfn) is ok and
+          File.remove (cpfn) is ok)
+
+      var tmpn = File.tmpname ();
+      rv = File.writelines (tmpn, far)
+      farb = File.readlines (tmpn)
+      tmpn = null
+      assert_true ("testing the tmpname method",
+          rv is ok and far is farb)
+    }
+
+    file_module ()
+
+    func std_module () {
+      import ("std")
+      var s = {f : 11}
+
+      func sa (m, k, v) Map.set (m, k, v)
+
+      sa (s, "f", 12)
+      assert_true ("testing the std module and the map set method",
+	  s.f is 12)
+
+      Map.remove (s, "f")
+      assert_true ("testing the the map remove and key_exists methods",
+	 Map.key_exists (s, "f") is 0)
+
+      var ar = [10, 20, 10, 40, 10]
+      var n = Array.where (ar, 10)
+      var a = ["a", "b", "a", "vv", "a"]
+      var an = Array.where (a, "a")
+      assert_true ("testing the array where method",
+          len (n) is 3 and n[0] is 0 and n[1] is 2 and n[2] is 4 and
+          len (an) is 3 and an[0] is 0 and an[1] is 2 and an[2] is 4)
+
+      var aa = ["1", "2", "3", "4"][[2, 3]]
+      var aaa  = [1, 2, 3, 4][[2, 3]]
+      var b  = [1.1, 2.1, 3.1, 1.1][[2, 3]]
+      var aav = [1, 2, 3, 1]
+      var c  = aav[Array.where (aav, 1)]
+
+      assert_true ("testing the array where method and array indexing with an array",
+          typeofArray (aa) is StringType and
+          len (aa) is 2 and aa[0] is "3" and aa[1] is "4" and
+          typeofArray (aaa) is IntegerType and
+          len (aaa) is 2 and aaa[0] is 3 and aaa[1] is 4 and
+          typeofArray (b) is NumberType and
+          len (b) is 2 and b[0] is 3.1 and b[1] is 1.1 and
+          typeofArray (c) is IntegerType and
+          len (c) is 2 and c[0] is 1 and c[1] is 1)
+
+      assert_true ("testing the string eq method",
+          String.eq ("asd", "asd") and 0 is
+          String.eq ("asd", "asa"))
+
+      assert_true ("testing the eq_n method",
+          String.eq_n ("asdf", "asd", 3) and 0 is
+          String.eq_n ("asdf", "asd", 4))
+
+      assert_true ("testing the cmp_n method",
+          String.cmp_n ("asdf", "asd", 4) is 1 and
+          String.cmp_n ("asd",  "asdf", 4) is -1 and
+          String.cmp_n ("asd",  "asdf", 3) is 0)
+
+      var tok = String.tokenize ("asd:fgh:jkl:mno", ":")
+      var tak = String.tokenize ("  ab  cd ef  ", " ")
+
+      assert_true ("testing the tokenize method",
+          tok: typeof () is ArrayType and
+          tok: len () is 4 and
+          tok[0] is "asd"  and
+          tok[1] is "fgh"  and
+          tok[2] is "jkl"  and
+          tok[3] is "mno"  and
+          tak: len () is 3 and
+          tak[0] is "ab"   and
+          tak[1] is "cd"   and
+          tak[2] is "ef")
+
+      var stra = "asdfg"
+      stra = String.advance (stra, 3)
+
+      assert_true ("testing the advance method", stra is "fg")
+
+      var strb = "asdfg"
+      strb = String.advance_on_byte (strb, 'f')
+      assert_true ("testing the advance_on_byte method", strb is "fg")
+
+      var strc = "asdfg"
+      var strd = String.byte_in_str (strc, 'f')
+      assert_true ("testing the byte_in_str method", strd is "fg")
+
+      var stre = String.advance_after_bytes ("123asdf123asdfok", "asdf", 2)
+      assert_true ("testing the advance_after_bytes method",
+        stre is "ok")
+
+      var strf = "asdf"
+      var strg = String.delete_substr (strf, "sdf")
+      assert_true ("testing the delete_substr method", strg is "a")
+
+      assert_true ("testing the to_upper method",
+          String.to_upper ("uPper") is "UPPER")
+
+      assert_true ("testing the to_lower method",
+          String.to_lower ("LoWER") is "lower")
+
+      var si = "1234"
+      var sf = "1234.1234"
+      assert_true ("testing string to integer and number convertions",
+          String.to_integer (si) is 1234 and
+          String.to_number (sf) is 1234.1234)
+
+      assert_true ("testing the bytelen method",
+          String.bytelen ("asdf") is 4 and
+          String.bytelen ("ασδφ") is 8)
+
+      assert_true ("testing the numchars method",
+          String.numchars ("asdf") is 4 and
+          String.numchars ("ασδφ") is 4)
+
+      var ii = 12345678
+      assert_true ("testing integer to string convertions",
+          Integer.to_string (ii, 2) is "0b00000000101111000110000101001110" and
+          Integer.to_string (ii, 8) is "057060516" and
+          Integer.to_string (ii, 10) is "12345678" and
+          Integer.to_string (ii, 16) is "0xbc614e")
+
+      assert_true ("testing the integer eq method", Integer.eq (1, 1))
+
+      var cc = Integer.char (945)
+      var ca = 'α': char ()
+
+      assert_true ("testing the char method", cc is "α" and ca is "α")
+
+    }
+
+    std_module ()
+
+    func dir_module () {
+      import ("dir")
+      var cwd = Dir.current ()
+      assert_true ("testing the dir module and the current method",
+          cwd isnot null)
+
+      assert_true ("testing the chdir method",
+          Dir.change ("/tmp") is ok)
+
+      var dir = "la_test_dir_xxxxxx"
+      assert_true ("testing the mkdir method",
+          Dir.make (dir, 0755) is ok)
+
+      assert_true ("testing the is_directory method",
+          Dir.is_directory (dir))
+
+      assert_true ("testing the remove method",
+          Dir.remove (dir) is ok)
+
+      dir += "/a/b/c/d"
+      assert_true ("testing the mkdir_parents",
+          Dir.make_parents (dir, 0755) is ok)
+
+      assert_true ("testing the is_directory method",
+          Dir.is_directory (dir))
+
+      assert_true ("testing the remove_parents method",
+          Dir.remove_parents (dir) is ok)
+
+      assert_true ("testing the chdir method",
+          Dir.change (cwd) is ok)
+
+    }
+
+    dir_module ()
+
+    func sys_module () {
+      import ("sys")
+      Sys.set ("key", "val", 1)
+      var v = Sys.get ("key")
+      Sys.set ("key", "value", 0)
+      var va = "key=" + Sys.get ("key")
+      Sys.set ("key", "value", 1)
+      var vaa = "key=" + Sys.get ("key")
+      var val = Sys.get ("key")
+      assert_true ("testing the sys module and the set/get methods",
+         v is "val" and va is "key=val" and vaa is "key=value" and val is "value")
+    }
+
+    sys_module ()
+
+    func time_module () {
+      import ("time")
+      var inp = Time.now ()
+      var now = Time.now ()
+      if now - inp is 1 then inp++
+      var res = inp:time_local (): time_to_seconds ()
+      assert_true ("testing the time module", res is now)
+    }
+
+    time_module ()
+
+    func crypt_module () {
+      import ("crypt")
+      var s = "asdfghjklzxcvbnmqwertyuiop1234567890ασδφγηξκλχψωβνμςερτυθιοπ"
+      var f = "/tmp/crypt_module_xxxxxx"
+
+      var md5 = Crypt.md5sum (s)
+      var s256 = Crypt.sha256sum (s)
+      var s512 = Crypt.sha512sum (s)
+
+      File.write (f, s)
+      File.append (f, "\n")
+
+      var md5f = Crypt.md5sum_file (f)
+      var s256f = Crypt.sha256sum_file (f)
+      var s512f = Crypt.sha512sum_file (f)
+
+      File.remove (f)
+
+      assert_true ("testing the crypt module and the md5/sha256/sha512 methods",
+          md5 is "6d110772905599113ea9520b1b4d35c7" and
+          s256 is "c472cf566ff7d83f343c58674f33303510d8ad8deb6e35f3abc21521838b3986" and
+          s512 is "bfed7465747258e2e717da48df3c840b1b4ca870cd9196f16a11b46bae7b251c6b69c6b5f96841e9f0507a5d61c172fbaf0d76877ddb9670208a29eb6d7ffa72" and
+          md5f is "cb7463afca0acda1bd9a52cd8793f3ab" and
+          s256f is "19b508d28ddb3d76a967961312bddc04b2dad365cc758efb1fe05b0d3ccbc404" and
+          s512f is "09cbec48df2ea60ffe580c45d7d1eee51e64e56766db3ae1a165c41c4652eb2f712a2b3ef705981b2f0f1b1bee1b1c1c09df040c1f59154df5b98644cf90e8e5")
+
+      var b = "asdfghjklmnopqrstuασδφγηκλόιθευεηαγσσρεγαησξσξσκακαλακμχμχ1293αλλα\nalla\nwiiw"
+      var bd = b: crypt_base64_encode ()
+      var be = bd: crypt_base64_decode ()
+      var bda= be: crypt_base64_encode ()
+      var bea= bda: crypt_base64_decode ()
+
+      assert_true ("testing the base64 method",
+          b is be and
+          b is bea and
+          bd is bda)
+
+#      var passwd = "123qwe456asdzxc"
+#      var hash = passwd: crypt_hash_passwd ()
+#      var rh = passwd: crypt_verify_passwd_hash (hash)
+#      assert_true ("testing the hash_passwd and verify_passwd_hash methods",
+#        rh is true)
+    }
+
+    crypt_module ()
+
+    func os_module () {
+      import ("os")
+      var r = Os.setenv ("TEST", "test", 1)
+      var t = Os.getenv ("TEST")
+      assert_true ("testing the os module",
+          r is ok and
+          t is "test")
+    }
+
+    os_module ()
+
+    func io_module () {
+      import ("io")
+      var open = Io.open,
+          isatty = Io.fd.isatty,
+          write = Io.fd.write,
+          read = Io.fd.read
+
+      var txt = "io-test\n",
+          txtlen = txt: len ()
+
+      var is_atty = 0
+
+      func wf () {
+        var fd = "/tmp/io_module_test": open (O_WRONLY|O_CREAT, S_IRWXU)
+        is_atty = fd: isatty ()
+        return write (fd, txt)
+      }
+
+      var w_nbts = wf ()
+
+      func rf () {
+        var fd = "/tmp/io_module_test": open (O_RDONLY, 0)
+        return read (fd)
+      }
+
+      assert_true ("testing the io module",
+          isatty (STDIN_FILENO) and
+          isatty (STDOUT_FILENO) and
+          isatty (STDERR_FILENO) and # fails if valgrind invocation redirects to stderr
+          is_atty is 0 and
+          txt is rf () and
+          w_nbts is txtlen)
+
+      File.remove ("/tmp/io_module_test")
+    }
+
+    io_module ()
+  }
+
+  # import_test ()
+
+ # var farg = Dir.current(): path_concat (__argv[0])
+
+#  assert_true ("testing __argc and __argv",
+#      __argc is 1 and farg is __file__)
+
+  func reassignment_and_multiline_assignments () {
+    var s = {1 : 1}
+
+    s = 2
+    assert_true ("testing reassignment map to integer", s is 2)
+
+    s = {k : 3}
+    assert_true ("testing reassignment integer to map", s.k is 3)
+
+    s = [4]
+    assert_true ("testing reassignment map to array", s[0] is 4)
+
+    s = "string"
+    assert_true ("testing reassignment array to string", s is "string")
+
+    s = {k : "stringkey"}
+    assert_true ("testing reassignment string to map", s.k is "stringkey")
+
+    var v1 = 1, v2 = 2, v3 = "s", v4 = null,
+        v5 = 5, v6 = 6,
+        v7 = 7
+
+    assert_true ("testing consecutive and multiline variable assignments",
+        v1 is 1 and v2 is 2 and v3 is "s" and v4 is null and v5 is 5 and
+        v6 is 6 and v7 is 7)
+  }
+
+  reassignment_and_multiline_assignments ()
+
+  func integers () {
+    assert_true ("testing integers in hexadecimal/octal/binary notation",
+      0b1010010111000011 is 42435 and
+      0122703 is 42435 and
+      0xa5c3 is  42435)
+  }
+
+  integers ()
+
+  func test_qualifiers () {
+    func q (x) return qualifier ("key", 10) * x
+
+    func qq (x) {
+      var m = qualifiers ()
+      return x * m.key
+    }
+
+    func qqq (x) return x * (qualifier_exists ("key") + 9)
+    func qqqq (x) return qqq (x; qualifiers ())
+    func qqqqq return qualifier ("key", 100)
+    func qrf {
+      var k = qualifier ("key", 10)
+      var s = qqqqq (;key : 100000)
+      var kk = qualifier ("key", 10)
+      return k is 100 and k is kk and s is 100000
+    }
+
+    var m = {key : 1000}
+    var qa = q (10)
+    var qb = q (10; {key : 100})
+    var qc = q (10; m)
+    var qd = qqq (10)
+    var qe = qqq (10; m)
+    var qf = qqqq (10)
+    var qg = qqqq (10; m)
+    var qj = q (10
+      ;key : 100)
+    var qk = q (10;
+      key : 100)
+    var qo  = qqqqq (;
+      key : 100000)
+    var qp = qqqqq (;key : 100000)
+    var qr = qrf (;key : 100)
+
+    assert_true ("testing qualifiers",
+        qa is 100 and
+        qb is 1000 and
+        qc is 10000 and
+        qd is 90 and
+        qe is 100 and
+        qf is 90 and
+        qg is 100 and
+        qj is 1000 and
+        qk is 1000 and
+        qo is 100000 and
+        qp is 100000 and
+        qr is 1)
+
+    func q_fun (x) {
+      var y = qualifier ("y", 100)
+      return (qualifier ("key", 900) + y) * x
+    }
+
+    var qm = {y : 1100}
+    func fm () return {y : 2100}
+
+    assert_true ("testing qualifiers syntax forms",
+        q_fun (10; key : 9900) is 100000 and
+        q_fun (10; {key : 9900}) is 100000 and
+        q_fun (10; qm) is 20000 and
+        q_fun (10; fm ()) is 30000)
+
+    func q_xxx (x) return x + qualifier_exists ("xx") + qualifier_exists ("yy")
+    assert_true ("testing qualifiers with members without a value",
+        q_xxx (100) is 100 and
+        q_xxx (100; xx) is 101 and
+        q_xxx (100; xx, yy) is 102)
+  }
+
+  test_qualifiers ()
+
+  var sa = [{l : 1, k : [1, 2, 3, 4], lk : {ka : 1, kka : {a : 2,
+      b : ["av", "sb", "fg"]}}}]
+
+  var l = {[ {k : 1}, [1, 2], "str", {[1]}, {k : {[ {k : 1, s: ["string"]} ]} }]}
+
+  assert_true ("testing getting consecutive container types",
+      sa[0].lk.kka.b[0][0] is 'a' and
+      l[0].k is 1 and
+      l[1][0] is 1 and
+      l[2][0] is 's' and
+      l[3][0] is 1 and
+      l[4].k[0].k is 1 and
+      l[4].k[0].s[0] is "string")
+
+  sa[0].lk.kka.b[0] = "wstring"
+  sa[0].lk.kka.b[0][0] = 'x'
+
+  l[0].k = 10
+  l[1][0] = 10
+  l[2][0] = 'a'
+  l[3][0] = 10
+
+  assert_true ("testing setting consecutive container types",
+      sa[0].lk.kka.b[0] is "xstring" and
+      l[0].k is 10 and
+      l[1][0] is 10 and
+      l[2][0] is 'a' and
+      l[3][0] is 10)
+
+  public var v_visible = "visible variable"
+
+  public func f_visible (x) return x * 2
+
+  var nilstr = format ("${%s, null}")
+  assert_true ("testing null string representation", nilstr is "(null)")
+
+  var errnum = set_errno (100)
+  assert_true ("testing errno functions",
+      errno is errnum and
+      errno_string (errno) is "Network is down" and
+      errno_name (errno) is "ENETDOWN")
+
+  func comparisons () {
+    assert_true ("testing null with other types",
+       null is null and
+       null isnot 1 and
+       null isnot 1.1 and
+       null isnot [1] and
+       null isnot {1 : 1} and
+       null isnot "string")
+  }
+
+  comparisons ()
+
+  func doubles () {
+    var d = 113.3131
+    var da = 113.3131
+
+    assert_equal ("testing Double vars equality", d, da)
+
+    func d1 (d) return d + 12
+    func d2 (d) return d - 12
+
+    var df = d2
+    var dfr = df (da)
+    var d2r = d2 (da)
+
+    assert_equal ("testing Double function reference", dfr, d2r)
+
+    var dd = d1 (da)
+    var dd2r = (df (da) + dd) - da;
+    assert_equal ("testing operations on doubles", da, dd2r)
+
+    da = 1.3131
+
+    dd = d1 (da)
+    dd2r = (df (da) + dd) - da;
+    expected_to_fail ("testing expected to fail operations on doubles",
+        format ("awaiting ${%f, da} got ${%f, dd2r}"), da, dd2r)
+  }
+
+  doubles ()
+
+  func test_array (length) {
+    var retval = 0
+
+    var ar = ["a", "b"]
+    assert_true ("testing array", typeof (ar) is ArrayType)
+    assert_true ("testing array", typeofArray (ar) is StringType)
+    assert_true ("testing array get", "a" is ar[0])
+    assert_true ("testing anonymous array", typeofArray ([1.1, 2.2, 3.3]) is NumberType)
+    assert_true ("testing anonymous array", 23 is [1, 10, 23, 43][2])
+
+    var integer[length] x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    retval = len (x)
+    assert_true ("testing array length", retval is length)
+
+    var integer[length] y = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    assert_true ("testing array equality", x is y)
+
+    y[0] = 11
+
+    assert_false ("testing array inequality", x is y)
+
+    func ar_set_at (xx, idx, y) {
+      xx[idx] = y
+      return xx[idx]
+    }
+
+    retval = ar_set_at (x, length - 1, 20)
+    assert_true ("testing array set|get methods", (retval is 20) and
+        (x[length - 1] is 20))
+
+    func ar_sum (xx) {
+      var sum = 0
+      var idx = 0
+      var length = len (xx)
+
+      for (idx = 0; idx < length; idx++) sum += xx[idx]
+
+      return sum
+    }
+
+    x[0:8] = [100, 200, 300, 400, 500, 600, 700, 800, 900]
+
+    assert_equal ("testing array sum", 4520, ar_sum (x))
+
+    x[6:7] = [10, 20]
+
+    assert_equal ("testing array sum and setting indices", 3050, ar_sum (x))
+
+    var string[4] xs = ["through", "the", "ocean", "drive"]
+
+    assert_equal ("testing for string equality for string array members",
+        "ocean", xs[2])
+
+    assert_not_equal ("testing for string inequality for string array members",
+        xs[1], xs[2])
+
+    assert_false ("testing for inequality for array members",
+        xs[1] is "a")
+
+    var integer[4] i_ar
+    i_ar[*] = 31
+    assert_equal ("testing array set '*' operator", ar_sum (i_ar), 124)
+
+    var m_ar = [{t : 11}, {s : 2}]
+    m_ar[*] = {sa : 11, tt : 4, a : 5}
+    assert_true ("testing array set '*' operator for maps",
+        m_ar[1].sa is 11)
+
+    var am = {sa : 22, sb : 33}
+    m_ar[*] = am
+    assert_true ("testing array set '*' operator for maps from a symbol",
+        m_ar[1].sa is 22)
+
+    var mar = [{k : "K", l : "L"}, {A : "a", V : "v"}]
+    assert_true ("testing array maps", typeof (mar) is ArrayType and
+        typeArrayAsString (mar) is "MapType")
+
+    var mak = mar[0].k
+    assert_true ("testing array map access", mak is "K")
+
+    var map[3] marnil = [{A : 1}, null, {b : 3}]
+    assert_true ("testing map array with a null element",
+        marnil[1] is null and typeof (marnil[1]) is NullType)
+
+    var string[3] anil = ["a", null, "b"]
+
+    assert_true ("testing string array with a null element", anil[1] is null)
+
+    var a = [[1,2,3], [3, 5, 6], ["a", "ab"], [1,2], [3, 4]]
+    assert_true ("testing array of arrays", a[2][1] is "ab")
+
+    var b = [[1,2,3], [3, 5, 6], ["a", "ab"],
+      [[1,2], [3, 4], [[4, 6, 7], [[33, 44]]]]]
+
+    assert_true ("testing nested arrays of arrays", b[3][2][1][0][1] is 44)
+
+    var array[2] car
+    car[0] = [1, 2, 3]
+    car[1] = [4, 5, 6]
+    assert_true ("testing array of arrays with specified len", car[1][2] is 6)
+
+    var lar = [{[0, "as"]}, {[1, "sa"]}]
+    var list[2] lara = [{[1]}, {["string"]}]
+    append {["list 3"]} in lara
+    assert_true ("testing array of lists",
+        lar[0][0] is 0 and
+        lar[0][1] is "as" and
+        lar[1][1] is "sa" and
+        lar[1][0] is 1 and
+        lara[0][0] is 1 and
+        lara[1][0] is "string" and
+        lara[2][0] is "list 3")
+
+    func fibo_array (n) {
+      var integer[n + 2] f
+      f[0:1] = [0, 1]
+
+      var i = 2
+      while i <= n {
+        f[i] = f[i - 1] + f[i - 2]
+        i++
+      }
+
+      return f[n]
+    }
+
+    retval = fibo_array (92)
+    assert_equal ("testing fibonacci array implementation",
+        retval, 7540113804746346429)
+
+    var ara = [1, 2, 3, 4, 5, 6]
+
+    var sum_a = 0
+    for v in ara append v in sum_a
+
+    var sum_b = 0
+    for i, v in ara {
+      append v in sum_b
+      i++
+    }
+
+    var str_ar = ["1", "2", "3", "4", "5", "6"]
+    var str_a = ""
+
+    for v in str_ar append v in str_a
+
+    var array[1] x
+    x[0] = [1, 2, 3]
+    var sum_c = 0
+    for v in x[0] append v in sum_c
+
+    var mm = {
+      ar : [1, 2, 3]
+    }
+    var sum_d = 0
+    for v in mm.ar append v in sum_d
+
+    assert_true ("testing array iteration",
+        sum_a is 21 and sum_b is 9 and str_a is "123456" and
+        sum_c is 6 and sum_d is 6)
+
+    var aaa = [1, 3, 3]
+    aaa[0] += 9; aaa[0] *= aaa[1]; aaa[0] /= aaa[2]; aaa[0] -= 5
+    assert_true ("testing array manipulation", aaa[0] is 5)
+
+    var map[1] mama = [{i : 1, a : integer[2] = [1, 2]}]
+    mama[0].i += mama[0].a[1]
+    mama[0].a[0] += mama[0].i; mama[0].a[0] *= mama[0].a[0]
+    assert_true ("testing array and map manipulation", mama[0].i is 3 and
+        mama[0].a[0] is 16)
+
+    var
+      s_arr = ["bab", "abb", "ba", "ab", "dc", "cd"],
+      i_arr = [10, 3, 9, 4, 8, 5, 7, 6, 1, 0, 2],
+      n_arr = [10.0, 3.0, 9.0, 4.0, 8.0, 5.0, 7.0, 6.0, 1.0, 0.1, 2.0]
+
+    var n_s_arr = s_arr: sort ()
+    var n_i_arr = i_arr: sort ()
+    var n_n_arr = n_arr: sort ()
+
+    assert_true ("testing array_sort",
+      n_s_arr is ["ab", "abb", "ba", "bab", "cd", "dc"] and
+      n_i_arr is [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] and
+      n_n_arr is [0.1, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
+
+    var
+      empt_s = string[0],
+      empt_i = integer[0],
+      empt_n = number[0],
+      empt_a = array[0],
+      empt_m = map[0]
+
+    assert_true ("testing empty arrays",
+        typeof (empt_s) is ArrayType and typeofArray (empt_s) is StringType and empt_s: len () is 0 and
+        typeof (empt_i) is ArrayType and typeofArray (empt_i) is IntegerType and empt_i: len () is 0 and
+        typeof (empt_n) is ArrayType and typeofArray (empt_n) is NumberType and empt_n: len () is 0 and
+        typeof (empt_a) is ArrayType and typeofArray (empt_a) is ArrayType and empt_a: len () is 0 and
+        typeof (empt_m) is ArrayType and typeofArray (empt_m) is MapType and empt_m: len () is 0)
+
+    func x (s, a) {
+      if s: typeof () is StringType then
+        append s in a
+      orelse
+        for v in s append v in a
+    }
+
+    var axar = ["a", "b"]
+
+    func xx (s) x (s, axar)
+
+    xx (["c", "d"])
+
+    var axc = null
+    var axd = null
+
+    if axar: len () is 4 {
+      axc = axar[2]
+      axd = axar[3]
+    }
+
+    xx ("e")
+
+    var axe = null
+    if (axar: len () is 5) then axe = axar[4]
+
+    assert_true ("testing array manipulation through function calls",
+        axar: len () is 5 and
+        axc is "c" and
+        axd is "d" and
+        axe is "e")
+
+    var av = ["z", "b", "x"]
+    av := sort (): len ()
+    av = "reassignment"
+    assert_true ("testing array reassignment",
+        av is "reassignment")
+
+    var arv = [10, 20, 40]
+    arv += 20
+    assert_true ("testing binary assignment operator [+=] for arrays",
+        arv[0] is 30 and
+        arv[1] is 40 and
+        arv[2] is 60)
+
+    arv -= 10
+    assert_true ("testing binary assignment operator [-=] for arrays",
+        arv[0] is 20 and
+        arv[1] is 30 and
+        arv[2] is 50)
+
+    arv ^= 2
+    assert_true ("testing binary assignment operator [^=] for arrays",
+        arv[0] is 22 and
+        arv[1] is 28 and
+        arv[2] is 48)
+
+    arv /= 2
+
+    assert_true ("testing binary assignment operator [/=] for arrays",
+        arv[0] is 11 and
+        arv[1] is 14 and
+        arv[2] is 24)
+
+    arv *= 20
+    assert_true ("testing binary assignment operator [*=] for arrays",
+        arv[0] is 220 and
+        arv[1] is 280 and
+        arv[2] is 480)
+
+    arv |= 10
+    assert_true ("testing binary assignment operator [|=] for arrays",
+        arv[0] is 222 and
+        arv[1] is 282 and
+        arv[2] is 490)
+
+    arv %= 100
+    assert_true ("testing binary assignment operator [%=] for arrays",
+        arv[0] is 22 and
+        arv[1] is 82 and
+        arv[2] is 90)
+
+    arv &= 12
+    assert_true ("testing binary assignment operator [&=] for arrays",
+        arv[0] is 4 and
+        arv[1] is 0 and
+        arv[2] is 8)
+
+    var arvs = ["a", "b", "c"]
+    arvs += "def"
+    arvs += 'α'
+    assert_true ("testing binary assignment operator [+=] for string arrays",
+        arvs[0] is "adefα" and
+        arvs[1] is "bdefα" and
+        arvs[2] is "cdefα")
+  }
+
+  test_array (10)
+
+  func test_maps {
+    var m = {}
+
+    m.a = 1
+    m.b = "string"
+    m.c = func return m.a + 999
+    m.d = func (x) { return m.a * x } (10)
+    m.e = `"bqstring`
+
+    assert_true ("testing map",
+        m.a is 1 and
+        m.b is "string" and
+        m.c () is 1000 and
+        m.d is 10 and
+        m.e is `"bqstring`)
+
+    var mapa = {
+      private
+      one : 1
+      three : "three"
+      fun : func return (this.one + this.two) * 10000
+
+      public
+      four : func (x) { return this.one * x } (10)
+      two : 2
+      fn : func (x) return x * this.fun ()
+    }
+
+    mapa.five = func (x) { return x * mapa.four } (10)
+    mapa.six  = func (x) { return mapa.four * x}
+
+    assert_true ("testing map functions",
+        mapa.fn (2) is 60000 and
+        mapa.two is 2 and
+        mapa.four is 10 and
+        mapa.five is 100 and
+        mapa.six (20) is 200)
+
+    mapa.new = "new"
+    assert_true ("testing map extension", mapa.new is "new")
+
+    mapa.newfun = func (x) return (x * 2) + mapa.two
+    assert_true ("testing map new function and visibility",
+        mapa.newfun (10) is 22)
+
+    func x (m) return m.two
+
+    assert_true ("testing map as a function argument", x (mapa) is 2 and x (mapa) is mapa.two)
+
+    func mapfa () return {11 : 11, 12 : 12}
+
+    var el = mapfa () 
+    assert_true ("testing returning anonymous map from a function", el.11 is 11)
+
+    func x (a) return a.key
+
+    assert_true ("testing anonymous map", x ({key : 22, aa : 2}) is 22)
+
+    var k = {key : 'k', aa : 2}.key
+    assert_true ("testing getting key from an anonymous map", k is 'k' and
+       typeof (k) is IntegerType)
+
+    var s = {key : "string"}.key
+
+    assert_true ("testing getting string key from an anonymous map", s is "string" and
+       typeof (s) is StringType)
+
+    var a = {key : ["string", "a", "z"]}.key
+    assert_true ("testing getting string array key from an anonymous map", a[0] is "string" and
+       typeof (a) is ArrayType)
+
+    var maa = {next : {next : {a : "a"}}}
+    var maaa = maa.next.next;
+    assert_true ("testing assignment to a map subtype", maaa.a is "a")
+
+    var mb = {next : {next : {a : "aa"}}}.next.next
+    assert_true ("testing assignment to a direct map subtype", mb.a is "aa")
+
+    var mc = {l : 1, next : {next : {key : 1}}}
+    mc.next.next.key = 2
+    assert_true ("testing setting map value in arbitrary depth",
+        mc.next.next.key is 2)
+
+    mc.next.next.next = {next : {key : "string"}}
+    assert_true ("testing setting map value in arbitrary depth as a new map",
+        mc.next.next.next.next.key is "string")
+
+    var mm = {
+      a : 11
+      b : 22
+      c : 33
+    }
+
+    var sum = 0
+    for k, v in mm {
+      var ign = 0
+      var ign_str = "a"
+      continue if k is "c"
+      append v in sum
+    }
+
+    var mmm = {
+      ar : integer[3],
+      ara : integer[3] = [4, 5, 6]
+    }
+    mmm.ar[0:] = [1, 2, 3]
+    var sum_a = 0
+
+    for v in mmm.ar append v in sum_a
+    for v in mmm.ara append v in sum_a
+
+    assert_true ("testing map iteration", sum is 33 and sum_a is 21)
+
+    var sum_p = 0
+    var sum_pa = 0
+    var mmmm = {
+    private
+      k : 10
+
+    public
+      ka : 10
+      kb : 11
+
+      f  : func {
+        for k, v in this
+          ifnot String.eq  (k, "f") then append v in sum_p
+      }
+    }    
+
+    mmmm.f ()
+
+    for k, v in mmmm
+      ifnot String.eq (k, "f") then append v in sum_pa
+
+    assert_true ("testing map iteration with members with private scope",
+        sum_p is 31 and sum_pa is 21)
+
+    var mapp = {
+      i : 1
+      a : integer[2] = [0, 1]
+    }
+
+    mapp.i += 19
+    mapp.i /= 2
+    mapp.i *= 10
+    mapp.i -= 90
+    mapp.a[0] += 10
+    mapp.a[0] /= 2
+    mapp.a[0] *= 4
+    mapp.a[0] -= 10
+    assert_true ("testing map member manipulation", mapp.i is 10 and
+        mapp.a[0] is 10) 
+
+    var subm = {
+      k : 11
+      f : func return this.k
+    }
+
+    var parm = {
+      k : 22
+      submap : subm
+    }
+
+    assert_true ("testing submap accessors",
+       parm.submap.f () is 22 and
+       parm.submap:f () is 11)
+
+    func xxx {
+       var mm = {
+         da : "DA"
+       }
+
+       func a {
+         var xx = mm
+         return xx.da
+       }
+
+     assert_true ("testing map reassignment",
+       a () is "DA" and
+      mm.da is "DA")
+
+    }
+
+    xxx ()
+
+    var mmma = {
+      f : func return 1
+    }
+
+    var res = mmma.f ()
+    func t return 11
+    override mmma.f = t
+
+    assert_true ("testing overriding method", res is 1 and mmma.f () is 11)
+
+    var crzy = "key"
+    var dmap = {$(crzy) : 1, submap : {skey : 2}}
+    var new = "new"
+    var submp = "submap"
+    dmap.$("new") = 10
+    var fval = dmap.$(new)
+    dmap.$(new) += 10
+    var sval = dmap.$("new")
+    var tval = dmap.$("key")
+    var zval = dmap.$(submp).$("skey")
+    dmap.$("submap").$("skey") += 20
+    var nval = dmap.$("submap").$("skey")
+    dmap.$("submap").$("new") = 48
+    var lval = dmap.$(submp).$(new)
+
+    assert_true ("testing map operations [set/get] with dollar expressions",
+        fval is 10 and
+        sval is 20 and
+        tval is 1 and
+        zval is 2 and
+        nval is 22 and
+        lval is 48)
+
+    var mi = {
+      key : 1
+      f : func return 2
+      fk : 2
+      "!@#$%^&**()_++1;'" : 11
+    }
+    assert_true ("testing map member with identifiers [development]",
+        mi.key is 1 and
+        mi.f () is 2 and
+        mi."!@#$%^&**()_++1;'" is 11)
+
+    func manip (ar) {
+      append 3 in ar
+    }
+
+    var marray = { ar : [0, 1, 2] }
+    manip (marray.ar)
+    assert_true ("testing manipulation of a map array field, through a function call",
+    marray.ar: len () is 4 and
+    marray.ar[-1] is 3)
+  }
+
+  test_maps ()
+
+  func test_lists () {
+    const l = {[]}
+    list_append (l, 21)
+    list_append (l, "12")
+    list_prepend(l, 1)
+
+    var v = l[2]
+    l[1] = "one"
+    list_insert_at (l, 0, "two")
+    list_insert_at (l, 1, ["11", "131", "24"])
+
+    var sum = 0
+    var sun = ""
+    for v in l {
+      if typeof (v) is StringType then append v in sun
+      if typeof (v) is IntegerType then append v in sum
+    }
+
+   const sa = l: pop_at (1)
+   const e = l[0]
+
+    const lal = {[10, "str"]}
+    lal[0] += 100
+    lal[1] += "ing"
+    var lala = lal[1] + "igy"
+    const lla = {[10]}
+    lla[0] *= 2
+    lla[0] /= 5
+    const llaa = ++lla[0]
+
+    var lola = {["reassignment"]}
+    var s = typeof(lola)
+
+    lola := pop_at (0)
+    lola = "reassignment"
+
+    var lolo = {[1]}
+    lolo = 11
+
+    assert_true ("testing lists",
+        llaa is 5 and
+        lal[0] is 110 and
+        lal[1] is "string" and
+        lala is "stringigy" and
+        sum is 1 and
+        sun is "twoone12" and
+        v is "12" and
+        typeof (sa) is ArrayType and
+        typeof (e) is StringType and
+        typeof (l[0]) is StringType and
+        e is "two" and
+        lola is "reassignment" and
+        lolo is 11)
+
+    const la = {[1, "one"]}
+    var la_l = la: len ()
+    var laa_l = {[1, "one"]}: len ()
+
+    func lx (xl) return xl[0] - xl: len()
+    var lax = lx ({[50, "el"]})
+
+    assert_true ("testing {[]} lists",
+        la: typeof() is ListType and
+        la_l is 2 and laa_l is 2 and
+        lax is 48)
+  }
+
+  test_lists ()
+
+  func types () {
+    var
+      stra = "string",
+      int = 1,
+      num = 1.0,
+      mapa = {},
+      string[1] s_ar = ["str"],
+      number[1] n_ar = [10.0],
+      integer[1] i_ar = [0]
+
+    var type = null
+
+    assert_true ("testing NullType[s]", typeof (type) is NullType and
+       typeAsString (null) is "NullType")
+    type = typeof (stra)
+    assert_true ("testing StringType[s]", type is StringType and
+       typeAsString (stra) is "StringType")
+    type = typeof (int)
+    assert_true ("testing IntegerType[s]", type is IntegerType and
+        typeAsString (1) is "IntegerType")
+    type = typeof (num)
+    assert_true ("testing NumberType[s]", type is NumberType and
+        typeAsString (1.1) is "NumberType")
+    type = typeof (i_ar)
+    assert_true ("testing ArrayType[s]", type is ArrayType and
+        typeAsString (i_ar) is "ArrayType")
+    type = typeofArray (i_ar)
+    assert_true ("testing Array Integer sub types", type is IntegerType and
+        typeAsString (i_ar[0]) is "IntegerType")
+    type = typeofArray (s_ar)
+    assert_true ("testing array String sub types", type is StringType and
+        typeAsString (s_ar[0]) is "StringType")
+    type = typeofArray (n_ar)
+    assert_true ("testing array Number sub types", type is NumberType and
+        typeAsString (n_ar[0]) is "NumberType")
+    assert_true ("testing map type", typeof (mapa) is MapType and
+        typeAsString (mapa) is "MapType")
+    var l = {["1", [1, 2], {"k" : 1}, {[0, 1, 2]}]}
+    assert_true ("testing list type", typeof (l) is ListType and
+        typeAsString (l) is "ListType" and
+        typeAsString (l[3]) is "ListType")
+
+    func f (x) {}
+    assert_true ("testing function types",
+        f: typeof () is FunctionType and
+        f: typeAsString () is "FunctionType" and
+        typeof: typeof () is CFunctionType and
+        typeAsString : typeAsString () is "CFunctionType") 
+  }
+
+  types ()
+
+  func append_builtin () {
+    var key = "key"
+    var m = {}
+    append "x" in m as "k"
+    append "xx" in m as key
+
+    var a = string[0]
+    append "zxc" in a
+
+    var ar = [["a"]]
+    append ["b", "c"] in ar
+    append a in ar
+
+    var i = 10
+    append 20 in i
+
+    var n = 10.0
+    append 20.0 in n
+
+    var s = "asd"
+    append "fgh" in s
+
+    append "qwe" in "zxc" as v
+    append 'C' in "ab" as vc
+
+    var sa = append "asd" in "xcv"
+
+    var l = {["1"]}
+    append 2 in l
+    l[-2] = "2"
+
+    assert_true ("testing the append builtin",
+        m.k is "x" and m.key is "xx" and m."key" is "xx" and
+        a[0] is "zxc" and
+        i is 30 and
+        n is 30.0 and
+        s is "asdfgh" and
+        v is "zxcqwe" and
+        vc is "abC" and
+        sa is "xcvasd" and
+        l[1] is 2 and
+        l[-1] is 2 and
+        l[-2] is "2" and
+        ar[1][0] is "b" and
+        ar[2][0] is "zxc")
+  }
+
+  append_builtin ()
+
+  func chains {
+    var sa = ("10": to_integer () * 12 + 52 - 24): to_string (2)
+    var sd = "97"
+    var dd = sd: to_integer ()
+    var ii = 111: to_string (10)
+    var oo = 040: to_string (8)
+    var hh = 0x20: to_string (16)
+    var bb = 0b00100000: to_string (2)
+    var cc = ' ': to_string (8)
+    var vv = "asdf": eq ("asdf")
+    var vx = "asdf": eq_n ("asdfg", 5)
+    var fa = "fa"
+    var xx = "${%s, fa}:fb:fc": format (): tokenize (":")
+    var sb = "123"
+    var sc = "${%s, sb}"
+    var ff = "${%s, sc}": format (): format ()
+    var xa = [1, 2, 3]: len ()
+    var xm = {k : 1, l : 2, sub : {ka : 1, ar : [1, 1, 3] } }
+    var xk = xm: keys (): len ()
+    var mx = {k : 1, l : 2}: len ()
+    var ms = xm.sub: keys (): len ()
+    var mp = xm.sub.ar: where (1): len ()
+    var mm = xm.k: if x is 1 then 11 end
+    var wi = 12: if x < 12 then x + 22 orelse x + 32 end: to_string (10)
+    var wu = ("asdf" is "asdf"): if v then "ok" orelse "notok" end
+    var wn = null
+    var wv =  wn: if x is null then 10 orelse 100 end
+    var ws = "asdf": if x:eq ("asdfg") then "ok" orelse "notok" end
+    var we = "asdf": if x:eq ("asdfg") then "ok" end
+    var wa = ["a", "b", "c"]: if x[2] is "c" then "ok" end
+    var wc = ["a", "b", "c"]: ifnot x[2] is "c" then "ok" end
+    var wd = "asdf"
+    wd := delete_substr ("sd")
+    var av = ["z", "b", "x"]
+    av := sort ()
+    var mv = {x, a, b}
+    mv := keys (): sort ()
+    mv = "reassignment"
+
+    assert_true ("testing chained functions",
+        wa is "ok" and
+        sa is "0b10010100" and
+        mp is 2 and
+        ms is 2 and
+        mm is 11 and
+        mx is 2 and
+        xk is 3 and
+        xa is 3 and
+        ff is "123" and
+        xx is ["fa", "fb", "fc"] and
+        vx is false and
+        vv is true  and
+        ii is "111" and
+        dd is 'a' and
+        cc is "040" and
+        bb is "0b00100000" and
+        hh is "0x20" and
+        oo is "040" and
+        wi is "44" and
+        wu is "ok" and
+        wv is 10 and
+        ws is "notok" and
+        we is "asdf" and
+        wd is "af" and
+        av[0] is "b" and av[1] is "x" and av[2] is "z" and
+        mv is "reassignment")
+  }
+
+  chains ()
+
+  public var integer[2] a_visible = [1, 2]
+  public const c_visible = "visible constant"
+}
+
+self_semantics ()
+
+assert_equal ("testing public variable attribute", v_visible, "visible variable")
+assert_equal ("testing public function attribute", f_visible (22), 44)
+assert_equal ("testing public array attribute", a_visible[0], 1)
+assert_equal ("testing public constant attribute", c_visible, "visible constant")
+
+func valgrind_tests () {
+  func xx () {
+    var integer[2] x = [1, 2]
+    return x
+  }
+
+  var ar = xx ()
+  ar[1] = 3
+
+  var sa = "A"
+  sa = "v"
+
+  func xxx () {
+    var s ="xxx"
+    return s
+  }
+
+  sa = xxx ()
+  var sb = xxx ()
+
+  func xxxx () return "xxxx"
+
+  sb = xxxx ()
+  var r = sb is sa
+
+  var s = "asdf"[0]
+
+  func vv () return "asdf"
+
+  var f = format ("${%s, vv()}")
+
+  var saa = ("a" is "a" and "v" is "v" or "x" is "x")
+  var sab = "z" + 'x' + 'c' + 'v'
+
+  var ma = {
+    f : func return 0
+  }
+  ma.f ()
+  ma.f ()
+
+  var arr = ["a", "b"]
+  var mb = {
+    f : func {
+      if (arr[0] is "a")
+        var nar = ["c", "d"]
+    }
+  }
+
+  mb.f ()
+
+  var aras = ["as"]
+  var arasc = aras
+  var arasa = arasc[0]
+  var arasb = __argv
+  var arasd = arasb[0]
+  var sasa = "g" + aras[0]
+  var assa = aras[0] + "x"
+  var masa = {"k" : "masa"}
+  var asma = masa.k + " tsagga"
+
+  func c () return "ok" if "asdf" is "asdf"
+
+  c ()
+
+  func d () return if "notok" is "notok" then "ok" orelse "notok"
+
+  d ()
+
+  func xx (a) return a:len ()
+
+  var x = ["11", "22", "33"]: xx ()
+  var xa = xx (["111", "222", "333"])
+
+}
+
+if (run_valgrind_tests) {
+  test_num++
+  valgrind_tests ()
+  println ("[${test_num}] tests for memory leaks, that should run under valgrind")
+}
+
+func invalid_memory_read_tests {
+  func invalid_memory_read_tests1 {
+    func fff return fopen ("/tmp/la_test_fopen", "w")
+
+    func p (fp) println (fp, "fptype ${%s, typeAsString (fp)}")
+
+    var f = fff ()
+    p (f)
+  }
+
+  func invalid_memory_read_tests2 {
+    func fff return fopen ("/tmp/la_test_fopen", "w")
+
+    func p (fp)
+      println (fp, "fptype ${%s, typeAsString (fp)}")
+
+    p (fff ())
+  }
+
+  func invalid_memory_read_tests3 {
+    func fff () {
+      var fp = fopen ("/tmp/la_test_fopen", "w")
+      return fp
+    }
+
+    func p (fp) println (fp, "fptype ${%s, typeAsString (fp)}")
+
+    p (fff ())
+  }
+
+  func invalid_memory_read_tests4 {
+    func fff () {
+      var fp = fopen ("/tmp/la_test_fopen", "w")
+      return fp
+    }
+
+    func p (fp) println (fp, "fptype ${%s, typeAsString (fp)}")
+
+    var f = fff ()
+    p (f)
+  }
+
+  func invalid_memory_read_tests5 {
+    var sb = "asd"
+    var sa = sb
+    sb = "bbb"
+
+    func s (x) return "xa" if x isnot null
+
+    s (sb)
+
+    func sm () return {"g" : 1}
+
+    sm ()
+    func sa () return [1, 2]
+
+    sa ()
+  }
+
+  invalid_memory_read_tests1 ()
+  invalid_memory_read_tests2 ()
+  invalid_memory_read_tests3 ()
+  invalid_memory_read_tests4 ()
+  invalid_memory_read_tests5 ()
+}
+
+if (run_invalid_memory_read_tests and run_fileptr_tests) {
+  test_num++
+  invalid_memory_read_tests ()
+  println ("[${test_num}] tests for invalid memory read tests")
+}
+
+func summary () {
+  var num_passed = 0
+  var num_failed = 0
+  var num_expected_to_fail = 0
+  var output = format ("==- TEST SUMMARY -==\nNUM TESTS: ${test_num}\n   PASSED:")
+  var failed_output = ""
+  var expected_to_fail_output = ""
+
+  for (var i = 0; i < test_num; i++) {
+    if RESULTS[i] is ok {
+      num_passed++
+      continue
+    }
+
+    if RESULTS[i] is notok {
+      num_failed++
+      failed_output += format ("[${i + 1}] ")
+      continue
+    }
+
+    num_expected_to_fail++
+    num_failed++
+    failed_output += format ("[${i + 1}] ")
+    expected_to_fail_output += format ("[${i + 1}] ")
+  }
+
+  output += format (" ${num_passed}\n   FAILED: ${num_failed}, ${%s, failed_output}\n")
+  output += format (" EXPECTED: ${num_expected_to_fail}, ${%s, expected_to_fail_output}")
+  println ("${output}")
+}
+
+summary ()
+
+func term_tests () {
+  import ("term")
+
+  var term = term_new ()
+  println ("press q to exit")
+  return notok if Term.raw_mode (term) is notok
+
+  var fd = STDIN_FILENO
+  var key = 0
+  while key isnot 'q' {
+    return notok if key is notok
+    key = Term.getkey (fd)
+  }
+
+  return Term.orig_mode (term)
+}
+
+if term_tests () is notok then println ("terminal error")
+
+exit (0)

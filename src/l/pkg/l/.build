@@ -1,0 +1,11 @@
+var m = New Make (__file__, LIBRARY|EXECUTABLE)
+
+m.set.library.cflag ([`-DZLIBDIR="` + ZLIBDIR + `"`, `-DDATADIR="` + SYSDATADIR + `"`])
+#m.set.library.cflag (["-DMEM_DEBUG"])
+
+m.set.executable.output ("Z.lai")
+#m.set.executable.cflag (`-DDATADIR="` + SYSDATADIR + `"`)
+#m.set.executable.cflag ("-DVERSION_STRING=\"" + m.get.version () + "\"")
+
+#m.set.executable.cflag (["-DMEM_DEBUG"])
+return m

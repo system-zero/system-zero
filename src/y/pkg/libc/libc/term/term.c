@@ -43,7 +43,9 @@
 void term_release (term_t **thisp) {
   if (NULL == *thisp)
     return;
-  Release ((*thisp)->name);
+
+  ifnot (NULL == (*thisp)->name)
+    Release ((*thisp)->name);
   Release (*thisp);
   *thisp = NULL;
 }
