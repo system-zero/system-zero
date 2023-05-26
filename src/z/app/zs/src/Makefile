@@ -70,7 +70,7 @@ ifneq ($(DEBUG), 0)
 endif
 
 FLAGS += -ldir-$(VERSION) -lvstring-$(VERSION) -lcstring-$(VERSION) -lustring-$(VERSION)
-FLAGS += -lsh-$(VERSION) -lproc-$(VERSION) -lrline-$(VERSION)
+FLAGS += -lsh-$(VERSION) -lre-$(VERSION) -lproc-$(VERSION) -lrline-$(VERSION)
 FLAGS += -lio-$(VERSION) -lstring-$(VERSION) -lsys-$(VERSION) -lsmap-$(VERSION)
 FLAGS += -lerror-$(VERSION) -lterm-$(VERSION)
 FLAGS += -lpath-$(VERSION) -lfile-$(VERSION)

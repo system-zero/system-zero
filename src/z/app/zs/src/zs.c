@@ -8,6 +8,7 @@
 
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_IO_TYPE      DECLARE
+#define REQUIRE_RE_TYPE      DECLARE
 #define REQUIRE_DIR_TYPE     DECLARE
 #define REQUIRE_SYS_TYPE     DECLARE
 #define REQUIRE_TERM_TYPE    DECLARE
@@ -346,6 +347,34 @@ static void buf_set_render_row (Buf *My, int row_pos) {
       My->video->rows[row_pos-1]->bytes, TERM_CURSOR_SHOW, My->row_pos, My->col_pos);
 }
 
+static void buf_draw_special_row (Buf *My, const char *buf, int len, int nrow, int color) {
+  char *s = (char *) buf;
+
+  if (NULL isnot buf) {
+    if (len > My->term->num_cols) { // not perfect but good enough
+      String.replace_with_len (My->tmp_buf, buf, My->term->num_cols);
+      s = My->tmp_buf->bytes;
+    }
+  } else
+    s = My->empty_line->bytes;
+
+  String.replace_with_fmt (My->video->render,
+    "%s" TERM_GOTO_PTR_POS_FMT TERM_SET_COLOR_FMT "%s%s%s" TERM_COLOR_RESET TERM_GOTO_PTR_POS_FMT,
+      TERM_CURSOR_HIDE, nrow, My->first_col, (NULL is buf ? COLOR_BG_NORMAL : color), TERM_LINE_CLR_EOL,
+      s, TERM_CURSOR_SHOW, My->row_pos, My->col_pos);
+
+  IO.fd.write (My->video->fd, My->video->render->bytes, My->video->render->num_bytes);
+
+}
+
+static void buf_draw_msg (Buf *My, const char *buf, int len) {
+  buf_draw_special_row (My, buf, len, My->term->num_rows, COLOR_YELLOW);
+}
+
+static void buf_draw_head (Buf *My, const char *buf, int len) {
+  buf_draw_special_row (My, buf, len, 1, COLOR_YELLOW);
+}
+
 static void buf_set_rows (Buf *My) {
   size_t vidx = My->first_row - 1;
   size_t fidx = My->video_first_row_idx;
@@ -561,7 +590,8 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
 
       case END_KEY:
         r = buf_eof (buf);
-        if (r is NOTHING_TODO)  continue;
+        if (r is NOTHING_TODO)
+          continue;
 
         if (r is DONE_NEEDS_DRAW)
           buf_set_rows_and_draw (buf);
@@ -569,6 +599,87 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
           GOTO(buf->row_pos, buf->col_pos);
 
         continue;
+
+      case '?': {
+        char sbuf[32];
+        sbuf[0] = '?';
+        sbuf[1] = '\0';
+
+        int sidx = 1;
+        for (;sidx < 31;) {
+          buf_draw_msg (buf, sbuf, sidx);
+
+          My->c = Rline.fd_read (rline, 0);
+
+          switch (My->c) {
+            case '!' ... '~':
+              sbuf[sidx++] = My->c;
+              sbuf[sidx] = '\0';
+              continue;
+
+            case ' ':
+            case '\r':
+              break;
+
+            case 127:
+            case BACKSPACE_KEY:
+              if (sidx > 1)
+                sbuf[--sidx] = '\0';
+              continue;
+
+            case ESCAPE_KEY:
+              sidx = 1;
+              break;
+
+            default:
+              My->c = 0;
+              buf_draw_msg (buf, NULL, 0);
+              goto theend;
+          }
+
+          break;
+        }
+
+        buf_draw_msg (buf, NULL, 0);
+
+        ifnot (sidx - 1) continue;
+
+        string **tmp = Alloc (sizeof (string) * buf->array_len);
+        size_t tidx = 0;
+        re_t *re = Re.new (sbuf + 1, RE_IGNORE_CASE, RE_MAX_NUM_CAPTURES, Re.compile);
+
+        for (size_t j = 0; j < buf->array_len; j++) {
+          int res = Re.exec (re, buf->input[j]->bytes, buf->input[j]->num_bytes);
+
+          if (res >= 0)
+            tmp[tidx++] = String.new_with_len (buf->input[j]->bytes, buf->input[j]->num_bytes);
+        }
+
+        int len = tidx;
+
+        ifnot (len) {
+          free (tmp);
+          goto theend;
+        }
+
+        buf_clear_lines (buf);
+        free (buf->lines);
+
+        buf_clear_input (buf);
+        free (buf->input);
+        buf->input = tmp;
+        buf->array_len = len;
+
+        buf->lines = Alloc (sizeof (line_t) * buf->array_len);
+        buf_set_lines (buf);
+
+        buf->cur_row_idx = 0;
+        buf->video_first_row_idx = 0;
+        buf->row_pos = My->first_row;
+        buf->col_pos = idx + 1;
+        buf_set_rows_and_draw (buf);
+        continue;
+      }
 
       default:
         if (' ' < My->c) {
@@ -627,7 +738,7 @@ static pager_t *pager_new (zs_t *zs, string **lines, size_t array_len, pager_opt
   int last_col  = opts.last_col;
 
   My->first_row = (first_row is -1 ? 1 : first_row);
-  My->last_row  = (last_row is -1 ? My->term->num_rows : last_row);
+  My->last_row  = (last_row is -1 ? My->term->num_rows - 1 : last_row);
   My->first_col = (first_col is -1 ? 1 : first_col);
   My->last_col  = (last_col is -1 ? My->term->num_cols : last_col);
   My->num_rows  = My->last_row - My->first_row + 1;
@@ -688,7 +799,7 @@ static int completion_pager (completion_t *this) {
   Term.cursor.get_pos (term, &term->orig_curs_row_pos, &term->orig_curs_col_pos);
 
   p = pager_new (this->zs, this->ar, this->arlen, PagerOpts (
-    .first_row = 1,
+    .first_row = 2,
     .first_col = 1,
     ));
 
@@ -698,7 +809,14 @@ static int completion_pager (completion_t *this) {
   term->is_initialized = 1; // fake it
 
   comlen = 0;
+
+  if (this->prefix)
+    buf_draw_head (p->buf, this->prefix, this->prefix_len);
+
   command = pager_main (p, this->idx, this->rline, &comlen);
+
+  if (this->prefix)
+    buf_draw_head (p->buf, NULL, 0);
 
   r = NULL isnot command;
 
@@ -1682,7 +1800,7 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
 
   if (0 is curpos and buf[0] is '\0') {
     // complete command
-    if (('A' <= c and c <= 'Z') or ('a' <= c and c <= 'z') or c is DIR_SEP) { // or ('a' <= c and c <= 'z') or c is '_') {
+    if (('A' <= c and c <= 'Z') or c is DIR_SEP) { //
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
       String.replace_with_len (prevLine, newbuf, 1);
       int r = zs_completion (newbuf, 1, lc, userdata);
@@ -2150,6 +2268,7 @@ static int zs_interactive (sh_t *this) {
 int main (int argc, char **argv) {
   __INIT__(io);
   __INIT__(sh);
+  __INIT__(re);
   __INIT__(sys);
   __INIT__(dir);
   __INIT__(path);

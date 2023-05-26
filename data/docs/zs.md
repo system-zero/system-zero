@@ -191,6 +191,7 @@ decent interactivity.
     keys:  
       ' '   : returns the selected item  
       '\r'  : likewise but it executes immediately the command line, included the selection  
+      '?'   : searches and selects items that match 'pattern'
       '\t'  :  
       DOWN  : next item (if it is the last item, this is the first item)  
         UP  : prev item (if it is the first item, this is the last item)  

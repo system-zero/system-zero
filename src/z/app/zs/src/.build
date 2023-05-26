@@ -1,6 +1,7 @@
 #@
   depends_on ("OS",       STATIC_LIBRARY)
   depends_on ("Sh",       LIBRARY)
+  depends_on ("Re",       LIBRARY)
   depends_on ("IO",       LIBRARY)
   depends_on ("Dir",      LIBRARY)
   depends_on ("Sys",      LIBRARY)
@@ -22,7 +23,7 @@ var m = New Make (__file__, EXECUTABLE; z_app)
 
 m.set.executable.to_linkagainst ([
   "sh", "io", "string", "cstring", "vstring", "file", "dir", "path", "sys",
-  "term", "error", "rline", "io", "smap", "ustring"]; clear, append_version)
+  "term", "error", "rline", "io", "re", "smap", "ustring"]; clear, append_version)
 m.set.static.executable.to_linkagainst ([
   "proc", "os", "random"]; append_version)
 m.set.executable.source ("zs.c"; clear)
