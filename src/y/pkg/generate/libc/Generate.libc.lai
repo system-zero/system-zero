@@ -165,6 +165,8 @@ include ("argparse")
     #endif
 
     #ifndef WITHOUT_SYNTAX
+      #ifndef SYNTAX_H
+      #define SYNTAX_H
       #ifdef OK
       #undef OK
       #endif
@@ -200,6 +202,7 @@ include ("argparse")
       #define or    ||
       #define and   &&
       #define ifnot(__expr__) if (0 == (__expr__))
+      #endif /* SYNTAX_H */
     #endif
 
     #ifndef private
@@ -217,16 +220,18 @@ include ("argparse")
   `S4
 
   ifnot withoutSysHdrs {
-    append "#ifndef WITHOUT_SYS_CONSTANTS\n" in libcHdrs
-    append "#define SYSDIR \""   + SYSDIR       + "\"\n" in libcHdrs
-    append "#define SHAREDIR \"" + SYSSHAREDDIR + "\"\n" in libcHdrs
-    append "#define LIBDIR \""   + SYSLIBDIR    + "\"\n" in libcHdrs
-    append "#define ZLIBDIR \""  + ZSYSLIBDIR   + "\"\n" in libcHdrs
-    append "#define INCDIR \""   + SYSINCDIR    + "\"\n" in libcHdrs
-    append "#define ZINCDIR \""  + ZSYSINCDIR   + "\"\n" in libcHdrs
-    append "#define BINDIR \""   + SYSBINDIR    + "\"\n" in libcHdrs
-    append "#define MANPATH \""  + SYSMANPATH   + "\"\n" in libcHdrs
-    append "#endif\n\n" in libcHdrs
+    append "#ifndef WITHOUT_SYS_CONSTANTS\n"               in libcHdrs
+    append "  #ifndef SYS_CONSTANTS_H\n"                   in libcHdrs
+    append "  #define SYSDIR \""   + SYSDIR       + "\"\n" in libcHdrs
+    append "  #define SHAREDIR \"" + SYSSHAREDDIR + "\"\n" in libcHdrs
+    append "  #define LIBDIR \""   + SYSLIBDIR    + "\"\n" in libcHdrs
+    append "  #define ZLIBDIR \""  + ZSYSLIBDIR   + "\"\n" in libcHdrs
+    append "  #define INCDIR \""   + SYSINCDIR    + "\"\n" in libcHdrs
+    append "  #define ZINCDIR \""  + ZSYSINCDIR   + "\"\n" in libcHdrs
+    append "  #define BINDIR \""   + SYSBINDIR    + "\"\n" in libcHdrs
+    append "  #define MANPATH \""  + SYSMANPATH   + "\"\n" in libcHdrs
+    append "  #endif /* SYS_CONSTANTS_H */\n\n"            in libcHdrs
+    append "#endif /* WITHOUT_SYS_CONSTANTS */\n\n"        in libcHdrs
   }
 
   append "/* Tracking Dependencies */\n" in libcHdrs

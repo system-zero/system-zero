@@ -6,6 +6,7 @@
 // requires: sys/brk.c
 // requires: stdlib/_exit.c
 // requires: stdlib/alloc.h
+// requires: stdio/stdio.c
 
 /* this pulled from:
    https://github.com/miguelperes/custom-malloc
@@ -403,9 +404,15 @@ void *sys_malloc (size_t size) {
 }
 
 void *sys_realloc (void *ptr, size_t size) {
-  char *old_p = (char *) ptr;
-  memChunkT *oldchunk = (memChunkT *) (old_p - STRUCT_OFFSET);
-  size_t osz = oldchunk->size - STRUCT_SIZE;
+  char *old_p = NULL;
+  memChunkT *oldchunk = NULL;
+  size_t osz = 0;
+
+  if (ptr != NULL) {
+    old_p = (char *) ptr;
+    oldchunk = (memChunkT *) (old_p - STRUCT_OFFSET);
+    osz = oldchunk->size - STRUCT_SIZE;
+  }
 
   void *p = sys_malloc (size);
 

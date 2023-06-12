@@ -184,6 +184,12 @@ decent interactivity.
         $name=$(ls / | grep usr)  
         $name=${var}/${another_var}  
 
+      $(command)  
+      Command substitution allows the output of a command to be substituted in
+      place of the command name itself. This is valid:
+
+        $(cp --help)
+
   Selection Menu:
     This is a simple UI that displays one item per line and it is performed when  
     there are more than one item in the completion list.  
@@ -195,8 +201,10 @@ decent interactivity.
       '\t'  :  
       DOWN  : next item (if it is the last item, this is the first item)  
         UP  : prev item (if it is the first item, this is the last item)  
-      HOME  : focused to the first item  
-      END   : focused to the last item  
+      RIGHT : display the last segment of the current (longer than available columns) item  
+      LEFT  : always go to the first byte of the current item  
+      HOME  : set current item to be the first item of the list  
+      END   : set current item to be the last item  of the list  
       CTRL-f   :  
       PAGE_DOWN: scrolls one page down  
       CTRL-b   :  

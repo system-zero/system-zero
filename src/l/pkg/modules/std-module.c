@@ -11,6 +11,7 @@
 #define REQUIRE_STRTOL
 #define REQUIRE_ATOI
 #define REQUIRE_DECIMAL_TO_STRING
+#define REQUIRE_READFILE
 
 #include <libc.h>
 
@@ -606,6 +607,19 @@ static VALUE integer_eq (l_t *this, VALUE v_fint, VALUE v_sint) {
 }
 #endif
 
+static VALUE _readfile (l_t *this, VALUE v_file) {
+  (void) this;
+
+  ifnot (IS_STRING(v_file)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
+
+  readfile_t rf = { .file = AS_STRING_BYTES(v_file) };
+  if (-1 == readfile_u (&rf))
+    return NULL_VALUE;
+
+  string *n = string_new_with_allocated (rf.bytes, rf.num_bytes, rf.mem_size);
+  return STRING(n);
+}
+
 public int __init_std_module__ (l_t *this) {
   __INIT_MODULE__(this);
 
@@ -650,6 +664,8 @@ public int __init_std_module__ (l_t *this) {
     { "integer_char",       PTR(integer_char), 1 },
 #endif
     { "integer_to_string",  PTR(integer_to_string), 2},
+    { "fileread",           PTR(_readfile), 1},
+
     { NULL, NULL_VALUE, 0}
   };
 
@@ -695,7 +711,9 @@ public int __init_std_module__ (l_t *this) {
       string  : String
     };
 
-    public const VAR = 1111;
+    public const File = {
+      read    : fileread
+    };
  );
 
   err = L.eval_string (this, evalString);

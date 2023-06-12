@@ -35,8 +35,8 @@ struct rline_t {
 #define $my(__v__) $myprop->__v__
 
 /* ag:
- * note: that original indentation was a mix of tabs and four spaces,
- * and i've tried in the beggining to keep it, but it was in vain.
+ * note: that the original indentation was a mix of tabs and four spaces,
+ * and i've tried in the beggining to keep this style, but it was in vain.
  * Our own editor in C units, inserts automatically two spaces, so slowly
  * i've intoduced space inconsistencies. Of course after many different function
  * signatures and quite many different programming logic (to adopt the library

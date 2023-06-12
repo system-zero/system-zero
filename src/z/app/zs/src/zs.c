@@ -28,17 +28,21 @@
 
 /* to match rline's ones */
 #undef  ARROW_UP_KEY
-#define ARROW_UP_KEY   -20
+#define ARROW_UP_KEY    -20
 #undef  ARROW_DOWN_KEY
-#define ARROW_DOWN_KEY -21
+#define ARROW_DOWN_KEY  -21
+#undef  ARROW_LEFT_KEY
+#define ARROW_LEFT_KEY  -22
+#undef  ARROW_RIGHT_KEY
+#define ARROW_RIGHT_KEY -23
 #undef  HOME_KEY
-#define HOME_KEY       -25
+#define HOME_KEY        -25
 #undef  END_KEY
-#define END_KEY        -26
+#define END_KEY         -26
 #undef  PAGE_UP_KEY
-#define PAGE_UP_KEY    -28
+#define PAGE_UP_KEY     -28
 #undef  PAGE_DOWN_KEY
-#define PAGE_DOWN_KEY  -29
+#define PAGE_DOWN_KEY   -29
 
 #define DEFAULT_ROOT_PROMPT "\033[31m$\033[m "
 #define DEFAULT_USER_PROMPT "\033[32m$\033[m "
@@ -502,6 +506,48 @@ static int buf_down (Buf *My) {
   return NOTHING_TODO;
 }
 
+static int buf_eol (Buf *My) {
+  line_t *line = My->cur_line;
+  ustring_t *it = line->data->tail;
+  if (it is NULL) return NOTHING_TODO;
+
+  My->cur_line->data->current = it;
+
+  int curidx = line->num_bytes - it->len;
+  int lastidx = curidx;
+  int num = it->width;
+  it = it->prev;
+
+  while (it) {
+    if (num + it->width > My->num_cols) break;
+
+    num += it->width;
+    curidx -= it->len;
+    if (num is My->num_cols) break;
+    it = it->prev;
+  }
+
+  line->first_col_idx = curidx;
+  line->cur_col_idx = lastidx;
+//  My->col_pos = (num - 1) + My->first_col;
+
+  return DONE_NEEDS_DRAW;
+}
+
+static int buf_bol (Buf *My) {
+  line_t *line = My->cur_line;
+  ustring_t *it = line->data->head;
+  if (it is NULL) return NOTHING_TODO;
+
+  ifnot (line->cur_col_idx) return NOTHING_TODO;
+
+  My->cur_line->data->current = it;
+
+  line->first_col_idx = line->cur_col_idx = 0;
+  // My->col_pos = My->first_col;
+  return DONE_NEEDS_DRAW;
+}
+
 static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
   Buf *buf = My->buf;
 
@@ -590,6 +636,30 @@ static char *pager_main (pager_t *My, int idx, rline_t *rline, size_t *comlen) {
 
       case END_KEY:
         r = buf_eof (buf);
+        if (r is NOTHING_TODO)
+          continue;
+
+        if (r is DONE_NEEDS_DRAW)
+          buf_set_rows_and_draw (buf);
+        else
+          GOTO(buf->row_pos, buf->col_pos);
+
+        continue;
+
+      case ARROW_RIGHT_KEY:
+        r = buf_eol (buf);
+        if (r is NOTHING_TODO)
+          continue;
+
+        if (r is DONE_NEEDS_DRAW)
+          buf_set_rows_and_draw (buf);
+        else
+          GOTO(buf->row_pos, buf->col_pos);
+
+        continue;
+
+      case ARROW_LEFT_KEY:
+        r = buf_bol (buf);
         if (r is NOTHING_TODO)
           continue;
 
@@ -799,7 +869,7 @@ static int completion_pager (completion_t *this) {
   Term.cursor.get_pos (term, &term->orig_curs_row_pos, &term->orig_curs_col_pos);
 
   p = pager_new (this->zs, this->ar, this->arlen, PagerOpts (
-    .first_row = 2,
+    .first_row = 1 + (this->prefix != NULL),
     .first_col = 1,
     ));
 
@@ -901,6 +971,9 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   completion->curbuf = bufp;
   completion->quote_arg = 0;
   zs->pager->c = 0;
+
+  string **argar = NULL;
+  int argidx = 0;
 
   dirlist_t *dlist = NULL;
   char *dirname = NULL;
@@ -1230,9 +1303,6 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
   }
   com[comlen] = '\0';
 
-  string **argar = NULL;
-  int argidx = 0;
-
   if (0 is is_arg and comlen) {
     Command *it = zs->command_head;
 
@@ -1387,8 +1457,9 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
     completion->suffix_len = lptrlen;
 
     int r = completion_pager (completion);
-
     if (r is -1) free (argar);
+    argar = NULL;
+
     if (r and zs->pager->c is ' ' and
         '=' is zs->completion_command->bytes[zs->completion_command->num_bytes - 1])
       zs->pager->c = ' ' - 1; // this is enough to ignore the extra space
@@ -1433,6 +1504,7 @@ static int zs_completion (const char *bufp, int curpos, rlineCompletions *lc, vo
 
         while (it) {
           if (Cstring.eq_n (it->name, buf, buflen)) {
+            ar = Realloc (ar, sizeof (string) * (idx + 1));
             ar[idx++] = String.new_with (it->name);
             if (sp - 1 is lptr) {
               lptr++; lptrlen--;
@@ -1678,6 +1750,7 @@ get_current: {}
       }
 
       free (argar);
+      argar = NULL;
     }
 
     while (it) {
@@ -1729,6 +1802,7 @@ get_current: {}
       }
 
       free (argar);
+      argar = NULL;
     }
 
     while (it) {
@@ -1787,8 +1861,13 @@ get_current: {}
 theend:
   ifnot (NULL is dlist) dlist->release (dlist);
   ifnot (NULL is dirname) free (dirname);
-  if (buf_isallocated)
-    free (buf);
+  if (buf_isallocated) free (buf);
+  ifnot (NULL is argar) {
+    for (int i = 0; i < argidx; i++)
+      String.release (argar[i]);
+    free (argar);
+  }
+
   return zs->pager->c;
 }
 
