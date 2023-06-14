@@ -3,19 +3,12 @@
 // requires: ctype/isalpha.c
 // requires: ctype/isdigit.c
 // requires: ctype/isupper.c
-// comment: alias strtol
 
 long str_to_long (const char *nptr, char **endptr, int base) {
   const char *s;
   long acc, cutoff;
   int c;
-  int neg, any, cutlim;
-
-  /*
-   * Skip white space and pick up leading +/- sign if any.
-   * If base is 0, allow 0x for hex and 0 for octal, else
-   * assume decimal; if base is already 16, allow 0x.
-   */
+  int neg = 0, any, cutlim;
 
   s = nptr;
 
@@ -26,39 +19,17 @@ long str_to_long (const char *nptr, char **endptr, int base) {
   if (c is '-') {
     neg = 1;
     c = *s++;
-  } else {
-    neg = 0;
+  } else if (c == '+')
+    c = *s++;
 
-    if (c is '+')
-      c = *s++;
-  }
-
-  if ((base is 0 or base is 16) and c is '0' and (*s is 'x' or *s is 'X')) {
+  if ((base == 0 || base == 16) && c == '0' && (*s == 'x' || *s == 'X')) {
     c = s[1];
     s += 2;
     base = 16;
   }
 
-  if (base is 0)
-    base = c is '0' ? 8 : 10;
-
-  /*
-   * Compute the cutoff value between legal numbers and illegal
-   * numbers.  That is the largest legal value, divided by the
-   * base.  An input number that is greater than this value, if
-   * followed by a legal input character, is too big.  One that
-   * is equal to this value may be valid or not; the limit
-   * between valid and invalid numbers is then based on the last
-   * digit.  For instance, if the range for longs is
-   * [-2147483648..2147483647] and the input base is 10,
-   * cutoff will be set to 214748364 and cutlim to either
-   * 7 (negis0) or 8 (negis1), meaning that if we have accumulated
-   * a value > 214748364, or equal but the next digit is > 7 (or 8),
-   * the number is too big, and we will return a range error.
-   *
-   * Set any if any `digits' consumed; make it negative to indicate
-   * overflow.
-   */
+  if (base == 0)
+    base = c == '0' ? 8 : 10;
 
   cutoff = neg ? LONG_MIN : LONG_MAX;
   cutlim = cutoff % base;
@@ -88,7 +59,7 @@ long str_to_long (const char *nptr, char **endptr, int base) {
       continue;
 
     if (neg) {
-      if (acc < cutoff or (acc is cutoff and c > cutlim)) {
+      if (acc < cutoff || (acc == cutoff && c > cutlim)) {
         any = -1;
         acc = LONG_MIN;
         sys_errno = ERANGE;
@@ -99,7 +70,7 @@ long str_to_long (const char *nptr, char **endptr, int base) {
       }
 
     } else {
-      if (acc > cutoff or (acc is cutoff and c > cutlim)) {
+      if (acc > cutoff || (acc == cutoff && c > cutlim)) {
         any = -1;
         acc = LONG_MAX;
         sys_errno = ERANGE;
@@ -111,7 +82,7 @@ long str_to_long (const char *nptr, char **endptr, int base) {
     }
   }
 
-  if (endptr isnot 0)
+  if (endptr != 0)
     *endptr = (char *) (any ? s - 1 : nptr);
 
   return acc;

@@ -151,6 +151,9 @@ static void set_video_row (Buf *My, size_t vidx, size_t idx) {
   int num = 0;
   while (it and num < My->num_cols) {
     num += it->width;
+
+    if (num > My->num_cols) break; // not perfect
+
     if (it->code is '\t') {
       for (int j = 0; j < it->width; j++)
         String.append_byte (My->tmp_buf, ' ');
@@ -810,6 +813,7 @@ Me *pager_new (string **lines, size_t array_len, pager_opts opts) {
   int last_row  = opts.last_row;
   int last_col  = opts.last_col;
   int tabwidth  = opts.tabwidth;
+  int as_man_pager = opts.as_man_pager;
 
   Me *My = Alloc (sizeof (Me));
 
@@ -832,8 +836,9 @@ Me *pager_new (string **lines, size_t array_len, pager_opts opts) {
   }
 
   My->first_row  = (first_row is -1 ? 1 : first_row);
-  My->last_row   = (last_row is -1 ? My->term->num_rows : last_row);
-  My->last_col   = (last_col is -1 ? My->term->num_cols : last_col);
+  My->last_row   = (last_row  is -1 ? My->term->num_rows : last_row);
+  My->first_col  = (first_col is -1 ? 1 : first_col);
+  My->last_col   = (last_col  is -1 ? My->term->num_cols : last_col);
   My->num_rows   = My->last_row - My->first_row + 1;
   My->num_cols   = My->last_col - My->first_col + 1;
   My->video      = video_new (1, My->term->num_rows, My->term->num_cols);
@@ -878,17 +883,60 @@ Me *pager_new (string **lines, size_t array_len, pager_opts opts) {
   for (size_t i = 0; i < (size_t) buf->num_cols; i++)
     String.append_byte (buf->empty_line, ' ');
 
- for (size_t j = 0; j < buf->array_len; j++)
+  for (size_t j = 0; j < buf->array_len; j++)
     buf->lines[j] = Alloc (sizeof (line_t));
 
   for (size_t i = 0; i < buf->array_len; i++) {
     Ustring_t *u = Ustring.new ();
     Ustring.encode (u, buf->input[i]->bytes,
                        buf->input[i]->num_bytes, 1, buf->ftype->tabwidth, 0);
+
+    if (as_man_pager) {
+      /* this is a workaround probably badly placed here, as this code belongs
+         elsewhere, where it should be more generic and benefit others too
+       */
+
+      ustring_t *it = u->head;
+      while (it) {
+        if (it->code is 010) { // backspace
+          /* we don't count for cur_idx and current struct members much */
+          u->len--;
+          u->num_items--;
+
+          if (it->prev is NULL) {
+            if (it->next is NULL) {
+              u->head = u->tail = u->current = NULL;
+              break;
+            }
+
+            it->next->prev = NULL;
+            it = it->next;
+            u->head = it;
+            continue;
+          }
+
+          u->len -= it->prev->len;
+          u->num_items--;
+
+          if (it->prev->prev isnot NULL)
+            it->prev->prev->next = it->next;
+          else
+            u->head = it->next;
+
+          if (it->next isnot NULL)
+            it->next->prev = it->prev->prev;
+          else
+            u->tail = it->prev->prev;
+        }
+
+        it = it->next;
+      }
+    }
+
     buf->lines[i]->data = u;
     buf->lines[i]->first_col_idx = 0;
     buf->lines[i]->cur_col_idx = 0;
-    buf->lines[i]->num_bytes = buf->input[i]->num_bytes;
+    buf->lines[i]->num_bytes = u->len;
   }
 
   buf->cur_line = buf->prev_line = buf->lines[0];

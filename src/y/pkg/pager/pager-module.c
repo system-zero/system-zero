@@ -60,6 +60,21 @@ MODULE(pager);
   AS_INT(_v_tabwidth);                                                      \
 })
 
+#define GET_OPT_AS_MAN_PAGER() ({                                         \
+  int _as_man_pager = La.qualifier_exists (this, "as_man_pager");         \
+  if (_as_man_pager) {                                                    \
+    VALUE _v_as_man_pager = La.get.qualifier (this, "as_man_pager", INT(0)); \
+    if (0 == IS_INT(_v_as_man_pager)) {                                   \
+      if (IS_NULL(_v_as_man_pager))                                       \
+        _as_man_pager = 1;                                                \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "as_man_pager, awaiting an integer qualifier"); \
+     } else                                                               \
+    _as_man_pager = AS_INT(_v_as_man_pager);                              \
+  }                                                                       \
+  _as_man_pager;                                                          \
+})
+
 #define GET_OPT_HAS_STATUSLINE() ({                                       \
   int _has = La.qualifier_exists (this, "has_statusline");                \
   if (_has) {                                                             \
@@ -146,6 +161,7 @@ static VALUE __pager_new (la_t *this, VALUE v_lines) {
   int last_col  = GET_OPT_LAST_COL();
   int tabwidth  = GET_OPT_TABWIDTH();
   int has_statusline = GET_OPT_HAS_STATUSLINE();
+  int as_man_pager= GET_OPT_AS_MAN_PAGER();
   term_t *term  = GET_OPT_TERM();
 
   Me *My = pager_new (lines, array_len, PagerOpts (
@@ -155,6 +171,7 @@ static VALUE __pager_new (la_t *this, VALUE v_lines) {
     .last_col   = last_col,
     .tabwidth   = tabwidth,
     .buf_has_statusline = has_statusline,
+    .as_man_pager = as_man_pager,
     .term       = term,
     .input_should_be_freed = input_should_be_freed,
     .term_should_be_freed  = term == NULL
@@ -183,10 +200,13 @@ static VALUE pager_new_from_stdin (la_t *this) {
 
   char *buf = NULL;
   ssize_t nread;
-  size_t len;
+  size_t len = 0;
 
   while (-1 isnot (nread = getline (&buf, &len, fp))) {
+    if (buf[nread - 1] == '\n')
+      nread--;
     buf[nread] = '\0';
+
     VALUE sv = STRING(String.new_with_len (buf, nread));
     array = ARRAY_APPEND(array, sv);
   }

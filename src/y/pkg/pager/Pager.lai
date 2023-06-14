@@ -1,19 +1,36 @@
 import ("pager")
+import ("path")
 import ("file")
+include ("argparse")
 
 const exists = file_exists
 
+var me = __file__: path_basename ()
+
+var argparse = New Argparse (2, 0, me + " [option[s]] [file]")
+argparse.add ("as_man_pager",  0, "man",  "as a man pager",  BooleanType, 0)
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var qualif = {
+  as_man_pager : argparse.results.as_man_pager
+  first_row : 1
+}
+
 var p
 
-if __argc is 1 {
-  p = Pager.new_from_stdin ()
+ifnot argparse.argc {
+  p = Pager.new_from_stdin (; qualif)
 } else {
-  var file = __argv[1]
+  var file =  argparse.argv[0]
   ifnot file: exists () then exit (1)
 
   var lines = file: file_readlines ()
   if lines is null or lines: len () is 0 then exit (1)
-  p = Pager.new (lines)
+  p = Pager.new (lines; qualif)
 }
 
 if null is p then exit (1)

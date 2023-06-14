@@ -99,6 +99,7 @@ typedef struct pager_opts {
   int input_should_be_freed;
   int buf_has_statusline;
   int has_command_line;
+  int as_man_pager;
 
   term_t *term;
 } pager_opts;
@@ -114,6 +115,7 @@ typedef struct pager_opts {
   .input_should_be_freed = 1,          \
   .buf_has_statusline = 1,             \
   .has_command_line = 1,               \
+  .as_man_pager = 0,                   \
   __VA_ARGS__                          \
 }
 
