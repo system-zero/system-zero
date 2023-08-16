@@ -60,7 +60,7 @@ undo:
     if (n isnot pid)
       ret = -1;
 
-  } else ifnot (pid) { /* child */
+  } else if (0 == pid) { /* child */
     const char *nargs[4];
     nargs[0] = "/bin/sh";
     nargs[1] = "-c";

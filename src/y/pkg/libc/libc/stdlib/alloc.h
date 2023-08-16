@@ -25,7 +25,7 @@
 
   #define Release(__p__) ({    \
     int r_ = sys_free (__p__); \
-    ifnot (r_) __p__ = NULL;   \
+    if (0 == r_) __p__ = NULL; \
     r_;                        \
   })
 

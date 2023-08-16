@@ -8,6 +8,8 @@ char *sys_getenv (const char *s) {
 
   size_t len = bytelen (s);
 
+  if (0 == len) return NULL;
+
   for (int i = 0; environ[i]; i++)
     if ((str_eq_n (environ[i], s, len)) && (environ[i][len] == '='))
       return environ[i] + len + 1;

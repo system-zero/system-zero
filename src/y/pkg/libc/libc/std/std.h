@@ -21,15 +21,23 @@
 #endif
 
 #ifndef MIN
-#define MIN(a, b) ((a) < (b) ? a : b)
+#define MIN(_a_, _b_) (((_a_) < (_b_)) ? (_a_) : (_b_))
+#endif
+
+#ifndef MAX
+#define MAX(_a_, _b_) (((_a_) > (_b_)) ? (_a_) : (_b_))
+#endif
+
+#ifndef ARRAY_LEN
+#define ARRAY_LEN(_a_) (sizeof ((_a__) / sizeof ((_a_)[0]))
 #endif
 
 #ifndef IS_UTF8
-#define IS_UTF8(__c__) (((__c__) & 0xC0) == 0x80)
+#define IS_UTF8(_c_) (((_c_) & 0xC0) == 0x80)
 #endif
 
 #ifndef ISNOT_UTF8
-#define ISNOT_UTF8(__c__) (0 == IS_UTF8(__c__))
+#define ISNOT_UTF8(_c_) (0 == IS_UTF8(_c_))
 #endif
 
 #ifndef NAME_MAX
@@ -81,37 +89,37 @@
 #endif
 
 #ifndef IS_DIR_SEP
-#define IS_DIR_SEP(c_)   (c_ == DIR_SEP)
+#define IS_DIR_SEP(_c_)  ((_c_) == DIR_SEP)
 #endif
 
 #ifndef IS_NOT_DIR_SEP
-#define IS_NOT_DIR_SEP(c_) (0 == IS_DIR_SEP (c_))
+#define IS_NOT_DIR_SEP(_c_)  (0 == IS_DIR_SEP ((_c_)))
 #endif
 
 #ifndef IS_DIR_ABS
-#define IS_DIR_ABS(d_)   IS_DIR_SEP (*d_)
+#define IS_DIR_ABS(_d_)  IS_DIR_SEP (*(_d_))
 #endif
 
 #ifndef IS_DIGIT
-#define IS_DIGIT(c_)    ('0' <= (c_) && (c_) <= '9')
+#define IS_DIGIT(_c_)  ('0' <= (_c_) && (_c_) <= '9')
 #endif
 
 #ifndef IS_CNTRL
-#define IS_CNTRL(c_)    ((c_ < 0x20 && c_ >= 0) || c_ == 0x7f)
+#define IS_CNTRL(_c_)  (((_c_) < 0x20 && (_c_) >= 0) || (_c_) == 0x7f)
 #endif
 
 #ifndef IS_SPACE
-#define IS_SPACE(c_)    ((c_) == ' ' || (c_) == '\t' || (c_) == '\r' || (c_) == '\n')
+#define IS_SPACE(_c_) ((_c_) == ' ' || (_c_) == '\t' || (_c_) == '\r' || (_c_) == '\n')
 #endif
 
 #ifndef IS_ALPHA
-#define IS_ALPHA(c_)    (((c_) >= 'a' && (c_) <= 'z') || ((c_) >= 'A' && (c_) <= 'Z'))
+#define IS_ALPHA(_c_)  (((_c_) >= 'a' && (_c_) <= 'z') || ((_c_) >= 'A' && (_c_) <= 'Z'))
 #endif
 
 #ifndef IS_ALNUM
-#define IS_ALNUM(c_)    (IS_ALPHA(c_) || IS_DIGIT(c_))
+#define IS_ALNUM(_c_)  (IS_ALPHA((_c_)) || IS_DIGIT((_c_)))
 #endif
 
 #ifndef IS_HEX
-#define IS_HEX(c_)      ((IS_DIGIT(c_) || (c_ >= 'a' && c_ <= 'f') || (c_ >= 'A' && c_ <= 'F')))
+#define IS_HEX(_c_)  ((IS_DIGIT((_c_)) || ((_c_) >= 'a' && (_c_) <= 'f') || ((_c_) >= 'A' && (_c_) <= 'F')))
 #endif

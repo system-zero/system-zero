@@ -946,6 +946,8 @@ static int file_rename (const char *src, const char *a_dest, file_rename_opts op
   char *orig_dest = dest;
   int dest_exists = file_exists (dest);
 
+  int is_exdev_err = 0;
+
   if (dest_exists) {
     dest_isdir = Dir.is_directory (dest);
     if (dest_isdir) {
@@ -1005,13 +1007,20 @@ backup:
 
 print:
   ifnot (retval) {
-    if (opts.verbose >= OPT_VERBOSE and opts.out_stream isnot NULL)
-      fprintf (opts.out_stream, "renamed '%s' -> '%s'\n", src, dest);
+    if (opts.verbose >= OPT_VERBOSE and opts.out_stream isnot NULL) {
+      if (is_exdev_err) {
+        fprintf (opts.out_stream, "copied '%s' -> '%s'\n", src, dest);
+        fprintf (opts.out_stream, "removed '%s'\n", src);
+      } else
+        fprintf (opts.out_stream, "renamed '%s' -> '%s'\n", src, dest);
+    }
   } else {
     if (errno is EXDEV) {
+      is_exdev_err = 1;
+
       if (0 is opts.backup or 0 is dest_isdir) {
         retval = file_copy (src, orig_dest, FileCopyOpts(
-          .verbose = OPT_VERBOSE_ON_ERROR, .force = 1, .recursive = 1,
+          .verbose = OPT_VERBOSE_ON_ERROR + 1, .force = 1, .recursive = 1,
           .err_stream = opts.err_stream));
 
         if (OK is retval)

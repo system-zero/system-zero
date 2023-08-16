@@ -8,6 +8,7 @@ import ("path")
 include ("argparse")
 
   const
+  mkdir          = dir_make,
   is_directory   = dir_is_directory,
   realpath       = path_real,
   extname        = path_extname,
@@ -15,7 +16,7 @@ include ("argparse")
   concat_with    = path_concat,
   basename       = path_basename,
   filelines      = file_readlines,
-  mkdir          = dir_make,
+  exists         = file_exists,
   basename_without_extname = path_basename_sans_extname
 
   public const func generate_libc (argc, argv) {
@@ -81,7 +82,7 @@ include ("argparse")
   var outputName = if null is argparse.results.outputName then LIBCOUTNAME orelse argparse.results.outputName
   var outputDir  = if null is argparse.results.outputDir then LIBCOUTDIR orelse argparse.results.outputDir
 
-  ifnot outputDir: file_exists () then mkdir (outputDir, 0755; verbose : verbose)
+  ifnot outputDir: exists () then mkdir (outputDir, 0755; verbose : verbose)
   ifnot outputDir: is_directory () then return error (outputDir + ": is not a directory")
 
   var outputFile  = outputDir: concat_with (outputName + ".h")

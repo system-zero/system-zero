@@ -8,7 +8,7 @@ void *sys_brk (void *ptr) {
 void *sys_sbrk (size_t inc) {
   void *cur_brk = (void *) syscall1 (NR_brk, 0);
 
-  ifnot (inc) return cur_brk;
+  if (0 == inc) return cur_brk;
 
   long r = syscall1 (NR_brk, (long) cur_brk + inc);
   if (-1 is r)

@@ -10,7 +10,7 @@
   include it. If it is being used as an executable, the argv argument comes
   from the environment and the argument parsing starts from index 1, otherwise
   the argv argument is an array of strings and parsing starts from index zero.
- Other than that difference, the interface is the same.
+  Other than that difference, the interface is the same.
 ##]
 
 # Note that since this unit is also a vehicle for development, some constructs
@@ -27,6 +27,7 @@ import ("crypt")
 
 include ("argparse")
 include ("packman")
+include ("Generate.libc")
 
           public const func Make (argv) {
 
@@ -74,21 +75,21 @@ const write             = io_fd_write
 const stat              = file_stat
 const copy              = file_copy
 const clear             = list_clear
-const mkdir             = dir_make_parents
 const change            = dir_change
+const mkdir             = dir_make_parents
 const isdirectory       = dir_is_directory
-const concat_with       = path_concat
 const exists            = file_exists
 const remove            = file_remove
 const symlink           = file_symlink
-const dirname           = path_dirname
+const isregular         = file_is_reg
 const realpath          = path_real
+const concat_with       = path_concat
+const dirname           = path_dirname
 const basename          = path_basename
 const key_exists        = map_key_exists
 const base64_encode     = crypt_base64_encode_file
 const char              = integer_char
 const advance           = string_advance
-const isregular         = file_is_reg
 
 const PLATFORM
 const VERSION           = "0.3"
@@ -97,6 +98,7 @@ const Y                 = "y"
 const J                 = "j"
 const D                 = "d"
 const L                 = "l"
+const X                 = "x"
 const CC                = "gcc"
 const STD11             = "c11"
 const STD99             = "c99"
@@ -104,9 +106,12 @@ const STDANSI           = "c90"
 const OPTIMIZATION      = "-O2"
 const MARCH             = "-march=native"
 const SYSDIR            = Sys.get ("SYSDIR")
-const SYSDATADIR        = Sys.get ("DATADIR")
 const SRCDIR            = Sys.get ("SRCDIR")
+const REPODIR           = (SRCDIR + "/.."): realpath ()
+const HOMEDIR           = Sys.get ("HOME")
+const SYSDATADIR        = Sys.get ("DATADIR")
 const TMPDIR            = Sys.get ("TMPDIR")
+const SYSTMPDIR         = "/tmp"
 const USERNAME          = Sys.get ("USERNAME")
 const GROUPNAME         = Sys.get ("GROUPNAME")
 const ZSRCDIR           = SRCDIR:  concat_with (Z)
@@ -114,6 +119,7 @@ const YSRCDIR           = SRCDIR:  concat_with (Y)
 const JSRCDIR           = SRCDIR:  concat_with (J)
 const DSRCDIR           = SRCDIR:  concat_with (D)
 const LSRCDIR           = SRCDIR:  concat_with (L)
+const XSRCDIR           = SRCDIR:  concat_with (X)
 const ZSRCLIBDIR        = ZSRCDIR: concat_with ("lib")
 const ZSRCAPPDIR        = ZSRCDIR: concat_with ("app")
 const ZSRCMODDIR        = ZSRCDIR: concat_with ("la-modules")
@@ -121,6 +127,8 @@ const YSRCPKGDIR        = YSRCDIR: concat_with ("pkg")
 const JSRCPKGDIR        = JSRCDIR: concat_with ("pkg")
 const DSRCPKGDIR        = DSRCDIR: concat_with ("pkg")
 const LSRCPKGDIR        = LSRCDIR: concat_with ("pkg")
+const XSRCPKGDIR        = XSRCDIR: concat_with ("pkg")
+const LIBCSRCDIR        = YSRCPKGDIR: concat_with ("libc/libc")
 
 const LIBDIR            = SYSDIR:  concat_with ("lib")
 const BINDIR            = SYSDIR:  concat_with ("bin")
@@ -137,8 +145,11 @@ const LIBCDEFDIR        = ZINCDIR
 const LIBCOUTPUT        = LIBCDEFDIR: concat_with (LIBCDEFNAME + ".h")
 const SHELL             = "zs"
 const SHELLDATADIR      = SYSDATADIR: concat_with (SHELL + "/commands")
+const EDITOR            = "E"
+const PAGER             = "Pager"
 const RPATH             = true
 const NORPATH           = false
+const INTERPRETER       = "La"
 const SHARED_INTERPRETER= "La-shared"
 const STATIC_INTERPRETER= "La-static"
 const SPECNAME          = ".build"
@@ -1376,8 +1387,6 @@ const ARGPARSE
         return ok if r > ok
       }
 
-      include ("Generate.libc")
-
       r = generate_libc (2, ["", (if this.verbose then "--verbose" orelse ""),
          "--outputDir=" + this.libc.output: dirname ()]);
 
@@ -2005,12 +2014,15 @@ func make_dependencies (f) {
         ifnot n: exists () {
           n = LSRCPKGDIR: concat_with (d)
           ifnot n: exists () {
-            n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+            n = XSRCPKGDIR: concat_with (d)
             ifnot n: exists () {
-              n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
-              if 0 is n: exists () or ARGPARSE.results.shared_module {
-                n = ZSRCMODDIR: concat_with (d)
-                return null ifnot n: exists ()
+              n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+              ifnot n: exists () {
+                n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
+                if 0 is n: exists () or ARGPARSE.results.shared_module {
+                  n = ZSRCMODDIR: concat_with (d)
+                  return null ifnot n: exists ()
+                }
               }
             }
           }
@@ -2032,12 +2044,15 @@ func make_dependencies (f) {
           ifnot n: exists () {
             n = LSRCPKGDIR: concat_with (d)
             ifnot n: exists () {
-              n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+              n = XSRCPKGDIR: concat_with (d)
               ifnot n: exists () {
-                n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
-                if 0 is n: exists () or ARGPARSE.results.shared_module {
-                  n = ZSRCMODDIR: concat_with (d)
-                  return null ifnot n: exists ()
+                n = ZSRCLIBDIR: concat_with (d): concat_with ("src")
+                ifnot n: exists () {
+                  n = ZSRCAPPDIR: concat_with (d): concat_with ("src")
+                  if 0 is n: exists () or ARGPARSE.results.shared_module {
+                    n = ZSRCMODDIR: concat_with (d)
+                    return null ifnot n: exists ()
+                  }
                 }
               }
             }

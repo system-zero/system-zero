@@ -1,0 +1,24 @@
+var m =New Make (__file__, LIBRARY|EXECUTABLE)
+m.set.library.to_linkagainst (["X11"])
+m.set.executable.to_linkagainst (["X11"])
+m.set.executable.cflag ([
+  "-DEDITOR=\"" + EDITOR + "\"",
+  "-DSHELL=\"" + SHELL + "\"",
+  "-DINTERPRETER=\"" + INTERPRETER + "\"",
+  "-DPAGER=\""  + PAGER + "\"",
+  "-DTMPDIR=\""  + TMPDIR + "\"",
+  "-DSYSTMPDIR=\"" + SYSTMPDIR + "\"",
+  "-DHOMEDIR=\"" + HOMEDIR + "\"",
+  "-DREPODIR=\"" + REPODIR + "\"",
+  "-DSRCDIR=\""  + SRCDIR + "\"",
+  "-DYSRCPKGDIR=\"" + YSRCPKGDIR + "\"",
+  "-DJSRCPKGDIR=\"" + JSRCPKGDIR + "\"",
+  "-DDSRCPKGDIR=\"" + DSRCPKGDIR + "\"",
+  "-DLSRCPKGDIR=\"" + LSRCPKGDIR + "\"",
+  "-DXSRCPKGDIR=\"" + XSRCPKGDIR + "\"",
+  "-DZSRCAPPDIR=\"" + ZSRCAPPDIR + "\"",
+  "-DZSRCMODDIR=\"" + ZSRCMODDIR + "\"",
+  "-DZSRCLIBDIR=\"" + ZSRCLIBDIR + "\"",
+  "-DLIBCSRCDIR=\"" + LIBCSRCDIR + "\""])
+
+return m

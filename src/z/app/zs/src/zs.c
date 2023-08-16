@@ -1879,7 +1879,7 @@ static int zs_on_input (const char *buf, string *prevLine, int *ch, int curpos, 
 
   if (0 is curpos and buf[0] is '\0') {
     // complete command
-    if (('A' <= c and c <= 'Z') or c is DIR_SEP) { //
+    if (('A' <= c and c <= 'Z') or c is DIR_SEP) {
       char newbuf[2]; newbuf[0] = c; newbuf[1] = '\0';
       String.replace_with_len (prevLine, newbuf, 1);
       int r = zs_completion (newbuf, 1, lc, userdata);

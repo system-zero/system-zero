@@ -44,8 +44,9 @@ void term_release (term_t **thisp) {
   if (NULL == *thisp)
     return;
 
-  ifnot (NULL == (*thisp)->name)
+  if (NULL != (*thisp)->name)
     Release ((*thisp)->name);
+
   Release (*thisp);
   *thisp = NULL;
 }
@@ -54,7 +55,7 @@ int term_sane_mode (term_t *this) {
   if (this->mode == 's')
     return 0;
 
-  ifnot (sys_isatty (this->in_fd))
+  if (0 == sys_isatty (this->in_fd))
     return -1;
 
   struct termios mode;
@@ -83,11 +84,11 @@ int term_orig_mode (term_t *this) {
   if (this->mode == 'o')
     return 0;
 
-  ifnot (sys_isatty (this->in_fd))
+  if (0 == sys_isatty (this->in_fd))
     return -1;
 
   while (-1 == sys_tcsetattr (this->in_fd, TCSAFLUSH, &this->orig_mode))
-    ifnot (sys_errno == EINTR)
+    if (sys_errno != EINTR)
       return -1;
 
   this->mode = 'o';
@@ -99,11 +100,11 @@ int term_raw_mode (term_t *this) {
   if (this->mode == 'r')
     return 0;
 
-  ifnot (sys_isatty (this->in_fd))
+  if (0 == sys_isatty (this->in_fd))
     return -1;
 
   while (-1 == sys_tcgetattr (this->in_fd, &this->orig_mode))
-    if (sys_errno == EINTR)
+    if (sys_errno != EINTR)
       return -1;
 
   this->raw_mode = this->orig_mode;
@@ -117,7 +118,7 @@ int term_raw_mode (term_t *this) {
   this->raw_mode.c_cc[VTIME] = 1;  /* 0 */
 
   while (-1 == sys_tcsetattr (this->in_fd, TCSAFLUSH, &this->raw_mode))
-    ifnot (sys_errno == EINTR)
+    if (sys_errno != EINTR)
       return -1;
 
   this->mode = 'r';
@@ -256,13 +257,14 @@ void term_unset_state_bit (term_t *this, int bit) {
 int term_set (term_t *this) {
   if (-1 is term_set_mode (this, 'r'))
     return -1;
+
   term_cursor_get_pos (this, &this->orig_curs_row_pos, &this->orig_curs_col_pos);
   term_init_size (this, &this->num_rows, &this->num_cols);
 
-  ifnot (this->state & TERM_DONOT_SAVE_SCREEN)
+  if (0 == (this->state & TERM_DONOT_SAVE_SCREEN))
     term_screen_save (this);
 
-  ifnot (this->state & TERM_DONOT_CLEAR_SCREEN)
+  if (0 == (this->state & TERM_DONOT_CLEAR_SCREEN))
     term_screen_clear (this);
 
   this->is_initialized = 1;
@@ -270,13 +272,13 @@ int term_set (term_t *this) {
 }
 
 int term_reset (term_t *this) {
-  ifnot (this->is_initialized)
+  if (0 == this->is_initialized)
     return 0;
 
   term_set_mode (this, 's');
   term_cursor_set_pos (this, this->orig_curs_row_pos, this->orig_curs_col_pos);
 
-  ifnot (this->state & TERM_DONOT_RESTORE_SCREEN)
+  if (0 == (this->state & TERM_DONOT_RESTORE_SCREEN))
     term_screen_restore (this);
 
   this->is_initialized = 0;

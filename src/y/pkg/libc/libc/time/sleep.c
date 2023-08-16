@@ -11,10 +11,10 @@ long sys_sleep (ulong sec) {
   long r;
   while (1) {
     r = sys_nanosleep (&req, &rem);
-    ifnot (r) return r;
+    if (0 == r) return r;
 
-    if (-1 is r) {
-      if (sys_errno is EINTR) {
+    if (-1 == r) {
+      if (sys_errno == EINTR) {
         req = rem;
         rem.tv_sec = 0;
         rem.tv_nsec = 0;

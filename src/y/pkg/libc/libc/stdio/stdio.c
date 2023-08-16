@@ -68,7 +68,7 @@ FILE *sys_init_file (int fd, int buftype) {
   }
 
   FILE *fp = Alloc (sizeof (FILE));
-  mem_set(fp, 0, sizeof (FILE));
+  mem_set (fp, 0, sizeof (FILE));
 
   fp->fd = fd;
   fp->bufferingType = buftype;

@@ -37,3 +37,9 @@ FILE *sys_stderr;
 #ifndef STDERR_FILENO
 #define STDERR_FILENO 2
 #endif
+
+#ifndef WITHOUT_STDIO_INTERFACE
+#define tostderr(_fmt_, ...) sys_fprintf (sys_stderr, _fmt_, __VA_ARGS__)
+#define tostdout(_fmt_, ...) sys_fprintf (sys_stdout, _fmt_, __VA_ARGS__)
+#endif /* WITHOUT_STDIO_INTERFACE */
+

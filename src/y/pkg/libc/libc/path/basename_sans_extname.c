@@ -12,7 +12,7 @@ char *path_basename_sans_extname (char *name) {
   int found = 0;
 
   do {
-    ifnot (*sp) break;
+    if (0 == *sp) break;
 
     while (*(sp + 1)) sp++;
 
@@ -30,7 +30,7 @@ char *path_basename_sans_extname (char *name) {
 
   size_t len = 0;
 
-  ifnot (found)
+  if (0 == found)
     len = bsnm - name;
   else
     len = sp - bsnm + (*sp != '.');
