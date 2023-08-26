@@ -1,0 +1,4 @@
+var m =New Make (__file__, LIBRARY|EXECUTABLE|MODULE|SCRIPT_EXECUTABLE)
+m.set.library.to_linkagainst (["X11"])
+m.set.script.executable.source (["Xsel.put", "Xsel.get"]; clear)
+return m

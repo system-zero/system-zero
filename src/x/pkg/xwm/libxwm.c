@@ -120,9 +120,9 @@ static void xwm_tile (void);
 static void xwm_remove_window (Window, int, int);
 static unsigned long xwm_get_color (const char *);
 
-// int (*xerrorxlib) (Display *, XErrorEvent *);
+int (*xerrorxlib) (Display *, XErrorEvent *);
+
 static int xerror (Display *dpy, XErrorEvent *ee) {
-  (void) dpy;
   if (ee->error_code == BadWindow || (ee->request_code == X_SetInputFocus && ee->error_code == BadMatch)
       || (ee->request_code == X_PolyText8 && ee->error_code == BadDrawable)
       || (ee->request_code == X_PolyFillRectangle && ee->error_code == BadDrawable)
@@ -135,8 +135,7 @@ static int xerror (Display *dpy, XErrorEvent *ee) {
   if (ee->error_code == BadAccess)
     exit (1);
 
-  // return xerrorxlib (dpy, ee);
-  return 0;
+  return xerrorxlib (dpy, ee);
 }
 
 static void xwm_keypress (XEvent *e) {
@@ -937,7 +936,7 @@ xwm_t *xwm_init (int desknum) {
   Xwm->OnKeypress = NULL;
   Xwm->user_data = NULL;
 
-  XSetErrorHandler (xerror);
+  xerrorxlib = XSetErrorHandler (xerror);
 
   xwm_set_desktops (desknum);
 

@@ -1,0 +1,30 @@
+import ("xsel")
+import ("path")
+
+include ("argparse")
+
+const basename = Path.basename
+
+var me = __file__: basename ()
+
+var argparse = New Argparse (3, 0, me + " options")
+argparse.add ("rmlastnl", 0, "rm-last-nl", "remove last new line", BooleanType, 0)
+argparse.add ("selection", 's', "selection=", "selection (primary or clipboard) (default primary)", StringType, ARG_VALUE_REQUIRED; defval : "primary" )
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+var q = {
+  rm_last_nl : argparse.results.rmlastnl
+  selection : if argparse.results.selection is "clipboard" then X_CLIPBOARD orelse X_PRIMARY
+}
+
+var out = xsel_get (; q)
+
+if out is null then exit (0)
+
+print (stdout, out)
+
+exit (0)

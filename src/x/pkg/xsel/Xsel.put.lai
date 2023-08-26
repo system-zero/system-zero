@@ -1,0 +1,36 @@
+import ("xsel")
+import ("path")
+import ("io")
+
+include ("argparse")
+
+const basename = Path.basename
+const isatty = Io.fd.isatty
+const read = Io.fd.read
+
+var me = __file__: basename ()
+
+var argparse = New Argparse (3, 0, me + " options")
+argparse.add ("rmlastnl", 0, "rm-last-nl", "remove last new line", BooleanType, 0)
+argparse.add ("selection", 's', "selection=", "selection (primary or clipboard) (default primary)", StringType, ARG_VALUE_REQUIRED; defval : "primary" )
+argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
+
+ifnot ok is argparse.process (__argv, 1) then exit (1)
+
+if argparse.exit is true then exit (0)
+
+if STDIN_FILENO: isatty () {
+  argparse.usage ()
+  exit (1)
+}
+
+var q = {
+  rm_last_nl : argparse.results.rmlastnl
+  selection : if argparse.results.selection is "clipboard" then X_CLIPBOARD orelse X_PRIMARY
+}
+
+var inp = read (STDIN_FILENO)
+if null is inp then exit (1)
+
+var r = xsel_put (inp; q)
+exit (if r is -1 then 1 orelse 0) 

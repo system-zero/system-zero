@@ -1574,6 +1574,7 @@ gained consience. Hopefully one day.
 * [Http Status codes.](https://github.com/j-ulrich/http-status-codes-cpp)
 * [Parse URL.](https://github.com/wc-duck/url_parse)
 * [SunRiseSet.](https://github.com/troglobit/sun)
+* [Xsel.](https://vergenet.net/~conrad/software/xsel)
 * [Sudoku in C with classes!](https://github.com/vaithak/Sudoku-Generator)
 
 ## About
