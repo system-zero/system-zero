@@ -232,6 +232,7 @@ typedef struct listType listType;
 
 #define    MAP(__v__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __v__, .refcount = 0, .sym = NULL}
 #define AS_MAP(__v__) (Vmap_t *) AS_PTR(__v__)
+//#define MAPVAL(__p__) (VALUE) {.type = MAP_TYPE, .asInteger = (pointer) __p__, .refcount = __p__->refcount, .sym = __p__->sym}
 
 #define    OBJECT(__o__) (VALUE) {.type = OBJECT_TYPE, .asInteger = (pointer) __o__, .refcount = 0, .sym = NULL}
 #define AS_OBJECT(__o__) (object *) AS_PTR(__o__)

@@ -1188,7 +1188,6 @@ static void _la_set_qualifiers (la_t *this, VALUE v_qual, funT *uf) {
   ListStackPush (this->qualifiers_stack, q);
 }
 
-
 static void la_set_qualifiers (la_t *this, Vmap_t *qual, const char *funname) {
   qualifier_t *q = Alloc (sizeof (qualifier_t));
   q->qualifiers = qual;
@@ -5340,9 +5339,10 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   err = 0;
   TOKENVAL = m;
-  VALUE map_par = TOKENVAL;
+  VALUE map_parent = TOKENVAL;
 
   int submap = 0;
+  VALUE *v = NULL;
 
   redo: {}
 
@@ -5354,10 +5354,14 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
 
   TOKENVAL = save_map;
 
-  VALUE mapv = TOKENVAL;
-  Vmap_t *map = AS_MAP(mapv);
+  if (submap) {
+    map_parent = TOKENVAL;
+    map_parent.sym->value = (*v);
+  }
 
-  VALUE *v = Vmap.get (map, key);
+  Vmap_t *map = AS_MAP(TOKENVAL);
+
+  v = Vmap.get (map, key);
 
   if (v is NULL)
     THROW_SYNTAX_ERR_FMT("%s, not a key", key);
@@ -5428,16 +5432,15 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
       k[idx] = '\0';
 
       Vmap_t *vmap = AS_MAP((*v));
+
       ifnot (Vmap.key_exists (vmap, k))
         goto theend;
     }
 
-    TOKENVAL = *v;
+    TOKENVAL = (*v);
 
-    if (TOKEN is TOKEN_COLON)
-      submap = 1;
-    else
-      submap = 0;
+    submap = (TOKEN is TOKEN_COLON);
+
     goto redo;
   }
 
@@ -5477,12 +5480,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     if (type is UFUNCTION_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
 
-      VALUE th;
-
-      if (submap)
-        th = v->sym->value;
-      else
-        th = map_par.sym->value;
+      VALUE thismap = map_parent.sym->value;
 
       if (Cstring.eq_n (uf->funname, "__G_" NS_ANON, 4 + NS_ANON_LEN)) {
         Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
@@ -5492,14 +5490,14 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
         this->curFunName[0] = '\0';
         funT *curScope = this->curScope;
         this->curScope = fun;
-        stack_push (this, th);
+        stack_push (this, thismap);
         this->argCount = 1;
         err = la_parse_func_call (this, vp, NULL, uf, *v);
         fun_release (&fun);
         this->curScope = curScope;
       } else {
         ifnot (v->sym->scope is this->private_maps) {
-          sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+          sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, thismap, 0);
           THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
           this->funcState |= MAP_METHOD_STATE;
         }
@@ -5560,8 +5558,9 @@ static int la_parse_map_set (la_t *this) {
   int is_this = (GETSTRLEN(TOKENSTR) is 4 and
       Cstring.eq_n (GETSTRPTR(TOKENSTR), "this", 4));
 
-  VALUE map_par = TOKENVAL;
-  Vmap_t *map = AS_MAP(map_par);
+  VALUE map_parent = TOKENVAL;
+  Vmap_t *map = AS_MAP(TOKENVAL);
+
   int override = this->objectState & FUNC_OVERRIDE;
   this->objectState &= ~FUNC_OVERRIDE;
 
@@ -5585,15 +5584,15 @@ static int la_parse_map_set (la_t *this) {
   NEXT_TOKEN();
 
   if (TOKEN is TOKEN_REASSIGN) {
-    VALUE v = map_par;
+    VALUE v = map_parent;
     sym_t *sym = v.sym;
     THROW_SYNTAX_ERR_IF(sym->is_const, "can not reassign a new value, to a constant declared map");
-    map_par.sym = NULL;
-    err = la_parse_chain (this, &map_par);
+    map_parent.sym = NULL;
+    err = la_parse_chain (this, &map_parent);
     THROW_ERR_IF_ERR(err);
-    sym->value = map_par;
-    map_par.sym = sym;
-    sym->type = map_par.type;
+    sym->value = map_parent;
+    map_parent.sym = sym;
+    sym->type = map_parent.type;
     return err;
   }
 
@@ -5602,14 +5601,15 @@ static int la_parse_map_set (la_t *this) {
   if (c isnot TOKEN_DOT)
     THROW_SYNTAX_ERR("awaiting .");
 
-  int submap = 0;
-
   redo: {}
+
   char key[MAXLEN_SYMBOL + 1];
   TOKEN = la_get_map_key (this, key);
   THROW_ERR_IF_ERR(TOKEN);
+
   NEXT_TOKEN();
   c = TOKEN;
+
   VALUE *v;
 
   if (c is TOKEN_PAREN_OPEN) {
@@ -5633,12 +5633,7 @@ static int la_parse_map_set (la_t *this) {
     if (type is UFUNCTION_TYPE) {
       funT *uf = AS_FUNC_PTR((*v));
 
-      VALUE th;
-
-      if (submap)
-        th = v->sym->value;
-      else
-        th = map_par.sym->value;
+      VALUE thismap = map_parent.sym->value;
 
       if (Cstring.eq_n (uf->funname, "__G_" NS_ANON, 4 + NS_ANON_LEN)) {
         Cstring.cp_fmt (this->curFunName, MAXLEN_SYMBOL + 1, NS_ANON "_%zd", this->anon_id++);
@@ -5648,14 +5643,14 @@ static int la_parse_map_set (la_t *this) {
         this->curFunName[0] = '\0';
         funT *curScope = this->curScope;
         this->curScope = fun;
-        stack_push (this, th);
+        stack_push (this, thismap);
         this->argCount = 1;
         VALUE vp;
         err = la_parse_func_call (this, &vp, NULL, uf, *v);
         fun_release (&fun);
         this->curScope = curScope;
       } else {
-        sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, th, 0);
+        sym_t *sym = la_define_symbol (this, uf, "this", MAP_TYPE, thismap, 0);
         THROW_SYNTAX_ERR_IF(NULL is sym, "unknown error on declaration");
         this->funcState |= MAP_METHOD_STATE;
         VALUE vp;
@@ -5687,10 +5682,11 @@ static int la_parse_map_set (la_t *this) {
       map = AS_MAP((*v));
 
       is_this = 0;
-      if (c is TOKEN_COLON)
-        submap = 1;
-      else
-        submap = 0;
+
+      if (c is TOKEN_COLON) {
+        map_parent = (*v);
+        map_parent.sym->value = (*v);
+      }
 
       goto redo;
     }
@@ -5711,6 +5707,7 @@ static int la_parse_map_set (la_t *this) {
   }
 
   v = Vmap.get (map, key);
+
   if (v isnot NULL) {
     if (v->sym->scope is NULL and 0 is is_this)
       THROW_SYNTAX_ERR_FMT("%s, symbol has private scope", key);
@@ -7892,7 +7889,8 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     this->curMsg[0] = '\0';
     VALUE sv_lhs = lhs;
 
-    if (num_iter++) this->objectState |= OBJECT_APPEND;
+    if (num_iter++)
+      this->objectState |= OBJECT_APPEND;
     this->objectState &= ~(LHS_STRING_RELEASED|RHS_STRING_RELEASED);
 
     const char *ptr = GETSTRPTR(TOKENSTR);
@@ -7918,7 +7916,7 @@ static int la_parse_expr_level (la_t *this, int max_level, VALUE *vp) {
     }
 
     ifnot (num_iter - 1)
-      lhs_released = this->objectState & LHS_STRING_RELEASED;
+      lhs_released = (this->objectState & LHS_STRING_RELEASED) + (lhs.sym is NULL and lhs.refcount is STRING_LITERAL);
 
     if (this->CFuncError isnot LA_OK) {
       if (this->curMsg[0] isnot '\0')

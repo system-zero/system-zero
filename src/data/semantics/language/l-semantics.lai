@@ -2425,6 +2425,44 @@ func self_semantics () {
     assert_true ("testing manipulation of a map array field, through a function call",
     marray.ar: len () is 4 and
     marray.ar[-1] is 3)
+
+    var msu = {
+      sub : {
+        k : 1
+        set : func (x) this.k = x
+        get : func return this.k
+      }
+      k : 100
+    }
+
+    var msu1 = msu.k
+    msu.sub.k = 11
+    var msu2 = msu.sub.k
+    var msu3 = msu.k
+    var msu4 = msu.sub.get ()
+    var msu5 = msu.sub:get ()
+    msu.sub.set (20)
+    var msu6 = msu.k
+    var msu7 = msu.sub.k
+    msu.sub:set (48)
+    var msu8 = msu.k
+    var msu9 = msu.sub.k
+    var msu10 = msu.sub.get ()
+    var msu11 = msu.sub:get ()
+
+    assert_true ("testing submap accessors",
+        msu1 is 100 and
+        msu2 is 11  and
+        msu3 is 100 and
+        msu4 is 100 and
+        msu5 is 11  and
+        msu6 is 20  and
+        msu7 is 11  and
+        msu8 is 20  and
+        msu9 is 48  and
+        msu10 is 20 and
+        msu11 is 48)
+
   }
 
   test_maps ()
