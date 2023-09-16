@@ -1,12 +1,14 @@
 A free form nice syntax with the flexibility of common established semantics by now.
 [a bad implementation with a bit of clever in places code - and an ugly first draft
 of this current document]
+As an excuse (which holds trueth), is that it is mostly a prototype (a useful one though),
+and that the basic functionality was implemented in a couple of months.
 
 The code that should support the below claims with accuracy lies at [language/l-semantics.](language/l-semantics.lai)
 [Note that probably needs a consideration and minor revisions to match the exact latest
 develpment and decisions]
 
-[Note that the implementation isnot the safest ever, as it is a hand written language
+[Also note that the implementation isnot the safest ever, as it is a hand written language
 from someone, that never ever has done something like this before]
 
 Basic DataTypes:
@@ -124,9 +126,9 @@ Comments.
   # a strong guarantee that all (usually) corner combinations might work on such
   # a long statement, but such code has already been written and it works).
 
-  # Multiply statements in one line without a semicolon at the end, may work
+  # Multiply statements in one line without a semicolon at the end, may work (usually)
   # or may not work, as there are a couple of obvious ambiquities, so in that
-  # case a semicolon is required.
+  # cases a semicolon is required.
 
   # Note that it is preferable to leave out the semicolon and fix any potential
   # cases that are not handled.

@@ -7441,6 +7441,17 @@ static int la_parse_stmt (la_t *this) {
               case TOKEN_BUILTIN:
               if (AS_PTR(v) is AS_PTR(vv)) {
                 NEXT_TOKEN();
+                if (TOKEN is TOKEN_COMMA) {
+                  uint n = 0;
+                  c = PEEK_NTH_BYTE_NOWS_INLINE(&n);
+                  if (c is TOKEN_NL) {
+                    for (uint i = 0; i <= n; i++)
+                      IGNORE_NEXT_BYTE;
+                  }
+
+                  TOKEN = prev_token;
+                  goto do_token;
+                }
                 return OK;
               }
             }

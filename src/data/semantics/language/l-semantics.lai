@@ -1719,6 +1719,18 @@ func self_semantics () {
     assert_true ("testing consecutive and multiline variable assignments",
         v1 is 1 and v2 is 2 and v3 is "s" and v4 is null and v5 is 5 and
         v6 is 6 and v7 is 7)
+
+    func xxx () return 1
+    const xxx_1 = xxx,
+          xxx_1 = xxx,
+          path_bas = path_basename,
+          path_bas = path_basename,
+          a = 1, b = 2,
+          c = 3, d = 4,
+          e = 5
+    assert_true ("testing consecutive and multiline constant assignments",
+        a is 1 and b is 2)
+
   }
 
   reassignment_and_multiline_assignments ()
