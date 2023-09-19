@@ -1,1 +1,20 @@
--f,--force        force
+-f,--force
+--path=
+--arch=
+--platform=
+--db-dir=
+--bin-dir=
+--lib-dir=
+--tmp-dir=
+--sys-dir=
+--src-dir=
+--spec-dir=
+--data-dir=
+--home-dir=
+--build-dir=
+--tar-exec=
+--tar-args=
+--git-exec=
+--make-exec=
+--patch-exec=
+--fetch-exec=

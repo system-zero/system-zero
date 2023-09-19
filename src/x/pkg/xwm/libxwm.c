@@ -111,7 +111,6 @@ static void (*events[LASTEvent])(XEvent *e) = {
 
 static struct xwm_t *Xwm;
 
-
 static void xwm_add_window (Window, int, xclient_t *);
 static void xwm_update_current (void);
 static void xwm_save_desktop (int);
@@ -139,18 +138,17 @@ static int xerror (Display *dpy, XErrorEvent *ee) {
 }
 
 static void xwm_keypress (XEvent *e) {
-  KeySym keysym;
+  if (NULL == Xwm->OnKeypress)
+    return;
+
   XKeyEvent *ev = &e->xkey;
 
-  keysym = XkbKeycodeToKeysym (Xwm->dpy, (KeyCode)ev->keycode, 0, 0);
+  KeySym keysym = XkbKeycodeToKeysym (Xwm->dpy, (KeyCode)ev->keycode, 0, 0);
 
-  xwm_key_t *k;
-
-  for (k = Xwm->keys; k; k = k->next)
+  for (xwm_key_t *k = Xwm->keys; k; k = k->next)
     if (keysym == k->keysym && CLEANMASK(k->modifier) == (int) CLEANMASK(ev->state)) {
       char *kstr = XKeysymToString (k->keysym);
-      if (NULL != Xwm->OnKeypress)
-        Xwm->OnKeypress (Xwm, k->modifier, kstr);
+      Xwm->OnKeypress (Xwm, k->modifier, kstr);
       break;
    }
 }

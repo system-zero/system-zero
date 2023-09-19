@@ -1,24 +1,28 @@
-var name = __file__: path_basename_sans_extname ()
+var me = __file__: path_basename_sans_extname ()
 var version = "1.4.3"
-var spec = New PackmanSpec (name)
+var spec = New PackmanSpec (me)
 
 return Packman.new.spec ({
-  name          : name
+  name          : me
   descr         : "libgit2 is a portable, pure C implementation of the Git core"
   baseurl       : "https://github.com/libgit2/libgit2/archive/refs/tags/"
+  soname        : me: advance (3)
+  soname_version: version
   version       : version
-  build_dirname : name + "-" + version
+  build_dirname : me + "-" + version
   extension     : "tar.gz"
-  archive       : name  + "-" + version + ".tar.gz"
+  archive       : me  + "-" + version + ".tar.gz"
   webarchive    : "v" + version + ".tar.gz"
   license       : "GPLv2"
   build         : [
     Packman.extract (),
     Packman.mkdir ({dir : "build", switch : true}),
     Packman.command ("[generating cmakefiles]",
-      "cmake .. -DCMAKE_INSTALL_PREFIX=" + this.get.sysdir () +
+      "cmake .. -DCMAKE_INSTALL_PREFIX=" + this.get.sys_dir () +
       " -DCMAKE_BUILD_TYPE=Release" +
       " -DBUILD_TESTS=OFF"),
-    Packman.command ("[cmake build]", "cmake --build . --target install")
+    Packman.command ("[cmake build]", "cmake --build ."),
+    Packman.install_shared_library ()
   ]
 })
+#    Packman.command ("[cmake build]", "cmake --build . --target install")

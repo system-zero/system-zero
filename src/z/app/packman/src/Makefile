@@ -1,4 +1,5 @@
 NAME    := Packman
+DBNAME  := packman
 
 NS      :=
 API     := 0
@@ -27,16 +28,16 @@ packman: Env install-data
 	@$(PRINTF) "installing $(NAME) to $(SYSBINDIR)\n"
 	@$(CP) $(NAME)    $(SYSBINDIR)
 	@$(CHMOD) 755     $(SYSBINDIR)/$(NAME)
-	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/specs  || $(MKDIR) $(SYSDATADIR)/$(NAME)/specs
-	@$(CP) specs/*    $(SYSDATADIR)/$(NAME)/specs
-	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/data   || $(MKDIR) $(SYSDATADIR)/$(NAME)/data
-	@$(TEST) ! -d data || $(CP_R)  data/*  $(SYSDATADIR)/$(NAME)/data
-	@$(TEST) -d       $(SYSDATADIR)/$(NAME)/db     || $(MKDIR) $(SYSDATADIR)/$(NAME)/db
+	@$(TEST) -d       $(SYSDATADIR)/$(DBNAME)/specs  || $(MKDIR) $(SYSDATADIR)/$(DBNAME)/specs
+	@$(CP) specs/*    $(SYSDATADIR)/$(DBNAME)/specs
+	@$(TEST) -d       $(SYSDATADIR)/$(DBNAME)/data   || $(MKDIR) $(SYSDATADIR)/$(DBNAME)/data
+	@$(TEST) ! -d data || $(CP_R)  data/*  $(SYSDATADIR)/$(DBNAME)/data
+	@$(TEST) -d       $(SYSDATADIR)/$(DBNAME)/db     || $(MKDIR) $(SYSDATADIR)/$(DBNAME)/db
 
 clean:
 	@$(TEST) ! -x $(SYSBINDIR)/$(NAME)        || $(RM)   $(SYSBINDIR)/$(NAME)
-	@$(TEST) ! -d $(SYSDATADIR)/$(NAME)/specs || $(RM_R) $(SYSDATADIR)/$(NAME)/specs
-	@$(TEST) ! -d $(SYSDATADIR)/$(NAME)/data  || $(RM_R) $(SYSDATADIR)/$(NAME)/data
+	@$(TEST) ! -d $(SYSDATADIR)/$(DBNAME)/specs || $(RM_R) $(SYSDATADIR)/$(DBNAME)/specs
+	@$(TEST) ! -d $(SYSDATADIR)/$(DBNAME)/data  || $(RM_R) $(SYSDATADIR)/$(DBNAME)/data
 
 install-data:
 	@$(TEST) -d $(Z_SHELL_DATADIR)/commands/$(NAME)    || $(MKDIR_P) $(Z_SHELL_DATADIR)/commands/$(NAME)
@@ -44,13 +45,15 @@ install-data:
 #-----------------------------------------------------------
 Env: makeenv checkenv
 makeenv:
-	@$(TEST) -d $(SYSSCRIPTDIR)             || $(MKDIR) -p $(SYSSCRIPTDIR)
-	@$(TEST) -d $(SYSDATADIR)/$(NAME)/specs || $(MKDIR) -p $(SYSDATADIR)/$(NAME)/specs
+	@$(TEST) -d $(SYSSCRIPTDIR)               || $(MKDIR) -p $(SYSSCRIPTDIR)
+	@$(TEST) -d $(SYSDATADIR)/$(DBNAME)/specs || $(MKDIR) -p $(SYSDATADIR)/$(DBNAME)/specs
+	@$(TEST) -d $(SYSDATADIR)/$(DBNAME)/db    || $(MKDIR) -p $(SYSDATADIR)/$(DBNAME)/db
 
 checkenv:
-	@$(TEST) -w $(SYSSCRIPTDIR)             || exit 1
-	@$(TEST) -w $(SYSDATADIR)/$(NAME)       || exit 1
-	@$(TEST) -w $(SYSDATADIR)/$(NAME)/specs || exit 1
+	@$(TEST) -w $(SYSSCRIPTDIR)               || exit 1
+	@$(TEST) -w $(SYSDATADIR)/$(DBNAME)       || exit 1
+	@$(TEST) -w $(SYSDATADIR)/$(DBNAME)/specs || exit 1
+	@$(TEST) -w $(SYSDATADIR)/$(DBNAME)/db    || exit 1
 #-----------------------------------------------------------
 TEST = test
 CP = cp

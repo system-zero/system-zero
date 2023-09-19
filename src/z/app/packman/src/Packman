@@ -7,7 +7,7 @@ import ("sys")
 
 include ("argparse")
 
-var argparse = New Argparse (8, 0, "Packman option[s] package")
+var argparse = New Argparse (28, 0, "Packman option[s] package")
 argparse.add ("install", 0, "install", "install package", BooleanType, ARG_LITERAL)
 argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, ARG_LITERAL) 
 argparse.add ("spec_info", 0, "spec-info", "spec information", BooleanType, ARG_LITERAL)
@@ -15,6 +15,26 @@ argparse.add ("settings", 0, "settings", "general settings", BooleanType, ARG_LI
 argparse.add ("list_specs", 0, "list-specs", "list available specs", BooleanType, ARG_LITERAL)
 argparse.add ("bootstrap", 0, "bootstrap", "bootstrap", BooleanType, ARG_LITERAL)
 argparse.add ("force", 'f', "force", "force", BooleanType, 0)
+argparse.add ("path", 0, "path=", "path", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("arch", 0, "arch=", "arch", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("platform", 0, "platform=", "platform", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("db_dir", 0, "db-dir=", "db directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("bin_dir", 0, "bin-dir=", "bin directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("lib_dir", 0, "lib-dir=", "lib directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("tmp_dir", 0, "tmp-dir=", "tmp directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("sys_dir", 0, "sys-dir=", "sys directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("src_dir", 0, "src-dir=", "src directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("spec_dir", 0, "spec-dir=", "spec directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("data_dir", 0, "data-dir=", "data directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("home_dir", 0, "home-dir=", "home directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("build_dir", 0, "build-dir=", "build directory", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("tar_exec",  0, "tar-exec=", "tar executable", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("tar_args",  0, "tar-args=", "tar arguments",  StringType, ARG_VALUE_REQUIRED)
+argparse.add ("git_exec",  0, "git-exec=", "git executable", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("make_exec", 0, "make-exec=", "make executable", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("patch_exec", 0, "patch-exec=", "patch executable", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("fetch_exec", 0, "fetch-exec=", "fetch executable", StringType, ARG_VALUE_REQUIRED)
+argparse.add ("cached_name", 0, "cached-name=", "cached name build", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
 ifnot ok is argparse.process (__argv, 1) then exit (1)
@@ -37,8 +57,8 @@ include ("packman")
 
 if false is bootstrap {
   package = func {
-    ifnot (argparse.argc) {
-      if ((settings is false and list_specs is false) or spec_info is true) {
+    ifnot argparse.argc {
+      if (settings is false and list_specs is false) or spec_info is true {
         println (stderr, "No package has been specified")
         exit (1)
       }
@@ -50,7 +70,7 @@ if false is bootstrap {
   } ()
 }
 
-ifnot (install + update_repo + spec_info + settings + list_specs) {
+ifnot install + update_repo + spec_info + settings + list_specs {
   println ("no action has been specified in the command line" +
     ifnot null is package then " for " + package orelse "")
   # it doesn't really need this, i leave it here for historical reasons
@@ -61,12 +81,29 @@ ifnot (install + update_repo + spec_info + settings + list_specs) {
   exit (1)
 }
 
-var p = New Packman ()
+var q = {}
+if argparse.results.tmp_dir    isnot null then append argparse.results.tmp_dir in q as "tmp_dir"
+if argparse.results.sys_dir    isnot null then append argparse.results.sys_dir in q as "sys_dir"
+if argparse.results.build_dir  isnot null then append argparse.results.build_dir in q as "build_dir"
+if argparse.results.db_dir     isnot null then append argparse.results.db_dir  in q as "db_dir"
+if argparse.results.bin_dir    isnot null then append argparse.results.bin_dir in q as "bin_dir"
+if argparse.results.lib_dir    isnot null then append argparse.results.lib_dir in q as "lib_dir"
+if argparse.results.src_dir    isnot null then append argparse.results.src_dir in q as "src_dir"
+if argparse.results.spec_dir   isnot null then append argparse.results.spec_dir in q as "spec_dir"
+if argparse.results.data_dir   isnot null then append argparse.results.data_dir in q as "data_dir"
+if argparse.results.home_dir   isnot null then append argparse.results.home_dir in q as "home_dir"
+if argparse.results.platform   isnot null then append argparse.results.platform in q as "platform"
+if argparse.results.arch       isnot null then append argparse.results.arch in q as "arch"
+if argparse.results.tar_exec   isnot null then append argparse.results.tar_exec in q as "tar_exec"
+if argparse.results.tar_args   isnot null then append argparse.results.tar_args in q as "tar_args"
+if argparse.results.git_exec   isnot null then append argparse.results.git_exec in q as "git_exec"
+if argparse.results.make_exec  isnot null then append argparse.results.make_exec in q  as "make_exec"
+if argparse.results.patch_exec isnot null then append argparse.results.patch_exec in q as "patch_exec"
+if argparse.results.fetch_exec isnot null then append argparse.results.fetch_exec   in q as "fetch_exec"
+if argparse.results.path       isnot null then append argparse.results.path in q as "path"
+if argparse.results.cached_name isnot null then append argparse.results.cached_name in q as "cached_name"
 
-var tmpdir = "TMPDIR": sys_get ()
-if null is tmpdir then tmpdir = "/tmp"
-
-p.set.builddir (tmpdir)
+var p = New Packman (;q)
 
 var retval = notok
 
@@ -82,23 +119,28 @@ if list_specs is true {
   exit (0)
 }
 
-if (spec_info is true) {
+if spec_info is true {
   var spec = p.new.spec (package)
+  if null is spec then exit (1)
   spec.info (p)
   exit (0)
 }
 
-if (settings is true) {
-  ifnot null is package then p.new.spec (package)
+if settings is true {
+  ifnot null is package {
+    var spec = p.new.spec (package)
+    if null is spec then exit (1)
+  }
 
   p.info ()
   exit (0)
 }
 
-if (install is true) {
-  p.new.spec (package)
+if install is true {
+  var spec = p.new.spec (package)
+  if null is spec then exit (1)
 
-  if (update_repo is true) {
+  if update_repo is true {
     retval = p.update_repo ()
     if retval is notok then
       if argparse.results.force then exit (retval)
