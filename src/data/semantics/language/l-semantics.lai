@@ -1442,6 +1442,18 @@ func self_semantics () {
           typeofArray (c) is IntegerType and
           len (c) is 2 and c[0] is 1 and c[1] is 1)
 
+      var str_a = ["aa", "bb", "vv"]
+      var int_a = [1, 2, 3]
+      var num_a = [1.1, 2.2, 3.3]
+
+      assert_true ("testing the array any() method",
+          str_a: any ("aa") is true and
+          str_a: any ("cc") is false and
+          int_a: any (2) is true and
+          int_a: any (4) is false and
+          num_a: any (1.1) is true and
+          num_a: any (4.4) is false)
+
       assert_true ("testing the string eq method",
           String.eq ("asd", "asd") and 0 is
           String.eq ("asd", "asa"))

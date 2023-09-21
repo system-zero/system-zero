@@ -1256,8 +1256,9 @@ Probably this will be a very messy output."
     # IntegerType   Map.remove (MapType map, StringType key)
     # IntegerType   Map.key_exists (MapType map, StringType key)
 
-    # IntegerType[] Array.where (ArrayType ar, Value expression)
     # ArrayType     Array.sort (ArrayType ar)
+    # BooleanType   Array.any (ArrayType ar, Value expression)
+    # IntegerType[] Array.where (ArrayType ar, Value expression)
 
     # IntegerType   String.eq (StringType a, StringType b)
     # IntegerType   String.eq_n (StringType a, StringType b, IntegerType n)

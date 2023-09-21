@@ -147,6 +147,63 @@ static VALUE array_sort (la_t *this, VALUE v_array) {
 
 }
 
+static VALUE array_any (la_t *this, VALUE v_array, VALUE v_expr) {
+  ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
+  ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
+  int type = array->type;
+  if (type isnot v_expr.type) {
+    La.set.CFuncError (this, LA_ERR_TYPE_MISMATCH);
+    char buf[512];
+    La.set.curMsg (this, STRING_FMT(buf, 512, "%s, expression is not the same type", __func__));
+    return NULL_VALUE;
+  }
+
+  switch (type) {
+    case STRING_TYPE:
+    case INTEGER_TYPE:
+    case NUMBER_TYPE:
+      break;
+
+    default: {
+      La.set.CFuncError (this, LA_ERR_TYPE_MISMATCH);
+      char buf[512];
+      La.set.curMsg (this, STRING_FMT(buf, 512, "%s, has been implemented for (Integer|String|Number)Type", __func__));
+      return NULL_VALUE;
+    }
+  }
+
+  switch (type) {
+    case STRING_TYPE: {
+      char *expr = AS_STRING_BYTES(v_expr);
+      string **s_ar = (string **) AS_ARRAY(array->value);
+      for (size_t i = 0; i < array->len; i++)
+        if (Cstring.eq (s_ar[i]->bytes, expr))
+          return TRUE_VALUE;
+      break;
+    }
+
+    case INTEGER_TYPE: {
+      int expr = AS_INT(v_expr);
+      integer *i_ar = (integer *) AS_ARRAY(array->value);
+      for (size_t i = 0; i < array->len; i++)
+        if (i_ar[i] is expr)
+          return TRUE_VALUE;
+      break;
+    }
+
+    case NUMBER_TYPE: {
+      double expr = AS_NUMBER(v_expr);
+      double *d_ar = (double *) AS_ARRAY(array->value);
+      for (size_t i = 0; i < array->len; i++)
+        if (d_ar[i] is expr)
+          return TRUE_VALUE;
+      break;
+    }
+  }
+
+  return FALSE_VALUE;
+}
+
 static VALUE array_where (la_t *this, VALUE v_array, VALUE v_expr) {
   ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
   ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
@@ -617,6 +674,7 @@ public int __init_std_module__ (la_t *this) {
     { "map_remove",         PTR(map_remove), 2 },
     { "map_key_exists",     PTR(map_key_exists), 2 },
     { "array_len",          PTR(array_len), 1},
+    { "array_any",          PTR(array_any), 2},
     { "array_sort",         PTR(array_sort), 1},
     { "array_where",        PTR(array_where), 2 },
     { "string_eq",          PTR(string_eq), 2 },
@@ -666,6 +724,7 @@ public int __init_std_module__ (la_t *this) {
 
     public var Array = {
       len   : array_len,
+      any   : array_any,
       sort  : array_sort,
       where : array_where
     };
