@@ -10,6 +10,8 @@ import ("crypt")
 import ("net")
 #import ("archive")
 
+const string[0] INSTALLED
+
 const concat_with = path_concat
 const which = sys_which
 const platform = os_platform
@@ -25,6 +27,8 @@ const is_executable = file_is_executable
 const remove = file_remove
 const chmod = file_chmod
 const copy = file_copy
+const is_writable = file_is_writable
+const is_readable = file_is_readable
 const symlink = file_symlink
 const key_exists = map_key_exists
 const getcwd = dir_current
@@ -72,6 +76,8 @@ const SHA256TYPE                 = 2
 const SHA512TYPE                 = 3
 
 const COLOR_ERR = "\e[31m"
+const COLOR_PKG = "\e[32m"
+const COLOR_DEP = "\e[33m"
 const RESET = "\e[m"
 
 func packman_error (msg) {
@@ -112,6 +118,7 @@ Type PackmanSpec {
   bugtr
   build
   force
+  force_rec
   cached
   soname
   db_dir
@@ -190,15 +197,16 @@ Type PackmanSpec {
     chdir (this.build_dir)
 
     ifnot null is this.compiled_sources {
-    for v in this.compiled_sources {
-      continue if this.recorded.compiled_sources: key_exists (v)
-      continue ifnot v: exists ()
+      for v in this.compiled_sources {
+        continue if this.recorded.compiled_sources: key_exists (v)
+        continue ifnot v: exists ()
 
-      var st = v: stat ()
-      var base = base64_encode (v)
-      this.recorded.compiled_sources.$(v) = { mtime : st.st_mtime, base : base }
+        var st = v: stat ()
+        var base = base64_encode (v)
+        this.recorded.compiled_sources.$(v) = { mtime : st.st_mtime, base : base }
+      }
     }
-}
+
     chdir (scwd)
 
     var v = this.specfile
@@ -249,6 +257,7 @@ Type PackmanSpec {
     bugtr         : func (bugtr) this.bugtr = bugtr
     build         : func (build) this.build = build
     force         : func (force) this.force = force
+    force_rec     : func (fr)    this.force_rec = fr
     db_dir        : func (dir)   this.db_dir = dir
     lib_dir       : func (dir)   this.lib_dir = dir
     md_type       : func (type)  this.md_type = type
@@ -259,10 +268,11 @@ Type PackmanSpec {
     sources       : func (src)   this.sources = src
     specfile      : func (f)     this.specfile = f
     extension     : func (ext)   this.extension = ext
-    build_dir     : func (dir)     this.build_dir = dir
+    build_dir     : func (dir)   this.build_dir = dir
     webarchive    : func (arch)  this.webarchive = arch
     soname        : func (sn)    this.soname = sn
     soname_version: func (sv)    this.soname_version = sv
+    depends       : func (d)     this.depends = d
     build_dirname : func (dir)   this.build_dirname = dir
     installed_as  : func (n)     this.installed_as = n
     cached_file   : func (f)     this.cached_file = f
@@ -278,6 +288,7 @@ Type PackmanSpec {
     mlist         : func return this.mlist
     bugtr         : func return this.bugtr
     force         : func return this.force
+    force_rec     : func return this.force_rec
     db_dir        : func return this.db_dir
     md            : func return this.md
     md_type       : func return this.md_type
@@ -290,6 +301,7 @@ Type PackmanSpec {
     archive       : func return this.archive
     webarchive    : func return this.webarchive
     sources       : func return this.sources
+    depends       : func return this.depends
     specfile      : func return this.specfile
     extension     : func return this.extension
     build_dir     : func return this.build_dir
@@ -633,14 +645,21 @@ Type Packman {
         db_dir = this.spec:get.db_dir ()
       }
 
-      ifnot db_dir: exists () {
-        var m = 0755
-        var r = db_dir: mkdir (m; err : 1)
-        return null if r is notok
-      }
+      ifnot db_dir: exists () then
+        return null if db_dir: mkdir (0755; err : 1) is notok
 
       ifnot db_dir: is_directory () {
         println (stderr, "${COLOR_ERR}ERROR: {db_dir} isnot a directory{RESET}")
+        return null
+      }
+
+      ifnot db_dir: is_writable () {
+        println (stderr, "${COLOR_ERR}ERROR: {db_dir} isnot writable{RESET}")
+        return null
+      }
+
+      ifnot db_dir: is_readable () {
+        println (stderr, "${COLOR_ERR}ERROR: {db_dir} isnot readable{RESET}")
         return null
       }
 
@@ -650,6 +669,8 @@ Type Packman {
       this.spec:set.specfile (specfile)
       this.spec:set.build_dir (this.build_dir: concat_with (this.spec:get.build_dirname ()))
       this.spec:set.lib_dir (this.lib_dir)
+      this.spec:set.force (qualifier ("force", false))
+      this.spec:set.force_rec (qualifier ("force_rec", false))
 
       if this.spec:get.cached_file () is null then
         this.spec:set.cached_file ((db_dir: concat_with (this.cached_name)))
@@ -667,8 +688,8 @@ Type Packman {
           return null
         }
 
-         if this.spec:get.soname_version () is null then
-           println (stderr,  "${COLOR_ERR}WARNING: soname_version is missing. It will be installed as unknown_version${RESET}")
+        if this.spec:get.soname_version () is null then
+          println (stderr,  "${COLOR_ERR}WARNING: soname_version is missing. It will be installed as unknown_version${RESET}")
       }
 
       if this.spec:get.installed_as () is null {
@@ -787,11 +808,49 @@ Type Packman {
       return notok
     }
 
+    var depends = this.spec:get.depends ()
+    ifnot null is depends {
+      var p
+      for v in depends {
+        continue if INSTALLED: any (v)
+        if this.verbose is true
+          println ("Building [${COLOR_DEP}${v}${RESET}] a [${COLOR_PKG}${this.spec.name}${RESET}] dependency")
+
+        var force_rec = this.spec:get.force_rec ()
+        var q = {
+          force : if this.spec:get.force () and force_rec then true orelse false
+          force_rec : force_rec
+        }
+
+        p = New Packman ()
+
+        var dep = p.new.spec (v; q)
+        return notok if null is dep
+        var deps = dep.get.depends ()
+        ifnot null is deps {
+          if deps: any (this.spec:get.name ()) {
+            println (stderr, "${COLOR_ERR}circular dependency detected between ${this.spec:get.name ()} and ${v}${RESET}")
+            return notok
+          }
+        }
+
+        return notok if notok is p.build ()
+      }
+    }
+
     this.spec:record ()
 
     var r = this.spec:should_build ()
     return notok if notok is r
-    return ok if r is false
+    if r is false {
+      if this.verbose is true then
+        println ("[${COLOR_PKG}${this.spec.name}${RESET}] is already installed")
+
+      ifnot INSTALLED: any (this.spec.name)
+        append this.spec.name in INSTALLED
+
+      return ok
+    }
 
     if this.build_dir: chdir () is notok {
       println (stderr, "${COLOR_ERR}ERROR: couldn't change directory to ${this.build_dir}${RESET}")
@@ -799,7 +858,7 @@ Type Packman {
     }
 
     if this.verbose is true {
-      println ("Building " + this.spec.name)
+      println ("Building [${COLOR_PKG}${this.spec.name}${RESET}]")
       if this.spec.descr isnot null then println (this.spec.descr)
       if this.spec.license isnot null then println ("License: ${this.spec.license}")
     }
@@ -983,7 +1042,7 @@ Type Packman {
       }
 
       retval = this.spec: write_record ()
-
+      append this.spec.name in INSTALLED
     }
 
     chdir (this.curdir)
@@ -1039,9 +1098,9 @@ public const Packman = {
   command            : packman_command
   command_if         : packman_command_if
   mkdir              : packman_mkdir
+  install_executable : packman_install_executable
   install_shared_library : packman_install_shared_library
   install_static_library : packman_install_static_library
-  install_executable : packman_install_executable
   new                : {
     spec : func (s) {
       var haskey = key_exists
@@ -1052,7 +1111,7 @@ public const Packman = {
         return null
       }
 
-      var specnew = New PackmanSpec (s.name; qualifiers ())
+      var specnew = New PackmanSpec (s.name)
 
       if s: haskey ("md")            then specnew.set.md (s.md)
       if s: haskey ("type")          then specnew.set.type (s.type)
@@ -1074,6 +1133,7 @@ public const Packman = {
       if s: haskey ("soname")        then specnew.set.soname (s.soname)
       if s: haskey ("soname_version")then specnew.set.soname_version (s.soname_version)
       if s: haskey ("installed_as")  then specnew.set.installed_as (s.installed_as)
+      if s: haskey ("depends")       then specnew.set.depends (s.depends)
       if s: haskey ("compiled_sources") then specnew.set.compiled_sources (s.compiled_sources)
 
       if s: haskey ("build") {

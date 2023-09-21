@@ -1,4 +1,5 @@
 -f,--force
+-F,--force-recursive
 --path=
 --arch=
 --platform=

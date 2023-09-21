@@ -1,6 +1,5 @@
 var me = __file__: path_basename_sans_extname ()
 var version = "1.4.3"
-var spec = New PackmanSpec (me)
 
 return Packman.new.spec ({
   name          : me
@@ -18,11 +17,8 @@ return Packman.new.spec ({
     Packman.extract (),
     Packman.mkdir ({dir : "build", switch : true}),
     Packman.command ("[generating cmakefiles]",
-      "cmake .. -DCMAKE_INSTALL_PREFIX=" + this.get.sys_dir () +
-      " -DCMAKE_BUILD_TYPE=Release" +
-      " -DBUILD_TESTS=OFF"),
+      "cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF"),
     Packman.command ("[cmake build]", "cmake --build ."),
     Packman.install_shared_library ()
   ]
 })
-#    Packman.command ("[cmake build]", "cmake --build . --target install")

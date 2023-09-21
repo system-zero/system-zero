@@ -1,26 +1,25 @@
-var name = __file__: path_basename_sans_extname ()
+var me = __file__: path_basename_sans_extname ()
 var version = "5.2.0-stable"
 
 return Packman.new.spec ({
-  name          : name
+  name          : me
   descr         : "wolfSSL library is a small, fast, portable implementation of TLS/SSL"
   baseurl       : "https://github.com/wolfSSL/wolfssl/archive/refs/tags/"
   version       : version
-  build_dirname : name + "-" + version
+  build_dirname : me + "-" + version
   extension     : "tar.gz"
-  archive       : name + "-" + version + ".tar.gz"
+  archive       : me + "-" + version + ".tar.gz"
   webarchive    : "v" + version + ".tar.gz"
   license       : "GPLv2"
+  soname        : me
+  soname_version: "32.0.0"
   build         : [
     Packman.extract (),
-    Packman.command_if ("[autogenerate]", "./autogen.sh", "file_exists (`configure`) is 0"),
-    Packman.configure_with (
-      "--enable-curl " +
-      "--disable-examples " + 
-      "--disable-fastmath " +
-      "--disable-fasthugemath " +
-      "--disable-debug"),
-    Packman.make (),
-    Packman.install ()
+    Packman.mkdir ({dir : "build", switch : true}),
+    Packman.command ("[generating cmakefiles]",
+      "cmake .. -DCMAKE_BUILD_TYPE=Release  -DWOLFSSL_FAST_MATH=no " + 
+      "-DWOLFSSL_CRYPT_TESTS=no -DWOLFSSL_EXAMPLES=no -DWOLFSSL_DEBUG=no"),
+    Packman.command ("[cmake build]", "cmake --build ."),
+    Packman.install_shared_library ()
   ]
 })

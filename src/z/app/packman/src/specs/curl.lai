@@ -1,17 +1,20 @@
-var name = "curl"
-var archive = name
+var me = "curl"
+var archive = me
 var version = "7.82.0"
 
 return Packman.new.spec ({
-  name : name
+  name : me
   descr : "libcurl is a multiprotocol file transfer library"
   md  : "40f840b3be2281f5878b125968542a4d"
   baseurl : "https://curl.se/download"
   version : version
-  build_dirname : name + "-" + version
+  build_dirname : me + "-" + version
   extension  : "tar.gz"
-  archive : name + "-" + version + ".tar.gz"
+  archive : me + "-" + version + ".tar.gz"
   license : "MIT"
+  soname  : me
+  soname_version: "4.7.0"
+  depends : ["wolfssl"]
   build : [
     Packman.extract (),
     Packman.configure_with (
@@ -27,7 +30,7 @@ return Packman.new.spec ({
       "--without-libpsl --without-libgsasl --without-librtmp " +
       "--without-winidn --without-libidn2 --without-nghttp2 " +
       "--without-ngtcp2 --without-nghttp3 --without-quiche " +
-      "--with-wolfssl=${this.get.sysdir ()}"),
+      "--with-wolfssl=${this.get.sys_dir ()}"),
     Packman.make (),
     Packman.install ()
   ]})

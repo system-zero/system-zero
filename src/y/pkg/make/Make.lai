@@ -1564,7 +1564,7 @@ const ARGPARSE
 
     if this.targets & PACKAGE {
       var p = New Packman ()
-      p.set.builddir (TMPDIR)
+      p.set.build_dir (TMPDIR)
       p.new.spec (this.name)
       return notok if notok is p.build ()
     }
