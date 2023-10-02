@@ -4,3 +4,8 @@ spec-info         spec information
 settings          general settings
 list-specs        list available specs
 bootstrap         bootstrap
+clone-host        clone host
+wolfssl           install wolfssl
+libdeflate        install libdeflate
+libgit2           install libgit2
+curl              install curl

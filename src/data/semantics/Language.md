@@ -314,7 +314,7 @@ Comments.
 
   ifnot 10 - 10 println ("zero")
 
-  # for loop
+  # for loop (C semantics)
   var sum = 1
   func forfun (x) {
     for (var i = 1; i <= x; i++) {
@@ -423,7 +423,7 @@ Comments.
 
     public
     "exposed_fun" : func {
-      println ("I am a function method, and I can see you them all.")
+      println ("I am a function method, and I can see you all.")
       return this.private_prop + " " + this.metoo
       # Some Interpreted Languages they refer to this self object as self,
       # some as this. We use this, and which has sence only inside map methods,
@@ -1558,11 +1558,10 @@ Probably this will be a very messy output."
    # IntegerType Convert.string_to_hexstring (StringType s)
    # IntegerType Convert.hexstring_to_string (StringType s)
 
-  # System Module
+  # System Module (appended functions)
    # IntegerType System.sleep (IntegerType seconds)
    # IntegerType System.to.memory ()
 
-  # System Module (appended functions)
    # IntegerType System.mount (StringType device, StringType mountpoint, StringType fstype)
      # qualifiers
        # mount_data : StringType
@@ -1636,6 +1635,9 @@ Probably this will be a very messy output."
     # All the options that do not correspond to none of the given options, are
       stored in the argparse.argv, while the argparse.argc holds the length of
       that array of strings.
+
+    # The add() method accepts a "defval" qualifier which becomes the default value
+      if the specified argument hasn't been used.
 
 # Aplication Programming Interface.
 

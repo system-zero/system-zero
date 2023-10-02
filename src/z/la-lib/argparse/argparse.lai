@@ -79,7 +79,7 @@ Type Argparse {
   }
 
   parse_short_arg : func (arg) {
-    arg = String.advance (arg, 1)
+    arg := string_advance (1)
 
     var retval = false
 
@@ -212,13 +212,24 @@ Type Argparse {
       }
     }
 
+    var arg_len = arg: len ()
     var found = false
     for j, opt in this.longopts {
-      if null isnot opt and opt: len () {
-        var long = "--" + opt
-        var long_len = long: len ()
+      var opt_len = opt: len ()
 
-        if long: eq_n (arg, long_len) {
+      if null isnot opt and opt_len {
+        var long = "--" + opt
+        opt_len += 2
+
+        continue if arg_len < opt_len
+        var is_same = (arg_len is opt_len)
+        if is_same then
+          is_same = long: eq (arg)
+
+        if is_same or long: eq_n (arg, opt_len) {
+          ifnot is_same then
+            continue if arg[opt_len - 1] isnot '='
+
           var type = this.types[j]
           var name = this.name[j]
           var flags = this.flags[j]
@@ -238,15 +249,14 @@ Type Argparse {
             return this.parse_opt_val (arg, flags, type, name)
 
           var optval = arg: byte_in_str ('=')
-
-          optval = String.advance (optval, 1);
+          optval := string_advance (1);
 
           ifnot optval: len () {
             if flags & ARG_VALUE_REQUIRED {
               if this.verbose is true then
                 println (stderr, "error ${arg} argument requires a value")
               orelse
-                this.err_message = format ("error ${arg} requires a value")
+                this.err_message = format ("error ${arg} argument requires a value")
 
               return notok
             }

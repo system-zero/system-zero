@@ -1,6 +1,5 @@
 var me = "curl"
-var archive = me
-var version = "7.82.0"
+var version = "8.3.0"
 
 return Packman.new.spec ({
   name : me
@@ -11,26 +10,33 @@ return Packman.new.spec ({
   build_dirname : me + "-" + version
   extension  : "tar.gz"
   archive : me + "-" + version + ".tar.gz"
+  webarchive : me + "-" + version + ".tar.gz"
   license : "MIT"
   soname  : me
   soname_version: "4.7.0"
+  compiled_sources : [
+    "src/tool_writeout.c", "src/tool_xattr.c", "src/tool_util.c",
+    "src/tool_urlglob.c", "src/tool_progress.c","src/tool_binmode.c",
+    "src/tool_operhlp.c", "src/tool_operate.c", "src/tool_msgs.c",
+    "src/tool_libinfo.c", "src/tool_helpers.c", "src/tool_getpass.c",
+    "src/tool_getparam.c", "src/tool_formparse.c", "src/tool_findfile.c",
+    "src/tool_filetime.c", "src/tool_easysrc.c", "src/tool_cb_wrt.c"
+  ]
   depends : ["wolfssl"]
   build : [
-    Packman.extract (),
     Packman.configure_with (
-      "--disable-ares " +
-      "--disable-ech --enable-static=no " +
-      "--disable-ldap --disable-ldaps " +
-      "--disable-rtsp --disable-proxy --disable-dict " +
-      "--disable-telnet --disable-tftp --disable-smb " +
-      "--disable-mqtt --disable-manual " +
-      "--disable-sspi --disable-ntlm --disable-ntlm-wb " +
-      "--disable-doh --disable-netrc --disable-alt-svc " +
-      "--without-hyper --without-brotli --without-zstd " +
-      "--without-libpsl --without-libgsasl --without-librtmp " +
-      "--without-winidn --without-libidn2 --without-nghttp2 " +
-      "--without-ngtcp2 --without-nghttp3 --without-quiche " +
-      "--with-wolfssl=${this.get.sys_dir ()}"),
+      ["--disable-ares", "--disable-ech", "--enable-static=no",
+       "--disable-ldap", "--disable-ldaps",
+       "--disable-rtsp", "--disable-proxy", "--disable-dict",
+       "--disable-telnet", "--disable-tftp", "--disable-smb",
+       "--disable-mqtt", "--disable-manual",
+       "--disable-sspi", "--disable-ntlm", "--disable-ntlm-wb",
+       "--disable-doh", "--disable-netrc", "--disable-alt-svc",
+       "--without-hyper", "--without-brotli", "--without-zstd",
+       "--without-libpsl", "--without-libgsasl", "--without-librtmp",
+       "--without-winidn", "--without-libidn2", "--without-nghttp2",
+       "--without-ngtcp2", "--without-nghttp3", "--without-quiche",
+       "--with-wolfssl=${this.get.sys_dir ()}"]),
     Packman.make (),
     Packman.install ()
   ]})

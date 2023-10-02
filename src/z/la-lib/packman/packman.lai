@@ -3,6 +3,7 @@ import ("io")
 import ("sh")
 import ("dir")
 import ("sys")
+import ("time")
 import ("file")
 import ("path")
 import ("crypt")
@@ -30,6 +31,7 @@ const copy = file_copy
 const is_writable = file_is_writable
 const is_readable = file_is_readable
 const symlink = file_symlink
+const readlink = file_readlink
 const key_exists = map_key_exists
 const getcwd = dir_current
 const chdir = dir_change
@@ -46,6 +48,7 @@ const LANG_DEF_EXT = ".lai"
 const PACKMAN                    = "packman"
 const PACKMAN_NO_VERBOSE         = 0
 const PACKMAN_VERBOSE            = 1
+const PACKMAN_VERBOSE_ALL        = 2
 
 const PACKMAN_FORCE              = 1
 
@@ -68,7 +71,8 @@ const PACKMAN_BUILD_USER_COM_IF  = 10
 const PACKMAN_BUILD_MKDIR        = 11
 const PACKMAN_INSTALL_SHARED_LIBRARY = 12
 const PACKMAN_INSTALL_STATIC_LIBRARY = 13
-const PACKMAN_INSTALL_EXECUTABLE = 14
+const PACKMAN_INSTALL_HEADER     = 14
+const PACKMAN_INSTALL_EXECUTABLE = 15
 const LAST_BUILD_TYPE = PACKMAN_INSTALL_EXECUTABLE
 
 const MD5TYPE                    = 1
@@ -78,6 +82,8 @@ const SHA512TYPE                 = 3
 const COLOR_ERR = "\e[31m"
 const COLOR_PKG = "\e[32m"
 const COLOR_DEP = "\e[33m"
+const COLOR_WARN = "\e[33m"
+const COLOR_DONE = COLOR_PKG
 const RESET = "\e[m"
 
 func packman_error (msg) {
@@ -94,15 +100,17 @@ func packman_error (msg) {
 
 Type PackmanBuild {
   public
-  msg,
-  type,
+  msg
+  type
   command
+  opts
 
   private
   init : func (msg, type, com) {
     this.msg = msg
     this.type = type
     this.command = com
+    this.opts = qualifiers ()
   }
 }
 
@@ -121,7 +129,9 @@ Type PackmanSpec {
   force_rec
   cached
   soname
+  header
   db_dir
+  log_dir
   lib_dir
   md_type
   license
@@ -130,10 +140,12 @@ Type PackmanSpec {
   archive
   sources
   depends
+  logfile
   recorded
   specfile
   extension
   build_dir
+  buildtime
   webarchive
   cached_file
   installed_as
@@ -163,6 +175,16 @@ Type PackmanSpec {
   write_record : func {
     return ok if null is this.recorded
 
+    if this.cached_file: exists () {
+      var o = this.cached_file + "_old"
+      if o: exists () {
+        var oo = o + "_old"
+        copy (o, oo; force : 1)
+      }
+
+      copy (this.cached_file, o; force : 1)
+    }
+
     var fd = open (this.cached_file, O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR)
     return notok if fd is null
 
@@ -170,12 +192,18 @@ Type PackmanSpec {
 
     return notok if notok is write (fd, "  version  : \"" + this.version + "\"\n")
     return notok if notok is write (fd, "  installed_as : \"" + this.installed_as + "\"\n")
-    return notok if notok is write (fd, "  specfile : \"" + this.specfile + "\"\n")
+    return notok if notok is write (fd, "  spec : {\n" +
+      "    file  : \"" + this.specfile + "\"\n" +
+      "    mtime : " + this.recorded.spec.mtime: to_string (DECIMAL) + "\n" +
+      "    base : \"" + this.recorded.spec.base + "\"\n  }\n")
+
+    return notok if notok is write (fd, "  log : \"" + this.logfile + "\"\n")
+    return notok if notok is write (fd, "  buildtime : " + this.buildtime: to_string (DECIMAL) + "\n") 
     if this.recorded: key_exists ("compiled_sources") {
       return notok if notok is write (fd, "  compiled_sources : {\n")
       for k, v in this.recorded.compiled_sources {
         return notok if notok is write (fd, "    \"" + k + "\" : {\n      mtime : ")
-        return notok if notok is write (fd, format ("${v.mtime}"))
+        return notok if notok is write (fd, v.mtime: to_string (DECIMAL))
         return notok if notok is write (fd, "\n      base : \"" + v.base + "\"\n")
         return notok if notok is write (fd, "    }\n")
       }
@@ -198,8 +226,15 @@ Type PackmanSpec {
 
     ifnot null is this.compiled_sources {
       for v in this.compiled_sources {
-        continue if this.recorded.compiled_sources: key_exists (v)
-        continue ifnot v: exists ()
+        if this.recorded.compiled_sources: key_exists (v) {
+          println (stderr, "${COLOR_WARN}WARNING: ${v} source repeated more than once${RESET}")
+          continue
+        }
+
+        ifnot v: exists () {
+          println (stderr, "${COLOR_WARN}WARNING: ${v} source doesn't exists${RESET}")
+          continue
+        }
 
         var st = v: stat ()
         var base = base64_encode (v)
@@ -259,6 +294,7 @@ Type PackmanSpec {
     force         : func (force) this.force = force
     force_rec     : func (fr)    this.force_rec = fr
     db_dir        : func (dir)   this.db_dir = dir
+    log_dir       : func (dir)   this.log_dir = dir
     lib_dir       : func (dir)   this.lib_dir = dir
     md_type       : func (type)  this.md_type = type
     license       : func (lic)   this.license = lic
@@ -267,9 +303,12 @@ Type PackmanSpec {
     archive       : func (arch)  this.archive = arch
     sources       : func (src)   this.sources = src
     specfile      : func (f)     this.specfile = f
+    logfile       : func (f)     this.logfile = f
+    buildtime     : func (t)     this.buildtime = t
     extension     : func (ext)   this.extension = ext
     build_dir     : func (dir)   this.build_dir = dir
     webarchive    : func (arch)  this.webarchive = arch
+    header        : func (h)     this.header = h
     soname        : func (sn)    this.soname = sn
     soname_version: func (sv)    this.soname_version = sv
     depends       : func (d)     this.depends = d
@@ -290,11 +329,13 @@ Type PackmanSpec {
     force         : func return this.force
     force_rec     : func return this.force_rec
     db_dir        : func return this.db_dir
+    log_dir       : func return this.log_dir
     md            : func return this.md
     md_type       : func return this.md_type
     lib_dir       : func return this.lib_dir
     build         : func return this.build
     soname        : func return this.soname
+    header        : func return this.header
     license       : func return this.license
     baseurl       : func return this.baseurl
     version       : func return this.version
@@ -303,6 +344,8 @@ Type PackmanSpec {
     sources       : func return this.sources
     depends       : func return this.depends
     specfile      : func return this.specfile
+    logfile       : func return this.logfile
+    buildtime     : func return this.buildtime
     extension     : func return this.extension
     build_dir     : func return this.build_dir
     installed_as  : func return this.installed_as
@@ -319,7 +362,7 @@ Type PackmanSpec {
     var msg =
       "SPEC NAME        : " + this.name + "\n" +
       "PACKAGE TYPE     : " + this.type:
-        if x is PACKMAN_LIBRARY_TYPE then "Library" orelse "Executable" end + "\n" +
+        if x is PACKMAN_LIBRARY_TYPE then "Library" orelse if x is PACKMAN_EXECUTABLE_TYPE then "Executable" orelse "Unknown package type" end + "\n" +
       "DESCRIPTION      : " + this.descr + "\n" +
       "VERSION          : " + this.version + "\n" +
       "LICENSE          : " + this.license:
@@ -341,6 +384,7 @@ Type PackmanSpec {
       "MESSAGE DIGEST   : " + this.md:
         if x is null then "NONE" orelse x end + "\n" +
       "SPEC             : " + this.specfile + "\n" +
+      "LOG DIR          : " + this.log_dir + "\n" +
       "CACHED BUILD     : " + this.cached_file + "\n" +
       "BUILD DIRECTORY  : " + (packman.get.build_dir (): concat_with (this.build_dirname))
 
@@ -348,6 +392,23 @@ Type PackmanSpec {
 
     println (fp, msg)
    }
+}
+
+func packman_print_argv (argv, is_error, err_msg) {
+  var length = argv: len ()
+
+  var msg = ""
+  for i, v in argv {
+    if i is length - 1 then
+      msg += v + "\n"
+    orelse
+      msg += v + " "
+  }
+
+  if is_error then print (COLOR_ERR)
+  ifnot null is err_msg then print ("Error: ${err_msg} ")
+  print (msg)
+  if is_error then print (RESET)
 }
 
 Type Packman {
@@ -368,6 +429,7 @@ Type Packman {
   pull_args
   verbose
   db_dir
+  log_dir
   spec_dir
   src_dir
   data_dir
@@ -377,13 +439,14 @@ Type Packman {
   sys_dir
   bin_dir
   lib_dir
+  log_dir
   home_dir
   path
   platform
   arch
   cached_name
 
-  init : func () {
+  init : func {
     this.sh          = New Shell ()
     this.user        = uid (): pwname ()
     this.group       = gid (): grname ()
@@ -403,11 +466,13 @@ Type Packman {
     this.tmp_dir     = qualifier ("tmp_dir",    "TMPDIR": sys_get ())
     this.home_dir    = qualifier ("home_dir",     "HOME": sys_get ())
     this.db_dir      = qualifier ("db_dir",       this.data_dir: concat_with ("packman/db"))
+    this.log_dir     = qualifier ("log_dir",      this.data_dir: concat_with ("packman/logs"))
     this.spec_dir    = qualifier ("spec_dir",     this.data_dir: concat_with ("packman/specs"))
     this.src_dir     = qualifier ("src_dir",      this.data_dir: concat_with ("packman/sources"))
     this.build_dir   = qualifier ("build_dir",     this.tmp_dir: concat_with ("packman"))
     this.bin_dir     = qualifier ("bin_dir",       this.sys_dir: concat_with ("bin"))
     this.lib_dir     = qualifier ("lib_dir",       this.sys_dir: concat_with ("lib"))
+    this.inc_dir     = qualifier ("inc_dir",       this.sys_dir: concat_with ("include"))
     this.pkg_data_dir= qualifier ("pkg_data_dir", this.data_dir: concat_with ("packman/data")) 
     this.verbose     = qualifier ("verbose", PACKMAN_VERBOSE)
     this.cached_name = qualifier ("cached_name", ".cached.build")
@@ -422,12 +487,34 @@ Type Packman {
 
       ifnot null is this.fetch_exec then
         this.fetch_args = "-L"
+    } else {
+      this.fetch_args = "-nv"
     }
 
-    ifnot this.build_dir: exists () {
-      var m = 0755
-      mkdir (this.build_dir, m; err : 1)
+    ifnot this.build_dir: exists () then
+      mkdir (this.build_dir, 0755; err : 1)
+
+    ifnot this.db_dir: exists () then
+      mkdir (this.db_dir, 0755; err : 1)
+
+    ifnot this.log_dir: exists () then
+      mkdir (this.log_dir, 0755; err : 1)
+
+    ifnot this.src_dir: exists () then
+      mkdir (this.src_dir, 0755; err : 1)
+  }
+
+  get_argv : func (ar) {
+    return null if ar: typeof () isnot ArrayType
+    return null if ar: typeofArray () isnot StringType
+
+    var string[ar: len ()] argv
+    for i, v in ar {
+      var arg = format (v)
+      argv[i] = arg
     }
+
+    return argv
   }
 
   fetch : func {
@@ -444,16 +531,23 @@ Type Packman {
     var webarch = this.spec.baseurl: concat_with (this.spec.webarchive)
     var archive = this.src_dir: concat_with (this.spec.archive)
 
-    if ok is webarch: fetch (; as : archive, verbose : 1) return ok
+    if this.verbose then println ("[Fetching ${this.spec.webarchive}]")
+
+    if ok is webarch: fetch (; as : archive, verbose : 1) then
+      return ok
 
     if this.fetch_exec is null {
       println (stderr, "${COLOR_ERR}ERROR: neither wget nor curl has been found${RESET}")
       return notok
     }
 
-    var com = this.fetch_exec + " " + this.fetch_args + " " + " -O " + archive + " " + webarch
+    var opts = {
+      argv : [this.fetch_exec, this.fetch_args, "-O", archive, webarch]
+    }
 
-    return if ok is this.sh:exec (com) then ok orelse notok
+    var retval = this.sh:process (opts)
+
+    return if ok is retval.retval then ok orelse notok
   }
 
   extract : func {
@@ -464,25 +558,32 @@ Type Packman {
 
     var archive = this.src_dir: concat_with (this.spec.archive)
 
+    var curdir = getcwd ()
+
     ifnot archive: exists () {
-      var curdir = getcwd ()
-      return notok if notok is chdir (this.src_dir)
+      return notok if notok is this.src_dir: chdir ()
       return notok if notok is this.fetch ()
-      return notok if notok is chdir (curdir)
+      return notok if notok is curdir: chdir ()
     }
 
     #var r = Archive.extract_file (archive)
-    #  println (r)
     #return ok if ok is r
 
     if null is this.tar_exec {
       println (stderr, "${COLOR_ERR}ERROR: the tar executable couldn't been found${RESET}")
+      curdir: chdir ()
       return notok
     }
 
-    var com = this.tar_exec + " " + this.tar_args + " " + archive
-    var retval = this.sh:exec (com)
-    return if retval is notok or retval > ok then notok orelse ok
+    return notok if notok is this.build_dir: chdir ()
+
+    var opts = {
+      argv : [this.tar_exec, this.tar_args, archive]
+    }
+
+    var retval = this.sh:process (opts)
+    return notok is notok is curdir: chdir ()
+    return if retval.retval is notok or retval.retval > ok then notok orelse ok
   }
 
   md_check :  func {
@@ -546,9 +647,12 @@ Type Packman {
 
     return notok if chdir (this.src_dir) is notok
 
-    var com = this.git_exec + " " + this.clone_args + " " + this.spec.repo
-    var retval = this.sh:exec (com)
-    return notok if retval isnot ok
+    var opts = {
+      argv : [this.git_exec, this.clone_args, this.spec.repo]
+    }
+
+    var retval = this.sh:process (opts)
+    return notok if retval.retval isnot ok
     return chdir (curdir)
   }
 
@@ -573,7 +677,7 @@ Type Packman {
     return notok if notok is this.build_dir: chdir ()
 
     return notok if this.src_dir: concat_with (this.spec.sources): file_copy (
-       "."; force : 1, recursive : 1, update : 1, verbose : 2) is notok
+       "."; force : 1, recursive : 1, update : 1, verbose : 1) is notok
   }
 
   change_to_build_dirname : func {
@@ -601,6 +705,7 @@ Type Packman {
     pull_args   : func (args)  this.pull_args = args
     verbose     : func (what)  this.verbose = what
     db_dir      : func (dir)   this.db_dir = dir
+    log_dir     : func (dir)   this.log_dir = dir
     spec_dir    : func (dir)   this.spec_dir = dir
     pkg_data_dir: func (dir)   this.pkg_data_dir = dir
     build_dir   : func (dir)   this.build_dir = dir
@@ -616,6 +721,7 @@ Type Packman {
     spec_dir    : func return this.spec_dir
     pkg_data_dir: func return this.pkg_data_dir
     build_dir   : func return this.build_dir
+    log_dir     : func return this.log_dir
     src_dir     : func return this.src_dir
     bin_dir     : func return this.bin_dir
     sys_dir     : func return this.sys_dir
@@ -635,7 +741,7 @@ Type Packman {
       this.spec = spec
 
       ifnot this.db_dir: is_directory () {
-        println (stderr, "${COLOR_ERR}ERROR: {this.db_dir} isnot a directory{RESET}")
+        println (stderr, "${COLOR_ERR}ERROR: ${this.db_dir} isnot a directory${RESET}")
         return null
       }
 
@@ -649,17 +755,46 @@ Type Packman {
         return null if db_dir: mkdir (0755; err : 1) is notok
 
       ifnot db_dir: is_directory () {
-        println (stderr, "${COLOR_ERR}ERROR: {db_dir} isnot a directory{RESET}")
+        println (stderr, "${COLOR_ERR}ERROR: ${db_dir} isnot a directory${RESET}")
         return null
       }
 
       ifnot db_dir: is_writable () {
-        println (stderr, "${COLOR_ERR}ERROR: {db_dir} isnot writable{RESET}")
+        println (stderr, "${COLOR_ERR}ERROR: ${db_dir} isnot writable${RESET}")
         return null
       }
 
       ifnot db_dir: is_readable () {
-        println (stderr, "${COLOR_ERR}ERROR: {db_dir} isnot readable{RESET}")
+        println (stderr, "${COLOR_ERR}ERROR: ${db_dir} isnot readable${RESET}")
+        return null
+      }
+
+      ifnot this.log_dir: is_directory () {
+        println (stderr, "${COLOR_ERR}ERROR: ${this.log_dir} isnot a directory${RESET}")
+        return null
+      }
+
+      var log_dir = this.spec:get.log_dir ()
+      if log_dir is null {
+        this.spec:set.log_dir (this.log_dir: concat_with (name))
+        log_dir = this.spec:get.log_dir ()
+      }
+
+      ifnot log_dir: exists () then
+        return null if log_dir: mkdir (0755; err : 1) is notok
+
+      ifnot log_dir: is_directory () {
+        println (stderr, "${COLOR_ERR}ERROR: ${log_dir} isnot a directory${RESET}")
+        return null
+      }
+
+      ifnot log_dir: is_writable () {
+        println (stderr, "${COLOR_ERR}ERROR: ${log_dir} isnot writable${RESET}")
+        return null
+      }
+
+      ifnot log_dir: is_readable () {
+        println (stderr, "${COLOR_ERR}ERROR: ${log_dir} isnot readable${RESET}")
         return null
       }
 
@@ -692,8 +827,12 @@ Type Packman {
           println (stderr,  "${COLOR_ERR}WARNING: soname_version is missing. It will be installed as unknown_version${RESET}")
       }
 
+      if this.spec:get.header () is null then
+        this.spec:set.header (name + ".h")
+
       if this.spec:get.installed_as () is null {
-        if this.spec:get.type () is PACKMAN_LIBRARY_TYPE {
+        var type = this.spec:get.type ()
+        if type is PACKMAN_LIBRARY_TYPE {
           if this.spec:get.soname () isnot null {
             this.spec:set.installed_as ("lib" + this.spec:get.soname () + ".so." +
                (this.spec:get.soname_version (): if x isnot null then x
@@ -703,7 +842,7 @@ Type Packman {
             return null
           }
 
-        } else if this.spec:get.type () is PACKMAN_EXECUTABLE_TYPE {
+        } else if type is PACKMAN_EXECUTABLE_TYPE {
           this.spec:set.installed_as (spec.name)
 
         } else {
@@ -780,12 +919,14 @@ Type Packman {
 
     var curdir = getcwd ()
 
-    return notok if notok is chdir (
-      this.src_dir: concat_with (this.spec.sources))
+    return notok if notok is chdir ( this.src_dir: concat_with (this.spec.sources))
 
-    var com = this.git_exec + " " + this.pull_args
-    var retval = this.sh:exec (com)
-    return notok if retval isnot ok
+    var opts = {
+      argv : [this.git_exec, this.pull_args]
+    }
+
+    var retval = this.sh:process (opts)
+    return notok if retval.retval isnot ok
     return chdir (curdir)
 
   }
@@ -813,7 +954,7 @@ Type Packman {
       var p
       for v in depends {
         continue if INSTALLED: any (v)
-        if this.verbose is true
+        if this.verbose > 0 then
           println ("Building [${COLOR_DEP}${v}${RESET}] a [${COLOR_PKG}${this.spec.name}${RESET}] dependency")
 
         var force_rec = this.spec:get.force_rec ()
@@ -826,6 +967,7 @@ Type Packman {
 
         var dep = p.new.spec (v; q)
         return notok if null is dep
+
         var deps = dep.get.depends ()
         ifnot null is deps {
           if deps: any (this.spec:get.name ()) {
@@ -838,12 +980,19 @@ Type Packman {
       }
     }
 
+    if this.spec:get.sources () isnot null then
+      return notok if notok is this.copy_sources ()
+    orelse
+      return notok if notok is this.extract ()
+
     this.spec:record ()
 
     var r = this.spec:should_build ()
+
     return notok if notok is r
+
     if r is false {
-      if this.verbose is true then
+      if this.verbose > 0 then
         println ("[${COLOR_PKG}${this.spec.name}${RESET}] is already installed")
 
       ifnot INSTALLED: any (this.spec.name)
@@ -852,21 +1001,47 @@ Type Packman {
       return ok
     }
 
-    if this.build_dir: chdir () is notok {
-      println (stderr, "${COLOR_ERR}ERROR: couldn't change directory to ${this.build_dir}${RESET}")
+    if this.spec:get.build_dir (): chdir () is notok {
+      println (stderr, "${COLOR_ERR}ERROR: couldn't change directory to ${this.spec:get.build_dir ()}${RESET}")
       return notok
     }
 
-    if this.verbose is true {
+    var now = time_now ()
+    this.spec:set.buildtime (now)
+    now := time_local ()
+
+    const log_dir = this.spec:get.log_dir ()
+    const log_file = log_dir: concat_with ("%Y_%m_%d_%H_%M_%S": time_format (now))
+    this.spec:set.logfile (log_file)
+    const logs = Dir.list (log_dir)
+    ifnot null is logs then
+      for v in logs remove (log_dir: concat_with (v))
+
+    if log_file: exists () then log_file: remove ()
+
+    if this.verbose > 0 {
       println ("Building [${COLOR_PKG}${this.spec.name}${RESET}]")
-      if this.spec.descr isnot null then println (this.spec.descr)
-      if this.spec.license isnot null then println ("License: ${this.spec.license}")
+
+      if this.verbose is PACKMAN_VERBOSE_ALL {
+        if this.spec.descr isnot null then println (this.spec.descr)
+        if this.spec.license isnot null then println ("License: ${this.spec.license}")
+      }
+    }
+
+    var opts = {
+      argv
+      redir_stdout : log_file
+      redir_stderr : log_file
+      stdout_redir_mode : "a+"
+      stderr_redir_mode : "a+"
+      print_stderr : 1
     }
 
     for 1 time {
       for action in this.spec.build {
-        if this.verbose is true then
-          ifnot null is action.msg then println (action.msg)
+        if this.verbose > 0 then
+          ifnot null is action.msg then
+            println ("${action.msg}")
 
         if action.type is null or action.type < 0 or action.type > LAST_BUILD_TYPE {
           println (stderr, "${COLOR_ERR}ERROR: type build spec property, hasn't been set properly${RESET}")
@@ -893,13 +1068,28 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_CONFIGURE {
-          var com = "./configure --prefix=" + this.sys_dir
-
+          var length = 2
           ifnot null is action.command then
-            append format (" ${format (action.command)}") in com
+            length += action.command: len ()
 
-          if this.sh:exec (com) isnot 0 {
-            println (stderr, "${COLOR_ERR}ERROR: error while executing command: ${com}${RESET}")
+          var string[length] argv
+          argv[0] = "./configure"
+          argv[1] = "--prefix=" + this.sys_dir
+
+          ifnot null is action.command {
+            var ar = this.get_argv (action.command)
+            break if null is argv
+            for i, v in ar argv[i + 2] = ar[i]
+          }
+
+          if this.verbose is PACKMAN_VERBOSE_ALL then
+            packman_print_argv (argv, false, null)
+
+          opts.argv = argv
+
+          var retval = this.sh:process (opts)
+          if retval.retval isnot ok {
+            packman_print_argv (argv, true, "error while executing command:")
             break 2
           }
 
@@ -907,12 +1097,22 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_MAKE {
-          var com = this.make_exec;
-          ifnot (null is action.command) then
-            append format (" ${format (action.command)}") in com
+          var string[1] argv = [this.make_exec]
+          ifnot null is action.command {
+            for v in action.command {
+              var arg = format (v)
+              append arg in argv
+            }
+          }
 
-          if this.sh:exec (com) isnot 0 {
-            println (stderr, "${COLOR_ERR}ERROR: error while executing command: ${com}${RESET}")
+          if this.verbose is PACKMAN_VERBOSE_ALL then
+            packman_print_argv (argv, false, null)
+
+          opts.argv = argv
+
+          var retval = this.sh:process (opts)
+          if retval.retval isnot ok {
+            packman_print_argv (argv, true, "error while executing command:")
             break 2
           }
 
@@ -920,12 +1120,23 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_MAKE_INSTALL {
-          var com = this.make_exec + " install";
-          ifnot (null is action.command) then
-            append format (" ${format (action.command)}") in com
+          var string[2] argv = [this.make_exec, "install"]
 
-          if this.sh:exec (com) isnot ok {
-            println (stderr, "${COLOR_ERR}ERROR: error while executing command: ${com}${RESET}")
+          ifnot null is action.command {
+            for v in action.command {
+              var arg = format (v)
+              append arg in argv
+            }
+          }
+
+          if this.verbose is PACKMAN_VERBOSE_ALL then
+            packman_print_argv (argv, false, null)
+
+          opts.argv = argv
+
+          var retval = this.sh:process (opts)
+          if retval.retval isnot ok {
+            packman_print_argv (argv, true, "error while executing command:")
             break 2
           }
 
@@ -933,7 +1144,7 @@ Type Packman {
         }
 
         if action.type is PACKMAN_INSTALL_SHARED_LIBRARY {
-          var r = this.spec.installed_as: copy (this.lib_dir; verbose : 2, force : 1)
+          var r = this.spec.installed_as: copy (this.lib_dir; verbose : 1 + this.verbose is PACKMAN_VERBOSE_ALL, force : 1)
           break 2 if r is notok
 
           var f = this.lib_dir: concat_with (this.spec.installed_as)
@@ -943,16 +1154,36 @@ Type Packman {
           f := path_basename_sans_extname ()
           var scwd = getcwd ()
           chdir (this.lib_dir)
+
           if f: exists () then remove (f)
-          symlink (this.spec.installed_as, f; verbose : 2)
+          symlink (this.spec.installed_as, f; verbose : 1 + this.verbose is PACKMAN_VERBOSE_ALL)
+          f = "lib" + this.spec:get.soname () + ".so"
+          if f: exists () then remove (f)
+          symlink (this.spec.installed_as, f; verbose : 1 + this.verbose is PACKMAN_VERBOSE_ALL)
+
           chdir (scwd)
           continue
         }
 
         if action.type is PACKMAN_INSTALL_STATIC_LIBRARY {
           var l = ((this.spec.installed_as: path_basename_sans_extname ()): path_basename_sans_extname ()) + ".a"
-          var r = l: copy (this.lib_dir; verbose : 2, force : 1)
+          var r = l: copy (this.lib_dir; verbose : 1 + this.verbose is PACKMAN_VERBOSE_ALL, force : 1)
           break 2 if r is notok
+          continue
+        }
+
+        if action.type is PACKMAN_INSTALL_HEADER {
+          var scwd = getcwd ()
+          chdir (this.spec:get.build_dir ())
+
+          var h = this.spec:get.header ()
+
+          if h: is_directory () then
+            break 2 if notok is h: copy (this.inc_dir; verbose : 1 + (this.verbose is PACKMAN_VERBOSE_ALL), force : 1, recursive)
+          orelse
+            break 2 if notok is h: copy (this.inc_dir; verbose : 1 + (this.verbose is PACKMAN_VERBOSE_ALL), force : 1)
+
+          chdir (scwd)
           continue
         }
 
@@ -960,6 +1191,10 @@ Type Packman {
 
         if action.type is PACKMAN_BUILD_EVAL {
           var com = action.command
+
+          if this.verbose is PACKMAN_VERBOSE_ALL then
+            println (com)
+
           __retval = eval (com)
           break 2 ifnot ok is __retval
           continue
@@ -969,8 +1204,8 @@ Type Packman {
           break 2 if action.command: typeof () isnot ArrayType and
                      action.command: typeof () isnot ListType
           break 2 if action.command: len () isnot 2
-          var com =  action.command[0]
-          var c   =  action.command[1]
+          var com = action.command[0]
+          var c =  action.command[1]
           var r = true
           var cond =
             `r = if ` + format (format (c)) + ` then true orelse false end `
@@ -982,9 +1217,20 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_USER_COM {
-          var com = format ("${format (action.command)}")
-          if this.sh:exec (com) isnot ok {
-            println (stderr, "${COLOR_ERR}ERROR: error while executing command: ${com}${RESET}")
+          continue if null is action.command
+
+          var argv = this.get_argv (action.command)
+          break 2 if null is argv
+          continue ifnot argv: len ()
+
+          if this.verbose is PACKMAN_VERBOSE_ALL then
+            packman_print_argv (argv, false, null)
+
+          opts.argv = argv
+
+          var retval = this.sh:process (opts)
+          if retval.retval isnot ok {
+            packman_print_argv (argv, true, "error while executing command:")
             break 2
           }
 
@@ -1041,48 +1287,55 @@ Type Packman {
         }
       }
 
-      retval = this.spec: write_record ()
+      retval = if notok is this.spec: write_record () then notok orelse ok
       append this.spec.name in INSTALLED
     }
 
     chdir (this.curdir)
+
+    if retval is notok then
+      println ("${COLOR_ERR}failed${RESET}")
+    orelse
+      if this.verbose is PACKMAN_VERBOSE_ALL then println ("${COLOR_DONE}Done${RESET}")
+
     return retval
   }
 }
 
 func packman_make
-  return New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null)
+  return New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, null; qualifiers ())
 func packman_make_with (x)
-  return New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, x)
+  return New PackmanBuild ("[make]", PACKMAN_BUILD_MAKE, x; qualifiers ())
 func packman_extract
-  return New PackmanBuild ("[extracting]", PACKMAN_BUILD_EXTRACT, null)
+  return New PackmanBuild ("[extracting]", PACKMAN_BUILD_EXTRACT, null; qualifiers ())
 func packman_install
-  return New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, null)
+  return New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, null; qualifiers ())
 func packman_install_with (x)
-  return New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, x)
+  return New PackmanBuild ("[install]", PACKMAN_BUILD_MAKE_INSTALL, x; qualifiers ())
 func packman_configure ()
-  return New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE, null)
+  return New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE, null; qualifiers ())
 func packman_configure_with (x)
-  return New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE, x)
+  return New PackmanBuild ("[configure]", PACKMAN_BUILD_CONFIGURE, x; qualifiers ())
 func packman_command (m, com)
-  return New PackmanBuild (if m is null then "[command]" orelse m end, PACKMAN_BUILD_USER_COM, com)
+  return New PackmanBuild (if m is null then "[command]" orelse m end, PACKMAN_BUILD_USER_COM, com; qualifiers ())
 func packman_command_if (m, com, cond)
-  return New PackmanBuild (if m is null then "[conditional command]" orelse m end, PACKMAN_BUILD_USER_COM_IF, [com, cond])
+  return New PackmanBuild (if m is null then "[conditional command]" orelse m end, PACKMAN_BUILD_USER_COM_IF, [com, cond]; qualifiers ())
 func packman_copy_sources
-  return New PackmanBuild ("[copying sources]", PACKMAN_BUILD_COPY, null)
+  return New PackmanBuild ("[copying sources]", PACKMAN_BUILD_COPY, null; qualifiers ())
 func packman_eval (m, s)
-  return New PackmanBuild (if m is null then "[expression]" orelse m end, PACKMAN_BUILD_EVAL, s)
+  return New PackmanBuild (if m is null then "[expression]" orelse m end, PACKMAN_BUILD_EVAL, s; qualifiers ())
 func packman_eval_if (m, s, x)
-  return New PackmanBuild (if m is null then "[conditional expression]" orelse m end, PACKMAN_BUILD_EVAL, [s, x])
+  return New PackmanBuild (if m is null then "[conditional expression]" orelse m end, PACKMAN_BUILD_EVAL, [s, x]; qualifiers ())
 func packman_mkdir (d)
-  return New PackmanBuild ("[making directory]", PACKMAN_BUILD_MKDIR, d)
+  return New PackmanBuild (null, PACKMAN_BUILD_MKDIR, d; qualifiers ())
 func packman_install_shared_library ()
-  return New PackmanBuild ("[installing shared library]", PACKMAN_INSTALL_SHARED_LIBRARY, null)
+  return New PackmanBuild ("[installing shared library]", PACKMAN_INSTALL_SHARED_LIBRARY, null; qualifiers ())
 func packman_install_static_library ()
-  return New PackmanBuild ("[installing static library]", PACKMAN_INSTALL_STATIC_LIBRARY, null)
+  return New PackmanBuild ("[installing static library]", PACKMAN_INSTALL_STATIC_LIBRARY, null; qualifiers ())
 func packman_install_executable (x)
-  return New PackmanBuild ("[installing executable]", PACKMAN_INSTALL_EXECUTABLE, x)
-
+  return New PackmanBuild ("[installing executable]", PACKMAN_INSTALL_EXECUTABLE, x; qualifiers ())
+func packman_install_header ()
+  return New PackmanBuild ("[installing header]", PACKMAN_INSTALL_HEADER, null; qualifiers ())
 
 public const Packman = {
   make               : packman_make
@@ -1098,6 +1351,7 @@ public const Packman = {
   command            : packman_command
   command_if         : packman_command_if
   mkdir              : packman_mkdir
+  install_header     : packman_install_header
   install_executable : packman_install_executable
   install_shared_library : packman_install_shared_library
   install_static_library : packman_install_static_library
@@ -1132,22 +1386,23 @@ public const Packman = {
       if s: haskey ("webarchive")    then specnew.set.webarchive (s.webarchive)
       if s: haskey ("soname")        then specnew.set.soname (s.soname)
       if s: haskey ("soname_version")then specnew.set.soname_version (s.soname_version)
+      if s: haskey ("header")        then specnew.set.header (s.header)
       if s: haskey ("installed_as")  then specnew.set.installed_as (s.installed_as)
       if s: haskey ("depends")       then specnew.set.depends (s.depends)
       if s: haskey ("compiled_sources") then specnew.set.compiled_sources (s.compiled_sources)
 
       if s: haskey ("build") {
         if s.build: len () {
-          if typeof (s.build) is MapType {
+          if s.build: typeof () is MapType {
             if s.build: haskey ("1") {
               var map[0] build
 
               var i = 1
-              var k = i: to_string (10)
+              var k = i: to_string (DECIMAL)
               repeat {
                 append s.build.$(k) in build
                 i++
-                k = i: to_string (10)
+                k = i: to_string (DECIMAL)
               } until s.build: haskey (k)
 
               specnew.set.build (build)

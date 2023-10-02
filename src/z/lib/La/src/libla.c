@@ -2759,6 +2759,7 @@ theend:
   SETSTRLEN(PARSEPTR, ptrlen - (ptr - save_ptr));
 
   VALUE v = STRING(str);
+
   if (this->curState & MALLOCED_STRING_STATE) {
     malloced_string *mbuf = Alloc (sizeof (malloced_string));
     v.refcount = MALLOCED_STRING;

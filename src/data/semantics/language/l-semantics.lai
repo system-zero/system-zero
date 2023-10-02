@@ -1597,7 +1597,7 @@ func self_semantics () {
       var inp = Time.now ()
       var now = Time.now ()
       if now - inp is 1 then inp++
-      var res = inp:time_local (): time_to_seconds ()
+      var res = inp: time_local (): time_to_seconds ()
       assert_true ("testing the time module", res is now)
     }
 

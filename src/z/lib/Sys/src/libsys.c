@@ -115,6 +115,9 @@ static string_t *sys_which (const char *ex, const char *path) {
   if (NULL is path)
     path = sys_get_env ("PATH")->bytes;
 
+  if (Cstring.eq_n (path, "PATH=", 5))
+    path += 5;
+
   size_t
     ex_len = bytelen (ex),
     p_len = bytelen (path);
@@ -131,6 +134,7 @@ static string_t *sys_which (const char *ex, const char *path) {
     size_t toklen = bytelen (sp) + 1;
     char tok[ex_len + toklen + 1];
     snprintf (tok, ex_len + toklen + 1, "%s/%s", sp, ex);
+
     if (File.is_executable (tok)) {
       ex_path = String.new_with_len (tok, toklen + ex_len);
       break;

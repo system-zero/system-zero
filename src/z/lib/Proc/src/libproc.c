@@ -139,7 +139,7 @@ static int proc_output_to_stream (proc_t *this, FILE *stream, FILE *read_fp) {
   char *line = NULL;
   size_t len = 0;
   while (-1 isnot getline (&line, &len, read_fp))
-    fprintf (stream, "%s\r", line);
+    fprintf (stream, "%s", line);
 
   ifnot (NULL is line) free (line);
   return 0;

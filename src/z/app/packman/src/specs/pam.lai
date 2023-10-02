@@ -1,9 +1,9 @@
-var name = __file__: path_basename_sans_extname ()
+var me = __file__: path_basename_sans_extname ()
 var archive = "Linux-PAM"
 var version = "1.5.1"
 
 return Packman.new.spec ({
-  name          : name
+  name          : me
   descr         : "Pluggable Authentication Modules Library"
   version       : version
   build_dirname : archive + "-" + version

@@ -1,5 +1,5 @@
 var me = __file__: path_basename_sans_extname ()
-var version = "5.2.0-stable"
+var version = "5.6.3-stable"
 
 return Packman.new.spec ({
   name          : me
@@ -12,14 +12,25 @@ return Packman.new.spec ({
   webarchive    : "v" + version + ".tar.gz"
   license       : "GPLv2"
   soname        : me
-  soname_version: "32.0.0"
+  soname_version: "35.5.1"
+  header        : me
+  compiled_sources : [
+    "src/bio.c", "src/crl.c", "src/internal.c", "src/keys.c",
+    "src/ocsp.c", "src/ssl.c", "src/tls.c", "src/sniffer.c", "src/wolfio.c",
+    "wolfcrypt/src/asm.c", "wolfcrypt/src/aes.c", "wolfcrypt/src/chacha.c",
+    "wolfcrypt/src/cmac.c", "wolfcrypt/src/coding.c", "wolfcrypt/src/compress.c",
+    "wolfcrypt/src/cpuid.c", "wolfcrypt/src/cryptocb.c", "wolfcrypt/src/dsa.c",
+    "wolfcrypt/src/ecc.c", "wolfcrypt/src/error.c", "wolfcrypt/src/wolfevent.c",
+    "wolfcrypt/src/hash.c", "wolfcrypt/src/hmac.c", "wolfcrypt/src/integer.c",
+    "wolfcrypt/src/memory.c", "wolfcrypt/src/misc.c", "wolfcrypt/src/random.c"
+  ]
   build         : [
-    Packman.extract (),
     Packman.mkdir ({dir : "build", switch : true}),
     Packman.command ("[generating cmakefiles]",
-      "cmake .. -DCMAKE_BUILD_TYPE=Release  -DWOLFSSL_FAST_MATH=no " + 
-      "-DWOLFSSL_CRYPT_TESTS=no -DWOLFSSL_EXAMPLES=no -DWOLFSSL_DEBUG=no"),
-    Packman.command ("[cmake build]", "cmake --build ."),
-    Packman.install_shared_library ()
+      ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release", "-DWOLFSSL_FAST_MATH=no",
+       "-DWOLFSSL_CRYPT_TESTS=no", "-DWOLFSSL_EXAMPLES=no", "-DWOLFSSL_DEBUG=no"]),
+    Packman.command ("[cmake build]", ["cmake", "--build", "."]),
+    Packman.install_shared_library (),
+    Packman.install_header ()
   ]
 })

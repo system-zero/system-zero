@@ -1,5 +1,5 @@
 var me = __file__: path_basename_sans_extname ()
-var version = "1.4.3"
+var version = "1.7.1"
 
 return Packman.new.spec ({
   name          : me
@@ -13,12 +13,19 @@ return Packman.new.spec ({
   archive       : me  + "-" + version + ".tar.gz"
   webarchive    : "v" + version + ".tar.gz"
   license       : "GPLv2"
+  compiled_sources : [
+    "src/libgit2/annotated_commit.c", "src/libgit2/apply.c",
+    "src/libgit2/blame.c", "src/libgit2/blob.c", "src/libgit2/branch.c",
+    "src/libgit2/checkout.c", "src/libgit2/clone.c", "src/libgit2/commit.c",
+    "src/libgit2/email.c", "src/libgit2/fetch.c", "src/libgit2/libgit2.c",
+    "src/libgit2/merge.c", "src/libgit2/patch.c", "src/libgit2/push.c",
+    "src/libgit2/rebase.c", "src/libgit2/stash.c", "src/libgit2/tag.c"
+  ]
   build         : [
-    Packman.extract (),
     Packman.mkdir ({dir : "build", switch : true}),
     Packman.command ("[generating cmakefiles]",
-      "cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF"),
-    Packman.command ("[cmake build]", "cmake --build ."),
+      ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTS=OFF"]),
+    Packman.command ("[cmake build]", ["cmake", "--build", "."]),
     Packman.install_shared_library ()
   ]
 })

@@ -5,23 +5,22 @@ return Packman.new.spec ({
   type          : PACKMAN_LIBRARY_TYPE
   soname        : me: advance (3)
   soname_version: "0"
+  version       : "efc21763392b1feeab4943b1da89f087b6d0797a"
+  repo          : "https://github.com/ebiggers/libdeflate"
+  home          : "https://github.com/ebiggers/libdeflate"
+  descr         : "libdeflate is a library for fast, whole-buffer DEFLATE-based compression and decompression"
+  license       : "MIT"
   compiled_sources : [
     "lib/adler32.c", "lib/crc32.c", "lib/deflate_compress.c",
     "lib/deflate_decompress.c", "lib/gzip_compress.c",
     "lib/gzip_decompress.c", "lib/utils.c",
     "lib/zlib_compress.c", "lib/zlib_decompress.c"
   ]
-  version       : "079a6dd171583c1953017b703ec63c5367a284b4"
-  repo          : "https://github.com/ebiggers/libdeflate"
-  home          : "https://github.com/ebiggers/libdeflate"
-  descr         : "libdeflate is a library for fast, whole-buffer DEFLATE-based compression and decompression"
-  license       : "MIT"
   build         : [
-    Packman.copy_sources (),
     Packman.mkdir ({dir : "build", switch : true}),
     Packman.command ("[generating cmakefiles]",
-      "cmake .. -DCMAKE_BUILD_TYPE=Release  -DBUILD_TESTS=OFF"),
-    Packman.command ("[cmake build]", "cmake --build ."),
+      ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release"]),
+    Packman.command ("[cmake build]", ["cmake", "--build", "."]),
     Packman.install_shared_library (),
     Packman.install_static_library ()
   ]

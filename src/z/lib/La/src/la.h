@@ -552,7 +552,7 @@ public la_T *la_get_root (la_t *);
 #define GET_OPT_VERBOSE() ({                                              \
   VALUE _v_verbose = La.get.qualifier (this, "verbose", INT(OPT_VERBOSE_ON_ERROR)); \
   ifnot (IS_INT(_v_verbose))                                              \
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(LA_ERR_TYPE_MISMATCH, "verbose: awaiting an integer qualifier");\
   AS_INT(_v_verbose);                                                     \
 })
 
@@ -599,10 +599,18 @@ public la_T *la_get_root (la_t *);
 })
 
 #define GET_OPT_RECURSIVE() ({                                            \
-  VALUE _v_recursive = La.get.qualifier (this, "recursive", INT(OPT_NO_RECURSIVE));  \
-  ifnot (IS_INT(_v_recursive))                                            \
-    THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
-  AS_INT(_v_recursive);                                                   \
+  int _rec = La.qualifier_exists (this, "recursive");                     \
+  if (_rec) {                                                             \
+    VALUE _v_recursive = La.get.qualifier (this, "recursive", INT(OPT_NO_RECURSIVE));  \
+    if (0 == IS_INT(_v_recursive)) {                                      \
+      if (IS_NULL(_v_recursive))                                          \
+        _rec = 1;                                                         \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "recursive, awaiting an integer qualifier"); \
+    } else                                                                \
+      _rec = AS_INT(_v_recursive);                                        \
+  }                                                                       \
+  _rec;                                                                   \
 })
 
 #define GET_OPT_INTERACTIVE() ({                                          \

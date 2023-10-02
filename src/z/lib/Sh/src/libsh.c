@@ -824,12 +824,13 @@ static int sh_parse (sh_t *this, char *buf) {
       sh->redir_streams = redir_streams;
 
       if (sh->redir_type isnot NO_REDIR) {
-        char file[(sp - cbuf) + 1];
+        char file[len - (sp - cbuf) + 1];
 
         int idx = 0;
-        while (*sp) file[idx++] = *sp++;
-
+        while (*sp and *sp isnot ' ') file[idx++] = *sp++;
         file[idx] = '\0';
+
+        if (*sp is ' ') sp++;
 
         if (sh->redir_streams & PROC_READ_STDOUT) {
           sh->redir_stdout_file = String.new_with (file);
@@ -867,6 +868,7 @@ static int sh_parse (sh_t *this, char *buf) {
       sh_append_proc (this, p);
 
       buf = sp;
+
       type = COMMAND_TYPE;
       redir_type = NO_REDIR;
       redir_streams = 0;
