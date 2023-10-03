@@ -1454,6 +1454,10 @@ func self_semantics () {
           num_a: any (1.1) is true and
           num_a: any (4.4) is false)
 
+      assert_true ("testing the array join method",
+         str_a: join (null) is "aabbvv" and
+         str_a: join ("  ") is "aa  bb  vv")
+
       assert_true ("testing the string eq method",
           String.eq ("asd", "asd") and 0 is
           String.eq ("asd", "asa"))

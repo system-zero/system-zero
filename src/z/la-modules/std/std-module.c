@@ -147,6 +147,36 @@ static VALUE array_sort (la_t *this, VALUE v_array) {
 
 }
 
+static VALUE array_join (la_t *this, VALUE v_array, VALUE v_delim) {
+  ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
+  ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
+  if (array->type != STRING_TYPE)
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a StringType array");
+
+  const char *delim = NULL;
+  int delim_len = 0;
+
+  ifnot (IS_STRING(v_delim)) {
+    ifnot (IS_NULL(v_delim))
+      THROW(LA_ERR_TYPE_MISMATCH, "awaiting a StringType array");
+    delim = "";
+  } else {
+    delim = AS_STRING_BYTES(v_delim);
+    delim_len = (AS_STRING(v_delim))->num_bytes;
+  }
+
+  string **s_ar = (string **) AS_ARRAY(array->value);
+  string *str = String.new (32);
+
+  for (size_t i = 0; i < array->len; i++) {
+    String.append_with_len (str, s_ar[i]->bytes, s_ar[i]->num_bytes);
+    if (i + 1 < array->len)
+      String.append_with_len (str, delim, delim_len);
+  }
+
+  return STRING(str);
+}
+
 static VALUE array_any (la_t *this, VALUE v_array, VALUE v_expr) {
   ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
   ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
@@ -668,37 +698,38 @@ public int __init_std_module__ (la_t *this) {
   __INIT__(ustring);
 
   LaDefCFun lafuns[] = {
-    { "map_set",            PTR(map_set), 3 },
-    { "map_get",            PTR(map_get), 2 },
-    { "map_keys",           PTR(map_keys), 1 },
-    { "map_remove",         PTR(map_remove), 2 },
-    { "map_key_exists",     PTR(map_key_exists), 2 },
-    { "array_len",          PTR(array_len), 1},
-    { "array_any",          PTR(array_any), 2},
-    { "array_sort",         PTR(array_sort), 1},
-    { "array_where",        PTR(array_where), 2 },
-    { "string_eq",          PTR(string_eq), 2 },
-    { "string_eq_n",        PTR(string_eq_n), 3 },
-    { "string_cmp",         PTR(string_cmp), 2 },
-    { "string_cmp_n",       PTR(string_cmp_n), 3 },
-    { "string_advance",     PTR(string_advance), 2 },
-    { "string_bytelen",     PTR(string_bytelen), 1 },
-    { "string_to_array",    PTR(string_to_array), 1},
-    { "string_numchars",    PTR(string_numchars), 1 },
-    { "string_to_upper",    PTR(string_to_upper), 1 },
-    { "string_to_lower",    PTR(string_to_lower), 1 },
-    { "string_tokenize",    PTR(string_tokenize), 2 },
-    { "string_to_number",   PTR(string_to_number), 1 },
-    { "string_to_integer",  PTR(string_to_integer), 1 },
-    { "string_byte_in_str", PTR(string_byte_in_str), 2 },
-    { "string_bytes_in_str", PTR(string_bytes_in_str), 2 },
-    { "string_delete_substr", PTR(string_delete_substr), 2 },
-    { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
-    { "string_advance_after_bytes", PTR(string_advance_after_bytes), 3},
-    { "string_trim_byte_at_end", PTR(string_trim_byte_at_end), 2},
-    { "integer_eq",         PTR(integer_eq), 2},
-    { "integer_char",       PTR(integer_char), 1 },
-    { "integer_to_string",  PTR(integer_to_string), 2},
+    {"map_set",            PTR(map_set), 3 },
+    {"map_get",            PTR(map_get), 2 },
+    {"map_keys",           PTR(map_keys), 1 },
+    {"map_remove",         PTR(map_remove), 2 },
+    {"map_key_exists",     PTR(map_key_exists), 2 },
+    {"array_len",          PTR(array_len), 1},
+    {"array_any",          PTR(array_any), 2},
+    {"array_join",         PTR(array_join), 2},
+    {"array_sort",         PTR(array_sort), 1},
+    {"array_where",        PTR(array_where), 2 },
+    {"string_eq",          PTR(string_eq), 2 },
+    {"string_eq_n",        PTR(string_eq_n), 3 },
+    {"string_cmp",         PTR(string_cmp), 2 },
+    {"string_cmp_n",       PTR(string_cmp_n), 3 },
+    {"string_advance",     PTR(string_advance), 2 },
+    {"string_bytelen",     PTR(string_bytelen), 1 },
+    {"string_to_array",    PTR(string_to_array), 1},
+    {"string_numchars",    PTR(string_numchars), 1 },
+    {"string_to_upper",    PTR(string_to_upper), 1 },
+    {"string_to_lower",    PTR(string_to_lower), 1 },
+    {"string_tokenize",    PTR(string_tokenize), 2 },
+    {"string_to_number",   PTR(string_to_number), 1 },
+    {"string_to_integer",  PTR(string_to_integer), 1 },
+    {"string_byte_in_str", PTR(string_byte_in_str), 2 },
+    {"string_bytes_in_str", PTR(string_bytes_in_str), 2 },
+    {"string_delete_substr", PTR(string_delete_substr), 2 },
+    {"string_advance_on_byte", PTR(string_advance_on_byte), 2},
+    {"string_advance_after_bytes", PTR(string_advance_after_bytes), 3},
+    {"string_trim_byte_at_end", PTR(string_trim_byte_at_end), 2},
+    {"integer_eq",         PTR(integer_eq), 2},
+    {"integer_char",       PTR(integer_char), 1 },
+    {"integer_to_string",  PTR(integer_to_string), 2},
     { NULL, NULL_VALUE, 0}
   };
 
@@ -725,6 +756,7 @@ public int __init_std_module__ (la_t *this) {
     public var Array = {
       len   : array_len,
       any   : array_any,
+      join  : array_join,
       sort  : array_sort,
       where : array_where
     };
