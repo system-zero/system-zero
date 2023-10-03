@@ -395,16 +395,7 @@ Type PackmanSpec {
 }
 
 func packman_print_argv (argv, is_error, err_msg) {
-  var length = argv: len ()
-
-  var msg = ""
-  for i, v in argv {
-    if i is length - 1 then
-      msg += v + "\n"
-    orelse
-      msg += v + " "
-  }
-
+  var msg = argv: join (" ") + "\n"
   if is_error then print (COLOR_ERR)
   ifnot null is err_msg then print ("Error: ${err_msg} ")
   print (msg)
@@ -1068,19 +1059,13 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_CONFIGURE {
-          var length = 2
-          ifnot null is action.command then
-            length += action.command: len ()
+          var length = 2 + if null is action.command then 0 orelse action.command: len ()
 
           var string[length] argv
-          argv[0] = "./configure"
-          argv[1] = "--prefix=" + this.sys_dir
+          argv[0:1] = ["./configure", "--prefix=" + this.sys_dir]
 
-          ifnot null is action.command {
-            var ar = this.get_argv (action.command)
-            break if null is argv
-            for i, v in ar argv[i + 2] = ar[i]
-          }
+          ifnot null is action.command then
+            argv[2:] = this.get_argv (action.command)
 
           if this.verbose is PACKMAN_VERBOSE_ALL then
             packman_print_argv (argv, false, null)
@@ -1097,13 +1082,12 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_MAKE {
-          var string[1] argv = [this.make_exec]
-          ifnot null is action.command {
-            for v in action.command {
-              var arg = format (v)
-              append arg in argv
-            }
-          }
+          var length = 1 + if null is action.command then 0 orelse action.command: len ()
+          var string[length] argv
+          argv[0] = this.make_exec
+
+          ifnot null is action.command then
+            argv[1:] this.get_argv (action.command)
 
           if this.verbose is PACKMAN_VERBOSE_ALL then
             packman_print_argv (argv, false, null)
@@ -1120,14 +1104,12 @@ Type Packman {
         }
 
         if action.type is PACKMAN_BUILD_MAKE_INSTALL {
-          var string[2] argv = [this.make_exec, "install"]
+          var length = 2 + if null is action.command then 0 orelse action.command: len ()
+          var string[length] argv
+          argv[0:1] = [this.make_exec, "install"]
 
-          ifnot null is action.command {
-            for v in action.command {
-              var arg = format (v)
-              append arg in argv
-            }
-          }
+          ifnot null is action.command
+            argv[2:] = this.get_argv (action.command)
 
           if this.verbose is PACKMAN_VERBOSE_ALL then
             packman_print_argv (argv, false, null)

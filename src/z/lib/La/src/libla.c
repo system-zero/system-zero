@@ -518,7 +518,11 @@ do {                                                        \
   THROW_SYNTAX_ERR_FMT_IF(_l_ > MAXLEN_SYMBOL,              \
    "%s: symbol name exceeded maximum length %d", _n_, _l_); \
 } while (0)
-
+#define THROW_UNIMPLEMENT(_msg_) do {                       \
+  this->print_fmt_bytes (this->err_fp,                      \
+    "%s: hasn't been implemented\n", _msg_);                \
+  return la_err_ptr (this, LA_ERR_SYNTAX);                  \
+} while (0)
 #define PRINT_ERR_CONSTANT(_e_) do {                                     \
   const char *err_msg_const[] = {                                        \
       "NO MEMORY", "SYNTAX ERROR", "UNKNOWN SYMBOL",                     \
@@ -3908,6 +3912,73 @@ static int la_array_set_as_int (la_t *this, VALUE ar, integer len, integer idx, 
   return LA_OK;
 }
 
+static int la_array_set_with_expr (la_t *this, VALUE ar, integer len, integer idx, integer last_idx, int type) {
+  int err;
+  VALUE val;
+
+  switch (type) {
+    case MAP_TYPE:
+      THROW_UNIMPLEMENT("set an array with a function call for maps");
+    case LIST_TYPE:
+      THROW_UNIMPLEMENT("set an array with a function call for lists");
+    case ARRAY_TYPE:
+      THROW_UNIMPLEMENT("set an array with a function call for arrays");
+  }
+
+  err = la_parse_expr (this, &val);
+  THROW_ERR_IF_ERR(err);
+
+  ifnot (IS_ARRAY(val))
+    THROW_A_TYPE_MISMATCH(val.type, "an array");
+
+  ArrayType *n_array = (ArrayType *) AS_ARRAY(val);
+  integer n_len = n_array->len;
+
+  if (type isnot n_array->type)
+    THROW_TYPE_MISMATCH(type, n_array->type);
+
+  if (idx < 0 or idx >= len or idx > last_idx or (idx - 1) + n_len > last_idx)
+    THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
+        idx, len, idx, last_idx);
+
+  switch (type) {
+    case INTEGER_TYPE: {
+      integer *src_i_ar = (integer *) AS_ARRAY(n_array->value);
+      integer *dest_i_ar = (integer *) AS_ARRAY(ar);
+      for (int i = idx, d = 0; i <= last_idx; i++, d++)
+         dest_i_ar[i] = src_i_ar[d];
+
+      la_release_value (this, val);
+      break;
+    }
+
+    case NUMBER_TYPE: {
+      number *src_n_ar = (number *) AS_ARRAY(n_array->value);
+      number *dest_n_ar = (number *) AS_ARRAY(ar);
+      for (int i = idx, d = 0; i <= last_idx; i++, d++)
+         dest_n_ar[i] = src_n_ar[d];
+
+      la_release_value (this, val);
+      break;
+    }
+
+    case STRING_TYPE: {
+      string **src_s_ar = (string **) AS_ARRAY(n_array->value);
+      string **dest_s_ar = (string **) AS_ARRAY(ar);
+      for (int i = idx, d = 0; i <= last_idx; i++, d++) {
+         string *dest_s_item = dest_s_ar[i];
+         string *src_s_item = src_s_ar[d];
+         String.replace_with_len (dest_s_item, src_s_item->bytes, src_s_item->num_bytes);
+      }
+
+      la_release_value (this, val);
+      break;
+    }
+  }
+
+  return LA_OK;
+}
+
 /* Initial primitive Interface by MickeyDelp <mickey at delptronics dot com> */
 static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int is_single) {
   int err;
@@ -3931,7 +4002,7 @@ static int la_array_assign (la_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int 
   ifnot (is_single) {
     NEXT_TOKEN();
     if (TOKEN isnot TOKEN_INDEX_OPEN)
-      THROW_SYNTAX_ERR("array assignment: awaiting [");
+      return la_array_set_with_expr (this, ary, len, idx, last_idx, array->type);
   }
 
   switch (array->type) {
