@@ -297,6 +297,7 @@ typedef object listArrayMember;
 #define IS_FILEPTR(__v__)(__v__.type == FILEPTR_TYPE)
 #define IS_FILEDES(__v__)(__v__.type == FD_TYPE)
 #define IS_PTR IS_INT
+#define IS_NOTOK(__v__) (__v__.type == INTEGER_TYPE && AS_INT(v) == NOTOK)
 
 typedef VALUE (*CFunc) (la_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*OpFunc) (la_t *, VALUE, VALUE);

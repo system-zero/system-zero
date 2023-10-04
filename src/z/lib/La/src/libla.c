@@ -2105,10 +2105,42 @@ static int la_parse_append (la_t *this, VALUE *vp) {
   return err;
 }
 
+static int la_parse_format_array (la_t *this, VALUE *vp, int release_vp) {
+    THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_PAREN_CLOS, "array format(), awaiting ')'");
+    ArrayType *array = (ArrayType *) AS_ARRAY((*vp));
+    THROW_SYNTAX_ERR_IF(array->type isnot STRING_TYPE, "format() awaiting a StringType array");
+
+    ArrayType *nar = ARRAY_NEW(STRING_TYPE, (integer) array->len);
+    string **n_ar = (string **) AS_ARRAY(nar->value);
+
+    VALUE ary = array->value;
+    string **s_ar = (string **) AS_ARRAY(ary);
+
+    la_string savepc = PARSEPTR;
+
+    int err;
+    for (size_t i = 0; i < array->len; i++) {
+      string *s = s_ar[i];
+      string *n = n_ar[i];
+      PARSEPTR = StringNew(s->bytes);
+      err = la_parse_fmt (this, n, 1);
+      THROW_ERR_IF_ERR(err);
+      n_ar[i] = n;
+    }
+
+    if (release_vp and vp->sym is NULL)
+      la_release_value (this, *vp);
+
+    *vp = ARRAY(nar);
+    PARSEPTR = savepc;
+    NEXT_TOKEN();
+    return OK;
+ }
+
 static int la_parse_format (la_t *, VALUE *);
 static int la_parse_format (la_t *this, VALUE *vp) {
   int err;
-  string *str = String.new (32);
+  string *str = NULL;
 
   int c = la_ignore_ws (this);
 
@@ -2132,7 +2164,15 @@ static int la_parse_format (la_t *this, VALUE *vp) {
     this->curState &= ~MALLOCED_STRING_STATE;
     THROW_ERR_IF_ERR(err);
 
+    if (v.type is ARRAY_TYPE) {
+      *vp = v;
+      err = la_parse_format_array (this, vp, 1);
+      THROW_ERR_IF_ERR(err);
+      return OK;
+    }
+
     if (v.type is STRING_TYPE) {
+      str = String.new (32);
       c = TOKEN;
       la_string savepc = PARSEPTR;
       string *v_s = AS_STRING(v);
@@ -2171,11 +2211,14 @@ static int la_parse_format (la_t *this, VALUE *vp) {
   if (c isnot TOKEN_DQUOTE)
     THROW_SYNTAX_ERR("format error, awaiting \"");
 
+  str = String.new (32);
+
   err = la_parse_fmt (this, str, 0);
   THROW_ERR_IF_ERR(err);
 
 theend:
-  *vp = STRING(str);
+  ifnot (NULL is str)
+    *vp = STRING(str);
 
   ifnot (is_expr) {
     NEXT_TOKEN();
@@ -2188,13 +2231,15 @@ theend:
   NEXT_TOKEN();
   c = TOKEN;
 
-  if (this->fmtRefcount)
-    this->fmtState |= FMT_LITERAL;
-  else
-    if (this->exprList)
-      vp->refcount = STRING_LITERAL;
-//     vp->refcount = -1;
-// CHANGE      vp->refcount = STRING_LITERAL;
+  ifnot (NULL is str) {
+    if (this->fmtRefcount)
+      this->fmtState |= FMT_LITERAL;
+    else
+      if (this->exprList)
+        vp->refcount = STRING_LITERAL;
+   //     vp->refcount = -1;
+   // CHANGE      vp->refcount = STRING_LITERAL;
+  }
 
   return LA_OK;
 }
@@ -5848,6 +5893,8 @@ static int la_parse_new (la_t *this, VALUE *vp) {
   VALUE v;
   err = la_parse_func_call (this, &v, NULL, uf, *val);
   THROW_ERR_IF_ERR(err);
+  THROW_SYNTAX_ERR_FMT_IF(IS_NOTOK(v), "init() method of %s type returned an error", type);
+
   NEXT_TOKEN();
   return err;
 }
@@ -6511,8 +6558,16 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
 
       switch (sym->type) {
         case TOKEN_FORMAT: {
-          if (vp->type isnot STRING_TYPE)
-            THROW_SYNTAX_ERR("awaiting a string type");
+          if (vp->type is ARRAY_TYPE) {
+            NEXT_TOKEN();
+            THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_PAREN_OPEN, "array format(), awaiting '('");
+            NEXT_TOKEN();
+            err = la_parse_format_array (this, vp, 0);
+            THROW_ERR_IF_ERR(err);
+            goto release_value;
+          }
+
+          THROW_SYNTAX_ERR_IF(vp->type isnot STRING_TYPE, "format(): awaiting a string type");
 
           string *s = AS_STRING ((*vp));
           size_t len = s->num_bytes + 4;
@@ -6547,6 +6602,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
             save_v.refcount = 0;
 
           err = la_parse_format (this, vp);
+          THROW_ERR_IF_ERR(err);
           PARSEPTR = savepc;
 
           NEXT_TOKEN();

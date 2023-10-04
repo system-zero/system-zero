@@ -87,10 +87,10 @@ const COLOR_DONE = COLOR_PKG
 const RESET = "\e[m"
 
 func packman_error (msg) {
-  if msg isnot null
+  if msg isnot null then
     println (stderr, "${COLOR_ERR}${msg}")
 
-  if errno
+  if errno then
      println (stderr, errno_string (errno))
 
   println ("${RESET}")
@@ -498,14 +498,7 @@ Type Packman {
   get_argv : func (ar) {
     return null if ar: typeof () isnot ArrayType
     return null if ar: typeofArray () isnot StringType
-
-    var string[ar: len ()] argv
-    for i, v in ar {
-      var arg = format (v)
-      argv[i] = arg
-    }
-
-    return argv
+    return ar: format ()
   }
 
   fetch : func {
