@@ -1290,8 +1290,17 @@ static VALUE la_qualifier (la_t *this, VALUE v_key, VALUE v_defval) {
   while (it) {
     if (Cstring.eq (it->name, funname)) {
       VALUE *v = (VALUE *) Vmap.get (it->qualifiers, AS_STRING_BYTES(v_key));
-      if (v is NULL)
+      if (v is NULL) {
+        if (v_defval.sym is NULL) {
+          if (v_defval.refcount is MALLOCED_STRING)
+            return la_copy_value (v_defval);
+          v_defval.refcount = 0;
+          return v_defval;
+        }
+
         return la_copy_value (v_defval);
+      }
+
       return la_copy_value ((*v));
     }
 
@@ -4941,6 +4950,7 @@ static int la_map_set_value (la_t *this, Vmap_t *map, const char *key, VALUE v, 
       } else {
         if (v.sym is NULL) {
           val->asString  = v.asString;
+
           if (val->refcount isnot MALLOCED_STRING)
               val->refcount = 0;
           this->curState &= ~LITERAL_STRING_STATE;
@@ -5640,6 +5650,7 @@ static int la_parse_map_get (la_t *this, VALUE *vp) {
     } else {
       if (v->sym isnot NULL and is_this and this->funcState & RETURN_STATE
            and 0 is this->exprList) {
+
         vp->refcount++;
         this->objectState |= MAP_MEMBER;
       }
@@ -5962,7 +5973,6 @@ static int la_parse_expr_list (la_t *this, funT *uf, int expectargs) {
     THROW_ERR_IF_ERR(err);
 
     if (v.refcount is STRING_LITERAL)
-      // if (v.sym isnot NULL and 0 is (this->funcState & MAP_METHOD_STATE)) {
       if (v.sym isnot NULL) {
         VALUE t = la_copy_value (v);
         v = t;
@@ -6559,6 +6569,7 @@ static int la_parse_chain (la_t *this, VALUE *vp) {
       switch (sym->type) {
         case TOKEN_FORMAT: {
           if (vp->type is ARRAY_TYPE) {
+            save_v = *vp;
             NEXT_TOKEN();
             THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_PAREN_OPEN, "array format(), awaiting '('");
             NEXT_TOKEN();
@@ -9032,6 +9043,7 @@ static int la_parse_foreach (la_t *this) {
   int len = GETSTRLEN(TOKENSTR);
   char body[len+1];
   Cstring.cp (body, len + 1, GETSTRPTR(TOKENSTR), len);
+  la_string body_str = StringNew (body);
 
   this->loopCount++;
 
@@ -9062,8 +9074,6 @@ static int la_parse_foreach (la_t *this) {
 
     num = Vmap.num_keys (map);
     string **keys = Vmap.keys (map);
-
-    la_string body_str = StringNew (body);
 
     for (int i = 0; i < num; i++) {
       VALUE *value = (VALUE *) Vmap.get (map, keys[i]->bytes);
@@ -9179,8 +9189,6 @@ static int la_parse_foreach (la_t *this) {
 
     num = array->len;
 
-    la_string body_str = StringNew (body);
-
     for (int i = 0; i < num; i++) {
       integer v_idx = AS_INT(index_sym->value);
       v_idx++;
@@ -9276,8 +9284,6 @@ static int la_parse_foreach (la_t *this) {
     sym_t *elem_sym = la_define_block_symbol (this, fun, elem, NULL_TYPE, elem_value, 0);
     num = list->num_items;
 
-    la_string body_str = StringNew (body);
-
     for (int i = 0; i < num; i++) {
       integer v_idx = AS_INT(index_sym->value);
       v_idx++;
@@ -9342,8 +9348,6 @@ static int la_parse_foreach (la_t *this) {
     ustring_t *u = Ustring.encode (U, str->bytes, str->num_bytes, 0, 8, 0);
     num = U->num_items;
 
-    la_string body_str = StringNew (body);
-
     for (int i = 0; i < num; i++) {
       c_sym->value = INT(u->code);
       string *v_s = AS_STRING(s_sym->value);
@@ -9387,8 +9391,6 @@ static int la_parse_foreach (la_t *this) {
   v = INT(0);
   sym_t *c_sym = la_define_block_symbol (this, fun, ci, INTEGER_TYPE, v, 0);
   num = str->num_bytes;
-
-  la_string body_str = StringNew (body);
 
   for (int i = 0; i < num; i++) {
     c_sym->value = INT(str->bytes[i]);
@@ -11440,7 +11442,6 @@ static VALUE la_add (la_t *this, VALUE x, VALUE y) {
             string *new = String.new_with_len (x_str->bytes, x_str->num_bytes);
             String.append_with_len (new, y_str->bytes, y_str->num_bytes);
             result = STRING(new);
-
             if (x.sym is NULL and x.refcount isnot MALLOCED_STRING and
                 0 is (this->objectState & (ARRAY_MEMBER|MAP_MEMBER)) and
                 0 is x.refcount) {

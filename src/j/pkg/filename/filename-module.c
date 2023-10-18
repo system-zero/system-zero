@@ -1,17 +1,17 @@
-#define REQUIRE_STD_MODULE
-#define REQUIRE_Z_ENV
-
 #define REQUIRE_FILE_EXISTS
 #define REQUIRE_FILE_IS_WRITABLE
 #define REQUIRE_BYTELEN
 #define REQUIRE_RENAME
-#define REQUIRE_DIR_IS_DIRECTORY
-#define REQUIRE_PATH_BASENAME
+#define REQUIRE_IS_DIRECTORY
+#define REQUIRE_BASENAME
 #define REQUIRE_STR_COPY
 #define REQUIRE_STR_EQ
 #define REQUIRE_STDIO
 
+#define REQUIRE_MODULE_COMPAT
 #include <libc.h>
+
+MODULE(filename);
 
 #define GET_OPT_CHAR() ({                                         \
   VALUE _v_char = La.get.qualifier (this, "char", INT('_'));      \
@@ -21,8 +21,6 @@
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a char within the ascii range"); \
   AS_INT(_v_char);                                                \
 })
-
-MODULE(filename);
 
 static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
   ifnot (IS_STRING(v_fname)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string as a key");
@@ -38,7 +36,7 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
     return NOTOK_VALUE;
   }
 
-  if (dir_is_directory (fname)) {
+  if (is_directory (fname)) {
     if (verbose)
       sys_fprintf (sys_stderr, "%s: is a directory\n", fname);
     return NOTOK_VALUE;
@@ -123,7 +121,7 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
     return NOTOK_VALUE;
   }
 
-  if (dir_is_directory (fname)) {
+  if (is_directory (fname)) {
     if (verbose)
       sys_fprintf (sys_stderr, "%s: is a directory\n", fname);
     return NOTOK_VALUE;
@@ -148,12 +146,24 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
   while (*sp and sp isnot basename)
     *spn++ = *sp++;
 
+  int wasnt_ws = 0;
+  int prev = 0;
+
   while (*sp) {
-    if (*sp is ' ' or *sp is '\t' or *sp is '\n')
-      *spn++ = c;
-    else
+    if (*sp is ' ' or *sp is '\t' or *sp is '\n') {
+      if (wasnt_ws and prev isnot c)
+        *spn++ = c;
+      wasnt_ws = 0;
+      prev = c;
+      sp++;
+      continue;
+    }
+
+    wasnt_ws = 1;
+    ifnot (*sp is c and prev is c)
       *spn++ = *sp;
-    sp++;
+
+    prev = *sp++;
   }
 
   *spn = '\0';

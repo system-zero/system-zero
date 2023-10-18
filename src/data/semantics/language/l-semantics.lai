@@ -1250,6 +1250,21 @@ func self_semantics () {
   var fmtexp = format ("${10 * 100 / 2 - 500 + 100 - [1, 2, 50][2] - 8}")
   assert_true ("testing expressions to the format function", "42" is fmtexp)
 
+  var v_a = "What I"
+  var v_b = "spell?"
+  var v_c = {
+    v : "Fiiish."
+  }
+  var v_d = ["What I spell?",  "F."]
+  var v_s = ["${v_a}", "${v_b}", "${v_c.v}", "${v_d[0]}", "${v_d[1]}"]
+  var v_n = v_s: format ()
+  var v_r = ""
+  for v in v_n
+    append v + " " in v_r
+
+  assert_true ("testing format function with a string array",
+      v_r is "What I spell? Fiiish. What I spell? F. ")
+
   assert_true ("testing stdin and fileno", 0 is fileno (stdin))
 
   func tail_call_rec (n, a, b) {
@@ -1266,12 +1281,16 @@ func self_semantics () {
   }
   var rtcs = tail_call_rec_str_double (4, "a")
 
-  #func tail_call_long (n) {
-  #  return n ifnot n
-  #  return self (--n)
-  #}
+  func tail_call (n) {
+    return n ifnot n
+    return self (--n)
+  }
+  var nnn = tail_call (3000)
 
-  # var trcl = tail_call_long (1000000)
+  assert_true ("testing tail calls and self",
+      rtc is 1642909629 and
+      rtcs is "aaaaaaaaaaaaaaaa" and
+      nnn is 0)
 
   var definedV
 

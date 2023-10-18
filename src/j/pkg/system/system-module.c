@@ -1,6 +1,6 @@
-#define REQUIRE_STD_MODULE
+#define REQUIRE_STDIO
+#define REQUIRE_MODULE_COMPAT
 #define REQUIRE_SLEEP
-#define REQUIRE_Z_ENV
 
 #include <libc.h>
 #include <z/system.h>

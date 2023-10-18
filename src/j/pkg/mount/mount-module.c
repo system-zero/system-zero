@@ -1,11 +1,14 @@
-#define REQUIRE_STD_MODULE
-#define REQUIRE_Z_ENV
 #define REQUIRE_MOUNT
 
+#define REQUIRE_STDIO
+#define REQUIRE_MODULE_COMPAT
 #include <libc.h>
 
 MODULE(mount);
 
+#ifndef OPT_NO_FORCE
+#define OPT_NO_FORCE       0
+#endif
 #define DEFAULT_FSTYPE "ext4"
 
 #define GET_OPT_MOUNT_DATA() ({                                                  \

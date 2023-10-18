@@ -9,6 +9,7 @@
 #define REQUIRE_CSTRING_TYPE DECLARE
 #define REQUIRE_SH_TYPE      DECLARE
 #define REQUIRE_ERROR_TYPE   DECLARE
+#define REQUIRE_PROC_TYPE    DECLARE
 
 #include <z/cenv.h>
 
@@ -27,38 +28,6 @@ MODULE(sh);
 
 #define AS_SH(__v__)\
 ({object *_o_ = AS_OBJECT(__v__); sh_t *_s_ = (sh_t *) AS_OBJECT (_o_->value); _s_;})
-
-#if 0
-#define GET_OPT_OUTPUT_TO_STDOUT() ({                                            \
-  int _to_stdout = La.qualifier_exists (this, "to_stdout");               \
-  if (_to_stdout) {                                                       \
-    VALUE _v_to_stdout = La.get.qualifier (this, "to_stdout", INT(1));    \
-    if (0 == IS_INT(_v_to_stdout)) {                                      \
-      if (IS_NULL(_v_to_stdout))                                          \
-        _to_stdout = 1;                                                   \
-      else                                                                \
-        THROW(LA_ERR_TYPE_MISMATCH, "to_stdout, awaiting an integer qualifier"); \
-    } else                                                                \
-      _to_stdout = AS_INT(_v_to_stdout);                                  \
-  }                                                                       \
-  _to_stdout;                                                             \
-})
-
-#define GET_OPT_OUTPUT_TO_STDERR() ({                                            \
-  int _to_stderr = La.qualifier_exists (this, "to_stderr");               \
-  if (_to_stderr) {                                                       \
-    VALUE _v_to_stderr = La.get.qualifier (this, "to_stderr", INT(1));    \
-    if (0 == IS_INT(_v_to_stderr)) {                                      \
-      if (IS_NULL(_v_to_stderr))                                          \
-        _to_stderr = 1;                                                   \
-      else                                                                \
-        THROW(LA_ERR_TYPE_MISMATCH, "to_stderr, awaiting an integer qualifier"); \
-    } else                                                                \
-      _to_stderr = AS_INT(_v_to_stderr);                                  \
-  }                                                                       \
-  _to_stderr;                                                             \
-})
-#endif
 
 static VALUE sh_exec (la_t *this, VALUE v_sh, VALUE v_command) {
   (void) this;
@@ -118,10 +87,10 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
 
   char buf[BUFSZ];
   int pid = -1;
-  int status;
+  int status = 0;
 
-  int dup_stdin = 0;
-  int stdin_fds[2];
+  int set_sid = 0;
+  int set_pgid = 0;
 
   char *redir_stdout = NULL;
   const char *redir_stdout_mode = "w";
@@ -140,10 +109,6 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
   int print_stderr = 0;
   int stderr_fd = -1;
   int stderr_fds[2];
-
-  if (dup_stdin)
-    if (-1 is pipe (stdin_fds))
-      goto theend;
 
   if (Vmap.key_exists (opts, "redir_stdout")) {
     VALUE *vredir_stdout = Vmap.get (opts, "redir_stdout");
@@ -175,13 +140,6 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
   if (Vmap.key_exists (opts, "print_stdout")) {
     VALUE *vprint_stdout = Vmap.get (opts, "print_stdout");
     print_stdout = AS_INT((*vprint_stdout));
-  }
-
-  if (redir_stdout != NULL || read_stdout) {
-    if (-1 is pipe (stdout_fds)) {
-      close_pipe (1, dup_stdin, stdin_fds);
-      goto theend;
-    }
   }
 
   if (Vmap.key_exists (opts, "redir_stderr")) {
@@ -220,38 +178,32 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
     print_stderr = AS_INT((*vprint_stderr));
   }
 
+  if (redir_stdout != NULL || read_stdout)
+    if (-1 is pipe (stdout_fds))
+      goto theend;
+
   if (redir_stderr != NULL || read_stderr) {
     if (-1 is pipe (stderr_fds)) {
-      close_pipe (1,
-        dup_stdin, stdin_fds,
-        redir_stdout, stdout_fds);
+      close_pipe (1, redir_stdout, stdout_fds);
       goto theend;
     }
   }
 
-  sigset_t mask;
-  sigemptyset (&mask);
-  sigaddset (&mask, SIGCHLD);
-  sigprocmask (SIG_BLOCK, &mask, NULL);
-
-
   if (-1 == (pid = fork ())) {
     close_pipe (1,
-      dup_stdin, stdin_fds,
       redir_stdout, stdout_fds,
       redir_stderr, stderr_fds);
-      goto theend;
+    goto theend;
   }
 
   char **envp = NULL;
   int envc = 0;
 
   ifnot (pid) {
-    sigprocmask (SIG_UNBLOCK, &mask, NULL);
-    //if ($my(setpgid))
-    setpgid (0, 0);
-    //if ($my(setsid)) 
-    setsid ();
+    if (set_sid)
+      setsid ();
+    if (set_pgid)
+      setpgid (0, 0);
 
     if (redir_stdout != NULL || read_stdout) {
       close (stdout_fds[PIPE_READ_END]);
@@ -259,20 +211,8 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
     }
 
     if (redir_stderr != NULL || read_stderr) {
-      dup2 (stderr_fds[PIPE_WRITE_END], fileno (stderr));
       close (stderr_fds[PIPE_READ_END]);
-    }
-
-    char * stdin_buf =NULL;
-    size_t stdin_buf_size = 0;
-    if (dup_stdin) {
-      dup2 (stdin_fds[PIPE_READ_END], STDIN_FILENO);
-      ifnot (NULL is stdin_buf) {
-        int ign = write (stdin_fds[PIPE_WRITE_END], stdin_buf, stdin_buf_size);
-        (void) ign;
-      }
-
-      close (stdin_fds[PIPE_WRITE_END]);
+      dup2 (stderr_fds[PIPE_WRITE_END], fileno (stderr));
     }
 
     for (int i = 0; i < envc; i++)
@@ -284,7 +224,6 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
     _exit (1);
   }
 
-  if (dup_stdin) close (stdin_fds[PIPE_READ_END]);
   if (redir_stdout != NULL || read_stdout) close (stdout_fds[PIPE_WRITE_END]);
   if (redir_stderr != NULL || read_stderr) close (stderr_fds[PIPE_WRITE_END]);
 
@@ -399,10 +338,13 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
 
 theend:
   if (-1 isnot pid) {
-    waitpid (pid, &status, 0);
+    waitpid (pid, &status,  0);
 
+    int r = 0;
     if (WIFEXITED (status))
-      La.map.set_value (this, retval, "retval", INT(WEXITSTATUS (status)), 1);
+      r = WEXITSTATUS (status);
+
+    La.map.set_value (this, retval, "retval", INT(r), 1);
   }
 
   for (size_t i = 0; i < array->len; i++)
@@ -441,6 +383,7 @@ public int __init_sh_module__ (la_t *this) {
   __INIT__(vmap);
   __INIT__(cstring);
   __INIT__(error);
+  __INIT__(proc);
 
   LaDefCFun lafuns[] = {
     { "sh_new",             PTR(sh_new), 0 },

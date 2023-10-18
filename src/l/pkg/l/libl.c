@@ -512,6 +512,11 @@ do {                                                        \
   THROW_SYNTAX_ERR_FMT_IF(_l_ > MAXLEN_SYMBOL,              \
    "%s: symbol name exceeded maximum length %d", _n_, _l_); \
 } while (0)
+#define THROW_UNIMPLEMENT(_msg_) do {                       \
+  this->print_fmt_bytes (this->err_fp,                      \
+    "%s: hasn't been implemented\n", _msg_);                \
+  return l_err_ptr (this, L_ERR_SYNTAX);                    \
+} while (0)
 
 #define PRINT_ERR_CONSTANT(_e_) do {                                     \
   const char *err_msg_const[] = {                                        \
@@ -2103,10 +2108,42 @@ static int l_parse_append (l_t *this, VALUE *vp) {
   return err;
 }
 
+static int l_parse_format_array (l_t *this, VALUE *vp, int release_vp) {
+  THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_PAREN_CLOS, "array format(), awaiting ')'");
+  ArrayType *array = (ArrayType *) AS_ARRAY((*vp));
+  THROW_SYNTAX_ERR_IF(array->type isnot STRING_TYPE, "format() awaiting a StringType array");
+
+  ArrayType *nar = ARRAY_NEW(STRING_TYPE, (integer) array->len);
+  string **n_ar = (string **) AS_ARRAY(nar->value);
+
+  VALUE ary = array->value;
+  string **s_ar = (string **) AS_ARRAY(ary);
+
+  l_string savepc = PARSEPTR;
+
+  int err;
+  for (size_t i = 0; i < array->len; i++) {
+    string *s = s_ar[i];
+    string *n = n_ar[i];
+    PARSEPTR = StringNew(s->bytes);
+    err = l_parse_fmt (this, n, 1);
+    THROW_ERR_IF_ERR(err);
+    n_ar[i] = n;
+  }
+
+  if (release_vp && vp->sym == NULL)
+    l_release_value (this, *vp);
+
+  *vp = ARRAY(nar);
+  PARSEPTR = savepc;
+  NEXT_TOKEN();
+  return L_OK;
+}
+
 static int l_parse_format (l_t *, VALUE *);
 static int l_parse_format (l_t *this, VALUE *vp) {
   int err;
-  string *str = string_new (32);
+  string *str = NULL;
 
   int c = l_ignore_ws (this);
 
@@ -2130,7 +2167,15 @@ static int l_parse_format (l_t *this, VALUE *vp) {
     this->curState &= ~MALLOCED_STRING_STATE;
     THROW_ERR_IF_ERR(err);
 
+    if (v.type is ARRAY_TYPE) {
+      *vp = v;
+      err = l_parse_format_array (this, vp, 1);
+      THROW_ERR_IF_ERR(err);
+      return OK;
+    }
+
     if (v.type is STRING_TYPE) {
+      str = string_new (32);
       c = TOKEN;
       l_string savepc = PARSEPTR;
       string *v_s = AS_STRING(v);
@@ -2169,11 +2214,14 @@ static int l_parse_format (l_t *this, VALUE *vp) {
   if (c isnot TOKEN_DQUOTE)
     THROW_SYNTAX_ERR("format error, awaiting \"");
 
+  str = string_new (32);
+
   err = l_parse_fmt (this, str, 0);
   THROW_ERR_IF_ERR(err);
 
 theend:
-  *vp = STRING(str);
+  ifnot (NULL is str)
+    *vp = STRING(str);
 
   ifnot (is_expr) {
     NEXT_TOKEN();
@@ -2186,13 +2234,15 @@ theend:
   NEXT_TOKEN();
   c = TOKEN;
 
-  if (this->fmtRefcount)
-    this->fmtState |= FMT_LITERAL;
-  else
-    if (this->exprList)
-      vp->refcount = STRING_LITERAL;
-//     vp->refcount = -1;
-// CHANGE      vp->refcount = STRING_LITERAL;
+  ifnot (NULL is str) {
+    if (this->fmtRefcount)
+      this->fmtState |= FMT_LITERAL;
+    else
+      if (this->exprList)
+        vp->refcount = STRING_LITERAL;
+   //     vp->refcount = -1;
+   // CHANGE      vp->refcount = STRING_LITERAL;
+  }
 
   return L_OK;
 }
@@ -3910,6 +3960,73 @@ static int l_array_set_as_int (l_t *this, VALUE ar, integer len, integer idx, in
   return L_OK;
 }
 
+static int l_array_set_with_expr (l_t *this, VALUE ar, integer len, integer idx, integer last_idx, int type) {
+  int err;
+  VALUE val;
+
+  switch (type) {
+    case MAP_TYPE:
+      THROW_UNIMPLEMENT("set an array with a function call for maps");
+    case LIST_TYPE:
+      THROW_UNIMPLEMENT("set an array with a function call for lists");
+    case ARRAY_TYPE:
+      THROW_UNIMPLEMENT("set an array with a function call for arrays");
+  }
+
+  err = l_parse_expr (this, &val);
+  THROW_ERR_IF_ERR(err);
+
+  ifnot (IS_ARRAY(val))
+    THROW_A_TYPE_MISMATCH(val.type, "an array");
+
+  ArrayType *n_array = (ArrayType *) AS_ARRAY(val);
+  integer n_len = n_array->len;
+
+  if (type isnot n_array->type)
+    THROW_TYPE_MISMATCH(type, n_array->type);
+
+  if (idx < 0 or idx >= len or idx > last_idx or (idx - 1) + n_len > last_idx)
+    THROW_OUT_OF_BOUNDS("array index %d >= than %d length, less than zero or %d > than last index %d",
+        idx, len, idx, last_idx);
+
+  switch (type) {
+    case INTEGER_TYPE: {
+      integer *src_i_ar = (integer *) AS_ARRAY(n_array->value);
+      integer *dest_i_ar = (integer *) AS_ARRAY(ar);
+      for (int i = idx, d = 0; i <= last_idx; i++, d++)
+         dest_i_ar[i] = src_i_ar[d];
+
+      l_release_value (this, val);
+      break;
+    }
+
+    case NUMBER_TYPE: {
+      number *src_n_ar = (number *) AS_ARRAY(n_array->value);
+      number *dest_n_ar = (number *) AS_ARRAY(ar);
+      for (int i = idx, d = 0; i <= last_idx; i++, d++)
+         dest_n_ar[i] = src_n_ar[d];
+
+      l_release_value (this, val);
+      break;
+    }
+
+    case STRING_TYPE: {
+      string **src_s_ar = (string **) AS_ARRAY(n_array->value);
+      string **dest_s_ar = (string **) AS_ARRAY(ar);
+      for (int i = idx, d = 0; i <= last_idx; i++, d++) {
+         string *dest_s_item = dest_s_ar[i];
+         string *src_s_item = src_s_ar[d];
+         string_replace_with_len (dest_s_item, src_s_item->bytes, src_s_item->num_bytes);
+      }
+
+      l_release_value (this, val);
+      break;
+    }
+  }
+
+  return L_OK;
+}
+
 /* Initial primitive Interface by MickeyDelp <mickey at delptronics dot com> */
 static int l_array_assign (l_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int is_single) {
   int err;
@@ -3933,7 +4050,7 @@ static int l_array_assign (l_t *this, VALUE *ar, VALUE ix, VALUE last_ix, int is
   ifnot (is_single) {
     NEXT_TOKEN();
     if (TOKEN isnot TOKEN_INDEX_OPEN)
-      THROW_SYNTAX_ERR("array assignment: awaiting [");
+      return l_array_set_with_expr (this, ary, len, idx, last_idx, array->type);
   }
 
   switch (array->type) {
@@ -5779,6 +5896,8 @@ static int l_parse_new (l_t *this, VALUE *vp) {
 
   err = l_parse_func_call (this, &v, NULL, uf, *val);
   THROW_ERR_IF_ERR(err);
+  THROW_SYNTAX_ERR_FMT_IF(IS_NOTOK(v), "init() method of %s type returned an error", type);
+
   NEXT_TOKEN();
   return err;
 }
@@ -6445,8 +6564,16 @@ static int l_parse_chain (l_t *this, VALUE *vp) {
 
       switch (sym->type) {
         case TOKEN_FORMAT: {
-          if (vp->type isnot STRING_TYPE)
-            THROW_SYNTAX_ERR("awaiting a string type");
+          if (vp->type is ARRAY_TYPE) {
+            NEXT_TOKEN();
+            THROW_SYNTAX_ERR_IFNOT(TOKEN is TOKEN_PAREN_OPEN, "array format(), awaiting '('");
+            NEXT_TOKEN();
+            err = l_parse_format_array (this, vp, 0);
+            THROW_ERR_IF_ERR(err);
+            goto release_value;
+          }
+
+          THROW_SYNTAX_ERR_IF(vp->type isnot STRING_TYPE, "format(): awaiting a string type");
 
           string *s = AS_STRING ((*vp));
           size_t len = s->num_bytes + 4;
@@ -6481,6 +6608,7 @@ static int l_parse_chain (l_t *this, VALUE *vp) {
             save_v.refcount = 0;
 
           err = l_parse_format (this, vp);
+          THROW_ERR_IF_ERR(err);
           PARSEPTR = savepc;
 
           NEXT_TOKEN();

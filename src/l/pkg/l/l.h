@@ -296,6 +296,7 @@ typedef object listArrayMember;
 #define IS_FILEPTR(__v__)(__v__.type == FILEPTR_TYPE)
 #define IS_FILEDES(__v__)(__v__.type == FD_TYPE)
 #define IS_PTR IS_INT
+#define IS_NOTOK(__v__) (__v__.type == INTEGER_TYPE && AS_INT(v) == NOTOK)
 
 typedef VALUE (*CFunc) (l_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*OpFunc) (l_t *, VALUE, VALUE);
@@ -565,7 +566,7 @@ do {                             \
 #define GET_OPT_VERBOSE() ({                                              \
   VALUE _v_verbose = L.get.qualifier (this, "verbose", INT(OPT_VERBOSE_ON_ERROR)); \
   ifnot (IS_INT(_v_verbose))                                              \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "verbose: awaiting an integer qualifier"); \
   AS_INT(_v_verbose);                                                     \
 })
 
@@ -605,23 +606,31 @@ do {                             \
 })
 
 #define GET_OPT_FORCE() ({                                                \
-  VALUE _v_force = L.get.qualifier (this, "force", INT(OPT_NO_FORCE));   \
+  VALUE _v_force = L.get.qualifier (this, "force", INT(OPT_NO_FORCE));    \
   ifnot (IS_INT(_v_force))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "force: awaiting an integer qualifier");   \
   AS_INT(_v_force);                                                       \
 })
 
 #define GET_OPT_RECURSIVE() ({                                            \
-  VALUE _v_recursive = L.get.qualifier (this, "recursive", INT(OPT_NO_RECURSIVE));  \
-  ifnot (IS_INT(_v_recursive))                                            \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
-  AS_INT(_v_recursive);                                                   \
+  int _rec = La.qualifier_exists (this, "recursive");                     \
+  if (_rec) {                                                             \
+    VALUE _v_recursive = La.get.qualifier (this, "recursive", INT(OPT_NO_RECURSIVE));  \
+    if (0 == IS_INT(_v_recursive)) {                                      \
+      if (IS_NULL(_v_recursive))                                          \
+        _rec = 1;                                                         \
+      else                                                                \
+        THROW(LA_ERR_TYPE_MISMATCH, "recursive, awaiting an integer qualifier"); \
+    } else                                                                \
+      _rec = AS_INT(_v_recursive);                                        \
+  }                                                                       \
+  _rec;                                                                   \
 })
 
 #define GET_OPT_INTERACTIVE() ({                                          \
   VALUE _v_interactive = L.get.qualifier (this, "interactive", INT(OPT_NO_INTERACTIVE));  \
   ifnot (IS_INT(_v_interactive))                                          \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "interactive: awaiting an integer qualifier");         \
   AS_INT(_v_interactive);                                                 \
 })
 

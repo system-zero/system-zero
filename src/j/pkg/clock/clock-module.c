@@ -1,11 +1,12 @@
-#define REQUIRE_STD_MODULE
 #define REQUIRE_CLOCK_SETTIME
 #define REQUIRE_OPEN
 #define REQUIRE_CLOSE
 #define REQUIRE_IOCTL
 #define REQUIRE_RTC_H
-#define REQUIRE_Z_ENV
 
+#define REQUIRE_STDIO
+#define REQUIRE_VMAP_TYPE_COMPAT
+#define REQUIRE_MODULE_COMPAT
 #include <libc.h>
 
 MODULE(clock);
@@ -13,7 +14,7 @@ MODULE(clock);
 static VALUE clock_readhw (la_t *this) {
   int fd = sys_open (RTCDEVICE, O_RDONLY);
   if (fd is -1) {
-    La.set.Errno (this, errno);
+    La.set.Errno (this, sys_errno);
     return NULL_VALUE;
   }
 
@@ -91,6 +92,7 @@ static VALUE clock_settime_ (la_t *this, VALUE v_sec) {
 }
 
 public int __init_clock_module__ (la_t *this) {
+  __INIT__(vmap);
   __INIT_MODULE__(this);
 
   LaDefCFun lafuns[] = {

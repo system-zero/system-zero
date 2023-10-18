@@ -58,10 +58,11 @@ include ("argparse")
   as_str         = "// as: "
 
   var me = __file__: basename ()
-  var argparse = New Argparse (5, 0, me)
+  var argparse = New Argparse (6, 0, me)
   argparse.add ("outputName",  0,  "outputName=",  "set output file name (default " + LIBCOUTNAME + ")",  StringType, ARG_VALUE_REQUIRED)
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
+  argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code", BooleanType, 0)
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
@@ -481,6 +482,53 @@ include ("argparse")
 
   append "#endif /* LIBC_HDR */\n" in libcFuns
 
+# is ugly i know
+  ifnot true is argparse.results.withoutModCompat {
+    append `
+/* do not really belong here (generate with --without-module-compat to avoid this) */
+#ifdef REQUIRE_MODULE_COMPAT
+#include <z/stringt.h>
+typedef string_t string;
+#include <z/vstring.h>
+#include <z/vmap.h>
+#include <z/la.h>
+static  la_T __LA__;	
+#define La   __LA__.self
+
+#ifndef EvalString
+#define EvalString(...) #__VA_ARGS__
+#endif
+
+#ifndef MODULE
+#define MODULE(_name_)                                      \
+  public int __init_ ## _name_ ## _module__ (la_t *);       \
+  public void __deinit_ ## _name_ ## _module__ (la_t *);
+#endif
+
+#ifndef __INIT_MODULE__
+#define __INIT_MODULE__(__l__)   \
+do {                             \
+  __LA__ = *la_get_root (__l__); \
+} while (0)
+#endif
+
+#ifndef __INIT__
+#define __INIT__(_T_) _T_ ## Type = __init_ ## _T_ ## __ ()
+#endif
+
+#ifdef REQUIRE_STRING_TYPE_COMPAT
+static  string_T stringType;
+#define String   stringType.self
+#endif
+
+#ifdef REQUIRE_VMAP_TYPE_COMPAT
+static  vmap_T vmapType;
+#define Vmap   vmapType.self
+#endif
+
+#endif /* REQUIRE_MODULE_COMPAT */
+` in libcFuns
+}
   if notok is File.write (outputFile, libcHdrs) then
     return error ("failed to write to " + outputfile)
 

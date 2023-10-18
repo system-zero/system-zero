@@ -5,6 +5,7 @@ return Packman.new.spec ({
   type          : PACKMAN_LIBRARY_TYPE
   soname        : me: advance (3)
   soname_version: "0"
+  sources       : me
   version       : "efc21763392b1feeab4943b1da89f087b6d0797a"
   repo          : "https://github.com/ebiggers/libdeflate"
   home          : "https://github.com/ebiggers/libdeflate"

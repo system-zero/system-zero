@@ -58,7 +58,7 @@ Type Argparse {
   parse_literal_arg : func (arg) {
     for j, opt in this.longopts {
       if (null isnot opt and opt: len ()) {
-        if (opt: eq (arg)) {
+        if opt: eq (arg) {
           var type = this.types[j]
           var name = this.name[j]
           var flags = this.flags[j]

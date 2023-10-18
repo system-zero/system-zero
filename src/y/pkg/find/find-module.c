@@ -78,6 +78,7 @@ static int cstring_cmp (const char *sa, const char *sb) {
       // return (*(uchar *) spa - *(uchar *) spb);
       return (*(uchar *) spb - *(uchar *) spa); // allign with the sort long types
       /* not sure why we had to do this, but that's the way it is */
+
     if (*spa == 0) return 0;
   }
 

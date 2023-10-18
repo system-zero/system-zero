@@ -192,9 +192,13 @@ Type PackmanSpec {
 
     return notok if notok is write (fd, "  version  : \"" + this.version + "\"\n")
     return notok if notok is write (fd, "  installed_as : \"" + this.installed_as + "\"\n")
+
+    var mtime = this.recorded.spec.mtime: to_string (DECIMAL)
+    #  memory leak
+    # "    mtime : " + this.recorded.spec.mtime: to_string (DECIMAL) + "\n" +
     return notok if notok is write (fd, "  spec : {\n" +
       "    file  : \"" + this.specfile + "\"\n" +
-      "    mtime : " + this.recorded.spec.mtime: to_string (DECIMAL) + "\n" +
+      "    mtime : " + mtime + "\n" +
       "    base : \"" + this.recorded.spec.base + "\"\n  }\n")
 
     return notok if notok is write (fd, "  log : \"" + this.logfile + "\"\n")
@@ -202,8 +206,9 @@ Type PackmanSpec {
     if this.recorded: key_exists ("compiled_sources") {
       return notok if notok is write (fd, "  compiled_sources : {\n")
       for k, v in this.recorded.compiled_sources {
+        var mt = v.mtime: to_string (DECIMAL)
         return notok if notok is write (fd, "    \"" + k + "\" : {\n      mtime : ")
-        return notok if notok is write (fd, v.mtime: to_string (DECIMAL))
+        return notok if notok is write (fd, mt)
         return notok if notok is write (fd, "\n      base : \"" + v.base + "\"\n")
         return notok if notok is write (fd, "    }\n")
       }
@@ -662,6 +667,8 @@ Type Packman {
 
     return notok if this.src_dir: concat_with (this.spec.sources): file_copy (
        "."; force : 1, recursive : 1, update : 1, verbose : 1) is notok
+
+    return ok
   }
 
   change_to_build_dirname : func {
@@ -731,8 +738,8 @@ Type Packman {
 
       var db_dir = this.spec:get.db_dir ()
       if db_dir is null {
-        this.spec:set.db_dir (this.db_dir: concat_with (name))
-        db_dir = this.spec:get.db_dir ()
+        db_dir = this.db_dir: concat_with (name)
+        this.spec:set.db_dir (db_dir)
       }
 
       ifnot db_dir: exists () then
@@ -760,8 +767,8 @@ Type Packman {
 
       var log_dir = this.spec:get.log_dir ()
       if log_dir is null {
-        this.spec:set.log_dir (this.log_dir: concat_with (name))
-        log_dir = this.spec:get.log_dir ()
+        log_dir = this.log_dir: concat_with (name)
+        this.spec:set.log_dir (log_dir)
       }
 
       ifnot log_dir: exists () then
@@ -786,7 +793,11 @@ Type Packman {
         this.spec:set.build_dirname (name)
 
       this.spec:set.specfile (specfile)
-      this.spec:set.build_dir (this.build_dir: concat_with (this.spec:get.build_dirname ()))
+
+      var dirn = this.spec:get.build_dirname ()
+      this.spec:set.build_dir (this.build_dir: concat_with (dirn))
+      # memory leak
+      # this.spec:set.build_dir (this.build_dir: concat_with (this.spec:get.build_dirname ()))
       this.spec:set.lib_dir (this.lib_dir)
       this.spec:set.force (qualifier ("force", false))
       this.spec:set.force_rec (qualifier ("force_rec", false))
@@ -818,9 +829,10 @@ Type Packman {
         var type = this.spec:get.type ()
         if type is PACKMAN_LIBRARY_TYPE {
           if this.spec:get.soname () isnot null {
-            this.spec:set.installed_as ("lib" + this.spec:get.soname () + ".so." +
-               (this.spec:get.soname_version (): if x isnot null then x
-                 orelse "unknown_version"))
+            var son = "lib" + this.spec:get.soname () + ".so."
+            var sov =this.spec:get.soname_version ()
+            this.spec:set.installed_as (son +
+               (sov: if x isnot null then x orelse "unknown_version"))
           } else {
             println (stderr,  "${COLOR_ERR}ERROR: soname is missing${RESET}")
             return null
@@ -902,8 +914,14 @@ Type Packman {
     }
 
     var curdir = getcwd ()
+    var srcs = this.src_dir: concat_with (this.spec.sources)
 
-    return notok if notok is chdir ( this.src_dir: concat_with (this.spec.sources))
+    ifnot is_directory (srcs) {
+      println (stderr, "${srcs}:  not a directory")
+      return notok
+    }
+
+    return notok if notok is srcs: chdir ()
 
     var opts = {
       argv : [this.git_exec, this.pull_args]
@@ -912,7 +930,6 @@ Type Packman {
     var retval = this.sh:process (opts)
     return notok if retval.retval isnot ok
     return chdir (curdir)
-
   }
 
   build : func {
@@ -995,11 +1012,23 @@ Type Packman {
     now := time_local ()
 
     const log_dir = this.spec:get.log_dir ()
-    const log_file = log_dir: concat_with ("%Y_%m_%d_%H_%M_%S": time_format (now))
+    const fm ="%Y_%m_%d_%H_%M_%S": time_format (now)            
+    const log_file = log_dir: concat_with (fm)
+
+    # memory leak
+    # const log_file = log_dir: concat_with ("%Y_%m_%d_%H_%M_%S": time_format (now))
     this.spec:set.logfile (log_file)
-    const logs = Dir.list (log_dir)
-    ifnot null is logs then
-      for v in logs remove (log_dir: concat_with (v))
+    var logs = Dir.list (log_dir)
+
+    ifnot null is logs {
+      for v in logs {
+        var f = log_dir: concat_with (v)
+        remove (f)
+        # both leak memory
+        # remove (log_dir: concat_with (v)) 
+        # remove (concat_with (log_dir, v))
+      }
+   }
 
     if log_file: exists () then log_file: remove ()
 

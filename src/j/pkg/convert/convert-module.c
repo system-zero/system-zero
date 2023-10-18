@@ -1,8 +1,9 @@
-#define REQUIRE_Z_ENV
-#define REQUIRE_STD_MODULE
 #define REQUIRE_STRING_TO_HEXSTRING
 #define REQUIRE_HEXSTRING_TO_STRING
 
+#define REQUIRE_STDIO
+#define REQUIRE_MODULE_COMPAT
+#define REQUIRE_STRING_TYPE_COMPAT
 #include <libc.h>
 
 MODULE(convert);
@@ -42,6 +43,7 @@ static VALUE convert_hexstring_to_string (la_t *this, VALUE v_str) {
 }
 
 public int __init_convert_module__ (la_t *this) {
+  __INIT__(string);
   __INIT_MODULE__(this);
 
   LaDefCFun lafuns[] = {
