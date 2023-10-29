@@ -2037,9 +2037,9 @@ static int l_parse_append (l_t *this, VALUE *vp) {
         "appended value type in array, is not the same of the array type");
 
       if (v.type is STRING_TYPE or v.sym isnot NULL) {
-        if (v.refcount is STRING_LITERAL)
+        if (v.refcount is STRING_LITERAL) {
           v.refcount = 0;
-        else {
+        } else {
           VALUE t = l_copy_value (v);
           v = t;
         }
@@ -2059,10 +2059,13 @@ static int l_parse_append (l_t *this, VALUE *vp) {
         THROW_SYNTAX_ERR("error while appending to map, awaiting as");
 
       this->curState |= MALLOCED_STRING_STATE;
+      VALUE vkey;
       NEXT_TOKEN();
+      err = la_parse_expr (this, &vkey);
       this->curState &= ~MALLOCED_STRING_STATE;
-      THROW_SYNTAX_ERR_IF(TOKEN isnot TOKEN_STRING, "error while appending to map, awaiting a string as a key");
-      string *s = AS_STRING(TOKENVAL);
+      THROW_SYNTAX_ERR_IF(vkey.type isnot STRING_TYPE, "error while appending to map, awaiting a string as a key");
+
+      string *s = AS_STRING(vkey);
       char *key = s->bytes;
       Map_Type *map = AS_MAP((*vp));
       err = l_map_set_value (this, map, key, v, 1);
@@ -5191,9 +5194,9 @@ static VALUE l_map_release (VALUE value) {
   if (value.sym isnot NULL) {
     if (value.refcount > 0) goto theend;
 
-    if (value.refcount < 0)
-      if (value.refcount isnot MAP_LITERAL)
-        return result;
+    //if (value.refcount < 0)
+    //  if (value.refcount isnot MAP_LITERAL)
+    //    return result;
   }
 
   Map_Type *m = AS_MAP(value);
@@ -5338,7 +5341,6 @@ static int l_parse_map_members (l_t *this, VALUE map, int into_map_decl) {
   int scope = this->scopeState;
 
   for (;;) {
-
     char key[MAXLEN_SYMBOL + 1];
     TOKEN = l_get_map_key (this, key);
 
@@ -5872,7 +5874,7 @@ static int l_parse_new (l_t *this, VALUE *vp) {
   err = l_parse_map (this, vp);
   THROW_ERR_IF_ERR(err);
 
-  THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE, "not a type");
+  THROW_SYNTAX_ERR_IF(vp->type isnot MAP_TYPE, "expression not a type");
 
   Map_Type *map = AS_MAP((*vp));
 
@@ -8034,7 +8036,7 @@ static int l_parse_expr_level (l_t *this, int max_level, VALUE *vp) {
     this->curMsg[0] = '\0';
     VALUE sv_lhs = lhs;
 
-    if (num_iter++)
+    if (num_iter++ or (lhs.type is STRING_TYPE and lhs.sym is NULL and lhs.refcount is STRING_LITERAL))
       this->objectState |= OBJECT_APPEND;
     this->objectState &= ~(LHS_STRING_RELEASED|RHS_STRING_RELEASED);
 
@@ -11445,7 +11447,6 @@ static VALUE l_add (l_t *this, VALUE x, VALUE y) {
         case STRING_TYPE: {
           string *x_str = AS_STRING(x);
           string *y_str = AS_STRING(y);
-
           if (this->objectState & OBJECT_APPEND) {
             this->objectState &= ~OBJECT_APPEND;
             string_append_with_len (x_str, y_str->bytes, y_str->num_bytes);

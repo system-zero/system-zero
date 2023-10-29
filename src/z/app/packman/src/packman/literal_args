@@ -1,11 +1,14 @@
-install           install package
-update-repo       update repository
-spec-info         spec information
-settings          general settings
-list-specs        list available specs
-bootstrap         bootstrap
-clone-host        clone host
-wolfssl           install wolfssl
-libdeflate        install libdeflate
-libgit2           install libgit2
-curl              install curl
+install            install package
+update-repo        update repository
+spec-info          spec information
+settings           general settings
+list-specs         list available specs
+bootstrap          bootstrap
+clone-host         clone host
+get-deps           get dependencies
+get-deps-recursive get dependencies recursive
+curl               install curl
+libdeflate         install libdeflate
+libxdiff           install libxdiff
+libgit2            install libgit2
+wolfssl            install wolfssl

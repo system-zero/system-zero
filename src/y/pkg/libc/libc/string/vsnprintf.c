@@ -76,7 +76,7 @@
 static inline void fmt_output_char (struct fmtType *p, int c) {
   if (p->counter >= p->ps_size) return; // ag: we are safe here as if buf is NULL
                                        // str_format() set ps_size it to SIZE_MAX
-  if (p->ps isnot NULL) *p->ps++ = c;
+  if (p->ps != NULL) *p->ps++ = c;
 
   p->counter++;
 }
@@ -651,11 +651,16 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
             break;
           }
 
-          case 's': /* string of characters */
+          case 's': { /* string of characters */
             WIDTH_AND_PRECISION_ARGS(p);
-            strings (p, va_arg(args, char *));
+            char *s = va_arg(args, char *);
+            if (s == NULL)
+              strings (p, "(nil)");
+            else
+              strings (p, s);
             is_continue = 0;
             break;
+          }
 
           case 'p': { /* pointer */
             void *v = va_arg(args, void *);

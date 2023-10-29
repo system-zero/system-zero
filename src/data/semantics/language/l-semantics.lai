@@ -1287,20 +1287,17 @@ func self_semantics () {
   }
   var nnn = tail_call (3000)
 
-  assert_true ("testing tail calls and self",
-      rtc is 1642909629 and
+  assert_true ("testing self as a recursive tail call",
+      rtc is 7540113804746346429 and
       rtcs is "aaaaaaaaaaaaaaaa" and
       nnn is 0)
+
 
   var definedV
 
   assert_true ("testing is_defined() function",
     is_defined ("definedV") is true and
     is_defined ("definedVV") is false)
-
-  assert_true ("testing self as a recursive tail call",
-      rtc is 7540113804746346429 and
-      rtcs is "aaaaaaaaaaaaaaaa")
 
   func import_test () {
     func path_module () {
@@ -1311,6 +1308,7 @@ func self_semantics () {
       assert_true ("testing the Path module and the basename method",
          Path.basename ("/path/t.ext") is "t.ext" and
          Path.basename (null) is null)
+
       assert_true ("testing the sans_extname method",
          Path.basename_sans_extname ("/path/t.ext") is "t" and
          Path.basename_sans_extname ("/path/t.ta.ext") is "t.ta" and
@@ -1559,6 +1557,32 @@ func self_semantics () {
       var ca = 'α': char ()
 
       assert_true ("testing the char method", cc is "α" and ca is "α")
+
+      var prar = ["e"]
+      prar := prepend ("d")
+      prar := prepend ("c")
+      prar := prepend ("b")
+      prar := prepend ("a")
+      var rs = prar: join (null)
+
+      var prmap = [{e : 5}]
+      prmap := prepend ({d : 4})
+      prmap := prepend ({c : 3})
+      prmap := prepend ({b : 2})
+      prmap := prepend ({a : 1})
+      var m1 = prmap[0].a
+      var m2 = prmap[1].b
+      var m3 = prmap[2].c
+      var m4 = prmap[3].d
+      var m5 = prmap[4].e
+
+      assert_true ("testing the prepend method",
+          rs is "abcde" and
+          m1 is 1 and
+          m2 is 2 and
+          m3 is 3 and
+          m4 is 4 and
+          m5 is 5)
 
     }
 

@@ -160,9 +160,8 @@ typedef struct listType listType;
                                                          \
   } else if (array_->type is STRING_TYPE) {              \
     string **s_ar = Alloc (__len__ * sizeof (string));   \
-    for (integer i = 0; i < __len__; i++) {              \
+    for (integer i = 0; i < __len__; i++)                \
       s_ar[i] = NULL;                                    \
-    }                                                    \
     ary_ = ARRAY(s_ar);                                  \
                                                          \
   } else if (array_->type is MAP_TYPE) {                 \
@@ -907,6 +906,21 @@ public la_T *la_get_root (la_t *);
     _read_only = AS_INT(_v_read_only);                                    \
   }                                                                       \
   _read_only;                                                             \
+})
+
+#define GET_OPT_BACKGROUND() ({                                            \
+  int _background = La.qualifier_exists (this, "background");              \
+  if (_background) {                                                       \
+    VALUE _v_background = La.get.qualifier (this, "background", INT(0));   \
+    if (0 == IS_INT(_v_background)) {                                      \
+      if (IS_NULL(_v_background))                                          \
+        _background = 1;                                                   \
+      else                                                                 \
+        THROW(LA_ERR_TYPE_MISMATCH, "background: awaiting an integer qualifier"); \
+     } else                                                                \
+    _background = AS_INT(_v_background);                                   \
+  }                                                                        \
+  _background;                                                             \
 })
 
 #define IS_TMPNAME(__v__)({                                               \

@@ -1178,7 +1178,7 @@ const ARGPARSE
         for v in this.shared.module.cflags       if v isnot null append " " + v in com
         for v in this.shared.module.linkagainst  if v isnot null append " " + v in com
 
-        if this.rpath then append " -Wl,-rpath=" + this.libdir      in com
+        if this.rpath then append " -Wl,-rpath=" + this.libdir  + ":" + this.toplibdir    in com
 
         append " -shared -fPIC" in com
         append " -lla -lstring -lvmap -lvstring" in com

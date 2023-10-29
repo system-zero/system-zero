@@ -7,7 +7,7 @@ import ("sys")
 
 include ("argparse")
 
-var argparse = New Argparse (31, 0, "Packman option[s] package")
+var argparse = New Argparse (33, 0, "Packman option[s] package")
 argparse.add ("install", 0, "install", "install package", BooleanType, ARG_LITERAL)
 argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, ARG_LITERAL) 
 argparse.add ("spec_info", 0, "spec-info", "spec information", BooleanType, ARG_LITERAL)
@@ -16,6 +16,9 @@ argparse.add ("list_specs", 0, "list-specs", "list available specs", BooleanType
 argparse.add ("bootstrap", 0, "bootstrap", "bootstrap", BooleanType, ARG_LITERAL)
 argparse.add ("force", 'f', "force", "force", BooleanType, 0)
 argparse.add ("force_rec", 'F', "force-recursive", "force recursive", BooleanType, 0)
+argparse.add ("get_deps", 0, "get-deps", "get dependencies", BooleanType, ARG_LITERAL)
+argparse.add ("get_deps_rec", 0, "get-deps-recursive", "get dependencies recursive", BooleanType, ARG_LITERAL)
+argparse.add ("clone_host", 0, "clone-host", "clone host libraries", BooleanType, ARG_LITERAL)
 argparse.add ("path", 0, "path=", "path", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("arch", 0, "arch=", "arch", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("platform", 0, "platform=", "platform", StringType, ARG_VALUE_REQUIRED)
@@ -36,7 +39,6 @@ argparse.add ("make_exec", 0, "make-exec=", "make executable", StringType, ARG_V
 argparse.add ("patch_exec", 0, "patch-exec=", "patch executable", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("fetch_exec", 0, "fetch-exec=", "fetch executable", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("cached_name", 0, "cached-name=", "cached name build", StringType, ARG_VALUE_REQUIRED)
-argparse.add ("clone_host", 0, "clone-host", "clone host libraries", BooleanType, ARG_LITERAL)
 argparse.add ("verbose", 'v', "verbose-all", "print to stdout all the messages", BooleanType, 0) 
 argparse.add ("help", 'h', "help", "show this message", BooleanType, 0)
 
@@ -53,6 +55,8 @@ var force       = argparse.results.force
 var force_rec   = argparse.results.force_rec
 var bootstrap   = argparse.results.bootstrap
 var clone_host  = argparse.results.clone_host
+var get_deps    = argparse.results.get_deps
+var get_deps_rec= argparse.results.get_deps_rec
 
 var package = null
 
@@ -63,19 +67,20 @@ include ("packman")
 if false is bootstrap {
   package = func {
     ifnot argparse.argc {
-      if (settings is false and list_specs is false and clone_host is false) or spec_info is true {
-        println (stderr, "No package has been specified")
-        exit (1)
-      }
+      if (settings is false and list_specs is false and clone_host is false) or spec_info is true or (get_deps + get_deps_rec) then
+        println (stderr, "no package has been specified")
 
       return null
     }
 
     return argparse.argv[0]
   } ()
+
+  if null is package then exit (1)
 }
 
-ifnot install + update_repo + spec_info + settings + list_specs + clone_host {
+ifnot install + update_repo + spec_info + settings + list_specs + clone_host +
+      get_deps + get_deps_rec {
   println ("no action has been specified in the command line" +
     ifnot null is package then " for " + package orelse "")
   # it doesn't really need this, i leave it here for historical reasons
@@ -189,6 +194,21 @@ if spec_info is true {
   var spec = p.new.spec (package)
   if null is spec then exit (1)
   spec.info (p)
+  exit (0)
+}
+
+if get_deps + get_deps_rec {
+  var spec = p.new.spec (package)
+  if null is spec then exit (1)
+  var deps
+  if get_deps_rec then
+    deps = p.get_deps_rec ()
+  orelse
+    deps = p.get_deps ()
+
+  if null isnot deps then
+    for v in deps println (v)
+
   exit (0)
 }
 

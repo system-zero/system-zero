@@ -12,6 +12,8 @@ import ("net")
 #import ("archive")
 
 const string[0] INSTALLED
+const map[0] DEPS
+var DEPS_CUR_IDX = -1
 
 const concat_with = path_concat
 const which = sys_which
@@ -103,14 +105,17 @@ Type PackmanBuild {
   msg
   type
   command
-  opts
+  user_data
 
   private
   init : func (msg, type, com) {
     this.msg = msg
     this.type = type
     this.command = com
-    this.opts = qualifiers ()
+    this.user_data = qualifiers ()
+
+    if this.user_data is null then
+      this.user_data = {}
   }
 }
 
@@ -139,7 +144,7 @@ Type PackmanSpec {
   version
   archive
   sources
-  depends
+  deps
   logfile
   recorded
   specfile
@@ -316,7 +321,7 @@ Type PackmanSpec {
     header        : func (h)     this.header = h
     soname        : func (sn)    this.soname = sn
     soname_version: func (sv)    this.soname_version = sv
-    depends       : func (d)     this.depends = d
+    deps          : func (d)     this.deps = d
     build_dirname : func (dir)   this.build_dirname = dir
     installed_as  : func (n)     this.installed_as = n
     cached_file   : func (f)     this.cached_file = f
@@ -347,7 +352,7 @@ Type PackmanSpec {
     archive       : func return this.archive
     webarchive    : func return this.webarchive
     sources       : func return this.sources
-    depends       : func return this.depends
+    deps          : func return this.deps
     specfile      : func return this.specfile
     logfile       : func return this.logfile
     buildtime     : func return this.buildtime
@@ -405,6 +410,37 @@ func packman_print_argv (argv, is_error, err_msg) {
   ifnot null is err_msg then print ("Error: ${err_msg} ")
   print (msg)
   if is_error then print (RESET)
+}
+
+func packman_print_deps {
+  for v in DEPS {
+    print ("${v.name} : [")
+    var l = v.deps: len ()
+    for i, d in v.deps {
+      if i < l - 1 then
+        print ("${d}, ")
+      orelse
+        println ("${d}]")
+    }
+  }
+}
+
+func packman_is_any_dep (d, n) {
+  for v in DEPS {
+    if v.name is d {
+      println (stderr, "'${n}': circular dependency that might leads to an infinity loop detected, '${d}' was previously evaluated")
+      packman_print_deps ()
+      return notok
+    }
+  }
+
+  return ok
+}
+
+func packman_append_dep (d, n) {
+  return notok if notok is packman_is_any_dep (d, n)
+  append d in DEPS[DEPS_CUR_IDX].deps
+  return ok
 }
 
 Type Packman {
@@ -932,6 +968,87 @@ Type Packman {
     return chdir (curdir)
   }
 
+  get_deps : func
+    return this.spec:get.deps ()
+
+  private
+  __get_deps : func (dep, name) {
+    return notok if notok is packman_is_any_dep (dep, name)
+
+    var p = New Packman ()
+
+    var spec = p.new.spec (dep)
+
+    return notok if null is spec
+
+    return p.__get_deps_rec ()
+  }
+
+  public
+  __get_deps_rec : func {
+    var spec_deps = this.spec:get.deps ()
+
+    return ok if spec_deps is null
+
+    DEPS_CUR_IDX++
+    const name = this.spec:get.name ()
+    append { name : name, deps : string[0] } in DEPS
+
+    for v in spec_deps
+      return notok if notok is packman_append_dep (v, name)
+
+    for v in spec_deps
+      return notok if notok is this.__get_deps (v, name)
+
+    return ok
+  }
+
+  get_deps_rec : func {
+    return null if notok is this.__get_deps_rec ()
+    var string[0] deps
+
+    for v in DEPS
+      for d in v.deps
+        ifnot deps: any (d)
+          deps := prepend (d)
+
+    return deps
+  }
+
+  build_deps : func {
+    var deps = this.spec:get.deps ()
+    ifnot null is deps {
+      var p
+      for v in deps {
+        continue if INSTALLED: any (v)
+        if this.verbose > 0 then
+          println ("Building [${COLOR_DEP}${v}${RESET}] a [${COLOR_PKG}${this.spec.name}${RESET}] dependency")
+
+        var force_rec = this.spec:get.force_rec ()
+        var q = {
+          force : if this.spec:get.force () and force_rec then true orelse false
+          force_rec : force_rec
+        }
+
+        p = New Packman ()
+
+        var dep = p.new.spec (v; q)
+        return notok if null is dep
+
+        var deps = dep.get.deps ()
+        ifnot null is deps {
+          if deps: any (this.spec:get.name ()) {
+            println (stderr, "${COLOR_ERR}circular dependency detected between ${this.spec:get.name ()} and ${v}${RESET}")
+            return notok
+          }
+        }
+
+        return notok if notok is p.build ()
+      }
+    }
+    return ok
+  }
+
   build : func {
     var retval = notok
 
@@ -950,36 +1067,7 @@ Type Packman {
       return notok
     }
 
-    var depends = this.spec:get.depends ()
-    ifnot null is depends {
-      var p
-      for v in depends {
-        continue if INSTALLED: any (v)
-        if this.verbose > 0 then
-          println ("Building [${COLOR_DEP}${v}${RESET}] a [${COLOR_PKG}${this.spec.name}${RESET}] dependency")
-
-        var force_rec = this.spec:get.force_rec ()
-        var q = {
-          force : if this.spec:get.force () and force_rec then true orelse false
-          force_rec : force_rec
-        }
-
-        p = New Packman ()
-
-        var dep = p.new.spec (v; q)
-        return notok if null is dep
-
-        var deps = dep.get.depends ()
-        ifnot null is deps {
-          if deps: any (this.spec:get.name ()) {
-            println (stderr, "${COLOR_ERR}circular dependency detected between ${this.spec:get.name ()} and ${v}${RESET}")
-            return notok
-          }
-        }
-
-        return notok if notok is p.build ()
-      }
-    }
+    return notok if notok is this.build_deps ()
 
     if this.spec:get.sources () isnot null then
       return notok if notok is this.copy_sources ()
@@ -1148,7 +1236,15 @@ Type Packman {
         }
 
         if action.type is PACKMAN_INSTALL_SHARED_LIBRARY {
+          var scwd = null
+          if action.user_data: key_exists ("chdir") {
+            scwd = getcwd ()
+            break 2 if action.user_data.chdir: typeof () isnot StringType
+            break 2 if notok is action.user_data: chdir ()
+          }
+
           var r = this.spec.installed_as: copy (this.lib_dir; verbose : 1 + this.verbose is PACKMAN_VERBOSE_ALL, force : 1)
+          ifnot null is scwd then scwd: chdir ()
           break 2 if r is notok
 
           var f = this.lib_dir: concat_with (this.spec.installed_as)
@@ -1156,7 +1252,7 @@ Type Packman {
             break 2 if notok is f: chmod (0755)
 
           f := path_basename_sans_extname ()
-          var scwd = getcwd ()
+          scwd := if x is null then getcwd ()
           chdir (this.lib_dir)
 
           if f: exists () then remove (f)
@@ -1327,9 +1423,9 @@ func packman_command_if (m, com, cond)
 func packman_copy_sources
   return New PackmanBuild ("[copying sources]", PACKMAN_BUILD_COPY, null; qualifiers ())
 func packman_eval (m, s)
-  return New PackmanBuild (if m is null then "[expression]" orelse m end, PACKMAN_BUILD_EVAL, s; qualifiers ())
+  return New PackmanBuild (m, PACKMAN_BUILD_EVAL, s; qualifiers ())
 func packman_eval_if (m, s, x)
-  return New PackmanBuild (if m is null then "[conditional expression]" orelse m end, PACKMAN_BUILD_EVAL, [s, x]; qualifiers ())
+  return New PackmanBuild (m, PACKMAN_BUILD_EVAL, [s, x]; qualifiers ())
 func packman_mkdir (d)
   return New PackmanBuild (null, PACKMAN_BUILD_MKDIR, d; qualifiers ())
 func packman_install_shared_library ()
@@ -1392,7 +1488,7 @@ public const Packman = {
       if s: haskey ("soname_version")then specnew.set.soname_version (s.soname_version)
       if s: haskey ("header")        then specnew.set.header (s.header)
       if s: haskey ("installed_as")  then specnew.set.installed_as (s.installed_as)
-      if s: haskey ("depends")       then specnew.set.depends (s.depends)
+      if s: haskey ("deps")          then specnew.set.deps (s.deps)
       if s: haskey ("compiled_sources") then specnew.set.compiled_sources (s.compiled_sources)
 
       if s: haskey ("build") {
@@ -1430,7 +1526,6 @@ public const Packman = {
           }
         }
       }
-
       return specnew
     }
   }

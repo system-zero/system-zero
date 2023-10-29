@@ -177,6 +177,56 @@ static VALUE array_join (la_t *this, VALUE v_array, VALUE v_delim) {
   return STRING(str);
 }
 
+static VALUE array_prepend (la_t *this, VALUE v_array, VALUE v_val) {
+  ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
+  ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
+  int type = array->type;
+  switch (type) {
+    case STRING_TYPE:
+      ifnot (IS_STRING(v_val)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a String value");
+      break;
+
+    case MAP_TYPE:
+      ifnot (IS_MAP(v_val)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a Map value");
+      break;
+
+    default:
+      La.set.CFuncError (this, LA_ERR_TYPE_MISMATCH);
+      char buf[512];
+      La.set.curMsg (this, STRING_FMT(buf, 512, "%s, has been implemented for String and Map Types arrays", __func__));
+      return NULL_VALUE;
+  }
+
+  ArrayType *new = ARRAY_INIT_WITH_LEN(type, (int) array->len + 1);
+
+  switch (type) {
+    case STRING_TYPE: {
+      string **ar = (string **) AS_ARRAY(array->value);
+      string **nar = (string **) AS_ARRAY(new->value);
+      string *s = AS_STRING(v_val);
+      nar[0] = String.dup (s);
+      for (size_t i = 0; i < array->len; i++)
+        nar[i + 1] = String.dup (ar[i]);
+
+      break;
+    }
+
+    case MAP_TYPE: {
+      Vmap_t **ar = (Vmap_t **) AS_MAP(array->value);
+      Vmap_t **nar =(Vmap_t **) AS_ARRAY(new->value);
+      VALUE val = La.copy_value (this, v_val);
+      nar[0] = AS_MAP(val);
+      for (size_t i = 0; i < array->len; i++) {
+        val = MAP(ar[i]);
+        nar[i + 1] = AS_MAP(La.copy_value (this, val));
+      }
+      break;
+    }
+  }
+
+  return ARRAY(new);
+}
+
 static VALUE array_any (la_t *this, VALUE v_array, VALUE v_expr) {
   ifnot (IS_ARRAY(v_array)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an array");
   ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
@@ -708,6 +758,7 @@ public int __init_std_module__ (la_t *this) {
     {"array_join",         PTR(array_join), 2},
     {"array_sort",         PTR(array_sort), 1},
     {"array_where",        PTR(array_where), 2 },
+    {"array_prepend",      PTR(array_prepend), 2 },
     {"string_eq",          PTR(string_eq), 2 },
     {"string_eq_n",        PTR(string_eq_n), 3 },
     {"string_cmp",         PTR(string_cmp), 2 },
@@ -758,7 +809,8 @@ public int __init_std_module__ (la_t *this) {
       any   : array_any,
       join  : array_join,
       sort  : array_sort,
-      where : array_where
+      where : array_where,
+      prepend : array_prepend
     };
 
     public var String = {

@@ -1,8 +1,25 @@
+import ("file")
+import ("sys")
+import ("path")
+
+var dname = path_dirname (__file__)
+
+var libdir = sys_get ("SYSDIR"): path_concat ("lib"): path_concat ("z")
+
+if (dname + "/../generate/libc/Generate.libc.lai"): file_copy (libdir; verbose : 2, force : 1) is notok
+  exit (1)
+
+if (dname + "/../../../z/la-lib/packman/packman.lai"): file_copy (libdir; verbose : 2, force : 1) is notok
+  exit (1)
+
+if (dname + "/../../../z/la-lib/argparse/argparse.lai"): file_copy (libdir; verbose : 2, force : 1) is notok
+  exit (1)
+
 include ("./Make")
 
 var argv = ["all", "make"]
 
-for i, v in __argv
+for v in __argv
   if v is "-f" or v is "--force" then append v in argv
 
 exit (if ok is Make (argv) then 0 orelse 1)

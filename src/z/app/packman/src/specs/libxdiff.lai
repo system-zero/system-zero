@@ -1,0 +1,47 @@
+var me = __file__: path_basename_sans_extname ()
+var base = me: advance (3)
+
+var cmakelist =
+`cmake_minimum_required(VERSION 3.5.1)
+project(xdiff VERSION "0" LANGUAGES C)
+set(PKG_NAME xdiff)
+file(GLOB SRC "*.c" "*.h")
+list(SORT SRC)
+add_library(xdiff SHARED ${SRC})
+add_library(xdiff_static STATIC ${SRC})
+set_property(TARGET xdiff PROPERTY SOVERSION 0)
+add_compile_options(-g)
+set_property(TARGET xdiff PROPERTY CMAKE_LIBRARY_OUTPUT_DIRECTORY ".")
+set_property(TARGET xdiff_static PROPERTY OUTPUT_NAME ${PKG_NAME})
+set_property(TARGET xdiff_static PROPERTY ARCHIVE_OUTPUT_DIRECTORY ".")
+set(CMAKE_VERBOSE_MAKEFILE ON)
+`
+
+return Packman.new.spec ({
+  name          : me
+  type          : PACKMAN_LIBRARY_TYPE
+  soname        : base
+  soname_version: "0"
+  sources       : base
+  build_dirname : base
+  header        : base + ".h"
+  version       : "4e970f608ee778180e7f68ae1a1c59099a7c1307"
+  repo          : "https://github.com/libgit2/xdiff"
+  home          : "https://github.com/libgit2/xdiff"
+  descr         : "This is the version of the xdiff file differential library used by git."
+  license       : "GNU Lesser General Public License"
+  compiled_sources : [
+    "xdiffi.c", "xemit.c", "xhistogram.c", "xmerge.c",
+    "xpatience.c", "xprepare.c", "xutils.c"
+  ]
+  build         : [
+    Packman.eval (null, "file_write (`CMakeLists.txt`, action.user_data.cmakelist)"; cmakelist : cmakelist),
+    Packman.mkdir ({dir : "build", switch : true}),
+    Packman.command ("[generating cmakefiles]",
+      ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release"]),
+    Packman.command ("[cmake build]", ["cmake", "--build", "."]),
+    Packman.install_shared_library (),
+    Packman.install_header (),
+    Packman.install_static_library ()
+  ]
+})
