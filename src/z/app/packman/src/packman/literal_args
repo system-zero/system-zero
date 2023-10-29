@@ -7,6 +7,7 @@ bootstrap          bootstrap
 clone-host         clone host
 get-deps           get dependencies
 get-deps-recursive get dependencies recursive
+init-packman       init packman
 curl               install curl
 libdeflate         install libdeflate
 libxdiff           install libxdiff

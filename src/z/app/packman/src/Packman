@@ -7,7 +7,7 @@ import ("sys")
 
 include ("argparse")
 
-var argparse = New Argparse (33, 0, "Packman option[s] package")
+var argparse = New Argparse (34, 0, "Packman option[s] package")
 argparse.add ("install", 0, "install", "install package", BooleanType, ARG_LITERAL)
 argparse.add ("update_repo", 0, "update-repo", "update repository", BooleanType, ARG_LITERAL) 
 argparse.add ("spec_info", 0, "spec-info", "spec information", BooleanType, ARG_LITERAL)
@@ -19,6 +19,7 @@ argparse.add ("force_rec", 'F', "force-recursive", "force recursive", BooleanTyp
 argparse.add ("get_deps", 0, "get-deps", "get dependencies", BooleanType, ARG_LITERAL)
 argparse.add ("get_deps_rec", 0, "get-deps-recursive", "get dependencies recursive", BooleanType, ARG_LITERAL)
 argparse.add ("clone_host", 0, "clone-host", "clone host libraries", BooleanType, ARG_LITERAL)
+argparse.add ("init_packman", 0, "init-packman", "init packman", BooleanType, ARG_LITERAL)
 argparse.add ("path", 0, "path=", "path", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("arch", 0, "arch=", "arch", StringType, ARG_VALUE_REQUIRED)
 argparse.add ("platform", 0, "platform=", "platform", StringType, ARG_VALUE_REQUIRED)
@@ -57,6 +58,7 @@ var bootstrap   = argparse.results.bootstrap
 var clone_host  = argparse.results.clone_host
 var get_deps    = argparse.results.get_deps
 var get_deps_rec= argparse.results.get_deps_rec
+var init_packman= argparse.results.init_packman
 
 var package = null
 
@@ -67,20 +69,22 @@ include ("packman")
 if false is bootstrap {
   package = func {
     ifnot argparse.argc {
-      if (settings is false and list_specs is false and clone_host is false) or spec_info is true or (get_deps + get_deps_rec) then
+      if (settings is false and init_packman is false and list_specs is false and clone_host is false) or spec_info is true or (get_deps + get_deps_rec) {
         println (stderr, "no package has been specified")
-
-      return null
+        return null
+      }
+      return ""
     }
 
     return argparse.argv[0]
   } ()
 
   if null is package then exit (1)
+  ifnot package: len () package = null
 }
 
 ifnot install + update_repo + spec_info + settings + list_specs + clone_host +
-      get_deps + get_deps_rec {
+      get_deps + get_deps_rec + init_packman {
   println ("no action has been specified in the command line" +
     ifnot null is package then " for " + package orelse "")
   # it doesn't really need this, i leave it here for historical reasons
@@ -117,6 +121,8 @@ if argparse.results.verbose     is true    then append PACKMAN_VERBOSE_ALL in q 
 var p = New Packman (;q)
 
 var retval = notok
+
+if init_packman then exit (p.init_packman ())
 
 func clone_host_libs {
   var string[12] libs = [

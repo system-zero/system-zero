@@ -136,6 +136,8 @@ Type PackmanSpec {
   soname
   header
   db_dir
+  req_db_dir
+  required_by
   log_dir
   lib_dir
   md_type
@@ -304,6 +306,7 @@ Type PackmanSpec {
     force         : func (force) this.force = force
     force_rec     : func (fr)    this.force_rec = fr
     db_dir        : func (dir)   this.db_dir = dir
+    req_db_dir   : func (dir)   this.req_db_dir = dir
     log_dir       : func (dir)   this.log_dir = dir
     lib_dir       : func (dir)   this.lib_dir = dir
     md_type       : func (type)  this.md_type = type
@@ -339,6 +342,7 @@ Type PackmanSpec {
     force         : func return this.force
     force_rec     : func return this.force_rec
     db_dir        : func return this.db_dir
+    req_db_dir   : func return this.req_db_dir
     log_dir       : func return this.log_dir
     md            : func return this.md
     md_type       : func return this.md_type
@@ -461,6 +465,7 @@ Type Packman {
   pull_args
   verbose
   db_dir
+  req_db_dir
   log_dir
   spec_dir
   src_dir
@@ -498,6 +503,7 @@ Type Packman {
     this.tmp_dir     = qualifier ("tmp_dir",    "TMPDIR": sys_get ())
     this.home_dir    = qualifier ("home_dir",     "HOME": sys_get ())
     this.db_dir      = qualifier ("db_dir",       this.data_dir: concat_with ("packman/db"))
+    this.req_db_dir  = qualifier ("req_db_dir",   this.data_dir: concat_with ("packman/required_by"))
     this.log_dir     = qualifier ("log_dir",      this.data_dir: concat_with ("packman/logs"))
     this.spec_dir    = qualifier ("spec_dir",     this.data_dir: concat_with ("packman/specs"))
     this.src_dir     = qualifier ("src_dir",      this.data_dir: concat_with ("packman/sources"))
@@ -528,6 +534,9 @@ Type Packman {
 
     ifnot this.db_dir: exists () then
       mkdir (this.db_dir, 0755; err : 1)
+
+    ifnot this.req_db_dir: exists () then
+      mkdir (this.req_db_dir, 0755; err : 1)
 
     ifnot this.log_dir: exists () then
       mkdir (this.log_dir, 0755; err : 1)
@@ -732,6 +741,7 @@ Type Packman {
     pull_args   : func (args)  this.pull_args = args
     verbose     : func (what)  this.verbose = what
     db_dir      : func (dir)   this.db_dir = dir
+    req_db_dir : func (dir)   this.req_db_dir = dir
     log_dir     : func (dir)   this.log_dir = dir
     spec_dir    : func (dir)   this.spec_dir = dir
     pkg_data_dir: func (dir)   this.pkg_data_dir = dir
@@ -745,6 +755,7 @@ Type Packman {
   get : {
     spec        : func return this.spec
     db_dir      : func return this.db_dir
+    req_db_dir : func return this.req_db_dir
     spec_dir    : func return this.spec_dir
     pkg_data_dir: func return this.pkg_data_dir
     build_dir   : func return this.build_dir
@@ -793,6 +804,35 @@ Type Packman {
 
       ifnot db_dir: is_readable () {
         println (stderr, "${COLOR_ERR}ERROR: ${db_dir} isnot readable${RESET}")
+        return null
+      }
+
+      ifnot this.req_db_dir: is_directory () {
+        println (stderr, "${COLOR_ERR}ERROR: ${this.req_db_dir} isnot a directory${RESET}")
+        return null
+      }
+
+      var req_db_dir = this.spec:get.req_db_dir ()
+      if req_db_dir is null {
+        req_db_dir = this.req_db_dir: concat_with (name)
+        this.spec:set.req_db_dir (req_db_dir)
+      }
+
+      ifnot req_db_dir: exists () then
+        return null if req_db_dir: mkdir (0755; err : 1) is notok
+
+      ifnot req_db_dir: is_directory () {
+        println (stderr, "${COLOR_ERR}ERROR: ${req_db_dir} isnot a directory${RESET}")
+        return null
+      }
+
+      ifnot req_db_dir: is_writable () {
+        println (stderr, "${COLOR_ERR}ERROR: ${req_db_dir} isnot writable${RESET}")
+        return null
+      }
+
+      ifnot req_db_dir: is_readable () {
+        println (stderr, "${COLOR_ERR}ERROR: ${req_db_dir} isnot readable${RESET}")
         return null
       }
 
@@ -870,8 +910,10 @@ Type Packman {
             this.spec:set.installed_as (son +
                (sov: if x isnot null then x orelse "unknown_version"))
           } else {
-            println (stderr,  "${COLOR_ERR}ERROR: soname is missing${RESET}")
-            return null
+            ifnot qualifier_exists ("ignore_soname") {
+              println (stderr,  "${COLOR_ERR}ERROR: soname is missing${RESET}")
+              return null
+            }
           }
 
         } else if type is PACKMAN_EXECUTABLE_TYPE {
@@ -900,6 +942,47 @@ Type Packman {
         println (fp, v)
       return ar
     }
+  }
+
+  init_required_by : func {
+    var required_by = {}
+
+    var specs = this.list.specs (;verbose : 0)
+
+    for v in specs {
+      var file = this.req_db_dir: concat_with (v): concat_with ("required_by")
+      if file: exists () then remove (file)
+    }
+
+    for v in specs {
+      var spec = this.new.spec (v; ignore_soname)
+      var deps = spec.get.deps ()
+      continue if null is deps
+      for dep in deps {
+        ifnot required_by: key_exists (dep) then
+          required_by.$(dep) = [v]
+        orelse
+          append v in required_by.$(dep)
+      } 
+    }
+
+    for k, v in required_by {
+      var file = this.req_db_dir: concat_with (k): concat_with ("required_by")
+      var fd = open (file, O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR)
+      return notok if notok is write (fd, "this.required_by = [")
+      var l = v: len ()
+      for i, d in v {
+        if i + 1 is l then
+          return notok if notok is write (fd, "\"" + d + "\"]")
+        orelse
+          return notok if notok is write (fd, "\"" + d + "\",")
+      }
+    }
+    return ok
+  }
+
+  init_packman : func {
+    return this.init_required_by ()
   }
 
   info : func {
