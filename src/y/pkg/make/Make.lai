@@ -1265,18 +1265,26 @@ const ARGPARSE
         append " -o " + this.liboutput + ".o" in com
 
         if this.dump_commands {
-          println ("# making the static library")
+          println ("# making the object")
           println (com)
-          return ok
+          r = ok
+        } else {
+
+          if this.verbose then println (com) orelse println ("  making the static library")
+
+          r = this.sh: exec (com)
         }
-
-        if this.verbose then println (com) orelse println ("  making the static library")
-
-        r = this.sh: exec (com)
 
         if ok is r {
           com = "ar rs " + output
           append " " + this.liboutput + ".o" in com
+
+          if this.dump_commands {
+            println ("# making the static library")
+            println (com)
+            return ok
+          }
+
           if this.verbose then println (com)
           r = this.sh: exec (com)
           remove (this.liboutput + ".o")

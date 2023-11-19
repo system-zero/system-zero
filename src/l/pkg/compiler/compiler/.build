@@ -1,0 +1,9 @@
+#@
+  depends_on ("compiler/lex", SHARED_LIBRARY)
+#
+
+var m = New Make (__file__, SHARED_LIBRARY|SHARED_EXECUTABLE)
+
+m.set.library.to_linkagainst ("lex"; append_version)
+#m.set.executable.to_linkagainst (["compiler"]; append_version)
+return m

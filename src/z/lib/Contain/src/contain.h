@@ -7,8 +7,9 @@ typedef struct contain_set_self {
   int
     (*uidmap) (contain_t *, char *),
     (*gidmap) (contain_t *, char *),
-    (*rootDir) (contain_t *, char *),
     (*argv) (contain_t *, char **);
+
+  char *(*rootDir) (contain_t *, char *);
 
 } contain_set_self;
 

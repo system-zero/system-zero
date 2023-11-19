@@ -475,8 +475,10 @@ static int sh_builtins (shproc_t *sh, proc_t *proc) {
 
     char *curdir = Dir.current ();
     if (NULL is curdir) {
-      fprintf (stderr, "couldn't get current working directory\n");
-      return 1;
+      fprintf (stderr, "Warning: couldn't get current working directory\n");
+      /* possible current directory has been removed, so let it continue
+         otherwise we've been trapped in eternity */
+      // return 1;
     } else {
       if (Cstring.eq (curdir, sp)) {
         free (curdir);

@@ -362,6 +362,8 @@ Z_SYSINCDIR  = $(SYSINCDIR)/$(ZNAME)
     BASE_FLAGS  += -Wl,-rpath=$(Z_SYSLIBDIR)
   endif
 
+  BUILD_ZSU := 0
+
   ZARGS  = NS=$(ZNAME)
   MARGS :=
   MARGS  = API=$(API) REV=$(REV) VERSION=$(VERSION) DEBUG=$(DEBUG)
@@ -998,6 +1000,15 @@ clean-zs-shared:
 clean-zs-static:
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
+zsu-shared-if:
+  ifeq ($(BUILD_ZSU), 1)
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-shared
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) install-shared
+	@cd $(Z_SU_SRCDIR) && $(RM) zsu-shared
+  else
+	@printf "zsu-shared will not be installed\n"
+  endif
+
 zsu-shared: Env cenv libcstring-shared libstring-shared libproc-shared\
             liberror-shared libauth-shared
 	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-shared
@@ -1015,8 +1026,27 @@ zsu-static: Env cenv libcstring-static libstring-static libproc-static\
 	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) install-static
 	@cd $(Z_SU_SRCDIR) && $(RM) zsu-static
 
+zsu-static-if:
+  ifeq ($(BUILD_ZSU), 1)
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) zsu-static
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) install-static
+	@cd $(Z_SU_SRCDIR) && $(RM) zsu-static
+  else
+	@printf "zsu-static will not be installed\n"
+  endif
+
+clean-zsu-shared-if:
+  ifeq ($(BUILD_ZSU), 1)
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+  endif
+
 clean-zsu-shared:
 	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-shared
+
+clean-zsu-static-if:
+  ifeq ($(BUILD_ZSU), 1)
+	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
+  endif
 
 clean-zsu-static:
 	@cd $(Z_SU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
@@ -1346,10 +1376,11 @@ zero-shared:  Env cenv list\
               liburl-shared libdl-shared\
               libsun-shared libmoon-shared\
               libman-shared libnet-shared\
-              zs-shared zsu-shared\
+              zs-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
-              contain-shared time-shared
+              contain-shared time-shared\
+              zsu-shared-if
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv list\
@@ -1367,7 +1398,8 @@ zero-static:  Env cenv list\
               zs-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
-              contain-static time-static
+              contain-static time-static\
+              zsu-static-if
 
 clean-shared: zero-clean-shared
 zero-clean-shared:\
@@ -1394,12 +1426,13 @@ zero-clean-shared:\
               clean-liburl-shared clean-libdl-shared\
               clean-libmoon-shared clean-libsun-shared\
               clean-libman-shared clean-libnet-shared\
-              clean-zs-shared clean-zsu-shared\
+              clean-zs-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared clean-v-shared clean-e-shared\
               clean-path-shared clean-env-shared clean-contain-shared\
-              clean-time-shared
+              clean-time-shared\
+              clean-zsu-shared-if
 
 clean-static: zero-clean-static
 zero-clean-static:\
@@ -1426,12 +1459,13 @@ zero-clean-static:\
               clean-liburl-static clean-libdl-static\
               clean-libmoon-static clean-libsun-static\
               clean-libman-static clean-libnet-static\
-              clean-zs-static clean-zsu-static\
+              clean-zs-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
               clean-sys-static clean-v-static clean-e-static\
               clean-path-static clean-env-static clean-contain-static\
-              clean-time-static
+              clean-time-static\
+              clean-zsu-static-if
 
 all: shared static
 

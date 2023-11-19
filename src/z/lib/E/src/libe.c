@@ -745,8 +745,7 @@ const char c_balanced_pairs[] = "[](){}";
 const char *lai_extensions[] = {".lai", ".build", NULL};
 const char *lai_shebangs[] = {
   "#!/bin/env La", "#!/bin/env La-shared",
-  "#!/bin/env La-static", "#!La-static",
-  "#!/bin/env L", "#!L-static", NULL
+  "#!/bin/env-static La-static", "#!La-static", NULL
 };
 
 const char lai_operators[] = "+-%*^><=/|& .(){}![]:$";

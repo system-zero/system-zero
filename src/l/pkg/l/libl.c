@@ -2061,7 +2061,7 @@ static int l_parse_append (l_t *this, VALUE *vp) {
       this->curState |= MALLOCED_STRING_STATE;
       VALUE vkey;
       NEXT_TOKEN();
-      err = la_parse_expr (this, &vkey);
+      err = l_parse_expr (this, &vkey);
       this->curState &= ~MALLOCED_STRING_STATE;
       THROW_SYNTAX_ERR_IF(vkey.type isnot STRING_TYPE, "error while appending to map, awaiting a string as a key");
 
@@ -11948,7 +11948,7 @@ static int l_std_def (l_t *this, l_opts opts) {
   object *o = l_object_new (NULL, NULL, "FilePtrType", v);
   v = FILEPTR(o);
   v.refcount = UNDELETABLE;
-  int err = l_define (this, "sys_stdout", FILEPTR_TYPE, v);
+  int err = l_define (this, "stdout", FILEPTR_TYPE, v);
   if (err) return L_NOTOK;
 
   v = OBJECT(opts.err_fp);

@@ -152,7 +152,8 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
           retval = unlinkat (dirfd, dest_file, 0);
           ifnot (retval)
             goto retry;
-        }
+        } else
+          fprintf (err_fp, "%s: not a symlink, cannot remove it\n", dest_file);
       }
     }
 

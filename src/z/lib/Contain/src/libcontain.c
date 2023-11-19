@@ -44,6 +44,7 @@
 #define REQUIRE_OS_TYPE       DECLARE
 #define REQUIRE_DIR_TYPE      DECLARE
 #define REQUIRE_FILE_TYPE     DECLARE
+#define REQUIRE_PATH_TYPE     DECLARE
 #define REQUIRE_ERROR_TYPE    DECLARE
 #define REQUIRE_TERM_TYPE     DECLARE
 #define REQUIRE_CSTRING_TYPE  DECLARE
@@ -103,7 +104,7 @@ struct contain_t {
 #define GID 0
 #define UID 1
 #define INVALID ((unsigned) -1)
-#define SHELL "/bin/zs"
+#define SHELL "/bin/zs-static"
 
 #define GETID(type) ((unsigned) ((type) == GID ? cnt->gid : cnt->uid))
 #define IDFILE(type) ((type) == GID ? "gid_map" : "uid_map")
@@ -673,6 +674,7 @@ static int createroot (contain_t *cnt) {
   cnt->tmpDir = tmpdir (cnt);
 
   int retval = mount (cnt->rootDir, cnt->tmpDir, NULL, MS_BIND | MS_REC, NULL);
+
   RETURN_NOTOK_IF(cnt, retval < 0, errno, "Failed to bind new root filesystem", "");
 
   retval = chdir (cnt->tmpDir);
@@ -786,10 +788,10 @@ static int mountproc (contain_t *cnt) {
 
   mode_t mask = umask (0);
 
-  if (File.exists ("/proc")) {
-    RETURN_NOTOK_IF(cnt, Dir.is_directory ("/proc") == 0, 0, "/proc isnot a directory", "");
+  if (File.exists ("proc")) {
+    RETURN_NOTOK_IF(cnt, Dir.is_directory ("proc") == 0, 0, "/proc isnot a directory", "");
   } else {
-    retval = mkdir ("/proc", 0755);
+    retval = mkdir ("proc", 0755);
     RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to create /proc directory", "");
   }
 
@@ -805,10 +807,10 @@ static int mountsys (contain_t *cnt) {
   int retval;
   mode_t mask = umask (0);
 
-  if (File.exists ("/sys")) {
-    RETURN_NOTOK_IF(cnt, Dir.is_directory ("/sys") == 0, 0, "/sys isnot a directory", "");
+  if (File.exists ("sys")) {
+    RETURN_NOTOK_IF(cnt, Dir.is_directory ("sys") == 0, 0, "/sys isnot a directory", "");
   } else {
-    retval = mkdir ("/sys", 0755);
+    retval = mkdir ("sys", 0755);
     RETURN_NOTOK_IF(cnt, retval isnot 0, errno, "Failed to create /sys directory", "");
   }
 
@@ -910,18 +912,27 @@ static contain_t *contain_new (void) {
   return cnt;
 }
 
-static int contain_set_rootDir (contain_t *cnt, char *dir) {
-  if (cnt is NULL) return NOTOK;
-  if (dir is NULL) return NOTOK;
-  size_t len = bytelen (dir);
-  ifnot (len) return NOTOK;
+static char *contain_set_rootDir (contain_t *cnt, char *dir) {
+  if (cnt is NULL) return NULL;
+  if (dir is NULL) return NULL;
+
+  char rpath[MAXLEN_PATH];
+
+  char *p = Path.real (dir, rpath);
+  if (p is NULL) {
+    fprintf (stderr, "err %s\n", Error.errno_string (errno));
+    return NULL;
+  }
+
+  size_t len = bytelen (p);
+  ifnot (len) return NULL;
 
   if (cnt->rootDir isnot NULL)
     free (cnt->rootDir);
 
   cnt->rootDir = Alloc (len + 1);
-  Cstring.cp (cnt->rootDir, len + 1, dir, len);
-  return OK;
+  Cstring.cp (cnt->rootDir, len + 1, p, len);
+  return cnt->rootDir;
 }
 
 static int contain_set_argv (contain_t *cnt, char **argv) {
@@ -1002,8 +1013,9 @@ static int contain_run (contain_t *cnt) {
     RETURN_NOTOK_IF(cnt, 1, 0, "Failed to unshare mount namespace", "");
 
 #ifdef CLONE_NEWTIME
+// this fails with kernel < 6 and recent glibc
   if (unshare (CLONE_NEWTIME) < 0)
-    RETURN_NOTOK_IF(cnt, 1, 0, "Failed to unshare time namespace", "");
+    RETURN_NOTOK_IF(cnt, 1, 0, "Failed to unshare time namespace: %s", Error.errno_string (errno));
 #endif
 
   if (unshare (CLONE_NEWUTS) < 0)
@@ -1062,12 +1074,14 @@ static int contain_run (contain_t *cnt) {
       putenv (STRING_FMT(buf, MAXLEN_BUF, "USERNAME=%s", cnt->user));
       putenv (STRING_FMT(buf, MAXLEN_BUF, "GROUPNAME=%s", cnt->group));
 
-      if (cnt->argv)
+      if (cnt->argv) {
         execv (cnt->argv[0], cnt->argv);
-      else
+        fprintf (stderr, "execv(): %s %s\n", cnt->argv[0], Error.errno_string (errno));
+      } else {
         execl (SHELL, SHELL, NULL);
+        fprintf (stderr, "execl(): %s %s\n", SHELL, Error.errno_string (errno));
+      }
 
-      fprintf (stderr, "execv(): %s\n", Error.errno_string (errno));
       exit (1);
   }
 
@@ -1077,6 +1091,7 @@ static int contain_run (contain_t *cnt) {
 public contain_T __init_contain__ (void) {
   __INIT__(os);
   __INIT__(dir);
+  __INIT__(path);
   __INIT__(file);
   __INIT__(error);
   __INIT__(term);

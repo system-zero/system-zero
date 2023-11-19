@@ -86,7 +86,7 @@ endif
 LIBFLAGS := -DSRCDIR='"$(SRCDIR)"' -DDATADIR='"$(DATADIR)"'
 LIBFLAGS += -I$(SYSINCDIR) -L$(SYSLIBDIR) $(FLAGS)
 LIBFLAGS += -lerror-$(VERSION) -lcstring-$(VERSION)
-LIBFLAGS += -lfile-$(VERSION) -ldir-$(VERSION)
+LIBFLAGS += -lfile-$(VERSION) -ldir-$(VERSION) -lpath-$(VERSION)
 
 all: shared static
 
