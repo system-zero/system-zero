@@ -306,7 +306,7 @@ Type PackmanSpec {
     force         : func (force) this.force = force
     force_rec     : func (fr)    this.force_rec = fr
     db_dir        : func (dir)   this.db_dir = dir
-    req_db_dir   : func (dir)   this.req_db_dir = dir
+    req_db_dir    : func (dir)   this.req_db_dir = dir
     log_dir       : func (dir)   this.log_dir = dir
     lib_dir       : func (dir)   this.lib_dir = dir
     md_type       : func (type)  this.md_type = type
@@ -342,7 +342,7 @@ Type PackmanSpec {
     force         : func return this.force
     force_rec     : func return this.force_rec
     db_dir        : func return this.db_dir
-    req_db_dir   : func return this.req_db_dir
+    req_db_dir    : func return this.req_db_dir
     log_dir       : func return this.log_dir
     md            : func return this.md
     md_type       : func return this.md_type

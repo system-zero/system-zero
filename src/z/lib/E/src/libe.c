@@ -802,7 +802,7 @@ syn_t HL_DB[] = {
 
 #define IsSeparator(c)                          \
   ((c) is ' ' or (c) is '\t' or (c) is '\0' or  \
-   Cstring.byte.in_str (",.()+-/=*~%<>[]:;}@", (c)) isnot NULL)
+   Cstring.byte.in_str (",()+/=*~%<>[]:;}@", (c)) isnot NULL)
 
 #define IGNORE(c) ((c) > '~' || (c) <= ' ')
 
@@ -990,7 +990,22 @@ parse_char:
 
     if ($my(syn)->hl_numbers)
       if (IS_DIGIT (c)) {
+        char prevc = line[idx - 1];
+        if (('A' <= prevc and prevc <= 'Z') or
+            ('a' <= prevc and prevc <= 'z')) {
+          String.append_byte ($my(shared_str),  c);
+
+          while (++idx < len) {
+            c = line[idx];
+            if (IsSeparator (c))
+              goto parse_char;
+            String.append_byte ($my(shared_str),  c);
+           }
+           goto theend;
+        }
+
         ADD_COLORED_CHAR (c, HL_NUMBER);
+
         while (++idx < len) {
           c = line[idx];
           if (0 is IS_DIGIT (c) and 0 is IsAlsoANumber (c))

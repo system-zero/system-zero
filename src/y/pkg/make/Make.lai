@@ -32,7 +32,7 @@ include ("Generate.libc")
           public const func Make (argv) {
 
 func argparseNew () {
-  var argparse = New Argparse (33, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (34, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -51,6 +51,7 @@ func argparseNew () {
   argparse.add ("version", 0, "version=", "set version", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("march", 0, "march=", "set march (default native)", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("optimization", 0, "optimization=", "set optimization (default -O2)", StringType, ARG_VALUE_REQUIRED)
+  argparse.add ("flags", 0, "flag=", "add definition", ListType, ARG_VALUE_REQUIRED|ARG_VALUE_APPEND)
   argparse.add ("cc", 0, "cc=", "set cc (default gcc)", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("std", 0, "std=", "set C standard (default c11)", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("bindir", 0, "bindir=", "set bin directory", StringType, ARG_VALUE_REQUIRED)
@@ -457,6 +458,10 @@ const ARGPARSE
     this.version      = if ARGPARSE.results.version      isnot null then ARGPARSE.results.version orelse VERSION
     this.debug        = if ARGPARSE.results.no_debug     then NODEBUG orelse DEBUG
     this.rpath        = if ARGPARSE.results.no_rpath     then NORPATH orelse RPATH
+
+    if ARGPARSE.results.flags isnot null then
+      for v in ARGPARSE.results.flags
+        append "-D" + v in this.cflags
 
     if this.script.executable.install is false and ARGPARSE.results.all
       this.script.executable.install = true
@@ -1045,7 +1050,7 @@ const ARGPARSE
 
         r = this.sh: exec (com)
 
-        var to = this.libdir: concat_with ("lib" + this.libname + ".so")
+        var to = this.libdir: concat_with (this.liboutput: delete_substr ("-" + this.version) + ".so")
 
         if ok is r then
           symlink (this.liboutput + ".so", to; verbose : this.verbose + 1, force : 1)

@@ -63,13 +63,13 @@ void map_release (Map_Type **m) {
 }
 
 Map_Type *map_new (uint32_t num_slots) {
-   Map_Type *new = Alloc (sizeof (Map_Type));
-   size_t size = sizeof (map_type) * num_slots;
-   new->slots = Alloc (size);
-   mem_set (new->slots, 0, size);
-   new->num_keys = 0;
-   new->num_slots = num_slots;
-   return new;
+  Map_Type *new = Alloc (sizeof (Map_Type));
+  size_t size = sizeof (map_type) * num_slots;
+  new->slots = Alloc (size);
+  mem_set (new->slots, 0, size);
+  new->num_keys = 0;
+  new->num_slots = num_slots;
+  return new;
 }
 
 static map_type *__map_get (Map_Type *m, const char *key, uint32_t hash) {

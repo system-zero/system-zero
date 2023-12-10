@@ -4,6 +4,7 @@
 --version=
 --march=
 --optimization=
+--flag=
 --cc=
 --std=
 --bindir=

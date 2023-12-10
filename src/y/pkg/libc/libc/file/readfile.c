@@ -4,6 +4,10 @@
 // requires: unistd/close.c
 // requires: file/readfile.h
 
+#ifndef RF_CHUNKSZ
+#define RF_CHUNKSZ 256
+#endif
+
 // we don't initialize a thing
 int readfile_u (readfile_t *my) {
   if (NULL == my->file) {
@@ -14,8 +18,6 @@ int readfile_u (readfile_t *my) {
   int fd = sys_open (my->file, O_RDONLY);
   if (fd == -1)
     return -1;
-
-  #define RF_CHUNKSZ 256
 
   char *buf = my->bytes;
   int n = 0;
@@ -35,7 +37,8 @@ int readfile_u (readfile_t *my) {
   }
 
   *buf = '\0';
-#undef RF_CHUNKSZ
+
+  sys_close (fd);
 
   return 0;
 }
