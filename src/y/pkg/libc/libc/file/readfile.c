@@ -8,7 +8,7 @@
 #define RF_CHUNKSZ 256
 #endif
 
-// we don't initialize a thing
+// unsafe as we don't initialize a thing
 int readfile_u (readfile_t *my) {
   if (NULL == my->file) {
     sys_errno = EINVAL;

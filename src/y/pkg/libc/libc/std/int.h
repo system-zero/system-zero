@@ -137,13 +137,13 @@ typedef unsigned long long int uint_fast64_t;
 
 #if __WORDSIZE == 64
 
-typedef long long int          int64_t;
-typedef unsigned long long int uint64_t;
+typedef signed long int   int64_t;
+typedef unsigned long int uint64_t;
 
 #else
 
-typedef long int               int64_t;
-typedef unsigned long int      uint64_t;
+typedef signed long long int int64_t;
+typedef unsigned long long int uint64_t;
 
 #endif
 

@@ -23,6 +23,7 @@ typedef struct netOptions {
   int outputToCallback;
   int verbose;
   int debug;
+  void *userData;
 } netOptions;
 
 #define NetOptions(...) (netOptions) { \
@@ -33,17 +34,20 @@ typedef struct netOptions {
   .outputToCallback = 0,               \
   .verbose = 0,                        \
   .debug = 0,                          \
+  .userData = NULL,                    \
   __VA_ARGS__                          \
 }
 
 typedef struct net_set_self {
   void (*outputCallback) (net_t *, NetOutputCallback);
+  void (*userData) (net_t *, void *);
 } net_set_self;
 
 typedef struct net_get_self {
   int (*statusCode) (net_t *);
   const char *(*statusCodeAsString) (net_t *);
   char *(*errorMsg) (net_t *);
+  void *(*userData) (net_t *);
 } net_get_self;
 
 typedef struct net_self {

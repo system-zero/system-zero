@@ -1,3 +1,6 @@
+This is a programming language, that was written (foremost) to be the scripting
+language for this system (that can evaluate and run code at the runtime).
+
 A free form nice syntax with the flexibility of common established semantics by now.
 [a bad implementation with a bit of clever in places code - and an ugly first draft
 of this current document]
@@ -11,14 +14,18 @@ develpment and decisions]
 [Also note that the implementation isnot the safest ever, as it is a hand written language
 from someone, that never ever has done something like this before]
 
+Note that the following it is the first implementation and the gaining conscience
+should be applied in a next iteration. My opinion it is that this went a bit way
+too far at once.
+
 Basic DataTypes:
 
   - NullType      : (void *) 0 (declared as `null`)
   - NumberType    : double
   - IntegerType   : integer
-  - StringType    : string type (container that holds C strings)
+  - StringType    : string type (container that holds C strings and understands utf8)
   - ArrayType     : array
-  - MapType       : map
+  - MapType       : map (that resembles json)
   - ListType      : list (can hold any type, accessible as an array, implemented as a linked list)
   - FilePtrType   : FILE wrapper type
   - FdType        : FILDES wrapper type
@@ -27,7 +34,7 @@ Basic DataTypes:
   - CFunctionType : C functions
   - ObjectType    : C objects
 
-keywords and Operators (reserved keywords):  
+keywords and Operators (reserved keywords):
 ```sh
 #  var         -  variable definition
 #  const       -  constant definition

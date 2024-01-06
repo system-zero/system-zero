@@ -1,0 +1,5 @@
+#@
+  depends_on ("libc",     ALL)
+#
+
+return New Make (__file__, LIBRARY)

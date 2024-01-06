@@ -1,0 +1,10 @@
+#@
+  depends_on ("Error",    LIBRARY)
+  depends_on ("Cstring",  LIBRARY)
+  depends_on ("Url",      LIBRARY)
+#
+
+var m = New Make (__file__, LIBRARY; z_library)
+m.set.library.to_linkagainst (["error", "cstring", "url"]; append_version)
+m.set.library.to_linkagainst (["ssl", "crypto", "resolv", "pthread"])
+return m

@@ -137,8 +137,8 @@
 typedef struct memChunkT {
   size_t size;
   int is_available;
-  struct memChunkT* next;
-  struct memChunkT* prev;
+  struct memChunkT *next;
+  struct memChunkT *prev;
   char end[1];
 } memChunkT;
 
@@ -146,9 +146,7 @@ memChunkT *memHead = NULL;
 memChunkT *lastChunk = NULL;
 void *endBreakPoint = NULL;
 
-/* not ready
-   pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-*/
+ // pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 static intptr_t mem_arena_size (void *beg, void *end) {
   return (char *) end - (char *) beg;
@@ -160,21 +158,21 @@ static size_t memnumSize = 0;
 
 int mem_validate (void);
 int mem_validate (void) {
-  memChunkT* ptr = memHead;
-  memChunkT* prev = ptr;
+  memChunkT *ptr = memHead;
+  memChunkT *prev = ptr;
 
   while (ptr != NULL) {
     if (ptr->next != NULL) {
       if (ptr->next <= ptr) {
-        sys_fprintf (sys_stderr, "ERROR ptr %p, next %p\n", ptr, ptr->next);
+        tostderr ("ERROR ptr %p, next %p\n", ptr, ptr->next);
         return -1;
       }
     }
 
     ptr = ptr->next;
     if (ptr != NULL && (char *) prev + prev->size != (char *) ptr) {
-        sys_fprintf (sys_stderr, "ERROR prev + size is not ptr %p, next %p prev %p diff %d prev-size %u\n",
-         prev + prev->size, ptr, prev, (char *) ptr - (char *) prev, prev->size);
+        tostderr ("ERROR prev + size is not ptr %p, next %p prev %p diff %d prev-size %u\n",
+          prev + prev->size, ptr, prev, (char *) ptr - (char *) prev, prev->size);
         return -1;
      }
 
@@ -184,8 +182,8 @@ int mem_validate (void) {
 
   if (prev)
    if ((char *) prev + prev->size != (char *) endBreakPoint) {
-    sys_fprintf (sys_stderr, "ERROR last one isnot endBreakpoin %p, size %p, endbrkp %p diff %u\n",
-    prev, prev->size, endBreakPoint, (char *) endBreakPoint- (char *) prev);
+    tostderr ("ERROR last one isnot endBreakpoin %p, size %p, endbrkp %p diff %u\n",
+      prev, prev->size, endBreakPoint, (char *) endBreakPoint- (char *) prev);
     return -1;
    }
 
@@ -194,12 +192,11 @@ int mem_validate (void) {
 #endif
 
 static memChunkT *findChunk (memChunkT *chunkptr, uint size, memChunkT **lastchunk) {
-  memChunkT* ptr = chunkptr;
+  memChunkT *ptr = chunkptr;
 
   while (ptr != NULL) {
-    if (ptr->is_available && ptr->size >= size){
+    if (ptr->is_available && ptr->size >= size)
       return ptr;
-    }
 
     *lastchunk = ptr;
     ptr = ptr->next;
@@ -260,7 +257,7 @@ static void mergeChunks (memChunkT *freed) {
 }
 
 static memChunkT *increaseAllocation (memChunkT *lastchunk, size_t size) {
-  memChunkT* curbreak = endBreakPoint;
+  memChunkT *curbreak = endBreakPoint;
 
   if (sys_sbrk (size) == (void *) -1) {
     sys_errno = ENOMEM;
@@ -272,11 +269,12 @@ static memChunkT *increaseAllocation (memChunkT *lastchunk, size_t size) {
   curbreak->next = NULL;
   curbreak->prev = lastchunk;
 
-  if (lastchunk != NULL)
-  lastchunk->next = curbreak;
+  /* both statements cannot happen with current code */
+  //if (lastchunk != NULL)
+    lastchunk->next = curbreak;
+  //if (memHead == NULL) memHead = curbreak;
 
-  if (memHead == NULL)
-    memHead = curbreak;
+  endBreakPoint = sys_sbrk (0);
 
 #ifdef MEM_DEBUG
   memnumBrks++;
@@ -284,8 +282,6 @@ static memChunkT *increaseAllocation (memChunkT *lastchunk, size_t size) {
   if (-1 == mem_validate ())
     exit (1);
 #endif
-
-  endBreakPoint = sys_sbrk (0);
 
   return curbreak;
 }
@@ -303,8 +299,8 @@ int mem_deinit (void) {
   memHead = NULL;
 
 #ifdef MEM_DEBUG
-  sys_fprintf (sys_stdout, "Num of brk() system calls %d\n", memnumBrks);
-  sys_fprintf (sys_stdout, "Total allocated size %u\n", memnumSize);
+  tostdout ("Num of brk() system calls %d\n", memnumBrks);
+  tostdout ("Total allocated size %u\n", memnumSize);
 #endif
 
   return 0;
@@ -333,12 +329,12 @@ int mem_init (size_t sz) {
   memHead->next = NULL;
   memHead->prev = NULL;
 
+  endBreakPoint = sys_sbrk (0);
+
 #ifdef MEM_DEBUG
   memnumBrks++;
   memnumSize += sz;
 #endif
-
-  endBreakPoint = sys_sbrk (0);
 
   // pthread_mutex_unlock (&lock);
 
@@ -368,7 +364,7 @@ void *sys_malloc (size_t size) {
       exit (1);
     #endif
 
-    return NULL;
+      return NULL;
   }
 
   // pthread_mutex_lock (&lock);
@@ -410,7 +406,7 @@ void *sys_realloc (void *ptr, size_t size) {
 
   if (ptr != NULL) {
     old_p = (char *) ptr;
-    oldchunk = (memChunkT *) (old_p - STRUCT_OFFSET);
+    oldchunk = (memChunkT *) ((char *) old_p - STRUCT_OFFSET);
     osz = oldchunk->size - STRUCT_SIZE;
   }
 
@@ -424,8 +420,9 @@ void *sys_realloc (void *ptr, size_t size) {
   }
 
   // pthread_mutex_lock (&lock);
+
   char *new_p = (char *) p;
-  memChunkT *newchunk = (memChunkT *) (new_p - STRUCT_OFFSET);
+  memChunkT *newchunk = (memChunkT *) ((char *) new_p - STRUCT_OFFSET);
   size_t nsz = newchunk->size - STRUCT_SIZE;
 
   size_t i = 0;
@@ -442,21 +439,21 @@ void *sys_realloc (void *ptr, size_t size) {
   return ptr;
 }
 
-
 uint sys_free (void *ptr) {
   if (ptr == NULL) {
   #ifndef MEM_DO_NOT_EXIT_ON_NULL_POINTER
-    sys_fprintf (sys_stderr, "%s: argument is a NULL pointer\n", __func__);
+    tostderr ("%s: argument is a NULL pointer\n", __func__);
     exit (1);
   #endif
     return 1;
   }
+
   // pthread_mutex_lock (&lock);
   memChunkT *chunk = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
 
   if (chunk->is_available) {
   #ifndef MEM_DO_NOT_EXIT_ON_DOUBLE_FREE_POINTER
-    sys_fprintf (sys_stderr, "Double free pointer %p\n", chunk);
+    tostderr ("Double free pointer %p\n", chunk);
     exit (1);
   #endif
   }

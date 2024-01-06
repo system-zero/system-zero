@@ -19,7 +19,6 @@
 #define NET_PROTO_HTTP_TYPE  1
 #define NET_PROTO_HTTPS_TYPE 2
 
-/* tested with libressl, it owes to work with openssl too */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
@@ -47,6 +46,8 @@ struct net_t {
 
   NetOutputCallback outputCallback;
   int outputToCallback;
+
+  void *userData;
 
   url_t *parsedURL;
 
@@ -526,10 +527,11 @@ static int net_fetch_from_http (net_t *this) {
 
     ifnot (nread) break;
 
-    if (this->verbose is NET_VERBOSE_LEVEL_ONE) {
+    if (this->verbose is NET_VERBOSE_LEVEL_ONE or this->outputToCallback) {
       ifnot (NULL is this->outputCallback) {
         if (NOTOK is this->outputCallback (this, fp, recvb, nread, num_bytes, contentLength)) {
-          fclose (fp);
+          ifnot (NULL is fp)
+            fclose (fp);
           retval = NOTOK;
           goto theend;
         }
@@ -623,10 +625,11 @@ static int net_fetch_from_https (net_t *this) {
 
     ifnot (nread) break;
 
-    if (this->verbose is NET_VERBOSE_LEVEL_ONE) {
+    if (this->verbose is NET_VERBOSE_LEVEL_ONE or this->outputToCallback) {
       ifnot (NULL is this->outputCallback) {
         if (NOTOK is this->outputCallback (this, fp, recvb, nread, num_bytes, contentLength)) {
-           fclose (fp);
+           ifnot (NULL is fp)
+             fclose (fp);
            retval = NOTOK;
            goto theend;
         }
@@ -747,6 +750,7 @@ static net_t *net_new (netOptions opts) {
   this->outputToCallback = opts.outputToCallback;
   this->verbose = opts.verbose;
   this->debug = opts.debug;
+  this->userData = opts.userData;
   this->statusCode = HttpStatus_OK;
   this->contentLength = 0;
   this->socketFD = -1;
@@ -758,6 +762,10 @@ static net_t *net_new (netOptions opts) {
 
 static char *net_get_errorMsg (net_t *this) {
   return this->errorMsg;
+}
+
+static void *net_get_userData (net_t *this) {
+  return this->userData;
 }
 
 static int net_get_statusCode (net_t *this) {
@@ -772,6 +780,10 @@ static void net_set_outputCallback (net_t *this, NetOutputCallback cb) {
   this->outputCallback = cb;
 }
 
+static void net_set_userData (net_t *this, void *user_data) {
+  this->userData = user_data;
+}
+
 public net_T __init_net__ (void) {
   __INIT__ (cstring);
   __INIT__ (error);
@@ -783,11 +795,13 @@ public net_T __init_net__ (void) {
       .release = net_release,
       .get = (net_get_self) {
         .errorMsg = net_get_errorMsg,
+        .userData = net_get_userData,
         .statusCode = net_get_statusCode,
         .statusCodeAsString = net_get_statusCodeAsString
       },
       .set = (net_set_self) {
-        .outputCallback = net_set_outputCallback
+        .outputCallback = net_set_outputCallback,
+        .userData = net_set_userData
       }
     }
   };

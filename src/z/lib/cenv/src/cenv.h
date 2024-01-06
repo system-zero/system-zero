@@ -537,6 +537,15 @@ typedef ptrdiff_t idx_t;
   #ifndef STDIO_HDR
   #define STDIO_HDR
   #include <stdio.h>
+
+  #ifndef tostderr
+  #define tostderr(_fmt_, ...) fprintf (stderr, _fmt_, ##__VA_ARGS__)
+  #endif
+
+  #ifndef tostdout
+  #define tostdout(_fmt_, ...) fprintf (stdout, _fmt_, ##__VA_ARGS__)
+  #endif
+
   #endif /* STDIO_HDR */
 
 #undef REQUIRE_STDIO
@@ -781,6 +790,15 @@ typedef ptrdiff_t idx_t;
 
 #undef REQUIRE_NETINET_IN
 #endif /* REQUIRE_NETINET_IN */
+
+#ifdef REQUIRE_NET_IF
+  #ifndef NET_IF_HDR
+  #define NET_IF_HDR
+  #include <net/if.h>
+  #endif /* NET_IF_HDR */
+
+#undef REQUIRE_NET_IF
+#endif /* REQUIRE_NET_IF */
 
 #ifdef REQUIRE_NETDB
   #ifndef NETDB_HDR

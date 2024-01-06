@@ -15,3 +15,6 @@ typedef long        useconds_t;
 
 typedef signed long off_t;
 typedef signed long ino_t;
+
+typedef int64_t off64_t;
+typedef uint64_t ino64_t;
