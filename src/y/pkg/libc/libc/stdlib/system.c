@@ -20,8 +20,8 @@ int system (const char *line) {
 
   int save, pid, ret = -1;
 
-  if (NULL is line)
-    return system ("exit 0") is 0;
+  if (NULL == line)
+    return system ("exit 0") == 0;
 
   sa.sa_handler = SIG_IGN;
   sa.sa_flags = 0;
@@ -42,7 +42,7 @@ undo:
   sigemptyset (&block);
   sigaddset (&block, SIGCHLD);
 
-  if (sigprocmask (SIG_BLOCK,&block,&omask)<0) {
+  if (sigprocmask (SIG_BLOCK, &block, &omask) < 0) {
     save = sys_errno;
     sigaction (SIGQUIT, &quit, (struct sigaction *) 0);
     goto undo;
@@ -55,9 +55,9 @@ undo:
 
     do
       n = sys_waitpid (pid, &ret, 0);
-    while ((n is -1) and (sys_errno is EINTR));
+    while ((n == -1) && (sys_errno == EINTR));
 
-    if (n isnot pid)
+    if (n != pid)
       ret = -1;
 
   } else if (0 == pid) { /* child */

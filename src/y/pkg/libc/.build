@@ -188,6 +188,8 @@ m.set.libc.source ([
   "libc/string/str_new.c",
   "libc/string/str_new_with_fmt.c",
   "libc/string/str_str.c",
+  "libc/string/str_tok.c",
+  "libc/string/str_tok.h",
   "libc/string/string.c",
   "libc/string/string.h",
   "libc/string/vsnprintf.c",

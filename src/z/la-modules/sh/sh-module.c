@@ -110,6 +110,12 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
   int stderr_fd = -1;
   int stderr_fds[2];
 
+  if (Vmap.key_exists (opts, "redir_stdout_mode")) {
+    VALUE *vredir_stdout_mode = Vmap.get (opts, "redir_stdout_mode");
+    ifnot (IS_NULL ((*vredir_stdout_mode)))
+      redir_stdout_mode = AS_STRING_BYTES((*vredir_stdout_mode));
+  }
+
   if (Vmap.key_exists (opts, "redir_stdout")) {
     VALUE *vredir_stdout = Vmap.get (opts, "redir_stdout");
     ifnot (IS_NULL ((*vredir_stdout))) {
@@ -120,12 +126,6 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
         goto theend;
       }
     }
-  }
-
-  if (Vmap.key_exists (opts, "redir_stdout_mode")) {
-    VALUE *vredir_stdout_mode = Vmap.get (opts, "redir_stdout_mode");
-    ifnot (IS_NULL ((*vredir_stdout_mode)))
-      redir_stdout_mode = AS_STRING_BYTES((*vredir_stdout_mode));
   }
 
   if (Vmap.key_exists (opts, "read_stdout")) {
@@ -142,6 +142,12 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
     print_stdout = AS_INT((*vprint_stdout));
   }
 
+  if (Vmap.key_exists (opts, "redir_stderr_mode")) {
+    VALUE *vredir_stderr_mode = Vmap.get (opts, "redir_stderr_mode");
+    ifnot (IS_NULL ((*vredir_stderr_mode)))
+      redir_stderr_mode = AS_STRING_BYTES((*vredir_stderr_mode));
+  }
+
   if (Vmap.key_exists (opts, "redir_stderr")) {
     VALUE *vredir_stderr = Vmap.get (opts, "redir_stderr");
     ifnot (IS_NULL ((*vredir_stderr))) {
@@ -156,12 +162,6 @@ static VALUE sh_process (la_t *this, VALUE v_opts) {
         }
       }
     }
-  }
-
-  if (Vmap.key_exists (opts, "redir_stderr_mode")) {
-    VALUE *vredir_stderr_mode = Vmap.get (opts, "redir_stderr_mode");
-    ifnot (IS_NULL ((*vredir_stderr_mode)))
-      redir_stderr_mode = AS_STRING_BYTES((*vredir_stderr_mode));
   }
 
   if (Vmap.key_exists (opts, "read_stderr")) {

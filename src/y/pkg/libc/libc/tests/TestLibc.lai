@@ -1,0 +1,168 @@
+import ("sh")
+import ("dir")
+import ("path")
+import ("sys")
+import ("file")
+import ("time")
+include ("argparse")
+
+Type Unit {
+  unit
+  num_tests
+  retval : ok
+  init : func (name, num_tests) {
+    this.unit = name
+    this.num_tests = num_tests
+  }
+}
+
+const INCDIR  = "SYSDIR": sys_get (): path_concat ("include"): path_concat ("z") 
+const thisdir = __file__: path_dirname ()
+var BUILD_DIR = thisdir: path_concat ("build")
+
+var argparse = New Argparse (2, 0, "TestLibc [arg, ...]")
+argparse.add ("cc", 0, "cc=", "set cc (default gcc)", StringType, ARG_VALUE_REQUIRED; defval : "gcc")
+argparse.add ("builddir", 0, "build-dir=", "set build directory (default " + BUILD_DIR + ")", StringType, ARG_VALUE_REQUIRED; defval : BUILD_DIR)
+
+const CC = argparse.results.cc
+BUILD_DIR = argparse.results.builddir
+
+ifnot BUILD_DIR: file_exists () {
+  if notok is BUILD_DIR: dir_make_parents (0700) {
+    println (stderr, "${BUILD_DIR}: can not make directory: ${errno_string (errno)}")
+    exit (1)
+  }
+}
+
+ifnot BUILD_DIR: dir_is_directory () {
+  println (stderr, "${BUILD_DIR}: is not a directory")
+  exit (1)
+}
+
+const logfile = BUILD_DIR: path_concat ("logfile.lai")
+
+var compilation_opts = {
+   argv : [CC, "", "-std=c11", "-I" + INCDIR]
+   redir_stdout : logfile
+   redir_stderr : logfile
+   redir_stdout_mode : "a+"
+   redir_stderr_mode : "a+"
+   print_stderr : 1
+}
+
+append "-Wall"                                 in compilation_opts.argv
+append "-Wno-override-init"                    in compilation_opts.argv
+
+if CC is "clang" then
+  append "-Wno-unused-command-line-argument"   in compilation_opts.argv
+
+if CC is "gcc" {
+  append "-Wimplicit-fallthrough"              in compilation_opts.argv
+  append "-Wrestrict"                          in compilation_opts.argv
+}
+
+append "-g"                                    in compilation_opts.argv
+append "-Wextra"                               in compilation_opts.argv
+append "-Wshadow"                              in compilation_opts.argv
+append "-Wunused-result"                       in compilation_opts.argv
+append "-Wunused-function"                     in compilation_opts.argv
+append "-Wunused-macros"                       in compilation_opts.argv
+append "-Wsign-compare"                        in compilation_opts.argv
+append "-Wpointer-arith"                       in compilation_opts.argv
+append "-Wreturn-type"                         in compilation_opts.argv
+append "-Wwrite-strings"                       in compilation_opts.argv
+append "-Wuninitialized"                       in compilation_opts.argv
+append "-Wmissing-declarations"                in compilation_opts.argv
+append "-Werror-implicit-function-declaration" in compilation_opts.argv
+append "-o"                                    in compilation_opts.argv
+append ""                                      in compilation_opts.argv
+
+func get_unit_tests (unit) {
+  var b = unit: file_read_num_bytes (20)
+  ifnot b: eq_n ("/* num-tests: ", 14) {
+    println (stderr, "error: ${unit} has wrong header, awaiting '/* num-tests: ' on the first line")
+    exit (1)
+  }
+
+  b := advance (15)
+  var n = b: to_integer ()
+  return New Unit (unit, n)
+}
+
+const tests = {
+  0 : get_unit_tests ("str_tok.c")
+}
+
+func append_to_logfile (msg) {
+  return if ok is file_append (logfile, msg)
+  println (stderr, "fatal error: failed to write to ${logfile}")
+  exit (1)
+}
+
+if logfile: file_exists () {
+  if notok is logfile: file_rename (logfile + ".old"; force : 1) {
+    println (stderr, "fatal error: failed to rename ${logfile} to ${logfile}.old")
+    exit (1)
+  }
+}
+
+const now = time_now (): time_local ()
+
+Sh = New Shell ()
+
+const tm ="%Y_%m_%d_%H_%M_%S": time_format (now)
+
+file_write (logfile, "import (\"std\")\n\nconst log = {\n  started : \"" + tm + "\"\n")
+
+var execution_opts = {
+  argv
+}
+
+var index = 0
+var total = 0
+var ntests = tests: len ()
+
+for ntests times {
+  var s = tests.$(index: to_string (10))
+  index++
+  var cfile = s.unit
+  var bname = cfile: path_basename_sans_extname ()
+  var output = BUILD_DIR: path_concat (bname)
+
+  compilation_opts.argv[1] = cfile
+  compilation_opts.argv[-1] = output
+
+  append_to_logfile (format ("  ${bname} : {\n    compilation : {\n      log : `\n"))
+
+  var retval = Sh.process (compilation_opts)
+
+  append_to_logfile (format ("      `\n      retval : ${retval.retval}\n    }\n"))
+
+  if retval.retval isnot ok {
+    append_to_logfile ("  }\n")
+    var com = compilation_opts.argv: join (" ")
+    println (stderr, "error while compiling ${cfile}: ${com}")
+    continue
+  }
+
+  append_to_logfile (format ("    execution : {\n      log : `\n"))
+
+  execution_opts.argv = [output, total + s.num_tests: to_string (10)]
+
+  retval = Sh.process (execution_opts)
+
+  append_to_logfile (format ("      `\n      retval : ${retval.retval}\n    }\n  }\n"))
+}
+
+append_to_logfile ("}\n\nprintln (\"started : ${log.started}\")\n")
+append_to_logfile ("for k, v in log {\n")
+append_to_logfile ("  continue if k: eq (\"started\")\n")
+append_to_logfile ("  println (\"unit : ${k}\")\n")
+append_to_logfile ("  for key, val in v {\n")
+append_to_logfile ("    println (\"  action : ${key}\")\n")
+append_to_logfile ("    for kk, vv in val {\n")
+append_to_logfile ("      println (\"    ${kk} : ${vv}\")\n")
+append_to_logfile ("    }\n")
+append_to_logfile ("    println (\"\")\n")
+append_to_logfile ("  }\n")
+append_to_logfile ("  println (\"\")\n}\n")

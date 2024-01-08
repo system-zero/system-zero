@@ -3,7 +3,7 @@
 // requires: utf8/utf8.h
 
 utf8 utf8_code_and_len (const char *buf, int *len) {
-  if (NULL is buf) return -1;
+  if (NULL == buf) return -1;
 
   int code = 0;
   *len = 0;
@@ -14,7 +14,7 @@ utf8 utf8_code_and_len (const char *buf, int *len) {
     code <<= 6;
     code += (uchar) buf[n++];
     (*len)++;
-  } while (buf[n] and IS_UTF8 (buf[n]));
+  } while (buf[n] && IS_UTF8 (buf[n]));
 
   code -= offsetsFromUTF8[*len - 1];
   return code;
