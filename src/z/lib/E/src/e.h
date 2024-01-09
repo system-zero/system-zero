@@ -1399,7 +1399,4 @@ typedef struct E_T {
 public E_T *__init_ed__ (const char *);
 public void __deinit_ed__ (E_T **);
 
-public mutable size_t tostderr (char *);
-public mutable size_t tostdout (char *);
-
 #endif /* E_HDR */

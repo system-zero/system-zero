@@ -3752,7 +3752,7 @@ static string_t *get_current_number (buf_t *this, int *fidx) {
       break;
     }
 
-    if (IS_HEX (c)) {  // this matchs IS_DIGIT
+    if (IS_HEX (c)) {
       String.prepend_byte (nb, c);
       continue;
     }
@@ -3778,7 +3778,7 @@ static string_t *get_current_number (buf_t *this, int *fidx) {
   while (idx < (int) $mycur(data)->num_bytes) {
     c = $mycur(data)->bytes[idx++];
 
-    if (IS_HEX (c)) { // this matchs IS_DIGIT
+    if (IS_HEX (c)) {
       String.append_byte (nb, c);
       continue;
     }
@@ -3809,7 +3809,7 @@ static string_t *get_current_number (buf_t *this, int *fidx) {
   int num = 0;
   idx = cur_idx;
   while (idx >= 0) {
-    if (IS_HEX (nb->bytes[idx])) {
+    ifnot (IS_DIGIT (nb->bytes[idx])) {
       num = idx + 1;
       *fidx = orig_idx - (cur_idx - idx) + 1;
       break;
@@ -3822,6 +3822,9 @@ static string_t *get_current_number (buf_t *this, int *fidx) {
 
   idx = 0;
   if (nb->bytes[idx++] is '0') {
+    if (nb->num_bytes == 1)
+      goto theend;
+
     while (idx <= (int) nb->num_bytes - 1) {
       if (nb->bytes[idx] > '8') {
         String.clear_at (nb, idx);
@@ -11926,7 +11929,7 @@ handle_com:
         reg_release (&$myroots(regs)[regidx]);
         retval = DONE;
       } else
-          retval = NOTHING_TODO;
+        retval = NOTHING_TODO;
 
       break;
 
@@ -12733,7 +12736,7 @@ static int fp_tok_cb (Vstring_t *unused, char *bytes, void *fp_type) {
   return STRCHOP_OK;
 }
 
-public mutable size_t tostderr (char *bytes) {
+static size_t toStderr (char *bytes) {
   Vstring_t unused;
   fp_t fpt = {.fp = stderr};
   cstring_chop (bytes, '\n', &unused, fp_tok_cb, &fpt);
@@ -13829,7 +13832,7 @@ static int E_load_file (E_T *this, char *fn, int argc, const char **argv) {
   int retval = La.load_file (&__LA__, la, fn);
 
   if (retval is NOTOK)
-    tostderr (La.get.message (la));
+    toStderr (La.get.message (la));
 
   return retval;
 }
