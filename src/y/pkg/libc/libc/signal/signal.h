@@ -42,6 +42,6 @@
 
 #define SIGCLD   SIGCHLD
 #define SIGPOLL  SIGIO
-#define SIG_DFL ((sighandler_t)0L)
-#define SIG_IGN ((sighandler_t)1L)
-#define SIG_ERR ((sighandler_t)-1L)
+#define SIG_DFL ((sighandler_t) 0L)
+#define SIG_IGN ((sighandler_t) 1L)
+#define SIG_ERR ((sighandler_t) -1L)

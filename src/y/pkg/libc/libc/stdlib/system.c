@@ -25,26 +25,26 @@ int system (const char *line) {
 
   sa.sa_handler = SIG_IGN;
   sa.sa_flags = 0;
-  sigemptyset (&sa.sa_mask);
+  sys_sigemptyset (&sa.sa_mask);
 
-  if (sigaction (SIGINT,  &sa, &intr) < 0)
+  if (sys_sigaction (SIGINT,  &sa, &intr) < 0)
     return -1;
 
-  if (sigaction (SIGQUIT, &sa, &quit) < 0) {
+  if (sys_sigaction (SIGQUIT, &sa, &quit) < 0) {
     save = sys_errno;
 
 undo:
-    sigaction (SIGINT, &intr, (struct sigaction *) 0);
+    sys_sigaction (SIGINT, &intr, (struct sigaction *) 0);
     sys_errno = save;
     return -1;
   }
 
-  sigemptyset (&block);
-  sigaddset (&block, SIGCHLD);
+  sys_sigemptyset (&block);
+  sys_sigaddset (&block, SIGCHLD);
 
-  if (sigprocmask (SIG_BLOCK, &block, &omask) < 0) {
+  if (sys_sigprocmask (SIG_BLOCK, &block, &omask) < 0) {
     save = sys_errno;
-    sigaction (SIGQUIT, &quit, (struct sigaction *) 0);
+    sys_sigaction (SIGQUIT, &quit, (struct sigaction *) 0);
     goto undo;
   }
 
@@ -67,18 +67,18 @@ undo:
     nargs[2] = line;
     nargs[3] = 0;
 
-    sigaction (SIGINT,  &intr, (struct sigaction *) 0);
-    sigaction (SIGQUIT, &quit, (struct sigaction *) 0);
-    sigprocmask (SIG_SETMASK, &omask, 0);
+    sys_sigaction (SIGINT,  &intr, (struct sigaction *) 0);
+    sys_sigaction (SIGQUIT, &quit, (struct sigaction *) 0);
+    sys_sigprocmask (SIG_SETMASK, &omask, 0);
 
     sys_execve ("/bin/sh", (char *const *) nargs, environ);
     _exit (127);
   }
 
   save = sys_errno;
-  sigaction (SIGINT,  &intr, (struct sigaction *) 0);
-  sigaction (SIGQUIT, &quit, (struct sigaction *) 0);
-  sigprocmask (SIG_SETMASK, &omask, 0);
+  sys_sigaction (SIGINT,  &intr, (struct sigaction *) 0);
+  sys_sigaction (SIGQUIT, &quit, (struct sigaction *) 0);
+  sys_sigprocmask (SIG_SETMASK, &omask, 0);
   sys_errno = save;
   return ret;
 }
