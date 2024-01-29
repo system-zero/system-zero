@@ -154,7 +154,7 @@ char *path_real (const char *path, char resolved[MAXLEN_PATH]) {
 
       symlink[slen] = '\0';
 
-      if (symlink[0] is DIR_SEP) {
+      if (symlink[0] == DIR_SEP) {
         resolved[1] = 0;
         resolved_len =  1;
       } else if (resolved_len > 1) {

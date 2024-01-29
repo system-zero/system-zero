@@ -255,7 +255,7 @@ void term_unset_state_bit (term_t *this, int bit) {
 }
 
 int term_set (term_t *this) {
-  if (-1 is term_set_mode (this, 'r'))
+  if (-1 == term_set_mode (this, 'r'))
     return -1;
 
   term_cursor_get_pos (this, &this->orig_curs_row_pos, &this->orig_curs_col_pos);

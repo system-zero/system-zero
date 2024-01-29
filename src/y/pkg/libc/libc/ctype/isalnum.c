@@ -3,5 +3,5 @@
 // requires: ctype/isdigit.c
 
 int isalnum (int c) {
-  return isalpha (c) or isdigit (c);
+  return isalpha (c) || isdigit (c);
 }

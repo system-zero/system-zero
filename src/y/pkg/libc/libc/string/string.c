@@ -122,7 +122,7 @@ string *string_insert_at_with_len (string *this,
 
 string *string_insert_at_with (string *this, int idx, const char *bytes) {
   if (0 > idx) idx = this->num_bytes + idx + 1;
-  if (idx < 0 or idx > (int) this->num_bytes)
+  if (idx < 0 || idx > (int) this->num_bytes)
     return this;
 
   size_t len = bytelen (bytes);
@@ -196,7 +196,7 @@ int string_delete_numbytes_at (string *this, int num, int idx) {
   if (num < 0) return NOTOK;
   if(!num) return OK;
 
-  if (idx < 0 or idx >= (int) this->num_bytes or
+  if (idx < 0 || idx >= (int) this->num_bytes ||
       idx + num > (int) this->num_bytes)
     return EINDEX;
 

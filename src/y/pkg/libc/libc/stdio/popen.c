@@ -73,13 +73,13 @@ FILE *sys_popen (const char *command, const char *mode) {
   if (close_on_exec)
     sys_fcntl3 (fds[!is_read], F_SETFD, FD_CLOEXEC);
 
-  fp->user_data = (pid_t *) pid;
+  fp->pid = pid;
 
   return fp;
 }
 
 int sys_pclose (FILE *fp) {
-  pid_t pid = (pid_t) fp->user_data;
+  pid_t pid = fp->pid;
 
   sys_fclose (fp);
 

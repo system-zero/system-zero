@@ -741,12 +741,13 @@ const ARGPARSE
 
   install : {
     header : func {
+      return ok if null is this.header.sources
+
       return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
       this.record ([this.header.sources])
 
       return ok if false is this.header.install
-      return ok if null is this.header.sources
 
       ifnot this.incdir: exists () then mkdir (this.incdir, 0755; verbose : this.verbose + 1)
       ifnot this.incdir: isdirectory ()
@@ -1864,7 +1865,7 @@ const ARGPARSE
     }
 
     header : {
-      source : func (h) ifnot null is h this.header.sources = h
+      source : func (h) this.header.sources = h
     }
 
     library : {
@@ -1879,8 +1880,8 @@ const ARGPARSE
       }
 
       source : func (s) {
-        this.set.shared.library.source (s)
-        this.set.static.library.source (s)
+        this.set.shared.library.source (s; qualifiers ())
+        this.set.static.library.source (s; qualifiers ())
       }
     }
 

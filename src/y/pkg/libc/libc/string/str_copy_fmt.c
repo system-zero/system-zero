@@ -14,7 +14,7 @@ size_t str_copy_fmt (char *dest, size_t dest_len, const char *fmt, ...) {
   /* since is a variable length thing, truncation might occurs
    * so we might want to do something about this
    */
-  if (r isnot len) len = r;
+  if (r != len) len = r;
 
   return str_copy (dest, dest_len, bytes, len);
 }

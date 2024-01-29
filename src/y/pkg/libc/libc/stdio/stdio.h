@@ -19,7 +19,8 @@ typedef struct _FILE {
   int   in_cur;
   int   in_prevbyte;
 
-  void *user_data;
+  int   pid; // popen
+
 } FILE;
 
 FILE *sys_stdin;

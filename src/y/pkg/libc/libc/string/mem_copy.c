@@ -69,8 +69,8 @@ void *mem_copy (void *dst0, const void *src0, size_t length) {
     if (t) {
       do {
         *dst++ = *src++;
-      while (--t);
-     }
+      } while (--t);
+    }
   } else {
     /*
      * Copy backwards.  Otherwise essentially the same.
@@ -98,14 +98,16 @@ void *mem_copy (void *dst0, const void *src0, size_t length) {
       do {
         src -= wsize;
         dst -= wsize;
-        *(word *) dst = *(word *) src);
+        *(word *) dst = *(word *) src;
       } while (--t);
+    }
 
     t = length & wmask;
     if (t) {
       do {
         *--dst = *--src;
-      while (--t);
+      } while (--t);
+    }
   }
 
 done:

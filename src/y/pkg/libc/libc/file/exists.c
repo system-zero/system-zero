@@ -5,6 +5,7 @@
 
 int file_exists (const char *file) {
   struct stat st;
-  if (-1 is lstat (file, &st)) return 0;
+  if (-1 == lstat (file, &st))
+    return 0;
   return 1;
 }

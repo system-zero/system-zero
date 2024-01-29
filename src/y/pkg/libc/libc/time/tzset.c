@@ -5,7 +5,9 @@
 
 long sys_tzset (void) {
   static long time_zone = -1;
-  if (time_zone isnot -1) return time_zone;
+
+  if (time_zone != -1)
+    return time_zone;
 
   struct timezone tz;
   sys_gettimeofday (0, &tz);

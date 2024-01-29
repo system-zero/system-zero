@@ -4,6 +4,6 @@
 
 int lnk_is_directory (const char *dname) {
   struct stat st;
-  if (-1 == stat (dname, &st)) return 0;
+  if (-1 == sys_stat (dname, &st)) return 0;
   return S_ISDIR (st.st_mode);
 }

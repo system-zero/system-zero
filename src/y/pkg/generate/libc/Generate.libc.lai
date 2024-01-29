@@ -33,6 +33,7 @@ include ("argparse")
   YPKGDIR     = YSRCDIR: concat_with (PKG),
   LIBCDIR     = YPKGDIR: concat_with (LIBCSRCNAME),
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
+  LIBCALLDIR =  LIBCSRCDIR : concat_with ("libc"),
   SYSBINDIR   = SYSDIR: concat_with ("bin"),
   SYSLIBDIR   = SYSDIR: concat_with ("lib"),
   ZSYSLIBDIR  = SYSLIBDIR: concat_with (Z),
@@ -90,6 +91,11 @@ include ("argparse")
   var licenceFile = outputDir: concat_with ("Licenses_libc")
   var commentFile = outputDir: concat_with ("Comments_libc")
 
+  ifnot LIBCALLDIR: exists () then mkdir (LIBCALLDIR, 0755; verbose : verbose)
+  ifnot LIBCALLDIR: is_directory () then return error (LIBCALLDIR + ": is not a directory")
+
+  const outputFileLibcAll = LIBCALLDIR: concat_with ("libc.c")
+
   var withoutSysHdrs = argparse.results.withoutSys
 
   var dotsToLibc = func (d) {
@@ -112,6 +118,8 @@ include ("argparse")
   var libcTypes = "\n    /* Types */\n"
   var licenses  = "\n    /* LICENSES */\n\n"
   var comments  = "\n    /* Comments */\n\n"
+  var libcAllC  = ""
+
   var libcHdrs  =
    `/* This is an oversimplified tiny libc for x86 and x86_64 in a single unit.
      * You get only what you only want, with a without magic code. */
@@ -172,37 +180,16 @@ include ("argparse")
       #ifdef OK
       #undef OK
       #endif
+      #define OK 0
 
       #ifdef NOTOK
       #undef NOTOK
       #endif
+      #define NOTOK -1
 
       #ifdef ifnot
       #undef ifnot
       #endif
-
-      #ifdef is
-      #undef is
-      #endif
-
-      #ifdef isnot
-      #undef isnot
-      #endif
-
-      #ifdef or
-      #undef or
-      #endif
-
-      #ifdef and
-      #undef and
-      #endif
-
-      #define OK     0
-      #define NOTOK -1
-      #define is    ==
-      #define isnot !=
-      #define or    ||
-      #define and   &&
       #define ifnot(__expr__) if (0 == (__expr__))
       #endif /* SYNTAX_H */
     #endif
@@ -268,7 +255,7 @@ include ("argparse")
   }
 
   for v in libcdirs {
-    if v isnot "syscall" append format ("/* ${v} */") in libcFuns
+    if v isnot "syscall"  append format ("/* ${v} */") in libcFuns
 
     var dir = LIBCSRCDIR: concat_with (v)
     var arr = dir: dir_list ()
@@ -302,7 +289,9 @@ include ("argparse")
         append "#ifndef SYSCALLS_D\n#define SYSCALLS_D\n" in libcFuns
         append "/* " + (dotsToLibc: concat_with ("syscall/syscall.c")) + " */\n" in libcFuns
 
-        for line in lines append line + '\n' in libcFuns
+        for line in lines
+          append line + '\n' in libcFuns
+
         append "#endif /* SYSCALLS_D */\n\n" in libcFuns
         append "/* Function Implementation */\n" in libcFuns
         continue
@@ -433,6 +422,9 @@ include ("argparse")
 
       if "H" is f_ext {
         append format ("\n#ifdef REQUIRE_${f_hdr}_H\n") in libcTypes
+
+        append format ("#define REQUIRE_${f_hdr}_H\n") in libcAllC
+
         append "#ifndef " + f_hdr + "_TD\n#define " + f_hdr + "_TD\n" in libcTypes
         append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcTypes
 
@@ -446,6 +438,9 @@ include ("argparse")
 
         if lines_len - idx {
           append "\n#ifdef REQUIRE_" + f_hdr + "\n" in libcFuns
+
+          append "#define REQUIRE_" + f_hdr + "\n" in libcAllC
+
           append "#ifndef " + f_hdr + "_F\n#define " + f_hdr + "_F\n" in libcFuns
           append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcFuns
 
@@ -460,7 +455,8 @@ include ("argparse")
       }
     }
 
-    if v isnot "syscall" append format ("/* ${v} */\n\n") in libcFuns
+    if v isnot "syscall"
+      append format ("/* ${v} */\n\n") in libcFuns
   }
 
   for k, v in filelist {
@@ -563,6 +559,13 @@ static  vmap_T vmapType;
 
   if verbose then
     println ("licences have been written to " + licenceFile)
+
+  append "\n#include <z/libc.h>\n" in libcAllC
+  if notok is File.write ( outputFileLibcAll, libcAllC) then
+    return error ("failed to write to " + outputFileLibcAll)
+
+  if verbose then
+    println ("libc that includes everything has been written to " + outputFileLibcAll)
 
   return ok
 }

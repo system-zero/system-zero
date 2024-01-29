@@ -4,5 +4,5 @@
 // requires: unistd/unistd.h
 
 int file_is_writable (const char *fname) {
-  return (0 is sys_access (fname, W_OK));
+  return (0 == sys_access (fname, W_OK));
 }

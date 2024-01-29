@@ -4,11 +4,11 @@
 int utf8_get_nth_character (const char *bytes, char *buf, size_t bufsize,  int n) {
   if (bufsize < 5) return -1;
 
-  size_t len = 0;
+  int len = 0;
   char *sp = (char *) bytes;
   uchar c;
 
-  while ((c = (uchar) *sp)) && n < len) {
+  while ((c = (uchar) *sp) && n < len) {
     if (c < 0x80)
       sp++;
     else if ((c & 0xe0) == 0xc0)
@@ -26,5 +26,6 @@ int utf8_get_nth_character (const char *bytes, char *buf, size_t bufsize,  int n
     return 0;
   }
 
-  return utf8_character (sp, buf, bufsize);
+  utf8 code = utf8_code (sp);
+  return utf8_character (code, buf, bufsize);
 }

@@ -30,7 +30,7 @@ static char *puti (char *s, unsigned long n, int wid, int zpad) {
   int i;
   for (i = wid - 1; i >= 0; i--) {
     if (!n) {
-      if (!zpad and i < wid - 1)
+      if (!zpad && i < wid - 1)
         s[i] = ' ';
       else
         s[i] = '0';
@@ -60,9 +60,9 @@ long str_ftime (char *s, long n, const char *f, struct tm *tm) {
   char *beg = s;
   char *e = s + n;
 
-  while (s + 1 < e and *f) {
+  while (s + 1 < e && *f) {
     int c = *f++;
-    if (c isnot '%') {
+    if (c != '%') {
       *s++ = c;
       continue;
     }

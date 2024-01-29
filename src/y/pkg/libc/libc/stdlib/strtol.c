@@ -16,7 +16,7 @@ long str_to_long (const char *nptr, char **endptr, int base) {
     c = (unsigned char) *s++;
   } while (isspace (c));
 
-  if (c is '-') {
+  if (c == '-') {
     neg = 1;
     c = *s++;
   } else if (c == '+')

@@ -4,6 +4,7 @@
 
 int is_directory (const char *fname) {
   struct stat st;
-  if (-1 is lstat (fname, &st)) return 0;
+  if (-1 == sys_lstat (fname, &st))
+    return 0;
   return (S_ISDIR(st.st_mode));
 }
