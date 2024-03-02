@@ -82,7 +82,7 @@ static VALUE system_bind (la_t *this, VALUE v_source, VALUE v_target) {
   La.set.Errno (this, 0);
 
   int r = sys_mount (source, target, NULL, MS_BIND, NULL);
-  if (r is -1) La.set.Errno (this, sys_errno);
+  if (r == -1) La.set.Errno (this, sys_errno);
 
   return INT(r);
 }
@@ -97,7 +97,7 @@ static VALUE system_umount (la_t *this, VALUE v_target) {
   La.set.Errno (this, 0);
 
   int r = sys_umount (target, force);
-  if (-1 is r) La.set.Errno (this, sys_errno);
+  if (-1 == r) La.set.Errno (this, sys_errno);
 
   return INT(r);
 }
@@ -114,7 +114,7 @@ static VALUE system_mount (la_t *this, VALUE v_source, VALUE v_target, VALUE v_f
   const char *fstype = NULL;
   if (IS_STRING(v_fstype))
     fstype = AS_STRING_BYTES(v_fstype);
-  if (fstype is NULL) fstype = DEFAULT_FSTYPE;
+  if (fstype == NULL) fstype = DEFAULT_FSTYPE;
 
   void *data   = GET_OPT_MOUNT_DATA();
   ulong flags  = (ulong) GET_OPT_MOUNT_FLAGS();
@@ -131,7 +131,7 @@ static VALUE system_mount (la_t *this, VALUE v_source, VALUE v_target, VALUE v_f
   La.set.Errno (this, 0);
 
   int r = sys_mount (source, target, fstype, flags, data);
-  if (-1 is r) La.set.Errno (this, sys_errno);
+  if (-1 == r) La.set.Errno (this, sys_errno);
 
   return INT(r);
 }
@@ -148,7 +148,7 @@ public int __init_mount_module__ (la_t *this) {
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {
-    if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+    if (LA_OK != (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
@@ -167,7 +167,7 @@ public int __init_mount_module__ (la_t *this) {
   );
 
   err = La.eval_string (this, evalString);
-  if (err isnot LA_OK) return err;
+  if (err != LA_OK) return err;
   return LA_OK;
 }
 

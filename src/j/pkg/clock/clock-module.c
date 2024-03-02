@@ -13,14 +13,14 @@ MODULE(clock);
 
 static VALUE clock_readhw (la_t *this) {
   int fd = sys_open (RTCDEVICE, O_RDONLY);
-  if (fd is -1) {
+  if (fd == -1) {
     La.set.Errno (this, sys_errno);
     return NULL_VALUE;
   }
 
   int r;
   struct rtc_time rtc;
-  if (-1 is (r = sys_ioctl (fd, RTC_RD_TIME, &rtc))) {
+  if (-1 == (r = sys_ioctl (fd, RTC_RD_TIME, &rtc))) {
     La.set.Errno (this, sys_errno);
     return NULL_VALUE;
   }
@@ -65,13 +65,13 @@ static VALUE clock_sethw (la_t *this, VALUE v_rtc) {
   rtc.tm_mon--;
 
   int fd = sys_open (RTCDEVICE, O_WRONLY);
-  if (fd is -1) {
+  if (fd == -1) {
     La.set.Errno (this, sys_errno);
     return NOTOK_VALUE;
   }
 
   int r;
-  if (-1 is (r = sys_ioctl (fd, RTC_SET_TIME, &rtc)))
+  if (-1 == (r = sys_ioctl (fd, RTC_SET_TIME, &rtc)))
     La.set.Errno (this, sys_errno);
 
   sys_close (fd);
@@ -85,7 +85,7 @@ static VALUE clock_settime_ (la_t *this, VALUE v_sec) {
   ts.tv_nsec = 0;
 
   int r = sys_clock_settime (CLOCK_REALTIME, &ts);
-  if (r isnot OK)
+  if (r != 0)
     La.set.Errno (this, sys_errno);
 
   return INT(r);
@@ -104,7 +104,7 @@ public int __init_clock_module__ (la_t *this) {
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {
-    if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+    if (LA_OK != (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
@@ -117,7 +117,7 @@ public int __init_clock_module__ (la_t *this) {
    );
 
   err = La.eval_string (this, evalString);
-  if (err isnot LA_OK) return err;
+  if (err != LA_OK) return err;
   return LA_OK;
 }
 

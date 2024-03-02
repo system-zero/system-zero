@@ -93,7 +93,7 @@ const char              = integer_char
 const advance           = string_advance
 
 const PLATFORM
-const VERSION           = "0.3"
+const VERSION           = "0.4.4"
 const Z                 = "z"
 const Y                 = "y"
 const J                 = "j"
@@ -325,7 +325,7 @@ const ARGPARSE
   }
 
   header : {
-    sources
+    sources : {[]}
     force   : false
     install : false
   }
@@ -684,7 +684,7 @@ const ARGPARSE
     this.set.liboutput                 (name)
     this.set.builddir                  (dir)
     this.set.cached_file               (this.builddir: concat_with (CACHEDNAME))
-    this.set.header.source             (name + ".h")
+    this.set.header.source             (name + ".h"; clear)
     this.set.library.source            ("lib" + name + ".c")
     this.set.executable.source         (cap_name + ".c")
     this.set.executable.output         (cap_name)
@@ -741,11 +741,11 @@ const ARGPARSE
 
   install : {
     header : func {
-      return ok if null is this.header.sources
+      return ok ifnot this.header.sources: len ()
 
       return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-      this.record ([this.header.sources])
+      this.record (this.header.sources)
 
       return ok if false is this.header.install
 
@@ -756,21 +756,31 @@ const ARGPARSE
           return notok
         }
 
-      var to = this.incdir: concat_with (this.header.sources);
+      var r = ok
 
-      var r = this.should_make (to, [this.header.sources], this.header.force)
-      return notok if r is notok
-      return ok if r is false
+      for h in this.header.sources {
+        var to = this.incdir: concat_with (h)
 
-      if this.dump_commands {
-        var ver = "-v "
-        println ("# installing C header")
-        println ("cp ${%s, this.verbose: if v is 1 then ver orelse `` end}--force ${this.header.sources} ${to}")
-        return ok
+        r = this.should_make (to, [h], this.header.force)
+        return notok if r is notok
+        continue if r is false
+
+        if this.dump_commands {
+          var ver = "-v "
+          println ("# installing C header")
+          println ("cp ${%s, this.verbose: if v is 1 then ver orelse `` end}--force ${this.header.sources} ${to}")
+          continue
+        }
+
+        var dname = h: dirname ()
+        if dname isnot "." {
+          dname = this.incdir: concat_with (dname)
+          return notok if notok is mkdir (dname, 0755; verbose : this.verbose + 1)
+        }
+
+        r = copy (h, to; verbose : this.verbose + 1, force : 1)
+        return notok if r is notok
       }
-
-      r = copy (this.header.sources, to; verbose : this.verbose + 1, force : 1)
-      return notok if r is notok
 
       this.header.install = false
       return this.endbuild (r)
@@ -1639,9 +1649,12 @@ const ARGPARSE
     name          : func return this.name
     orig_name     : func return this.orig_name
     version       : func return this.version
+    verbose       : func return this.verbose
     retval        : func return this.retval
     libdir        : func return this.libdir
+    bindir        : func return this.bindir
     toplibdir     : func return this.toplibdir
+    shelldatadir  : func return this.shelldatadir
     targets       : func return this.targets
     dependencies  : func return this.dependencies
     dump_commands : func return this.dump_commands
@@ -1650,11 +1663,17 @@ const ARGPARSE
       library : {
         force : func return this.shared.library.force
       }
+      executable : {
+        output : func return this.shared.executable.output
+      }
     }
 
     static : {
       library : {
         force : func return this.static.library.force
+      }
+      executable : {
+        output : func return this.static.executable.output
       }
     }
 
@@ -1865,7 +1884,10 @@ const ARGPARSE
     }
 
     header : {
-      source : func (h) this.header.sources = h
+      source : func (h) {
+        if qualifier_exists ("clear") then this.clear.header.sources ()
+        this.append_value (h, this.header.sources)
+      }
     }
 
     library : {
@@ -1976,6 +1998,7 @@ const ARGPARSE
     }
 
     libc   : { sources : func clear (this.libc.sources) }
+    header : { sources : func clear (this.header.sources) }
   }
 
   filter: {

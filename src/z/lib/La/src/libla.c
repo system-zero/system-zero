@@ -10081,7 +10081,7 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
             GETSTRLEN(TOKENSTR) is 1) {
         c = GET_BYTE();
         if (c isnot 's' and c isnot 'p' and c isnot 'd' and
-            c isnot 'o' and c isnot 'x' and c isnot 'f') {
+            c isnot 'o' and c isnot 'x' and c isnot 'f' and c isnot 'b') {
           this->print_fmt_bytes (this->err_fp, "string fmt error, unsupported directive [%c]\n", c);
           la_err_ptr (this, LA_NOTOK);
           err = LA_ERR_SYNTAX;
@@ -10189,6 +10189,19 @@ static int la_parse_fmt (la_t *this, string *str, int break_at_eof) {
             this->objectState &= ~(ARRAY_MEMBER|MAP_MEMBER);
           }
           break;
+
+        case 'b':
+          switch (value.type) {
+            case INTEGER_TYPE:
+              String.append_with_fmt (str, "0b%b", AS_INT(value));
+              break;
+
+            default:
+              this->print_bytes (this->err_fp, "string fmt error, awaiting an integer\n");
+              err = LA_ERR_SYNTAX;
+              goto theend;
+           }
+           break;
 
         case 'o':
           switch (value.type) {

@@ -9,10 +9,10 @@
 #include <system.h>
 
 int sys_to_memory (system_t *this) {
-  if (NULL is this->power_state_file) return -1;
+  // if (NULL == this->power_state_file) return -1;
 
   int fd = sys_open (this->power_state_file, O_RDWR);
-  if (fd is -1) return -1;
+  if (fd == -1) return -1;
 
   const char *mem = "mem\n";
   sys_write (fd, mem, sizeof (mem));
@@ -21,7 +21,7 @@ int sys_to_memory (system_t *this) {
 }
 
 int init_system (system_t *this, SystemOpts_t opts) {
-  if (NULL is opts.power_state_file) return -1;
+  if (NULL == opts.power_state_file) return -1;
   const char *file = opts.power_state_file;
   ifnot (file_exists (file)) return -1;
   size_t len = bytelen (file);

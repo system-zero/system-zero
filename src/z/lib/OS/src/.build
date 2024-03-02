@@ -1,3 +1,3 @@
 var m = New Make (__file__, LIBRARY; z_library)
-m.set.header.source ("os.h")
+m.set.header.source ("os.h"; clear)
 return m

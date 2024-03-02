@@ -95,40 +95,40 @@ typedef struct listType listType;
   VALUE ary_ = NULL_VALUE;                               \
   array_->type = __type__;                               \
   array_->len  = __len__;                                \
-  if (array_->type is INTEGER_TYPE) {                    \
+  if (array_->type == INTEGER_TYPE) {                    \
     integer *i_ar = Alloc (__len__ * sizeof (integer));  \
     for (integer i = 0; i < __len__; i++)                \
       i_ar[i] = 0;                                       \
     ary_ = ARRAY(i_ar);                                  \
                                                          \
-  }  else if (array_->type is NUMBER_TYPE) {             \
+  }  else if (array_->type == NUMBER_TYPE) {             \
     number *n_ar = Alloc (__len__ * sizeof (number));    \
     for (integer i = 0; i < __len__; i++)                \
       n_ar[i] = 0.0;                                     \
     ary_ = ARRAY(n_ar);                                  \
                                                          \
-  } else if (array_->type is STRING_TYPE) {              \
+  } else if (array_->type == STRING_TYPE) {              \
     string **s_ar = Alloc (__len__ * sizeof (string));   \
     for (integer i = 0; i < __len__; i++) {              \
       s_ar[i] = string_new_with ("");                    \
     }                                                    \
     ary_ = ARRAY(s_ar);                                  \
                                                          \
-  } else if (array_->type is MAP_TYPE) {                 \
+  } else if (array_->type == MAP_TYPE) {                 \
     Map_Type **m_ar = Alloc (__len__ * sizeof (Map_Type)); \
     for (integer i = 0; i < __len__; i++) {              \
       m_ar[i] = NULL;                                    \
     }                                                    \
     ary_ = ARRAY(m_ar);                                  \
                                                          \
-  } else if (array_->type is LIST_TYPE) {                \
+  } else if (array_->type == LIST_TYPE) {                \
     listArrayMember **l_ar = Alloc (__len__ * sizeof (listArrayMember)); \
     for (integer i = 0; i < __len__; i++) {              \
       l_ar[i] = NULL;                                    \
     }                                                    \
     ary_ = ARRAY(l_ar);                                  \
                                                          \
-  } else if (array_->type is ARRAY_TYPE) {               \
+  } else if (array_->type == ARRAY_TYPE) {               \
     ArrayType **a_ar = Alloc (sizeof (ArrayType) * __len__);\
     for (integer i = 0; i < __len__; i++) {              \
       a_ar[i] = NULL;                                    \
@@ -146,39 +146,39 @@ typedef struct listType listType;
   VALUE ary_ = NULL_VALUE;                               \
   array_->type = __type__;                               \
   array_->len  = __len__;                                \
-  if (array_->type is INTEGER_TYPE) {                    \
+  if (array_->type == INTEGER_TYPE) {                    \
     integer *i_ar = Alloc (__len__ * sizeof (integer));  \
     for (integer i = 0; i < __len__; i++)                \
       i_ar[i] = 0;                                       \
     ary_ = ARRAY(i_ar);                                  \
                                                          \
-  }  else if (array_->type is NUMBER_TYPE) {             \
+  }  else if (array_->type == NUMBER_TYPE) {             \
     number *n_ar = Alloc (__len__ * sizeof (number));    \
     for (integer i = 0; i < __len__; i++)                \
       n_ar[i] = 0.0;                                     \
     ary_ = ARRAY(n_ar);                                  \
                                                          \
-  } else if (array_->type is STRING_TYPE) {              \
+  } else if (array_->type == STRING_TYPE) {              \
     string **s_ar = Alloc (__len__ * sizeof (string));   \
     for (integer i = 0; i < __len__; i++)                \
       s_ar[i] = NULL;                                    \
     ary_ = ARRAY(s_ar);                                  \
                                                          \
-  } else if (array_->type is MAP_TYPE) {                 \
+  } else if (array_->type == MAP_TYPE) {                 \
     Map_Type **m_ar = Alloc (__len__ * sizeof (Map_Type));\
     for (integer i = 0; i < __len__; i++) {              \
       m_ar[i] = NULL;                                    \
     }                                                    \
     ary_ = ARRAY(m_ar);                                  \
                                                          \
-  } else if (array_->type is LIST_TYPE) {                \
+  } else if (array_->type == LIST_TYPE) {                \
     listArrayMember **l_ar = Alloc (__len__ * sizeof (listArrayMember)); \
     for (integer i = 0; i < __len__; i++) {              \
       l_ar[i] = NULL;                                    \
     }                                                    \
     ary_ = ARRAY(l_ar);                                  \
                                                          \
-  } else if (array_->type is ARRAY_TYPE) {               \
+  } else if (array_->type == ARRAY_TYPE) {               \
     ArrayType **a_ar = Alloc (sizeof (ArrayType) * __len__);\
     for (integer i = 0; i < __len__; i++) {              \
       a_ar[i] = NULL;                                    \
@@ -208,17 +208,17 @@ typedef struct listType listType;
     s_ar = Realloc (s_ar, __len__ * sizeof (string));    \
     s_ar[__len__ - 1] = AS_STRING(__v__);                \
     ary_ = ARRAY(s_ar);                                  \
-  } else if (__ar__->type is MAP_TYPE) {                 \
+  } else if (__ar__->type == MAP_TYPE) {                 \
     Map_Type **m_ar = (Map_Type **) AS_ARRAY(ary_);      \
     m_ar = Realloc (m_ar, __len__ * sizeof (Map_Type));  \
     m_ar[__len__ - 1] = AS_MAP(__v__);                   \
     ary_ = ARRAY(m_ar);                                  \
-  } else if (__ar__->type is LIST_TYPE) {                \
+  } else if (__ar__->type == LIST_TYPE) {                \
     listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(ary_); \
     l_ar = Realloc (l_ar, __len__ * sizeof (listArrayMember));    \
     l_ar[__len__ - 1] = LIST_ARRAY_MEMBER(__v__);        \
     ary_ = ARRAY(l_ar);                                  \
-  } else if (__ar__->type is ARRAY_TYPE) {               \
+  } else if (__ar__->type == ARRAY_TYPE) {               \
     ArrayType **a_ar = (ArrayType **) AS_ARRAY(ary_);    \
     a_ar = Realloc (a_ar, __len__ * sizeof (ArrayType)); \
     a_ar[__len__ - 1] = (ArrayType *) AS_ARRAY(__v__);   \
@@ -295,7 +295,7 @@ typedef object listArrayMember;
 #define IS_FILEPTR(__v__)(__v__.type == FILEPTR_TYPE)
 #define IS_FILEDES(__v__)(__v__.type == FD_TYPE)
 #define IS_PTR IS_INT
-#define IS_NOTOK(__v__) (__v__.type == INTEGER_TYPE && AS_INT(v) == NOTOK)
+#define IS_NOTOK(__v__) (__v__.type == INTEGER_TYPE && AS_INT(v) == L_NOTOK)
 
 typedef VALUE (*CFunc) (l_t *, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE);
 typedef VALUE (*OpFunc) (l_t *, VALUE, VALUE);

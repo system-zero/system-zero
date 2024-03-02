@@ -13,18 +13,26 @@
 // requires: string/str_eq.c
 // requires: string/mem_set.c
 // requires: string/str_new.c
+// requires: string/str_hash.c
 // requires: map/map.h
 
-#define MAP_HASH_KEY(_m_, _k_) (map_hash_key (_k_) % (_m_)->num_slots)
+#define MAP_HASH_KEY_DJB2(_m_, _k_) (map_hash_key (_k_) % (_m_)->num_slots)
+#define MAP_HASH_KEY_FNV_1A(_m_, _k_)  (str_hash (_k_) % (_m_)->num_slots)
+
+#ifndef MAP_HASH_KEY
+#define MAP_HASH_KEY MAP_HASH_KEY_FNV_1A
+//#define MAP_HASH_KEY MAP_HASH_KEY_DJB2
+#endif
 
 static inline uint32_t map_hash_key (const char *s) {
   char *sp = (char *) s;
-  uint32_t h = 5381;
+  uint32_t hash = 5381;
 
   while (*sp)
-    h = (h * 33) ^ *sp++;
+     hash = ((hash << 5) + hash) + *sp++; /* hash * 33 + c */
+     //  hash = (hash * 33) ^ *sp++;
 
-  return h;
+  return hash;
 }
 
 static void map_release_slot (map_type *it) {

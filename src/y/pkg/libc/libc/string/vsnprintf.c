@@ -334,6 +334,25 @@ static void octal (struct fmtType *p, long long ll) {
   PAD_LEFT(p);
 }
 
+static void binary (struct fmtType *p, long long ll) {
+  char nr[MAX_INTEGRAL_SIZE], *pnumber = nr;
+  inttoa (ll, 0, p->precision, 2, nr, sizeof(nr));
+
+  p->width -= bytelen (nr);
+  PAD_RIGHT(p);
+
+  if (p->is_square && *nr != '\0') { /* prefix '0b' for binary */
+    PUT_CHAR('0', p);
+    PUT_CHAR('b', p);
+  }
+
+  for (; *pnumber != '\0'; pnumber++) {
+    PUT_CHAR(*pnumber, p);
+  }
+
+  PAD_LEFT(p);
+}
+
 static void hex (struct fmtType *p, long long ll) {
   char nr[MAX_INTEGRAL_SIZE], *pnumber = nr;
   inttoa (ll, 0, p->precision, 16, nr, sizeof(nr));
@@ -631,6 +650,14 @@ int str_format (struct fmtType *p, char *buf, size_t bufsize, const char *format
             long long ll;
             INTEGER_ARG(p, unsigned, ll);
             octal (p, ll);
+            is_continue = 0;
+            break;
+          }
+
+          case 'b': { /* binary (always unsigned) */
+            long long ll;
+            INTEGER_ARG(p, unsigned, ll);
+            binary (p, ll);
             is_continue = 0;
             break;
           }

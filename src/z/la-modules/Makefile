@@ -26,7 +26,7 @@ shared: Env clean-shared path-module-shared file-module-shared\
         time-module-shared crypt-module-shared rand-module-shared\
         io-module-shared url-module-shared dl-module-shared\
         sun-module-shared moon-module-shared man-module-shared\
-        net-module-shared
+        net-module-shared sudoku-module-shared
 
 clean: clean-shared
 

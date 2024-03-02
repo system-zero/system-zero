@@ -1125,7 +1125,7 @@ static charset *csud(
 /* Returns the union of cset1 and cset2 if u is 1, or the set    */
 /* difference cset1 - cset2 if u is 0.  Returns NULL on failure. */
 {
-  charset *csu;
+  charset *csu = NULL;
   buffer *inbuf = NULL, *outbuf = NULL;
   char *lists[4], **list, *p, nullchar = '\0';
 
@@ -1134,7 +1134,7 @@ static charset *csud(
     strcpy(errmsg,outofmem);
     goto csuderror;
   }
-  inbuf = newbuffer(sizeof (char), errmsg);
+
   if (*errmsg) goto csuderror;
   outbuf = newbuffer(sizeof (char), errmsg);
   if (*errmsg) goto csuderror;

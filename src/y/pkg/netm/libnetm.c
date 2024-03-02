@@ -10,7 +10,7 @@
 #include <z/netm.h>
 
 static int netm_get_wireless_iface (netm_t *this, const char *dir) {
-  int retval = NOTOK;
+  int retval = -1;
 
   if (NULL == dir) {
     tostderr ("dir argument is a NULL pointer\n");
@@ -60,7 +60,7 @@ static int netm_get_wireless_iface (netm_t *this, const char *dir) {
         Release (this->iface_dir);
 
       this->iface_dir = string_new_with_fmt ("%s/%s", dir, entry);
-      retval = OK;
+      retval = 0;
       goto theend;
     }
   }

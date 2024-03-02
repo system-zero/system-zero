@@ -3601,7 +3601,7 @@ static defbuf *lookid (struct cpreproc_t *global,
   int nhash;
   defbuf *dp;
   int ct;
-  int temp;
+  int temp = 0;
   int isrecurse;        /* For #define foo foo  */
 
   nhash = 0;

@@ -177,15 +177,6 @@ include ("argparse")
     #ifndef WITHOUT_SYNTAX
       #ifndef SYNTAX_H
       #define SYNTAX_H
-      #ifdef OK
-      #undef OK
-      #endif
-      #define OK 0
-
-      #ifdef NOTOK
-      #undef NOTOK
-      #endif
-      #define NOTOK -1
 
       #ifdef ifnot
       #undef ifnot

@@ -18,7 +18,7 @@
 #-----------------------------------------------#
 # Application Interface and versioning.
 API     := 0
-REV     := 3
+REV     := 4.4
 VERSION  = $(API).$(REV)
 #-----------------------------------------------#
 #           HIERARCHY
@@ -987,11 +987,12 @@ clean-libsudoku-static:
 # STD APPLICATIONS
 #----------------------------------------------------------#
 zs-shared: Env cenv libcstring-shared libsh-shared librline-shared\
-           libsys-shared liberror-shared
+           libsys-shared liberror-shared libre-shared
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
 zs-static: Env cenv libcstring-static libsh-static librline-static\
-           libsys-static liberror-static libio-static libustring-static
+           libsys-static liberror-static libio-static libustring-static\
+           libre-static
 	@cd $(Z_SHELL_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) $@
 
 clean-zs-shared:
@@ -1191,10 +1192,10 @@ la-static: libsh-static libsys-static libos-static\
            libio-static\
            lai-static la-library
 
-clean-lai-shared:
+clean-la-shared:
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
 
-clean-lai-static:
+clean-la-static:
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-static
 #----------------------------------------------------------#
   # e
@@ -1314,15 +1315,41 @@ clean-man:
 	@cd $(ZA_MAN_SRCDIR) && $(MAKE) $(MARGS) clean
 
 #----------------------------------------------------------#
+  # sudoku
+  ZA_SUDOKU          = sudoku
+  ZA_SUDOKU_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_SUDOKU)/src
+
+sudoku-shared: cenv sudoku-module-shared
+	@cd $(ZA_SUDOKU_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
+
+clean-sudoku-shared:
+	@cd $(ZA_SUDOKU_SRCDIR) && $(MAKE) $(APP_FLAGS) clean-shared
+
+#----------------------------------------------------------#
   # packman
   ZA_PACKMAN          = packman
   ZA_PACKMAN_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_PACKMAN)/src
 
-packman:
+packman: lai-shared
 	@cd $(ZA_PACKMAN_SRCDIR) && $(MAKE) $(MARGS)
 
 clean-packman:
 	@cd $(ZA_PACKMAN_SRCDIR) && $(MAKE) $(MARGS) clean
+
+#----------------------------------------------------------#
+  # Make
+YNAME       = y
+Y_SRCDIR    = $(SRCDIR)/$(YNAME)
+Y_PKGDIR    = $(Y_SRCDIR)/pkg
+MAKEDIR     = $(Y_PKGDIR)/make
+
+Make: lai-shared
+	@$(SYSBINDIR)/La-shared $(MAKEDIR)/bootstrap.lai
+
+Dev: packman Make
+	@cd .. && $(SYSBINDIR)/Make j --force --recursive
+
+#----------------------------------------------------------#
 
 #----------------------------------------------------------#
   # sudoku
@@ -1362,6 +1389,9 @@ libpam:
 bootstrap: la-shared
 	@$(SYSBINDIR)/Packman bootstrap
 
+clean-cloned-libc:
+	@$(TEST) ! -d $(SYSLIBDIR) || $(RM) $(SYSLIBDIR)/*.so $(SYSLIBDIR)/*.a
+
 #----------------------------------------------------------#
 shared: zero-clean-shared zero-shared
 zero-shared:  Env cenv list\
@@ -1376,11 +1406,13 @@ zero-shared:  Env cenv list\
               liburl-shared libdl-shared\
               libsun-shared libmoon-shared\
               libman-shared libnet-shared\
-              zs-shared\
+              libsudoku-shared libmoon-shared libsun-shared\
+              zs-shared la-shared e-shared\
               dir-shared file-shared io-shared term-shared\
               sys-shared path-shared crypt-shared env-shared\
-              contain-shared time-shared\
-              zsu-shared-if
+              contain-shared time-shared sudoku-shared\
+              zsu-shared-if \
+              packman Make Dev
 
 static: zero-clean-static zero-static
 zero-static:  Env cenv list\
@@ -1395,13 +1427,14 @@ zero-static:  Env cenv list\
               liburl-static libdl-static\
               libsun-static libmoon-static\
               libman-static libnet-static\
-              zs-static\
+              libsun-static libmoon-static\
+              zs-static la-static e-static\
               dir-static file-static io-static term-static\
               sys-static path-static crypt-static env-static\
               contain-static time-static\
               zsu-static-if
 
-clean-shared: zero-clean-shared
+clean-shared: zero-clean-shared clean-modules clean-la-library clean-packman clean-cloned-libc
 zero-clean-shared:\
               clean-cenv clean-list\
               clean-libstring-shared clean-libustring-shared\
@@ -1425,16 +1458,18 @@ zero-clean-shared:\
               clean-librandom-shared clean-libcontain-shared\
               clean-liburl-shared clean-libdl-shared\
               clean-libmoon-shared clean-libsun-shared\
+              clean-libsudoku-shared\
               clean-libman-shared clean-libnet-shared\
-              clean-zs-shared\
+              clean-zs-shared clean-la-shared\
               clean-dir-shared clean-i-shared\
               clean-file-shared clean-io-shared clean-term-shared\
               clean-sys-shared clean-v-shared clean-e-shared\
+              clean-crypt-shared clean-time-shared\
               clean-path-shared clean-env-shared clean-contain-shared\
               clean-time-shared\
               clean-zsu-shared-if
 
-clean-static: zero-clean-static
+clean-static: zero-clean-static clean-la-library clean-packman clean-cloned-libc
 zero-clean-static:\
               clean-cenv clean-list\
               clean-libstring-static clean-libustring-static\
@@ -1458,14 +1493,17 @@ zero-clean-static:\
               clean-librandom-static clean-libcontain-static\
               clean-liburl-static clean-libdl-static\
               clean-libmoon-static clean-libsun-static\
+              clean-libsudoku-static\
               clean-libman-static clean-libnet-static\
-              clean-zs-static\
+              clean-zs-static clean-la-static clean-e-static\
               clean-dir-static clean-i-static\
               clean-file-static clean-io-static clean-term-static\
               clean-sys-static clean-v-static clean-e-static\
               clean-path-static clean-env-static clean-contain-static\
-              clean-time-static\
+              clean-crypt-static clean-time-static\
               clean-zsu-static-if
+
+clean: clean-shared clean-static clean-hierarchy
 
 all: shared static
 
@@ -1482,7 +1520,8 @@ modules-shared: libsh-shared libsys-shared libterm-shared\
                 librandom-shared libbase64-shared libio-shared\
                 libos-shared libstring-shared liburl-shared\
                 libdl-shared libman-shared libsun-shared\
-                libmoon-shared libbcrypt-shared libnet-shared
+                libmoon-shared libbcrypt-shared libnet-shared\
+                libsudoku-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) shared
 
 path-module-shared: libpath-shared
@@ -1543,11 +1582,17 @@ net-module-shared: Env libnet-shared
 sudoku-module-shared: Env libla-shared libvideo-shared libterm-shared libsudoku-shared
 	@cd $(Z_SRCMODULEDIR) && make $(MODULE_FLAGS) sudoku-module-shared
 
+clean-modules:
+	@$(TEST) ! -d $(SYSZMODULEDIR) || $(RM) -v $(SYSZMODULEDIR)/*
+
 #----------- [ LALIBRARY ] -----------------------#
 LALIB_ARGS = SYSSCRIPTDIR=$(SYSZSCRIPTDIR)
 
 la-library:
 	@cd $(Z_SRCLALIBDIR) && make $(LALIB_ARGS)
+
+clean-la-library:
+	@$(TEST) ! -d $(SYSZSCRIPTDIR) || $(RM) $(SYSZSCRIPTDIR)/*
 
 #----------------- [ y ] -----------------------#
 Y_SRCDIR     := $(SRCDIR)/y
@@ -1618,8 +1663,21 @@ checkenv:
 	@$(TEST) -w $(Z_SYSLIBDIR)   || exit 1
 	@$(TEST) -w $(Z_SYSINCDIR)   || exit 1
 
+clean-hierarchy:
+	@$(TEST) ! -d $(SYSBINDIR)     || $(RMDIR) $(SYSBINDIR)
+	@$(TEST) ! -d $(SYSZMODULEDIR) || $(RMDIR) $(SYSZMODULEDIR)
+	@$(TEST) ! -d $(SYSZSCRIPTDIR) || $(RMDIR) $(SYSZSCRIPTDIR)
+	@$(TEST) ! -d $(Z_SYSLIBDIR)   || $(RMDIR) $(Z_SYSLIBDIR)
+	@$(TEST) ! -d $(SYSMODULEDIR)  || $(RMDIR) $(SYSMODULEDIR)
+	@$(TEST) ! -d $(SYSSCRIPTDIR)  || $(RMDIR) $(SYSSCRIPTDIR)
+	@$(TEST) ! -d $(Z_SYSINCDIR)   || $(RMDIR) $(Z_SYSINCDIR)
+	@$(TEST) ! -d $(SYSINCDIR)     || $(RMDIR) $(SYSINCDIR)
+	@$(TEST) ! -d $(SYSLIBDIR)     || $(RMDIR) $(SYSLIBDIR)
+	@$(TEST) ! -d $(SYSDIR)        || $(RMDIR) $(SYSDIR)
+
 INSTALL = install
 RM = rm -f
+RMDIR = rmdir
 CP = cp
 AR = ar rs
 CP_R = $(CP) -r

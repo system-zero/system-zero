@@ -23,12 +23,8 @@
 
   #define Realloc sys_realloc
 
-  #define Release(__p__) ({    \
-    int r_ = sys_free (__p__); \
-    if (0 == r_) __p__ = NULL; \
-    r_;                        \
-  })
-
+  #define Release sys_free
+  #define MemClear mem_clear
   #define MemInit mem_init
   #define MemDeinit mem_deinit
 

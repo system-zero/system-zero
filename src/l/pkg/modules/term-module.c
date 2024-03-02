@@ -109,8 +109,8 @@ static VALUE _term_init_size (l_t *this, VALUE v_term) {
   term_t *term = GET_TERM(v_term);
   char mode = term->mode;
 
-  if (mode isnot 'r') {
-    if (NOTOK is term_raw_mode (term))
+  if (mode != 'r') {
+    if (-1 == term_raw_mode (term))
       return NOTOK_VALUE;
   }
 
@@ -120,12 +120,12 @@ static VALUE _term_init_size (l_t *this, VALUE v_term) {
 
   switch (mode) {
     case 'o':
-      if (NOTOK is term_orig_mode (term))
+      if (-1 == term_orig_mode (term))
         return NOTOK_VALUE;
       break;
 
     case 's':
-      if (NOTOK is term_sane_mode (term))
+      if (-1 == term_sane_mode (term))
         return NOTOK_VALUE;
 
   }
@@ -145,7 +145,7 @@ static VALUE _term_get_pos (l_t *this, VALUE v_term) {
   term_t *term = GET_TERM(v_term);
   int row, col;
   int r = term_cursor_get_pos (term, &row, &col);
-  if (r is NOTOK) return NULL_VALUE;
+  if (r == -1) return NULL_VALUE;
   Map_Type *m = map_new (2);
   L.map.set_value (this, m, "row", INT(row), 1);
   L.map.set_value (this, m, "col", INT(col), 1);
@@ -202,7 +202,7 @@ public int __init_term_module__ (l_t *this) {
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {
-    if (L_OK isnot (err = L.def (this, lafuns[i].name, L_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+    if (L_OK != (err = L.def (this, lafuns[i].name, L_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
@@ -231,7 +231,7 @@ public int __init_term_module__ (l_t *this) {
   );
 
   err = L.eval_string (this, evalString);
-  if (err isnot L_OK) return err;
+  if (err != L_OK) return err;
   return L_OK;
 }
 

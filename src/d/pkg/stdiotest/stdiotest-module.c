@@ -1,5 +1,3 @@
-#define REQUIRE_STD_MODULE
-#define REQUIRE_Z_ENV
 #define REQUIRE_WRITE
 #define REQUIRE_ALLOC
 #define REQUIRE_STR_COPY
@@ -10,6 +8,7 @@
 #define REQUIRE_DECIMAL_TO_STRING
 #define REQUIRE_STDIO
 
+#define REQUIRE_MODULE_COMPAT
 #include <libc.h>
 
 MODULE(stdiotest);
@@ -29,7 +28,7 @@ static FILE *test_fopen_ok (const char *fname, const char *mode) {
   numbytes = N_FUNC_TEST_TO_STR(n);
   FILE *fp = sys_fopen (fname, mode);
 
-  test_int_eq (fp is NULL, 0, msgStr, numbytes);
+  test_int_eq (fp == NULL, 0, msgStr, numbytes);
   return fp;
 }
 
@@ -46,7 +45,7 @@ static void first (void) {
   int numbytes = 0;
 
   FILE *fp = test_fopen_ok (FNAME_1, "w");
-  if (NULL is fp)
+  if (NULL == fp)
     exit_hard ("fatal fopen error", FOPEN_ERROR);
 
   numbytes = N_TEST_TO_STR("test_fprintf", fprintf_num_tests);
@@ -57,7 +56,7 @@ static void first (void) {
   test_fclose_ok (fp);
 
   fp = test_fopen_ok (FNAME_1, "r");
-  if (NULL is fp)
+  if (NULL == fp)
     exit_hard ("fatal fopen error", FOPEN_ERROR);
 
   char readbuf[numwritten + 1];
@@ -71,7 +70,7 @@ static void first (void) {
   test_fclose_ok (fp);
 
   fp = test_fopen_ok (FNAME_1, "w");
-  if (NULL is fp)
+  if (NULL == fp)
     exit_hard ("fatal fopen error", FOPEN_ERROR);
 
   numbytes = N_TEST_TO_STR("test_fwrite", fwrite_num_tests);
@@ -82,7 +81,7 @@ static void first (void) {
   test_fclose_ok (fp);
 
   fp = test_fopen_ok (FNAME_1, "r");
-  if (NULL is fp)
+  if (NULL == fp)
     exit_hard ("fatal fopen error", FOPEN_ERROR);
 
   readbytes = sys_fread (readbuf, 1, numwritten, fp);
@@ -112,7 +111,7 @@ public int __init_stdiotest_module__ (la_t *this) {
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {
-    if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+    if (LA_OK != (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
@@ -123,7 +122,7 @@ public int __init_stdiotest_module__ (la_t *this) {
    );
 
   err = La.eval_string (this, evalString);
-  if (err isnot LA_OK) return err;
+  if (err != LA_OK) return err;
   return LA_OK;
 }
 

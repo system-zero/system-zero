@@ -79,14 +79,15 @@ int main (int argc, char **argv) {
       return 1;
 
     retval = L.load_file (__L__, l, argv[1]);
-
+tostdout ("retval %d\n", retval);
   } else
     retval = L.eval_string (l, evalbuf->bytes);
+
 
 theend:
   string_release (evalbuf);
 
-  __deinit_l__ (&__L__);
+//  __deinit_l__ (&__L__);
 
   mem_deinit ();
 

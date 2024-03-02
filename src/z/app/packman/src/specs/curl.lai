@@ -14,7 +14,6 @@ return Packman.new.spec ({
   license : "MIT"
   soname  : me
   soname_version: "4.7.0"
-  deps : ["wolfssl"]
   compiled_sources : [
     "src/tool_writeout.c", "src/tool_xattr.c", "src/tool_util.c",
     "src/tool_urlglob.c", "src/tool_progress.c","src/tool_binmode.c",

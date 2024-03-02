@@ -23,7 +23,7 @@ int make_dir (const char *dir, mode_t mode) {
   while (*++sp) {
     if (' ' > *sp) {
       sys_errno = EINVAL;
-      return NOTOK;
+      return -1;
     }
   }
 

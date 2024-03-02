@@ -1,0 +1,2 @@
+#define LITTLE_ENDIAN    0x4d2
+#define BYTE_ORDER LITTLE_ENDIAN

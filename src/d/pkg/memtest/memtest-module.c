@@ -1,5 +1,3 @@
-#define REQUIRE_STD_MODULE
-#define REQUIRE_Z_ENV
 #define REQUIRE_WRITE
 #define REQUIRE_ALLOC
 #define REQUIRE_STR_COPY
@@ -8,10 +6,9 @@
 #define REQUIRE_VSNPRINTF
 #define REQUIRE_TOUPPER
 #define REQUIRE_DECIMAL_TO_STRING
-
 #define MEM_ZERO_FREED
-#define MEM_ZERO_ON_REALLOC
 
+#define REQUIRE_MODULE_COMPAT
 #include <libc.h>
 
 MODULE(memtest);
@@ -52,21 +49,21 @@ static void test_arrays (void) {
   char **ar = Alloc (sizeof (char *) * arlen);
 
   numbytes = N_FUNC_TEST_TO_STR(n);
-  test_int_eq (ar is NULL, 0, msgStr, numbytes);
+  test_int_eq (ar == NULL, 0, msgStr, numbytes);
 
   ar[0] = Alloc (7);
   numbytes = N_FUNC_TEST_TO_STR(n);
-  test_int_eq (ar[0] is NULL, 0, msgStr, numbytes);
+  test_int_eq (ar[0] == NULL, 0, msgStr, numbytes);
   str_copy (ar[0], 7, "Abcdef", 6);
 
   ar[1] = Alloc (7);
   numbytes = N_FUNC_TEST_TO_STR(n);
-  test_int_eq (ar[1] is NULL, 0, msgStr, numbytes);
+  test_int_eq (ar[1] == NULL, 0, msgStr, numbytes);
   str_copy (ar[1], 7, "Ghjklm", 6);
 
   ar[2] = Alloc (7);
   numbytes = N_FUNC_TEST_TO_STR(n);
-  test_int_eq (ar[2] is NULL, 0, msgStr, numbytes);
+  test_int_eq (ar[2] == NULL, 0, msgStr, numbytes);
   str_copy (ar[2], 7, "Nopqrs", 6);
 
   numbytes = N_FUNC_TEST_TO_STR(n);
@@ -103,7 +100,7 @@ static void test_strings (void) {
 
   numbytes = N_FUNC_TEST_TO_STR(n);
   char *s = Alloc (130);
-  test_int_eq (s is NULL, 0, msgStr, numbytes);
+  test_int_eq (s == NULL, 0, msgStr, numbytes);
 
   for (int i = 0; i < 14; i++)
     s[i] = i + 'a';
@@ -112,7 +109,7 @@ static void test_strings (void) {
 
   s = Realloc (s, 42);
   numbytes = N_FUNC_TEST_TO_STR(n);
-  test_int_eq (s is NULL, 0, msgStr, numbytes);
+  test_int_eq (s == NULL, 0, msgStr, numbytes);
 
   for (int i = 14; i < 30; i++)
     s[i] = i + ' ';
@@ -123,7 +120,7 @@ static void test_strings (void) {
 
   s = Realloc (s, 240);
   numbytes = N_FUNC_TEST_TO_STR(n);
-  test_int_eq (s is NULL, 0, msgStr, numbytes);
+  test_int_eq (s == NULL, 0, msgStr, numbytes);
 
   for (int i = 0; i < 30; i++)
     s[i] = 'a';
@@ -167,7 +164,7 @@ public int __init_memtest_module__ (la_t *this) {
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {
-    if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+    if (LA_OK != (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
@@ -178,7 +175,7 @@ public int __init_memtest_module__ (la_t *this) {
    );
 
   err = La.eval_string (this, evalString);
-  if (err isnot LA_OK) return err;
+  if (err != LA_OK) return err;
   return LA_OK;
 }
 

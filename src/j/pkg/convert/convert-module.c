@@ -16,7 +16,7 @@ static VALUE convert_string_to_hexstring (la_t *this, VALUE v_str) {
   string *sn = String.new (len + 1);
 
   int n = string_to_hexstring (sn->bytes, len + 1, str, s->num_bytes);
-  if (n is NOTOK) {
+  if (n == -1) {
     La.set.Errno (this, sys_errno);
     return NULL_VALUE;
   }
@@ -33,7 +33,7 @@ static VALUE convert_hexstring_to_string (la_t *this, VALUE v_str) {
   string *sn = String.new (len + 1);
 
   int n = hexstring_to_string ((unsigned char *) sn->bytes, len + 1, str, s->num_bytes);
-  if (n is NOTOK) {
+  if (n == -1) {
     La.set.Errno (this, sys_errno);
     return NULL_VALUE;
   }
@@ -54,7 +54,7 @@ public int __init_convert_module__ (la_t *this) {
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {
-    if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+    if (LA_OK != (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
@@ -66,7 +66,7 @@ public int __init_convert_module__ (la_t *this) {
    );
 
   err = La.eval_string (this, evalString);
-  if (err isnot LA_OK) return err;
+  if (err != LA_OK) return err;
   return LA_OK;
 }
 

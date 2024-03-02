@@ -1,0 +1,5 @@
+var m = New Make (__file__, SHARED_LIBRARY|STATIC_LIBRARY)
+m.set.library.source ("libc.c"; clear)
+m.set.liboutput ("cz")
+m.clear.header.sources ()
+return m

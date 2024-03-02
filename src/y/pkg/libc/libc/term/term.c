@@ -122,7 +122,7 @@ int term_raw_mode (term_t *this) {
       return -1;
 
   this->mode = 'r';
-  return OK;
+  return 0;
 }
 
 void term_screen_bell (term_t *this) {
@@ -219,7 +219,7 @@ void term_init_size (term_t *this, int *rows, int *cols) {
   struct winsize wsiz;
 
   do {
-    if (OK == sys_ioctl (this->out_fd, TIOCGWINSZ, &wsiz)) {
+    if (0 == sys_ioctl (this->out_fd, TIOCGWINSZ, &wsiz)) {
       this->num_rows = (int) wsiz.ws_row;
       this->num_cols = (int) wsiz.ws_col;
       *rows = this->num_rows;

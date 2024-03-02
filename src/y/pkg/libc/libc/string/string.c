@@ -193,8 +193,8 @@ string *string_dup (string *this) {
 }
 
 int string_delete_numbytes_at (string *this, int num, int idx) {
-  if (num < 0) return NOTOK;
-  if(!num) return OK;
+  if (num < 0) return -1;
+  if(!num) return 0;
 
   if (idx < 0 || idx >= (int) this->num_bytes ||
       idx + num > (int) this->num_bytes)
@@ -206,12 +206,12 @@ int string_delete_numbytes_at (string *this, int num, int idx) {
 
   this->num_bytes -= num;
   this->bytes[this->num_bytes] = '\0';
-  return OK;
+  return 0;
 }
 
 string *string_replace_numbytes_at_with (
         string *this, int num, int idx, const char *bytes) {
-  if (string_delete_numbytes_at (this, num, idx) != OK)
+  if (string_delete_numbytes_at (this, num, idx) != 0)
     return this;
   return string_insert_at_with (this, idx, bytes);
 }

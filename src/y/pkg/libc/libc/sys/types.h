@@ -9,7 +9,12 @@ typedef uint32_t    uid32_t;
 typedef uint32_t    gid32_t;
 typedef uint32_t    dev_t;
 
-typedef long        time_t;
+#if __WORDSIZE == 64
+  typedef int64_t  time_t;
+#else
+  typedef long int  time_t;
+#endif
+
 typedef long        fpos_t;
 typedef long        useconds_t;
 

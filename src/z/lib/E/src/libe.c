@@ -712,26 +712,22 @@ const char *default_extensions[] = {".txt", NULL};
 
 const char *c_extensions[] = {".c", ".h", ".cpp", ".hpp", ".cc", NULL};
 const char *c_keywords[] = {
-    "is I", "isnot I", "or I", "and I", "if I", "for I", "return I", "else I",
-    "ifnot I", "NULL K", "self I", "this V",
-    "OK K", "NOTOK K", "char T", "int T",
-    "free F",
-    "switch I", "while I", "break I", "continue I", "do I", "default I", "goto I",
-    "case I",  "$my V",
+    "if I", "for I", "return I", "else I",
+    "ifnot I", "NULL K", "OK K", "NOTOK K",
+    "while I", "break I", "continue I", "do I",
+    "switch I", "default I", "goto I", "case I",
     "static I", "#include M", "struct T", "typedef I",
-    "uint T", "size_t T", "idx_t T",
+    "char T", "int T",  "uint T", "size_t T", "ssize_t T",
+    "intptr_t T", "uintptr_t T", "ptrdiff_t T",
     "utf8 T", "uchar T", "sizeof T", "void T",
-    "#define M", "#endif M", "#error M", "#ifdef M", "#ifndef M", "#undef M", "#if M", "#else I", "#elif I",
+    "#define M", "#endif M", "#error M", "#ifdef M", "#ifndef M", "#undef M",
+    "#if M", "#else I", "#elif I", "__func__ I",
     "union T", "const T", "theend I", "theerror E",
-    "Alloc T", "Realloc T",
-    "forever I" "loop I",
+    "free F", "Alloc T", "Realloc T",
     "STDIN_FILENO K", "STDOUT_FILENO K", "STDERR_FILENO K",
-    "inline I",
-    "$myroots V", "$myparents V",
-    "$OurRoot V", "$OurRoots V", "public I", "private I",  "mutable I",
-    "enum T", "bool T", "long T", "ulong T", "double T", "float T", "unsigned T",
-    "selfp I","My V", "$mycur V", "$myprop V", "thisp V", "$from V",
-    "extern I", "signed T", "volatile T", "register T", "auto T",
+    "signed T", "unsigned T", "short T",
+    "enum T", "bool T", "long T", "ulong T", "double T", "float T",
+    "inline I", "extern I", "volatile T", "register T", "auto T",
     NULL
 };
 
@@ -992,7 +988,8 @@ parse_char:
       if (IS_DIGIT (c)) {
         char prevc = line[idx - 1];
         if (('A' <= prevc and prevc <= 'Z') or
-            ('a' <= prevc and prevc <= 'z')) {
+            ('a' <= prevc and prevc <= 'z') or
+            ('_' == prevc)) {
           String.append_byte ($my(shared_str),  c);
 
           while (++idx < len) {

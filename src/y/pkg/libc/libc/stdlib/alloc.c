@@ -3,6 +3,7 @@
 // provides: uint sys_free (void *)
 // provides: int  mem_init (size_t)
 // provides: int  mem_deinit (void)
+// provides: uint mem_clear (void *)
 // requires: sys/brk.c
 // requires: stdlib/_exit.c
 // requires: stdlib/alloc.h
@@ -146,7 +147,7 @@ memChunkT *memHead = NULL;
 memChunkT *lastChunk = NULL;
 void *endBreakPoint = NULL;
 
- // pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 static intptr_t mem_arena_size (void *beg, void *end) {
   return (char *) end - (char *) beg;
@@ -439,6 +440,27 @@ void *sys_realloc (void *ptr, size_t size) {
   return ptr;
 }
 
+uint mem_clear (void *ptr) {
+  if (ptr == NULL) {
+  #ifndef MEM_DO_NOT_EXIT_ON_NULL_POINTER
+    tostderr ("%s: argument is a NULL pointer\n", __func__);
+    exit (1);
+  #endif
+    return 1;
+  }
+
+  memChunkT *chunk = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
+  if ((char *) chunk >= (char *) memHead && (char *) chunk < (char *) endBreakPoint) {
+    chunk->is_available = 1;
+
+    // pthread_mutex_unlock (&lock);
+    return 0;
+  }
+
+  tostderr ("%s: %p out of range\n", __func__, ptr);
+  return 1;
+}
+
 uint sys_free (void *ptr) {
   if (ptr == NULL) {
   #ifndef MEM_DO_NOT_EXIT_ON_NULL_POINTER
@@ -452,8 +474,9 @@ uint sys_free (void *ptr) {
   memChunkT *chunk = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
 
   if (chunk->is_available) {
+    tostderr ("Double free pointer %p\n", ptr);
   #ifndef MEM_DO_NOT_EXIT_ON_DOUBLE_FREE_POINTER
-    tostderr ("Double free pointer %p\n", chunk);
+    // tostderr ("Double free pointer %p\n", chunk);
     exit (1);
   #endif
   }
@@ -469,11 +492,13 @@ uint sys_free (void *ptr) {
     chunk->is_available = 1;
 
     mergeChunks (chunk);
-    // pthread_mutex_unlock (&lock);
+
+    //pthread_mutex_unlock (&lock);
 
     return 0;
   }
 
+  tostderr ("%s: %p out of range\n", __func__, ptr);
   // pthread_mutex_unlock (&lock);
   return 1;
 }

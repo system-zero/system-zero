@@ -7,6 +7,8 @@
   depends_on ("system", ALL)
   depends_on ("mount", ALL)
   depends_on ("libc", LIBC)
+  depends_on ("generate/errno", MODULE)
+  depends_on ("fcpp", SHARED_LIBRARY)
 #
 
 return New Make (__file__, IGNORE)

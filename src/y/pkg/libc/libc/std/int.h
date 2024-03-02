@@ -4,6 +4,7 @@
 #define SHRT_BIT      16
 #define INT_BIT       32
 #define LONGLONG_BIT  64
+
 #define SCHAR_MIN     (-128)
 #define SCHAR_MAX     127
 #define UCHAR_MAX     255
@@ -20,6 +21,7 @@
 
 #define _BITSIZE      64
 #define LONG_BIT      64
+
 #define LONG_MAX      9223372036854775807L
 #define ULONG_MAX     18446744073709551615UL
 
@@ -93,11 +95,19 @@
 #define SSIZE_MAX     LONG_MAX
 
 #ifndef __SIZE_TYPE__
-#define __SIZE_TYPE__     long unsigned int
+  #if __WORDSIZE == 64
+  #define __SIZE_TYPE__     unsigned long int
+  #else
+  #define __SIZE_TYPE__     unsigned long long int
+  #endif
 #endif
 
 #ifndef __PTRDIFF_TYPE__
-#define __PTRDIFF_TYPE__  long int
+  #if __WORDSIZE == 64
+  #define __PTRDIFF_TYPE__  signed long int
+  #else
+  #define __PTRDIFF_TYPE__  signed long long int
+  #endif
 #endif
 
 typedef __SIZE_TYPE__      size_t;
@@ -152,3 +162,24 @@ typedef unsigned char uchar;
 typedef unsigned long ulong;
 
 typedef signed int utf8;
+
+#if __WORDSIZE == 64
+
+#define PRId64  "ld"
+#define PRIu64  "lu"
+#define PRIdPTR "ld"
+#define PRIuPTR "lu"
+
+#else
+
+#define PRId64  "lld"
+#define PRIu64  "llu"
+#define PRIdPTR "d"
+#define PRIuPTR "u"
+
+#endif
+
+typedef uint8_t BYTE;
+typedef uint16_t WORD;
+typedef uint32_t DWORD;
+typedef uint64_t QWORD;

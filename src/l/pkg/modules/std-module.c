@@ -44,7 +44,7 @@ static VALUE _map_remove (l_t *this, VALUE v_map, VALUE v_key) {
   char *key = AS_STRING_BYTES(v_key);
 
   VALUE *val = map_pop_value (map, key);
-  if (val isnot NULL)
+  if (val != NULL)
     L.map.release_value (this, val);
 
   return OK_VALUE;
@@ -169,7 +169,7 @@ static VALUE array_where (l_t *this, VALUE v_array, VALUE v_expr) {
   ifnot (IS_ARRAY(v_array)) THROW(L_ERR_TYPE_MISMATCH, "awaiting an array");
   ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
   int type = array->type;
-  if (type isnot v_expr.type) {
+  if (type != v_expr.type) {
     L.set.CFuncError (this, L_ERR_TYPE_MISMATCH);
     char buf[512];
     sys_snprintf (buf, 512, "%s, expression is not the same type", __func__);
@@ -213,7 +213,7 @@ static VALUE array_where (l_t *this, VALUE v_array, VALUE v_expr) {
       int expr = AS_INT(v_expr);
       integer *i_ar = (integer *) AS_ARRAY(array->value);
       for (size_t i = 0; i < array->len; i++) {
-        if (i_ar[i] is expr) {
+        if (i_ar[i] == expr) {
           len++;
           r_ar = Realloc (r_ar, len * sizeof (integer));
           r_ar[len-1] = i;
@@ -226,7 +226,7 @@ static VALUE array_where (l_t *this, VALUE v_array, VALUE v_expr) {
       double expr = AS_NUMBER(v_expr);
       double *d_ar = (double *) AS_ARRAY(array->value);
       for (size_t i = 0; i < array->len; i++) {
-        if (d_ar[i] is expr) {
+        if (d_ar[i] == expr) {
           len++;
           r_ar = Realloc (r_ar, len * sizeof (integer));
           r_ar[len-1] = i;
@@ -329,9 +329,9 @@ static VALUE string_byte_in_str (l_t *this, VALUE v_str, VALUE v_byte) {
   ifnot (IS_INT(v_byte)) THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
   char *str = AS_STRING_BYTES(v_str);
   int byte = AS_INT(v_byte);
-  if (byte < 0 or byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
+  if (byte < 0 || byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
   char *new = Cstring.byte.in_str (str, byte);
-  if (NULL is new)
+  if (NULL == new)
     return NULL_VALUE;
   string *result = String.new_with (new);
   return STRING(result);
@@ -344,7 +344,7 @@ static VALUE string_bytes_in_str (l_t *this, VALUE v_str, VALUE v_bytes) {
   char *str = AS_STRING_BYTES(v_str);
   char *bytes = AS_STRING_BYTES(v_bytes);
   char *new = Cstring.bytes_in_str (str, bytes);
-  if (NULL is new)
+  if (NULL == new)
     return NULL_VALUE;
   string *result = String.new_with (new);
   return STRING(result);
@@ -363,7 +363,7 @@ static VALUE string_delete_substr (l_t *this, VALUE v_str, VALUE v_substr) {
   VALUE r = STRING(new);
 
   char *sp = str_str (str, substr);
-  if (NULL is sp) return r;
+  if (NULL == sp) return r;
 
   int idx = sp - str;
   int len = bytelen (substr);
@@ -391,13 +391,13 @@ static VALUE string_advance_after_bytes (l_t *this, VALUE v_str, VALUE v_bytes, 
   int num = 0;
   while (num < repeat) {
     sp = Cstring.bytes_in_str (src, bytes);
-    if (NULL is sp)
+    if (NULL == sp)
       return NULL_VALUE;
 
     num++;
     src = sp + len;
 
-    if (*src is '\0')
+    if (*src == '\0')
       return STRING_NEW("");
   }
 
@@ -410,10 +410,10 @@ static VALUE string_advance_on_byte (l_t *this, VALUE v_str, VALUE v_byte) {
   ifnot (IS_INT(v_byte)) THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
   char *str = AS_STRING_BYTES(v_str);
   int byte = AS_INT(v_byte);
-  if (byte < 0 or byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
+  if (byte < 0 || byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
 
   char *sp = Cstring.byte.in_str (str, byte);
-  if (NULL is sp) return NULL_VALUE;
+  if (NULL == sp) return NULL_VALUE;
 
   string *new = String.new_with (sp);
   return STRING(new);
@@ -471,7 +471,7 @@ static VALUE string_tokenize (l_t *this, VALUE v_str, VALUE v_tok) {
     if (str_eq_n (sp, tok, toklen)) {
 
     add_element:
-      if (sp is beg) { beg = sp + 1; goto next; }
+      if (sp == beg) { beg = sp + 1; goto next; }
 
       s = string_new_with_len (beg, sp - beg);
 
@@ -492,12 +492,12 @@ static VALUE string_to_integer (l_t *this, VALUE v_str) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
   char *str = AS_STRING_BYTES(v_str);
-  if (str[0] is '0') {
-    if (str[1] is 'b')
+  if (str[0] == '0') {
+    if (str[1] == 'b')
       return INT(str_to_long (&str[2], NULL, 2));
-    else if (str[1] is 'x' or str[1] is 'X')
+    else if (str[1] == 'x' || str[1] == 'X')
       return INT(str_to_long (&str[2], NULL, 16));
-    else if (str[1] isnot '\0')
+    else if (str[1] != '\0')
       return INT(str_to_long (&str[1], NULL, 8));
   }
 
@@ -547,7 +547,7 @@ static VALUE string_trim_byte_at_end (l_t *this, VALUE v_str, VALUE v_byte) {
   ifnot (IS_INT(v_byte))   THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
   string *s = AS_STRING(v_str);
   int byte = AS_INT(v_byte);
-  if (byte < 0 or byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
+  if (byte < 0 || byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
   string *new = String.dup (s);
   String.trim_end (new, byte);
   return STRING(new);
@@ -556,7 +556,7 @@ static VALUE string_trim_byte_at_end (l_t *this, VALUE v_str, VALUE v_byte) {
 
 static VALUE integer_to_string (l_t *this, VALUE v_int, VALUE v_base) {
   (void) this;
-  if (IS_INT(v_int) is 0 or IS_INT(v_base) is 0)
+  if (IS_INT(v_int) == 0 || IS_INT(v_base) == 0)
     THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   int base = AS_INT(v_base);
@@ -570,13 +570,14 @@ static VALUE integer_to_string (l_t *this, VALUE v_int, VALUE v_base) {
   switch (base) {
     case  8: string_prepend_byte (s, '0'); break;
     case 16: string_prepend_with (s, "0x"); break;
-    case  2:
+    case  2: {
       int n = dec.size % 4;
       for (int i = 0; i < n; i++)
         string_prepend_with (s, "0");
 
       string_prepend_with (s, "0b");
       break;
+    }
   }
 
   return STRING(s);
@@ -592,7 +593,7 @@ static VALUE integer_char (l_t *this, VALUE v_c) {
   int len = 0;
   Ustring.character (c, buf, &len);
   string *s = String.new_with (buf);
-  if (len is 1 and c is '\\')
+  if (len == 1 and c == '\\')
     String.append_byte (s, '\\');
 
   return STRING(s);
@@ -600,10 +601,10 @@ static VALUE integer_char (l_t *this, VALUE v_c) {
 
 static VALUE integer_eq (l_t *this, VALUE v_fint, VALUE v_sint) {
   (void) this;
-  if (IS_INT(v_fint) is 0 or IS_INT(v_sint) is 0)
+  if (IS_INT(v_fint) == 0 || IS_INT(v_sint) == 0)
     THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
 
-  return INT(AS_INT(v_fint) is AS_INT(v_sint));
+  return INT(AS_INT(v_fint) == AS_INT(v_sint));
 }
 #endif
 
@@ -671,7 +672,7 @@ public int __init_std_module__ (l_t *this) {
 
   int err;
   for (int i = 0; lfuns[i].name; i++) {
-    if (L_OK isnot (err = L.def (this, lfuns[i].name, L_CFUNC (lfuns[i].nargs), lfuns[i].val)))
+    if (L_OK != (err = L.def (this, lfuns[i].name, L_CFUNC (lfuns[i].nargs), lfuns[i].val)))
       return err;
   }
 
@@ -718,7 +719,7 @@ public int __init_std_module__ (l_t *this) {
 
   err = L.eval_string (this, evalString);
 
-  if (err isnot L_OK) return err;
+  if (err != L_OK) return err;
   return L_OK;
 }
 

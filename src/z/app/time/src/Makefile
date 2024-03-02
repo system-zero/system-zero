@@ -90,10 +90,10 @@ date-static: time-now_to_string-static
 	@$(SYMLNK_V) -f $(T_now_to_string)-static $(SYSBINDIR)/$(Date)-static
 
 clean-date-shared:
-	@$(TEST) ! -f $(SYSBINDIR)/$(Date) || $(RM) $(SYSBINDIR)/$(Date)
+	@$(TEST) ! -L $(SYSBINDIR)/$(Date) || $(RM) $(SYSBINDIR)/$(Date)
 
 clean-date-static:
-	@$(TEST) ! -f $(SYSBINDIR)/$(Date)-static || $(RM) $(SYSBINDIR)/$(Date)-static
+	@$(TEST) ! -L $(SYSBINDIR)/$(Date)-static || $(RM) $(SYSBINDIR)/$(Date)-static
 #-----------------------------------------------#
 
 TEST = test

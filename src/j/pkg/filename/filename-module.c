@@ -1,4 +1,4 @@
-#define REQUIRE_FILE_EXISTS
+ #define REQUIRE_FILE_EXISTS
 #define REQUIRE_FILE_IS_WRITABLE
 #define REQUIRE_BYTELEN
 #define REQUIRE_RENAME
@@ -17,7 +17,7 @@ MODULE(filename);
   VALUE _v_char = La.get.qualifier (this, "char", INT('_'));      \
   ifnot (IS_INT(_v_char))                                         \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer qualifier"); \
-  if ('~' < AS_INT(_v_char) or AS_INT(_v_char) < ' ')             \
+  if ('~' < AS_INT(_v_char) || AS_INT(_v_char) < ' ')             \
     THROW(LA_ERR_TYPE_MISMATCH, "awaiting a char within the ascii range"); \
   AS_INT(_v_char);                                                \
 })
@@ -49,7 +49,7 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
   }
 
   char *basename = path_basename (fname);
-  if (NULL is basename) {
+  if (NULL == basename) {
     if (verbose)
       sys_fprintf (sys_stderr, "%s: can not get the basename\n", fname);
     return NOTOK_VALUE;
@@ -58,7 +58,7 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
   char new[fnamelen + 1];
   char *sp = fname;
   char *spn = new;
-  while (*sp and sp isnot basename)
+  while (*sp && sp!=basename)
     *spn++ = *sp++;
 
   int chars[10] = {'&', '[', ']', '(', ')', '\'', '"', ',', ';', '|'};
@@ -68,8 +68,8 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
   while (*sp) {
     int found = 0;
     for (int i = 0; i < 9; i++) {
-      if (*sp is chars[i]) {
-        ifnot (prev is c)
+      if (*sp == chars[i]) {
+        ifnot (prev == c)
           *spn++ = c;
         prev = c;
         found = 1;
@@ -79,7 +79,7 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
 
     ifnot (found) {
       if ((uchar) *sp > '~') {
-        ifnot (prev is c) {
+        ifnot (prev == c) {
           prev = c;
           *spn++ = c;
         }
@@ -99,7 +99,7 @@ static VALUE filename_strip_nonsense (la_t *this, VALUE v_fname) {
   int r = sys_rename (fname, new);
 
   if (verbose) {
-    if (-1 is r)
+    if (-1 == r)
       sys_fprintf (sys_stderr, "%s: %s\n", fname, errno_string (sys_errno));
     else
       sys_fprintf (sys_stderr, "%s -> %s\n", fname, new);
@@ -134,7 +134,7 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
   }
 
   char *basename = path_basename (fname);
-  if (NULL is basename) {
+  if (NULL == basename) {
     if (verbose)
       sys_fprintf (sys_stderr, "%s: can not get the basename\n", fname);
     return NOTOK_VALUE;
@@ -143,15 +143,15 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
   char new[fnamelen + 1];
   char *sp = fname;
   char *spn = new;
-  while (*sp and sp isnot basename)
+  while (*sp && sp != basename)
     *spn++ = *sp++;
 
   int wasnt_ws = 0;
   int prev = 0;
 
   while (*sp) {
-    if (*sp is ' ' or *sp is '\t' or *sp is '\n') {
-      if (wasnt_ws and prev isnot c)
+    if (*sp == ' ' || *sp == '\t' || *sp == '\n') {
+      if (wasnt_ws && prev != c)
         *spn++ = c;
       wasnt_ws = 0;
       prev = c;
@@ -160,7 +160,7 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
     }
 
     wasnt_ws = 1;
-    ifnot (*sp is c and prev is c)
+    ifnot (*sp == c && prev == c)
       *spn++ = *sp;
 
     prev = *sp++;
@@ -172,7 +172,7 @@ static VALUE filename_strip_ws (la_t *this, VALUE v_fname) {
 
   int r = sys_rename (fname, new);
   if (verbose) {
-    if (-1 is r)
+    if (-1 == r)
       sys_fprintf (sys_stderr, "%s: %s\n", fname, errno_string (sys_errno));
     else
       sys_fprintf (sys_stderr, "%s -> %s\n", fname, new);
@@ -192,7 +192,7 @@ public int __init_filename_module__ (la_t *this) {
 
   int err;
   for (int i = 0; lafuns[i].name; i++) {
-    if (LA_OK isnot (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
+    if (LA_OK != (err = La.def (this, lafuns[i].name, LA_CFUNC (lafuns[i].nargs), lafuns[i].val)))
       return err;
   }
 
@@ -206,7 +206,7 @@ public int __init_filename_module__ (la_t *this) {
   );
 
   err = La.eval_string (this, evalString);
-  if (err isnot LA_OK) return err;
+  if (err != LA_OK) return err;
   return LA_OK;
 }
 

@@ -23,6 +23,7 @@ return Packman.new.spec ({
       ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release"]),
     Packman.command ("[cmake build]", ["cmake", "--build", "."]),
     Packman.install_shared_library (),
+    Packman.install_header (),
     Packman.install_static_library ()
   ]
 })
