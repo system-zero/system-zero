@@ -84,13 +84,20 @@ func get_unit_tests (unit) {
     exit (1)
   }
 
-  b := advance (15)
+  b := advance (14)
   var n = b: to_integer ()
+
   return New Unit (unit, n)
 }
 
+const strtok = get_unit_tests ("str_tok.c")
+const pathconcat = get_unit_tests ("path_concat.c")
+const formatstr = get_unit_tests ("format.c")
+
 const tests = {
-  0 : get_unit_tests ("str_tok.c")
+  0 : strtok
+  1 : pathconcat
+  2 : formatstr
 }
 
 func append_to_logfile (msg) {
@@ -147,7 +154,9 @@ for ntests times {
 
   append_to_logfile (format ("    execution : {\n      log : `\n"))
 
-  execution_opts.argv = [output, total + s.num_tests: to_string (10)]
+  var totalstr = total: to_string (10)
+  execution_opts.argv = [output, total: to_string (10)]
+  total += s.num_tests
 
   retval = Sh.process (execution_opts)
 

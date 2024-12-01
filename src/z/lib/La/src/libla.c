@@ -9294,6 +9294,7 @@ static int la_parse_foreach (la_t *this) {
 
       elem_value = *node->value;
       elem_sym->value = elem_value;
+      elem_sym->type = elem_value.type;
       elem_value.refcount++;
       this->curState |= LOOP_STATE;
       err = la_parse_string (this, body_str);

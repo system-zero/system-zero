@@ -64,6 +64,25 @@ static VALUE map_keys (la_t *this, VALUE v_map) {
   return ARRAY(v_keys);
 }
 
+static VALUE map_any (la_t *this, VALUE v_map, VALUE v_key) {
+  ifnot (IS_MAP(v_map)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a map");
+  ifnot (IS_STRING(v_key)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting a String value");
+
+  Vmap_t *map = AS_MAP(v_map);
+  const char *key = AS_STRING_BYTES(v_key);
+
+  for (size_t i = 0; i < map->num_slots; i++) {
+    vmap_t *it = map->slots[i];
+    while (it) {
+      if (Cstring.eq (it->key, key))
+        return TRUE_VALUE;
+      it = it->next;
+    }
+  }
+
+  return FALSE_VALUE;
+}
+
 static int cmp_string (const void *a, const void *b) {
   const string *sa = *(string **) a, *sb = * (string  **)b;
   return Cstring.cmp (sa->bytes, sb->bytes);
@@ -751,6 +770,7 @@ public int __init_std_module__ (la_t *this) {
     {"map_set",            PTR(map_set), 3 },
     {"map_get",            PTR(map_get), 2 },
     {"map_keys",           PTR(map_keys), 1 },
+    {"map_any",            PTR(map_any), 2 },
     {"map_remove",         PTR(map_remove), 2 },
     {"map_key_exists",     PTR(map_key_exists), 2 },
     {"array_len",          PTR(array_len), 1},

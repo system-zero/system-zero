@@ -1,6 +1,7 @@
 // provides: void string_clear (string *)
 // provides: void string_clear_at (string *, int)
 // provides: void string_release (string *)
+// provides: void string_release_bytes (string *)
 // provides: string *string_new (size_t)
 // provides: string *string_dup (string *)
 // provides: string *string_trim_end (string *, char)
@@ -8,12 +9,10 @@
 // provides: string *string_new_with_len (const char *, size_t)
 // provides: string *string_new_with_fmt (const char *, ...)
 // provides: string *string_insert_at_with (string *, int, const char *)
-// provides: string *string_insert_at_with_len (string *, int, const char *, size_t)
 // provides: string *string_insert_byte_at (string *, char, int)
 // provides: string *string_append_byte (string *, char)
 // provides: string *string_append_with (string *, const char *)
 // provides: string *string_append_with_fmt (string *, const char *, ...)
-// provides: string *string_append_with_len (string *, const char *, size_t)
 // provides: string *string_prepend_byte (string *, char)
 // provides: string *string_prepend_with (string *, const char *)
 // provides: string *string_prepend_with_fmt (string *, const char *, ...)
@@ -25,6 +24,10 @@
 // provides: string *string_append_utf8 (string *, int code)
 // provides: string *string_new_with_allocated (const char *, size_t, size_t)
 // requires: string/string.h
+// requires: string/string_alloc.c
+// requires: string/string_insert_at_with_len.c
+// requires: string/string_append_with_len.c
+// requires: string/string_release_bytes.c
 // requires: string/bytelen.c
 // requires: string/str_copy.c
 // requires: string/str_byte_copy.c
@@ -33,11 +36,15 @@
 // requires: stdlib/alloc.c
 // requires: string/vsnprintf.c
 
-typedef string string_t;
+/* we've to split this unit someday, unless we'll do it with the bad
+   style (gradually and by need) */
+
+/* this is for compatibility and should be removed */
+//typedef string string_t;
 
 void string_release (string *this) {
   if (this == NULL) return;
-  if (this->mem_size) Release (this->bytes);
+  string_release_bytes (this);
   Release (this);
 }
 
@@ -55,36 +62,18 @@ void string_clear_at (string *this, int idx) {
   this->num_bytes = idx;
 }
 
-static inline size_t string_align (size_t size) {
-  return ((size + (8 - 1)) & ~(8 - 1));
-}
-
-/* this is not like realloc(), as len here is the extra size */
-static string *string_reallocate (string *this, size_t len) {
-  size_t sz = string_align (this->mem_size + len + 1);
-  this->bytes = Realloc (this->bytes, sz);
-  this->mem_size = sz;
-  return this;
-}
-
 string *string_new (size_t size) {
   string *s = Alloc (sizeof (string));
-  size_t sz = (size <= 0 ? 8 : string_align (size));
-  s->bytes = Alloc (sz);
-  s->mem_size = sz;
-  s->num_bytes = 0;
+  string_alloc_bytes (s, size);
   s->bytes[0] = '\0';
   return s;
 }
 
 string *string_new_with_len (const char *bytes, size_t len) {
-  string *new = Alloc (sizeof (string));
-  size_t sz = string_align (len + 1);
-  char *buf = Alloc (sz);
-  len = str_copy (buf, sz, bytes, len);
-  new->bytes = buf;
+  string *new = string_new (len);
+  char *buf = new->bytes;
+  str_copy (buf, new->mem_size, bytes, len);
   new->num_bytes = len;
-  new->mem_size = sz;
   return new;
 }
 
@@ -103,23 +92,6 @@ string *string_new_with_fmt (const char *fmt, ...) {
   return string_new_with_len (bytes, len);
 }
 
-string *string_insert_at_with_len (string *this,
-         int idx, const char *bytes, size_t len) {
-  size_t bts = this->num_bytes + len;
-  if (bts >= this->mem_size) string_reallocate (this, bts - this->mem_size + 1);
-
-  if (idx == (int) this->num_bytes) {
-    str_byte_copy (this->bytes + this->num_bytes, bytes, len);
-  } else {
-    str_byte_move (this->bytes, this->mem_size - 1, idx + len, idx, this->num_bytes - idx);
-    str_byte_copy (this->bytes + idx, bytes, len);
-  }
-
-  this->num_bytes += len;
-  this->bytes[this->num_bytes] = '\0';
-  return this;
-}
-
 string *string_insert_at_with (string *this, int idx, const char *bytes) {
   if (0 > idx) idx = this->num_bytes + idx + 1;
   if (idx < 0 || idx > (int) this->num_bytes)
@@ -133,7 +105,7 @@ string *string_insert_at_with (string *this, int idx, const char *bytes) {
 
 string *string_append_byte (string *this, char c) {
   int bts = this->mem_size - (this->num_bytes + 2);
-  if (1 > bts) string_reallocate (this, 8);
+  if (1 > bts) string_realloc_bytes (this, MIN_STRING_SIZE);
   this->bytes[this->num_bytes++] = c;
   this->bytes[this->num_bytes] = '\0';
   return this;
@@ -146,7 +118,7 @@ string *string_insert_byte_at (string *this, char c, int idx) {
 
 string *string_prepend_byte (string *this, char c) {
   int bts = this->mem_size - (this->num_bytes + 2);
-  if (1 > bts) string_reallocate (this, 8);
+  if (1 > bts) string_realloc_bytes (this, MIN_STRING_SIZE);
 
   str_byte_move (this->bytes, this->num_bytes + 1, 1, 0, this->num_bytes);
 
@@ -157,11 +129,6 @@ string *string_prepend_byte (string *this, char c) {
 
 string *string_append_with (string *this, const char *bytes) {
   return string_insert_at_with_len (this, this->num_bytes, bytes, bytelen (bytes));
-}
-
-string *string_append_with_len (string *this, const char *bytes,
-                                                     size_t len) {
-  return string_insert_at_with_len (this, this->num_bytes, bytes, len);
 }
 
 string *string_prepend_with (string *this, const char *bytes) {

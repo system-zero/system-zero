@@ -1,0 +1,10 @@
+var m = New Make (__file__, LIBRARY)
+m.set.dependency ("compiler/include", C_HEADER, LIBRARY)
+m.set.dependency ("compiler/btcode", LIBRARY, LIBRARY)
+m.set.dependency ("compiler/asm", LIBRARY, LIBRARY)
+m.set.dependency ("compiler/disasm", LIBRARY, LIBRARY)
+m.set.dependency ("compiler/vm", LIBRARY, LIBRARY)
+m.set.header.source ("include/compiler/compiler.h"; to : "compiler", clear)
+m.set.library.source (["compiler.c"]; clear)
+m.set.library.to_linkagainst (["btcode", "vm", "asm", "disasm"]; clear)
+return m

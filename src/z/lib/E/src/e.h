@@ -769,6 +769,7 @@ typedef struct buf_set_self {
     (*save_on_exit) (buf_t *, int),
     (*autosave) (buf_t *, long),
     (*autochdir) (buf_t *, int),
+    (*show_topline) (buf_t *, int),
     (*on_emptyline) (buf_t *, const char *),
     (*video_first_row) (buf_t *, int),
     (*show_statusline) (buf_t *, int);

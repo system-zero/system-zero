@@ -1,0 +1,6 @@
+var m = New Make (__file__, LIBRARY)
+m.set.library.source ("disasm.c"; clear)
+m.set.header.source ("vm/disasm.h"; clear)
+m.set.library.compile_type (COMPILE_ASSEMBLE)
+m.set.dependency ("compiler/include", C_HEADER, LIBRARY)
+return m

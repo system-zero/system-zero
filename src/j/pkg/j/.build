@@ -1,5 +1,6 @@
 #@
-  depends_on ("E", LIBRARY)
+  depends_on ("xwm", SHARED)
+  depends_on ("E", SHARED_LIBRARY)
   depends_on ("y", ALL)
   depends_on ("convert", ALL)
   depends_on ("clock", ALL)

@@ -1,3 +1,4 @@
+// as: path_is_absolute
 // provides: int path_is_absolute (const char *)
 
 int path_is_absolute (const char *path) {

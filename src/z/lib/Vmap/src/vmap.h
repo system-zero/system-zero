@@ -7,6 +7,21 @@ typedef struct vmap_t vmap_t;
 typedef void (*VmapRelease_cb) (void *);
 typedef void *(*VmapCopy_cb) (void *, void *);
 
+struct vmap_t {
+  char *key;
+  void *value;
+  int is_constant;
+  VmapRelease_cb release;
+  vmap_t *next;
+};
+
+struct Vmap_t {
+  vmap_t **slots;
+  size_t
+    num_slots,
+    num_keys;
+};
+
 typedef struct vmap_self {
   void
     (*release) (Vmap_t *),

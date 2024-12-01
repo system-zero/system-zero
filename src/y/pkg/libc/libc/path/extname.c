@@ -1,3 +1,4 @@
+// as: path_extname
 // provides: char *path_extname (char *)
 // comment: the resulted string is not allocated, as it is part of the given string argument
 

@@ -1584,6 +1584,13 @@ func self_semantics () {
           m4 is 4 and
           m5 is 5)
 
+      var m = {"1" : 1, b : 2, bc : 3}
+      assert_true ("testing the map_any method",
+         m: any ("1") is true and
+         m: any ("11") is false and
+         m: any ("b") is true and
+         m: any ("bc") is true and
+         m: any ("c") is false)
     }
 
     std_module ()
@@ -2603,6 +2610,18 @@ func self_semantics () {
         la: typeof() is ListType and
         la_l is 2 and laa_l is 2 and
         lax is 48)
+
+     var lmap = {[{k : 444, s : "riggy"}, {k : 444, s : "kishori"}]}
+     var dk = 0
+     var ds = ""
+     for v in lmap {
+        dk += v.k
+        ds += v.s
+      }
+
+     assert_true ("testing list iteration over maps",
+       dk is 888 and
+       ds is "riggykishori")
   }
 
   test_lists ()

@@ -1,3 +1,4 @@
+// as: path_dirname
 // provides: char *path_dirname (const char *)
 // requires: stdlib/alloc.c
 // requires: string/bytelen.c

@@ -1,3 +1,4 @@
+// as: path_basename_sans_extname
 // provides: char *path_basename_sans_extname (char *)
 // requires: path/basename.c
 // requires: stdlib/alloc.c

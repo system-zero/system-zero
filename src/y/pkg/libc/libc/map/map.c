@@ -10,8 +10,8 @@
 // provides: void map_clear (Map_Type *)
 // provides: void map_release (Map_Type **)
 // provides: char **map_keys (Map_Type *)
+// requires: stdlib/alloc.c
 // requires: string/str_eq.c
-// requires: string/mem_set.c
 // requires: string/str_new.c
 // requires: string/str_hash.c
 // requires: map/map.h
@@ -74,7 +74,10 @@ Map_Type *map_new (uint32_t num_slots) {
   Map_Type *new = Alloc (sizeof (Map_Type));
   size_t size = sizeof (map_type) * num_slots;
   new->slots = Alloc (size);
-  mem_set (new->slots, 0, size);
+
+  for (uint32_t i = 0; i < num_slots; i++)
+    new->slots[i] = NULL;
+
   new->num_keys = 0;
   new->num_slots = num_slots;
   return new;

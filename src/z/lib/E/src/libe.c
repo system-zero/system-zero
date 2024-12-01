@@ -1614,6 +1614,24 @@ static int buf_com_set (buf_t *this, readline_t *rl) {
   ifnot (NULL is arg)
     self(set.save_on_exit, atoi (arg->bytes));
 
+  if (Readline.arg.exists (rl, "show-statusline")) {
+    arg = Readline.get.anytype_arg (rl, "show-statusline");
+    ifnot (NULL is arg)
+      $my(show_statusline) = atoi (arg->bytes);
+    else
+      $my(show_statusline) = 1;
+    buf_set_draw_statusline (this);
+  }
+
+  if (Readline.arg.exists (rl, "show-topline")) {
+    arg = Readline.get.anytype_arg (rl, "show-topline");
+    ifnot (NULL is arg)
+      $my(show_topline) = atoi (arg->bytes);
+    else
+      $my(show_topline) = 1;
+    buf_set_draw_topline (this);
+  }
+
   if (draw) self(draw);
 
   return OK;
@@ -2388,6 +2406,10 @@ static void buf_set_show_statusline (buf_t *this, int val) {
   $my(show_statusline) = val;
 }
 
+static void buf_set_show_topline (buf_t *this, int val) {
+  $my(show_topline) = val;
+}
+
 static void *mem_should_realloc (void *obj, size_t allocated, size_t len) {
   if (len > allocated) return Realloc (obj, len);
   return obj;
@@ -2992,6 +3014,7 @@ static buf_t *win_buf_init (win_t *w, int at_frame, int flags) {
   $my(dim) = $myparents(frames_dim)[$my(at_frame)];
   $my(statusline_row) = $my(dim)->last_row;
   $my(show_statusline) = 1;
+  $my(show_topline) = 1;
 
   $my(autosave) = 0;
   $my(backupfile) = NULL;
@@ -3675,6 +3698,13 @@ static char *ed_error_string (ed_t *this, int err) {
 }
 
 static void ed_set_topline (ed_t *ed UNUSED, buf_t *this) {
+
+  ifnot ($my(show_topline)) {
+    String.replace_with_len ($myroots(topline), " ", 1);
+    Video.set.row_with ($my(video), 0, $myroots(topline)->bytes);
+    return;
+  }
+
   time_t tim = time (NULL);
   struct tm *tm = localtime (&tim);
 
@@ -11380,11 +11410,11 @@ static void ed_syn_append (ed_t *this, syn_t syn) {
         HL_STRING, HL_STRING_DELIM, HL_FUNCTION, HL_VARIABLE, HL_TYPE,
         HL_DEFINITION, HL_ERROR, HL_QUOTE, HL_QUOTE_1, HL_QUOTE_2, HL_NORMAL};
 
-#define whereis_c(c_) ({                \
-	int idx_ = arlen - 1;               \
+#define whereis_c(c_) ({                        \
+    int idx_ = arlen - 1;                       \
     char *sp = Cstring.byte.in_str (chars, c_); \
-    if (sp isnot NULL) idx_ = sp-chars; \
-    idx_;                               \
+    if (sp isnot NULL) idx_ = sp - chars;       \
+    idx_;                                       \
 })
 
     int num = 0;
@@ -11403,6 +11433,7 @@ static void ed_syn_append (ed_t *this, syn_t syn) {
   ifnot (NULL is $my(syntaxes)[$my(num_syntaxes)].multiline_comment_continuation)
     $my(syntaxes)[$my(num_syntaxes)].multiline_comment_continuation_len =
       bytelen ($my(syntaxes)[$my(num_syntaxes)].multiline_comment_continuation);
+
   $my(num_syntaxes)++;
 #undef whereis_c
 }
@@ -12189,10 +12220,12 @@ static void ed_init_commands (ed_t *this) {
   $my(num_commands) = VED_COM_END;
 
   ed_append_command_arg (this, "set", "--persistent-layout=", 20);
+  ed_append_command_arg (this, "set", "--show-statusline=", 18);
   ed_append_command_arg (this, "set", "--enable-writing", 16);
   ed_append_command_arg (this, "set", "--backup-suffix=", 16);
   ed_append_command_arg (this, "set", "--no-backupfile", 15);
   ed_append_command_arg (this, "set", "--save-on-exit=", 15);
+  ed_append_command_arg (this, "set", "--show-topline=", 15);
   ed_append_command_arg (this, "set", "--shiftwidth=", 13);
   ed_append_command_arg (this, "set", "--save-image=", 13);
   ed_append_command_arg (this, "set", "--image-file=", 13);
@@ -12507,6 +12540,7 @@ static ed_T *editor_new (void) {
           .autochdir = buf_set_autochdir,
           .save_on_exit = buf_set_save_on_exit,
           .on_emptyline = buf_set_on_emptyline,
+          .show_topline = buf_set_show_topline,
           .video_first_row = buf_set_video_first_row,
           .show_statusline = buf_set_show_statusline,
           .as = (bufset_as_self) {

@@ -11,12 +11,12 @@
  */
 
 /*
- * sizeof(word) MUST BE A POWER OF TWO
+ * sizeof(iword) MUST BE A POWER OF TWO
  * SO THAT wmask BELOW IS ALL ONES
  */
-typedef  int word;    /* "word" used for optimal copy speed */
+typedef  int iword;    /* "iword" used for optimal copy speed */
 
-#define  wsize  sizeof (word)
+#define  wsize  sizeof (iword)
 #define  wmask  (wsize - 1)
 
 /*
@@ -58,7 +58,7 @@ void *mem_copy (void *dst0, const void *src0, size_t length) {
     t = length / wsize;
     if (t) {
       do {
-        *(word *) dst = *(word *) src;
+        *(iword *) dst = *(iword *) src;
         src += wsize;
         dst += wsize;
       } while (--t);
@@ -98,7 +98,7 @@ void *mem_copy (void *dst0, const void *src0, size_t length) {
       do {
         src -= wsize;
         dst -= wsize;
-        *(word *) dst = *(word *) src;
+        *(iword *) dst = *(iword *) src;
       } while (--t);
     }
 

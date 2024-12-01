@@ -7,7 +7,7 @@
 // requires: sys/brk.c
 // requires: stdlib/_exit.c
 // requires: stdlib/alloc.h
-// requires: stdio/stdio.c
+// comment: requires: stdio/stdio.c
 
 /* this pulled from:
    https://github.com/miguelperes/custom-malloc
@@ -190,6 +190,13 @@ int mem_validate (void) {
 
   return 0;
 }
+#else
+#ifndef tostderr
+#define tostderr(...)
+#endif
+#ifndef tostdout
+#define tostdout(...)
+#endif
 #endif
 
 static memChunkT *findChunk (memChunkT *chunkptr, uint size, memChunkT **lastchunk) {

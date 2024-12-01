@@ -5,7 +5,7 @@
 #define REQUIRE_MAP_MACROS
 
 #include <z/cenv.h>
-
+#if 0
 typedef struct Vmap_t {
   vmap_t **slots;
   size_t
@@ -20,6 +20,7 @@ typedef struct vmap_t {
   VmapRelease_cb release;
   vmap_t *next;
 } vmap_t;
+#endif
 
 static void vmap_release_slot (vmap_t *item) {
   while (item) {

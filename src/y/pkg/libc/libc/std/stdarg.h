@@ -3,6 +3,7 @@
 /* Some code from diet libc, some from common standard headers. 
  * Here we define `vva_copy' by default */
 
+#ifndef va_start
 #if defined(__GNUC__ ) || defined(__CLANG__) || defined(__TINYC__)
 
 typedef __builtin_va_list va_list;
@@ -25,4 +26,5 @@ typedef char *va_list;
 #define va_copy(x,y) x = y
 #define va_end(ap) ((void) 0)
 
+#endif
 #endif

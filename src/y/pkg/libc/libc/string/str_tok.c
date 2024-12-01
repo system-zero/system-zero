@@ -20,6 +20,7 @@ StrTokenType *str_tok (const char *buf, utf8 tok, StrTokenType *obj, StrTokenCb 
   char *sp = (char *) buf;
   char *p = sp;
 
+  int ulen = 0;
   int end = 0;
 
   for (;;) {
@@ -31,7 +32,7 @@ StrTokenType *str_tok (const char *buf, utf8 tok, StrTokenType *obj, StrTokenCb 
       goto tokenize;
     }
 
-    int ulen = 0;
+    ulen = 0;
     utf8 code = utf8_code_and_len (sp, &ulen);
 
     if (code == tok) {

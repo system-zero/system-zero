@@ -1,0 +1,10 @@
+var m = New Make (__file__, C_HEADER)
+
+m.set.header.source (
+  ["vm/constants.h",
+   "vm/types.h",
+   "vm/registers.h",
+   "vm/ops.h"
+  ]; clear, to : "vm")
+
+return m

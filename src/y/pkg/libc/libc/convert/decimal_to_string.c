@@ -4,6 +4,10 @@
 // provides: char *ulong_to_string (decimal_t *, ulong)
 // provides: char *int64_to_string (decimal_t *, int64_t)
 // provides: char *uint64_to_string (decimal_t *, uint64_t)
+// provides: char *uint64_to_binary_string (decimal_t *, uint64_t)
+// provides: char *uint64_to_octal_string (decimal_t *, uint64_t)
+// provides: char *uint64_to_hex_string (decimal_t *, uint64_t)
+// provides: char *ptr_to_string (decimal_t *, void *)
 // requires: string/mem_set.c
 // requires: convert/decimal.h
 
@@ -36,6 +40,17 @@ static char *unsigned64_to_string (decimal_t *dec, uint64_t u, int minus) {
     u /= dec->base;
   }
 
+/* or
+  uint64_t n = u;
+  decimal_t de = {.base = 16, .size = 0};
+  while (n != 0) {
+    int r = (int) (n % (uint64_t) (de.base));
+    char digit = (char) r + (r < 10 ? '0' : 'a' - 10);
+    decimal_prepend (&de, digit);
+    n /= (unsigned long long) (de.base);
+  }
+*/
+
   if (minus) decimal_prepend (dec, '-');
 
   return dec->digits + (DECIMAL_NUM_DIGITS - dec->size);
@@ -65,4 +80,39 @@ char *uint64_to_string (decimal_t *dec, uint64_t u) {
 char *int64_to_string (decimal_t *dec, int64_t i) {
   int minus = i < 0;
   return unsigned64_to_string (dec, minus ? -i : i, minus);
+}
+
+char *uint64_to_octal_string (decimal_t *dec, uint64_t u) {
+  int orig_base = dec->base;
+  dec->base = 8;
+  unsigned64_to_string (dec, u, 0);
+  //decimal_prepend (dec, '0');
+  dec->base = orig_base;
+  return dec->digits + (DECIMAL_NUM_DIGITS - dec->size);
+}
+
+char *ptr_to_string (decimal_t *dec, void *ptr) {
+  int orig_base = dec->base;
+  dec->base = 16;
+  unsigned64_to_string (dec, (uint64_t) ptr, 0);
+  decimal_prepend (dec, 'x');
+  decimal_prepend (dec, '0');
+  dec->base = orig_base;
+  return dec->digits + (DECIMAL_NUM_DIGITS - dec->size);
+}
+
+char *uint64_to_hex_string (decimal_t *dec, uint64_t u) {
+  int orig_base = dec->base;
+  dec->base = 16;
+  unsigned64_to_string (dec, u, 0);
+  dec->base = orig_base;
+  return dec->digits + (DECIMAL_NUM_DIGITS - dec->size);
+}
+
+char *uint64_to_binary_string (decimal_t *dec, uint64_t u) {
+  int orig_base = dec->base;
+  dec->base = 2;
+  unsigned64_to_string (dec, u, 0);
+  dec->base = orig_base;
+  return dec->digits + (DECIMAL_NUM_DIGITS - dec->size);
 }

@@ -181,6 +181,7 @@ const SCRIPT_LIBRARY    = (1 << 10)
 const PACKAGE           = (1 << 11)
 const LIBC              = (1 << 12)
 const C_HEADER          = (1 << 13)
+const METAPACKAGE       = (1 << 14)
 const SCRIPT            = (SCRIPT_EXECUTABLE|SCRIPT_LIBRARY)
 const EXECUTABLE        = (SHARED_EXECUTABLE|STATIC_EXECUTABLE)
 const LIBRARY           = (SHARED_LIBRARY|STATIC_LIBRARY)
@@ -192,6 +193,29 @@ const SHARED_TYPE       = 1
 const STATIC_TYPE       = 2
 
 const ARGPARSE
+
+Type Dependency {
+  unit
+  type
+  init : func (u, t) {
+    this.unit = u
+    this.type = t
+  }
+}
+
+Type Header {
+  source
+  to
+  init : func (h) {
+    this.source = h
+    if qualifier_exists ("to") then
+      this.to = qualifier ("to", null) : concat_with (h: basename ())
+    orelse
+      this.to = h
+  }
+}
+
+var string[0] MAKE_INSTALLED
 
         Type Make {
   private
@@ -220,6 +244,7 @@ const ARGPARSE
   cflags          : {[]}
   targets         : 0
   name
+  spec
   orig_name
   version
   cc
@@ -240,6 +265,7 @@ const ARGPARSE
       cflags       : {[]}
       sources      : {[]}
       linkagainst  : {[]}
+      dependencies : {[]}
       compile_type : COMPILE_ASSEMBLE_LINK
       force        : false
       make         : false
@@ -248,26 +274,29 @@ const ARGPARSE
     }
 
     module : {
-      sources     : {[]} 
-      cflags      : {[]}
-      linkagainst : {[]}
-      force       : false
-      make        : false
+      sources      : {[]} 
+      cflags       : {[]}
+      linkagainst  : {[]}
+      dependencies : {[]}
+      force        : false
+      make         : false
       output
       pre_exec
       post_exec
     }
 
     executable : {
-      sources     : {[]}
-      cflags      : {[]}
-      linkagainst : {[]}
-      force       : false
-      make        : false
-      output
-      completion  : true
+      sources      : {[]}
+      cflags       : {[]}
+      linkagainst  : {[]}
+      dependencies : {[]}
+      force        : false
+      make         : false
+      completion   : true
+      compile_type : COMPILE_ASSEMBLE_LINK
       pre_exec
       post_exec
+      output
     }
   }
 
@@ -276,6 +305,7 @@ const ARGPARSE
       sources      : {[]}
       cflags       : {[]}
       linkagainst  : {[]}
+      dependencies : {[]}
       force        : false
       make         : false
       compile_type : COMPILE_ASSEMBLE_LINK
@@ -284,28 +314,31 @@ const ARGPARSE
     }
 
     executable : {
-      sources     : {[]}
-      cflags      : {[]}
-      linkagainst : {[]}
-      force       : false
-      make        : false
-      output
-      completion  : true
+      sources      : {[]}
+      cflags       : {[]}
+      linkagainst  : {[]}
+      dependencies : {[]}
+      force        : false
+      make         : false
+      completion   : true
+      compile_type : COMPILE_ASSEMBLE_LINK
       pre_exec
       post_exec
+      output
     }
   }
 
   script : {
     executable : {
-      sources   : {[]}
-      force     : false
-      install   : false
-      interpr   : {
+      sources      : {[]}
+      dependencies : {[]}
+      force        : false
+      install      : false
+      interpr      : {
         shared
         static
       }
-      completion : true
+      completion   : true
       curtype
       cursource
       curoutput
@@ -314,14 +347,19 @@ const ARGPARSE
     }
 
     library : {
-      sources   : {[]}
-      force     : false
-      install   : false
+      sources      : {[]}
+      dependencies : {[]}
+      force        : false
+      install      : false
       cursource
       curoutput
       pre_exec
       post_exec
     }
+  }
+
+  executable : {
+    curoutput
   }
 
   header : {
@@ -332,7 +370,7 @@ const ARGPARSE
 
   libc : {
     sources : {[]}
-    force : false
+    force   : false
     output
     pre_exec
     post_exec
@@ -396,15 +434,13 @@ const ARGPARSE
       append "-Wmissing-declarations"                in this.cflags
       append "-Werror-implicit-function-declaration" in this.cflags
     }
-
-    append "-fdollars-in-identifiers"                in this.cflags
   }
 
   change_to_build_directory : func {
     return ok if null is this.builddir
     this.retval = this.builddir: change ()
     if notok is this.retval
-       println (errno_string (errno))
+      println (errno_string (errno))
     return this.retval
   }
 
@@ -513,31 +549,29 @@ const ARGPARSE
       this.script.library.force = true
   }
 
+  record_file : func (f) {
+    var st = f: stat ()
+    var base = base64_encode (f)
+    this.recorded.$(f) = { mtime : st.st_mtime, base : base }
+  }
+
   record : func (sources) {
     if this.recorded is null this.recorded = {}
 
     for v in sources {
-      continue if
-        key_exists (this.recorded, v)
-      continue ifnot
-         v: exists ()
+      continue if key_exists (this.recorded, v)
+      continue ifnot v: exists ()
 
-      var st = v: stat ()
-      var base = base64_encode (v)
-      this.recorded.$(v) = { mtime : st.st_mtime, base : base }
+      this.record_file (v)
     }
 
-    var v = this.specname
-    var st = v: stat ()
-    var base = base64_encode (v)
-    this.recorded.$(v) = { mtime : st.st_mtime, base : base }
+    this.record_file (this.specname)
   }
 
   read_cached_file : func {
     if this.cached is null {
       var fd = open (this.cached_file, O_RDONLY, 0)
-      return true if
-         fd is null
+      return true if fd is null
 
       var s = read (fd)
       if s is null
@@ -551,18 +585,8 @@ const ARGPARSE
     return false
   }
 
-  should_make : func (target, sources, force) {
+  should_make : func (sources, force) {
     return true if force
-
-    var type = target: typeof ()
-
-    if type is ArrayType or type is ListType then
-      for v in target
-        return true ifnot
-          v: exists ()
-    orelse
-      return true ifnot
-        target: exists ()
 
     return true ifnot this.cached_file: exists ()
 
@@ -619,7 +643,10 @@ const ARGPARSE
         notok is copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
   }
 
-  endbuild : func (retval) {
+  endbuild : func (retval, ar) {
+    if retval is ok and ar isnot null
+      for v in ar this.record_file (v)
+
     change (this.curdir)
     this.retval = retval
     return retval
@@ -634,6 +661,7 @@ const ARGPARSE
     var is_z_module = qualifier_exists ("z_module")
 
     this.targets = targets
+    this.spec = unit
 
     var dir = unit: dirname ()
 
@@ -711,6 +739,9 @@ const ARGPARSE
     orelse
       if t is StringType then
         append v in l
+      orelse
+        if t is MapType then
+          append v in l
   }
 
   append_linkagainst_value : func (v, l) {
@@ -741,13 +772,18 @@ const ARGPARSE
 
   install : {
     header : func {
+      return ok if false is this.header.install
+
       return ok ifnot this.header.sources: len ()
 
       return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-      this.record (this.header.sources)
+      var string[this.header.sources: len ()] sources
 
-      return ok if false is this.header.install
+      for i, v in this.header.sources sources[i] = v.source
+
+      this.record (sources)
+
 
       ifnot this.incdir: exists () then mkdir (this.incdir, 0755; verbose : this.verbose + 1)
       ifnot this.incdir: isdirectory ()
@@ -758,32 +794,46 @@ const ARGPARSE
 
       var r = ok
 
-      for h in this.header.sources {
-        var to = this.incdir: concat_with (h)
+      var string[0] outputs
 
-        r = this.should_make (to, [h], this.header.force)
+      for htype in this.header.sources {
+        var h = htype.source
+        var to = this.incdir: concat_with (htype.to)
+
+        this.record ([to])
+        r = this.should_make ([to, h], this.header.force)
+
         return notok if r is notok
         continue if r is false
 
+        if this.dump_commands println ("# installing C header")
+
+        var dname = htype.to: dirname ()
+
+        if dname isnot "." {
+          dname = this.incdir: concat_with (dname)
+
+          if this.dump_commands then
+            println ("test -d ${dname} || mkdir ${dname}")
+          orelse
+            return notok if notok is mkdir (dname, 0755; verbose : this.verbose + 1)
+        }
+
         if this.dump_commands {
           var ver = "-v "
-          println ("# installing C header")
-          println ("cp ${%s, this.verbose: if v is 1 then ver orelse `` end}--force ${this.header.sources} ${to}")
+          println ("cp ${%s, this.verbose: if v is 1 then ver orelse `` end}--force ${h} ${to}")
           continue
         }
 
-        var dname = h: dirname ()
-        if dname isnot "." {
-          dname = this.incdir: concat_with (dname)
-          return notok if notok is mkdir (dname, 0755; verbose : this.verbose + 1)
-        }
+        append to in outputs
 
         r = copy (h, to; verbose : this.verbose + 1, force : 1)
         return notok if r is notok
       }
 
       this.header.install = false
-      return this.endbuild (r)
+
+      return this.endbuild (r, outputs)
     }
 
     script : {
@@ -794,10 +844,12 @@ const ARGPARSE
         if null is this.script.executable.sources
           return this.error ("script executable sources is null")
 
-        var sources = {[]}
-        for v in this.script.executable.sources append v + ".lai" in sources
+        var string[this.script.executable.sources: len ()] sources
+        for i, v in this.script.executable.sources sources[i] = v + ".lai"
 
-        this.record (sources)
+        var script_sources = {[]}
+        for v in this.script.executable.sources
+          append v + ".lai" in script_sources
 
         return ok if false is this.script.executable.install
 
@@ -812,10 +864,14 @@ const ARGPARSE
 
         for v in this.script.executable.sources {
           append this.bindir: concat_with (v)             in targets
+          append this.bindir: concat_with (v)             in sources
           append this.bindir: concat_with (v) + "-static" in targets
+          append this.bindir: concat_with (v) + "-static" in sources
         }
 
-        var r = this.should_make (targets, sources, this.script.executable.force)
+        this.record (sources)
+
+        var r = this.should_make (sources, this.script.executable.force)
 
         return notok if r is notok
         return ok if r is false
@@ -829,7 +885,9 @@ const ARGPARSE
         r = notok
         var idx = 0
 
-        for v in sources {
+        var string[0] outputs
+
+        for v in script_sources {
           ifnot v: exists () then return this.error (v + " source doesn't exists")
 
           var read_fd = open (v, O_RDONLY, 0)
@@ -850,6 +908,7 @@ const ARGPARSE
           }
 
           var output = targets[idx++]
+          append output in outputs
 
           var write_fd = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
           if null is write_fd then return this.error ("unable to open() " + output)
@@ -891,6 +950,7 @@ const ARGPARSE
           }
 
           output = targets[idx++]
+          append output in outputs
 
           write_fd = open (output, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU)
           if null is write_fd then return this.error ("unable to open() " + output)
@@ -924,7 +984,7 @@ const ARGPARSE
           if this.script.executable.completion is true then
             for v in this.script.executable.sources this.install_data (v)
 
-        return this.endbuild (r)
+        return this.endbuild (r, outputs)
       }
 
       library : func {
@@ -932,10 +992,11 @@ const ARGPARSE
         return notok if notok is this.change_to_build_directory ()
         if null is this.script.library.sources then return this.error ("script library sources is null")
 
-        var sources = {[]}
-        for v in this.script.library.sources append v + ".lai" in sources
+        var script_sources = {[]}
+        var string[this.script.library.sources: len ()] sources
 
-        this.record (sources)
+        for v in this.script.library.sources append v + ".lai" in script_sources
+        for i, v in this.script.library.sources sources[i] = v + ".lai"
 
         return ok if false is this.script.library.install
 
@@ -946,10 +1007,14 @@ const ARGPARSE
 
         var targets = {[]}
 
-        for v in this.script.library.sources
+        for v in this.script.library.sources {
           append this.lalibdir: concat_with (v + ".lai") in targets
+          append this.lalibdir: concat_with (v + ".lai") in sources
+        }
 
-        var r = this.should_make (targets, sources, this.script.library.force)
+        this.record (sources)
+
+        var r = this.should_make (sources, this.script.library.force)
 
         return notok if r is notok
         return ok if r is false
@@ -963,11 +1028,14 @@ const ARGPARSE
         r = notok
         var idx = 0
 
-        for v in sources {
+        var string[0] outputs
+
+        for v in script_sources {
           ifnot v: exists ()
             return this.error (v + " source doesn't exists")
 
           var output = targets[idx++]
+          append output in outputs
 
           this.script.library.cursource = v
           this.script.library.curoutput = output
@@ -992,17 +1060,121 @@ const ARGPARSE
           r = ok
         }
 
-        return this.endbuild (r)
+        return this.endbuild (r, outputs)
       }
     }
   }
 
+
   make : {
+    dependencies : func (deps, type) {
+      for v in deps {
+        continue if MAKE_INSTALLED: any (v.unit)
+
+        if this.get.dump_commands () then
+          print ("# Making: [${dirname (v.unit): basename ()}]\n")
+        orelse
+          print ("# Making: [\e[33m ${dirname (v.unit): basename ()} \e[m]\n")
+
+        var s = evalfile (v.unit)
+
+        if null is s {
+          println ("\b \e[31mfailed\e[m")
+          return notok
+        }
+
+        var targets = s.get.targets ()
+        var ntargets = NONE
+
+        if type is SHARED_LIBRARY {
+          for va in s.get.shared.library.dependencies () {
+            if va.unit is this.spec {
+              println (stderr, "\b \e[31mfailed\e[m\ncircular dependency that might leads to an infinity loop detected, '${v.unit: dirname (): basename ()}' requires '${this.spec: dirname (): basename ()}' that also requires '${v.unit: dirname () : basename ()}'")
+              return notok
+            }
+          }
+
+          if (targets is LIBRARY) or (targets & SHARED_LIBRARY) ntargets |= SHARED_LIBRARY
+          if targets & C_HEADER ntargets |= C_HEADER
+
+        } else if type is SHARED_EXECUTABLE {
+          for va in  s.get.shared.executable.dependencies () {
+            if va.unit is this.spec {
+              println (stderr, "\b \e[31mfailed\e[m\ncircular dependency that might leads to an infinity loop detected, '${v.unit: dirname (): basename ()}' requires '${this.spec: dirname (): basename ()}' that also requires '${v.unit: dirname () : basename ()}'")
+              return notok
+            }
+          }
+
+          if (targets is LIBRARY) or (targets & SHARED_LIBRARY) ntargets |= SHARED_LIBRARY
+          if targets & C_HEADER ntargets |= C_HEADER
+
+        } else if type is MODULE {
+          if (targets is LIBRARY) or (targets & SHARED_LIBRARY) ntargets |= SHARED_LIBRARY
+          if targets & C_HEADER ntargets |= C_HEADER
+
+        } else if type is STATIC_LIBRARY {
+          for va in  s.get.static.library.dependencies () {
+            if va.unit is this.spec {
+              println (stderr, "\b \e[31mfailed\e[m\ncircular dependency that might leads to an infinity loop detected, '${v.unit: dirname (): basename ()}' requires '${this.spec: dirname (): basename ()}' that also requires '${v.unit: dirname () : basename ()}'")
+              return notok
+            }
+          }
+
+          if (targets is LIBRARY) or (targets & STATIC_LIBRARY) ntargets |= SHARED_LIBRARY
+          if targets & C_HEADER ntargets |= C_HEADER
+        } else if type is STATIC_EXECUTABLE {
+          for va in  s.get.static.executable.dependencies () {
+            if va.unit is this.spec {
+              println (stderr, "\b \e[31mfailed\e[m\ncircular dependency that might leads to an infinity loop detected, '${v.unit: dirname (): basename ()}' requires '${this.spec: dirname (): basename ()}' that also requires '${v.unit: dirname () : basename ()}'")
+              return notok
+            }
+          }
+
+          if (targets is LIBRARY) or (targets & STATIC_LIBRARY) ntargets |= SHARED_LIBRARY
+          if targets & C_HEADER ntargets |= C_HEADER
+        }
+
+        if ntargets is NONE {
+          println ("\b not required")
+          continue
+        }
+
+        s.set.targets (ntargets)
+
+        var r = s.main ()
+
+        if notok is r {
+          println (stderr, "\b \e[31mfailed\e[m")
+          return notok
+        }
+
+        s.write_record ()
+
+        ifnot MAKE_INSTALLED: any (v.unit) append v.unit in MAKE_INSTALLED
+      }
+
+      return ok
+    }
+
     shared : {
       library : func {
+        return notok if notok is this.make.dependencies (this.shared.library.dependencies, SHARED_LIBRARY)
+
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.shared.library.sources)
+        var output = this.libdir: concat_with (this.liboutput + ".so")
+
+        var string[this.shared.library.sources: len ()] sources
+        for i, v in this.shared.library.sources sources[i] = v
+
+        append output in sources
+
+        if this.header.sources: len () {
+          for v in this.header.sources
+            append v.source in sources
+        }
+
+        this.record (sources)
 
         return ok if false is this.shared.library.make
 
@@ -1019,8 +1191,7 @@ const ARGPARSE
         if this.shared.library.compile_type is COMPILE_ASSEMBLE then
           return this.compile.shared.library.objects ()
 
-        var output = this.libdir: concat_with (this.liboutput + ".so")
-        var r = this.should_make (output, this.shared.library.sources, this.shared.library.force)
+        var r = this.should_make (sources, this.shared.library.force)
 
         return notok if r is notok
         return ok if r is false
@@ -1079,13 +1250,24 @@ const ARGPARSE
           return ok if r > ok
         } 
 
-        return this.endbuild (if r isnot ok then notok orelse ok)
+        return this.endbuild (if r isnot ok then notok orelse ok end, [output])
       }
 
       executable : func {
+        return notok if notok is this.make.dependencies (this.shared.executable.dependencies, SHARED_EXECUTABLE)
+
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.shared.executable.sources)
+        var output = this.bindir: concat_with (this.shared.executable.output + "-shared")
+
+        this.set.executable.curoutput (output)
+
+        var string[this.shared.executable.sources: len ()] sources
+        for i, v in this.shared.executable.sources sources[i] = v
+
+        append output in sources
+
+        this.record (sources)
 
         return ok if false is this.shared.executable.make
 
@@ -1097,9 +1279,11 @@ const ARGPARSE
             return notok
           }
 
-        var output = this.bindir: concat_with (this.shared.executable.output + "-shared")
+        if this.shared.executable.compile_type is COMPILE_ASSEMBLE then
+          return this.compile.shared.executable.objects ()
 
-        var r = this.should_make (output, this.shared.executable.sources, this.shared.executable.force)
+        var r = this.should_make (sources, this.shared.executable.force)
+
         return notok if r is notok
         return ok if r is false
 
@@ -1153,13 +1337,24 @@ const ARGPARSE
           return ok if r > ok
         } 
 
-        return this.endbuild (if r isnot ok then notok orelse ok end)
+        return this.endbuild (if r isnot ok then notok orelse ok end, [output])
       }
 
       module : func {
+        return notok if notok is this.make.dependencies (this.shared.module.dependencies, MODULE)
+
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.shared.module.sources)
+        var instdir = this.libdir: concat_with (this.modulesdirname)
+        var output = instdir: concat_with (this.shared.module.output + "-module.so")
+
+        var string[this.shared.module.sources: len ()] sources
+        for i, v in this.shared.module.sources sources[i] = v
+
+        append output in sources
+
+        this.record (sources)
+
         return ok if false is this.shared.module.make
 
         ifnot this.moddir: exists () then mkdir (this.moddir, 0755; verbose : this.verbose + 1)
@@ -1167,15 +1362,13 @@ const ARGPARSE
           if false is this.dump_commands then
             return this.error (this.moddir + ": is not a directory")
 
-        var instdir = this.libdir: concat_with (this.modulesdirname)
         ifnot instdir: exists () then mkdir (instdir, 0755; verbose : this.verbose + 1)
         ifnot instdir: isdirectory () then
           if false is this.dump_commands then
             return this.error (this.moddir + ": is not a directory")
 
-        var output = instdir: concat_with (this.shared.module.output + "-module.so")
+        var r = this.should_make (sources, this.shared.module.force)
 
-        var r = this.should_make (output, this.shared.module.sources, this.shared.module.force)
         return notok if r is notok
         return ok if r is false
 
@@ -1223,15 +1416,29 @@ const ARGPARSE
           return ok if r > ok
         } 
 
-        return this.endbuild (if r isnot ok then notok orelse ok end)
+        return this.endbuild (if r isnot ok then notok orelse ok end, [output])
       }
     }
 
     static : {
       library : func {
+        return notok if notok is this.make.dependencies (this.static.library.dependencies, STATIC_LIBRARY)
+
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.static.library.sources)
+        var output = this.libdir: concat_with (this.liboutput + ".a")
+
+        var string[this.static.library.sources: len ()] sources
+        for i, v in this.static.library.sources sources[i] = v
+
+        append output in sources
+
+        if this.header.sources: len () {
+          for v in this.header.sources
+            append v.source in sources
+        }
+
+        this.record (sources)
 
         return ok if false is this.static.library.make
 
@@ -1249,9 +1456,8 @@ const ARGPARSE
         if this.static.library.compile_type is COMPILE_ASSEMBLE then
           return this.compile.static.library.objects ()
 
-        var output = this.libdir: concat_with (this.liboutput + ".a")
+        var r = this.should_make (sources, this.static.library.force)
 
-        var r = this.should_make (output, this.static.library.sources, this.static.library.force)
         return notok if r is notok
         return ok if r is false
 
@@ -1306,6 +1512,11 @@ const ARGPARSE
           remove (this.liboutput + ".o")
         }
 
+        var to = this.libdir: concat_with (this.liboutput: delete_substr ("-" + this.version) + ".a")
+
+         if ok is r then
+           symlink (this.liboutput + ".a", to; verbose : this.verbose + 1, force : 1)
+
         this.static.library.make = false
 
         if r is notok then println (" \e[31mfailed\e[m") orelse
@@ -1317,13 +1528,23 @@ const ARGPARSE
           return ok if r > ok
         } 
 
-        return this.endbuild (if r isnot ok then notok orelse ok end)
+        return this.endbuild (if r isnot ok then notok orelse ok end, [output])
       }
 
-      executable: func {
+      executable : func {
+        return notok if notok is this.make.dependencies (this.static.executable.dependencies, STATIC_EXECUTABLE)
+
         return notok if notok is this.change_to_build_directory () and this.dump_commands is false
 
-        this.record (this.static.executable.sources)
+        var output = this.bindir: concat_with (this.static.executable.output + "-static")
+        this.set.executable.curoutput (output)
+
+        var string[this.static.executable.sources: len ()] sources
+        for i, v in this.static.executable.sources sources[i] = v
+
+        append output in sources
+
+        this.record (sources)
 
         return ok if false is this.static.executable.make
 
@@ -1335,9 +1556,11 @@ const ARGPARSE
           }
         }
 
-        var output = this.bindir: concat_with (this.static.executable.output + "-static")
+        if this.static.executable.compile_type is COMPILE_ASSEMBLE then
+          return this.compile.static.executable.objects ()
 
-        var r = this.should_make (output, this.static.executable.sources, this.static.executable.force)
+        var r = this.should_make (sources, this.static.executable.force)
+
         return notok if r is notok
         return ok if r is false
 
@@ -1388,7 +1611,7 @@ const ARGPARSE
           return ok if r > ok
         }
 
-        return this.endbuild (if r isnot ok then notok orelse ok end)
+        return this.endbuild (if r isnot ok then notok orelse ok end, [output])
       }
     }
 
@@ -1396,11 +1619,16 @@ const ARGPARSE
       return notok if notok is this.change_to_build_directory ()
       ifnot this.libc.sources: len () return this.error ("libc sources array is null")
 
-      this.record (this.libc.sources)
+      var string[this.libc.sources: len ()] sources
+      for i, v in this.libc.sources sources[i] = v
+
+      append this.libc.output in sources
+
+      this.record (sources)
 
       this.libc.force = ARGPARSE.results.force
 
-      var r = this.should_make (this.libc.output, this.libc.sources, this.libc.force)
+      var r = this.should_make (sources, this.libc.force)
 
       return notok if r is notok
       return ok if r is false
@@ -1418,11 +1646,10 @@ const ARGPARSE
 
       if null isnot this.libc.post_exec {
         r = this.libc.post_exec ()
-        return notok if r is notok
-        return ok if r > ok
+        if r > ok r = ok
       }
 
-      return r
+        return this.endbuild (if r isnot ok then notok orelse ok end, [this.libc.output])
     }
   }
 
@@ -1442,19 +1669,25 @@ const ARGPARSE
           append " -shared -fPIC" in com
 
           var string[this.shared.library.sources: len ()] objects
+          var string[objects: len ()] sources
 
           for i, v in this.shared.library.sources {
             var oo = "build/" + v: path_basename_sans_extname () + ".o"
             objects[i] = oo
+            sources[i] = oo
           }
+
+          this.record (sources)
 
           var n = 0
 
           var r
           for i, v in objects {
-            r = this.should_make (v, [this.shared.library.sources[i]], this.shared.library.force)
+            r = this.should_make ([v, this.shared.library.sources[i]], this.shared.library.force)
+
             return notok if r is notok
             continue if r is false
+
             n++
             var lcom = com + " -c " + this.shared.library.sources[i] + " -o " + v
 
@@ -1466,11 +1699,19 @@ const ARGPARSE
             if this.verbose then println (lcom)
 
             r = this.sh: exec (lcom)
+
             if r is notok {
               ifnot this.verbose then println (lcom)
               println ("failed")
               return notok
             }
+
+            var to = this.libdir: concat_with (this.liboutput: delete_substr ("-" + this.version) + ".so")
+
+            if ok is r then
+              symlink (this.liboutput + ".so", to; verbose : this.verbose + 1, force : 1)
+
+            this.record_file (v)
           }
 
           return ok ifnot n
@@ -1488,13 +1729,117 @@ const ARGPARSE
           if this.verbose then println (com)
 
           r = this.sh: exec (com)
+
           if r isnot ok {
             ifnot this.verbose then println (com)
             println ("failed")
             return notok
           }
 
-          return this.endbuild (if r isnot ok then notok orelse ok end)
+          return this.endbuild (if r isnot ok then notok orelse ok end, [output])
+        }
+      }
+
+      executable : {
+        objects : func {
+          return notok if notok is this.make_objects_build_dir ()
+
+          var com = this.cc + " -std=" + this.std
+
+          append " " + this.march        in com
+          append " " + this.optimization in com
+
+          for v in this.cflags                         if v isnot null append " " + v in com
+          for v in this.shared.executable.cflags       if v isnot null append " " + v in com
+          for v in this.shared.executable.linkagainst  if v isnot null append " " + v in com
+
+          if this.rpath then append " -Wl,-rpath=" + this.libdir in com
+
+          var string[this.shared.executable.sources: len ()] objects
+          var string[objects: len ()] sources
+
+          for i, v in this.shared.executable.sources {
+            var oo = "build/" + v: path_basename_sans_extname () + ".o"
+            objects[i] = oo
+            sources[i] = oo
+          }
+
+          this.record (sources)
+
+          var n = 0
+
+          var r
+
+          if null isnot this.shared.executable.pre_exec {
+            r = this.shared.executable.pre_exec ()
+            return notok if r is notok
+            return ok if r > ok
+          } 
+
+          for i, v in objects {
+            r = this.should_make ([v, this.shared.executable.sources[i]], this.shared.executable.force)
+
+            return notok if r is notok
+            continue if r is false
+
+            n++
+            var lcom = com + " -c " + this.shared.executable.sources[i] + " -o " + v
+
+            if this.dump_commands {
+              println (lcom)
+              continue
+            }
+
+            if this.verbose then println (lcom)
+
+            r = this.sh: exec (lcom)
+
+            if r is notok {
+              ifnot this.verbose then println (lcom)
+              println ("failed")
+              return notok
+            }
+
+            this.record_file (v)
+          }
+
+          return ok ifnot n
+
+          for v in this.shared.executable.cflags       if v isnot null append " " + v in com
+          for v in this.shared.executable.linkagainst  if v isnot null append " " + v in com
+
+          if this.rpath then append " -Wl,-rpath=" + this.libdir in com
+
+          for v in objects append " " + v in com
+
+          var output = this.bindir: concat_with (this.shared.executable.output + "-shared")
+          append " -o " + output in com
+
+          if this.verbose then println (com)
+
+          r = this.sh: exec (com)
+
+          if r isnot ok {
+            ifnot this.verbose then println (com)
+            println ("failed")
+            return notok
+          }
+
+          if ok is r {
+            symlink (this.shared.executable.output + "-shared", output: delete_substr ("-shared"); verbose : this.verbose + 1, force : 1)
+            if this.shared.executable.completion is true then
+            this.install_data (this.shared.executable.output)
+          }
+
+          this.shared.executable.make = false
+
+          if r is ok and null isnot this.shared.executable.post_exec {
+            r = this.shared.executable.post_exec ()
+            return notok if r is notok
+            return ok if r > ok
+          } 
+
+          return this.endbuild (if r isnot ok then notok orelse ok end, [output])
         }
       }
     }
@@ -1511,24 +1856,31 @@ const ARGPARSE
 
           if this.cc isnot "tcc" then append " -z muldefs" in com
 
+          for v in this.static.library.linkagainst  if v isnot null append " " + v in com
           for v in this.cflags if v isnot null append " " + v  in com
           if this.rpath then append " -Wl,-rpath=" + this.libdir in com
           append " -DSTATIC -static" in com
 
           var string[this.static.library.sources: len ()] objects
+          var string[objects: len ()] sources
 
           for i, v in this.static.library.sources {
             var oo = "build/" + (v: path_basename_sans_extname ()) + ".o"
             objects[i] = oo
+            sources[i] = oo
           }
 
-          var n = 0
+          this.record (sources)
+
+          var n = this.should_make (sources, this.static.library.force)
 
           var r
           for i, v in objects {
-            r = this.should_make (v, [this.static.library.sources[i]], this.static.library.force)
+            r = this.should_make ([v, this.static.library.sources[i]], this.static.library.force)
+
             return notok if r is notok
             continue if r is false
+
             n++
             var lcom = com + " -c " + this.static.library.sources[i] + " -o " + v
 
@@ -1540,11 +1892,14 @@ const ARGPARSE
             if this.verbose then println (lcom)
 
             r = this.sh: exec (lcom)
+
             if r is notok {
               ifnot this.verbose then println (lcom)
               println ("failed")
               return notok
             }
+
+            this.record_file (v)
           }
 
           return ok ifnot n
@@ -1556,20 +1911,118 @@ const ARGPARSE
           for v in objects append " " + v in com
 
           if this.verbose then println (com)
-          r = this.sh: exec (com)
 
           r = this.sh: exec (com)
+
           if r is notok {
+            ifnot this.verbose then println (com)
+            println ("${__func__}, failed")
+            return notok
+          }
+
+          var to = this.libdir: concat_with (this.liboutput: delete_substr ("-" + this.version) + ".a")
+
+           if ok is r then
+             symlink (this.liboutput + ".a", to; verbose : this.verbose + 1, force : 1)
+
+          return this.endbuild (ok, [output])
+        }
+      }
+
+      executable : {
+        objects : func {
+          return notok if notok is this.make_objects_build_dir ()
+
+          var com = this.cc + " -std=" + this.std
+
+          append " " + this.march        in com
+          append " " + this.optimization in com
+          append " -DSTATIC"             in com
+          append " -static"              in com
+
+          if this.cc isnot "tcc" then append " -z muldefs" in com
+
+          for v in this.cflags                         if v isnot null append " " + v in com
+       #   for v in this.static.executable.cflags       if v isnot null append " " + v in com
+       #   for v in this.static.executable.linkagainst  if v isnot null append " " + v in com
+
+          var string[this.static.executable.sources: len ()] objects
+          var string[objects: len ()] sources
+
+          for i, v in this.static.executable.sources {
+            var oo = "build/" + v: path_basename_sans_extname () + ".o"
+            objects[i] = oo
+            sources[i] = oo
+          }
+
+          this.record (sources)
+
+          var n = 0
+
+          var r
+          for i, v in objects {
+            r = this.should_make ([v, this.static.executable.sources[i]], this.static.executable.force)
+
+            return notok if r is notok
+            continue if r is false
+
+            n++
+            var lcom = com + " -c " + this.static.executable.sources[i] + " -o " + v
+
+            if this.dump_commands {
+              println (lcom)
+              continue
+            }
+
+            if this.verbose then println (lcom)
+
+            r = this.sh: exec (lcom)
+
+            if r is notok {
+              ifnot this.verbose then println (lcom)
+              println ("failed")
+              return notok
+            }
+
+            this.record_file (v)
+          }
+
+          return ok ifnot n
+
+          for v in this.static.executable.cflags       if v isnot null append " " + v in com
+          for v in this.static.executable.linkagainst  if v isnot null append " " + v in com
+
+          for v in objects append " " + v in com
+
+          var output = this.bindir: concat_with (this.static.executable.output + "-static")
+          append " -o " + output in com
+
+          if this.verbose then println (com)
+
+          r = this.sh: exec (com)
+
+          if r isnot ok {
             ifnot this.verbose then println (com)
             println ("failed")
             return notok
           }
 
-          remove ("build/" + this.liboutput + ".o")
+          if ok is r
+            if this.static.executable.completion is true then
+              this.install_data (this.shared.executable.output)
 
-          return this.endbuild (ok)
+          this.static.executable.make = false
+
+          if r is ok and null isnot this.static.executable.post_exec {
+            r = this.static.executable.post_exec ()
+            return notok if r is notok
+            return ok if r > ok
+          } 
+
+          return this.endbuild (if r isnot ok then notok orelse ok end, [output])
         }
       }
+
     }
   }
 
@@ -1657,24 +2110,39 @@ const ARGPARSE
     shelldatadir  : func return this.shelldatadir
     targets       : func return this.targets
     dependencies  : func return this.dependencies
+    spec          : func return this.spec
     dump_commands : func return this.dump_commands
 
     shared : {
       library : {
         force : func return this.shared.library.force
+        dependencies : func return this.shared.library.dependencies
       }
+
       executable : {
         output : func return this.shared.executable.output
+        dependencies : func return this.shared.executable.dependencies
+      }
+
+      module : {
+        dependencies : func return this.shared.module.dependencies
       }
     }
 
     static : {
       library : {
         force : func return this.static.library.force
+        dependencies : func return this.static.library.dependencies
       }
+
       executable : {
         output : func return this.static.executable.output
+        dependencies : func return this.static.executable.dependencies
       }
+    }
+
+    executable : {
+      curoutput : func return this.executable.curoutput
     }
 
     script : {
@@ -1741,6 +2209,40 @@ const ARGPARSE
 
     cflags : func (v) this.append_value (v, this.cflags)
 
+    targets : func (v) this.targets = v
+
+    dependency : func (unit, type, to) {
+      var ns = qualifier ("ns", Y)
+      if ns is Y then
+        unit = YSRCPKGDIR: concat_with (unit)
+        orelse if ns is L then
+          unit = LSRCPKGDIR: concat_with (unit)
+          orelse if ns is D then
+            unit = DSRCPKGDIR: concat_with (unit)
+            orelse if ns is J then
+              unit = JSRCPKGDIR: concat_with (unit)
+              orelse if ns is X then
+                unit = XSRCPKGDIR: concat_with (unit)
+
+      ifnot unit: basename () is CUR_SPECNAME then
+        unit := concat_with (CUR_SPECNAME)
+
+      var d = New Dependency (unit, type)
+
+      if to & SHARED_LIBRARY or to & LIBRARY then
+        this.append_value (d, this.shared.library.dependencies)
+      if to & STATIC_LIBRARY or to & LIBRARY then
+        this.append_value (d, this.static.library.dependencies)
+      if to & SHARED_EXECUTABLE or to & EXECUTABLE then
+        this.append_value (d, this.shared.executable.dependencies)
+      if to & STATIC_EXECUTABLE or to & EXECUTABLE then
+        this.append_value (d, this.static.executable.dependencies)
+      if to & SCRIPT_EXECUTABLE or to & SCRIPT then
+        this.append_value (d, this.script.executable.dependencies)
+      if to & SCRIPT_LIBRARY or to & SCRIPT then
+        this.append_value (d, this.script.library.dependencies)
+    }
+
     shared : {
       library : {
         to_linkagainst : func (l) this.append_linkagainst_value (l, this.shared.library.linkagainst; qualifiers())
@@ -1748,6 +2250,7 @@ const ARGPARSE
         pre_exec       : func (f) ifnot null is f then this.shared.library.pre_exec = f as callback
         post_exec      : func (f) ifnot null is f then this.shared.library.post_exec = f as callback
         compile_type   : func (t) this.shared.library.compile_type = t
+
         source         : func (v) {
           if qualifier_exists ("clear") then this.clear.shared.library.sources ()
           this.append_value (v, this.shared.library.sources)
@@ -1759,6 +2262,8 @@ const ARGPARSE
           if qualifier_exists ("clear") then this.clear.shared.executable.to_linkagainst()
           this.append_linkagainst_value (l, this.shared.executable.linkagainst; qualifiers())
         }
+
+        compile_type   : func (t) this.shared.executable.compile_type = t
 
         cflag          : func (v) this.append_value (v, this.shared.executable.cflags)
         pre_exec       : func (f) ifnot null is f then this.shared.executable.pre_exec = f as callback
@@ -1808,6 +2313,7 @@ const ARGPARSE
           this.append_linkagainst_value (l, this.static.executable.linkagainst; qualifiers())
         }
 
+        compile_type   : func (t) this.static.executable.compile_type = t
         cflag          : func (v) this.append_value (v, this.static.executable.cflags)
         pre_exec       : func (f) ifnot null is f then this.static.executable.pre_exec = f as callback
         post_exec      : func (f) ifnot null is f then this.static.executable.post_exec = f as callback
@@ -1886,7 +2392,20 @@ const ARGPARSE
     header : {
       source : func (h) {
         if qualifier_exists ("clear") then this.clear.header.sources ()
-        this.append_value (h, this.header.sources)
+
+        var t = h: typeof ()
+
+        if t is ArrayType {
+          for f in h {
+            var htype = New Header (f; qualifiers ())
+            this.append_value (htype, this.header.sources)
+          }
+        } else {
+          if t is StringType {
+            var htype = New Header (h; qualifiers ())
+            this.append_value (htype, this.header.sources)
+          }
+        }
       }
     }
 
@@ -1904,6 +2423,11 @@ const ARGPARSE
       source : func (s) {
         this.set.shared.library.source (s; qualifiers ())
         this.set.static.library.source (s; qualifiers ())
+      }
+
+      compile_type : func (t) {
+        this.set.shared.library.compile_type (t)
+        this.set.static.library.compile_type (t)
       }
     }
 
@@ -1932,6 +2456,23 @@ const ARGPARSE
         this.set.shared.executable.completion (v)
         this.set.static.executable.completion (v)
       }
+
+      compile_type  : func (t) {
+        this.set.shared.executable.compile_type (t)
+        this.set.static.executable.compile_type (t)
+      }
+
+      pre_exec : func (f) {
+        this.set.shared.executable.pre_exec (f)
+        this.set.static.executable.pre_exec (f)
+      }
+
+      post_exec : func (f) {
+        this.set.shared.executable.post_exec (f)
+        this.set.static.executable.post_exec (f)
+      }
+
+      curoutput : func (o) this.executable.curoutput = o
     }
   }
 
@@ -2029,7 +2570,15 @@ const ARGPARSE
     }
   }
 
-  unset : { rpath : func this.rpath = NORPATH }
+  unset : {
+    rpath : func this.rpath = NORPATH
+    executable : {
+      to_linkagainst : func {
+        this.clear.shared.executable.to_linkagainst ()
+        this.clear.static.executable.to_linkagainst ()
+      }
+    }
+  }
 
 }
 
@@ -2377,7 +2926,10 @@ func make_dependencies (f) {
       print ("# Making: [ ${dirname (v): basename ()} ]")
     } else {
       ifnot s.get.targets () is IGNORE then
-        println ("# Making: [\e[33m ${s.get.orig_name ()} \e[m]")
+        if s.get.dump_commands () then
+          println ("# Making: [${s.get.orig_name ()}]")
+        orelse
+          println ("# Making: [\e[33m ${s.get.orig_name ()} \e[m]")
       r = s.main ()
     }
 
@@ -2390,6 +2942,8 @@ func make_dependencies (f) {
     return notok if r isnot ok
 
     s.write_record ()
+
+    ifnot MAKE_INSTALLED: any (v) append v in MAKE_INSTALLED
 
     if notok is s.get.retval () then retval = notok
   }

@@ -749,6 +749,17 @@ public la_T *la_get_root (la_t *);
   _files_;                                                                \
 })
 
+#define GET_OPT_EXCLUDE_FILE_EXTS(_len) ({                                \
+  *_len = 0;                                                              \
+  string **_exts_ = NULL;                                                 \
+  VALUE _v_exts = La.get.qualifier (this, "exclude_extensions", NULL_VALUE); \
+  if (IS_ARRAY(_v_exts))                                                  \
+    _exts_ = AS_STRING_ARRAY(_v_exts, _len);                              \
+  else if (IS_NULL(_v_exts) == 0)                                         \
+    THROW(LA_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+  _exts_;                                                                 \
+})
+
 #define GET_OPT_UID() ({                                                  \
   VALUE _v_uid = La.get.qualifier (this, "uid", INT(-1));                 \
   ifnot (IS_INT(_v_uid))                                                  \

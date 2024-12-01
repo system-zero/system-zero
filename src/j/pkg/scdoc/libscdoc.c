@@ -6,7 +6,7 @@
 #define REQUIRE_UTF8_CODE
 #define REQUIRE_UTF8_CHARACTER
 #define REQUIRE_STDIO
-#define REQUIRE_STR_BYTES_IN_STR
+#define REQUIRE_STR_STR
 #define REQUIRE_TIME
 #define REQUIRE_GMTIME
 #define REQUIRE_STRFTIME
@@ -36,7 +36,7 @@ static utf8 parser_getch (ScdocParser *p) {
   if (p->qhead)
     return (p->c = p->queue[--p->qhead]);
 
-  if (p->str and *p->str) {
+  if (p->str && *p->str) {
     int len = 0;
     p->c = utf8_code_and_len (p->str, &len);
 
@@ -57,7 +57,7 @@ static utf8 parser_getch (ScdocParser *p) {
 
   p->input_ptr += len;
 
-  if (p->c is '\n') {
+  if (p->c == '\n') {
     p->col = 0;
     p->line++;
   } else
@@ -67,7 +67,7 @@ static utf8 parser_getch (ScdocParser *p) {
 }
 
 static void parser_pushc (ScdocParser *p, utf8 c) {
-  if (c and c isnot EOF and c isnot UTF8_INVALID)
+  if (c && c != EOF && c != UTF8_INVALID)
     p->queue[p->qhead++] = c;
 }
 
@@ -89,7 +89,7 @@ static int roff_macro (ScdocParser *p, const char *cmd, ...) {
 
     while (*arg) {
       utf8 c = utf8_code (arg);
-      if (c is '"') {
+      if (c == '"') {
         string_append_byte (p->output, '\\');
         l++;
       }
@@ -116,25 +116,25 @@ static string *parse_section (ScdocParser *p) {
   char *subsection;
 
   while ((c = parser_getch (p))) {
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c < 0x80 and isalnum ((uchar) c)) {
+    if (c < 0x80 && isalnum ((uchar) c)) {
       string_append_byte (section, c);
 
-    } else if (c is ')') {
+    } else if (c == ')') {
       ifnot (section->num_bytes)
         break;
 
       int sec = str_to_long (section->bytes, &subsection, 10);
 
-      if (section->bytes is subsection) {
+      if (section->bytes == subsection) {
         sys_fprintf (sys_stderr, "Expected section digit\n");
         string_release (section);
         return NULL;
       }
 
-      if (sec < 0 or sec > 9) {
+      if (sec < 0 || sec > 9) {
         sys_fprintf (sys_stderr, "Expected section between 0 and 9\n");
         string_release (section);
         return NULL;
@@ -162,13 +162,13 @@ static string *parse_extra (ScdocParser *p) {
   utf8 c;
 
   while ((c = parser_getch (p))) {
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is '"') {
+    if (c == '"') {
       string_append_byte (extra, c);
       return extra;
-    } else if (c is '\n') {
+    } else if (c == '\n') {
       sys_fprintf (sys_stderr, "Unclosed extra preamble field\n");
       string_release (extra);
       return NULL;
@@ -200,53 +200,53 @@ static int parse_preamble (ScdocParser *p) {
   utf8 c;
 
   while ((c = parser_getch (p))) {
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
-    if ((c < 0x80 and isalnum ((uchar) c))
-        or c is '_' or c is '-' or c is '.') {
+    if ((c < 0x80 && isalnum ((uchar) c))
+        || c == '_' || c == '-' || c == '.') {
       string_append_byte (name, c);
 
-    } else if (c is '(') {
+    } else if (c == '(') {
       section = parse_section (p);
 
-      if (NULL is section) {
+      if (NULL == section) {
         retval = -1;
         goto theend;
       }
 
-    } else if (c is '"') {
-      if (ex is 2) {
+    } else if (c == '"') {
+      if (ex == 2) {
         sys_fprintf (sys_stderr, "Too many extra preamble fields\n");
         retval = -1;
         goto theend;
       }
 
       extras[ex] = parse_extra (p);
-      if (extras[ex] is NULL) {
+      if (extras[ex] == NULL) {
         retval = -1;
         goto theend;
       }
       ex++;
 
-    } else if (c is '\n') {
+    } else if (c == '\n') {
       ifnot (name->num_bytes) {
         sys_fprintf (sys_stderr, "Expected preamble\n");
         retval = -1;
         goto theend;
       }
 
-      if (section is NULL) {
+      if (section == NULL) {
         sys_fprintf (sys_stderr, "Expected manual section\n");
         retval = -1;
         goto theend;
       }
 
-      char *ex2 = extras[0] isnot NULL ? extras[0]->bytes : NULL;
-      char *ex3 = extras[1] isnot NULL ? extras[1]->bytes : NULL;
+      char *ex2 = extras[0] != NULL ? extras[0]->bytes : NULL;
+      char *ex3 = extras[1] != NULL ? extras[1]->bytes : NULL;
       string_append_with_fmt (p->output, ".TH \"%s\" \"%s\" \"%s\"",
          name->bytes, section->bytes, date);
 
@@ -260,7 +260,7 @@ static int parse_preamble (ScdocParser *p) {
       string_append_byte (p->output, '\n');
       break;
 
-    } else if (section is NULL) {
+    } else if (section == NULL) {
       sys_fprintf (sys_stderr, "Name characters must be A-Z, a-z, 0-9, `-`, `_`, or `.`\n");
       retval = -1;
       goto theend;
@@ -284,7 +284,7 @@ static int parse_format (ScdocParser *p, enum ScdocFormatting fmt) {
   if (p->flags) {
     if ((p->flags & ~fmt)) {
       sys_fprintf (sys_stderr, "Cannot nest inline formatting (began with %c at %d:%d)\n",
-          p->flags is FORMAT_BOLD ? '*' : '_',
+          p->flags == FORMAT_BOLD ? '*' : '_',
           p->fmt_line, p->fmt_col);
       return -1;
     }
@@ -304,7 +304,7 @@ static int parse_format (ScdocParser *p, enum ScdocFormatting fmt) {
 static int parse_linebreak (ScdocParser *p) {
   utf8 plus = parser_getch (p);
 
-  if (plus isnot '+') {
+  if (plus != '+') {
     string_append_byte (p->output, '+');
     parser_pushc (p, plus);
     return false;
@@ -312,7 +312,7 @@ static int parse_linebreak (ScdocParser *p) {
 
   utf8 lf = parser_getch (p);
 
-  if (lf isnot '\n') {
+  if (lf != '\n') {
     string_append_byte (p->output, '+');
     parser_pushc (p, lf);
     parser_pushc (p, plus);
@@ -320,7 +320,7 @@ static int parse_linebreak (ScdocParser *p) {
   }
 
   utf8 c = parser_getch (p);
-  if (c is '\n') {
+  if (c == '\n') {
     sys_fprintf (sys_stderr, "Explicit line breaks cannot be followed by a blank line\n");
     return -1;
   }
@@ -339,17 +339,17 @@ static int parse_text (ScdocParser *p) {
   int i = 0;
 
   while ((c = parser_getch (p))) {
-    if (c is EOF or c is UTF8_INVALID)
+    if (c == EOF || c == UTF8_INVALID)
       break;
 
     switch (c) {
     case '\\':
       c = parser_getch (p);
-      if (c is EOF or c is UTF8_INVALID) {
+      if (c == EOF || c == UTF8_INVALID) {
         sys_fprintf (sys_stderr, "Unexpected EOF\n");
         return -1;
 
-      } else if (c is '\\')
+      } else if (c == '\\')
         string_append_with_len (p->output, "\\\\", 2);
       else
         string_append_utf8 (p->output, c);
@@ -357,23 +357,23 @@ static int parse_text (ScdocParser *p) {
       break;
 
     case '*':
-      if (-1 is parse_format (p, FORMAT_BOLD)) return -1;
+      if (-1 == parse_format (p, FORMAT_BOLD)) return -1;
       break;
 
     case '_':
       next = parser_getch (p);
-      if (!isalnum ((uchar) last) or (
-            (p->flags & FORMAT_UNDERLINE) and
+      if (!isalnum ((uchar) last) || (
+            (p->flags & FORMAT_UNDERLINE) &&
             !isalnum ((uchar) next))) {
-        if (-1 is parse_format (p, FORMAT_UNDERLINE)) return -1;
+        if (-1 == parse_format (p, FORMAT_UNDERLINE)) return -1;
 
       } else
         string_append_utf8 (p->output, c);
 
-      if (next is EOF)
+      if (next == EOF)
         return 0;
 
-      if (next is UTF8_INVALID)
+      if (next == UTF8_INVALID)
         return -1;
 
       parser_pushc (p, next);
@@ -436,15 +436,15 @@ static int parse_heading (ScdocParser *p) {
   int level = 1;
 
   while ((c = parser_getch (p))) {
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
-    if (c is '#') {
+    if (c == '#') {
       level++;
-    } else if (c is ' ') {
+    } else if (c == ' ') {
       break;
     } else {
       sys_fprintf (sys_stderr, "Invalid start of heading (probably needs a space)\n");
@@ -467,15 +467,15 @@ static int parse_heading (ScdocParser *p) {
   }
 
   while ((c = parser_getch (p))) {
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
     string_append_utf8 (p->output, c);
 
-    if (c is '\n')
+    if (c == '\n')
       break;
   }
 
@@ -486,12 +486,12 @@ static int parse_indent (ScdocParser *p, int *indent, bool write) {
   int i = 0;
   utf8 c;
 
-  while ((c = parser_getch (p)) is '\t')
+  while ((c = parser_getch (p)) == '\t')
     i++;
 
   parser_pushc (p, c);
 
-  if ((c is '\n' or c is UTF8_INVALID or c is EOF) and *indent isnot 0) {
+  if ((c == '\n' || c == UTF8_INVALID || c == EOF) && *indent != 0) {
     // Don't change indent when we encounter empty lines or EOF
     return *indent;
   }
@@ -505,7 +505,7 @@ static int parse_indent (ScdocParser *p, int *indent, bool write) {
       for (int j = *indent; i < j; --j)
         roff_macro (p, "RE", NULL);
 
-    } else if (i is *indent + 1) {
+    } else if (i == *indent + 1) {
       string_append_with_len (p->output, ".RS 4\n", 6);
     }
   }
@@ -515,7 +515,7 @@ static int parse_indent (ScdocParser *p, int *indent, bool write) {
 }
 
 static int list_header (ScdocParser *p, int *num) {
-  if (*num is -1) {
+  if (*num == -1) {
     string_append_with_fmt (p->output, ".IP %s 4\n", "\\(bu");
   } else {
     string_append_with_fmt (p->output, ".IP %d. 4\n", *num);
@@ -528,7 +528,7 @@ static int list_header (ScdocParser *p, int *num) {
 static int parse_list (ScdocParser *p, int *indent, int num) {
   utf8 c;
 
-  if ((c = parser_getch(p)) isnot ' ') {
+  if ((c = parser_getch(p)) != ' ') {
     sys_fprintf (sys_stderr, "Expected space before start of list entry\n");
     return -1;
   }
@@ -536,43 +536,43 @@ static int parse_list (ScdocParser *p, int *indent, int num) {
   string_append_with_len (p->output, ".PD 0\n", 6);
   list_header (p, &num);
 
-  if (-1 is parse_text (p))
+  if (-1 == parse_text (p))
     return -1;
 
   do {
-    if (-1 is parse_indent (p, indent, true))
+    if (-1 == parse_indent (p, indent, true))
       return -1;
 
     c = parser_getch (p);
 
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
     switch (c) {
       case ' ':
-        if ((c = parser_getch (p)) isnot ' ') {
+        if ((c = parser_getch (p)) != ' ') {
           sys_fprintf (sys_stderr, "Expected two spaces for list entry continuation\n");
           return -1;
         }
 
-        if (-1 is parse_text (p))
+        if (-1 == parse_text (p))
           return -1;
 
         break;
 
       case '-':
       case '.':
-        if ((c = parser_getch (p)) isnot ' ') {
+        if ((c = parser_getch (p)) != ' ') {
           sys_fprintf (sys_stderr, "Expected space before start of list entry\n");
           return -1;
         }
 
         list_header (p, &num);
 
-        if (-1 is parse_text (p))
+        if (-1 == parse_text (p))
           return -1;
 
         break;
@@ -583,7 +583,7 @@ static int parse_list (ScdocParser *p, int *indent, int num) {
         return 0;
     }
 
-  } while (c isnot UTF8_INVALID and c isnot EOF);
+  } while (c != UTF8_INVALID && c != EOF);
 
   return 0;
 }
@@ -591,9 +591,9 @@ static int parse_list (ScdocParser *p, int *indent, int num) {
 static int parse_literal (ScdocParser *p, int *indent) {
   utf8 c;
 
-  if ((c = parser_getch (p)) isnot '`' or
-      (c = parser_getch (p)) isnot '`' or
-      (c = parser_getch (p)) isnot '\n') {
+  if ((c = parser_getch (p)) != '`' ||
+      (c = parser_getch (p)) != '`' ||
+      (c = parser_getch (p)) != '\n') {
     sys_fprintf (sys_stderr, "Expected ``` and a newline to begin literal block\n");
     return -1;
   }
@@ -608,7 +608,7 @@ static int parse_literal (ScdocParser *p, int *indent) {
   do {
     if (check_indent) {
       int _indent = *indent;
-      if (-1 is parse_indent (p, &_indent, false))
+      if (-1 == parse_indent (p, &_indent, false))
         return -1;
 
       if (_indent < *indent) {
@@ -625,15 +625,15 @@ static int parse_literal (ScdocParser *p, int *indent) {
     }
 
     c = parser_getch (p);
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
-    if (c is '`') {
-      if (++stops is 3) {
-        if ((c = parser_getch (p)) isnot '\n') {
+    if (c == '`') {
+      if (++stops == 3) {
+        if ((c = parser_getch (p)) != '\n') {
           sys_fprintf (sys_stderr, "Expected literal block to end with newline\n");
           return -1;
         }
@@ -644,7 +644,7 @@ static int parse_literal (ScdocParser *p, int *indent) {
       }
 
     } else {
-      while (stops isnot 0) {
+      while (stops != 0) {
         string_append_byte (p->output, '`');
         stops--;
       }
@@ -660,11 +660,11 @@ static int parse_literal (ScdocParser *p, int *indent) {
 
         case '\\':
           c = parser_getch (p);
-          if (c is UTF8_INVALID or c is EOF) {
+          if (c == UTF8_INVALID || c == EOF) {
             sys_fprintf (sys_stderr, "Unexpected EOF\n");
             return -1;
 
-          } else if (c is '\\')
+          } else if (c == '\\')
             string_append_with_len (p->output, "\\\\", 2);
           else
             string_append_utf8 (p->output, c);
@@ -679,7 +679,7 @@ static int parse_literal (ScdocParser *p, int *indent) {
           break;
       }
     }
-  } while (c isnot UTF8_INVALID and c isnot EOF);
+  } while (c != UTF8_INVALID && c != EOF);
 
   return 0;
 }
@@ -697,10 +697,10 @@ static int parse_table (ScdocParser *p, utf8 style) {
   do {
     c = parser_getch (p);
 
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
     switch (c) {
@@ -712,7 +712,7 @@ static int parse_table (ScdocParser *p, utf8 style) {
         currow = Alloc(sizeof (struct table_row));
 
         if (prevrow) {
-          if (column isnot numcolumns and numcolumns isnot -1) {
+          if (column != numcolumns && numcolumns != -1) {
             sys_fprintf (sys_stderr, "Each row must have the same number of columns\n");
             return -1;
           }
@@ -755,10 +755,10 @@ static int parse_table (ScdocParser *p, utf8 style) {
 
     c = parser_getch (p);
 
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
     switch (c) {
@@ -789,8 +789,8 @@ static int parse_table (ScdocParser *p, utf8 style) {
       case ' ':
         if (prevrow) {
           struct table_cell *pcell = prevrow->cell;
-          for (int i = 0; i <= column and pcell; ++i, pcell = pcell->next) {
-            if (i is column) {
+          for (int i = 0; i <= column && pcell; ++i, pcell = pcell->next) {
+            if (i == column) {
               curcell->align = pcell->align;
               break;
             }
@@ -814,10 +814,10 @@ continue_cell:
       case ' ':
         // Read out remainder of the text
         while ((c = parser_getch (p))) {
-          if (c is EOF)
+          if (c == EOF)
             break;
 
-          if (c is UTF8_INVALID)
+          if (c == UTF8_INVALID)
             return -1;
 
           switch (c) {
@@ -841,19 +841,19 @@ continue_cell:
     }
 
 commit_cell:
-    if (str_bytes_in_str (curcell->contents->bytes, "T{")
-        or str_bytes_in_str (curcell->contents->bytes, "T}")) {
+    if (str_str (curcell->contents->bytes, "T{")
+        || str_str (curcell->contents->bytes, "T}")) {
       sys_fprintf (sys_stderr, "Cells cannot contain T{ or T} due to roff limitations\n");
       return -1;
     }
-  } while (c isnot UTF8_INVALID and c isnot EOF);
+  } while (c != UTF8_INVALID && c != EOF);
 
 commit_table:
 
-  if (c is EOF)
+  if (c == EOF)
     return 0;
 
-  if (c is UTF8_INVALID)
+  if (c == UTF8_INVALID)
     return -1;
 
   roff_macro (p, "TS", NULL);
@@ -920,7 +920,7 @@ commit_table:
     while (curcell) {
       parser_pushstr (p, curcell->contents->bytes);
 
-      if (-1 is parse_text (p)) return -1;
+      if (-1 == parse_text (p)) return -1;
 
       if (curcell->next)
         string_append_with_len (p->output, "\nT}\tT{\n", 7);
@@ -951,70 +951,70 @@ static int parse_document (ScdocParser *p) {
   int indent = 0;
 
   do {
-    if (-1 is parse_indent (p, &indent, true)) return -1;
+    if (-1 == parse_indent (p, &indent, true)) return -1;
 
     c = parser_getch (p);
 
-    if (c is EOF)
+    if (c == EOF)
       break;
 
-    if (c is UTF8_INVALID)
+    if (c == UTF8_INVALID)
       return -1;
 
     switch (c) {
       case ';':
-        if ((c = parser_getch (p)) isnot ' ') {
+        if ((c = parser_getch (p)) != ' ') {
           sys_fprintf (sys_stderr, "Expected space after ; to begin comment\n");
           return -1;
         }
 
         do
           c = parser_getch (p);
-        while (c isnot UTF8_INVALID and c isnot EOF and c isnot '\n');
+        while (c != UTF8_INVALID && c != EOF && c != '\n');
 
         break;
 
       case '#':
-        if (indent isnot 0) {
+        if (indent != 0) {
           parser_pushc (p, c);
 
-          if (-1 is parse_text(p)) return -1;
+          if (-1 == parse_text(p)) return -1;
 
           break;
         }
 
-        if (-1 is parse_heading(p)) return -1;
+        if (-1 == parse_heading(p)) return -1;
 
         break;
 
       case '-':
-        if (-1 is parse_list (p, &indent, -1)) return -1;
+        if (-1 == parse_list (p, &indent, -1)) return -1;
         break;
 
       case '.':
-        if ((c = parser_getch (p)) is ' ') {
+        if ((c = parser_getch (p)) == ' ') {
           parser_pushc (p, c);
-          if (-1 is parse_list (p, &indent, 1)) return -1;
+          if (-1 == parse_list (p, &indent, 1)) return -1;
 
         } else {
           parser_pushc (p, c);
-          if (-1 is parse_text (p)) return -1;
+          if (-1 == parse_text (p)) return -1;
         }
         break;
 
       case '`':
-        if (-1 is parse_literal (p, &indent)) return -1;
+        if (-1 == parse_literal (p, &indent)) return -1;
         break;
 
       case '[':
       case '|':
       case ']':
-        if (indent isnot 0) {
+        if (indent != 0) {
           sys_fprintf (sys_stderr, "Tables cannot be indented\n");
           return -1;
         }
 
-        if (-1 is parse_table (p, c)) return -1;
+        if (-1 == parse_table (p, c)) return -1;
         break;
 
       case ' ':
@@ -1024,8 +1024,8 @@ static int parse_document (ScdocParser *p) {
       case '\n':
         if (p->flags) {
           sys_fprintf (sys_stderr, "Expected %c before starting new paragraph (began with %c at %d:%d)",
-              p->flags is FORMAT_BOLD ? '*' : '_',
-              p->flags is FORMAT_BOLD ? '*' : '_',
+              p->flags == FORMAT_BOLD ? '*' : '_',
+              p->flags == FORMAT_BOLD ? '*' : '_',
               p->fmt_line, p->fmt_col);
           return -1;
         }
@@ -1035,10 +1035,10 @@ static int parse_document (ScdocParser *p) {
 
       default:
         parser_pushc (p, c);
-        if (-1 is parse_text (p)) return -1;
+        if (-1 == parse_text (p)) return -1;
         break;
     }
-  } while (c isnot UTF8_INVALID and c isnot EOF);
+  } while (c != UTF8_INVALID && c != EOF);
 
   return 0;
 }
@@ -1073,9 +1073,9 @@ string *scdoc_parse (ScdocParser *p, const char *input, size_t len) {
 
   output_scdoc_preamble(p);
 
-  if (-1 is parse_preamble (p)) return NULL;
+  if (-1 == parse_preamble (p)) return NULL;
 
-  if (-1 is parse_document (p))
+  if (-1 == parse_document (p))
     return NULL;
 
   return p->output;

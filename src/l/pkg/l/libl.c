@@ -14,10 +14,11 @@
 #define REQUIRE_MAKE_DIR
 #define REQUIRE_MAP
 #define REQUIRE_ALLOC
-#define REQUIRE_IS_ABSOLUTE
-#define REQUIRE_BASENAME_SANS_EXTNAME
-#define REQUIRE_DIRNAME
-#define REQUIRE_EXTNAME
+#define REQUIRE_PATH_IS_ABSOLUTE
+#define REQUIRE_PATH_BASENAME_SANS_EXTNAME
+#define REQUIRE_PATH_BASENAME
+#define REQUIRE_PATH_DIRNAME
+#define REQUIRE_PATH_EXTNAME
 #define REQUIRE_REALPATH
 #define REQUIRE_GETENV
 #define REQUIRE_UTF8_ENCODE
@@ -27,6 +28,7 @@
 #define REQUIRE_STAT
 
 #include <libc.h>
+
 #include <z/list.h>
 #include <z/l.h>
 
@@ -9295,6 +9297,7 @@ static int l_parse_foreach (l_t *this) {
 
       elem_value = *node->value;
       elem_sym->value = elem_value;
+      elem_sym->type = elem_value.type;
       elem_value.refcount++;
       this->curState |= LOOP_STATE;
       err = l_parse_string (this, body_str);
@@ -12127,8 +12130,8 @@ static VALUE I_print_bytes (l_t *this, const char *bytes) {
   return result;
 }
 
-static VALUE I_print_byte (l_t *this, char byte) {
-  VALUE result = INT(this->print_byte (this->out_fp, byte));
+static VALUE I_print_byte (l_t *this, char bt) {
+  VALUE result = INT(this->print_byte (this->out_fp, bt));
   return result;
 }
 

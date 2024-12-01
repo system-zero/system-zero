@@ -1,3 +1,4 @@
+#define MIN_STRING_SIZE 8
 
 typedef struct string {
     char *bytes;

@@ -24,6 +24,8 @@ struct syncdir_t {
   int exclude_dirs_len;
   string **exclude_files;
   int exclude_files_len;
+  string **exclude_exts;
+  int exclude_exts_len;
   size_t src_len;
   size_t dest_len;
   int src_has_dir_sep;
@@ -98,6 +100,13 @@ static int process_file_dryrun (dirwalk_t *dw, const char *file, struct stat *st
     }
   }
 
+  if (syncdir->exclude_exts isnot NULL) {
+    char *ext = Path.extname ((char *) bn);
+    for (int i = 0; i < syncdir->exclude_exts_len; i++) {
+      if (Cstring.eq (ext, syncdir->exclude_exts[i]->bytes)) return 0;
+    }
+  }
+
   size_t len = syncdir->dest_len + (syncdir->dest_has_dir_sep is 0) + bytelen (bn);
   char dest[len + 1];
   Cstring.cp_fmt (dest, len + 1, "%s%s%s", syncdir->dest,
@@ -127,6 +136,13 @@ static int process_file (dirwalk_t *dw, const char *file, struct stat *st) {
     char *bname = Path.basename ((char *) bn);
     for (int i = 0; i < syncdir->exclude_files_len; i++) {
       if (Cstring.eq (bname, syncdir->exclude_files[i]->bytes)) return 0;
+    }
+  }
+
+  if (syncdir->exclude_exts isnot NULL) {
+    char *ext = Path.extname ((char *) bn);
+    for (int i = 0; i < syncdir->exclude_exts_len; i++) {
+      if (Cstring.eq (ext, syncdir->exclude_exts[i]->bytes)) return 0;
     }
   }
 
@@ -322,6 +338,13 @@ static int process_file_remove_dryrun (dirwalk_t *dw, const char *file, struct s
     }
   }
 
+  if (syncdir->exclude_exts isnot NULL) {
+    char *ext = Path.extname ((char *) bn);
+    for (int i = 0; i < syncdir->exclude_exts_len; i++) {
+      if (Cstring.eq (ext, syncdir->exclude_exts[i]->bytes)) return 0;
+    }
+  }
+
   size_t len = syncdir->src_len + (syncdir->src_has_dir_sep is 0) + bytelen (bn);
   char src[len + 1];
   Cstring.cp_fmt (src, len + 1, "%s%s%s", syncdir->src,
@@ -358,6 +381,13 @@ static int process_file_remove (dirwalk_t *dw, const char *file, struct stat *st
     char *bname = Path.basename ((char *) bn);
     for (int i = 0; i < syncdir->exclude_files_len; i++) {
       if (Cstring.eq (bname, syncdir->exclude_files[i]->bytes)) return 0;
+    }
+  }
+
+  if (syncdir->exclude_exts isnot NULL) {
+    char *ext = Path.extname ((char *) bn);
+    for (int i = 0; i < syncdir->exclude_exts_len; i++) {
+      if (Cstring.eq (ext, syncdir->exclude_exts[i]->bytes)) return 0;
     }
   }
 
@@ -413,6 +443,9 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
 
   int exclude_files_len = 0;
   string **exclude_files = GET_OPT_EXCLUDE_FILES(&exclude_files_len);
+
+  int exclude_exts_len = 0;
+  string **exclude_exts = GET_OPT_EXCLUDE_FILE_EXTS(&exclude_exts_len);
 
   ifnot (Dir.is_directory (src_dir)) {
     fprintf (stderr, "%s, source is not a directory\n", src_dir);
@@ -489,6 +522,8 @@ static VALUE sync_dir (la_t *this, VALUE v_src_dir, VALUE v_dest_dir) {
     .exclude_dirs_len = exclude_dirs_len,
     .exclude_files = exclude_files,
     .exclude_files_len = exclude_files_len,
+    .exclude_exts = exclude_exts,
+    .exclude_exts_len = exclude_exts_len,
     .src_len = src_len,
     .dest_len = dest_len,
     .src_has_dir_sep = src_dir[src_len - 1] is DIR_SEP,

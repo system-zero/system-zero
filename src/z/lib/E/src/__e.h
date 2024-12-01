@@ -426,6 +426,7 @@ typedef struct buf_prop {
     at_frame,
     is_sticked,
     nth_ptr_pos,
+    show_topline,
     *msg_row_ptr,
     cur_video_row,
     cur_video_col,
@@ -675,6 +676,8 @@ static int  buf_change_bufname (buf_t **, const char *);
 static int  buf_insert_complete_filename (buf_t **);
 static int  buf_grep_on_normal (buf_t **, utf8, int, int);
 static int  buf_open_fname_under_cursor (buf_t **, int, int, int, int);
+static void buf_set_draw_statusline (buf_t *);
+static void buf_set_draw_topline (buf_t *);
 
 static void ed_set_lang_mode (ed_t *, const char *);
 static void ed_resume (ed_t *);

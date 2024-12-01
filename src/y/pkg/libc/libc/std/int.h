@@ -157,6 +157,11 @@ typedef unsigned long long int uint64_t;
 
 #endif
 
+typedef uint8_t   byte;
+typedef uint16_t  word;
+typedef uint32_t  dword;
+typedef uint64_t  qword;
+
 typedef unsigned int  uint;
 typedef unsigned char uchar;
 typedef unsigned long ulong;
@@ -167,6 +172,8 @@ typedef signed int utf8;
 
 #define PRId64  "ld"
 #define PRIu64  "lu"
+#define PRIx64  "lx"
+#define PRIo64  "lo"
 #define PRIdPTR "ld"
 #define PRIuPTR "lu"
 
@@ -174,6 +181,8 @@ typedef signed int utf8;
 
 #define PRId64  "lld"
 #define PRIu64  "llu"
+#define PRIx64  "llx"
+#define PRIo64  "llo"
 #define PRIdPTR "d"
 #define PRIuPTR "u"
 

@@ -28,7 +28,7 @@ static VALUE dir_make (la_t *this, VALUE v_dir, VALUE v_mode) {
 
   ifnot (IS_INT(v_mode)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
 
-  int verbose = GET_OPT_VERBOSE();
+  int verbose = GET_OPT_VERBOSE_WITH(0);
 
   return INT(Dir.make (AS_STRING_BYTES(v_dir), AS_INT(v_mode), DirOpts(.err = 0, .msg = verbose)));
 }

@@ -39,6 +39,13 @@
 #define F_WRLCK     1
 #define F_UNLCK     2
 
+/* note from /usr/include/fcntl.h (glibc)
+   The constants AT_REMOVEDIR and AT_EACCESS have the same value.  AT_EACCESS
+   is meaningful only to faccessat, while AT_REMOVEDIR is meaningful only to
+   unlinkat.  The two functions do completely different things and therefore,
+   the flags can be allowed to overlap.  For example, passing AT_REMOVEDIR to
+   faccessat would be undefined behavior and thus treating it equivalent to
+   AT_EACCESS is valid undefined behavior.  */
 #define AT_FDCWD            -100
 #define AT_SYMLINK_NOFOLLOW 0x100
 #define AT_REMOVEDIR        0x200

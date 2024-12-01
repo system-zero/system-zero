@@ -1,3 +1,4 @@
+// as: path_basename
 // provides: char *path_basename (const char *)
 // comment: the resulted string is not allocated, as it is part of the given string argument
 

@@ -1,11 +1,11 @@
 #@
-  depends_on ("Video",    LIBRARY)
   depends_on ("String",   LIBRARY)
   depends_on ("Cstring",  LIBRARY)
   depends_on ("Ustring",  LIBRARY)
+  depends_on ("Video",    LIBRARY)
 #
 
 var m = New Make (__file__, LIBRARY; z_library)
 m.set.library.to_linkagainst ([
-  "string", "cstring", "ustring"]; append_version)
+  "string", "cstring", "ustring", "video"]; append_version)
 return m

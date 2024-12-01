@@ -1,0 +1,14 @@
+var deps = ["compiler/include", "compiler/btcode"]
+var integer[2] depsT = [C_HEADER, LIBRARY]
+
+var m = New Make (__file__, LIBRARY)
+
+m.set.library.source ("asm.c"; clear)
+m.set.header.source ("vm/asm.h"; clear)
+m.set.library.compile_type (COMPILE_ASSEMBLE)
+m.set.library.to_linkagainst ("btcode"; clear)
+
+for i, v in deps
+  m.set.dependency (v, depsT[i], LIBRARY)
+
+return m

@@ -671,6 +671,12 @@ static int sh_parse (sh_t *this, char *buf) {
       continue;
     }
 
+    if (*sp is '-' and *(sp - 1) is ' ') {
+      while (*sp and *sp isnot ' ') sp++;
+      sp++;
+      continue;
+    }
+
     if (*sp is '"') {
       sp++;
       while (*sp) {
@@ -746,7 +752,7 @@ static int sh_parse (sh_t *this, char *buf) {
       type = PIPE_TYPE;
       *sp = '\0';
 
-      if (*(sp+1) is '&') {
+      if (*(sp + 1) is '&') {
         sp++;
         redir_stderr_to_stdout = 1;
       }
@@ -815,70 +821,80 @@ static int sh_parse (sh_t *this, char *buf) {
     goto next;
 
     add_proc:
-      p = Proc.new ();
-      sh = Alloc (sizeof (shproc_t));
-      sh->sh = this;
-      sh->redir_stdout_file = NULL;
-      sh->redir_stderr_file = NULL;
-      sh->saved_stderr = STDERR_FILENO;
-      sh->type = type;
-      sh->redir_type = redir_type;
-      sh->redir_streams = redir_streams;
+    p = Proc.new ();
+    sh = Alloc (sizeof (shproc_t));
+    sh->sh = this;
+    sh->redir_stdout_file = NULL;
+    sh->redir_stderr_file = NULL;
+    sh->saved_stderr = STDERR_FILENO;
+    sh->type = type;
+    sh->redir_type = redir_type;
+    sh->redir_streams = redir_streams;
 
-      if (sh->redir_type isnot NO_REDIR) {
-        char file[len - (sp - cbuf) + 1];
+    if (sh->redir_type isnot NO_REDIR) {
+      char file[len - (sp - cbuf) + 1];
 
-        int idx = 0;
-        while (*sp and *sp isnot ' ') file[idx++] = *sp++;
-        file[idx] = '\0';
+      int idx = 0;
+      while (*sp and *sp isnot ' ') file[idx++] = *sp++;
+      file[idx] = '\0';
 
-        if (*sp is ' ') sp++;
+      while (*sp is ' ') sp++;
 
-        if (sh->redir_streams & PROC_READ_STDOUT) {
-          sh->redir_stdout_file = String.new_with (file);
-          Proc.set.read_stream_cb (p, PROC_READ_STDOUT, sh_read_stream_cb);
-        } else if (sh->redir_streams & PROC_READ_STDERR) {
-          sh->redir_stderr_file = String.new_with (file);
-          Proc.set.read_stream_cb (p, PROC_READ_STDERR, sh_read_stream_cb);
+      if (*sp is '|') {
+        ifnot (*(sp + 1)) {
+          Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, "unterminated command, found end of file", SH_MAXLEN_ERROR);
+          goto theerror;
         }
+
+        sh->type = PIPE_TYPE;
+        *sp++ = '\0';
       }
 
-      Proc.set.user_data (p, sh);
-
-      if (should_set_pipe_cb)
-        Proc.set.pipe_cb (p, sh_pipe_cb);
-
-      if (NULL is Proc.parse (p, buf)) {
-        char *err = Proc.get.error (p);
-        if (*err)
-          Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, err, SH_MAXLEN_ERROR);
-        goto theerror;
+      if (sh->redir_streams & PROC_READ_STDOUT) {
+        sh->redir_stdout_file = String.new_with (file);
+        Proc.set.read_stream_cb (p, PROC_READ_STDOUT, sh_read_stream_cb);
+      } else if (sh->redir_streams & PROC_READ_STDERR) {
+        sh->redir_stderr_file = String.new_with (file);
+        Proc.set.read_stream_cb (p, PROC_READ_STDERR, sh_read_stream_cb);
       }
+    }
 
-      Proc.set.pipe_cb (p, NULL);
+    Proc.set.user_data (p, sh);
 
-      if (type is PIPE_TYPE) {
-        Proc.set.at_fork_cb (p, sh_at_fork_pipeline_cb);
-        Proc.set.pre_fork_cb (p, sh_pre_fork_pipeline_cb);
-        if (redir_stderr_to_stdout)
-         sh->redir_streams |= PROC_READ_STDERR;
-      } else {
-        Proc.set.pre_fork_cb (p, sh_pre_fork_default_cb);
-        Proc.set.at_fork_cb (p, sh_at_fork_default_cb);
-      }
+    if (should_set_pipe_cb)
+      Proc.set.pipe_cb (p, sh_pipe_cb);
 
-      sh_append_proc (this, p);
+    if (NULL is Proc.parse (p, buf)) {
+      char *err = Proc.get.error (p);
+      if (*err)
+        Cstring.cp ($my(error), SH_MAXLEN_ERROR + 1, err, SH_MAXLEN_ERROR);
+      goto theerror;
+    }
 
-      buf = sp;
+    Proc.set.pipe_cb (p, NULL);
 
-      type = COMMAND_TYPE;
-      redir_type = NO_REDIR;
-      redir_streams = 0;
-      redir_stderr = 0;
-      redir_stderr_to_stdout = 0;
+    if (sh->type is PIPE_TYPE) {
+      Proc.set.at_fork_cb (p, sh_at_fork_pipeline_cb);
+      Proc.set.pre_fork_cb (p, sh_pre_fork_pipeline_cb);
+      if (redir_stderr_to_stdout)
+       sh->redir_streams |= PROC_READ_STDERR;
+    } else {
+      Proc.set.pre_fork_cb (p, sh_pre_fork_default_cb);
+      Proc.set.at_fork_cb (p, sh_at_fork_default_cb);
+    }
 
-      ifnot (*sp)
-        goto theend;
+    sh_append_proc (this, p);
+
+    buf = sp;
+
+    type = COMMAND_TYPE;
+    redir_type = NO_REDIR;
+    redir_streams = 0;
+    redir_stderr = 0;
+    redir_stderr_to_stdout = 0;
+
+    ifnot (*sp)
+      goto theend;
 
     prev = *sp;
     next: sp++;

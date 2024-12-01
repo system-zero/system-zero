@@ -1,0 +1,14 @@
+var deps = ["compiler/include", "compiler/btcode"]
+var integer[2] types = [C_HEADER, LIBRARY]
+
+var m = New Make (__file__, LIBRARY|EXECUTABLE)
+m.set.library.source ("vm.c"; clear)
+m.set.header.source ("vm/vm.h"; clear)
+m.set.library.compile_type (COMPILE_ASSEMBLE)
+m.set.library.to_linkagainst ("btcode")
+
+for i, v in deps {
+  m.set.dependency (v, types[i], LIBRARY)
+}
+
+return m

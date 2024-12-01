@@ -765,8 +765,9 @@ clean-libla-shared:
 clean-libla-static:
 	@cd $(Z_LA_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libreadline-shared: Env cenv libstring-shared libcstring-shared \
-             libvstring-shared libustring-shared libpath-shared libfile-shared
+libreadline-shared: Env cenv libstring-shared libcstring-shared\
+             libvstring-shared libustring-shared libpath-shared libfile-shared\
+             libvideo-shared
 	@cd $(Z_READLINE_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
 libreadline-static: Env cenv libstring-static libcstring-static\
@@ -971,10 +972,10 @@ clean-libman-shared:
 clean-libman-static:
 	@cd $(Z_MAN_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) clean-static
 #----------------------------------------------------------#
-libsudoku-shared: Env cenv
+libsudoku-shared: Env cenv libvideo-shared
 	@cd $(Z_SUDOKU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) shared
 
-libsudoku-static: Env cenv
+libsudoku-static: Env cenv libvideo-static
 	@cd $(Z_SUDOKU_SRCDIR) && $(MAKE) $(ZARGS) $(MARGS) static
 
 clean-libsudoku-shared:
@@ -1386,8 +1387,15 @@ clone-libc:
 libpam:
 	@$(SYSBINDIR)/Packman install pam
 
-bootstrap: la-shared
-	@$(SYSBINDIR)/Packman bootstrap
+bootstrap-first-stage: lai-shared \
+                       std-module-shared os-module-shared io-module-shared\
+                       sh-module-shared dir-module-shared sys-module-shared\
+                       time-module-shared file-module-shared path-module-shared\
+                       crypt-module-shared net-module-shared\
+                       la-library packman Make
+bootstrap: bootstrap-first-stage Make zs-shared
+	@Make shared e
+	@Packman install curl
 
 clean-cloned-libc:
 	@$(TEST) ! -d $(SYSLIBDIR) || $(RM) $(SYSLIBDIR)/*.so $(SYSLIBDIR)/*.a

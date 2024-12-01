@@ -16,7 +16,10 @@ Split to a header file, 2017-12-10, by Joachim Nilsson
 Released to the public domain by Paul Schlyter, December 1992
 
 */
-
+#ifndef  _DEFAULT_SOURCE
+#define  _DEFAULT_SOURCE
+#endif
+  
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
