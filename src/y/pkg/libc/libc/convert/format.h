@@ -20,6 +20,9 @@ typedef enum {
 
 typedef struct DirectiveType {
   Directive type;
+  int is_alternate;
+  uint width;
+  uint precision;
   size_t size;
 } DirectiveType;
 

@@ -149,7 +149,7 @@ void *endBreakPoint = NULL;
 
 // pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-static intptr_t mem_arena_size (void *beg, void *end) {
+static ptrdiff_t mem_arena_size (void *beg, void *end) {
   return (char *) end - (char *) beg;
 }
 
@@ -297,7 +297,7 @@ static memChunkT *increaseAllocation (memChunkT *lastchunk, size_t size) {
 int mem_deinit (void) {
   if (memHead == NULL) return 0;
 
-  intptr_t sz = mem_arena_size (memHead, endBreakPoint);
+  ptrdiff_t sz = mem_arena_size (memHead, endBreakPoint);
 
   if ((void *) -1 == sys_sbrk (-sz))
     return -1;

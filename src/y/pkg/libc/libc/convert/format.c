@@ -9,7 +9,23 @@
 /* a minimal format function
    initially based on: https://github.com/tatetian/mini-snprintf
    added support for the following specifiers:
-     'c', 'b', 'x', 'o', 'p', '.*s'
+     'c', 'b', 'x', 'o', 'p'
+
+   added support for '#' alternate form which for 'b' prepends '0b',
+   for 'o' prepends '0' and for 'x' prepends '0x'. A 'p' directive
+   is always in this form.
+
+   added support for '%.*s' which for strings means, that the next
+   int argument will be the number of bytes to write from the next
+   char * argument.
+
+   added support for '%[n (int but not 0)]s' to mean that the next
+   char * argument will be padded with spaces to the left side, if
+   is smaller than the given 'n' field width.
+
+   added support for '%.[n (int)]s' to mean that if the next char *
+   argument is bigger than the 'n' specifier, at most 'n' bytes will
+   be written.
 
    also, this implementation sends its byte to an output function.
    The default function writes the byte to its buffer argument.
@@ -34,7 +50,8 @@ static int format_output_byte (FormatType *this, int c) {
 }
 
 static int next_directive (FormatType *this, DirectiveType *directive) {
-  directive->size = 0;
+  directive->size = directive->is_alternate =
+  directive->width = directive->precision = 0;
 
   if (*this->fmtPtr == '\0') {
     directive->type = DT_EOF;
@@ -56,12 +73,21 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
   }
 
   this->fmtPtr++;
-  int c = *this->fmtPtr++;
+  int c;
 
+  next:
+    c = *this->fmtPtr++;
+
+  again:
   switch (c) {
     case '\0':
       this->error = FMT_UNEXPECTED_EOF;
       return -1;
+
+    case '#':
+      directive->size++;
+      directive->is_alternate = 1;
+      goto next;
 
     case '%':
       directive->type = DT_ESCAPED;
@@ -118,8 +144,29 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
 
     case '.':
       directive->size++;
+      c = *this->fmtPtr++;
 
-      switch (*this->fmtPtr++) {
+      switch (c) {
+        case '1' ... '9': {
+          int d = c - '0';
+
+          for (;;) {
+            c = *this->fmtPtr++;
+            if (c == 's') {
+              directive->precision = d;
+              goto again;
+            }
+
+            if ('0' <= c && c <= '9') {
+              d = (10 * d) + (c - '0');
+              continue;
+            }
+
+            directive->type = DT_UNEXPECTED;
+            return -1;
+          }
+        }
+
         case '*':
           directive->size++;
           switch (*this->fmtPtr++) {
@@ -131,12 +178,33 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
               break;
           }
 
-         // fallthrough
+          __attribute__((fallthrough));
+
         default:
           this->error = FMT_UNHANDLED_SPECIFIER;
           return -1;
       }
       break;
+
+    case '1' ... '9': {
+      int d = c - '0';
+
+      for (;;) {
+        c = *this->fmtPtr++;
+        if (c == 's') {
+          directive->width = d;
+          goto again;
+        }
+
+        if ('0' <= c && c <= '9') {
+          d = (10 * d) + (c - '0');
+          continue;
+        }
+
+        break;
+      }
+    }
+    __attribute__((fallthrough));
 
     default:
       directive->type = DT_UNEXPECTED;
@@ -188,6 +256,18 @@ int vformat (FormatType *this, va_list args) {
           str = (char *) NULL_STRING;
 
         len = bytelen (str);
+
+        if (directive.width > 0 && len < directive.width)
+          for (size_t j = 0; j < directive.width - len; j++)
+            this->outputByte (this, ' ');
+
+        /* donot write more than len. Probably the standard disagrees,
+           but we have to be sure that, if len < directive.precision
+           then str should include '\0' (null byte), but how we should
+           know that? Anyway i would never ask such a thing in my code */
+        if (directive.precision > 0 && len > directive.precision)
+          len = directive.precision;
+
         break;
 
       case DT_NSTRING:
@@ -236,6 +316,12 @@ int vformat (FormatType *this, va_list args) {
       case DT_BINARY: {
         uint64_t b = va_arg(args, uint64_t);
         str = uint64_to_binary_string (&dec, b);
+        if (directive.is_alternate && *str != '0') {
+          decimal_prepend (&dec, 'b');
+          decimal_prepend (&dec, '0');
+          str = get_decimal_string (&dec);
+        }
+
         len = dec.size;
         break;
       }
@@ -243,6 +329,11 @@ int vformat (FormatType *this, va_list args) {
       case DT_OCTAL: {
         uint64_t o = va_arg(args, uint64_t);
         str = uint64_to_octal_string (&dec, o);
+        if (directive.is_alternate && *str != '0') {
+          decimal_prepend (&dec, '0');
+          str = get_decimal_string (&dec);
+        }
+
         len = dec.size;
         break;
       }
@@ -250,6 +341,12 @@ int vformat (FormatType *this, va_list args) {
       case DT_HEX: {
         uint64_t x = va_arg(args, uint64_t);
         str = uint64_to_hex_string (&dec, x);
+        if (directive.is_alternate && *str != '0') {
+          decimal_prepend (&dec, 'x');
+          decimal_prepend (&dec, '0');
+          str = get_decimal_string (&dec);
+        }
+
         len = dec.size;
         break;
       }
