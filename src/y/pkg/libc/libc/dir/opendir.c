@@ -43,14 +43,11 @@ struct dirent *sys_readdir (DIR *dir) {
       return NULL;
 
     dir->buf_pos = 0;
-    dir->buf_end += nread;
+    dir->buf_end = nread;
   }
 
   de = (void *) (dir->buf + dir->buf_pos);
   dir->buf_pos += de->d_reclen;
-
-  //tostderr ("end %d, curpos %d reclen %d type %d name |%s|\n",
-//  dir->buf_end,  dir->buf_pos, de->d_reclen, de->d_type, de->d_name);
 
   return de;
 }

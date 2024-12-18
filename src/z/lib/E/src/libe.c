@@ -77,10 +77,6 @@ static Vstring_t *cstring_chop (const char *buf, char tok, Vstring_t *tokstr,
     if (*sp is tok) {
 tokenize:;
       size_t len = sp - p;
-      /* ifnot (len) {
-         sp++; p = sp;
-         continue;
-      } when commented, this broke once the code */
 
       char s[len + 1];
       Cstring.cp (s, len + 1, p, len);
@@ -446,6 +442,12 @@ static int buf_adjust_col (buf_t *this, int nth, int isatend) {
   return $my(video)->col_pos;
 }
 
+static int buf_adjust_cur_row_col (buf_t *this) {
+  if ($mycur(cur_col_idx) >= (int) $mycur(data)->num_bytes)
+    return self(normal.eol, DONOT_DRAW);
+  return OK;
+}
+
 #define undo_set(act, type__)                            \
   (act)->type = (type__);                                \
   state_set(act)
@@ -599,8 +601,9 @@ static int buf_undo_replace_line (buf_t *this, Action_t *redoact, action_t *act)
 
 /* ATTENTION */
 /* generally speaking the undo/redo basic functionality seems to be
- * working. what is not working always perfect, is the state of the
- * screen, i think on redoing'it, so this has a very serious bug */
+ * working. what i[wa?]s not working always perfect, i[wa?]s the state
+ * of the screen, i think on redoing'it, so this ha[s|d?] a very serious bug
+ */
 static int buf_undo_exec (buf_t *this, utf8 com) {
   Action_t *Action = NULL;
   if (com is 'u')
@@ -723,7 +726,7 @@ const char *c_keywords[] = {
     "#define M", "#endif M", "#error M", "#ifdef M", "#ifndef M", "#undef M",
     "#if M", "#else I", "#elif I", "__func__ I",
     "union T", "const T", "theend I", "theerror E",
-    "free F", "Alloc T", "Realloc T",
+    "free F", "Alloc T", "Realloc T", "Release T",
     "STDIN_FILENO K", "STDOUT_FILENO K", "STDERR_FILENO K",
     "signed T", "unsigned T", "short T",
     "enum T", "bool T", "long T", "ulong T", "double T", "float T",
@@ -1499,6 +1502,116 @@ static int readline_get_buf_range (readline_t  *rl, buf_t *this, int *range) {
   return OK;
 }
 
+// very crude and limited but thankful
+static int remove_color_sequences (string_t *line, string_t *out) {
+#define STR_GET_BYTE() ({                   \
+  int cc = *sp++;                           \
+  n++;                                      \
+  if (cc == '\0' || n > line->num_bytes) {  \
+    end = 1;                                \
+    goto output;                            \
+  }                                         \
+  cc;                                       \
+})
+
+  String.clear (out);
+
+  char *sp = line->bytes;
+
+  int idx = 0;
+  size_t n = 0;
+  int keepn;
+  int end = 0;
+  int c;
+
+  while (end == 0) {
+    keepn = n;
+
+    c = STR_GET_BYTE();
+
+    if (c != 033) goto output;
+
+    c = STR_GET_BYTE ();
+
+    if (c != '[') goto output;
+
+    c = STR_GET_BYTE ();
+
+    if (c == 'm') continue;
+
+    if (c != '%') goto output;
+
+    c = STR_GET_BYTE();
+
+    if ('0' > c || c > '9') goto output;
+
+    c = STR_GET_BYTE();
+
+    if ('0' > c || c > '9') goto output;
+
+    c = STR_GET_BYTE();
+
+    if (c == 'm') continue;
+
+output:
+    size_t diff = n - keepn - end;
+
+    for (size_t i = diff; i; i--, idx++)
+      String.append_byte (out, *(sp - i));
+  }
+
+  return idx;
+}
+
+/* while looking at the cooking code (after years!) is still looking good
+   and rather easy to find my (own) way to code the functionality, thanks
+ */
+static int buf_remove_color_sequences (buf_t *this, int fidx, int lidx) {
+  Action_t *Action = self(Action.new);
+  self(Action.set_with_current, Action, REPLACE_LINE);
+
+  int buf_changed = 0;
+
+  bufiter_t *iter = self(iter.new, fidx);
+
+  int count = lidx - fidx + 1;
+
+  string_t *arg = String.new (126);
+
+  int i = 0;
+  while (iter and i++ < count) {
+    string_t *line = iter->line;
+
+    int num = remove_color_sequences (line, arg);
+    ifnot (num)
+      goto itnext;
+
+    self(Action.set_with, Action, REPLACE_LINE, iter->idx,
+        line->bytes, line->num_bytes);
+
+    // we could swap with arg, could be fun to implement, but be safe
+    String.replace_with_len (line, arg->bytes, arg->num_bytes);
+
+    buf_changed = 1;
+
+    itnext:
+      iter = self(iter.next, iter);
+  }
+
+  if (buf_changed) {
+    self(undo.push, Action);
+    self(set.modified);
+    buf_adjust_cur_row_col (this); // not part of the structure
+    self(draw);
+  } else
+    self(Action.release, Action);
+
+  self(iter.release, iter);
+  String.release (arg);
+
+  return OK;
+}
+
 /* this retval pointer provides information, since the callee resets retval at the
  * beginning of its function. The early return here is actually a goto theend there */
 static int buf_com_substitute (buf_t *this, readline_t *rl, int *retval) {
@@ -1526,6 +1639,10 @@ static int buf_com_substitute (buf_t *this, readline_t *rl, int *retval) {
 
   if (Readline.arg.exists (rl, "remove-doseol")) {
     return buf_substitute (this, "\x0d", "", GLOBAL, interactive isnot NULL, rl->range[0], rl->range[1]);
+  }
+
+  if (Readline.arg.exists (rl, "remove-color-sequences")) {
+    return buf_remove_color_sequences (this, rl->range[0], rl->range[1]);
   }
 
   if (Readline.arg.exists (rl, "interpret-ctrl-backspace")) {
@@ -4323,7 +4440,8 @@ searchandsub:;
     Re.reset_captures (re);
 
     if (0 > Re.exec (re, it->data->bytes + bidx,
-        it->data->num_bytes - bidx)) goto thenext;
+        it->data->num_bytes - bidx))
+      goto thenext;
 
     String.release (substr);
 
@@ -4378,7 +4496,8 @@ if_global:
     if (global) {
       int len = (done_substitution ? (int) substr->num_bytes : 1);
       bidx += (re->match_idx + len);
-      if (bidx >= (int) it->data->num_bytes) goto thenext;
+      if (bidx >= (int) it->data->num_bytes)
+        goto thenext;
       goto searchandsub;
     }
 
@@ -12238,6 +12357,8 @@ static void ed_init_commands (ed_t *this) {
   ed_append_command_arg (this, "diff", "--origin", 8);
   ed_append_command_arg (this, "substitute", "--remove-doseol", 15);
   ed_append_command_arg (this, "s%",         "--remove-doseol", 15);
+  ed_append_command_arg (this, "substitute", "--remove-color-sequences", 24);
+  ed_append_command_arg (this, "s%",         "--remove-color-sequences", 24);
   ed_append_command_arg (this, "substitute", "--remove-tabs", 13);
   ed_append_command_arg (this, "s%",         "--remove-tabs", 13);
   ed_append_command_arg (this, "substitute", "--shiftwidth=", 13);

@@ -1395,7 +1395,7 @@ bootstrap-first-stage: lai-shared \
                        la-library packman Make
 bootstrap: bootstrap-first-stage Make zs-shared
 	@Make shared e
-	@Packman install curl
+#	@Packman install curl
 
 clean-cloned-libc:
 	@$(TEST) ! -d $(SYSLIBDIR) || $(RM) $(SYSLIBDIR)/*.so $(SYSLIBDIR)/*.a

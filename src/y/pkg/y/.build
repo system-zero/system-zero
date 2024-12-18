@@ -9,9 +9,9 @@
   depends_on ("re", ALL)
   depends_on ("find", ALL)
   depends_on ("fcpp", ALL)
-  depends_on ("archive", ALL)
   depends_on ("libc", LIBC)
   depends_on ("make", ALL)
 #
+#  depends_on ("archive", ALL)
 
 return New Make (__file__, IGNORE)
