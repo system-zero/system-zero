@@ -59,17 +59,18 @@ include ("argparse")
   as_str         = "// as: "
 
   var me = __file__: basename ()
-  var argparse = New Argparse (6, 0, me)
+  var argparse = New Argparse (7, 0, me)
   argparse.add ("outputName",  0,  "outputName=",  "set output file name (default " + LIBCOUTNAME + ")",  StringType, ARG_VALUE_REQUIRED)
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code", BooleanType, 0)
+  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC] (default ALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ALLOC")
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
   argparse.set.help (`Reserved tokens
     // as: [header name], else it is constructed as dir/unit in caps, and should be at the first line only 
-    // provides: [function signature], it is required when the unit is a function, and should be at the first line only or after an as token
+    // provides: [function signature], it is required when the unit is not a header and is not a MetaPackage (should be at the first line only or after an as token)
     // requires: [dir/unit]
     // comment: 
     // end [ends the interpretation]
@@ -97,6 +98,9 @@ include ("argparse")
   const outputFileLibcAll = LIBCALLDIR: concat_with ("libc.c")
 
   var withoutSysHdrs = argparse.results.withoutSys
+
+  var memoryAllocator = argparse.results.allocator
+  var memoryAllocators = ["ALLOC", "ZALLOC"]
 
   var dotsToLibc = func (d) {
     var def = LIBCSRCDIR
@@ -293,6 +297,15 @@ include ("argparse")
       var f_name = f: basename_without_extname ()
       var f_hdr  = f_name: to_upper ()
 
+      var f_is_allocator = 0
+      for v in memoryAllocators
+        if v: eq (f_hdr)
+          f_is_allocator = 1;
+
+      if f_is_allocator
+        ifnot memoryAllocator: eq (f_hdr)
+          continue;
+
       var lines_len = lines: len ()
       var idx = 0;
       var num_found = 0
@@ -369,10 +382,24 @@ include ("argparse")
           append "\n" in libcHdrs
         }
 
-        append format ("  #ifndef REQUIRE_${hdr}") in libcHdrs
+        var h_is_allocator = 0
+        for v in memoryAllocators
+          if v: eq (hdr)
+            h_is_allocator = 1
+
+        if h_is_allocator then
+          append format ("  #ifndef REQUIRE_${memoryAllocator}") in libcHdrs
+        orelse
+          append format ("  #ifndef REQUIRE_${hdr}") in libcHdrs
+
         if is_type_unit then append "_H" in libcHdrs
         append "\n" in libcHdrs
-        append format ("  #define REQUIRE_${hdr}") in libcHdrs
+
+        if h_is_allocator then
+          append format ("  #define REQUIRE_${memoryAllocator}") in libcHdrs
+        orelse
+          append format ("  #define REQUIRE_${hdr}") in libcHdrs
+
         if is_type_unit then append "_H" in libcHdrs
         append "\n  #endif\n" in libcHdrs
         idx++

@@ -6,7 +6,7 @@ const utf8 offsetsFromUTF8[6] = {
 /* the only reference found from the last research,
  * was at the julia programming language sources,
  * (this code and the functions that make use of it,
- * is atleast 10 years old, lying (during a non network season))
+ * is atleast 12 years old, lying (during a non network season))
  */
 
 typedef struct {

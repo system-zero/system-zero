@@ -48,10 +48,10 @@ struct FormatType {
   void *user_data;
 };
 
-#define NewFormat(__bytes__, __buf_len__,  __fmt__, ...) (FormatType) { \
-  .bytes = __bytes__, .bytesPtr = __bytes__, \
-  .fmt = __fmt__, .fmtPtr = (char *) __fmt__, \
-  .num_bytes = 0, .mem_size = __buf_len__, \
-  .directive = NULL, .outputByte = format_output_byte, \
+#define NewFormat(__bytes__, __buf_len__, __fmt__, ...) (FormatType) { \
+  .bytes = __bytes__, .bytesPtr = __bytes__,                           \
+  .fmt = __fmt__, .fmtPtr = (char *) __fmt__,                          \
+  .num_bytes = 0, .mem_size = __buf_len__,                             \
+  .directive = NULL, .outputByte = format_output_byte,                 \
   .error = 0, .user_data = NULL, __VA_ARGS__}
 

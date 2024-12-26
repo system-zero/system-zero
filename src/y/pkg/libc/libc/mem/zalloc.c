@@ -3,8 +3,10 @@
 // provides: void *mem_realloc (void *, uint)
 // provides: int mem_release (void **)
 // provides: int mem_init (uint)
+// provides: int mem_deinit (void)
 // provides: uint mem_get_actual_size (void *)
 // provides: int mem_debug_all (int)
+// requires: convert/decimal.h
 // requires: convert/format.c
 // requires: sys/brk.c
 // requires: stdlib/_exit.c
@@ -62,7 +64,7 @@ static inline void *mem_zero (void *ptr, uint size) {
 }
 
 static inline uint mem_align (uint size) {
-  return (size + (ALIGN_SIZE - 1)) & ~(ALIGN_SIZE - 1);
+  return (size + (MEM_ALIGN_SIZE - 1)) & ~(MEM_ALIGN_SIZE - 1);
 }
 
 static inline void *mem_increment_breakpoint (void *endbreakpoint, uint inc) {
@@ -94,7 +96,7 @@ static inline void *mem_get_ptr_from_chunk (MemChunk *mem) {
 
 static inline MemChunk *mem_get_next_chunk (MemChunk *mem) {
   /* it probably cannot go out of bounds, but it can return
-     itself if it is the end chunk, thouth current code it
+     itself if it is the end chunk, though current code it
      never calls this function with the end chunk argument */
   return (MemChunk *) ((char *) mem + mem->chunk_size);
 }
@@ -185,7 +187,7 @@ static MemChunk *mem_split_chunk (MemChunk *mem, uint mem_needsize) {
   uint newsize = mem->chunk_size - mem_needsize;
 
 #ifdef MEM_DEBUG
-  if (newsz % ALIGN_SIZE != 0)
+  if (newsz % MEM_ALIGN_SIZE != 0)
      tostderr ("%s: new size %u is not aligned (requested size: %u)\n",
         __func__, newsize, mem_needsize);
 #endif
@@ -384,7 +386,8 @@ int mem_init (uint size) {
 
   BegBreakPoint = mem_get_current_breakpoint ();
 
-  uint sz = mem_align (size) + (HEADER_SIZE * 2); // beg header plus the end header
+  // beg header plus the end header
+  uint sz = mem_align (size) + (HEADER_SIZE * 2);
 
   if (mem_increment_breakpoint (BegBreakPoint, sz) == (void *) -1)
     return -1;
@@ -401,6 +404,23 @@ int mem_init (uint size) {
 #ifdef MEM_DEBUG
   tostdout ("%p BegBreakPoint\n%p EndBreakPoint\n", BegBreakPoint, EndBreakPoint);
 #endif
+
+  return 0;
+}
+
+int mem_deinit (void) {
+  if (BegBreakPoint == NULL)
+    return 0;
+
+  ptrdiff_t sz = (ptrdiff_t ) mem_diff (EndBreakPoint, BegBreakPoint);
+
+  if (-1 == syscall1 (NR_brk, -sz))
+    return -1;
+
+  EndBreakPoint = mem_get_current_breakpoint ();
+
+  BegBreakPoint = NULL;
+  Malloc = __init_alloc__;
 
   return 0;
 }

@@ -32,7 +32,7 @@ include ("Generate.libc")
           public const func Make (argv) {
 
 func argparseNew () {
-  var argparse = New Argparse (34, 0, "Make option[s] [directory]")
+  var argparse = New Argparse (35, 0, "Make option[s] [directory]")
   argparse.add ("shared", 0, "shared", "make shared targets", BooleanType, ARG_LITERAL)
   argparse.add ("static", 0, "static", "make static targets", BooleanType, ARG_LITERAL)
   argparse.add ("shared_library", 0, "shared-library", "make shared library", BooleanType, ARG_LITERAL) 
@@ -46,6 +46,7 @@ func argparseNew () {
   argparse.add ("all", 0, "all", "make all targets", BooleanType, ARG_LITERAL)
   argparse.add ("force", 'f', "force", "force making targets", BooleanType, 0)
   argparse.add ("recursive", 'R', "recursive", "apply the 'force' option recursively", BooleanType, 0)
+  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [ALLOC, ZALLOC] (default ALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ALLOC")
   argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)
   argparse.add ("platform", 0, "platform=", "operating system (default: Os.platform ())", StringType, ARG_VALUE_REQUIRED; defval : Os.platform ())
   argparse.add ("version", 0, "version=", "set version", StringType, ARG_VALUE_REQUIRED)
@@ -1639,8 +1640,10 @@ var string[0] MAKE_INSTALLED
         return ok if r > ok
       }
 
-      r = generate_libc (2, ["", (if this.verbose then "--verbose" orelse ""),
-         "--outputDir=" + this.libc.output: dirname ()]);
+      r = generate_libc (3, ["",
+         (if this.verbose then "--verbose" orelse ""),
+         "--outputDir=" + this.libc.output: dirname (),
+         "--allocator=" + ARGPARSE.results.allocator]);
 
       if r is notok return this.error ("failed to generate libc")
 

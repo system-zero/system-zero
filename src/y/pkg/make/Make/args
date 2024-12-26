@@ -1,5 +1,6 @@
 -f,--force
 -R,--recursive
+--allocator=
 --remove-cache
 --version=
 --march=

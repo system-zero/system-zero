@@ -10,7 +10,7 @@ typedef struct __attribute__((packed)) {
 typedef void *(*MemAlloc) (uint);
 
 #define HEADER_SIZE (sizeof (MemChunk))
-#define ALIGN_SIZE 16
+#define MEM_ALIGN_SIZE 16
 
 #ifndef SPLIT_WHEN_IS_AT_LEAST
 #define SPLIT_WHEN_IS_AT_LEAST 64
