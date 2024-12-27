@@ -1178,6 +1178,7 @@ clean-i-static:
   # L
   ZA_LA          = la
   ZA_LA_SRCDIR  := $(Z_SRCAPPDIR)/$(ZA_LA)/src
+  LA_SHARED_BIN  = $(SYSBINDIR)/La-shared
 
 lai-shared: libargparse-shared librline-shared libla-shared
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) shared
@@ -1343,14 +1344,30 @@ YNAME       = y
 Y_SRCDIR    = $(SRCDIR)/$(YNAME)
 Y_PKGDIR    = $(Y_SRCDIR)/pkg
 MAKEDIR     = $(Y_PKGDIR)/make
+MAKE_SHARED_BIN = $(SYSBINDIR)/Make
 
 Make: lai-shared
-	@$(SYSBINDIR)/La-shared $(MAKEDIR)/bootstrap.lai
+	@$(LA_SHARED_BIN) $(MAKEDIR)/bootstrap.lai
 
 Dev: packman Make
-	@cd .. && $(SYSBINDIR)/Make j --force --recursive
+	@cd .. && $(LA_SHARED_BIN) $(MAKE_SHARED_BIN) j --force --recursive
 
 #----------------------------------------------------------#
+  # libc
+LIBC_ALLOCATOR := ALLOC
+
+libc-generator-tools: lai-shared\
+                      std-module-shared os-module-shared io-module-shared\
+                      sh-module-shared dir-module-shared sys-module-shared\
+                      time-module-shared file-module-shared path-module-shared\
+                      crypt-module-shared net-module-shared\
+                      la-library packman Make
+
+libc: libc-generator-tools
+	@$(LA_SHARED_BIN) $(MAKE_SHARED_BIN) --allocator=$(LIBC_ALLOCATOR) libc
+
+libc-force:libc-generator-tools
+	@$(LA_SHARED_BIN) $(MAKE_SHARED_BIN) --allocator=$(LIBC_ALLOCATOR) --force libc
 
 #----------------------------------------------------------#
   # sudoku

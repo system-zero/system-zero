@@ -1,4 +1,4 @@
-#define REQUIRE_ZALLOC
+#define REQUIRE_ALLOC
 #define REQUIRE_FORMAT
 
 #define tostdout(_fmt_, ...) format_to_fd (1, _fmt_, ##__VA_ARGS__)

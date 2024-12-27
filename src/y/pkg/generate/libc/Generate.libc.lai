@@ -296,15 +296,23 @@ include ("argparse")
       var f_ext  = f: extname (): to_upper (): advance (1)
       var f_name = f: basename_without_extname ()
       var f_hdr  = f_name: to_upper ()
+      var f_rqr  = f_hdr + if f_ext is "H" then "_H\n" orelse "\n"
 
       var f_is_allocator = 0
       for v in memoryAllocators
         if v: eq (f_hdr)
           f_is_allocator = 1;
 
-      if f_is_allocator
-        ifnot memoryAllocator: eq (f_hdr)
-          continue;
+      if f_is_allocator {
+        ifnot memoryAllocator: eq (f_hdr) {
+          var rqr = memoryAllocator + if f_ext is "H" then "_H\n" orelse "\n"
+          append "#ifdef REQUIRE_" + f_rqr in libcHdrs
+          append "  #ifndef REQUIRE_" + rqr in libcHdrs
+          append "  #define REQUIRE_" + rqr in libcHdrs
+          append "  #endif\n#endif\n\n" in libcHdrs
+          continue
+        }
+      }
 
       var lines_len = lines: len ()
       var idx = 0;
@@ -376,11 +384,10 @@ include ("argparse")
 
         var is_type_unit = "H" is ext
 
-        ifnot num_found {
-          append format ("#ifdef REQUIRE_${f_hdr}") in libcHdrs
-          if "H" is f_ext then append "_H" in libcHdrs
+        ifnot num_found then
+          append "#ifdef REQUIRE_" + f_rqr in libcHdrs
+        orelse
           append "\n" in libcHdrs
-        }
 
         var h_is_allocator = 0
         for v in memoryAllocators
@@ -388,20 +395,25 @@ include ("argparse")
             h_is_allocator = 1
 
         if h_is_allocator then
-          append format ("  #ifndef REQUIRE_${memoryAllocator}") in libcHdrs
+          append "  #ifndef REQUIRE_" + memoryAllocator in libcHdrs
         orelse
-          append format ("  #ifndef REQUIRE_${hdr}") in libcHdrs
+          append "  #ifndef REQUIRE_" + hdr in libcHdrs
 
-        if is_type_unit then append "_H" in libcHdrs
-        append "\n" in libcHdrs
+        if is_type_unit then
+          append "_H\n" in libcHdrs
+        orelse
+          append "\n" in libcHdrs
 
         if h_is_allocator then
-          append format ("  #define REQUIRE_${memoryAllocator}") in libcHdrs
+          append "  #define REQUIRE_" + memoryAllocator in libcHdrs
         orelse
-          append format ("  #define REQUIRE_${hdr}") in libcHdrs
+          append "  #define REQUIRE_" + hdr in libcHdrs
 
-        if is_type_unit then append "_H" in libcHdrs
-        append "\n  #endif\n" in libcHdrs
+        if is_type_unit then
+          append "_H\n  #endif\n" in libcHdrs
+        orelse
+          append "\n  #endif\n" in libcHdrs
+
         idx++
         num_found++
       }

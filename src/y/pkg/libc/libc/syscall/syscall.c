@@ -35,218 +35,200 @@
        ‘m’ (memory)
  */
 
-#define SYSCALL_OUTPUT_OPERAND(__r__) "=a" (__r__)
-
-#define SYSCALL_SET_RETVAL_ERRNO(__r__)   \
-   __r__ = (0 > __r__ ? sys_errno = -__r__, -1 : __r__)
-
 #if defined(__i386__) || defined(__i386)
+long syscall0 (long nr) {
+  long retval;
 
-#define SYSCALL_INSTRUCTION    "int $0x80"
-#define SYSCALL_CLOBBERS       "memory"
+   __asm__ volatile (
+     "int $0x80"
+     : "=a" (retval)
+     : "a" (nr)
+     : "memory");
 
-#define SYSCALL_PREAMBLE()                \
-  register long ebp __asm__("ebp") = a5
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
 
-#define SYSCALL_INPUT_REGISTERS(__n__)    \
-  "a" (__n__),                            \
-  "b" (a0), "c" (a1),                     \
-  "d" (a2), "S" (a3),                     \
-  "D" (a4), "r" (ebp)
+long syscall1 (long nr, long a1) {
+  long retval;
 
-#define SYSCALL_PREAMBLE5()
+   __asm__ volatile (
+     "int $0x80"
+     : "=a" (retval)
+     : "a" (nr), "b" (a1)
+     : "memory");
 
-#define SYSCALL_INPUT_REGISTERS5(__n__)   \
-  "a" (__n__),                            \
-  "b" (a0),                               \
-  "c" (a1), "d" (a2),                     \
-  "S" (a3), "D" (a4)
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
 
-#define SYSCALL_PREAMBLE4()
-#define SYSCALL_INPUT_REGISTERS4(__n__)   \
-  "a" (__n__),                            \
-  "b" (a0),                               \
-  "c" (a1), "d" (a2),                     \
-  "S" (a3)
+long syscall2 (long nr, long a1, long a2) {
+  long retval;
 
-#define SYSCALL_PREAMBLE3()
-#define SYSCALL_INPUT_REGISTERS3(__n__)   \
-  "a" (__n__),                            \
-  "b" (a0),                               \
-  "c" (a1), "d" (a2)
+   __asm__ volatile (
+     "int $0x80"
+     : "=a" (retval)
+     : "a" (nr), "b" (a1), "c" (a2)
+     : "memory");
 
-#define SYSCALL_PREAMBLE2()
-#define SYSCALL_INPUT_REGISTERS2(__n__)   \
-  "a" (__n__),                            \
-  "b" (a0),                               \
-  "c" (a1)
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
 
-#define SYSCALL_PREAMBLE1()
-#define SYSCALL_INPUT_REGISTERS1(__n__)   \
-  "a" (__n__),                            \
-  "b" (a0)
+long syscall3 (long nr, long a1, long a2, long a3) {
+  long retval;
 
-#define SYSCALL_PREAMBLE0()
-#define SYSCALL_INPUT_REGISTERS0(__n__)   \
-  "a" (__n__)
+   __asm__ volatile (
+     "int $0x80"
+     : "=a" (retval)
+     : "a" (nr), "b" (a1), "c" (a2), "d" (a3)
+     : "memory");
+
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
+
+long syscall4 (long nr, long a1, long a2, long a3, long a4) {
+  long retval;
+
+   __asm__ volatile (
+     "int $0x80"
+     : "=a" (retval)
+     : "a" (nr), "b" (a1), "c" (a2), "d" (a3), "S" (a4)
+     : "memory");
+
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
+
+long syscall5 (long nr, long a1, long a2, long a3, long a4, long a5) {
+  long retval;
+
+   __asm__ volatile (
+     "int $0x80"
+     : "=a" (retval)
+     : "a" (nr), "b" (a1), "c" (a2), "d" (a3), "S" (a4), "D" (a5)
+     : "memory");
+
+   retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
+
+long syscall6 (long nr, long a1, long a2, long a3, long a4, long a5, long a6) {
+  long retval;
+  register long ebp __asm__("ebp") = a6;
+
+  __asm__ volatile (
+    "int $0x80"
+    : "=a" (retval)
+    : "a" (nr), "b" (a1), "c" (a2), "d" (a3), "S" (a4), "D" (a5), "r" (ebp)
+    : "memory");
+
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
 
 #elif defined(__x86_64__) || defined(__amd64__) || defined(__amd64)
 
-#define SYSCALL_INSTRUCTION    "syscall"
-#define SYSCALL_CLOBBERS       "rcx", "r11", "memory"
+long syscall0 (long nr) {
+  long retval;
 
-#define SYSCALL_PREAMBLE()                \
-  register long                           \
-     r10 __asm__("r10") = a3,             \
-     r08 __asm__("r8")  = a4,             \
-     r09 __asm__("r9")  = a5
-#define SYSCALL_INPUT_REGISTERS(__n__)    \
-  "a" (__n__),                            \
-  "D" (a0),                               \
-  "S" (a1), "d" (a2),                     \
-  "r" (r08), "r" (r09), "r" (r10)
+   __asm__ volatile (
+    "syscall"
+    : "=a" (retval)
+    : "a" (nr)
+    : "rcx", "r11", "memory");
 
-#define SYSCALL_PREAMBLE5()               \
-  register long                           \
-    r10 __asm__("r10") = a3,              \
-    r08 __asm__("r8")  = a4
-#define SYSCALL_INPUT_REGISTERS5(__n__)   \
-  "a" (__n__),                            \
-  "D" (a0),                               \
-  "S" (a1),  "d" (a2),                    \
-  "r" (r08), "r" (r10)
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
 
-#define SYSCALL_PREAMBLE4()               \
-  register long                           \
-    r10 __asm__("r10") = a3
-#define SYSCALL_INPUT_REGISTERS4(__n__)   \
-  "a" (__n__),                            \
-  "D" (a0),                               \
-  "S" (a1), "d" (a2),                     \
-  "r" (r10)
+long syscall1 (long nr, long a1) {
+  long retval;
 
-#define SYSCALL_PREAMBLE3()
-#define SYSCALL_INPUT_REGISTERS3(__n__)   \
-  "a" (__n__),                            \
-  "D" (a0),                               \
-  "S" (a1), "d" (a2)
+   __asm__ volatile (
+    "syscall"
+    : "=a" (retval)
+    : "a" (nr), "D" (a1)
+    : "rcx", "r11", "memory");
 
-#define SYSCALL_PREAMBLE2()
-#define SYSCALL_INPUT_REGISTERS2(__n__)   \
-  "a"(__n__),                             \
-  "D" (a0),                               \
-  "S" (a1)
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
 
-#define SYSCALL_PREAMBLE1()
-#define SYSCALL_INPUT_REGISTERS1(__n__)   \
-  "a" (__n__),                            \
-  "D" (a0)
+long syscall2 (long nr, long a1, long a2) {
+  long retval;
 
-#define SYSCALL_PREAMBLE0()
-#define SYSCALL_INPUT_REGISTERS0(__n__)   \
-  "a" (__n__)
+   __asm__ volatile (
+    "syscall"
+    : "=a" (retval)
+    : "a"(nr), "D" (a1), "S" (a2)
+    : "rcx", "r11", "memory");
+
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
+
+long syscall3 (long nr, long a1, long a2, long a3) {
+  long retval;
+
+   __asm__ volatile (
+    "syscall"
+    : "=a" (retval)
+    : "a" (nr), "D" (a1), "S" (a2), "d" (a3)
+    : "rcx", "r11", "memory");
+
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
+
+long syscall4 (long nr, long a1, long a2, long a3, long a4) {
+  long retval;
+  register long r10 __asm__("r10") = a4;
+
+   __asm__ volatile (
+    "syscall"
+    : "=a" (retval)
+    : "a" (nr), "D" (a1), "S" (a2), "d" (a3), "r" (r10)
+    : "rcx", "r11", "memory");
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
+
+long syscall5 (long nr, long a1, long a2, long a3, long a4, long a5) {
+  long retval;
+  register long r10 __asm__("r10") = a4,
+                r08 __asm__("r8") = a5;
+
+   __asm__ volatile (
+    "syscall"
+    : "=a" (retval)
+    : "a" (nr), "D" (a1), "S" (a2), "d" (a3), "r" (r08), "r" (r10)
+    : "rcx", "r11", "memory");
+
+   retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
+
+long syscall6 (long nr, long a1, long a2, long a3, long a4, long a5, long a6) {
+  long retval;
+  register long r10 __asm__("r10") = a4,
+                r08 __asm__("r8") = a5,
+                r09 __asm__("r9") = a6;
+
+  __asm__ volatile (
+    "syscall"
+    : "=a" (retval)
+    : "a" (nr), "D" (a1), "S" (a2), "d" (a3), "r" (r08), "r" (r09), "r" (r10)
+    : "rcx", "r11", "memory");
+
+  retval = (0 > retval ? sys_errno = -retval, -1 : retval);
+  return retval;
+}
 
 #else
 #error "unimplemented platform"
 #endif
-
-long syscall0 (long n) {
-  long retval;
-  SYSCALL_PREAMBLE0();
-
-   __asm__ volatile(
-        SYSCALL_INSTRUCTION
-      : SYSCALL_OUTPUT_OPERAND(retval)
-      : SYSCALL_INPUT_REGISTERS0(n)
-      : SYSCALL_CLOBBERS);
-
-  SYSCALL_SET_RETVAL_ERRNO(retval);
-  return retval;
-}
-
-long syscall1 (long n, long a0) {
-  long retval;
-  SYSCALL_PREAMBLE1();
-
-   __asm__ volatile(
-        SYSCALL_INSTRUCTION
-      : SYSCALL_OUTPUT_OPERAND(retval)
-      : SYSCALL_INPUT_REGISTERS1(n)
-      : SYSCALL_CLOBBERS);
-
-  SYSCALL_SET_RETVAL_ERRNO(retval);
-  return retval;
-}
-
-long syscall2 (long n, long a0, long a1) {
-  long retval;
-  SYSCALL_PREAMBLE2();
-
-   __asm__ volatile(
-        SYSCALL_INSTRUCTION
-      : SYSCALL_OUTPUT_OPERAND(retval)
-      : SYSCALL_INPUT_REGISTERS2(n)
-      : SYSCALL_CLOBBERS);
-
-  SYSCALL_SET_RETVAL_ERRNO(retval);
-  return retval;
-}
-
-long syscall3 (long n, long a0, long a1, long a2) {
-  long retval;
-  SYSCALL_PREAMBLE3();
-
-   __asm__ volatile(
-        SYSCALL_INSTRUCTION
-      : SYSCALL_OUTPUT_OPERAND(retval)
-      : SYSCALL_INPUT_REGISTERS3(n)
-      : SYSCALL_CLOBBERS);
-
-  SYSCALL_SET_RETVAL_ERRNO(retval);
-  return retval;
-}
-
-long syscall4 (long n, long a0, long a1, long a2, long a3) {
-  long retval;
-  SYSCALL_PREAMBLE4();
-
-   __asm__ volatile(
-        SYSCALL_INSTRUCTION
-      : SYSCALL_OUTPUT_OPERAND(retval)
-      : SYSCALL_INPUT_REGISTERS4(n)
-      : SYSCALL_CLOBBERS);
-
-  SYSCALL_SET_RETVAL_ERRNO(retval);
-  return retval;
-}
-
-long syscall5 (long n, long a0, long a1, long a2, long a3, long a4) {
-  long retval;
-  SYSCALL_PREAMBLE5();
-
-   __asm__ volatile(
-        SYSCALL_INSTRUCTION
-      : SYSCALL_OUTPUT_OPERAND(retval)
-      : SYSCALL_INPUT_REGISTERS5(n)
-      : SYSCALL_CLOBBERS);
-
-   SYSCALL_SET_RETVAL_ERRNO(retval);
-  return retval;
-}
-
-long syscall6 (long n, long a0, long a1, long a2, long a3, long a4, long a5) {
-  long retval;
-  SYSCALL_PREAMBLE();
-
-  __asm__ volatile (
-        SYSCALL_INSTRUCTION
-      : SYSCALL_OUTPUT_OPERAND(retval)
-      : SYSCALL_INPUT_REGISTERS(n)
-      : SYSCALL_CLOBBERS);
-
-  SYSCALL_SET_RETVAL_ERRNO(retval);
-  return retval;
-}
 
 #if defined(__i386__) || defined(__i386)
 
