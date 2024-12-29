@@ -64,7 +64,7 @@ include ("argparse")
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code", BooleanType, 0)
-  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC] (default ALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ALLOC")
+  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC] (default ZALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ZALLOC")
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
@@ -80,20 +80,30 @@ include ("argparse")
 
   return ok if argparse.exit is true
 
+  func error (msg) {
+    ifnot null is msg then println (stderr, msg)
+    if errno then println (stderr, errno_string (errno))
+    return notok
+  }
+
   var verbose = argparse.results.verbose
 
   var outputName = if null is argparse.results.outputName then LIBCOUTNAME orelse argparse.results.outputName
   var outputDir  = if null is argparse.results.outputDir then LIBCOUTDIR orelse argparse.results.outputDir
 
-  ifnot outputDir: exists () then mkdir (outputDir, 0755; verbose : verbose)
-  ifnot outputDir: is_directory () then return error (outputDir + ": is not a directory")
+  ifnot outputDir: exists () then
+    mkdir (outputDir, 0755; verbose : verbose)
+  ifnot outputDir: is_directory () then
+    return error (outputDir + ": is not a directory")
 
   var outputFile  = outputDir: concat_with (outputName + ".h")
   var licenceFile = outputDir: concat_with ("Licenses_libc")
   var commentFile = outputDir: concat_with ("Comments_libc")
 
-  ifnot LIBCALLDIR: exists () then mkdir (LIBCALLDIR, 0755; verbose : verbose)
-  ifnot LIBCALLDIR: is_directory () then return error (LIBCALLDIR + ": is not a directory")
+  ifnot LIBCALLDIR: exists () then
+    mkdir (LIBCALLDIR, 0755; verbose : verbose)
+  ifnot LIBCALLDIR: is_directory () then
+    return error (LIBCALLDIR + ": is not a directory")
 
   const outputFileLibcAll = LIBCALLDIR: concat_with ("libc.c")
 
@@ -101,6 +111,9 @@ include ("argparse")
 
   var memoryAllocator = argparse.results.allocator
   var memoryAllocators = ["ALLOC", "ZALLOC"]
+
+  ifnot memoryAllocators: any (memoryAllocator) then
+    return error (memoryAllocator + " allocator is not supported")
 
   var dotsToLibc = func (d) {
     var def = LIBCSRCDIR
@@ -242,12 +255,6 @@ include ("argparse")
       this.depends = string[0]
     }
   } 
-
-  func error (msg) {
-    ifnot null is msg then println (stderr, msg)
-    if errno then println (errno_string (errno))
-    return notok
-  }
 
   for v in libcdirs {
     if v isnot "syscall"  append format ("/* ${v} */") in libcFuns

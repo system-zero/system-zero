@@ -46,7 +46,7 @@ func argparseNew () {
   argparse.add ("all", 0, "all", "make all targets", BooleanType, ARG_LITERAL)
   argparse.add ("force", 'f', "force", "force making targets", BooleanType, 0)
   argparse.add ("recursive", 'R', "recursive", "apply the 'force' option recursively", BooleanType, 0)
-  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [ALLOC, ZALLOC] (default ALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ALLOC")
+  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [ALLOC, ZALLOC] (default ZALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ZALLOC")
   argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)
   argparse.add ("platform", 0, "platform=", "operating system (default: Os.platform ())", StringType, ARG_VALUE_REQUIRED; defval : Os.platform ())
   argparse.add ("version", 0, "version=", "set version", StringType, ARG_VALUE_REQUIRED)

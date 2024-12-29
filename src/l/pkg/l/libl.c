@@ -12311,7 +12311,7 @@ static l_opts l_default_options (l_t *this, l_opts opts) {
 }
 
 static void l_release_stdns (l_t *this) {
-  sym_t *sym = ns_lookup_symbol (this->std, "sys_stdout");
+  sym_t *sym = ns_lookup_symbol (this->std, "stdout");
   sym->value.refcount = 0;
   sym = ns_lookup_symbol (this->std, "stderr");
   sym->value.refcount = 0;

@@ -2869,7 +2869,7 @@ func term_tests () {
   return notok if Term.raw_mode (term) is notok
 
   var fd = STDIN_FILENO
-  var key = 0
+  var key = 'q'
   while key isnot 'q' {
     return notok if key is notok
     key = Term.getkey (fd)

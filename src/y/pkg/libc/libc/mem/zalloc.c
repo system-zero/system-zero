@@ -5,6 +5,7 @@
 // provides: int mem_init (uint)
 // provides: int mem_deinit (void)
 // provides: uint mem_get_actual_size (void *)
+// provides: void mem_mark_unused (void *)
 // provides: int mem_debug_all (int)
 // requires: convert/decimal.h
 // requires: convert/format.c
@@ -43,13 +44,24 @@ static void *__init_alloc__ (uint);
 
 MemAlloc Malloc = __init_alloc__;
 
+#ifdef MEM_DEBUG
+int totalMemRequests    = 0;
+int totalMemReleases    = 0;
+int totalMemPrevMerges  = 0;
+int totalMemNextMerges  = 0;
+int totalMemSplits      = 0;
+#endif
+
 int MemExitOnDoubleFree = 1;
 int MemExitOnENOMEM     = 1;
+uint MemSplitWhenIsAtleast = 256;
+uint MemIncreaseExtrabytes = 1024;
 
 static void *BegBreakPoint = NULL;
 static void *EndBreakPoint = NULL;
 
 static MemChunk *MemHead = NULL;
+static MemChunk *FirstFreeChunk = NULL;
 
 static inline uint mem_diff (void *end, void *beg) {
   return (char *) end - (char *) beg;
@@ -120,7 +132,7 @@ static inline void mem_set_used (MemChunk *m) {
   m->is_used = 1;
 }
 
-static inline void mem_set_unused (MemChunk *m) {
+static void mem_set_unused (MemChunk *m) {
   m->is_used = 0;
 }
 
@@ -159,14 +171,23 @@ static inline int mem_is_the_end_chunk (MemChunk *mem) {
 }
 
 static MemChunk *mem_find_unused_chunk (MemChunk *mem, uint size) {
-   MemChunk *cur = mem;
+  MemChunk *it = mem;
 
-  while (mem_isnot_the_end_chunk (cur)) {
-    if (mem_is_unused (cur) && cur->chunk_size >= size)
-      return cur;
+  FirstFreeChunk = NULL;
 
-    cur = mem_get_next_chunk (cur);
+  while (mem_isnot_the_end_chunk (it)) {
+    if (mem_is_unused (it)) {
+      if (FirstFreeChunk == NULL)
+          FirstFreeChunk = it;
+
+      if (it->chunk_size >= size)
+        return it;
+    }
+
+    it = mem_get_next_chunk (it);
   }
+
+  FirstFreeChunk = mem;
 
   return NULL;
 }
@@ -186,16 +207,23 @@ static MemChunk *mem_make_new_next_chunk (MemChunk *mem, uint newsize) {
 static MemChunk *mem_split_chunk (MemChunk *mem, uint mem_needsize) {
   uint newsize = mem->chunk_size - mem_needsize;
 
-#ifdef MEM_DEBUG
+  #ifdef MEM_DEBUG
   if (newsz % MEM_ALIGN_SIZE != 0)
      tostderr ("%s: new size %u is not aligned (requested size: %u)\n",
         __func__, newsize, mem_needsize);
-#endif
+  #endif
 
-  if (newsize < SPLIT_WHEN_IS_AT_LEAST)
+  if (newsize < MemSplitWhenIsAtleast)
     return mem;
 
+  #ifdef MEM_DEBUG
+  totalMemSplits++;
+  #endif
+
   mem->chunk_size = mem_needsize;
+
+  if (FirstFreeChunk > mem)
+      FirstFreeChunk = mem;
 
   return mem_make_new_next_chunk (mem, newsize);
 }
@@ -205,6 +233,10 @@ static MemChunk *mem_merge_next_chunk (MemChunk *mem, MemChunk *next) {
 
   if (mem_is_used (next) || mem_is_the_end_chunk (next))
     return mem;
+
+  #ifdef MEM_DEBUG
+  totalMemNextMerges++;
+  #endif
 
   mem->chunk_size += next->chunk_size;
 
@@ -219,15 +251,30 @@ static MemChunk *mem_merge_prev_chunk (MemChunk *mem, MemChunk *prev) {
   if (NULL == prev || mem_is_used (prev))
     return mem;
 
+  #ifdef MEM_DEBUG
+  totalMemPrevMerges++;
+  #endif
+
+  /* if we ever call this function more than once then we may want to
+     check the possibility that FirstFreeChunk might be equal to mem,
+     as then it will simply point to a disaster point in memory, when
+     it will be called again from mem_alloc() */
+  #if 0
+  if (FirstFreeChunk > prev)
+      FirstFreeChunk = prev;
+  #endif
+
   prev->chunk_size += mem->chunk_size;
+
   return prev;
 }
 
 static MemChunk *mem_merge_chunks (MemChunk *mem) {
   MemChunk *prev = mem_get_prev_chunk (mem);
-#ifdef MEM_DEBUG
-  tostdout ("merging: %p with size %u and %u, is available? %d\n", mem, mem->chunk_size, mem->prev_chunk_size, mem_is_unused (mem));
-#endif
+
+  #ifdef MEM_DEBUG
+  tostdout ("merging: %p with size %u and %u, is unused? %d\n", mem, mem->chunk_size, mem->prev_chunk_size, mem_is_unused (mem));
+  #endif
 
   MemChunk *m = mem_merge_prev_chunk (mem, prev);
 
@@ -260,29 +307,19 @@ static MemChunk *mem_increase (uint size, uint split_at) {
 void *mem_alloc (uint size) {
   uint sz = mem_align (size) + HEADER_SIZE;
 
-#ifdef MEM_DEBUG
+  #ifdef MEM_DEBUG
+  totalMemRequests++;
   tostdout ("%s: request for %u bytes will try to allocate %u\n",
     __func__, size, sz);
-#endif
+  #endif
 
-  MemChunk *mem = mem_find_unused_chunk (MemHead, sz);
+  MemChunk *mem = mem_find_unused_chunk (FirstFreeChunk, sz);
 
   if (mem == NULL) {
-    MemChunk *new = mem_increase (sz + INCREASE_EXTRA_BYTES, INCREASE_EXTRA_BYTES);
+
+    MemChunk *new = mem_increase (sz + MemIncreaseExtrabytes, sz);
 
     if (NULL == new) return NULL;
-
-    return mem_get_ptr_from_chunk (new);
-#ifdef MEM_DEBUG
-    tostdout ("we had to increase with new ptr %p\n", new);
-#endif
-
-    mem_split_chunk (new, sz);
-
-#ifdef MEM_DEBUG
-    tostdout ("finally %p size %u | %u good luck\n",
-        new, new->chunk_size, new->prev_chunk_size);
-#endif
 
     return mem_get_ptr_from_chunk (new);
   }
@@ -294,10 +331,10 @@ void *mem_alloc (uint size) {
   /* this should also chain with the next chunk (if available, otherwise
      it will leave it with the old value)  */
 
-#ifdef MEM_DEBUG
+  #ifdef MEM_DEBUG
   tostdout ("we already have space for %p with size %u | %u\n",
       mem, mem->chunk_size, mem->prev_chunk_size);
-#endif
+  #endif
 
   return mem_get_ptr_from_chunk (mem);
 }
@@ -330,7 +367,7 @@ void *mem_realloc (void *ptr, uint size) {
 
   if (next != NULL && mem_is_unused (next)) {
     uint sz = mem_align (size) + HEADER_SIZE;
-    if (sz <= next->chunk_size) {
+    if (sz <= next->chunk_size && next->chunk_size < (sz * 2)) {
       mem_merge_next_chunk (mem, next);
       return ptr;
     }
@@ -361,11 +398,18 @@ int mem_release (void **ptr) {
     return -1;
   }
 
+  #ifdef MEM_DEBUG
+  totalMemReleases++;
+  #endif
+
   MemChunk *mem = mem_get_chunk_from_ptr (*ptr);
 
   mem_set_unused (mem);
 
-  mem_merge_chunks (mem);
+  mem = mem_merge_chunks (mem);
+
+  if (FirstFreeChunk > mem)
+      FirstFreeChunk = mem;
 
   *ptr = NULL;
 
@@ -397,13 +441,15 @@ int mem_init (uint size) {
   MemHead->prev_chunk_size = 0;
   mem_set_unused (MemHead);
 
+  FirstFreeChunk = MemHead;
+
   EndBreakPoint = mem_get_current_breakpoint ();
 
   mem_set_end_chunk (EndBreakPoint, MemHead->chunk_size);
 
-#ifdef MEM_DEBUG
+  #ifdef MEM_DEBUG
   tostdout ("%p BegBreakPoint\n%p EndBreakPoint\n", BegBreakPoint, EndBreakPoint);
-#endif
+  #endif
 
   return 0;
 }
@@ -430,6 +476,15 @@ uint mem_get_actual_size (void *ptr) {
   return mem->chunk_size - HEADER_SIZE;
 }
 
+void mem_mark_unused (void *ptr) {
+  MemChunk *mem = mem_get_chunk_from_ptr (ptr);
+
+  mem_set_unused (mem);
+
+  if (FirstFreeChunk > mem)
+      FirstFreeChunk = mem;
+}
+
 #define OK_MSG    "\033[%32mok\033[m"
 #define NOTOK_MSG "\033[%31mnotok\033[m"
 
@@ -440,19 +495,30 @@ int mem_debug_all (int verbose) {
 
   MemChunk *lastchunk = mem_get_last_chunk (EndBreakPoint);
 
+  uint totalAscAllocationChunks = 0;
+  uint totalUnused = 0;
+  uint totalUsed = 0;
+
   uint total = HEADER_SIZE;
 
   while (1) {
     total += mem->chunk_size;
 
+    int is_used = mem_is_used (mem);
+
     if (verbose)
       tostdout ("%p, chunk_size %u prevsz %u used [%s] ",
-        mem, mem->chunk_size, mem->prev_chunk_size, mem_is_used(mem) ? "yes" : "no");
+        mem, mem->chunk_size, mem->prev_chunk_size, is_used ? "yes" : "no");
 
     if (mem_is_the_end_chunk (mem)) {
       tostdout ("this is the end chunk\n");
       break;
     }
+
+    totalUnused += is_used == 0;
+    totalUsed   += is_used;
+
+    totalAscAllocationChunks++;
 
     MemChunk *next = mem_get_next_chunk (mem);
 
@@ -476,11 +542,16 @@ int mem_debug_all (int verbose) {
 
   uint diff = mem_diff (EndBreakPoint, BegBreakPoint);
 
-  if (verbose)
+  if (verbose) {
     tostdout ("Total memory requested from kernel %u bytes [%s]\n",
       diff, diff == total ? OK_MSG : NOTOK_MSG);
 
-  num_failed +=  (diff != total);
+    tostdout ("Looping in descending order\n");
+  }
+
+  num_failed += (diff != total);
+
+  uint totalDescAllocationChunks = 0;
 
   total = HEADER_SIZE;
 
@@ -493,7 +564,7 @@ int mem_debug_all (int verbose) {
       tostdout ("%p, chunk_size %u prevsz %u used [%s] ",
         mem, mem->chunk_size, mem->prev_chunk_size, mem_is_used(mem) ? "yes" : "no");
 
-    if (verbose && mem_is_the_end_chunk (EndBreakPoint))
+    if (verbose && mem_is_the_end_chunk (mem))
       tostdout ("this is the end chunk ");
 
     MemChunk *prev = mem_get_prev_chunk (mem);
@@ -513,19 +584,42 @@ int mem_debug_all (int verbose) {
     if (verbose)
       tostdout ("\n");
 
+    if (mem_isnot_the_end_chunk (mem))
+      totalDescAllocationChunks++;
+
     mem = prev;
+
     if (mem == NULL)
       break;
   }
 
-  if (verbose)
+  num_failed += totalAscAllocationChunks != totalDescAllocationChunks;
+  num_failed += (diff != total);
+
+  if (verbose) {
     tostdout ("Total memory requested from kernel %u bytes [%s]\n",
       diff, diff == total ? OK_MSG : NOTOK_MSG);
 
-  num_failed +=  (diff != total);
+    tostdout ("Total Chunks: %u - %u [%s]\n",
+      totalAscAllocationChunks,
+      totalDescAllocationChunks,
+      totalAscAllocationChunks == totalDescAllocationChunks ? OK_MSG : NOTOK_MSG);
 
-  if (num_failed && verbose)
-    tostdout ("\033[%%31mFailed %d tests\033[m\n", num_failed);
+    tostdout ("Unused Chunks: %d Used Chunks: %d\n",
+      totalUnused, totalUsed);
+
+    #ifdef MEM_DEBUG
+    tostdout ("Total Prev Memory Merges: [%d]\n", totalMemPrevMerges);
+    tostdout ("Total Next Memory Merges: [%d]\n", totalMemNextMerges);
+    tostdout ("Total Memory Merges: [%d]\n", totalMemPrevMerges + totalMemNextMerges);
+    tostdout ("Total Memory Splits: [%d]\n", totalMemSplits);
+    tostdout ("Total Memory Releases: [%d]\n", totalMemReleases);
+    tostdout ("Total Memory Requests: [%d]\n", totalMemRequests);
+    #endif
+
+    if (num_failed)
+      tostdout ("\033[%%31mFailed %d tests\033[m\n", num_failed);
+  }
 
   return num_failed;
 }

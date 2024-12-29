@@ -37,7 +37,7 @@ static l_T *__L__;
 #endif
 
 int main (int argc, char **argv) {
-  mem_init (1 << 20);
+  mem_init (1 << 16);
 
   __L__ = __init_l__ ();
 
@@ -79,7 +79,7 @@ int main (int argc, char **argv) {
       return 1;
 
     retval = L.load_file (__L__, l, argv[1]);
-tostdout ("retval %d\n", retval);
+
   } else
     retval = L.eval_string (l, evalbuf->bytes);
 
@@ -87,7 +87,8 @@ tostdout ("retval %d\n", retval);
 theend:
   string_release (evalbuf);
 
-//  __deinit_l__ (&__L__);
+//  mem_debug_all (1);
+  __deinit_l__ (&__L__);
 
   mem_deinit ();
 
