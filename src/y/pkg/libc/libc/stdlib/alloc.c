@@ -4,6 +4,7 @@
 // provides: int  mem_init (size_t)
 // provides: int  mem_deinit (void)
 // provides: uint mem_clear (void *)
+// provides: size_t mem_get_actual_size (void *)
 // requires: sys/brk.c
 // requires: stdlib/_exit.c
 // requires: stdlib/alloc.h
@@ -134,6 +135,16 @@
 
 #define ALIGN_SIZE 8
 #define ALIGN(__sz__) (((__sz__) + (ALIGN_SIZE - 1)) & ~(ALIGN_SIZE - 1))
+
+/* i know we are not going to use this allocator, the way we used to use it,
+   but we could apply the same tryc we did with the new one and could gain
+   a lot of performance, but the actual mistake is that we could go with
+   less from the beginning, (again) if we have used the same algorithm from
+   the new one to loop over the chunks. In short we don't need both pointers
+   and the int, as what we actually need is an extra size_t and a byte instead,
+   to store the previous size and the availability, and we could probably
+   attribute the type as packed.
+ */
 
 typedef struct memChunkT {
   size_t size;
@@ -445,6 +456,11 @@ void *sys_realloc (void *ptr, size_t size) {
   // pthread_mutex_unlock (&lock);    
 
   return ptr;
+}
+
+size_t mem_get_actual_size (void *ptr) {
+  memChunkT *chunk = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
+  return chunk->size - STRUCT_SIZe:
 }
 
 uint mem_clear (void *ptr) {

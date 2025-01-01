@@ -12,7 +12,7 @@ typedef void *(*MemAlloc) (uint);
 #define HEADER_SIZE (sizeof (MemChunk))
 #define MEM_ALIGN_SIZE 16
 
-#define Alloc   mem_calloc
+#define Alloc   mem_alloc
 #define Realloc mem_realloc
+#define Calloc  mem_calloc
 #define Release(__ptr__) mem_release ((void **) &__ptr__)
-//#define Release(__ptr__) mem_mark_unused (__ptr__)

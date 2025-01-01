@@ -27,7 +27,7 @@ StrTokenType *str_tok (const char *buf, utf8 tok, StrTokenType *obj, StrTokenCb 
     if (end)
       break;
 
-    ifnot (*sp) {
+    if ('\0' == *sp) {
       end = 1;
       goto tokenize;
     }
@@ -40,7 +40,7 @@ StrTokenType *str_tok (const char *buf, utf8 tok, StrTokenType *obj, StrTokenCb 
 
       size_t toklen = sp - p;
 
-      ifnot (NULL == cb) {
+      if (NULL != cb) {
         char s[toklen + 1];
         str_copy (s, toklen + 1, p, toklen);
         if (0 != cb (obj, s, userdata))

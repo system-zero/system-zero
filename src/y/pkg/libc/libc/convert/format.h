@@ -54,4 +54,3 @@ struct FormatType {
   .num_bytes = 0, .mem_size = __buf_len__,                             \
   .directive = NULL, .outputByte = format_output_byte,                 \
   .error = 0, .user_data = NULL, __VA_ARGS__}
-

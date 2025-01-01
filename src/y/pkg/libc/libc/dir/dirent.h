@@ -16,4 +16,11 @@ struct dirent { // dirent64
   char           d_name[256]; /* Filename (null-terminated) */
 };
 
+struct _DIR {
+  int fd;
+  int buf_pos;
+  int buf_end;
+  char buf[2048];
+};
+
 typedef struct _DIR DIR;

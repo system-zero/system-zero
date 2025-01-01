@@ -191,17 +191,6 @@ include ("argparse")
       #endif
     #endif
 
-    #ifndef WITHOUT_SYNTAX
-      #ifndef SYNTAX_H
-      #define SYNTAX_H
-
-      #ifdef ifnot
-      #undef ifnot
-      #endif
-      #define ifnot(__expr__) if (0 == (__expr__))
-      #endif /* SYNTAX_H */
-    #endif
-
     #ifndef private
     #define private __attribute__ ((visibility ("hidden")))
     #endif
@@ -257,7 +246,7 @@ include ("argparse")
   } 
 
   for v in libcdirs {
-    if v isnot "syscall"  append format ("/* ${v} */") in libcFuns
+    if v isnot "syscall"  append "/* " + v + " */" in libcFuns
 
     var dir = LIBCSRCDIR: concat_with (v)
     var arr = dir: dir_list ()
@@ -313,10 +302,12 @@ include ("argparse")
       if f_is_allocator {
         ifnot memoryAllocator: eq (f_hdr) {
           var rqr = memoryAllocator + if f_ext is "H" then "_H\n" orelse "\n"
-          append "#ifdef REQUIRE_" + f_rqr in libcHdrs
-          append "  #ifndef REQUIRE_" + rqr in libcHdrs
-          append "  #define REQUIRE_" + rqr in libcHdrs
-          append "  #endif\n#endif\n\n" in libcHdrs
+          append "#ifdef REQUIRE_"    + f_rqr in libcHdrs
+          append "  #ifndef REQUIRE_" + rqr   in libcHdrs
+          append "  #define REQUIRE_" + rqr   in libcHdrs
+          append "  #endif\n"                 in libcHdrs
+          append "  #undef REQUIRE_"  + f_rqr in libcHdrs
+          append "#endif\n\n"                 in libcHdrs
           continue
         }
       }

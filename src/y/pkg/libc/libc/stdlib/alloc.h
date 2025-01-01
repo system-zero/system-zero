@@ -7,6 +7,10 @@
   #undef Realloc
   #endif
 
+  #ifdef Calloc
+  #undef Calloc
+  #endif
+
   #ifdef Release
   #undef Release
   #endif
@@ -22,8 +26,10 @@
   #define Alloc(__sz__) sys_malloc (__sz__)
 
   #define Realloc sys_realloc
+  #define Calloc sys_malloc
 
   #define Release sys_free
+
   #define MemClear mem_clear
   #define MemInit mem_init
   #define MemDeinit mem_deinit

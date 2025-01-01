@@ -14,16 +14,17 @@
 // requires: mem/zalloc.h
 
 /* A memory allocator that uses the sys_sbrk () syscall. That simply
-   means that no other code should use this syscall, otherwise it is
-   undefined behavior.
+   means, that no other code should use this syscall other than this
+   unit, otherwise it is unpredicted behavior.
 
    The maximum allocated size is at UINT_MAX. The header overhead is
    rather reasonable (16 bytes per allocation (this should be true on
    most architectures)), while still allow us to traverse the tree in
    ascending or descending order, so we can split or merge contiguous
-   memory chunks, on allocating and releasing respectively.
+   memory chunks, on allocating and releasing respectively. This leave
+   us with 6 bytes free for use, a short and an int.
 
-   The alignmemt is 16 bytes so the minumum chunk costs 32 bytes.
+   The alignmemt is at 16 bytes so the minumum chunk costs 32 bytes.
 
    The mem_release() function always nullifies the pointer so it expects
    a (void **) double pointer argument. The 'Release' macro wraps this
@@ -38,8 +39,12 @@
    pointer's size then it simply tries to split the unused size. When it
    finds that the next chunk is unused and fits the size, it merges this
    next chunk.
+
+   The mem_calloc() function signature is not that of the standard calloc,
+   as it is like mem_alloc() except that initializes the memory to zero.
 */
 
+static void *__mem_alloc__ (uint);
 static void *__init_alloc__ (uint);
 
 MemAlloc Malloc = __init_alloc__;
@@ -50,12 +55,14 @@ int totalMemReleases    = 0;
 int totalMemPrevMerges  = 0;
 int totalMemNextMerges  = 0;
 int totalMemSplits      = 0;
+int totalMemIncrements  = 0;
 #endif
 
 int MemExitOnDoubleFree = 1;
 int MemExitOnENOMEM     = 1;
-uint MemSplitWhenIsAtleast = 256;
-uint MemIncreaseExtrabytes = 1024;
+uint MemSplitWhenIsAtleast  = 256;
+uint MemExtraSpaceOnRealloc = 256;
+uint MemIncreaseExtrabytes  = 1024;
 
 static void *BegBreakPoint = NULL;
 static void *EndBreakPoint = NULL;
@@ -132,7 +139,7 @@ static inline void mem_set_used (MemChunk *m) {
   m->is_used = 1;
 }
 
-static void mem_set_unused (MemChunk *m) {
+static inline void mem_set_unused (MemChunk *m) {
   m->is_used = 0;
 }
 
@@ -208,7 +215,7 @@ static MemChunk *mem_split_chunk (MemChunk *mem, uint mem_needsize) {
   uint newsize = mem->chunk_size - mem_needsize;
 
   #ifdef MEM_DEBUG
-  if (newsz % MEM_ALIGN_SIZE != 0)
+  if (newsize % MEM_ALIGN_SIZE != 0)
      tostderr ("%s: new size %u is not aligned (requested size: %u)\n",
         __func__, newsize, mem_needsize);
   #endif
@@ -258,7 +265,8 @@ static MemChunk *mem_merge_prev_chunk (MemChunk *mem, MemChunk *prev) {
   /* if we ever call this function more than once then we may want to
      check the possibility that FirstFreeChunk might be equal to mem,
      as then it will simply point to a disaster point in memory, when
-     it will be called again from mem_alloc() */
+     it will be called again from mem_alloc (), for now it is handled
+     by mem_release () */
   #if 0
   if (FirstFreeChunk > prev)
       FirstFreeChunk = prev;
@@ -290,6 +298,10 @@ static MemChunk *mem_increase (uint size, uint split_at) {
   if (mem_increment_breakpoint (EndBreakPoint, size) == (void *) -1)
     return NULL;
 
+  #ifdef MEM_DEBUG
+  totalMemIncrements++;
+  #endif
+
   mem->chunk_size = size;
   mem->prev_chunk_size = lastchunk->chunk_size;
 
@@ -304,8 +316,8 @@ static MemChunk *mem_increase (uint size, uint split_at) {
   return mem;
 }
 
-void *mem_alloc (uint size) {
-  uint sz = mem_align (size) + HEADER_SIZE;
+void *__mem_alloc__ (uint size) {
+  uint sz = mem_align (size + HEADER_SIZE);
 
   #ifdef MEM_DEBUG
   totalMemRequests++;
@@ -339,6 +351,10 @@ void *mem_alloc (uint size) {
   return mem_get_ptr_from_chunk (mem);
 }
 
+void *mem_alloc (uint size) {
+  return Malloc (size);
+}
+
 void *mem_calloc (uint size) {
   void *ptr = Malloc (size);
 
@@ -356,8 +372,10 @@ void *mem_realloc (void *ptr, uint size) {
   uint ptr_sz = mem_get_actual_size (ptr);
 
   if (ptr_sz > size) {
-    uint sz = mem_align (size) + HEADER_SIZE;
+    uint sz = mem_align (size + HEADER_SIZE);
     mem_split_chunk (mem, sz);
+    uint actual_sz = mem_get_actual_size (ptr);
+    mem_zero ((char *) ptr + size, actual_sz - size);
     return ptr;
   }
 
@@ -366,10 +384,21 @@ void *mem_realloc (void *ptr, uint size) {
   MemChunk *next = mem_get_next_chunk (mem);
 
   if (next != NULL && mem_is_unused (next)) {
-    uint sz = mem_align (size) + HEADER_SIZE;
-    if (sz <= next->chunk_size && next->chunk_size < (sz * 2)) {
+    uint sz = mem_align (size + MemExtraSpaceOnRealloc + HEADER_SIZE);
+    uint needfromnext = sz - mem->chunk_size;
+
+    if (needfromnext <= next->chunk_size) {
+      if (next->chunk_size > (needfromnext + MemSplitWhenIsAtleast)) {
+        MemChunk *new = mem_split_chunk (next, needfromnext);
+
+        if (new == next)
+          goto outofcond; // probably we are safe but be sure
+      }
+
       mem_merge_next_chunk (mem, next);
       return ptr;
+
+      outofcond:
     }
   }
 
@@ -420,7 +449,7 @@ static void *__init_alloc__ (uint size) {
   if (-1 == mem_init (size))
     return NULL;
 
-  Malloc = mem_alloc;
+  Malloc = __mem_alloc__;
   return Malloc (size);
 }
 
@@ -430,8 +459,8 @@ int mem_init (uint size) {
 
   BegBreakPoint = mem_get_current_breakpoint ();
 
-  // beg header plus the end header
-  uint sz = mem_align (size) + (HEADER_SIZE * 2);
+                            /* beg header plus the end header */
+  uint sz = mem_align (size + (HEADER_SIZE * 2));
 
   if (mem_increment_breakpoint (BegBreakPoint, sz) == (void *) -1)
     return -1;
@@ -485,6 +514,7 @@ void mem_mark_unused (void *ptr) {
       FirstFreeChunk = mem;
 }
 
+#ifdef MEM_DEBUG
 #define OK_MSG    "\033[%32mok\033[m"
 #define NOTOK_MSG "\033[%31mnotok\033[m"
 
@@ -613,6 +643,7 @@ int mem_debug_all (int verbose) {
     tostdout ("Total Next Memory Merges: [%d]\n", totalMemNextMerges);
     tostdout ("Total Memory Merges: [%d]\n", totalMemPrevMerges + totalMemNextMerges);
     tostdout ("Total Memory Splits: [%d]\n", totalMemSplits);
+    tostdout ("Total Memory Increments:[%d]\n",totalMemIncrements);
     tostdout ("Total Memory Releases: [%d]\n", totalMemReleases);
     tostdout ("Total Memory Requests: [%d]\n", totalMemRequests);
     #endif
@@ -623,3 +654,99 @@ int mem_debug_all (int verbose) {
 
   return num_failed;
 }
+#endif
+
+// end
+/* very first observations:
+  Running some tests with the static language with mem_init (1 << 16):
+  (that is a little before the deinitialization)
+
+  Total memory requested from kernel 717648 bytes
+  Total Chunks: 2240
+  Unused Chunks: 169 Used Chunks: 2071
+  Total Prev Memory Merges: [3282]
+  Total Next Memory Merges: [9499]
+  Total Memory Merges: [12781]
+  Total Memory Splits: [14804]
+  Total Memory Increments:[216]
+  Total Memory Releases: [14213]
+  Total Memory Requests: [16284]
+
+  The first unused chunk (of all the 169) was at 1353 position, so
+  the find function has 887 chunks to proceed, with 169 of them as
+  unused.
+
+  Ideally long lived allocations should occupy the first chunks.
+
+  [In|De]creasing the MemSplitWhenIsAtleast variable yields various
+  results that might matters.
+
+  Initializing a big chunk on the start up it looks that it helps.
+
+  When a merging is performed, it grows up the posibility to find
+  an unused chunk with the requested size, but it also looks that
+  decreases the unused chunks.
+
+  So might an application can tune a bit the behavior.
+*/
+
+/* other
+  There cases (namely new memory requests to the kernel) where the
+  find function could benefit, if it will start searching from the
+  end, and in descending order.
+
+  Since a field of a type that occupies four bytes is free for use,
+  then it can be used as a refcount.
+
+  Another version that could use a type with 8 bytes per allocation,
+  and 24 bytes per header, could be:
+
+  typedef struct __attribute__((packed)) {
+    uint64_t chunk_size;
+    uint64_t prev_chunk_size;
+    uint user_flags;
+    short unused;
+    char is_used;
+    char pointer[1];
+  } MemChunk;
+*/
+
+/* funny
+  By [ab]using the memory interface, the string type functions now
+  actually use as their memory size the actual size of the pointer
+  and which usually is larger than the requested. This allow in a
+  lot of cases to operations to use this extra space, that before
+  they didn't knew that it was there and needlessly reallocated.
+ */
+
+/* seriously
+  Here we just cheat, as with standard malloc you can't get this
+  information, so we've an advantage when competing...
+
+  But because the string type behaves in ways like the allocator
+  (because of its dynamic usage), a special string type, can use
+  the allocator structure. At least even now the mem_size can be
+  traversed. Of course such a string can use sizeof(size_t) less
+  bytes that the original, but at the same time will be tied with
+  this libc. This type requires an allocator, and using sbrk() it
+  offers us precious flexible contiguous blocks and so simplicity
+  and flexibility in implementation, it has yet its own concerns.
+  If we manage though to avoid the concerns, then this allocator
+  can be used on quite many tasks other than a string type.
+
+  In other words and depending from the nature of the application
+  some code can use the structure to build its own types in a (at
+  least) more economical way, so the point is that it can be used
+  as a foundation to build flexible, economical and (probably and
+  by free of charge) performed applications.
+
+  But first what is required is to keep that code small, so we can
+  inspect every bit of the code, that it does what it was intented
+  to do. And then we can build upon the stabilized interface, and
+  possible (if we want to go sophisticated) other allocators, and
+  which wouldn't conflict with each other.
+
+  In any case it is a low level thing that affects almost all the
+  bits of code from the very very beginning.
+ */
+

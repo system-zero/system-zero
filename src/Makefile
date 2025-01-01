@@ -1354,20 +1354,23 @@ Dev: packman Make
 
 #----------------------------------------------------------#
   # libc
-LIBC_ALLOCATOR := ALLOC
+LIBC_ALLOCATOR := ZALLOC
 
-libc-generator-tools: lai-shared\
-                      std-module-shared os-module-shared io-module-shared\
-                      sh-module-shared dir-module-shared sys-module-shared\
-                      time-module-shared file-module-shared path-module-shared\
-                      crypt-module-shared net-module-shared\
-                      la-library packman Make
+LIBC_GENERATOR_DIR  = $(Y_SRCPKGDIR)/generate/libc
+LIBC_GENERATOR_NAME = Generate.libc
+LIBC_GENERATOR_SHARED_BIN = $(SYSBINDIR)/$(LIBC_GENERATOR_NAME)
+libc-generator: lai-shared\
+                      std-module-shared io-module-shared\
+                      dir-module-shared sys-module-shared\
+                      file-module-shared path-module-shared\
+                      la-library
+	@printf "#!/bin/env La-shared\n\n" >$(LIBC_GENERATOR_SHARED_BIN)
+	@$(CAT) $(LIBC_GENERATOR_DIR)/$(LIBC_GENERATOR_NAME).lai >> $(LIBC_GENERATOR_SHARED_BIN)
+	@printf "\nexit (generate_libc (__argc, __argv))\n" >>$(LIBC_GENERATOR_SHARED_BIN)
+	@$(CHMOD) 0755 $(LIBC_GENERATOR_SHARED_BIN)
 
-libc: libc-generator-tools
-	@$(LA_SHARED_BIN) $(MAKE_SHARED_BIN) --allocator=$(LIBC_ALLOCATOR) libc
-
-libc-force:libc-generator-tools
-	@$(LA_SHARED_BIN) $(MAKE_SHARED_BIN) --allocator=$(LIBC_ALLOCATOR) --force libc
+libc: libc-generator
+	@$(LA_SHARED_BIN) $(LIBC_GENERATOR_SHARED_BIN) --allocator=$(LIBC_ALLOCATOR) libc --without-sys-headers --without-module-compat --verbose
 
 #----------------------------------------------------------#
   # sudoku
@@ -1626,9 +1629,6 @@ Y_SRCPKGDIR  := $(Y_SRCDIR)/pkg
 l-shared: libargparse-shared librline-shared libla-shared
 	@cd $(ZA_LA_SRCDIR) && $(MAKE) $(APP_FLAGS) la-shared
 
-generate-libc: l-shared y-make
-	@$(SYSBINDIR)/Make all -v libc
-
 #-#
 YMake               = make
 Y_MAKE_SRCDIR       = $(Y_SRCPKGDIR)/$(YMake)
@@ -1703,12 +1703,14 @@ clean-hierarchy:
 INSTALL = install
 RM = rm -f
 RMDIR = rmdir
-CP = cp
 AR = ar rs
+CP = cp
 CP_R = $(CP) -r
+CAT = cat
 TEST = test
 LN = ln
 LN_S = $(LN) -s
 MKDIR = mkdir
 MKDIR_P = $(MKDIR) -p
+CHMOD = chmod
 SUDO := sudo

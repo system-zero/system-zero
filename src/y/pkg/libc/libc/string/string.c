@@ -70,7 +70,7 @@ string *string_new (size_t size) {
 }
 
 string *string_new_with_len (const char *bytes, size_t len) {
-  string *new = string_new (len);
+  string *new = string_new (len + 1);
   char *buf = new->bytes;
   str_copy (buf, new->mem_size, bytes, len);
   new->num_bytes = len;

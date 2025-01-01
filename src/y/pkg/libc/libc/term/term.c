@@ -293,6 +293,7 @@ int *term_get_dim (term_t *this, int *dim) {
 
 term_t *term_new (void) {
   term_t *this = Alloc (sizeof (term_t));
+  this->name = NULL;
   this->num_rows = 24;
   this->num_cols = 78;
   this->out_fd = 1;

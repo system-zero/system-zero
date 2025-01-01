@@ -1,6 +1,8 @@
 -f,--force
 -R,--recursive
 --allocator=
+--without-sys-headers
+--without-module-compat
 --remove-cache
 --version=
 --march=

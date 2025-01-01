@@ -2461,6 +2461,7 @@ static funT *fun_new (funNewArgs options) {
   uf->next = NULL;
   uf->symbols = map_new (options.num_symbols);
   uf->block_symbols = NULL;
+  uf->head = NULL;
 
   return uf;
 }

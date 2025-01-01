@@ -10,13 +10,6 @@
 // requires: sys/getdents.c
 // requires: dir/dirent.h
 
-struct _DIR {
-  int fd;
-  int buf_pos;
-  int buf_end;
-  char buf[2048];
-};
-
 DIR *sys_opendir (const char *path) {
   DIR *dir;
 

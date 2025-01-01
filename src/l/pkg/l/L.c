@@ -87,8 +87,16 @@ int main (int argc, char **argv) {
 theend:
   string_release (evalbuf);
 
-//  mem_debug_all (1);
+  #ifdef MEM_DEBUG
+  mem_debug_all (1);
+  #endif
+
   __deinit_l__ (&__L__);
+
+  #ifdef MEM_DEBUG
+  tostdout ("------------------\n");
+  mem_debug_all (1);
+  #endif
 
   mem_deinit ();
 

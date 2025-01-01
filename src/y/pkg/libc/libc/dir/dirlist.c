@@ -30,7 +30,7 @@ dirlist_t *dirlist (const char *dir) {
       break;
 
     size_t namelen = bytelen (dp->d_name);
-    ifnot (namelen)
+    if (0 == namelen)
       continue;
 
     if (namelen <= 2 &&
