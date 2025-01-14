@@ -56,6 +56,7 @@ include ("argparse")
   comment_str    = "// comment: ",
   end_str        = "// end",
   end_len        = end_str: len (),
+  skip_str       = "// skip",
   as_str         = "// as: "
 
   var me = __file__: basename ()
@@ -64,17 +65,56 @@ include ("argparse")
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code", BooleanType, 0)
-  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC] (default ZALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ZALLOC")
+  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC, TALLOC] (default TALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "TALLOC")
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
-  argparse.set.help (`Reserved tokens
-    // as: [header name], else it is constructed as dir/unit in caps, and should be at the first line only 
-    // provides: [function signature], it is required when the unit is not a header and is not a MetaPackage (should be at the first line only or after an as token)
-    // requires: [dir/unit]
-    // comment: 
-    // end [ends the interpretation]
-  `S4)
+  argparse.set.help (`
+  Tokens:
+      the tokens begin with the first byte in line
+        note that the bar either denotes the beginning of a value
+          (if this token accepts a value)
+        or else a new line
+
+       all the above are significant
+
+    // skip|
+      skips unit interpretation (debug files, backups, ...)
+      this token should be at the first line only
+
+    // as: | name
+      this is the macro definition of the functionality, that is being
+        used by compilation units to require this libc functionality
+
+      in this case of as, it is constructed as:
+        REQUIRE_NAME
+          the name value in caps, with the a REQUIRE_ prefix
+
+      or else without the as and by default, it is constructed as: 
+        if it is a .c file
+          REQUIRE_FCNTL
+        or if it is a header
+          REQUIRE_FCNTL_H
+
+      this token should be at the first line only
+
+    // provides: | function signature
+      it is required when the unit is not a header and not a MetaPackage
+      example:
+        // provides: long sys_fstat (int, struct stat *)
+          no semicolon at the end of line
+
+      should be at the first line only or after an as token
+
+    // requires: | dir/unit.[ch]
+      example:
+        // requires: sys/stat.h
+
+    // comment: |
+
+    // end|
+      ends the interpretation (stops reading more lines)
+  `S2)
 
   return notok ifnot ok is argparse.process (argv, 1)
 
@@ -110,7 +150,7 @@ include ("argparse")
   var withoutSysHdrs = argparse.results.withoutSys
 
   var memoryAllocator = argparse.results.allocator
-  var memoryAllocators = ["ALLOC", "ZALLOC"]
+  var memoryAllocators = ["ALLOC", "ZALLOC", "TALLOC"]
 
   ifnot memoryAllocators: any (memoryAllocator) then
     return error (memoryAllocator + " allocator is not supported")
@@ -318,7 +358,11 @@ include ("argparse")
 
       if "C" is f_ext {
         var line = lines[idx]
+
+        continue if line: eq (skip_str)
+
         var sp = line: bytes_in_str (as_str)
+
         var is_meta = 0;
 
         ifnot null is sp {

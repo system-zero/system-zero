@@ -168,6 +168,8 @@ typedef unsigned long ulong;
 
 typedef signed int utf8;
 
+#define PAGESIZE 4096
+
 #if __WORDSIZE == 64
 
 #define PRId64  "ld"

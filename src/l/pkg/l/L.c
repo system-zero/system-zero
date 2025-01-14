@@ -23,6 +23,9 @@
 #endif
 
 #include <z/libc.h>
+
+#define ifnot(__expr__) if (0 == (__expr__))
+
 #include <z/l.h>
 
 static l_T *__L__;

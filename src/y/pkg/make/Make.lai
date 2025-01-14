@@ -46,7 +46,7 @@ func argparseNew () {
   argparse.add ("all", 0, "all", "make all targets", BooleanType, ARG_LITERAL)
   argparse.add ("force", 'f', "force", "force making targets", BooleanType, 0)
   argparse.add ("recursive", 'R', "recursive", "apply the 'force' option recursively", BooleanType, 0)
-  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [ALLOC, ZALLOC] (default ZALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ZALLOC")
+  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [ALLOC, ZALLOC, TALLOC] (default TALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "TALLOC")
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers (libc)", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code (libc)", BooleanType, 0)
   argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)
@@ -154,6 +154,7 @@ const PAGER             = "Pager"
 const RPATH             = true
 const NORPATH           = false
 const INTERPRETER       = "La"
+const INTERPRETER_EXT   = ".lai"
 const SHARED_INTERPRETER= "La-shared"
 const STATIC_INTERPRETER= "La-static"
 const SPECNAME          = ".build"
@@ -332,6 +333,7 @@ var string[0] MAKE_INSTALLED
   }
 
   script : {
+    extension      : INTERPRETER_EXT
     executable : {
       sources      : {[]}
       dependencies : {[]}
@@ -848,11 +850,11 @@ var string[0] MAKE_INSTALLED
           return this.error ("script executable sources is null")
 
         var string[this.script.executable.sources: len ()] sources
-        for i, v in this.script.executable.sources sources[i] = v + ".lai"
+        for i, v in this.script.executable.sources sources[i] = v + this.script.extension
 
         var script_sources = {[]}
         for v in this.script.executable.sources
-          append v + ".lai" in script_sources
+          append v + this.script.extension in script_sources
 
         return ok if false is this.script.executable.install
 
@@ -998,8 +1000,11 @@ var string[0] MAKE_INSTALLED
         var script_sources = {[]}
         var string[this.script.library.sources: len ()] sources
 
-        for v in this.script.library.sources append v + ".lai" in script_sources
-        for i, v in this.script.library.sources sources[i] = v + ".lai"
+        for v in this.script.library.sources
+          append v + this.script.extension in script_sources
+
+        for i, v in this.script.library.sources
+          sources[i] = v + this.script.extension
 
         return ok if false is this.script.library.install
 
@@ -1011,8 +1016,10 @@ var string[0] MAKE_INSTALLED
         var targets = {[]}
 
         for v in this.script.library.sources {
-          append this.lalibdir: concat_with (v + ".lai") in targets
-          append this.lalibdir: concat_with (v + ".lai") in sources
+          append
+            this.lalibdir: concat_with (v + this.script.extension) in targets
+          append
+            this.lalibdir: concat_with (v + this.script.extension) in sources
         }
 
         this.record (sources)

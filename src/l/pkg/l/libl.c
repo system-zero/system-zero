@@ -13,7 +13,7 @@
 #define REQUIRE_FILE_IS_REG
 #define REQUIRE_MAKE_DIR
 #define REQUIRE_MAP
-#define REQUIRE_ALLOC
+#define REQUIRE_TALLOC
 #define REQUIRE_PATH_IS_ABSOLUTE
 #define REQUIRE_PATH_BASENAME_SANS_EXTNAME
 #define REQUIRE_PATH_BASENAME
@@ -28,6 +28,8 @@
 #define REQUIRE_STAT
 
 #include <libc.h>
+
+#define ifnot(__expr__) if (0 == (__expr__))
 
 #include <z/list.h>
 #include <z/l.h>

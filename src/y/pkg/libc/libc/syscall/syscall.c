@@ -429,7 +429,6 @@ long syscall6 (long nr, long a1, long a2, long a3, long a4, long a5, long a6) {
 #define NR_stat64             195
 #define NR_lstat64            196
 #define NR_fstat64            197
-/* 32-bit uid and gid calls */
 #define NR_lchown32           198
 #define NR_getuid32           199
 #define NR_getgid32           200
@@ -449,7 +448,6 @@ long syscall6 (long nr, long a1, long a2, long a3, long a4, long a5, long a6) {
 #define NR_setgid32           214
 #define NR_setfsuid32         215
 #define NR_setfsgid32         216
-/* end of 32-bit uid block */
 #define NR_pivot_root         217
 #define NR_mincore            218
 #define NR_madvise            219
