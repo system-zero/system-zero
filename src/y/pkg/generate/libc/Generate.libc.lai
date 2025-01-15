@@ -65,7 +65,7 @@ include ("argparse")
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code", BooleanType, 0)
-  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC, TALLOC] (default TALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "TALLOC")
+  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC, TALLOC] (default ZALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ZALLOC")
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 

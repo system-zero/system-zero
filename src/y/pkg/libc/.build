@@ -134,6 +134,8 @@ m.set.libc.source ([
   "libc/map/map.c",
   "libc/mem/talloc.c",
   "libc/mem/talloc.h",
+  "libc/mem/valloc.c",
+  "libc/mem/valloc.h",
   "libc/mem/zalloc.c",
   "libc/mem/zalloc.h",
   "libc/path/basename.c",
