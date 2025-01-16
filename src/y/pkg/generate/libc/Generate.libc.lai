@@ -65,7 +65,7 @@ include ("argparse")
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code", BooleanType, 0)
-  argparse.add ("allocator", 0, "allocator=", "select allocator [ALLOC, ZALLOC, TALLOC] (default ZALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ZALLOC")
+  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [alloc, zalloc, talloc, falloc] (default talloc)", StringType, ARG_VALUE_REQUIRED; defval : "talloc")
   argparse.add ("verbose", 'v', "verbose", "set verbosity", BooleanType, 0)
   argparse.add ("help", 'h', "help",  "show this message", BooleanType, 0)
 
@@ -150,7 +150,8 @@ include ("argparse")
   var withoutSysHdrs = argparse.results.withoutSys
 
   var memoryAllocator = argparse.results.allocator
-  var memoryAllocators = ["ALLOC", "ZALLOC", "TALLOC"]
+  var defaultAllocator = memoryAllocator: to_upper ()
+  var memoryAllocators = ["alloc", "zalloc", "talloc", "falloc"]
 
   ifnot memoryAllocators: any (memoryAllocator) then
     return error (memoryAllocator + " allocator is not supported")
@@ -336,12 +337,12 @@ include ("argparse")
 
       var f_is_allocator = 0
       for v in memoryAllocators
-        if v: eq (f_hdr)
+        if v: eq (f_name)
           f_is_allocator = 1;
 
       if f_is_allocator {
-        ifnot memoryAllocator: eq (f_hdr) {
-          var rqr = memoryAllocator + if f_ext is "H" then "_H\n" orelse "\n"
+        ifnot memoryAllocator: eq (f_name) {
+          var rqr = defaultAllocator + if f_ext is "H" then "_H\n" orelse "\n"
           append "#ifdef REQUIRE_"    + f_rqr in libcHdrs
           append "  #ifndef REQUIRE_" + rqr   in libcHdrs
           append "  #define REQUIRE_" + rqr   in libcHdrs
@@ -422,7 +423,8 @@ include ("argparse")
 
         var unit = tok[-1]
         var ext = unit: extname (): to_upper (): advance (1)
-        var hdr = unit: basename_without_extname () : to_upper ()
+        var name = unit: basename_without_extname ()
+        var hdr = name: to_upper ()
 
         var is_type_unit = "H" is ext
 
@@ -433,11 +435,11 @@ include ("argparse")
 
         var h_is_allocator = 0
         for v in memoryAllocators
-          if v: eq (hdr)
+          if v: eq (name)
             h_is_allocator = 1
 
         if h_is_allocator then
-          append "  #ifndef REQUIRE_" + memoryAllocator in libcHdrs
+          append "  #ifndef REQUIRE_" + defaultAllocator in libcHdrs
         orelse
           append "  #ifndef REQUIRE_" + hdr in libcHdrs
 
@@ -447,7 +449,7 @@ include ("argparse")
           append "\n" in libcHdrs
 
         if h_is_allocator then
-          append "  #define REQUIRE_" + memoryAllocator in libcHdrs
+          append "  #define REQUIRE_" + defaultAllocator in libcHdrs
         orelse
           append "  #define REQUIRE_" + hdr in libcHdrs
 

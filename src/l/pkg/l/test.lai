@@ -2635,7 +2635,7 @@ func self_semantics () {
 
     assert_true ("testing chained functions",
         wa is "ok" and
-        sa is "0b10010100" and
+        sa is "10010100" and
         mp is 2 and
         ms is 2 and
         mm is 11 and

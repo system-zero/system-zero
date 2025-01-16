@@ -13,10 +13,9 @@
   } else {                                               \
     (list_)->tail->next = (node_);                       \
     (node_)->prev = (list_)->tail;                       \
-    (node_)->next = NULL;                                \
     (list_)->tail = (node_);                             \
   }                                                      \
-                                                         \
+  (node_)->next = NULL;                                  \
   (list_)->num_items++;                                  \
 })
 #endif /* DListAppend */
@@ -25,15 +24,12 @@
 #define DListPush(list_, node_)                          \
 ({                                                       \
   if ((list_)->head == NULL) {                           \
+    (node_)->next = (node_)->prev = NULL;                \
     (list_)->head = (node_);                             \
     (list_)->tail = (node_);                             \
     (list_)->current = (node_);                          \
-    (list_)->head->next = NULL;                          \
-    (list_)->head->prev = NULL;                          \
   } else {                                               \
     (list_)->head->prev = (node_);                       \
-    (list_)->current->prev = (node_);                    \
-    (list_)->current = (node_);                          \
     (node_)->next = (list_)->head;                       \
     (list_)->head = (node_);                             \
   }                                                      \

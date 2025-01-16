@@ -46,7 +46,7 @@ func argparseNew () {
   argparse.add ("all", 0, "all", "make all targets", BooleanType, ARG_LITERAL)
   argparse.add ("force", 'f', "force", "force making targets", BooleanType, 0)
   argparse.add ("recursive", 'R', "recursive", "apply the 'force' option recursively", BooleanType, 0)
-  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [ALLOC, ZALLOC, TALLOC] (default ZALLOC)", StringType, ARG_VALUE_REQUIRED; defval : "ZALLOC")
+  argparse.add ("allocator", 0, "allocator=", "select allocator when generate libc [alloc, zalloc, talloc, falloc] (default talloc)", StringType, ARG_VALUE_REQUIRED; defval : "talloc")
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers (libc)", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code (libc)", BooleanType, 0)
   argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)

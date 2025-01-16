@@ -50,9 +50,9 @@ int totalMemIncrements  = 0;
 
 int MemExitOnDoubleFree = 1;
 int MemExitOnENOMEM     = 1;
-uint MemSplitWhenIsAtleast  = 256;
-uint MemExtraSpaceOnRealloc = 256;
-uint MemIncreaseExtrabytes  = 1024;
+uint MemSplitWhenIsAtleast  = (1 << 8);
+uint MemExtraSpaceOnRealloc = (1 << 8);
+uint MemIncreaseExtrabytes  = (1 << 12);
 
 static void *BegBreakPoint = NULL;
 static void *EndBreakPoint = NULL;
