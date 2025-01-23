@@ -33,7 +33,9 @@ include ("argparse")
   YPKGDIR     = YSRCDIR: concat_with (PKG),
   LIBCDIR     = YPKGDIR: concat_with (LIBCSRCNAME),
   LIBCSRCDIR  = LIBCDIR: concat_with (LIBCSRCNAME),
-  LIBCALLDIR =  LIBCSRCDIR : concat_with ("libc"),
+  LIBCALLDIR  = LIBCSRCDIR: concat_with ("libc"),
+  LIBCTESTDIR = LIBCSRCDIR: concat_with ("tests"),
+  LIBCTESTFILE = LIBCTESTDIR: concat_with ("tests"),
   SYSBINDIR   = SYSDIR: concat_with ("bin"),
   SYSLIBDIR   = SYSDIR: concat_with ("lib"),
   ZSYSLIBDIR  = SYSLIBDIR: concat_with (Z),
@@ -57,7 +59,9 @@ include ("argparse")
   end_str        = "// end",
   end_len        = end_str: len (),
   skip_str       = "// skip",
-  as_str         = "// as: "
+  as_str         = "// as: ",
+  test_begstr    = "/* test {",
+  test_end_str   = "} */"
 
   var me = __file__: basename ()
   var argparse = New Argparse (7, 0, me)
@@ -111,6 +115,11 @@ include ("argparse")
         // requires: sys/stat.h
 
     // comment: |
+
+   /* test {
+     ... test code
+   } */
+      generates a unit with the same name to the tests directory
 
     // end|
       ends the interpretation (stops reading more lines)
@@ -244,6 +253,12 @@ include ("argparse")
     #define UNUSED  __attribute__ ((unused))
     #endif
 
+    #if __STDC_VERSION__ >= 201112L && !defined __cplusplus
+    #undef static_assert
+    #define static_assert _Static_assert
+    #else
+    #define static_assert(_expr_, _msg_)
+    #endif
   `S4
 
   ifnot withoutSysHdrs {
@@ -285,6 +300,58 @@ include ("argparse")
       this.depends = string[0]
     }
   } 
+
+  var TestUnits = {}
+
+  func generate_test (filename, lines, idx, lines_len) {
+    var index = idx + 1
+
+    var line
+    var test = ""
+    var found_end = 0
+
+    for (var i = index; i < lines_len; i++) {
+      line = lines[index++]
+
+      if line: eq (test_end_str) {
+         found_end++
+         break
+      }
+
+      append line + "\n" in test
+    }
+
+    ifnot found_end
+      return error (filename + " is missing } */ string")
+
+    var unit = LIBCTESTDIR: concat_with (filename)
+
+    const key_exists = TestUnits: key_exists (unit)
+
+    if unit: file_exists () then
+      ifnot key_exists then
+        if notok is unit: file_remove () then
+          return error ("${unit}: failed to remove")
+
+    if key_exists {
+      if notok is unit: file_append (test) then
+        return error ("failed to append to " + unit)
+    } else {
+      if notok is unit: file_write (test) then
+        return error ("failed to write to " + unit)
+
+      if notok is LIBCTESTFILE: file_append (filename + "\n") then
+        return error ("failed to write to " + LIBCTESTFILE)
+    }
+
+    TestUnits.$(unit) = 1
+
+    return index;
+  }
+
+  if LIBCTESTFILE: file_exists ()
+    if notok is LIBCTESTFILE: file_remove ()
+      return error ("${LIBCTESTFILE}: failed to remove, ${errno_string (errno)}")
 
   for v in libcdirs {
     if v isnot "syscall"  append "/* " + v + " */" in libcFuns
@@ -483,6 +550,9 @@ include ("argparse")
       if num_comments
         append " */\n\n" in comments
 
+      if "C" is f_ext and idx < lines_len and lines[idx]: eq (test_begstr)
+        idx = generate_test (f, lines, idx, lines_len)
+
       for (var i = idx; i < lines_len; i++) {
         break if lines[i]: len ()
         idx++
@@ -518,9 +588,17 @@ include ("argparse")
           append "#ifndef " + f_hdr + "_F\n#define " + f_hdr + "_F\n" in libcFuns
           append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcFuns
 
-          for (var i = idx; i < lines_len; i++) {
-            break if lines[i]: eq_n (end_str, end_len)
-            append lines[i] + '\n' in libcFuns
+          forever {
+            break if idx == lines_len
+
+            break if lines[idx]: eq_n (end_str, end_len)
+
+            if lines[idx]: eq (test_begstr) {
+              idx = generate_test (f, lines, idx, lines_len)
+              continue
+            }
+
+            append lines[idx++] + '\n' in libcFuns
           }
 
           append "\n#endif /* " + f_hdr + "_F */\n" in libcFuns

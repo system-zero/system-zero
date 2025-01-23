@@ -25,6 +25,8 @@
    all they were able to perform two bits better, so calls to sbrk() cost.
 */
 
+static_assert (sizeof (MemChunk) == 24, "MemChunk should be at 24 bytes");
+
 static void *__mem_alloc__ (uint);
 static void *__init_alloc__ (uint);
 

@@ -47,6 +47,8 @@
    as it is like mem_alloc(), except that initializes the memory to zero.
 */
 
+static_assert (sizeof (MemChunk) == 16, "MemChunk should be at 16 bytes");
+
 static void *__mem_alloc__ (uint);
 static void *__init_alloc__ (uint);
 

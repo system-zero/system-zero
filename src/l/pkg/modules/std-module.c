@@ -103,7 +103,7 @@ static VALUE array_sort (l_t *this, VALUE v_array) {
   ifnot (IS_ARRAY(v_array)) THROW(L_ERR_TYPE_MISMATCH, "awaiting an array");
   ArrayType *array = (ArrayType *) AS_ARRAY(v_array);
   int type = array->type;
-  size_t len = array->len;
+  int len = array->len;
   VALUE value = array->value;
 
   switch (type) {
@@ -111,7 +111,7 @@ static VALUE array_sort (l_t *this, VALUE v_array) {
       string **s_ar = (string **) AS_ARRAY(value);
       string **new_s_ar = Alloc (len * sizeof (string));
 
-      for (size_t i = 0; i < len; i++)
+      for (int i = 0; i < len; i++)
         new_s_ar[i] = string_new_with_len (s_ar[i]->bytes, s_ar[i]->num_bytes);
 
       quick_sort (new_s_ar, len, sizeof (string *), cmp_string);
@@ -126,7 +126,7 @@ static VALUE array_sort (l_t *this, VALUE v_array) {
     case INTEGER_TYPE: {
       integer *i_ar = (integer *) AS_ARRAY(value);
       integer *new_i_ar = Alloc (len * sizeof (integer));
-      for (size_t i = 0; i < len; i++)
+      for (int i = 0; i < len; i++)
         new_i_ar[i] = i_ar[i];
 
       quick_sort (new_i_ar, len, sizeof (new_i_ar[0]), cmp_int);
@@ -141,7 +141,7 @@ static VALUE array_sort (l_t *this, VALUE v_array) {
     case NUMBER_TYPE: {
       number *i_ar = (number *) AS_ARRAY(value);
       number *new_i_ar = Alloc (len * sizeof (number));
-      for (size_t i = 0; i < len; i++)
+      for (int i = 0; i < len; i++)
         new_i_ar[i] = i_ar[i];
 
       quick_sort (new_i_ar, len, sizeof (new_i_ar[0]), cmp_number);

@@ -460,7 +460,7 @@ void *sys_realloc (void *ptr, size_t size) {
 
 size_t mem_get_actual_size (void *ptr) {
   memChunkT *chunk = (memChunkT *) ((char *) ptr - STRUCT_OFFSET);
-  return chunk->size - STRUCT_SIZe:
+  return chunk->size - STRUCT_SIZE;
 }
 
 uint mem_clear (void *ptr) {

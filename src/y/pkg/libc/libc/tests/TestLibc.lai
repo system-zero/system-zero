@@ -6,45 +6,51 @@ import ("file")
 import ("time")
 include ("argparse")
 
-Type Unit {
-  unit
-  num_tests
-  retval : ok
-  init : func (name, num_tests) {
-    this.unit = name
-    this.num_tests = num_tests
-  }
+var argparse = New Argparse (2, 0, "TestLibc [arg, ...]")
+argparse.add ("cc",  0, "cc=",  "set cc (default gcc)", StringType, ARG_VALUE_REQUIRED; defval : "gcc")
+argparse.add ("std", 0, "std=", "set standard c version (default c11)", StringType, ARG_VALUE_REQUIRED; defval : "c11")
+
+if notok is argparse.process (__argv, 0) then exit (1)
+
+if argparse.exit then exit (0)
+
+const CC   = argparse.results.cc
+const STD  = argparse.results.std
+const INCDIR = "SYSDIR": sys_get (): path_concat ("include"): path_concat ("z") 
+
+const thisdir   = __file__: path_dirname ()
+const testsFile = thisdir:  path_concat ("tests")
+const buildDir  = thisdir:  path_concat ("build")
+const logFile   = buildDir: path_concat ("logfile.lai")
+
+ifnot testsFile: file_exists () {
+  println (stderr, "${testsFile}: is missing")
+  exit (1)
 }
 
-const INCDIR  = "SYSDIR": sys_get (): path_concat ("include"): path_concat ("z") 
-const thisdir = __file__: path_dirname ()
-var BUILD_DIR = thisdir: path_concat ("build")
-
-var argparse = New Argparse (2, 0, "TestLibc [arg, ...]")
-argparse.add ("cc", 0, "cc=", "set cc (default gcc)", StringType, ARG_VALUE_REQUIRED; defval : "gcc")
-argparse.add ("builddir", 0, "build-dir=", "set build directory (default " + BUILD_DIR + ")", StringType, ARG_VALUE_REQUIRED; defval : BUILD_DIR)
-
-const CC = argparse.results.cc
-BUILD_DIR = argparse.results.builddir
-
-ifnot BUILD_DIR: file_exists () {
-  if notok is BUILD_DIR: dir_make_parents (0700) {
-    println (stderr, "${BUILD_DIR}: can not make directory: ${errno_string (errno)}")
+ifnot buildDir: file_exists () {
+  if notok is buildDir: dir_make_parents (0700) {
+    println (stderr, "${buildDir}: can not make directory: ${errno_string (errno)}")
     exit (1)
   }
 }
 
-ifnot BUILD_DIR: dir_is_directory () {
-  println (stderr, "${BUILD_DIR}: is not a directory")
+ifnot buildDir: dir_is_directory () {
+  println (stderr, "${buildDir}: is not a directory")
   exit (1)
 }
 
-const logfile = BUILD_DIR: path_concat ("logfile.lai")
+if logFile: file_exists () {
+  if notok is logFile: file_rename (logFile + ".old"; force : 1) {
+    println (stderr, "fatal error: failed to rename ${logFile} to ${logFile}.old")
+    exit (1)
+  }
+}
 
 var compilation_opts = {
-   argv : [CC, "", "-std=c11", "-I" + INCDIR]
-   redir_stdout : logfile
-   redir_stderr : logfile
+   argv : [CC, "", "-std=" + STD, "-I" + INCDIR]
+   redir_stdout : logFile
+   redir_stderr : logFile
    redir_stdout_mode : "a+"
    redir_stderr_mode : "a+"
    print_stderr : 1
@@ -77,10 +83,34 @@ append "-Werror-implicit-function-declaration" in compilation_opts.argv
 append "-o"                                    in compilation_opts.argv
 append ""                                      in compilation_opts.argv
 
+func append_to_logfile (msg) {
+  return if ok is file_append (logFile, msg)
+  println (stderr, "fatal error: failed to write to ${logFile}")
+  exit (1)
+}
+
+func get_tests_from_file {
+  var lines = File.readlines (testsFile)
+  var tests = {}
+  for v in lines
+    tests.$(v) = 1
+   return tests: keys ()
+}
+
+Type Unit {
+  retval : ok
+  num_tests
+  unit
+  init : func (name, num_tests) {
+    this.unit = name
+    this.num_tests = num_tests
+  }
+}
+
 func get_unit_tests (unit) {
   var b = unit: file_read_num_bytes (20)
-  ifnot b: eq_n ("/* num-tests: ", 14) {
-    println (stderr, "error: ${unit} has wrong header, awaiting '/* num-tests: ' on the first line")
+  ifnot b: eq_n ("// num-tests: ", 14) {
+    println (stderr, "error: ${unit} has wrong header, awaiting '// num-tests: ' on the first line")
     exit (1)
   }
 
@@ -90,27 +120,19 @@ func get_unit_tests (unit) {
   return New Unit (unit, n)
 }
 
-const strtok = get_unit_tests ("str_tok.c")
-const pathconcat = get_unit_tests ("path_concat.c")
-const formatstr = get_unit_tests ("format.c")
+const tests = {}
 
-const tests = {
-  0 : strtok
-  1 : pathconcat
-  2 : formatstr
-}
+var unit_tests = get_tests_from_file ()
 
-func append_to_logfile (msg) {
-  return if ok is file_append (logfile, msg)
-  println (stderr, "fatal error: failed to write to ${logfile}")
+ifnot unit_tests: len () {
+  println (stderr, "No tests found in ${testsFile} to run")
   exit (1)
 }
 
-if logfile: file_exists () {
-  if notok is logfile: file_rename (logfile + ".old"; force : 1) {
-    println (stderr, "fatal error: failed to rename ${logfile} to ${logfile}.old")
-    exit (1)
-  }
+for i, v in unit_tests {
+  var n = get_unit_tests (v)
+  var str = i: to_string (10)
+  tests.$(str) = n
 }
 
 const now = time_now (): time_local ()
@@ -119,7 +141,7 @@ Sh = New Shell ()
 
 const tm ="%Y_%m_%d_%H_%M_%S": time_format (now)
 
-file_write (logfile, "import (\"std\")\n\nconst log = {\n  started : \"" + tm + "\"\n")
+file_write (logFile, "import (\"std\")\n\nconst log = {\n  started : \"" + tm + "\"\n")
 
 var execution_opts = {
   argv
@@ -134,7 +156,7 @@ for ntests times {
   index++
   var cfile = s.unit
   var bname = cfile: path_basename_sans_extname ()
-  var output = BUILD_DIR: path_concat (bname)
+  var output = buildDir: path_concat (bname)
 
   compilation_opts.argv[1] = cfile
   compilation_opts.argv[-1] = output

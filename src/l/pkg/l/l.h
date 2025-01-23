@@ -612,14 +612,14 @@ do {                             \
 })
 
 #define GET_OPT_RECURSIVE() ({                                            \
-  int _rec = La.qualifier_exists (this, "recursive");                     \
+  int _rec = L.qualifier_exists (this, "recursive");                      \
   if (_rec) {                                                             \
-    VALUE _v_recursive = La.get.qualifier (this, "recursive", INT(OPT_NO_RECURSIVE));  \
+    VALUE _v_recursive = L.get.qualifier (this, "recursive", INT(OPT_NO_RECURSIVE));  \
     if (0 == IS_INT(_v_recursive)) {                                      \
       if (IS_NULL(_v_recursive))                                          \
         _rec = 1;                                                         \
       else                                                                \
-        THROW(LA_ERR_TYPE_MISMATCH, "recursive, awaiting an integer qualifier"); \
+        THROW(L_ERR_TYPE_MISMATCH, "recursive, awaiting an integer qualifier"); \
     } else                                                                \
       _rec = AS_INT(_v_recursive);                                        \
   }                                                                       \

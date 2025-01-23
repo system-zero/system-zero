@@ -39,6 +39,8 @@ static void *__init_alloc__ (uint);
 
 MemAlloc Malloc = __init_alloc__;
 
+static_assert (sizeof (MemChunk) == 8, "MemChunk size should be 8 bytes");
+
 #ifdef MEM_DEBUG
 int totalMemRequests    = 0;
 int totalMemReleases    = 0;
@@ -95,7 +97,7 @@ static inline void *mem_get_current_breakpoint (void) {
   return sys_sbrk (0);
 }
 
-inline MemChunk *mem_get_chunk_from_ptr (void *ptr) {
+static inline MemChunk *mem_get_chunk_from_ptr (void *ptr) {
   return (MemChunk *) ((char *) ptr - MEM_HEADER_SIZE);
 }
 
@@ -182,11 +184,6 @@ static MemChunk *mem_find_unused_chunk (MemChunk *mem, uint size) {
   FirstFreeChunk = NULL;
 
   while (mem_isnot_the_end_chunk (it)) {
-    #ifdef MEM_DEBUG
-    tostdout ("%s: it %p requested %u, it size %u prev_size %u actual size %u is unused %d\n", __func__, it,
-      size, it->chunk_size, it->prev_chunk_size, __get_chunk_size__ (it->chunk_size), mem_is_unused (it));
-    #endif
-
     if (mem_is_unused (it)) {
       if (FirstFreeChunk == NULL)
           FirstFreeChunk = it;

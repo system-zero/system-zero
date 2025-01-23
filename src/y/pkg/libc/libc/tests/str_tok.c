@@ -1,4 +1,5 @@
-/* num-tests: 3 */
+// num-tests: 3
+
 #define REQUIRE_STR_TOK
 #define REQUIRE_STR_EQ
 #define REQUIRE_ATOI
@@ -20,17 +21,17 @@ static int first_test (int total) {
     goto theend;
   }
 
-  ifnot (2 == tokens->num_tokens) {
+  if (2 != tokens->num_tokens) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting two items found %d\n", tokens->num_tokens);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[0], "asdf")) {
+  if (0 == str_eq (tokens->tokens[0], "asdf")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'asdf' found %s\n", tokens->tokens[0]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[1], "gkl")) {
+  if (0 == str_eq (tokens->tokens[1], "gkl")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'gkl' found %s\n", tokens->tokens[1]);
     goto theend;
   }
@@ -57,27 +58,27 @@ static int second_test (int total) {
     goto theend;
   }
 
-  ifnot (4 == tokens->num_tokens) {
+  if (4 != tokens->num_tokens) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 4 items found %d\n", tokens->num_tokens);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[0], "")) {
+  if (0 == str_eq (tokens->tokens[0], "")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting empty string found %s\n", tokens->tokens[0]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[1], "asdf")) {
+  if (0 == str_eq (tokens->tokens[1], "asdf")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'asdf' found %s\n", tokens->tokens[1]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[2], "gkl")) {
+  if (0 == str_eq (tokens->tokens[2], "gkl")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'gkl' found %s\n", tokens->tokens[2]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[3], "")) {
+  if (0 == str_eq (tokens->tokens[3], "")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting empty string found %s\n", tokens->tokens[3]);
     goto theend;
   }
@@ -104,37 +105,37 @@ static int third_test (int total) {
     goto theend;
   }
 
-  ifnot (6 == tokens->num_tokens) {
+  if (6 != tokens->num_tokens) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 6 items found %d\n", tokens->num_tokens);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[0], "")) {
+  if (0 == str_eq (tokens->tokens[0], "")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting empty string found %s\n", tokens->tokens[0]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[1], "αaδαb")) {
+  if (0 == str_eq (tokens->tokens[1], "αaδαb")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'αaδab' found %s\n", tokens->tokens[1]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[2], "asdf")) {
+  if (0 == str_eq (tokens->tokens[2], "asdf")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'asdf' found %s\n", tokens->tokens[2]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[3], "gkl")) {
+  if (0 == str_eq (tokens->tokens[3], "gkl")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'gkl' found %s\n", tokens->tokens[3]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[4], "βbγαc")) {
+  if (0 == str_eq (tokens->tokens[4], "βbγαc")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting 'βbγαc' found %s\n", tokens->tokens[4]);
     goto theend;
   }
 
-  ifnot (str_eq (tokens->tokens[5], "")) {
+  if (0 == str_eq (tokens->tokens[5], "")) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting empty string found %s\n", tokens->tokens[5]);
     goto theend;
   }

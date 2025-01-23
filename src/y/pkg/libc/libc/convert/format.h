@@ -54,3 +54,12 @@ struct FormatType {
   .num_bytes = 0, .mem_size = __buf_len__,                             \
   .directive = NULL, .outputByte = format_output_byte,                 \
   .error = 0, .user_data = NULL, __VA_ARGS__}
+
+#ifndef tostdout
+#define tostdout(fmt, ...) format_to_fd (1, fmt, ##__VA_ARGS__)
+#endif
+
+#ifndef tostderr
+#define tostderr(fmt, ...) format_to_fd (2, fmt, ##__VA_ARGS__)
+#endif
+

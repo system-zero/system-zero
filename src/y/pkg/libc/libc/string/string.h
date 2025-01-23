@@ -2,6 +2,6 @@
 
 typedef struct string {
     char *bytes;
-  size_t num_bytes;
-  size_t mem_size;
+  uint num_bytes;
+  uint mem_size;
 } string;
