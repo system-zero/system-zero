@@ -14,7 +14,7 @@ typedef struct ValueType ValueType;
 typedef struct sym_t sym_t;
 
 typedef double      number;
-typedef ptrdiff_t   integer;
+typedef int64_t     integer;
 typedef integer     pointer;
 
 #define NULL_TYPE      0
@@ -50,7 +50,7 @@ typedef ValueType VALUE;
 typedef struct ArrayType {
   VALUE value;
   int type;
-  size_t len;
+  int len;
 } ArrayType;
 
 typedef VALUE (*ObjectRelease) (l_t *, VALUE);
@@ -110,7 +110,7 @@ typedef struct listType listType;
   } else if (array_->type == STRING_TYPE) {              \
     string **s_ar = Alloc (__len__ * sizeof (string));   \
     for (integer i = 0; i < __len__; i++) {              \
-      s_ar[i] = string_new_with ("");                    \
+      s_ar[i] = string_new (0);                          \
     }                                                    \
     ary_ = ARRAY(s_ar);                                  \
                                                          \
@@ -486,8 +486,8 @@ do {                             \
 #endif
 
 #define THROW(__e__, __m__) do {                                          \
-  L.set.CFuncError (this,  __e__);                                       \
-  L.set.function_curMsg (this, __func__, __m__);                         \
+  L.set.CFuncError (this,  __e__);                                        \
+  L.set.function_curMsg (this, __func__, __m__);                          \
   return NULL_VALUE;                                                      \
 } while (0)
 
@@ -570,37 +570,37 @@ do {                             \
 })
 
 #define GET_OPT_VERBOSE_WITH(_v_) ({                                      \
-  VALUE _v_verbose = L.get.qualifier (this, "verbose", INT(_v_));        \
+  VALUE _v_verbose = L.get.qualifier (this, "verbose", INT(_v_));         \
   ifnot (IS_INT(_v_verbose))                                              \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_verbose);                                                     \
 })
 
 #define GET_OPT_DEBUG() ({                                                \
-  VALUE _v_debug = L.get.qualifier (this, "debug", INT(0));              \
+  VALUE _v_debug = L.get.qualifier (this, "debug", INT(0));               \
   ifnot (IS_INT(_v_debug))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_debug);                                                       \
 })
 
 #define GET_OPT_REVERSE() ({                                              \
-  VALUE _v_reverse = L.get.qualifier (this, "reverse", INT(0));          \
+  VALUE _v_reverse = L.get.qualifier (this, "reverse", INT(0));           \
   ifnot (IS_INT(_v_reverse))                                              \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_reverse);                                                     \
 })
 
 #define GET_OPT_MAX_DEPTH() ({                                            \
-  VALUE _v_depth = L.get.qualifier (this, "max_depth", INT(0));          \
+  VALUE _v_depth = L.get.qualifier (this, "max_depth", INT(0));           \
   ifnot (IS_INT(_v_depth))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_depth);                                                       \
 })
 
 #define GET_OPT_MAX_DEPTH_WITH(__d__) ({                                  \
-  VALUE _v_depth = L.get.qualifier (this, "max_depth", INT(__d__));      \
+  VALUE _v_depth = L.get.qualifier (this, "max_depth", INT(__d__));       \
   ifnot (IS_INT(_v_depth))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_depth);                                                       \
 })
 
@@ -619,7 +619,7 @@ do {                             \
       if (IS_NULL(_v_recursive))                                          \
         _rec = 1;                                                         \
       else                                                                \
-        THROW(L_ERR_TYPE_MISMATCH, "recursive, awaiting an integer qualifier"); \
+        THROW(LA_ERR_TYPE_MISMATCH, "recursive, awaiting an integer qualifier"); \
     } else                                                                \
       _rec = AS_INT(_v_recursive);                                        \
   }                                                                       \
@@ -634,37 +634,37 @@ do {                             \
 })
 
 #define GET_OPT_BACKUP() ({                                               \
-  VALUE _v_backup = L.get.qualifier (this, "backup", INT(OPT_NO_BACKUP));\
+  VALUE _v_backup = L.get.qualifier (this, "backup", INT(OPT_NO_BACKUP)); \
   ifnot (IS_INT(_v_backup))                                               \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_backup);                                                      \
 })
 
 #define GET_OPT_DEREFERENCE() ({                                          \
   VALUE _v_dereference = L.get.qualifier (this, "dereference", INT(OPT_NO_DEREFERENCE));\
   ifnot (IS_INT(_v_dereference))                                          \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_dereference);                                                 \
 })
 
 #define GET_OPT_PRESERVE() ({                                             \
   VALUE _v_preserve = L.get.qualifier (this, "preserve", INT(OPT_NO_PRESERVE));\
   ifnot (IS_INT(_v_preserve))                                             \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_preserve);                                                    \
 })
 
 #define GET_OPT_UPDATE() ({                                               \
-  VALUE _v_update = L.get.qualifier (this, "update", INT(OPT_NO_UPDATE));\
+  VALUE _v_update = L.get.qualifier (this, "update", INT(OPT_NO_UPDATE)); \
   ifnot (IS_INT(_v_update))                                               \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_update);                                                      \
 })
 
 #define GET_OPT_ALL() ({                                                  \
-  VALUE _v_all = L.get.qualifier (this, "all", INT(OPT_NO_ALL));         \
+  VALUE _v_all = L.get.qualifier (this, "all", INT(OPT_NO_ALL));          \
   ifnot (IS_INT(_v_all))                                                  \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_all);                                                         \
 })
 
@@ -674,91 +674,91 @@ do {                             \
   if (IS_STRING(_v_targetDir))                                            \
     _t_ = AS_STRING_BYTES(_v_targetDir);                                  \
   else if (IS_NULL(_v_targetDir) == 0)                                    \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");    \
   _t_;                                                                    \
 })
 
 #define GET_OPT_YEAR() ({                                                 \
-  VALUE _v_year = L.get.qualifier (this, "year", INT(OPT_NO_YEAR));      \
+  VALUE _v_year = L.get.qualifier (this, "year", INT(OPT_NO_YEAR));       \
   ifnot (IS_INT(_v_year))                                                 \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_year);                                                        \
 })
 
 #define GET_OPT_MONTH() ({                                                \
-  VALUE _v_month = L.get.qualifier (this, "month", INT(OPT_NO_MONTH));   \
+  VALUE _v_month = L.get.qualifier (this, "month", INT(OPT_NO_MONTH));    \
   ifnot (IS_INT(_v_month))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_month);                                                       \
 })
 
 #define GET_OPT_DAY() ({                                                  \
-  VALUE _v_day = L.get.qualifier (this, "day", INT(OPT_NO_DAY));         \
+  VALUE _v_day = L.get.qualifier (this, "day", INT(OPT_NO_DAY));          \
   ifnot (IS_INT(_v_day))                                                  \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_day);                                                         \
 })
 
 #define GET_OPT_HOUR() ({                                                 \
-  VALUE _v_hour = L.get.qualifier (this, "hour", INT(OPT_NO_HOUR));      \
+  VALUE _v_hour = L.get.qualifier (this, "hour", INT(OPT_NO_HOUR));       \
   ifnot (IS_INT(_v_hour))                                                 \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_hour);                                                        \
 })
 
 #define GET_OPT_MINUTES() ({                                              \
-  VALUE _v_min = L.get.qualifier (this, "minutes", INT(OPT_NO_MINUTES)); \
+  VALUE _v_min = L.get.qualifier (this, "minutes", INT(OPT_NO_MINUTES));  \
   ifnot (IS_INT(_v_min))                                                  \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_min);                                                         \
 })
 
 #define GET_OPT_SECONDS() ({                                              \
-  VALUE _v_sec = L.get.qualifier (this, "seconds", INT(OPT_NO_SECONDS)); \
+  VALUE _v_sec = L.get.qualifier (this, "seconds", INT(OPT_NO_SECONDS));  \
   ifnot (IS_INT(_v_sec))                                                  \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_sec);                                                         \
 })
 
 #define GET_OPT_AS() ({                                                   \
   char * _as_ = NULL;                                                     \
-  VALUE _v_as = L.get.qualifier (this, "as", NULL_VALUE);                \
+  VALUE _v_as = L.get.qualifier (this, "as", NULL_VALUE);                 \
   if (IS_STRING(_v_as))                                                   \
     _as_ = AS_STRING_BYTES(_v_as);                                        \
   else if (IS_NULL(_v_as) == 0)                                           \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");    \
   _as_;                                                                   \
 })
 
 #define GET_OPT_PAT() ({                                                  \
   char *_pat_ = NULL;                                                     \
-  VALUE _v_pat = L.get.qualifier (this, "pat", NULL_VALUE);              \
+  VALUE _v_pat = L.get.qualifier (this, "pat", NULL_VALUE);               \
   if (IS_STRING(_v_pat))                                                  \
     _pat_ = AS_STRING_BYTES(_v_pat);                                      \
   else if (IS_NULL(_v_pat) == 0)                                          \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");    \
    _pat_;                                                                 \
 })
 
 #define GET_OPT_EXCLUDE_DIRS(_len) ({                                     \
   *_len = 0;                                                              \
   string **_dirs_ = NULL;                                                 \
-  VALUE _v_dirs = L.get.qualifier (this, "exclude_dirs", NULL_VALUE);    \
+  VALUE _v_dirs = L.get.qualifier (this, "exclude_dirs", NULL_VALUE);     \
   if (IS_ARRAY(_v_dirs))                                                  \
     _dirs_ = AS_STRING_ARRAY(_v_dirs, _len);                              \
   else if (IS_NULL(_v_dirs) == 0)                                         \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");    \
   _dirs_;                                                                 \
 })
 
 #define GET_OPT_EXCLUDE_FILES(_len) ({                                    \
   *_len = 0;                                                              \
   string **_files_ = NULL;                                                \
-  VALUE _v_files = L.get.qualifier (this, "exclude_files", NULL_VALUE);  \
+  VALUE _v_files = L.get.qualifier (this, "exclude_files", NULL_VALUE);   \
   if (IS_ARRAY(_v_files))                                                 \
     _files_ = AS_STRING_ARRAY(_v_files, _len);                            \
   else if (IS_NULL(_v_files) == 0)                                        \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");   \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting a string or null qualifier");    \
   _files_;                                                                \
 })
 
@@ -774,100 +774,100 @@ do {                             \
 })
 
 #define GET_OPT_UID() ({                                                  \
-  VALUE _v_uid = L.get.qualifier (this, "uid", INT(-1));                 \
+  VALUE _v_uid = L.get.qualifier (this, "uid", INT(-1));                  \
   ifnot (IS_INT(_v_uid))                                                  \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_uid);                                                         \
 })
 
 #define GET_OPT_GID() ({                                                  \
-  VALUE _v_gid = L.get.qualifier (this, "gid", INT(-1));                 \
+  VALUE _v_gid = L.get.qualifier (this, "gid", INT(-1));                  \
   ifnot (IS_INT(_v_gid))                                                  \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_gid);                                                         \
 })
 
 #define GET_OPT_EXECUTABLE() ({                                           \
-  VALUE _v_exec = L.get.qualifier (this, "executable", INT(0));          \
+  VALUE _v_exec = L.get.qualifier (this, "executable", INT(0));           \
   ifnot (IS_INT(_v_exec))                                                 \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_exec);                                                        \
 })
 
 #define GET_OPT_HIDDEN() ({                                               \
-  VALUE _v_hidden = L.get.qualifier (this, "hidden", INT(0));            \
+  VALUE _v_hidden = L.get.qualifier (this, "hidden", INT(0));             \
   ifnot (IS_INT(_v_hidden))                                               \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_hidden);                                                      \
 })
 
 #define GET_OPT_LONG_FORMAT() ({                                          \
-  VALUE _v_long_format = L.get.qualifier (this, "long_format", INT(0));  \
+  VALUE _v_long_format = L.get.qualifier (this, "long_format", INT(0));   \
   ifnot (IS_INT(_v_long_format))                                          \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_long_format);                                                 \
 })
 
 #define GET_OPT_APPEND_INDICATOR() ({                                     \
-  VALUE _v_append = L.get.qualifier (this, "append_indicator", INT(0));  \
+  VALUE _v_append = L.get.qualifier (this, "append_indicator", INT(0));   \
   ifnot (IS_INT(_v_append))                                               \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_append);                                                      \
 })
 
 #define GET_OPT_SORT_BY_MTIME() ({                                        \
-  VALUE _v_mtime = L.get.qualifier (this, "sort_by_mtime", INT(0));      \
+  VALUE _v_mtime = L.get.qualifier (this, "sort_by_mtime", INT(0));       \
   ifnot (IS_INT(_v_mtime))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_mtime);                                                       \
 })
 
 #define GET_OPT_SORT_BY_CTIME() ({                                        \
-  VALUE _v_ctime = L.get.qualifier (this, "sort_by_ctime", INT(0));      \
+  VALUE _v_ctime = L.get.qualifier (this, "sort_by_ctime", INT(0));       \
   ifnot (IS_INT(_v_ctime))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_ctime);                                                       \
 })
 
 #define GET_OPT_SORT_BY_ATIME() ({                                        \
-  VALUE _v_atime = L.get.qualifier (this, "sort_by_atime", INT(0));      \
+  VALUE _v_atime = L.get.qualifier (this, "sort_by_atime", INT(0));       \
   ifnot (IS_INT(_v_atime))                                                \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_atime);                                                       \
 })
 
 #define GET_OPT_SORT_BY_SIZE() ({                                         \
-  VALUE _v_size = L.get.qualifier (this, "sort_by_size", INT(0));        \
+  VALUE _v_size = L.get.qualifier (this, "sort_by_size", INT(0));         \
   ifnot (IS_INT(_v_size))                                                 \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_size);                                                        \
 })
 
 #define GET_OPT_WITH_LINE_NUMBER() ({                                     \
-  VALUE _v_line_nr = L.get.qualifier (this, "with_line_number", INT(0)); \
+  VALUE _v_line_nr = L.get.qualifier (this, "with_line_number", INT(0));  \
   ifnot (IS_INT(_v_line_nr))                                              \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_line_nr);                                                     \
 })
 
 #define GET_OPT_WITH_FILENAME() ({                                        \
-  VALUE _v_with_fname = L.get.qualifier (this, "with_filename", INT(0)); \
+  VALUE _v_with_fname = L.get.qualifier (this, "with_filename", INT(0));  \
   ifnot (IS_INT(_v_with_fname))                                           \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_with_fname);                                                  \
 })
 
 #define GET_OPT_WITHOUT_FILENAME() ({                                     \
   VALUE _v_without_fname = L.get.qualifier (this, "without_filename", INT(0));\
   ifnot (IS_INT(_v_without_fname))                                        \
-    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");         \
+    THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer qualifier");          \
   AS_INT(_v_without_fname);                                               \
 })
 
 #define GET_OPT_PRINT() ({                                                \
-  int _print = L.qualifier_exists (this, "print");                       \
+  int _print = L.qualifier_exists (this, "print");                        \
   if (_print) {                                                           \
-    VALUE _v_print = L.get.qualifier (this, "print", INT(0));            \
+    VALUE _v_print = L.get.qualifier (this, "print", INT(0));             \
     if (0 == IS_INT(_v_print)) {                                          \
       if (IS_NULL(_v_print))                                              \
         _print = 1;                                                       \
@@ -880,9 +880,9 @@ do {                             \
 })
 
 #define GET_OPT_DRYRUN() ({                                               \
-  int _dryrun = L.qualifier_exists (this, "dryrun");                     \
+  int _dryrun = L.qualifier_exists (this, "dryrun");                      \
   if (_dryrun) {                                                          \
-    VALUE _vdryrun = L.get.qualifier (this, "dryrun", INT(0));           \
+    VALUE _vdryrun = L.get.qualifier (this, "dryrun", INT(0));            \
     if (0 == IS_INT(_vdryrun)) {                                          \
       if (IS_NULL(_vdryrun))                                              \
         _dryrun = 1;                                                      \
@@ -910,7 +910,7 @@ do {                             \
 })
 
 #define GET_OPT_TERM() ({                                                 \
-  VALUE _v_term = L.get.qualifier (this, "term", NULL_VALUE);            \
+  VALUE _v_term = L.get.qualifier (this, "term", NULL_VALUE);             \
   term_t *_tt_ = NULL;                                                    \
   ifnot (IS_NULL(_v_term))                                                \
     _tt_ = GET_TERM(_v_term);                                             \

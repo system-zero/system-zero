@@ -199,7 +199,7 @@ static VALUE array_where (l_t *this, VALUE v_array, VALUE v_expr) {
     case STRING_TYPE: {
       char *expr = AS_STRING_BYTES(v_expr);
       string **s_ar = (string **) AS_ARRAY(array->value);
-      for (size_t i = 0; i < array->len; i++) {
+      for (int i = 0; i < array->len; i++) {
         if (str_eq (s_ar[i]->bytes, expr)) {
           len++;
           r_ar = Realloc (r_ar, len * sizeof (integer));
@@ -212,7 +212,7 @@ static VALUE array_where (l_t *this, VALUE v_array, VALUE v_expr) {
     case INTEGER_TYPE: {
       int expr = AS_INT(v_expr);
       integer *i_ar = (integer *) AS_ARRAY(array->value);
-      for (size_t i = 0; i < array->len; i++) {
+      for (int i = 0; i < array->len; i++) {
         if (i_ar[i] == expr) {
           len++;
           r_ar = Realloc (r_ar, len * sizeof (integer));
@@ -225,7 +225,7 @@ static VALUE array_where (l_t *this, VALUE v_array, VALUE v_expr) {
     case NUMBER_TYPE: {
       double expr = AS_NUMBER(v_expr);
       double *d_ar = (double *) AS_ARRAY(array->value);
-      for (size_t i = 0; i < array->len; i++) {
+      for (int i = 0; i < array->len; i++) {
         if (d_ar[i] == expr) {
           len++;
           r_ar = Realloc (r_ar, len * sizeof (integer));
@@ -265,6 +265,7 @@ static VALUE string_to_array (l_t *this, VALUE v_s) {
 
   return ARRAY(array);
 }
+#endif
 
 static VALUE string_cmp (l_t *this, VALUE v_sa, VALUE v_sb) {
   (void) this;
@@ -274,7 +275,7 @@ static VALUE string_cmp (l_t *this, VALUE v_sa, VALUE v_sb) {
   char *sa = AS_STRING_BYTES(v_sa);
   char *sb = AS_STRING_BYTES(v_sb);
 
-  int retval = Cstring.cmp (sa, sb);
+  int retval = str_cmp (sa, sb);
 
   ifnot (retval) return INT(0);
   if (retval < 0) return INT(-1);
@@ -291,13 +292,12 @@ static VALUE string_cmp_n (l_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
   char *sb = AS_STRING_BYTES(v_sb);
   int n = AS_INT(v_n);
 
-  int retval = Cstring.cmp_n (sa, sb, n);
+  int retval = str_cmp_n (sa, sb, n);
 
   ifnot (retval) return INT(0);
   if (retval < 0) return INT(-1);
   return INT(1);
 }
-#endif
 
 static VALUE string_eq_n (l_t *this, VALUE v_sa, VALUE v_sb, VALUE v_n) {
   (void) this;
@@ -322,18 +322,17 @@ static VALUE string_eq (l_t *this, VALUE v_sa, VALUE v_sb) {
   return INT(str_eq (sa, sb));
 }
 
-#if 0
 static VALUE string_byte_in_str (l_t *this, VALUE v_str, VALUE v_byte) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_byte)) THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
   char *str = AS_STRING_BYTES(v_str);
-  int byte = AS_INT(v_byte);
-  if (byte < 0 || byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
-  char *new = Cstring.byte.in_str (str, byte);
+  int bt = AS_INT(v_byte);
+  if (bt < 0 || bt > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
+  char *new = str_chr (str, bt);
   if (NULL == new)
     return NULL_VALUE;
-  string *result = String.new_with (new);
+  string *result = string_new_with (new);
   return STRING(result);
 }
 
@@ -343,13 +342,12 @@ static VALUE string_bytes_in_str (l_t *this, VALUE v_str, VALUE v_bytes) {
   ifnot (IS_STRING(v_bytes)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
   char *str = AS_STRING_BYTES(v_str);
   char *bytes = AS_STRING_BYTES(v_bytes);
-  char *new = Cstring.bytes_in_str (str, bytes);
+  char *new = str_str (str, bytes);
   if (NULL == new)
     return NULL_VALUE;
-  string *result = String.new_with (new);
+  string *result = string_new_with (new);
   return STRING(result);
 }
-#endif
 
 static VALUE string_delete_substr (l_t *this, VALUE v_str, VALUE v_substr) {
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -371,7 +369,6 @@ static VALUE string_delete_substr (l_t *this, VALUE v_str, VALUE v_substr) {
   return r;
 }
 
-#if 0
 static VALUE string_advance_after_bytes (l_t *this, VALUE v_str, VALUE v_bytes, VALUE v_repeat) {
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_STRING(v_bytes)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -390,7 +387,7 @@ static VALUE string_advance_after_bytes (l_t *this, VALUE v_str, VALUE v_bytes, 
   char *sp = NULL;
   int num = 0;
   while (num < repeat) {
-    sp = Cstring.bytes_in_str (src, bytes);
+    sp = str_str (src, bytes);
     if (NULL == sp)
       return NULL_VALUE;
 
@@ -409,13 +406,13 @@ static VALUE string_advance_on_byte (l_t *this, VALUE v_str, VALUE v_byte) {
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_byte)) THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
   char *str = AS_STRING_BYTES(v_str);
-  int byte = AS_INT(v_byte);
-  if (byte < 0 || byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
+  int bt = AS_INT(v_byte);
+  if (bt < 0 || bt > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
 
-  char *sp = Cstring.byte.in_str (str, byte);
+  char *sp = str_chr (str, bt);
   if (NULL == sp) return NULL_VALUE;
 
-  string *new = String.new_with (sp);
+  string *new = string_new_with (sp);
   return STRING(new);
 }
 
@@ -431,11 +428,10 @@ static VALUE string_advance (l_t *this, VALUE v_str, VALUE v_n) {
 
   if (n > (int) str->num_bytes) return NULL_VALUE;
 
-  string *new = String.new_with_len (str->bytes + n, str->num_bytes - n);
+  string *new = string_new_with_len (str->bytes + n, str->num_bytes - n);
 
   return STRING(new);
 }
-#endif
 
 static VALUE string_tokenize (l_t *this, VALUE v_str, VALUE v_tok) {
   (void) this;
@@ -504,11 +500,10 @@ static VALUE string_to_integer (l_t *this, VALUE v_str) {
   return INT(str_to_int (str));
 }
 
-#if 0
 static VALUE string_to_number (l_t *this, VALUE v_str) {
   (void) this;
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
-  return NUMBER(strtod (AS_STRING_BYTES(v_str), NULL));
+  return NUMBER(str_to_double (AS_STRING_BYTES(v_str), NULL));
 }
 
 static VALUE string_bytelen (l_t *this, VALUE v_str) {
@@ -519,7 +514,7 @@ static VALUE string_bytelen (l_t *this, VALUE v_str) {
 static VALUE string_numchars (l_t *this, VALUE v_str) {
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
   string *s = AS_STRING(v_str);
-  return INT(Ustring.char_num (s->bytes, s->num_bytes)); // a small disharmony here
+  return INT(utf8_len (s->bytes));
 }
 
 static VALUE string_to_upper (l_t *this, VALUE v_str) {
@@ -528,8 +523,8 @@ static VALUE string_to_upper (l_t *this, VALUE v_str) {
   ifnot (s->num_bytes) return STRING_NEW("");
 
   char buf[s->num_bytes + 1];
-  Ustring.change_case (buf, s->bytes, s->num_bytes, TO_UPPER);
-  return STRING(String.new_with (buf));
+  utf8_change_case (buf, s->bytes, s->num_bytes, TO_UPPER);
+  return STRING(string_new_with (buf));
 }
 
 static VALUE string_to_lower (l_t *this, VALUE v_str) {
@@ -538,21 +533,20 @@ static VALUE string_to_lower (l_t *this, VALUE v_str) {
   ifnot (s->num_bytes) return STRING_NEW("");
 
   char buf[s->num_bytes + 1];
-  Ustring.change_case (buf, s->bytes, s->num_bytes, TO_LOWER);
-  return STRING(String.new_with (buf));
+  utf8_change_case (buf, s->bytes, s->num_bytes, TO_LOWER);
+  return STRING(string_new_with (buf));
 }
 
 static VALUE string_trim_byte_at_end (l_t *this, VALUE v_str, VALUE v_byte) {
   ifnot (IS_STRING(v_str)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
   ifnot (IS_INT(v_byte))   THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
   string *s = AS_STRING(v_str);
-  int byte = AS_INT(v_byte);
-  if (byte < 0 || byte > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
-  string *new = String.dup (s);
-  String.trim_end (new, byte);
+  int bt = AS_INT(v_byte);
+  if (bt < 0 || bt > 255)  THROW(L_ERR_OUTOFBOUNDS, "awaiting a byte in the ASCII range");
+  string *new = string_dup (s);
+  string_trim_end (new, bt);
   return STRING(new);
 }
-#endif
 
 static VALUE integer_to_string (l_t *this, VALUE v_int, VALUE v_base) {
   (void) this;
@@ -563,7 +557,7 @@ static VALUE integer_to_string (l_t *this, VALUE v_int, VALUE v_base) {
 
   decimal_t dec = {.base = base};
 
-  char *buf = int_to_string (&dec, AS_INT(v_int));
+  char *buf = int64_to_string (&dec, AS_INT(v_int));
 
   string *s = string_new_with_len (buf, dec.size);
 
@@ -571,9 +565,9 @@ static VALUE integer_to_string (l_t *this, VALUE v_int, VALUE v_base) {
     case  8: string_prepend_byte (s, '0'); break;
     case 16: string_prepend_with (s, "0x"); break;
     case  2: {
-      int n = dec.size % 4;
-      for (int i = 0; i < n; i++)
-        string_prepend_with (s, "0");
+//      int n = dec.size % 4;
+//      for (int i = 0; i < n; i++)
+//        string_prepend_with (s, "0");
 
       string_prepend_with (s, "0b");
       break;
@@ -583,18 +577,16 @@ static VALUE integer_to_string (l_t *this, VALUE v_int, VALUE v_base) {
   return STRING(s);
 }
 
-#if 0
 static VALUE integer_char (l_t *this, VALUE v_c) {
   (void) this;
   ifnot (IS_INT(v_c)) THROW(L_ERR_TYPE_MISMATCH, "awaiting an integer");
 
   utf8 c = AS_INT(v_c);
   char buf[8];
-  int len = 0;
-  Ustring.character (c, buf, &len);
-  string *s = String.new_with (buf);
-  if (len == 1 and c == '\\')
-    String.append_byte (s, '\\');
+  int len = utf8_character (c, buf, 8);
+  string *s = string_new_with_len (buf, len);
+  if (len == 1 && c == '\\')
+    string_append_byte (s, '\\');
 
   return STRING(s);
 }
@@ -606,9 +598,8 @@ static VALUE integer_eq (l_t *this, VALUE v_fint, VALUE v_sint) {
 
   return INT(AS_INT(v_fint) == AS_INT(v_sint));
 }
-#endif
 
-static VALUE _readfile (l_t *this, VALUE v_file) {
+static VALUE file_read (l_t *this, VALUE v_file) {
   (void) this;
 
   ifnot (IS_STRING(v_file)) THROW(L_ERR_TYPE_MISMATCH, "awaiting a string");
@@ -637,36 +628,29 @@ public int __init_std_module__ (l_t *this) {
     { "array_where",        PTR(array_where), 2 },
     { "string_eq",          PTR(string_eq), 2 },
     { "string_eq_n",        PTR(string_eq_n), 3 },
-#if 0
     { "string_cmp",         PTR(string_cmp), 2 },
     { "string_cmp_n",       PTR(string_cmp_n), 3 },
     { "string_advance",     PTR(string_advance), 2 },
     { "string_bytelen",     PTR(string_bytelen), 1 },
-    { "string_to_array",    PTR(string_to_array), 1},
     { "string_numchars",    PTR(string_numchars), 1 },
+#if 0
+    { "string_to_array",    PTR(string_to_array), 1},
+#endif
     { "string_to_upper",    PTR(string_to_upper), 1 },
     { "string_to_lower",    PTR(string_to_lower), 1 },
-#endif
     { "string_tokenize",    PTR(string_tokenize), 2 },
-#if 0
     { "string_to_number",   PTR(string_to_number), 1 },
-#endif
     { "string_to_integer",  PTR(string_to_integer), 1 },
-#if 0
     { "string_byte_in_str", PTR(string_byte_in_str), 2 },
     { "string_bytes_in_str", PTR(string_bytes_in_str), 2 },
-#endif
     { "string_delete_substr", PTR(string_delete_substr), 2 },
-#if 0
     { "string_advance_on_byte", PTR(string_advance_on_byte), 2},
     { "string_advance_after_bytes", PTR(string_advance_after_bytes), 3},
     { "string_trim_byte_at_end", PTR(string_trim_byte_at_end), 2},
     { "integer_eq",         PTR(integer_eq), 2},
-    { "integer_char",       PTR(integer_char), 1 },
-#endif
+    { "integer_char",       PTR(integer_char), 1},
     { "integer_to_string",  PTR(integer_to_string), 2},
-    { "fileread",           PTR(_readfile), 1},
-
+    { "file_read",          PTR(file_read), 1},
     { NULL, NULL_VALUE, 0}
   };
 
@@ -676,50 +660,13 @@ public int __init_std_module__ (l_t *this) {
       return err;
   }
 
+  if (L.def_std (this, "Std",     INTEGER_TYPE, INT(0),  1)) return L_NOTOK;
+
   if (L.def_std (this, "BINARY",  INTEGER_TYPE, INT(2),  1)) return L_NOTOK;
   if (L.def_std (this, "OCTAL",   INTEGER_TYPE, INT(8),  1)) return L_NOTOK;
   if (L.def_std (this, "DECIMAL", INTEGER_TYPE, INT(10), 1)) return L_NOTOK;
   if (L.def_std (this, "HEX",     INTEGER_TYPE, INT(16), 1)) return L_NOTOK;
 
-  const char evalString[] = EvalString (
-    public const Map = {
-       set : map_set,
-       get : map_get,
-       keys : map_keys,
-       remove : map_remove,
-       key_exists : map_key_exists
-     };
-
-    public const String = {
-      eq : string_eq,
-      eq_n : string_eq_n,
-      tokenize : string_tokenize,
-      to_integer : string_to_integer,
-      delete_substr : string_delete_substr
-    };
-
-    public const Integer = {
-      to_string : integer_to_string
-    };
-    public const Array = {
-      sort : array_sort,
-      where : array_where
-    };
-
-    public const Std = {
-      map     : Map,
-      array   : Array,
-      string  : String
-    };
-
-    public const File = {
-      read    : fileread
-    };
- );
-
-  err = L.eval_string (this, evalString);
-
-  if (err != L_OK) return err;
   return L_OK;
 }
 

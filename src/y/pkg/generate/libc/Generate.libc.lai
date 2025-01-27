@@ -303,6 +303,8 @@ include ("argparse")
 
   var TestUnits = {}
 
+  var num_tests = 0
+
   func generate_test (filename, lines, idx, lines_len) {
     var index = idx + 1
 
@@ -346,6 +348,7 @@ include ("argparse")
 
     TestUnits.$(unit) = 1
 
+    num_tests++
     return index;
   }
 
@@ -424,22 +427,36 @@ include ("argparse")
       var idx = 0;
       var num_found = 0
 
-      if "C" is f_ext {
+      if "C" is f_ext || "H" is f_ext {
         var line = lines[idx]
-
         continue if line: eq (skip_str)
 
         var sp = line: bytes_in_str (as_str)
-
-        var is_meta = 0;
 
         ifnot null is sp {
           sp := advance_after_bytes (as_str, 1)
 
           ifnot sp: len () then return error (v + "/" + f + ": [as] missing header name")
           f_hdr = sp: to_upper ()
+          f_rqr  = f_hdr + if f_ext is "H" then "_H\n" orelse "\n"
           idx++
         }
+      }
+
+      if "C" is f_ext {
+        var line = lines[idx]
+
+      #  var sp = line: bytes_in_str (as_str)
+
+      #  ifnot null is sp {
+      #    sp := advance_after_bytes (as_str, 1)
+
+      #    ifnot sp: len () then return error (v + "/" + f + ": [as] missing header name")
+      #    f_hdr = sp: to_upper ()
+      #    idx++
+      #  }
+
+        var is_meta = 0;
 
         for (var i = idx; i < lines_len; i++) {
           var line = lines[idx]
@@ -491,7 +508,18 @@ include ("argparse")
         var unit = tok[-1]
         var ext = unit: extname (): to_upper (): advance (1)
         var name = unit: basename_without_extname ()
-        var hdr = name: to_upper ()
+
+        var hdr = null
+
+        var req_hdr = req: file_read_num_bytes (32)
+        sp = req_hdr: bytes_in_str (as_str)
+        ifnot null is sp {
+          sp := advance_after_bytes (as_str, 1)
+          var ar = sp: tokenize ("\n")
+           hdr = ar[0]: to_upper ()
+        } else {
+          hdr = name: to_upper ()
+        }
 
         var is_type_unit = "H" is ext
 
@@ -719,5 +747,7 @@ static  vmap_T vmapType;
   if verbose then
     println ("libc that includes everything has been written to " + outputFileLibcAll)
 
+  if verbose and num_tests then
+    println ("${num_tests} tests have been generated to " + LIBCTESTDIR)
   return ok
 }

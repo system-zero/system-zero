@@ -78,3 +78,6 @@ struct stat {
 #else
 #error "stat.h: unimplemented platform"
 #endif
+
+#define UTIME_NOW   ((1l << 30) - 1l)
+#define UTIME_OMIT  ((1l << 30) - 2l)

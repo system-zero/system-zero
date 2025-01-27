@@ -15,3 +15,12 @@ typedef struct {
   int width;
   utf8 code;
 } utf8_char;
+
+
+#ifndef TO_LOWER
+#define TO_LOWER 0
+#endif
+
+#ifndef TO_UPPER
+#define TO_UPPER 1
+#endif

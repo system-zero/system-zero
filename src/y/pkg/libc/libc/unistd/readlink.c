@@ -1,5 +1,5 @@
 // provides: long sys_readlink (const char *, char *, size_t)
-// provides: char *read_link (const char *)
+// provides: char *file_readlink (const char *)
 // requires: unistd/fcntl.h
 
 long sys_readlink (const char *path, char *buf, size_t len) {
@@ -10,7 +10,7 @@ long sys_readlink (const char *path, char *buf, size_t len) {
 #endif
 }
 
-char *read_link (const char *path) {
+char *file_readlink (const char *path) {
   struct stat st;
 
   if (sys_lstat (path, &st) == -1)

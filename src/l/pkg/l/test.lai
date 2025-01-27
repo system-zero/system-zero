@@ -91,7 +91,7 @@ func assert_not_equal (msg, a_expr, b_expr) {
   print ("[${++test_num}] ${msg} - ")
   if a_expr is b_expr {
     RESULTS[test_num - 1] = notok
-    println (stderr, "${NOTOK}[NOTOK] awaiting equality${RESET}")
+    println (stderr, "${NOTOK}[NOTOK] awaiting inequality${RESET}")
     return
   }
 
@@ -377,7 +377,7 @@ func zero_semantics () {
       return f (1, 2, 3, 4, 5, 6, 7, 8, 9)
 
     var s = f9
-    var rr = ff (s)
+    var rr = s: ff ()
 
     assert_true ("testing function references as function arguments",
         r is 231 and
@@ -388,7 +388,7 @@ func zero_semantics () {
     r = tassign (fassign, 400)
 
     func fu (x, y) return x * y
-    r = fu (10, 100)
+    r = 10: fu (100)
     assert_true ("testing assignment function to a variable", r is 1000)
   }
 
@@ -1403,7 +1403,7 @@ func self_semantics () {
       import ("std")
       var s = {f : 11}
 
-      func sa (m, k, v) Map.set (m, k, v)
+      func sa (m, k, v) map_set (m, k, v)
 
       sa (s, "f", 12)
       assert_true ("testing the std module and the map set method",
@@ -1676,13 +1676,180 @@ func self_semantics () {
           txt is rf () and
           w_nbts is txtlen)
 
-      File.remove ("/tmp/io_module_test")
+       file_remove ("/tmp/io_module_test")
     }
 
     io_module ()
   }
 
-  # import_test ()
+   func import_test_0 {
+
+    func std_module () {
+      import ("std")
+      var s = {f : 11}
+
+      func sa (m, k, v) map_set (m, k, v)
+
+      sa (s, "f", 12)
+      assert_true ("testing the std module and the map set method",
+	  s.f is 12)
+
+      map_remove (s, "f")
+      assert_true ("testing the the map remove and key_exists methods",
+	 map_key_exists (s, "f") is 0)
+
+      var ar = [10, 20, 10, 40, 10]
+      var n = ar: where (10)
+      var a = ["a", "b", "a", "vv", "a"]
+      var an = a: where ("a")
+      assert_true ("testing the array where method",
+          len (n) is 3 and n[0] is 0 and n[1] is 2 and n[2] is 4 and
+          len (an) is 3 and an[0] is 0 and an[1] is 2 and an[2] is 4)
+
+      var aa = ["1", "2", "3", "4"][[2, 3]]
+      var aaa  = [1, 2, 3, 4][[2, 3]]
+      var b  = [1.1, 2.1, 3.1, 1.1][[2, 3]]
+      var aav = [1, 2, 3, 1]
+      var c  = aav[array_where (aav, 1)]
+
+      assert_true ("testing the array where method and array indexing with an array",
+          typeofArray (aa) is StringType and
+          len (aa) is 2 and aa[0] is "3" and aa[1] is "4" and
+          typeofArray (aaa) is IntegerType and
+          len (aaa) is 2 and aaa[0] is 3 and aaa[1] is 4 and
+          typeofArray (b) is NumberType and
+          len (b) is 2 and b[0] is 3.1 and b[1] is 1.1 and
+          typeofArray (c) is IntegerType and
+          len (c) is 2 and c[0] is 1 and c[1] is 1)
+
+      assert_true ("testing the string eq method",
+          "asd": eq ("asd") and 0 is
+          "asd": eq ("asa"))
+
+      assert_true ("testing the eq_n method",
+          "asdf": eq_n ("asd", 3) and 0 is
+          "asdf": eq_n ("asd", 4))
+
+      assert_true ("testing the cmp_n method",
+          "asdf": cmp_n ("asd", 4) is 1 and
+          "asd": cmp_n ("asdf", 4) is -1 and
+          "asd": cmp_n ("asdf", 3) is 0)
+
+      var tok = "asd:fgh:jkl:mno": tokenize (":")
+      var tak = "  ab  cd ef  ": tokenize (" ")
+
+      assert_true ("testing the tokenize method",
+          tok: typeof () is ArrayType and
+          tok: len () is 4 and
+          tok[0] is "asd"  and
+          tok[1] is "fgh"  and
+          tok[2] is "jkl"  and
+          tok[3] is "mno"  and
+          tak: len () is 3 and
+          tak[0] is "ab"   and
+          tak[1] is "cd"   and
+          tak[2] is "ef")
+
+      var stra = "asdfg"
+      stra := advance (3)
+
+      assert_true ("testing the advance method", stra is "fg")
+
+      var strb = "asdfg"
+      strb := advance_on_byte ('f')
+      assert_true ("testing the advance_on_byte method", strb is "fg")
+
+      var strc = "asdfg"
+      var strd = strc: byte_in_str ('f')
+      assert_true ("testing the byte_in_str method", strd is "fg")
+
+      var stre = "123asdf123asdfok": advance_after_bytes ("asdf", 2)
+      assert_true ("testing the advance_after_bytes method",
+        stre is "ok")
+
+      var strf = "asdf"
+      var strg = strf: delete_substr ("sdf")
+      assert_true ("testing the delete_substr method", strg is "a")
+
+      assert_true ("testing the to_upper method",
+          "uPper": to_upper () is "UPPER")
+
+      assert_true ("testing the to_lower method",
+          "LoWER": to_lower () is "lower")
+
+      var si = "1234"
+      var sf = "1234.1234"
+      assert_true ("testing string to integer and number convertions",
+          si: to_integer () is 1234 and
+          sf: to_number () is 1234.1234)
+
+      assert_true ("testing the bytelen method",
+          "asdf": bytelen () is 4 and
+          "ασδφ": bytelen () is 8)
+
+      assert_true ("testing the numchars method",
+          "asdf": numchars () is 4 and
+          "ασδφ": numchars () is 4)
+
+      var ii = 12345678
+      assert_true ("testing integer to string convertions",
+          ii: to_string (2) is "0b101111000110000101001110" and
+          ii: to_string (8) is "057060516" and
+          ii: to_string (10) is "12345678" and
+          ii: to_string (16) is "0xbc614e")
+
+      assert_true ("testing the integer eq method", 1: eq (1))
+
+      var cc = 945: char ()
+      var ca = 'α': char ()
+
+      assert_true ("testing the char method", cc is "α" and ca is "α")
+
+    }
+
+    std_module ()
+
+    func io_module () {
+      import ("io")
+
+      var open = io_open,
+          isatty = io_fd_isatty,
+          write = io_fd_write,
+          read = io_fd_read
+
+      var txt = "io-test\n",
+          txtlen = txt: len ()
+
+      var is_atty = 0
+
+      func wf () {
+        var fd = "/tmp/io_module_test": open (O_WRONLY|O_CREAT, S_IRWXU)
+        is_atty = fd: isatty ()
+        return fd: write (txt)
+      }
+
+      var w_nbts = wf ()
+
+      func rf () {
+        var fd = "/tmp/io_module_test": open (O_RDONLY, 0)
+        return read (fd)
+      }
+
+      assert_true ("testing the io module",
+          isatty (STDIN_FILENO) and
+          isatty (STDOUT_FILENO) and
+          isatty (STDERR_FILENO) and # fails if valgrind invocation redirects to stderr
+          is_atty is 0 and
+          txt is rf () and
+          w_nbts is txtlen)
+
+      #File.remove ("/tmp/io_module_test")
+    }
+
+    io_module ()
+  }
+
+  import_test_0 ()
 
  # var farg = Dir.current(): path_concat (__argv[0])
 
@@ -2242,16 +2409,16 @@ func self_semantics () {
 
     var k = {key : 'k', aa : 2}.key
     assert_true ("testing getting key from an anonymous map", k is 'k' and
-       typeof (k) is IntegerType)
+       k: typeof () is IntegerType)
 
     var s = {key : "string"}.key
 
     assert_true ("testing getting string key from an anonymous map", s is "string" and
-       typeof (s) is StringType)
+       s: typeof () is StringType)
 
     var a = {key : ["string", "a", "z"]}.key
     assert_true ("testing getting string array key from an anonymous map", a[0] is "string" and
-       typeof (a) is ArrayType)
+       a: typeof () is ArrayType)
 
     var maa = {next : {next : {a : "a"}}}
     var maaa = maa.next.next;
@@ -2307,14 +2474,14 @@ func self_semantics () {
 
       f  : func {
         for k, v in this
-          ifnot String.eq  (k, "f") then append v in sum_p
+          ifnot k: eq  ("f") then append v in sum_p
       }
     }    
 
     mmmm.f ()
 
     for k, v in mmmm
-      ifnot String.eq (k, "f") then append v in sum_pa
+      ifnot k: eq ("f") then append v in sum_pa
 
     assert_true ("testing map iteration with members with private scope",
         sum_p is 31 and sum_pa is 21)
@@ -2438,8 +2605,8 @@ func self_semantics () {
     var sum = 0
     var sun = ""
     for v in l {
-      if typeof (v) is StringType then append v in sun
-      if typeof (v) is IntegerType then append v in sum
+      if v: typeof () is StringType then append v in sun
+      if v: typeof () is IntegerType then append v in sum
     }
 
    const sa = l: pop_at (1)
@@ -2455,7 +2622,7 @@ func self_semantics () {
     const llaa = ++lla[0]
 
     var lola = {["reassignment"]}
-    var s = typeof(lola)
+    var s = lola: typeof()
 
     lola := pop_at (0)
     lola = "reassignment"
@@ -2471,9 +2638,9 @@ func self_semantics () {
         sum is 1 and
         sun is "twoone12" and
         v is "12" and
-        typeof (sa) is ArrayType and
-        typeof (e) is StringType and
-        typeof (l[0]) is StringType and
+        sa: typeof () is ArrayType and
+        e: typeof () is StringType and
+        l[0]: typeof () is StringType and
         e is "two" and
         lola is "reassignment" and
         lolo is 11)
@@ -2505,35 +2672,35 @@ func self_semantics () {
 
     var type = null
 
-    assert_true ("testing NullType[s]", typeof (type) is NullType and
-       typeAsString (null) is "NullType")
-    type = typeof (stra)
+    assert_true ("testing NullType[s]", type: typeof () is NullType and
+       null: typeAsString () is "NullType")
+    type = stra: typeof ()
     assert_true ("testing StringType[s]", type is StringType and
-       typeAsString (stra) is "StringType")
-    type = typeof (int)
+       stra: typeAsString () is "StringType")
+    type = int: typeof ()
     assert_true ("testing IntegerType[s]", type is IntegerType and
-        typeAsString (1) is "IntegerType")
-    type = typeof (num)
+        1: typeAsString () is "IntegerType")
+    type = num: typeof ()
     assert_true ("testing NumberType[s]", type is NumberType and
-        typeAsString (1.1) is "NumberType")
-    type = typeof (i_ar)
+        1.1: typeAsString () is "NumberType")
+    type = i_ar: typeof ()
     assert_true ("testing ArrayType[s]", type is ArrayType and
-        typeAsString (i_ar) is "ArrayType")
-    type = typeofArray (i_ar)
+        i_ar: typeAsString () is "ArrayType")
+    type = i_ar: typeofArray ()
     assert_true ("testing Array Integer sub types", type is IntegerType and
-        typeAsString (i_ar[0]) is "IntegerType")
-    type = typeofArray (s_ar)
+        i_ar[0]: typeAsString () is "IntegerType")
+    type = s_ar: typeofArray ()
     assert_true ("testing array String sub types", type is StringType and
-        typeAsString (s_ar[0]) is "StringType")
-    type = typeofArray (n_ar)
+        s_ar[0]: typeAsString () is "StringType")
+    type = n_ar: typeofArray ()
     assert_true ("testing array Number sub types", type is NumberType and
-        typeAsString (n_ar[0]) is "NumberType")
-    assert_true ("testing map type", typeof (mapa) is MapType and
-        typeAsString (mapa) is "MapType")
+        n_ar[0]: typeAsString () is "NumberType")
+    assert_true ("testing map type", mapa: typeof () is MapType and
+        mapa: typeAsString () is "MapType")
     var l = {["1", [1, 2], {"k" : 1}, {[0, 1, 2]}]}
-    assert_true ("testing list type", typeof (l) is ListType and
-        typeAsString (l) is "ListType" and
-        typeAsString (l[3]) is "ListType")
+    assert_true ("testing list type", l: typeof () is ListType and
+        l: typeAsString () is "ListType" and
+        l[3]: typeAsString () is "ListType")
 
     func f (x) {}
     assert_true ("testing function types",
@@ -2635,7 +2802,7 @@ func self_semantics () {
 
     assert_true ("testing chained functions",
         wa is "ok" and
-        sa is "10010100" and
+        sa is "0b10010100" and
         mp is 2 and
         ms is 2 and
         mm is 11 and
@@ -2649,7 +2816,7 @@ func self_semantics () {
         ii is "111" and
         dd is 'a' and
         cc is "040" and
-        bb is "0b00100000" and
+        bb is "0b100000" and
         hh is "0x20" and
         oo is "040" and
         wi is "44" and
@@ -2824,8 +2991,9 @@ func invalid_memory_read_tests {
 
 if (run_invalid_memory_read_tests and run_fileptr_tests) {
   test_num++
+  print ("[${test_num}] tests for invalid memory read tests - ")
   invalid_memory_read_tests ()
-  println ("[${test_num}] tests for invalid memory read tests")
+  println ("${OK}[OK]${RESET}")
 }
 
 func summary () {
@@ -2866,16 +3034,16 @@ func term_tests () {
 
   var term = term_new ()
   println ("press q to exit")
-  return notok if Term.raw_mode (term) is notok
+  return notok if term: term_raw_mode () is notok
 
   var fd = STDIN_FILENO
   var key = 'q'
   while key isnot 'q' {
     return notok if key is notok
-    key = Term.getkey (fd)
+    key = fd: term_getkey ()
   }
 
-  return Term.orig_mode (term)
+  return term: term_orig_mode ()
 }
 
 if term_tests () is notok then println ("terminal error")

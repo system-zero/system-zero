@@ -10,8 +10,11 @@
 #define REQUIRE_STR_CMP
 #define REQUIRE_STR_NEW
 #define REQUIRE_STR_STR
+#define REQUIRE_UTF8_CASE
+#define REQUIRE_UTF8_LEN
 #define REQUIRE_QSORT
 #define REQUIRE_STRTOL
+#define REQUIRE_STRTOD
 #define REQUIRE_ATOI
 #define REQUIRE_DECIMAL_TO_STRING
 #define REQUIRE_READFILE
@@ -37,6 +40,10 @@ static l_T *__L__;
 
 #ifndef WITHOUT_TERM_MODULE
 #include "../modules/term-module.c"
+#endif
+
+#ifndef WITHOUT_TERM_MODULE
+#include "../modules/io-module.c"
 #endif
 
 int main (int argc, char **argv) {
@@ -75,6 +82,10 @@ int main (int argc, char **argv) {
 
 #ifndef WITHOUT_TERM_MODULE
   __init_term_module__ (l);
+#endif
+
+#ifndef WITHOUT_IO_MODULE
+  __init_io_module__ (l);
 #endif
 
   if (NULL == evalbuf) {

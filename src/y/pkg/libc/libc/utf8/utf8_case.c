@@ -2,6 +2,9 @@
 // provides: utf8 utf8_to_upper (utf8)
 // provides: int utf8_is_lower (utf8)
 // provides: int utf8_is_upper (utf8)
+// provides: int utf8_change_case (char *, char *, size_t, int)
+// requires: utf8/utf8_code.c
+// requires: utf8/utf8_character.c
 
 /* almost all of this following 'case' code is from the utf8.h project:
  * https://github.com/sheredom/utf8.h.git 
@@ -166,4 +169,45 @@ int utf8_is_lower (utf8 chr) {
 
 int utf8_is_upper (utf8 chr) {
   return chr != utf8_to_lower (chr);
+}
+
+int utf8_change_case (char *dest, char *src, size_t src_len, int to_type) {
+  int (*f_is) (utf8);
+  int (*f) (utf8);
+
+  if (to_type == TO_LOWER) {
+    f_is = utf8_is_upper;
+    f = utf8_to_lower;
+  } else {
+    f_is = utf8_is_lower;
+    f = utf8_to_upper;
+  }
+
+  int src_idx = 0;
+  int dest_idx = 0;
+  int changed = 0;
+
+  while (src_idx < (int) src_len) {
+    int len = 0;
+    utf8 c = utf8_get_code_at (src, src_len, src_idx, &len);
+
+    if (f_is (c)) {
+      char buf[5];
+
+      utf8_character (f (c), buf, 5);
+
+      for (int i = 0; i < len; i++)
+        dest[dest_idx++] = buf[i];
+
+      src_idx += len;
+
+      changed = 1;
+    } else {
+      for (int i = 0; i < len; i++)
+        dest[dest_idx++] = src[src_idx++];
+    }
+  }
+
+  dest[dest_idx] = '\0';
+  return changed;
 }

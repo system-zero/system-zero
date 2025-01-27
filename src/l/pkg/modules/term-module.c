@@ -206,32 +206,7 @@ public int __init_term_module__ (l_t *this) {
       return err;
   }
 
-  const char evalString[] = EvalString (
-    public var Term = {
-      new : term_new,
-      getkey : term_getkey,
-      raw_mode : term_raw_mode,
-      sane_mode : term_sane_mode,
-      orig_mode : term_orig_mode,
-      init_size : term_init_size,
-      set : {
-        pos : term_set_pos,
-      },
-      screen : {
-        save : term_screen_save,
-        clear : term_screen_clear,
-        restore : term_screen_restore,
-      },
-      get : {
-        pos : term_get_pos,
-        rows : term_get_rows,
-        cols : term_get_cols,
-      }
-    }
-  );
-
-  err = L.eval_string (this, evalString);
-  if (err != L_OK) return err;
+  if (L.def_std (this, "Term", INTEGER_TYPE, INT(0),  1)) return L_NOTOK;
   return L_OK;
 }
 

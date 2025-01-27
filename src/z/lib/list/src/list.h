@@ -32,6 +32,8 @@
     (list_)->head->prev = (node_);                       \
     (node_)->next = (list_)->head;                       \
     (list_)->head = (node_);                             \
+    (list_)->current->prev = (node_);                    \
+    (list_)->current = (node_);                          \
   }                                                      \
                                                          \
   (list_)->num_items++;                                  \

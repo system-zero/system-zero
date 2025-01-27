@@ -12,8 +12,7 @@ typedef uint32_t    dev_t;
 typedef long        fpos_t;
 typedef long        useconds_t;
 
-typedef signed long off_t;
-typedef signed long ino_t;
-
 typedef int64_t     off64_t;
+typedef off64_t     off_t;
 typedef uint64_t    ino64_t;
+typedef ino64_t     ino_t;

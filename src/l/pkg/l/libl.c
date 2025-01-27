@@ -1619,7 +1619,8 @@ static int l_parse_list_get (l_t *this, VALUE *vp) {
 
   if (this->exprList && 0 == this->fmtRefcount) {
     *vp = *val;
-    if (vp->type == STRING_TYPE)
+    if (vp->type == STRING_TYPE || vp->type == LIST_TYPE   ||
+        vp->type == MAP_TYPE    || vp->type == ARRAY_TYPE)
       vp->refcount++;
   } else if (this->fmtRefcount) {
     *vp = *val;
@@ -2129,7 +2130,7 @@ static int l_parse_format_array (l_t *this, VALUE *vp, int release_vp) {
   l_string savepc = PARSEPTR;
 
   int err;
-  for (size_t i = 0; i < array->len; i++) {
+  for (int i = 0; i < array->len; i++) {
     string *s = s_ar[i];
     string *n = n_ar[i];
     PARSEPTR = StringNew(s->bytes);
@@ -3437,7 +3438,7 @@ static VALUE array_release (VALUE value) {
   if (array->type == STRING_TYPE) {
     string **s_ar = (string **) AS_ARRAY(ary);
     if (s_ar == NULL) return result;
-    for (size_t i = 0; i < array->len; i++) {
+    for (int i = 0; i < array->len; i++) {
       ifnot (NULL == s_ar[i])
         string_release (s_ar[i]);
     }
@@ -3446,21 +3447,21 @@ static VALUE array_release (VALUE value) {
   } else if (array->type == MAP_TYPE) {
     Map_Type **m_ar = (Map_Type **) AS_ARRAY(ary);
     if (m_ar == NULL) return result;
-    for (size_t i = 0; i < array->len; i++)
+    for (int i = 0; i < array->len; i++)
       map_release (&m_ar[i]);
     Release (m_ar);
     m_ar = NULL;
   } else if (array->type == LIST_TYPE) {
     listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(ary);
     if (l_ar == NULL) return result;
-    for (size_t i = 0; i < array->len; i++)
+    for (int i = 0; i < array->len; i++)
       object_release (NULL, LIST(l_ar[i]));
     Release (l_ar);
     l_ar = NULL;
   } else if (array->type == ARRAY_TYPE) {
     ArrayType **a_ar = (ArrayType **) AS_ARRAY(ary);
     if (a_ar == NULL) return result;
-    for (size_t i = 0; i < array->len; i++)
+    for (int i = 0; i < array->len; i++)
       array_release (ARRAY(a_ar[i]));
     Release (a_ar);
     a_ar = NULL;
@@ -3695,7 +3696,7 @@ static int l_parse_anon_array (l_t *this, VALUE *vp) {
 static ArrayType *array_copy (ArrayType *array) {
   ArrayType *new_array = Alloc (sizeof (ArrayType));
 
-  size_t len = array->len;
+  int len = array->len;
   integer type = array->type;
 
   new_array->len = len;
@@ -3706,7 +3707,7 @@ static ArrayType *array_copy (ArrayType *array) {
       number *ary = (number *) AS_ARRAY(array->value);
 
       number *n_ar = Alloc (len * sizeof (number));
-      for (size_t i = 0; i < len; i++)
+      for (int i = 0; i < len; i++)
         n_ar[i] = ary[i];
 
       new_array->value = ARRAY(n_ar);
@@ -3717,7 +3718,7 @@ static ArrayType *array_copy (ArrayType *array) {
       string **ary = (string **) AS_ARRAY(array->value);
 
       string **s_ar = Alloc (len * sizeof (string));
-      for (size_t i = 0; i < len; i++) {
+      for (int i = 0; i < len; i++) {
         string *item = ary[i];
         s_ar[i] = string_new_with_len (item->bytes, item->num_bytes);
       }
@@ -3729,7 +3730,7 @@ static ArrayType *array_copy (ArrayType *array) {
       Map_Type **ary = (Map_Type **) AS_ARRAY(array->value);
 
       Map_Type **m_ar = Alloc (len * sizeof (Map_Type));
-      for (size_t i = 0; i < len; i++) {
+      for (int i = 0; i < len; i++) {
         Map_Type *item = ary[i];
         m_ar[i] = AS_MAP(l_copy_map (MAP(item)));
       }
@@ -3741,7 +3742,7 @@ static ArrayType *array_copy (ArrayType *array) {
       integer *ary = (integer *) AS_ARRAY(array->value);
 
       integer *i_ar = Alloc (len * sizeof (integer));
-      for (size_t i = 0; i < len; i++)
+      for (int i = 0; i < len; i++)
         i_ar[i] = ary[i];
 
       new_array->value = ARRAY(i_ar);
@@ -4232,7 +4233,7 @@ static int l_parse_array_set (l_t *this) {
         case STRING_TYPE: {
           string **s_ar = (string **) AS_ARRAY(array->value);
           string *s_val = AS_STRING(ar_val);
-          for (size_t i = 0; i < array->len; i++) {
+          for (int i = 0; i < array->len; i++) {
             string *item = s_ar[i];
             string_replace_with_len (item, s_val->bytes, s_val->num_bytes);
           }
@@ -4243,7 +4244,7 @@ static int l_parse_array_set (l_t *this) {
 
         case MAP_TYPE: {
           Map_Type **m_ar = (Map_Type **) AS_ARRAY(array->value);
-          for (size_t i = 0; i < array->len; i++) {
+          for (int i = 0; i < array->len; i++) {
             ifnot (NULL == m_ar[i])
               map_release (&m_ar[i]);
             m_ar[i] = AS_MAP(l_copy_value (ar_val));
@@ -4257,7 +4258,7 @@ static int l_parse_array_set (l_t *this) {
 
         case LIST_TYPE: {
           listArrayMember **l_ar = (listArrayMember **) AS_ARRAY(array->value);
-          for (size_t i = 0; i < array->len; i++) {
+          for (int i = 0; i < array->len; i++) {
             ifnot (NULL == l_ar[i])
                l_release_value (this, LIST(l_ar[i]));
             l_ar[i] = LIST_ARRAY_MEMBER(l_copy_value (ar_val));
@@ -4272,7 +4273,7 @@ static int l_parse_array_set (l_t *this) {
         case INTEGER_TYPE: {
           int i_val = AS_INT(ar_val);
           integer *i_ar = (integer *) AS_ARRAY(array->value);
-          for (size_t i = 0; i < array->len; i++)
+          for (int i = 0; i < array->len; i++)
             i_ar[i] = i_val;
           return L_OK;
         }
@@ -4280,7 +4281,7 @@ static int l_parse_array_set (l_t *this) {
         case NUMBER_TYPE: {
           number n_val = AS_NUMBER(ar_val);
           number *n_ar = (number *) AS_ARRAY(array->value);
-          for (size_t i = 0; i < array->len; i++)
+          for (int i = 0; i < array->len; i++)
             n_ar[i] = n_val;
           return L_OK;
         }
@@ -4388,7 +4389,7 @@ static int l_parse_array_set (l_t *this) {
         case INTEGER_TYPE: {
           integer *i_ar = (integer *) AS_ARRAY(array->value);
           ifnot (is_index) {
-            for (size_t i = 0; i < array->len; i++)
+            for (int i = 0; i < array->len; i++)
               i_ar[i] += (token == TOKEN_PLUS_PLUS ? 1 : -1);
           } else {
             i_ar[idx] += (token == TOKEN_PLUS_PLUS ? 1 : -1);
@@ -4401,7 +4402,7 @@ static int l_parse_array_set (l_t *this) {
         case NUMBER_TYPE: {
           number *n_ar = (number *) AS_ARRAY(array->value);
           ifnot (is_index) {
-            for (size_t i = 0; i < array->len; i++)
+            for (int i = 0; i < array->len; i++)
               n_ar[i] += (token == TOKEN_PLUS_PLUS ? 1 : -1);
           } else {
             n_ar[idx] += (token == TOKEN_PLUS_PLUS ? 1 : -1);
@@ -4445,7 +4446,7 @@ static int l_parse_array_set (l_t *this) {
           integer *i_ar = (integer *) AS_ARRAY(array->value);
           int vi = AS_INT(v);
 
-          for (size_t i = 0; i < array->len; i++) {
+          for (int i = 0; i < array->len; i++) {
             switch (token) {
               case TOKEN_ASSIGN_APP:
                 i_ar[i] += vi; break;
@@ -4472,7 +4473,7 @@ static int l_parse_array_set (l_t *this) {
           THROW_SYNTAX_ERR_IF(v.type != NUMBER_TYPE, "binary operation error in array, awaiting a number");
           number *n_ar = (number *) AS_ARRAY(array->value);
           double vn = AS_NUMBER(v);
-          for (size_t i = 0; i < array->len; i++) {
+          for (int i = 0; i < array->len; i++) {
             switch (token) {
               case TOKEN_ASSIGN_APP:
                 n_ar[i] += vn; break;
@@ -4496,7 +4497,7 @@ static int l_parse_array_set (l_t *this) {
           string **s_ar = (string **) AS_ARRAY(array->value);
           if (v.type == STRING_TYPE) {
             string *s = AS_STRING(v);
-            for (size_t i = 0; i < array->len; i++)
+            for (int i = 0; i < array->len; i++)
               if (s_ar[i] != NULL)
                 string_append_with_len (s_ar[i], s->bytes, s->num_bytes);
 
@@ -4510,7 +4511,7 @@ static int l_parse_array_set (l_t *this) {
           } else {
             char buf[8];
             int len = utf8_character (AS_INT(v), buf, 8);
-            for (size_t i = 0; i < array->len; i++)
+            for (int i = 0; i < array->len; i++)
               if (s_ar[i] != NULL)
                 string_append_with_len (s_ar[i], buf, len);
           }
@@ -4622,8 +4623,8 @@ static int l_array_from_array (l_t *this, ArrayType *src_ar, VALUE v_iar, VALUE 
     case STRING_TYPE: {
       string **s_ar = (string **) AS_ARRAY(array->value);
       string **s_ar_src = (string **) AS_ARRAY(src_ar->value);
-      for (size_t i = 0; i < ary->len; i++) {
-        size_t idx = x_ar[i];
+      for (int i = 0; i < ary->len; i++) {
+        int idx = x_ar[i];
         if (idx >= src_ar->len)
           THROW_OUT_OF_BOUNDS("array index %d >= than %d length", idx, src_ar->len);
 
@@ -4635,8 +4636,8 @@ static int l_array_from_array (l_t *this, ArrayType *src_ar, VALUE v_iar, VALUE 
     case INTEGER_TYPE: {
       integer *i_ar = (integer *) AS_ARRAY(array->value);
       integer *i_ar_src = (integer *) AS_ARRAY(src_ar->value);
-      for (size_t i = 0; i < ary->len; i++) {
-        size_t idx = x_ar[i];
+      for (int i = 0; i < ary->len; i++) {
+        int idx = x_ar[i];
         if (idx >= src_ar->len)
           THROW_OUT_OF_BOUNDS("array index %d >= than %d length", idx, src_ar->len);
 
@@ -4648,8 +4649,8 @@ static int l_array_from_array (l_t *this, ArrayType *src_ar, VALUE v_iar, VALUE 
     case NUMBER_TYPE: {
       double *d_ar = (double *) AS_ARRAY(array->value);
       double *d_ar_src = (double *) AS_ARRAY(src_ar->value);
-      for (size_t i = 0; i < ary->len; i++) {
-        size_t idx = x_ar[i];
+      for (int i = 0; i < ary->len; i++) {
+        int idx = x_ar[i];
         if (idx >= src_ar->len)
           THROW_OUT_OF_BOUNDS("array index %d >= than %d length", idx, src_ar->len);
 
@@ -4880,7 +4881,7 @@ static int l_array_eq (VALUE x, VALUE y) {
         case INTEGER_TYPE: {
           integer *x_ar = (integer *) AS_ARRAY(xa->value);
           integer *y_ar = (integer *) AS_ARRAY(ya->value);
-          for (size_t i = 0; i < xa->len; i++)
+          for (int i = 0; i < xa->len; i++)
             if (x_ar[i] != y_ar[i]) return 0;
 
           return 1;
@@ -4893,7 +4894,7 @@ static int l_array_eq (VALUE x, VALUE y) {
         case NUMBER_TYPE: {
           number *x_ar = (number *) AS_ARRAY(xa->value);
           number *y_ar = (number *) AS_ARRAY(ya->value);
-          for (size_t i = 0; i < xa->len; i++)
+          for (int i = 0; i < xa->len; i++)
             if (x_ar[i] != y_ar[i]) return 0;
 
           return 1;
@@ -4906,7 +4907,7 @@ static int l_array_eq (VALUE x, VALUE y) {
         case STRING_TYPE: {
           string **x_ar = (string **) AS_ARRAY(xa->value);
           string **y_ar = (string **) AS_ARRAY(ya->value);
-          for (size_t i = 0; i < xa->len; i++)
+          for (int i = 0; i < xa->len; i++)
             ifnot (str_eq (x_ar[i]->bytes, y_ar[i]->bytes)) return 0;
 
           return 1;
@@ -10296,7 +10297,7 @@ static int l_parse_fmt (l_t *this, string *str, int break_at_eof) {
 
               switch (v.type) {
                 case INTEGER_TYPE:
-                  string_append_with_fmt (str, "%d", AS_INT(v));
+                  string_append_with_fmt (str, "%" PRId64, AS_INT(v));
                   break;
 
                 default:
@@ -10320,7 +10321,7 @@ static int l_parse_fmt (l_t *this, string *str, int break_at_eof) {
 
               switch (v.type) {
                 case INTEGER_TYPE:
-                  string_append_with_fmt (str, "%d", AS_INT(v));
+                  string_append_with_fmt (str, "%" PRId64, AS_INT(v));
                   break;
 
                 default:
@@ -10332,7 +10333,7 @@ static int l_parse_fmt (l_t *this, string *str, int break_at_eof) {
             }
 
           case INTEGER_TYPE:
-            string_append_with_fmt (str, "%d", AS_INT(value));
+            string_append_with_fmt (str, "%" PRId64, AS_INT(value));
             break;
 
           default:
@@ -10419,7 +10420,7 @@ static int l_parse_print (l_t *this) {
         goto print_str;
 
       case INTEGER_TYPE:
-        string_append_with_fmt (str, "%d", AS_INT(v));
+        string_append_with_fmt (str, "%" PRId64, AS_INT(v));
         goto print_str;
 
       case NUMBER_TYPE:
@@ -10755,7 +10756,7 @@ static int l_parse_import (l_t *this) {
 
   err = L_OK;
 
-  if (NULL == ns_lookup_symbol (this->function, mname))
+  if (NULL == ns_lookup_symbol (this->std, mname))
     err =  this->syntax_error_fmt (this, "%s module hasn't been initialized", mname);
 
   Release (fname);
@@ -10835,7 +10836,7 @@ theload:
     sym_t *symbol = l_lookup_symbol (this, StringNew ("__importpath"));
     ArrayType *p_ar = (ArrayType *) AS_ARRAY(symbol->value);
     string **s_ar = (string **) AS_ARRAY(p_ar->value);
-    for (size_t i = 0; i < p_ar->len; i++) {
+    for (int i = 0; i < p_ar->len; i++) {
       string *p = s_ar[i];
       ifnot (p->num_bytes) continue;
 
@@ -11129,7 +11130,7 @@ theload:
     sym_t *symbol = l_lookup_symbol (this, StringNew ("__loadpath"));
     ArrayType *p_ar = (ArrayType *) AS_ARRAY(symbol->value);
     string **s_ar = (string **) AS_ARRAY(p_ar->value);
-    for (size_t i = 0; i < p_ar->len; i++) {
+    for (int i = 0; i < p_ar->len; i++) {
       string *p = s_ar[i];
       ifnot (p->num_bytes) continue;
 

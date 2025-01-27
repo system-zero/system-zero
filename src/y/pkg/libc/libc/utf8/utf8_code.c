@@ -1,5 +1,6 @@
 // provides: utf8 utf8_code_and_len (const char *, int *)
 // provides: utf8 utf8_code (const char *)
+// provides: utf8 utf8_get_code_at (char *, size_t, int, int *)
 // requires: utf8/utf8.h
 
 utf8 utf8_code_and_len (const char *buf, int *len) {
@@ -23,4 +24,10 @@ utf8 utf8_code_and_len (const char *buf, int *len) {
 utf8 utf8_code (const char *src) {
   int len = 0;
   return utf8_code_and_len (src, &len);
+}
+
+utf8 utf8_get_code_at (char *src, size_t src_len, int idx, int *len) {
+  if (idx >= (int) src_len) return -1;
+  char *sp = src + idx;
+  return utf8_code_and_len (sp, len);
 }
