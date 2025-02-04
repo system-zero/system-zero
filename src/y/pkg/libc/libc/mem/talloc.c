@@ -12,7 +12,7 @@
 // requires: mem/talloc.h
 
 /* if running on DEBUG MODE and the user hasn't provided a tostd[out|err]
-   function those two are required */
+   function, those two are required */
 // requires: convert/decimal.h
 // requires: convert/format.c
 

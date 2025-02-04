@@ -1,4 +1,4 @@
-// provides: int ev_watch (Ev *)
+// provides: int ev_watch (Ev *, int)
 // provides: int ev_add_event (Ev *, int, uint32_t, EventFun[NUM_EVENTS], void *)
 // provides: int ev_remove_event (Ev *, int)
 // provides: int ev_new_state (Ev *, uint)
@@ -48,7 +48,7 @@ int ev_remove_event (Ev *ev, int fd) {
   return 0;
 }
 
-int ev_watch (Ev *ev) {
+int ev_watch (Ev *ev, int timeout) {
   struct epoll_event events[ev->num_events];
   sigset_t *sigmask = NULL;
   event_t *event;
@@ -58,7 +58,10 @@ int ev_watch (Ev *ev) {
   next:
     event = NULL;
 
-    int nfds = sys_epoll_wait (ev->epfd, events, ev->num_events, -1, sigmask);
+    int nfds = sys_epoll_wait (ev->epfd, events, ev->num_events, timeout, sigmask);
+
+    if (0 == nfds)
+      break;
 
     if (-1 == nfds) {
       tostderr ("%s\n", errno_string (sys_errno));
@@ -132,7 +135,7 @@ int ev_new_state (Ev *ev, uint num_events) {
 
   // hendle ev->events != NULL
 
-  ev->events = Alloc (sizeof (event_t *) * num_events);
+  ev->events = Alloc (sizeof (event_t) * num_events);
 
   uint i;
   for (i = 0; i < num_events + 1; i++) {
