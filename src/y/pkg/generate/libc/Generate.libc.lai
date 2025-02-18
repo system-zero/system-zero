@@ -189,7 +189,11 @@ include ("argparse")
 
   var libcHdrs  =
    `/* This is an oversimplified tiny libc for x86 and x86_64 in a single unit.
-     * You get only what you only want, with a without magic code. */
+       You get only what you only want, with a without magic code.
+
+       This should compile with -std=c99 and onwards until (included) c23
+       without a warning.
+     */
 
     #ifndef LIBC_HDR
     #define LIBC_HDR
@@ -578,8 +582,11 @@ include ("argparse")
       if num_comments
         append " */\n\n" in comments
 
-      if "C" is f_ext and idx < lines_len and lines[idx]: eq (test_begstr)
+      if "C" is f_ext and idx < lines_len and lines[idx]: eq (test_begstr) {
         idx = generate_test (f, lines, idx, lines_len)
+        if idx is notok
+          return idx
+      }
 
       for (var i = idx; i < lines_len; i++) {
         break if lines[i]: len ()
@@ -623,6 +630,9 @@ include ("argparse")
 
             if lines[idx]: eq (test_begstr) {
               idx = generate_test (f, lines, idx, lines_len)
+              if idx is notok
+                return idx
+
               continue
             }
 

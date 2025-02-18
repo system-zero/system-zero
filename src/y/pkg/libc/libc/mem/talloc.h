@@ -3,7 +3,7 @@ typedef struct __attribute__((packed)) {
   uint prev_chunk_size;
 } MemChunk;
 
-typedef void *(*MemAlloc) (uint);
+typedef void *(*MemAlloc) (size_t);
 
 #define MEM_HEADER_SIZE (sizeof (MemChunk))
 #define MEM_ALIGN_SIZE 8

@@ -1555,6 +1555,7 @@ gained consience. Hopefully one day.
 * [Super Light Regular Expression Library.](https://github.com/cesanta/slre)
 * [Lightweight snprintf implementation.](https://github.com/mirtoto/snprintf)
 * [Mini snprintf.](https://github.com/tatetian/mini-snprintf)
+* [nanoprintf (ftoa()).](https://github.com/charlesnicholson/nanoprintf)
 * [utf8.h.](https://github.com/sheredom/utf8.h)
 * [is_utf8.](https://github.com/JulienPalard/is_utf8)
 * [Libtree: ldd into a tree.](https://github.com/haampie/libtree)

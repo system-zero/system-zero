@@ -12,7 +12,7 @@
      https://en.wikipedia.org/wiki/Virtual_memory
 
    The allocators that are using the sbrk() system to claim memory to
-   userspace, have the advantage that the layout of the reseved memory
+   userspace, have the advantage that the layout of the reserved memory
    is contiguous and so provide flexibility and simplicity.
 
    Their main disadvantage however, is that the released memory doesn't

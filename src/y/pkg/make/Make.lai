@@ -416,9 +416,6 @@ var string[0] MAKE_INSTALLED
     append "-Wall"                                   in this.cflags
     append "-Wno-override-init"                      in this.cflags
 
-    if this.cc is "clang" then
-      append "-Wno-unused-command-line-argument"     in this.cflags
-
     if this.cc is "gcc" {
       append "-Wimplicit-fallthrough"                in this.cflags
       append "-Wrestrict"                            in this.cflags
@@ -438,6 +435,12 @@ var string[0] MAKE_INSTALLED
       append "-Wuninitialized"                       in this.cflags
       append "-Wmissing-declarations"                in this.cflags
       append "-Werror-implicit-function-declaration" in this.cflags
+    }
+
+    if this.cc is "clang" {
+      append "-Wno-unused-command-line-argument"     in this.cflags
+      append "-Wno-initializer-overrides"            in this.cflags
+      append "-Wno-c2x-extensions"                   in this.cflags
     }
   }
 

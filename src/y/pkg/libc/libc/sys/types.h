@@ -3,7 +3,7 @@ typedef uint16_t    mode_t;
 typedef uint16_t    nlink_t;
 typedef uint16_t    uid_t;
 
-typedef int32_t     pid_t;
+//typedef int32_t     pid_t;
 
 typedef uint32_t    uid32_t;
 typedef uint32_t    gid32_t;

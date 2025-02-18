@@ -6,9 +6,10 @@ import ("file")
 import ("time")
 include ("argparse")
 
-var argparse = New Argparse (2, 0, "TestLibc [arg, ...]")
+var argparse = New Argparse (3, 0, "TestLibc [arg, ...]")
 argparse.add ("cc",  0, "cc=",  "set cc (default gcc)", StringType, ARG_VALUE_REQUIRED; defval : "gcc")
 argparse.add ("std", 0, "std=", "set standard c version (default c11)", StringType, ARG_VALUE_REQUIRED; defval : "c11")
+argparse.add ("unit", 0, "unit=", "run only this unit", StringType, ARG_VALUE_REQUIRED);
 
 if notok is argparse.process (__argv, 0) then exit (1)
 
@@ -59,9 +60,6 @@ var compilation_opts = {
 append "-Wall"                                 in compilation_opts.argv
 append "-Wno-override-init"                    in compilation_opts.argv
 
-if CC is "clang" then
-  append "-Wno-unused-command-line-argument"   in compilation_opts.argv
-
 if CC is "gcc" {
   append "-Wimplicit-fallthrough"              in compilation_opts.argv
   append "-Wrestrict"                          in compilation_opts.argv
@@ -80,6 +78,13 @@ append "-Wwrite-strings"                       in compilation_opts.argv
 append "-Wuninitialized"                       in compilation_opts.argv
 append "-Wmissing-declarations"                in compilation_opts.argv
 append "-Werror-implicit-function-declaration" in compilation_opts.argv
+
+if CC is "clang" {
+  append "-Wno-unused-command-line-argument"   in compilation_opts.argv
+  append "-Wno-initializer-overrides"          in compilation_opts.argv
+  append "-Wno-c2x-extensions"                 in compilation_opts.argv
+}
+
 append "-o"                                    in compilation_opts.argv
 append ""                                      in compilation_opts.argv
 
@@ -151,11 +156,17 @@ var index = 0
 var total = 0
 var ntests = tests: len ()
 
+var test_unit = argparse.results.unit
+
 for ntests times {
   var s = tests.$(index: to_string (10))
   index++
   var cfile = s.unit
   var bname = cfile: path_basename_sans_extname ()
+
+  ifnot null is test_unit
+    continue ifnot bname: eq (test_unit);
+
   var output = buildDir: path_concat (bname)
 
   compilation_opts.argv[1] = cfile

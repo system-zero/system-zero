@@ -18,7 +18,6 @@
 // requires: sys/process.h
 // requires: sys/ev.c
 
-// requires: stdio/stdio.c
 #define PIPE_READ_END  0
 #define PIPE_WRITE_END 1
 
@@ -376,11 +375,11 @@ int main (int argc, char **argv) {
   if (1 == argc) return 1;
 
   int total = str_to_int (argv[1]);
-  int num_tests = 0;
   int failed = 0;
 
-  num_tests++;  total++;
+  total++;
   if (first_test (total) == -1) failed++;
+  total++;
   if (second_test (total) == -1) failed++;
 
   return failed;

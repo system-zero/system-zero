@@ -12,8 +12,10 @@
 // requires: string/mem_set.c
 // requires: convert/decimal.h
 
-static void decimal_prepend (decimal_t *dec, char c) {
+static inline int decimal_prepend (decimal_t *dec, char c) {
+  if (dec->size == DECIMAL_NUM_DIGITS) return -1;
   dec->digits[DECIMAL_NUM_DIGITS - (++dec->size)] = c;
+  return 0;
 }
 
 inline char *get_decimal_string (decimal_t *dec) {

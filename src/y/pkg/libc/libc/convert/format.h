@@ -9,6 +9,7 @@ typedef enum {
   DT_INT_64,
   DT_UINT_32,
   DT_UINT_64,
+  DT_FLOAT,
   DT_BYTE,
   DT_BINARY,
   DT_OCTAL,

@@ -550,6 +550,7 @@ theerror:
 #define REQUIRE_UNLINK
 #define REQUIRE_FD
 #define REQUIRE_ATOI
+#define REQUIRE_FORMAT
 
 #include <libc.h>
 
@@ -630,10 +631,9 @@ int main (int argc, char **argv) {
   if (1 == argc) return 1;
 
   int total = str_to_int (argv[1]);
-  int num_tests = 0;
   int failed = 0;
 
-  num_tests++;  total++;
+  total++;
   if (first_test (total) == -1) failed++;
 
   return failed;

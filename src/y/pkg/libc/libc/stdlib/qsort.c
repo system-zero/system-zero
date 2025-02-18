@@ -45,8 +45,9 @@
   } while (--i > 0);                      \
 }
 
-#define SWAPINIT(a, es) swaptype = ((char *)a - (char *)0) % sizeof(long) || \
-  es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
+#define SWAPINIT(a, es) swaptype = \
+  (uintptr_t) a % sizeof (long) || \
+  es % sizeof (long) ? 2 : es == sizeof (long) ? 0 : 1;
 
 static inline void swapfunc(char *a, char *b, int n, int swaptype) {
   if (swaptype <= 1)

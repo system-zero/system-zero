@@ -123,6 +123,7 @@ typedef unsigned char      uint8_t;
 typedef unsigned short int uint16_t;
 typedef unsigned int       uint32_t;
 
+typedef signed char        int_fast8_t;
 typedef unsigned char      uint_fast8_t;
 
 #if __WORDSIZE == 64
@@ -189,8 +190,3 @@ typedef signed int utf8;
 #define PRIuPTR "u"
 
 #endif
-
-typedef uint8_t BYTE;
-typedef uint16_t WORD;
-typedef uint32_t DWORD;
-typedef uint64_t QWORD;

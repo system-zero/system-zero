@@ -1,8 +1,8 @@
-// provides: void *mem_alloc (uint)
-// provides: void *mem_calloc (uint)
-// provides: void *mem_realloc (void *, uint)
+// provides: void *mem_alloc (size_t)
+// provides: void *mem_calloc (size_t)
+// provides: void *mem_realloc (void *, size_t)
 // provides: int mem_release (void **)
-// provides: int mem_init (uint)
+// provides: int mem_init (size_t)
 // provides: int mem_deinit (void)
 // provides: uint mem_get_actual_size (void *)
 // provides: void mem_mark_unused (void *)
@@ -34,8 +34,8 @@
    uses extented calculations).
 */
 
-static void *__mem_alloc__ (uint);
-static void *__init_alloc__ (uint);
+static void *__mem_alloc__ (size_t);
+static void *__init_alloc__ (size_t);
 
 MemAlloc Malloc = __init_alloc__;
 
@@ -61,6 +61,19 @@ static void *EndBreakPoint = NULL;
 
 static MemChunk *MemHead = NULL;
 static MemChunk *FirstFreeChunk = NULL;
+
+#define MEMMAXSIZE (((1UL << 31) - MEM_HEADER_SIZE) - MEM_ALIGN_SIZE)
+
+static inline int mem_safe_size (size_t size) {
+  return MEMMAXSIZE >= size;
+}
+
+static inline int mem_noop_size (size_t size) {
+  (void) size;
+  return 0;
+}
+
+int (*MemIsSizeOk) (size_t) = mem_safe_size;
 
 static inline uint mem_diff (void *end, void *beg) {
   return (char *) end - (char *) beg;
@@ -320,7 +333,10 @@ static MemChunk *mem_increase (uint size, uint split_at) {
   return mem;
 }
 
-void *__mem_alloc__ (uint size) {
+void *__mem_alloc__ (size_t size) {
+  if (0 == MemIsSizeOk (size))
+    return NULL;
+
   uint sz = mem_align (size + MEM_HEADER_SIZE);
 
   #ifdef MEM_DEBUG
@@ -358,11 +374,11 @@ void *__mem_alloc__ (uint size) {
   return mem_get_ptr_from_chunk (mem);
 }
 
-void *mem_alloc (uint size) {
+void *mem_alloc (size_t size) {
   return Malloc (size);
 }
 
-void *mem_calloc (uint size) {
+void *mem_calloc (size_t size) {
   void *ptr = Malloc (size);
 
   if (NULL == ptr) return NULL;
@@ -370,7 +386,7 @@ void *mem_calloc (uint size) {
   return mem_zero (ptr, mem_get_actual_size (ptr));
 }
 
-void *mem_realloc (void *ptr, uint size) {
+void *mem_realloc (void *ptr, size_t size) {
   if (ptr == NULL)
     return Malloc (size);
 
@@ -460,7 +476,7 @@ int mem_release (void **ptr) {
   return 0;
 }
 
-static void *__init_alloc__ (uint size) {
+static void *__init_alloc__ (size_t size) {
   if (-1 == mem_init (size))
     return NULL;
 
@@ -468,11 +484,14 @@ static void *__init_alloc__ (uint size) {
   return Malloc (size);
 }
 
-int mem_init (uint size) {
+int mem_init (size_t size) {
   if (BegBreakPoint != NULL)
     return 0;
 
   BegBreakPoint = mem_get_current_breakpoint ();
+
+  if (0 == MemIsSizeOk (size))
+    return -1;
 
                             /* beg header plus the end header */
   uint sz = mem_align (size + (MEM_HEADER_SIZE * 2));

@@ -33,7 +33,7 @@ void *mem_copy (void *dst0, const void *src0, size_t length) {
   if (length == 0 || dst == src)
     goto done;
 
-  if ((unsigned long)dst < (unsigned long)src) {
+  if ((unsigned long) dst < (unsigned long) src) {
     /* Copy forward */
     t = (uintptr_t) src;  /* only need low bits */
     if ((t | (uintptr_t) dst) & wmask) {

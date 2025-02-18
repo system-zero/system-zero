@@ -3,6 +3,7 @@
 // provides: int vformat (FormatType *, va_list)
 // requires: string/bytelen.c
 // requires: unistd/write.c
+// requires: convert/float_to_string.c
 // requires: convert/decimal_to_string.c
 // requires: convert/format.h
 
@@ -142,6 +143,10 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
       directive->type = DT_HEX;
       return ++directive->size;
 
+    case 'f':
+      directive->type = DT_FLOAT;
+      return ++directive->size;
+
     case '.':
       directive->size++;
       c = *this->fmtPtr++;
@@ -152,7 +157,7 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
 
           for (;;) {
             c = *this->fmtPtr++;
-            if (c == 's') {
+            if (c == 's' || c == 'f') {
               directive->precision = d;
               goto again;
             }
@@ -251,7 +256,7 @@ int vformat (FormatType *this, va_list args) {
         break;
 
       case DT_STRING:
-        str = (char*) va_arg(args, const char *);
+        str = (char *) va_arg(args, const char *);
         if (str == NULL)
           str = (char *) NULL_STRING;
 
@@ -310,6 +315,40 @@ int vformat (FormatType *this, va_list args) {
         uint64_t u = va_arg(args, uint64_t);
         str = uint64_to_string (&dec, u);
         len = dec.size;
+        break;
+      }
+
+      case DT_FLOAT: {
+        double d = va_arg(args, double);
+
+        if (directive.is_alternate)
+          if (directive.precision == 0)
+              directive.precision = 6;
+
+        if (directive.precision > 16)
+            directive.precision = 16;
+
+        int is_neg = d < 0.;
+
+        char *buf = dec.digits + is_neg;
+        int n = float_to_string (buf, DECIMAL_NUM_DIGITS - is_neg, d, directive.precision);
+
+        int i = 0;
+        int j = n - 1;
+
+        while (i < j) {
+          char cc = buf[i];
+          buf[i++] = buf[j];
+          buf[j--] = cc;
+        }
+
+        buf -= is_neg;
+        if (is_neg)
+          *buf = '-';
+
+        str = buf;
+        len = n + is_neg;
+
         break;
       }
 
@@ -421,7 +460,7 @@ int format_to_fd (int fd, const char *fmt, ...) {
 }
 
 /* test {
-// num-tests: 5
+// num-tests: 6
 #define REQUIRE_FORMAT
 #define REQUIRE_STR_EQ
 #define REQUIRE_BYTELEN
@@ -440,7 +479,8 @@ static int first_test (int total) {
 
   char a[1024];
   int n = format_to_string (a, 1024, "%s, %o %x %c %b %%\n", __func__,
-      1234, 1234, 97, 2048);
+      1234, 1234, 97, (uint64_t) 2048);
+                   /* this cast is for clang */
 
   int eq = (n == (int) len);
 
@@ -564,22 +604,123 @@ theend:
   return eq == 1 ? 0 : -1;
 }
 
+static int sixth_test (int total) {
+  tostdout ("[%d] testing " FUNNAME " %s - ", total, __func__);
+
+  const char *expected = "-123.456789100";
+  size_t len = bytelen (expected);
+
+  char a[1024];
+  int n = format_to_string (a, 1024, "%.9f", -123.4567891);
+
+  int eq = (n == (int) len);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n", len, n);
+    goto theend;
+  }
+
+  eq = str_eq (a, expected);
+
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  const char *expectedInfN = "-INF";
+  len = bytelen (expectedInfN);
+
+  n = format_to_string (a, 1024, "%f", -INFINITY);
+
+  eq = (n == (int) len);
+
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  eq = str_eq (a, expectedInfN);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  const char *expectedInf = "INF";
+  len = bytelen (expectedInf);
+
+  n = format_to_string (a, 1024, "%f", +INFINITY);
+
+  eq = (n == (int) len);
+
+  if (0 == eq) {
+    tostderr ("\e[31m[SNOTOK]\e[m\n");
+    goto theend;
+  }
+
+  eq = str_eq (a, expectedInf);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  const char *expectedNan = "NAN";
+  len = bytelen (expectedNan);
+
+  n = format_to_string (a, 1024, "%f", NAN);
+
+  eq = (n == (int) len);
+
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  eq = str_eq (a, expectedNan);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  const char *expectedA = "0.9688";
+  len = bytelen (expectedA);
+
+  n = format_to_string (a, 1024, "%.4f",  0.96875);
+
+  eq = (n == (int) len);
+
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  eq = str_eq (a, expectedA);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m\n");
+    goto theend;
+  }
+
+  tostdout ("\e[32m[OK]\e[m\n");
+
+theend:
+  return eq == 1 ? 0 : -1;
+}
+
 int main (int argc, char **argv) {
   if (1 == argc) return 1;
   int total = str_to_int (argv[1]);
-  int num_tests = 0;
   int failed = 0;
 
-  num_tests++;  total++;
+  total++;
   if (first_test (total) == -1) failed++;
-  num_tests++;  total++;
+  total++;
   if (second_test (total) == -1) failed++;
-  num_tests++;  total++;
+  total++;
   if (third_test (total) == -1) failed++;
-  num_tests++;  total++;
+  total++;
   if (fourth_test (total) == -1) failed++;
-  num_tests++;  total++;
+  total++;
   if (fifth_test (total) == -1) failed++;
+  total++;
+  if (sixth_test (total) == -1) failed++;
 
   return failed;
 }
