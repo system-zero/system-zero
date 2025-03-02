@@ -55,7 +55,6 @@ int ev_watch (Ev *ev, int timeout) {
   int retval = 0;
 
   for (;;) {
-  next:
     event = NULL;
 
     int nfds = sys_epoll_wait (ev->epfd, events, ev->num_events, timeout, sigmask);
@@ -64,7 +63,7 @@ int ev_watch (Ev *ev, int timeout) {
       break;
 
     if (-1 == nfds) {
-      tostderr ("%s\n", errno_string (sys_errno));
+      tostderr ("%m\n");
       retval = -1;
       break;
     }
@@ -83,18 +82,18 @@ int ev_watch (Ev *ev, int timeout) {
       if (events[i].events & EPOLLIN) {
         EventFun fun = event->fun[READ_EVENT];
         fun (event); // handle retval
-        goto next;
+        continue;
      }
 
       if (events[i].events & EPOLLOUT) {
         EventFun fun = event->fun[WRITE_EVENT];
         fun (event); // handle retval
-        goto next;
+        continue;
       }
 
       if (events[i].events & EPOLLHUP) {
         ev_remove_event (ev, events[i].data.fd);
-        goto theend;
+        continue;
       }
 
       tostderr ("unexpected event %d\n", events[i].events);

@@ -12,11 +12,11 @@ MODULE(system);
 #endif
 
 static VALUE system_sleep (la_t *this, VALUE v_sec) {
-  ifnot (IS_INT(v_sec)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
+  if (0 == IS_INT(v_sec)) THROW(LA_ERR_TYPE_MISMATCH, "awaiting an integer");
   int sec = AS_INT(v_sec);
 
   if (sec < 0) return NOTOK_VALUE;
-  ifnot (sec)  return OK_VALUE;
+  if (0 == sec)  return OK_VALUE;
 
   int r = sys_sleep (sec);
   return INT(r);

@@ -2,38 +2,69 @@
 // provides: int format_to_fd (int, const char *, ...)
 // provides: int vformat (FormatType *, va_list)
 // requires: string/bytelen.c
+// requires: utf8/utf8_character.c
+// requires: utf8/utf8_string_after_nth_char.c
 // requires: unistd/write.c
 // requires: convert/float_to_string.c
 // requires: convert/decimal_to_string.c
 // requires: convert/format.h
 
-/* a minimal format function
-   initially based on: https://github.com/tatetian/mini-snprintf
-   added support for the following specifiers:
-     'c', 'b', 'x', 'o', 'p'
+/* a minimal format function initially based on:
+   https://github.com/tatetian/mini-snprintf
 
-   added support for '#' alternate form which for 'b' prepends '0b',
-   for 'o' prepends '0' and for 'x' prepends '0x'. A 'p' directive
-   is always in this form.
+   This project has no license attached, and when I asked the developer, he
+   gently said that is happy that someone found it usefull, and so do I.
+   Many thanks.
+ */
 
-   added support for '%.*s' which for strings means, that the next
-   int argument will be the number of bytes to write from the next
-   char * argument.
+/*
+   Syntax:
+   - %d   int32_t
+   - %ld  int64_t
+   - %u   uint32_t
+   - %lu  uint64_t
+   - %b   uint64_t   in binary
+   - %o   uint64_t   in octal
+   - %x   uint64_t   in hex
+   - %p   pointer    in hex
+   - %f   float
+   - %c   char       single byte in ascii range
+   - %lc  int32_t    either a single byte or a sequence of bytes (utf8)
+   - %s   char *
+   - %ls  char *     with a precision stores upto 'n' characters. This might
+                     be not a standard, but that is what it might makes sense.
+   - %ns             (where 'n' is an int but not zero), to mean that the next
+                     char * argument will be padded with spaces to the left or
+                     to the right side, if is smaller than the given 'n' field
+                     width.
 
-   added support for '%[n (int but not 0)]s' to mean that the next
-   char * argument will be padded with spaces to the left side, if
-   is smaller than the given 'n' field width.
+   - %*s             likewise. Except that the field width value is taken by
+                     the next int argument.
+   - %m              errno_string/strerror (errno). Doesn't get any argument.
+   - %#m             alternate form: errno_name/strerrorname_np (errno). It
+                     doesn't get any argument.
+   - %.n[s|f]        to mean that if the next char * argument or the result of
+                     a float operation, is bigger than 'n' bytes specifier, at
+                     most 'n' bytes will be written.
+   - %.*s[s|f]       Likewise. Except that the precision value is taken by  the
+                     next int argument.
+  - %-n[specifier]   Left justification (default is right justificatiom).
+   - %%              literal '%'.
 
-   added support for '%.[n (int)]s' to mean that if the next char *
-   argument is bigger than the 'n' specifier, at most 'n' bytes will
-   be written.
+   Alternate form:
+   For '%#b'prepends '0b', for '%#o' prepends '0' and for '%#x' prepends '0x'.
+   A '%p' directive  is always in this form.
+   For '%#m' it uses the [sys_]errno symbolic name.
 
-   also, this implementation sends its byte to an output function.
+   Also, this implementation sends its byte to an output function.
    The default function writes the byte to its buffer argument.
 
-   A function that outputs to a file descriptor it is also included
-   in the interface, thus it can be used to output to streams.
+   A function that outputs to a file descriptor it is also included in the
+   interface, thus it can be used to output to std[out|err] file descriptor.
 */
+
+#define RIGHT_JUST  1
+#define LEFT_JUST   2
 
 static int format_output_byte (FormatType *this, int c) {
   if (c == '\0') {
@@ -47,12 +78,14 @@ static int format_output_byte (FormatType *this, int c) {
   }
 
   this->bytes[this->num_bytes++] = c;
-  return 0;
+  return 1;
 }
 
 static int next_directive (FormatType *this, DirectiveType *directive) {
   directive->size = directive->is_alternate =
-  directive->width = directive->precision = 0;
+  directive->width = directive->precision =
+  directive->numchars = 0;
+  directive->just = RIGHT_JUST;
 
   if (*this->fmtPtr == '\0') {
     directive->type = DT_EOF;
@@ -74,10 +107,19 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
   }
 
   this->fmtPtr++;
+
+  if (*this->fmtPtr == '%') {
+    this->fmtPtr++;
+    directive->type = DT_ESCAPED;
+    return ++directive->size;
+  }
+
+  int awaitingspec = 0;
+
   int c;
 
   next:
-    c = *this->fmtPtr++;
+  c = *this->fmtPtr++;
 
   again:
   switch (c) {
@@ -86,29 +128,51 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
       return -1;
 
     case '#':
-      directive->size++;
+      if (awaitingspec) {
+        this->error = FMT_UNEXPECTED_DIRECTIVE;
+        return -1;
+      }
+      awaitingspec = 1;
+
       directive->is_alternate = 1;
       goto next;
 
-    case '%':
-      directive->type = DT_ESCAPED;
-      return ++directive->size;
+    case '-':
+      if (awaitingspec) {
+        this->error = FMT_UNEXPECTED_DIRECTIVE;
+        return -1;
+      }
+      awaitingspec = 1;
+
+      directive->just = LEFT_JUST;
+      goto next;
 
     case 's':
       directive->type = DT_STRING;
-      return ++directive->size;
+      return 0;
 
     case 'l':
-      directive->size++;
-
       switch (*this->fmtPtr++) {
         case 'd':
           directive->type = DT_INT_64;
-          return ++directive->size;
+          return 0;
 
         case 'u':
           directive->type = DT_UINT_64;
-          return ++directive->size;
+          return 0;
+
+        case 's':
+          if (directive->precision == 0 && directive->width == 0) {
+            directive->type = DT_STRING;
+            return 0;
+          }
+
+          directive->type = DT_U8STRING;
+          return 0;
+
+        case 'c':
+          directive->type = DT_U8CHAR;
+          return 0;
 
         default:
           this->error = FMT_UNHANDLED_SPECIFIER;
@@ -117,38 +181,47 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
 
     case 'd':
       directive->type = DT_INT_32;
-      return ++directive->size;
+      return 0;
 
     case 'u':
       directive->type = DT_UINT_32;
-      return ++directive->size;
+      return 0;
 
     case 'p':
       directive->type = DT_PTR;
-      return ++directive->size;
+      return 0;
 
     case 'c':
-      directive->type = DT_BYTE;
-      return ++directive->size;
+      directive->type = DT_CHAR;
+      return 0;
 
     case 'b':
       directive->type = DT_BINARY;
-      return ++directive->size;
+      return 0;
 
     case 'o':
       directive->type = DT_OCTAL;
-      return ++directive->size;
+      return 0;
 
     case 'x':
       directive->type = DT_HEX;
-      return ++directive->size;
+      return 0;
 
     case 'f':
       directive->type = DT_FLOAT;
-      return ++directive->size;
+      return 0;
+
+    case 'm':
+      directive->type = DT_ERRNO;
+      return 0;
 
     case '.':
-      directive->size++;
+      if (awaitingspec > 1) {
+        this->error = FMT_UNEXPECTED_DIRECTIVE;
+        return -1;
+      }
+      awaitingspec = 2;
+
       c = *this->fmtPtr++;
 
       switch (c) {
@@ -157,7 +230,7 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
 
           for (;;) {
             c = *this->fmtPtr++;
-            if (c == 's' || c == 'f') {
+            if (c == 's' || (c == 'l' && *this->fmtPtr == 's') || c == 'f') {
               directive->precision = d;
               goto again;
             }
@@ -173,14 +246,10 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
         }
 
         case '*':
-          directive->size++;
           switch (*this->fmtPtr++) {
             case 's':
               directive->type = DT_NSTRING;
-              return ++directive->size;
-
-            default:
-              break;
+              return 0;
           }
 
           __attribute__((fallthrough));
@@ -191,28 +260,76 @@ static int next_directive (FormatType *this, DirectiveType *directive) {
       }
       break;
 
+    case '*':
+      if (awaitingspec > 1) {
+        this->error = FMT_UNEXPECTED_DIRECTIVE;
+        return -1;
+      }
+      awaitingspec = 2;
+
+      switch (*this->fmtPtr++) {
+        case 's':
+          directive->type = DT_FSTRING;
+          return 0;
+
+        case 'l':
+          if (*this->fmtPtr++ == 's') {
+            directive->type = DT_U8FSTRING;
+            return 0;
+          }
+
+        __attribute__((fallthrough));
+
+        default:
+          this->error = FMT_UNHANDLED_SPECIFIER;
+          return -1;
+      }
+
     case '1' ... '9': {
+      if (awaitingspec > 1) {
+        this->error = FMT_UNEXPECTED_DIRECTIVE;
+        return -1;
+      }
+      awaitingspec = 2;
+
       int d = c - '0';
 
       for (;;) {
         c = *this->fmtPtr++;
-        if (c == 's') {
-          directive->width = d;
-          goto again;
-        }
+        switch (c) {
+          case 's':
+            directive->width = d;
+            directive->type = DT_STRING;
+            return 0;
 
-        if ('0' <= c && c <= '9') {
-          d = (10 * d) + (c - '0');
-          continue;
-        }
+          case 'l':
+            if (*this->fmtPtr++ == 's') {
+              directive->width = d;
+              directive->type = DT_U8STRING;
+              return 0;
+            }
 
-        break;
+            directive->type = DT_UNEXPECTED;
+            this->error = FMT_UNEXPECTED_DIRECTIVE;
+            return -1;
+
+          case '0'...'9':
+            d = (10 * d) + (c - '0');
+            continue;
+
+          default:
+            directive->type = DT_UNEXPECTED;
+            this->error = FMT_UNEXPECTED_DIRECTIVE;
+            return -1;
+        }
       }
+
     }
     __attribute__((fallthrough));
 
     default:
       directive->type = DT_UNEXPECTED;
+      this->error = FMT_UNEXPECTED_DIRECTIVE;
       return -1;
   }
 
@@ -230,7 +347,7 @@ int vformat (FormatType *this, va_list args) {
     return 0;
   }
 
-  char bytebuf[1];
+  char bytebuf[8];
   char *str;
   size_t len;
 
@@ -255,6 +372,10 @@ int vformat (FormatType *this, va_list args) {
         len = directive.size;
         break;
 
+      case DT_NSTRING:
+        directive.precision = va_arg(args, int);
+        __attribute__((fallthrough));
+
       case DT_STRING:
         str = (char *) va_arg(args, const char *);
         if (str == NULL)
@@ -262,26 +383,38 @@ int vformat (FormatType *this, va_list args) {
 
         len = bytelen (str);
 
-        if (directive.width > 0 && len < directive.width)
-          for (size_t j = 0; j < directive.width - len; j++)
-            this->outputByte (this, ' ');
-
-        /* donot write more than len. Probably the standard disagrees,
-           but we have to be sure that, if len < directive.precision
-           then str should include '\0' (null byte), but how we should
-           know that? Anyway i would never ask such a thing in my code */
         if (directive.precision > 0 && len > directive.precision)
           len = directive.precision;
 
         break;
 
-      case DT_NSTRING:
-        len = va_arg(args, int);
+      case DT_FSTRING:
+        directive.width = va_arg(args, int);
 
         str = (char*) va_arg(args, const char *);
         if (str == NULL)
           str = (char *) NULL_STRING;
 
+        len = bytelen (str);
+        break;
+
+      case DT_U8FSTRING:
+        directive.width = va_arg(args, int);
+        __attribute__((fallthrough));
+
+      case DT_U8STRING:
+        str = (char *) va_arg(args, const char *);
+        if (str == NULL)
+          str = (char *) NULL_STRING;
+
+        len = bytelen (str);
+
+        if ((directive.precision > 0 && len < directive.precision) ||
+             directive.precision == 0)
+          directive.precision = len;
+
+        char *sp = utf8_string_after_nth_char (str, directive.precision, &directive.numchars);
+        len = sp - str;
         break;
 
       case DT_ESCAPED:
@@ -390,10 +523,16 @@ int vformat (FormatType *this, va_list args) {
         break;
       }
 
-      case DT_BYTE:
+      case DT_CHAR:
         *bytebuf = va_arg(args, int);
         str = bytebuf;
         len = 1;
+        break;
+
+      case DT_U8CHAR:
+        utf8 u =va_arg(args, int);
+        len = utf8_character (u, bytebuf, 8);
+        str = bytebuf;
         break;
 
       case DT_PTR: {
@@ -408,15 +547,50 @@ int vformat (FormatType *this, va_list args) {
         break;
       }
 
+      case DT_ERRNO:
+        if (directive.is_alternate)
+          str = errno_name (sys_errno);
+        else
+          str = errno_string (sys_errno);
+        len = bytelen (str);
+        break;
+
+      case FMT_UNHANDLED_SPECIFIER:
+      case DT_UNEXPECTED:
       default:
+        this->outputByte (this, '\0');
         this->error = FMT_UNEXPECTED_DIRECTIVE;
         return -1;
     }
 
-    for (size_t i = 0; i < len; i++) {
-      if (-1 == this->outputByte (this, *str++)) {
-        this->outputByte (this, '\0');
+    if (directive.just == RIGHT_JUST && directive.width > 0 && len < directive.width) {
+      if (directive.type == DT_U8STRING ||
+          directive.type == DT_U8FSTRING) {
+        if (directive.numchars < (int) directive.width)
+          for (uint j = 0; j < directive.width - directive.numchars; j++)
+            if (-1 == this->outputByte (this, ' '))
+              return -1;
+      } else {
+        for (uint j = 0; j < directive.width - len; j++)
+          if (-1 == this->outputByte (this, ' '))
+            return -1;
+      }
+    }
+
+    for (uint i = 0; i < len && *str; i++)
+      if (-1 == this->outputByte (this, *str++))
         return -1;
+
+    if (directive.just == LEFT_JUST && directive.width > 0 && len < directive.width) {
+      if (directive.type == DT_U8STRING) {
+        if (directive.numchars < (int) directive.width)
+          for (uint j = 0; j < directive.width - directive.numchars; j++)
+            if (-1 == this->outputByte (this, ' '))
+              return -1;
+      } else {
+        for (uint j = 0; j < directive.width - len; j++)
+          if (-1 == this->outputByte (this, ' '))
+            return -1;
       }
     }
   }
@@ -431,6 +605,8 @@ int format_to_string (char *buf, size_t bufsize, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   int n = vformat (&this, ap);
+  if (n < 0)
+    tostderr ("error %d\n", this.error);
   va_end(ap);
   return n;
 }
@@ -474,12 +650,12 @@ int format_to_fd (int fd, const char *fmt, ...) {
 static int first_test (int total) {
   tostdout ("[%d] testing " FUNNAME " %s - ", total, __func__);
 
-  const char *expected = "first_test, 2322 4d2 a 100000000000 %\n";
+  const char *expected = "first_test, 2322 4d2 a α 100000000000 SUCCESS Success %\n";
   size_t len = bytelen (expected);
 
   char a[1024];
-  int n = format_to_string (a, 1024, "%s, %o %x %c %b %%\n", __func__,
-      1234, 1234, 97, (uint64_t) 2048);
+  int n = format_to_string (a, 1024, "%s, %o %x %c %lc %b %#m %m %%\n", __func__,
+      1234, 1234, 97, 945, (uint64_t) 2048);
                    /* this cast is for clang */
 
   int eq = (n == (int) len);
@@ -503,13 +679,27 @@ theend:
 static int second_test (int total) {
   tostdout ("[%d] testing " FUNNAME " %s - ", total, __func__);
 
-  const char *expected = "second";
+  const char *expected = "second_test";
   size_t len = bytelen (expected);
 
   char a[1024];
-  int n = format_to_string (a, 1024, "%.*s", len, __func__);
+  int n = format_to_string (a, 1024, "%6s", __func__);
 
   int eq = (n == (int) len);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%d' bytes written, got '%d'\n", len, n);
+    goto theend;
+  }
+
+  eq = str_eq (a, expected);
+
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting 'second' got '%s'\n", a);
+    goto theend;
+  }
+
+  n = format_to_string (a, 1024, "%*s", len, __func__);
+  eq = (n == (int) len);
   if (0 == eq) {
     tostderr ("\e[31m[NOTOK]\e[m awaiting '%d' bytes written, got '%d'\n", len, n);
     goto theend;
@@ -543,10 +733,25 @@ static int third_test (int total) {
 
   eq = str_eq (a, expected);
 
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting 'third' got '%s'\n", a);
+    goto theend;
+  }
+
+  n = format_to_string (a, 1024, "%.*s",  len, __func__);
+
+  eq = (n == (int) len);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%d' bytes written, got '%d'\n", len, n);
+    goto theend;
+  }
+
+  eq = str_eq (a, expected);
+
   if (eq)
     tostdout ("\e[32m[OK]\e[m\n");
   else
-    tostderr ("\e[31m[NOTOK]\e[m awaiting 'second' got '%s'\n", a);
+    tostderr ("\e[31m[NOTOK]\e[m awaiting 'third' got '%s'\n", a);
 
 theend:
   return eq == 1 ? 0 : -1;
@@ -569,10 +774,27 @@ static int fourth_test (int total) {
 
   eq = str_eq (a, expected);
 
+  if (0 == eq)
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%s' got '%s'\n", expected, a);
+
+  const char *bexpected = "fourth_test    ";
+  len = bytelen (bexpected);
+
+  char b[1024];
+  n = format_to_string (b, 1024, "%-15s",  __func__);
+
+  eq = (n == (int) len);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%d' bytes written, got '%d'\n", len, n);
+    goto theend;
+  }
+
+  eq = str_eq (b, bexpected);
+
   if (eq)
     tostdout ("\e[32m[OK]\e[m\n");
   else
-    tostderr ("\e[31m[NOTOK]\e[m awaiting 'second' got '%s'\n", a);
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%s' got '%s'\n", expected, a);
 
 theend:
   return eq == 1 ? 0 : -1;
@@ -598,13 +820,67 @@ static int fifth_test (int total) {
   if (eq)
     tostdout ("\e[32m[OK]\e[m\n");
   else
-    tostderr ("\e[31m[NOTOK]\e[m awaiting 'second' got '%s'\n", a);
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%s' got '%s'\n", expected, a);
 
 theend:
   return eq == 1 ? 0 : -1;
 }
 
 static int sixth_test (int total) {
+  tostdout ("[%d] testing " FUNNAME " %s - ", total, __func__);
+  const char *expected = "αabβγδ";
+  size_t len = bytelen (expected);
+
+  char a[1024];
+  int n = format_to_string (a, 1024, "%.6ls", "αabβγδdςspπe");
+
+  int eq = (n == (int) len);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%d' bytes written, got '%d'\n", len, n);
+    goto theend;
+  }
+
+  eq = str_eq (a, expected);
+
+  if (0 == eq)
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%s' got '%s'\n", expected, a);
+
+  expected = "      αabβγδ";
+  len = bytelen (expected);
+
+  n = format_to_string (a, 1024, "%12ls", "αabβγδ");
+
+  eq = (n == (int) len);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%d' bytes written, got '%d'\n", len, n);
+    goto theend;
+  }
+
+  eq = str_eq (a, expected);
+
+  if (0 == eq)
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%s' got '%s'\n", expected, a);
+
+  n = format_to_string (a, 1024, "%*ls", 12, "αabβγδ");
+
+  eq = (n == (int) len);
+  if (0 == eq) {
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%d' bytes written, got '%d'\n", len, n);
+    goto theend;
+  }
+
+  eq = str_eq (a, expected);
+
+  if (0 == eq)
+    tostderr ("\e[31m[NOTOK]\e[m awaiting '%s' got '%s'\n", expected, a);
+  else
+    tostdout ("\e[32m[OK]\e[m\n");
+
+theend:
+  return eq == 1 ? 0 : -1;
+}
+
+static int seventh_test (int total) {
   tostdout ("[%d] testing " FUNNAME " %s - ", total, __func__);
 
   const char *expected = "-123.456789100";
@@ -721,6 +997,8 @@ int main (int argc, char **argv) {
   if (fifth_test (total) == -1) failed++;
   total++;
   if (sixth_test (total) == -1) failed++;
+  total++;
+  if (seventh_test (total) == -1) failed++;
 
   return failed;
 }

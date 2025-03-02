@@ -18,7 +18,7 @@ utf8_char *utf8_encode (utf8_char *chr, const char *bytes, int tabwidth) {
 
   if (c < 0x80) {
     if (chr->code == '\t')
-       chr->width += (tabwidth - 1);
+      chr->width += (tabwidth - 1);
     chr->buf[1] = '\0';
     return chr;
   }

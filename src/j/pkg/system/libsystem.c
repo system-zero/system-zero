@@ -23,7 +23,7 @@ int sys_to_memory (system_t *this) {
 int init_system (system_t *this, SystemOpts_t opts) {
   if (NULL == opts.power_state_file) return -1;
   const char *file = opts.power_state_file;
-  ifnot (file_exists (file)) return -1;
+  if (0 == file_exists (file)) return -1;
   size_t len = bytelen (file);
   if (len + 1 > MAXLEN_PATH) return -1;
   str_copy (this->power_state_file, MAXLEN_PATH, file, len);

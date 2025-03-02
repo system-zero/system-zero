@@ -318,6 +318,7 @@ m.set.libc.source ([
   "libc/utf8/utf8_encode.c",
   "libc/utf8/utf8_get_nth_character.c",
   "libc/utf8/utf8_len.c",
+  "libc/utf8/utf8_string_after_nth_char.c",
   "libc/utf8/utf8_validate.c",
   "libc/utf8/utf8_width.c"])
 

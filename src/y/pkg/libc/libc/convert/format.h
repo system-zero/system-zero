@@ -1,40 +1,49 @@
+#ifndef NULL_STRING
 #define NULL_STRING "(nil)"
+#endif
+
+#define FMT_OUT_OF_SPACE         -2
+#define FMT_UNEXPECTED_EOF       -3
+#define FMT_UNHANDLED_SPECIFIER  -4
+#define FMT_UNEXPECTED_DIRECTIVE -5
 
 typedef enum {
   DT_EOF = -1,
   DT_ORDINARY,
   DT_STRING,
   DT_NSTRING,
+  DT_FSTRING,
+  DT_U8STRING,
+  DT_U8FSTRING,
   DT_INT_32,
   DT_INT_64,
   DT_UINT_32,
   DT_UINT_64,
   DT_FLOAT,
-  DT_BYTE,
+  DT_CHAR,
+  DT_U8CHAR,
   DT_BINARY,
   DT_OCTAL,
   DT_HEX,
   DT_PTR,
+  DT_ERRNO,
   DT_ESCAPED,
   DT_UNEXPECTED
 } Directive;
 
 typedef struct DirectiveType {
   Directive type;
-  int is_alternate;
+  char is_alternate;
+  char just;
   uint width;
   uint precision;
-  size_t size;
+   int numchars;
+  uint size;
 } DirectiveType;
 
 typedef struct FormatType FormatType;
 
 typedef int (*formatOutputByte) (FormatType *, int c);
-
-#define FMT_OUT_OF_SPACE         -2
-#define FMT_UNEXPECTED_EOF       -3
-#define FMT_UNHANDLED_SPECIFIER  -4
-#define FMT_UNEXPECTED_DIRECTIVE -5
 
 struct FormatType {
   char *bytes;

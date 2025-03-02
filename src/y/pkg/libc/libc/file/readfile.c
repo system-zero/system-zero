@@ -28,7 +28,7 @@ int readfile_u (readfile_t *my) {
       buf = my->bytes + my->num_bytes;
     }
 
-    n = sys_read (fd, buf, RF_CHUNKSZ);
+    n = fd_read (fd, buf, RF_CHUNKSZ);
     if (n <= 0)
       break;
 

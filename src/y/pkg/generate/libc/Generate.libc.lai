@@ -64,7 +64,8 @@ include ("argparse")
   test_end_str   = "} */"
 
   var me = __file__: basename ()
-  var argparse = New Argparse (7, 0, me)
+  var argparse = New Argparse (8, 0, me)
+  argparse.add ("unitDir", 0, "unitDir=", "extra directory to search for units (can be repeated)", ListType, ARG_VALUE_REQUIRED|ARG_VALUE_APPEND)
   argparse.add ("outputName",  0,  "outputName=",  "set output file name (default " + LIBCOUTNAME + ")",  StringType, ARG_VALUE_REQUIRED)
   argparse.add ("outputDir", 0, "outputDir=", "set output directory name (default " + LIBCOUTDIR + ")", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers", BooleanType, 0)
@@ -136,6 +137,10 @@ include ("argparse")
   }
 
   var verbose = argparse.results.verbose
+
+  if argparse.results.unitDir: typeof () is ListType then
+    for v in argparse.results.unitDir
+      append v in libcdirs
 
   var outputName = if null is argparse.results.outputName then LIBCOUTNAME orelse argparse.results.outputName
   var outputDir  = if null is argparse.results.outputDir then LIBCOUTDIR orelse argparse.results.outputDir
