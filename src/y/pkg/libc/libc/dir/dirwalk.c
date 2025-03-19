@@ -1,6 +1,7 @@
 // provides: void dirwalk_release (dirwalk_t **)
 // provides: dirwalk_t *dirwalk_new (DirProcessDir_cb, DirProcessFile_cb, DirStatFile_cb)
 // provides: int dirwalk_run (dirwalk_t *, const char *)
+// provides: int dirwalk_add_entry (dirwalk_t *, const char *, size_t, int)
 // requires: convert/format.c
 // requires: sys/stat.c
 // requires: stdlib/alloc.c
@@ -37,9 +38,9 @@ void dirwalk_release (dirwalk_t **thisp) {
   *thisp = NULL;
 }
 
-static int __dirwalk_add_entry (dirwalk_t *this, const char *o, size_t len, int type) {
+int dirwalk_add_entry (dirwalk_t *this, const char *o, size_t len, int type) {
   if (this->num_entries == this->mem_entries) {
-      this->mem_entries *= 2;
+      this->mem_entries = (NULL == this->entries) ? 8 : this->mem_entries * 2;
       this->entries = Realloc (this->entries, sizeof (string) * this->mem_entries);
       this->types = Realloc (this->types, sizeof (int) * this->mem_entries);
   }
@@ -47,23 +48,22 @@ static int __dirwalk_add_entry (dirwalk_t *this, const char *o, size_t len, int 
   this->entries[this->num_entries] = string_new_with_len (o, len);
   this->types  [this->num_entries++] = type;
 
-  return 1;
+  return DIRWALK_PROCESS;
 }
 
-static int dirwalk_process_dir_def (dirwalk_t *this, const char *dir, size_t len, struct stat *st, int type) {
-  (void) st;
-  return __dirwalk_add_entry (this, dir, len, type);
+static int dirwalk_process_dir_def (dirwalk_t *this, const char *dir, size_t len, int type) {
+  return dirwalk_add_entry (this, dir, len, type);
 }
 
-static int dirwalk_process_file_def (dirwalk_t *this, const char *file, size_t len, struct stat *st, int type) {
-  (void) st;
-  return __dirwalk_add_entry (this, file, len, type);
+static int dirwalk_process_file_def (dirwalk_t *this, const char *file, size_t len, int type) {
+  return dirwalk_add_entry (this, file, len, type);
 }
 
 static int dirwalk_on_error_def (dirwalk_t *this, const char *msg, const char *obj, int err) {
   (void) this;
-  format_to_string (this->error_msg, DIRWALK_MAXLEN_ERROR_MSG, "dirwalk error: %s: %s %s\n", obj, msg, errno_string (err));
-  return -1;
+  format_to_string (this->error_msg, DIRWALK_MAXLEN_ERROR_MSG,
+      "dirwalk error: %s: %s %s\n", obj, msg, errno_string (err));
+  return DIRWALK_ERROR;
 }
 
 dirwalk_t *dirwalk_new (DirProcessDir_cb process_dir, DirProcessFile_cb process_file, DirStatFile_cb stat_file) {
@@ -85,22 +85,17 @@ dirwalk_t *dirwalk_new (DirProcessDir_cb process_dir, DirProcessFile_cb process_
 }
 
 static int __dirwalk_run__ (dirwalk_t *this, const char *dir, size_t dirlen) {
-  if (-1 == this->status)
+  if (DIRWALK_ERROR == this->status || DIRWALK_STOP == this->status)
     return this->status;
 
   struct stat st;
-  if (0 != (this->status = this->stat_file (dir, &st))) {
-    if (-1 == this->on_error (this, "stat()", dir, sys_errno))
-      return this->status;
-  }
+  if (0 != (this->status = this->stat_file (dir, &st)))
+    return this->on_error (this, "stat()", dir, sys_errno);
 
   if (0 == S_ISDIR (st.st_mode)) {
-    this->status = -1;
+    this->status = DIRWALK_ERROR;
     sys_errno = EINVAL;
-    if (-1 == this->on_error (this, "not a directory", dir, sys_errno))
-      return this->status;
- //   this->status = this->process_file (this, dir, dirlen, &st, ?type);
-    return this->status;
+    return this->on_error (this, "not a directory", dir, sys_errno);
   }
 
   int depth = 0;
@@ -120,10 +115,8 @@ static int __dirwalk_run__ (dirwalk_t *this, const char *dir, size_t dirlen) {
     return 0;
 
   DIR *dh = NULL;
-  if (NULL == (dh = sys_opendir (dir))) {
-    if (-1 == this->on_error (this, "opendir()", dir, sys_errno))
-      return -1;
-  }
+  if (NULL == (dh = sys_opendir (dir)))
+    return this->on_error (this, "opendir()", dir, sys_errno);
 
   struct dirent *dp;
 
@@ -131,10 +124,11 @@ static int __dirwalk_run__ (dirwalk_t *this, const char *dir, size_t dirlen) {
 
   while (1) {
     sys_errno = 0;
+
     if (NULL == (dp = sys_readdir (dh))) {
       if (sys_errno) {
-        if (-1 == this->on_error (this, "readdir()", dir, sys_errno))
-          this->status = -1;
+        this->status = DIRWALK_ERROR;
+        return this->on_error (this, "readdir()", dir, sys_errno);
       }
 
       goto theend;
@@ -154,25 +148,35 @@ static int __dirwalk_run__ (dirwalk_t *this, const char *dir, size_t dirlen) {
     }
 
     if (-1 == (this->status = this->stat_file (new->bytes, &st))) {
-      if (-1 == this->on_error (this, "stat()", new->bytes, sys_errno))
+      if (DIRWALK_ERROR == this->on_error (this, "stat()", new->bytes, sys_errno))
         goto theend;
       continue;
     }
 
     switch (dp->d_type)  {
       case DT_DIR:
-      case DT_UNKNOWN:
-        this->status = this->process_dir (this, new->bytes, new->num_bytes, &st, dp->d_type);
-        if (1 == this->status) {
-          if (-1 == __dirwalk_run__ (this, new->bytes, new->num_bytes))
+        this->status = this->process_dir (this, new->bytes, new->num_bytes, dp->d_type);
+
+        if (DIRWALK_PROCESS == this->status) {
+          int retval = __dirwalk_run__ (this, new->bytes, new->num_bytes);
+
+          if (DIRWALK_ERROR == retval || DIRWALK_STOP == retval) {
+            this->status = retval;
             goto theend;
-        } else if (-1 == this->status)
+          }
+
+          continue;
+        }
+
+        if (DIRWALK_ERROR == this->status || this->status == DIRWALK_STOP)
           goto theend;
+
         break;
 
       default:
-        this->status = this->process_file (this, new->bytes, new->num_bytes, &st, dp->d_type);
-        if (-1 == this->status)
+        this->status = this->process_file (this, new->bytes, new->num_bytes, dp->d_type);
+
+        if (DIRWALK_ERROR == this->status || this->status == DIRWALK_STOP)
           goto theend;
     }
   }
@@ -245,8 +249,7 @@ int dirwalk_run (dirwalk_t *this, const char *dirp) {
   else
     this->orig_depth++;
 
-  __dirwalk_run__ (this, this->dir->bytes, this->dir->num_bytes);
-  return 0;
+  return __dirwalk_run__ (this, this->dir->bytes, this->dir->num_bytes);
 }
 
 /* test {
@@ -274,8 +277,8 @@ static int test_init (void) {
   return 0;
 }
 
-static int file_cb (dirwalk_t *this, const char *file, size_t len, struct stat *st, int type) {
-  (void) this; (void) len; (void) st; (void) type;
+static int file_cb (dirwalk_t *this, const char *file, size_t len, int type) {
+  (void) this; (void) len; (void) type;
   return sys_unlink (file);
 }
 
