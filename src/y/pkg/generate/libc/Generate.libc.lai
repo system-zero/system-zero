@@ -413,6 +413,7 @@ include ("argparse")
       var f_name = f: basename_without_extname ()
       var f_hdr  = f_name: to_upper ()
       var f_rqr  = f_hdr + if f_ext is "H" then "_H\n" orelse "\n"
+      var f_as   = f
 
       var f_is_allocator = 0
       for v in memoryAllocators
@@ -446,6 +447,8 @@ include ("argparse")
           sp := advance_after_bytes (as_str, 1)
 
           ifnot sp: len () then return error (v + "/" + f + ": [as] missing header name")
+
+          f_as = sp + if f_ext is "H" then ".h" orelse ".c"
           f_hdr = sp: to_upper ()
           f_rqr  = f_hdr + if f_ext is "H" then "_H\n" orelse "\n"
           idx++
@@ -588,7 +591,7 @@ include ("argparse")
         append " */\n\n" in comments
 
       if "C" is f_ext and idx < lines_len and lines[idx]: eq (test_begstr) {
-        idx = generate_test (f, lines, idx, lines_len)
+        idx = generate_test (f_as, lines, idx, lines_len)
         if idx is notok
           return idx
       }
@@ -634,7 +637,7 @@ include ("argparse")
             break if lines[idx]: eq_n (end_str, end_len)
 
             if lines[idx]: eq (test_begstr) {
-              idx = generate_test (f, lines, idx, lines_len)
+              idx = generate_test (f_as, lines, idx, lines_len)
               if idx is notok
                 return idx
 

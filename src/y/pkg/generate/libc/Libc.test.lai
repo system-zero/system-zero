@@ -18,10 +18,16 @@ if argparse.exit then exit (0)
 const CC   = argparse.results.cc
 const STD  = argparse.results.std
 const INCDIR = "SYSDIR": sys_get (): path_concat ("include"): path_concat ("z") 
+const SRCDIR = Sys.get ("SRCDIR")
+const LIBCTESTDIR = SRCDIR: path_concat ("y/pkg/libc/libc/tests")
 
-const thisdir   = __file__: path_dirname ()
-const testsFile = thisdir:  path_concat ("tests")
-const buildDir  = thisdir:  path_concat ("build")
+#if notok is LIBCTESTDIR: dir_change () {
+#  println (stderr, "${LIBCTESTDIR): cannot change directory: ${errno_string (errno)}")
+#  exit (1)
+#}
+
+const testsFile = LIBCTESTDIR: path_concat ("tests")
+const buildDir  = LIBCTESTDIR: path_concat ("build")
 const logFile   = buildDir: path_concat ("logfile.lai")
 
 ifnot testsFile: file_exists () {
@@ -135,7 +141,7 @@ ifnot unit_tests: len () {
 }
 
 for i, v in unit_tests {
-  var n = get_unit_tests (v)
+  var n = get_unit_tests (LIBCTESTDIR: path_concat (v))
   var str = i: to_string (10)
   tests.$(str) = n
 }
@@ -208,3 +214,5 @@ append_to_logfile ("    }\n")
 append_to_logfile ("    println (\"\")\n")
 append_to_logfile ("  }\n")
 append_to_logfile ("  println (\"\")\n}\n")
+
+exit (0)

@@ -1,1 +1,2 @@
---outputName=,--outputDir=,--without-sys-headers,--without-module-compat,--allocator=,--unitDir=
+,--unitDir=,--verbose
+--outputName=,--outputDir=,--without-sys-headers,--without-module-compat,--allocator=
