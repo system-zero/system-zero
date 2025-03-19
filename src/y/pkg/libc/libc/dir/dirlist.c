@@ -4,15 +4,6 @@
 // requires: dir/dirwalk.c
 // requires: dir/dirlist.h
 
-// provides: dirlist_t *dirlist (const char *)
-// provides: void dirlist_release (dirlist_t **)
-// requires: stdlib/alloc.c
-// requires: string/bytelen.c
-// requires: string/str_new.c
-// requires: dir/opendir.c
-// requires: dir/dirent.h
-// requires: dir/dirlist.h
-
 dirlist_t *dirlist (const char *dir) {
   if (NULL == dir || 0 == is_directory (dir)) {
     sys_errno = EINVAL;

@@ -716,7 +716,7 @@ const char *default_extensions[] = {".txt", NULL};
 const char *c_extensions[] = {".c", ".h", ".cpp", ".hpp", ".cc", NULL};
 const char *c_keywords[] = {
     "if I", "for I", "return I", "else I",
-    "ifnot I", "NULL K", "OK K", "NOTOK K",
+    "ifnot I", "NULL V",
     "while I", "break I", "continue I", "do I",
     "switch I", "default I", "goto I", "case I",
     "static I", "#include M", "struct T", "typedef I",
@@ -750,11 +750,11 @@ const char *lai_shebangs[] = {
 const char lai_operators[] = "+-%*^><=/|& .(){}![]:$";
 
 const char *lai_keywords[] = {
-  "var V", "if I", "ifnot I", "else I", "func I", "is I", "isnot I",
+  "var V", "if I", "ifnot I", "else I", "func I", "is O", "isnot O",
   "orelse I", "then I", "and I", "end I", "or I", "this V", "return I",
   "for I", "while I", "break I", "continue I", "times I", "time I",
   "in I", "as I", "append I", "println F", "format F",
-  "null T", "ok T", "notok T", "true T", "false T", "callback I",
+  "null V", "ok V", "notok V", "true V", "false V", "callback I",
   "array V", "map V", "string T", "integer T", "number T", "list T",
   "stdout V", "stderr V", "stdin V",
   "qualifier F", "qualifiers F", "qualifier_exists F",

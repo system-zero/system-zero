@@ -150,7 +150,7 @@ int map_set_with_key_allocated (Map_Type *m, char *key, void *value, MapReleaseC
 void *map_set_by_callback (Map_Type *m, char *key, MapReleaseCb r_cb, MapSetValueCb s_cb) {
   map_type *map = __map_set (m, key);
   map->release = r_cb;
-  s_cb (&map->value);
+  map->value = s_cb (map->value);
   return map->value;
 }
 

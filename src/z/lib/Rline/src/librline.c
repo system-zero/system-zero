@@ -2223,10 +2223,17 @@ static int linenoiseEdit (rline_t *this, struct currentLine *current) {
                     pos--;
                 }
 
+                /* ag */
+                int is_quote = '"' == get_char(current, pos - 1);
+                if (is_quote) pos--;
+
                 /* now eat any non-spaces on the left */
-                while (pos > 0 && get_char(current, pos - 1) != ' ') {
+                /* ag: or  any non-double quote */
+                while (pos > 0 && get_char(current, pos - 1) != ((is_quote) ? '"' : ' ')) {
                     pos--;
                 }
+
+                if (is_quote && pos) pos--;
 
                 if (remove_chars(current, pos, current->pos - pos)) {
                     refreshLine(current);

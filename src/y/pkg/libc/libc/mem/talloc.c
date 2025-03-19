@@ -239,8 +239,6 @@ static MemChunk *mem_split_chunk (MemChunk *mem, uint mem_needsize) {
 
   #ifdef MEM_DEBUG
   totalMemSplits++;
-  tostdout ("%s: mem with %u size, needs size %u, the next will take %u\n",
-    __func__, __get_chunk_size__ (mem->chunk_size), mem_needsize, newsize);
   #endif
 
   /* here we set the size but we do not know if we have to set it as unused
@@ -296,10 +294,6 @@ static MemChunk *mem_merge_prev_chunk (MemChunk *mem, MemChunk *prev) {
 static MemChunk *mem_merge_chunks (MemChunk *mem) {
   MemChunk *prev = mem_get_prev_chunk (mem);
 
-  #ifdef MEM_DEBUG
-  tostdout ("merging: %p with size %u and %u, is unused? %d\n", mem, mem->chunk_size, mem->prev_chunk_size, mem_is_unused (mem));
-  #endif
-
   MemChunk *m = mem_merge_prev_chunk (mem, prev);
 
   MemChunk *next = mem_get_next_chunk (mem);
@@ -316,7 +310,6 @@ static MemChunk *mem_increase (uint size, uint split_at) {
 
   #ifdef MEM_DEBUG
   totalMemIncrements++;
-  tostdout ("%s, requested size %u, split at %u\n", __func__, size, split_at);
   #endif
 
   mem->chunk_size = size;
@@ -341,8 +334,6 @@ void *__mem_alloc__ (size_t size) {
 
   #ifdef MEM_DEBUG
   totalMemRequests++;
-  tostdout ("%s: request for %u bytes will try to allocate %u\n",
-    __func__, size, sz);
   #endif
 
   MemChunk *mem = mem_find_unused_chunk (FirstFreeChunk, sz);
@@ -362,14 +353,6 @@ void *__mem_alloc__ (size_t size) {
      it will leave it with the old value)  */
 
   mem_set_used (mem);
-
-  #ifdef MEM_DEBUG
-  tostdout ("we already have space for mem %p with size %u prev_size %u, actual %u | %u ptr %p\n",
-    mem, mem->chunk_size, mem->prev_chunk_size,
-    __get_chunk_size__ (mem->chunk_size),
-    __get_chunk_size__ (mem->prev_chunk_size),
-    mem_get_ptr_from_chunk (mem));
-  #endif
 
   return mem_get_ptr_from_chunk (mem);
 }
@@ -391,11 +374,6 @@ void *mem_realloc (void *ptr, size_t size) {
     return Malloc (size);
 
   MemChunk *mem = mem_get_chunk_from_ptr (ptr);
-
-  #ifdef MEM_DEBUG
-  tostdout ("%s: reallocated ptr %p with size %u, current size %u\n", __func__,
-    ptr, size, __get_chunk_size__ (mem->chunk_size));
-  #endif
 
   uint ptr_sz = mem_get_actual_size (ptr);
 
@@ -459,7 +437,6 @@ int mem_release (void **ptr) {
 
   #ifdef MEM_DEBUG
   totalMemReleases++;
-  tostdout ("%s: ptr %p\n", __func__, *ptr);
   #endif
 
   MemChunk *mem = mem_get_chunk_from_ptr (*ptr);
@@ -496,10 +473,6 @@ int mem_init (size_t size) {
                             /* beg header plus the end header */
   uint sz = mem_align (size + (MEM_HEADER_SIZE * 2));
 
-  #ifdef MEM_DEBUG
-  tostdout ("%s: requested size %u, aligned size %u\n", __func__, size, sz);
-  #endif
-
   if (mem_increment_breakpoint (BegBreakPoint, sz) == (void *) -1)
     return -1;
 
@@ -513,10 +486,6 @@ int mem_init (size_t size) {
   EndBreakPoint = mem_get_current_breakpoint ();
 
   mem_set_end_chunk (EndBreakPoint, MemHead->chunk_size);
-
-  #ifdef MEM_DEBUG
-  tostdout ("%p BegBreakPoint\n%p EndBreakPoint\n", BegBreakPoint, EndBreakPoint);
-  #endif
 
   return 0;
 }
@@ -683,7 +652,6 @@ int mem_debug_all (int verbose) {
     tostdout ("Unused Chunks: %d Used Chunks: %d\n",
       totalUnused, totalUsed);
 
-    #ifdef MEM_DEBUG
     tostdout ("Total Prev Memory Merges: [%d]\n", totalMemPrevMerges);
     tostdout ("Total Next Memory Merges: [%d]\n", totalMemNextMerges);
     tostdout ("Total Memory Merges: [%d]\n", totalMemPrevMerges + totalMemNextMerges);
@@ -691,7 +659,6 @@ int mem_debug_all (int verbose) {
     tostdout ("Total Memory Increments:[%d]\n",totalMemIncrements);
     tostdout ("Total Memory Releases: [%d]\n", totalMemReleases);
     tostdout ("Total Memory Requests: [%d]\n", totalMemRequests);
-    #endif
 
     if (num_failed)
       tostdout ("\033[%%31mFailed %d tests\033[m\n", num_failed);

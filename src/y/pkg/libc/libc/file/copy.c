@@ -9,7 +9,7 @@
 // requires: std/symlink.c
 // requires: std/mknod.c
 // requires: std/fchownat.c
-// requires: std/fchmodat.c
+// requires: std/chmod.c
 // requires: std/utimensat.c
 // requires: dir/make_dir.c
 // requires: dir/dirlist.c
@@ -519,7 +519,7 @@ theend:
         if (opts.preserve == FILECOPY_PRESERVE_OWNER)
           retv_chown = sys_fchownat (AT_FDCWD, dest, src_st.st_uid, src_st.st_gid, 0);
 
-        retv_chmod = sys_fchmodat (AT_FDCWD, dest, src_st.st_mode, 0);
+        retv_chmod = sys_chmod (dest, src_st.st_mode);
       }
 
       retval = (retv_chown == -1 || retv_chmod == -1 ? -1 : 0);

@@ -462,7 +462,7 @@ typedef struct tokenState {
 #define THROW_SYNTAX_ERR_FMT_IF(_cond_,_fmt_, ...) \
   do { if (_cond_) return l_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
 #define THROW_SYNTAX_ERR_FMT_IFNOT(_cond_,_fmt_, ...) \
-  do { if (!_cond_) return l_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
+  do { if (!(_cond_)) return l_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
 #define THROW_SYNTAX_ERR_FMT(_fmt_, ...) \
   do { return l_syntax_error_fmt (this, _fmt_, __VA_ARGS__); } while (0)
 #define THROW_OUT_OF_BOUNDS(_fmt_, ...) do {                \
@@ -6170,12 +6170,12 @@ static int l_parse_string (l_t *this, l_string str) {
   return L_OK;
 }
 
-static void l_fun_refcount_incr (void **count) {
-  ((int *)count++);
+static void *l_fun_refcount_incr (void *count) {
+  return (void *) ((intptr_t) count + 1);
 }
 
-static void l_fun_refcount_decr (void **count) {
-  ((int *)count--);
+static void *l_fun_refcount_decr (void *count) {
+  return (void *) ((intptr_t) count - 1);
 }
 
 static void l_fun_release_symbols (funT *uf, int clear, int is_method) {

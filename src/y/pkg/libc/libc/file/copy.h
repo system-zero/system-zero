@@ -1,6 +1,6 @@
 // as: filecopy
 typedef struct file_copy_opts file_copy_opts;
-typedef int (*FileInteractive) (const char *, const char *,  file_copy_opts);
+typedef int (*FileCopyInteractive) (const char *, const char *,  file_copy_opts);
 
 struct file_copy_opts {
   int
@@ -22,7 +22,7 @@ struct file_copy_opts {
     out_fd,
     err_fd;
 
-  FileInteractive on_interactive;
+  FileCopyInteractive on_interactive;
 };
 
 #define FILECOPY_NO_VERBOSE       0

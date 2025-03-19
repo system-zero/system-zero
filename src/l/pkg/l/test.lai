@@ -222,8 +222,8 @@ func zero_semantics () {
     return fibo_recursive (n - 1) + fibo_recursive (n - 2)
   }
 
-#  retval = fibo_recursive (12)
-#  assert_true ("testing recursive function", retval is 144)
+  retval = fibo_recursive (12)
+  assert_true ("testing recursive function", retval is 144)
 
   retval = func (x, y) {
     if x <= 100 { return x * 2 } else { return y * 2 }} (100, 200)
@@ -1682,7 +1682,7 @@ func self_semantics () {
     io_module ()
   }
 
-   func import_test_0 {
+  func import_test_0 {
 
     func std_module () {
       import ("std")
@@ -2609,14 +2609,14 @@ func self_semantics () {
       if v: typeof () is IntegerType then append v in sum
     }
 
-   const sa = l: pop_at (1)
-   const e = l[0]
-
+    const sa = l: pop_at (1)
+    const e = l[0]
     const lal = {[10, "str"]}
     lal[0] += 100
     lal[1] += "ing"
     var lala = lal[1] + "igy"
     const lla = {[10]}
+
     lla[0] *= 2
     lla[0] /= 5
     const llaa = ++lla[0]

@@ -1,7 +1,7 @@
 typedef struct map_type map_type;
 
 typedef void  (*MapReleaseCb) (map_type *);
-typedef void  (*MapSetValueCb) (void **);
+typedef void *(*MapSetValueCb) (void *);
 typedef void *(*MapCopyCb) (void *, void *);
 
 struct map_type {

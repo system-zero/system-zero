@@ -1,8 +1,8 @@
 // as: file_is_reg
-// provides: int file_is_reg (const char *)
+// provides: bool file_is_reg (const char *)
 // requires: sys/stat.c
 
-int file_is_reg (const char *fname) {
+bool file_is_reg (const char *fname) {
   struct stat st;
   if (-1 == sys_stat (fname, &st))
     return -1;

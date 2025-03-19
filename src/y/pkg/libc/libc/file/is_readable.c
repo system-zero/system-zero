@@ -1,6 +1,7 @@
-// provides: int file_is_readable (const char *)
+// as: file_is_readable
+// provides: bool file_is_readable (const char *)
 // requires: unistd/access.c
 
-int file_is_readable (const char *fname) {
+bool file_is_readable (const char *fname) {
   return (0 == sys_access (fname, R_OK));
 }

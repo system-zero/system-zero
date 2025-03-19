@@ -1,8 +1,6 @@
 #ifndef E_HDR
 #define E_HDR
 
-#define MYNAME "veda"
-
 #define ED_INSTANCES 252
 
 #define MIN_ROWS  8
@@ -276,10 +274,10 @@
 #define HL_NORMAL         COLOR_NORMAL
 #define HL_VISUAL         COLOR_CYAN
 #define HL_IDENTIFIER     COLOR_BLUE
-#define HL_KEYWORD        COLOR_MAGENTA
-#define HL_OPERATOR       COLOR_MAGENTA
+#define HL_KEYWORD        COLOR_CYAN //MAGENTA
+#define HL_OPERATOR       COLOR_BLUE  //MAGENTA
 #define HL_FUNCTION       COLOR_MAGENTA
-#define HL_VARIABLE       COLOR_BLUE
+#define HL_VARIABLE       COLOR_CYAN //BLUE
 #define HL_TYPE           COLOR_BLUE
 #define HL_DEFINITION     COLOR_BLUE
 #define HL_COMMENT        COLOR_YELLOW
