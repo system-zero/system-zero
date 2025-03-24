@@ -17,6 +17,7 @@
 --moddir=
 --unset-rpath
 --unset-debug
+--no-debug
 --no-local-env
 --dump-commands
 --namespace=

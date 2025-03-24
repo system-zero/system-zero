@@ -9,7 +9,6 @@
 // provides: char *uint64_to_hex_string (decimal_t *, uint64_t)
 // provides: char *ptr_to_string (decimal_t *, void *)
 // provides: char *get_decimal_string (decimal_t *)
-// requires: string/mem_set.c
 // requires: convert/decimal.h
 
 static inline int decimal_prepend (decimal_t *dec, char c) {
@@ -24,7 +23,8 @@ inline char *get_decimal_string (decimal_t *dec) {
 
 static char *unsigned64_to_string (decimal_t *dec, uint64_t u, int minus) {
   dec->size = 0;
-  mem_set (dec->digits, 0, DECIMAL_NUM_DIGITS + 1);
+  for (int i = 0; i < DECIMAL_NUM_DIGITS + 1; i++)
+    dec->digits[i] = 0;
 
   switch (dec->base) {
     case 2 ... 36:

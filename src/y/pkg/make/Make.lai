@@ -708,10 +708,12 @@ var string[0] MAKE_INSTALLED
     this.set_options ()
 
     if this.targets & SHARED_EXECUTABLE or this.targets & SHARED then
-      this.set.shared.executable.to_linkagainst (this.name; append_version)
+      ifnot qualifier_exists ("standalone") then
+        this.set.shared.executable.to_linkagainst (this.name; append_version)
 
     if this.targets & STATIC_EXECUTABLE or this.targets & STATIC then
-      this.set.static.executable.to_linkagainst (this.name; append_version)
+      ifnot qualifier_exists ("standalone") then
+        this.set.static.executable.to_linkagainst (this.name; append_version)
 
     if this.targets & MODULE and (this.targets & SHARED_LIBRARY or this.targets & SHARED) then
       this.set.shared.module.to_linkagainst (this.name; append_version)

@@ -298,6 +298,7 @@ m.set.libc.source ([
   "libc/unistd/fd.c",
   "libc/unistd/flock.c",
   "libc/unistd/fork.c",
+  "libc/unistd/fsync.c",
   "libc/unistd/getcwd.c",
   "libc/unistd/getegid.c",
   "libc/unistd/geteuid.c",

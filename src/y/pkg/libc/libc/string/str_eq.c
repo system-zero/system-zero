@@ -1,6 +1,6 @@
-// provides: int str_eq (const char *, const char *)
+// provides: bool str_eq (const char *, const char *)
 
-int str_eq (const char *sa, const char *sb) {
+bool str_eq (const char *sa, const char *sb) {
   const unsigned char *spa = (const unsigned char *) sa;
   const unsigned char *spb = (const unsigned char *) sb;
   for (; *spa == *spb; spa++, spb++)

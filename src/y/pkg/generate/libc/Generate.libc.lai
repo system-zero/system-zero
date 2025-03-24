@@ -366,10 +366,13 @@ include ("argparse")
       return error ("${LIBCTESTFILE}: failed to remove, ${errno_string (errno)}")
 
   for v in libcdirs {
-    if v isnot "syscall"  append "/* " + v + " */" in libcFuns
-
     var dir = LIBCSRCDIR: concat_with (v)
+    ifnot dir: exists ()
+      return error (dir + ": doesn't exists")
+
     var arr = dir: dir_list ()
+
+    if v isnot "syscall"  append "/* " + v + " */" in libcFuns
 
     for f in arr {
       var fn = dir: concat_with (f)
@@ -414,6 +417,8 @@ include ("argparse")
       var f_hdr  = f_name: to_upper ()
       var f_rqr  = f_hdr + if f_ext is "H" then "_H\n" orelse "\n"
       var f_as   = f
+
+      continue if f_ext isnot "H" and f_ext isnot "C"
 
       var f_is_allocator = 0
       for v in memoryAllocators

@@ -14,7 +14,6 @@
 // provides: int fileptr_init_input  (FILE *, size_t)
 // requires: stdio/stdio.h
 // requires: string/str_chr.c
-// requires: string/mem_set.c
 // requires: string/fmt.h
 // requires: string/vsnprintf.c
 // requires: stdlib/alloc.c
@@ -68,7 +67,12 @@ FILE *sys_init_file (int fd, int buftype) {
   }
 
   FILE *fp = Alloc (sizeof (FILE));
-  mem_set (fp, 0, sizeof (FILE));
+
+  unsigned char *ptr = (void *) fp;
+
+  for (size_t i = 0; i < sizeof (FILE); i++)
+    *ptr++ = 0;
+
   fp->fd = fd;
   fp->bufferingType = buftype;
   return fp;

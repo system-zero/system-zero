@@ -1,50 +1,49 @@
-#define FILEREMOVE_NO_VERBOSE       0
+#define FORCE_ON        true
+#define FORCE_OFF       false
 
-typedef int (*FileRemoveInteractive) (const char *, const char *, void *);
+#define VERBOSE_OFF     true
+#define VERBOSE_ON      false
 
-typedef struct file_remove_opts {
-  int
-    force,
-    verbose,
-    maxdepth,
-    curdepth,
-    recursive,
-    interactive;
+#define RECURSIVE_ON    true
+#define RECURSIVE_OFF   false
 
-  int out_fd,
-      err_fd;
-
-  FileRemoveInteractive on_interactive;
-
-} file_remove_opts;
-
-#ifndef OPT_NO_FORCE
-#define OPT_NO_FORCE       0
-#endif
-
-#ifndef OPT_VERBOSE_ON_ERROR
-#define OPT_VERBOSE_ON_ERROR 1
-#endif
+#define INTERACTIVE_ON  true
+#define INTERACTIVE_OFF false
 
 #ifndef OPT_MAXDEPTH
 #define OPT_MAXDEPTH 1024
 #endif
 
-#ifndef OPT_NO_RECURSIVE
-#define OPT_NO_RECURSIVE   0
-#endif
+typedef int (*FileRemoveInteractive) (const char *, const char *, void *);
 
-#ifndef OPT_NO_INTERACTIVE
-#define OPT_NO_INTERACTIVE 0
-#endif
+typedef struct file_remove_opts {
+  bool
+    force,
+    verbose,
+    verbose_on_error,
+    recursive,
+    interactive;
+
+  int
+    maxdepth,
+    curdepth;
+
+  int
+    out_fd,
+    err_fd;
+
+  FileRemoveInteractive on_interactive;
+
+} file_remove_opts;
 
 #define FileRemoveOpts(...) (file_remove_opts) { \
-  .force = OPT_NO_FORCE,                         \
-  .verbose = OPT_VERBOSE_ON_ERROR,               \
+  .force = FORCE_OFF,                            \
+  .verbose = VERBOSE_OFF,                        \
+  .verbose_on_error = VERBOSE_ON,                \
+  .recursive = RECURSIVE_OFF,                    \
+  .interactive = INTERACTIVE_OFF,                \
   .maxdepth = OPT_MAXDEPTH,                      \
   .curdepth = 0,                                 \
-  .recursive = OPT_NO_RECURSIVE,                 \
-  .interactive = OPT_NO_INTERACTIVE,             \
   .out_fd = 1,                                   \
   .err_fd = 2,                                   \
   .on_interactive = NULL,                        \

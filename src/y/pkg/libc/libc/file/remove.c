@@ -17,8 +17,8 @@
 
 typedef struct {
   file_remove_opts *opts;
-  int outToOutFd;
-  int outToErrFd;
+  bool outToOutFd;
+  bool outToErrFd;
   uchar decision;
 } file_remove_private;
 
@@ -28,12 +28,10 @@ static int file_remove_on_interactive (const char *file, const char *msg, void *
   if (self->decision == 'a')
     return 1;
 
-  file_remove_opts opts = *self->opts;
-
   term_t *term = term_new ();
   term_raw_mode (term);
 
-  toOutFd ("%s `%s'? y[es]/n[o]/q[uit]/a[ll]", msg, file);
+  tostdout ("%s `%s'? y[es]/n[o]/q[uit]/a[ll]", msg, file);
 
   int retval = 0;
 
@@ -47,7 +45,7 @@ static int file_remove_on_interactive (const char *file, const char *msg, void *
 
   term_orig_mode (term);
   term_release (&term);
-  toOutFd ("\n");
+  tostdout ("\n");
   return retval;
 }
 
@@ -77,7 +75,7 @@ static int file_remove_cb (dirwalk_t *this, const char *file, size_t len, int ty
       what = file_remove_interactive (file, type, self);
 
   if (what ==DIRWALK_STOP || what == 0)
-      return what;
+    return what;
 
   int retval = sys_unlink (file);
 
@@ -87,19 +85,17 @@ static int file_remove_cb (dirwalk_t *this, const char *file, size_t len, int ty
     return -1;
   }
 
-  if (opts.verbose >= 2 && self->outToOutFd)
+  if (self->outToOutFd)
     toOutFd ("removed '%s'\n", file);
 
   return DIRWALK_PROCESS;
 }
 
 int file_remove (const char *file, file_remove_opts opts) {
-  int retval = -1;
-
   if (opts.interactive) opts.force = 0;
 
-  int outToErrFd = (opts.verbose > FILEREMOVE_NO_VERBOSE && -1 != opts.err_fd);
-  int outToOutFd = (opts.verbose > FILEREMOVE_NO_VERBOSE && -1 != opts.out_fd);
+  bool outToErrFd = (opts.verbose_on_error == VERBOSE_ON && -1 != opts.err_fd);
+  bool outToOutFd = (opts.verbose == VERBOSE_ON && -1 != opts.out_fd);
 
   if (NULL == file) {
     if (outToErrFd)
@@ -117,6 +113,8 @@ int file_remove (const char *file, file_remove_opts opts) {
 
   dirwalk_t *dw = NULL;
 
+  opts.on_interactive = file_remove_on_interactive;
+
   file_remove_private self = (file_remove_private) {
     .opts = &opts,
     .decision = 0,
@@ -124,30 +122,35 @@ int file_remove (const char *file, file_remove_opts opts) {
     .outToErrFd = outToErrFd
   };
 
+  int retval = -1;
+
   struct stat file_st;
 
-  if (-1 == sys_lstat (file, &file_st)) {
+  if ((retval = sys_lstat (file, &file_st)) == -1) {
     if (outToErrFd)
       toErrFd ("%s: %s\n", file, errno_string (sys_errno));
-    goto theerror;
+
+    goto theend;
   }
 
   int is_dir = S_ISDIR(file_st.st_mode);
+
+  retval = -1;
 
   if (is_dir) {
     if (0 == opts.recursive) {
       if (outToErrFd)
         toErrFd ("%s: is a directory\n", file);
-      goto theerror;
+
+      goto theend;
     }
 
     if (opts.curdepth == opts.maxdepth) {
       if (outToErrFd)
         toErrFd ("'%d' depth exceeded '%d' maxdepth\n", opts.curdepth, opts.maxdepth);
-      goto theerror;
-    }
 
-    opts.on_interactive = file_remove_on_interactive;
+      goto theend;
+    }
 
     dw = dirwalk_new (NULL, file_remove_cb, NULL);
 
@@ -158,7 +161,7 @@ int file_remove (const char *file, file_remove_opts opts) {
     retval = dirwalk_run (dw, file);
 
     if (DIRWALK_ERROR == retval)
-      goto theerror;
+      goto theend;
 
     if (DIRWALK_STOP == retval) {
       retval = 0;
@@ -185,15 +188,15 @@ int file_remove (const char *file, file_remove_opts opts) {
         }
       }
 
-      if (-1 == sys_rmdir (dir)) {
-        if (outToErrFd) {
+      if ((retval = sys_rmdir (dir)) == -1) {
+        if (outToErrFd)
           toErrFd ("failed to remove '%s' directory: %s\n",
               dir, errno_string (sys_errno));
-          goto theerror;
-        }
+
+        goto theend;
       }
 
-      if (opts.verbose >= 2 && outToOutFd)
+      if (outToOutFd)
         toOutFd("removed '%s'\n", dir);
     }
 
@@ -231,14 +234,12 @@ int file_remove (const char *file, file_remove_opts opts) {
   if (-1 == retval) {
     if (outToErrFd)
       toErrFd ("failed to remove '%s': %s\n", file, errno_string (sys_errno));
-    goto theerror;
+
+    goto theend;
   }
 
-  if (opts.verbose >= 2 && outToOutFd)
+  if (outToOutFd)
     toOutFd("removed '%s'\n", file);
-
-theerror:
-  retval = -1;
 
 theend:
   if (NULL != dw)
@@ -297,7 +298,7 @@ static int first_test (int total) {
     goto theend;
   }
 
-  retval = file_remove (MYTESTDIR, FileRemoveOpts(.verbose = 0, .recursive = 0));
+  retval = file_remove (MYTESTDIR, FileRemoveOpts(.verbose_on_error = VERBOSE_OFF, .recursive = 0));
 
   if (retval != -1) {
     tostderr ("\e[31m[NOTOK]\e[m\n");

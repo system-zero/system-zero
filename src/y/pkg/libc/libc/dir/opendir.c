@@ -5,7 +5,6 @@
 // requires: unistd/fcntl.c
 // requires: unistd/open.c
 // requires: unistd/close.c
-// requires: string/mem_set.c
 // requires: sys/types.h
 // requires: sys/getdents.c
 // requires: dir/dirent.h
@@ -21,7 +20,12 @@ DIR *sys_opendir (const char *path) {
   sys_fcntl3 (fd, F_SETFD, fl|FD_CLOEXEC);
 
   dir = Alloc (sizeof (DIR));
-  mem_set (dir, 0, sizeof (DIR));
+
+  unsigned char *ptr = (void *) dir;
+
+  for (size_t i = 0; i < sizeof (DIR); i++)
+    *ptr++ = 0;
+
   dir->fd = fd;
 
   return dir;
