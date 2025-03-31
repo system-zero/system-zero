@@ -107,6 +107,7 @@ m.set.libc.source ([
   "libc/convert/format.h",
   "libc/convert/hexstring_to_string.c",
   "libc/convert/string_to_hexstring.c",
+  "libc/crt/crt.c",
   "libc/ctype/isalnum.c",
   "libc/ctype/isalpha.c",
   "libc/ctype/isascii.c",
