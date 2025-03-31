@@ -1,0 +1,4 @@
+var m = New Make (__file__ , STATIC_EXECUTABLE; standalone, freestanding) 
+m.set.executable.source ("File.remove.c"; clear)
+m.set.executable.output ("File.remove")
+return m;

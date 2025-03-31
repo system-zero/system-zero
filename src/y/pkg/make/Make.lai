@@ -421,21 +421,21 @@ var string[0] MAKE_INSTALLED
       append "-Wrestrict"                            in this.cflags
     }
 
-    if this.debug is DEBUG {
+    if this.debug is DEBUG then
       append "-g"                                    in this.cflags
-      append "-Wextra"                               in this.cflags
-      append "-Wshadow"                              in this.cflags
-      append "-Wunused-result"                       in this.cflags
-      append "-Wunused-function"                     in this.cflags
-      append "-Wunused-macros"                       in this.cflags
-      append "-Wsign-compare"                        in this.cflags
-      append "-Wpointer-arith"                       in this.cflags
-      append "-Wreturn-type"                         in this.cflags
-      append "-Wwrite-strings"                       in this.cflags
-      append "-Wuninitialized"                       in this.cflags
-      append "-Wmissing-declarations"                in this.cflags
-      append "-Werror-implicit-function-declaration" in this.cflags
-    }
+
+    append "-Wextra"                                 in this.cflags
+    append "-Wshadow"                                in this.cflags
+    append "-Wunused-result"                         in this.cflags
+    append "-Wunused-function"                       in this.cflags
+    append "-Wunused-macros"                         in this.cflags
+    append "-Wsign-compare"                          in this.cflags
+    append "-Wpointer-arith"                         in this.cflags
+    append "-Wreturn-type"                           in this.cflags
+    append "-Wwrite-strings"                         in this.cflags
+    append "-Wuninitialized"                         in this.cflags
+    append "-Wmissing-declarations"                  in this.cflags
+    append "-Werror-implicit-function-declaration"   in this.cflags
 
     if this.cc is "clang" {
       append "-Wno-unused-command-line-argument"     in this.cflags
@@ -711,9 +711,17 @@ var string[0] MAKE_INSTALLED
       ifnot qualifier_exists ("standalone") then
         this.set.shared.executable.to_linkagainst (this.name; append_version)
 
-    if this.targets & STATIC_EXECUTABLE or this.targets & STATIC then
+    if this.targets & STATIC_EXECUTABLE or this.targets & STATIC {
       ifnot qualifier_exists ("standalone") then
         this.set.static.executable.to_linkagainst (this.name; append_version)
+
+      if qualifier_exists ("freestanding")
+        this.set.static.executable.cflag ([
+          "-nostdlib", "-s", "-fno-stack-protector",
+          "-fno-unwind-tables", "-fno-asynchronous-unwind-tables",
+          "-Wl,--gc-sections", "-fdata-sections", "-Wa,--noexecstack",
+          "-fno-builtin"])
+    }
 
     if this.targets & MODULE and (this.targets & SHARED_LIBRARY or this.targets & SHARED) then
       this.set.shared.module.to_linkagainst (this.name; append_version)
