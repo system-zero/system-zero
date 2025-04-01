@@ -45,10 +45,10 @@ include ("argparse")
   SYSMANPATH  = "/share/man:" + SYSSHAREDDIR: concat_with ("man") + ":/usr/local/share/man:/usr/share/man",
   LIBCOUTDIR  = ZSYSINCDIR
 
-  const string[23] libcdirs = [
+  const string[24] libcdirs = [
     "syscall", "std", "stdio", "stdlib", "ctype", "signal", "string", "sys",
     "unistd",  "time", "error", "convert", "utf8", "file", "fs", "dev",
-    "dir", "path", "rtc", "map", "term", "mem", "crt"]
+    "dir", "path", "rtc", "map", "term", "mem", "crt", "math"]
 
   const
   metapkg_str    = "MetaPackage",

@@ -1569,6 +1569,7 @@ gained consience. Hopefully one day.
 * [Embedded Artistry libc.](https://github.com/embeddedartistry/libc)
 * [Mlibc.](https://github.com/managarm/mlibc)
 * [Picolibc.](https://github.com/picolibc/picolibc)
+* [Math library.](https://www.fixscript.org/blog/math-library)
 * [Custom Malloc.](https://github.com/miguelperes/custom-malloc)
 * [Dynamic Memory Allocation in C.](https://github.com/RAGUL1902/Dynamic-Memory-Allocation-in-C)
 * [Simple TCP.](https://github.com/riyadhar8/TCP-Simple-Server-Client)

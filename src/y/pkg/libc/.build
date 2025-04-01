@@ -153,6 +153,8 @@ m.set.libc.source ([
   "libc/fs/fs.h",
   "libc/map/map.h",
   "libc/map/map.c",
+  "libc/math/math.c",
+  "libc/math/math.h",
   "libc/mem/falloc.c",
   "libc/mem/falloc.h",
   "libc/mem/talloc.c",
