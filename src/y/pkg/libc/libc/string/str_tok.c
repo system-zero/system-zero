@@ -1,4 +1,4 @@
-// provides: StrTokenType *str_tok (const char *, utf8, StrTokenType *, StrTokenCb, void *) 
+// provides: StrTokenType *str_tok (const char *, utf8, StrTokenType *, StrTokenCb, void *)
 // provides: void str_tok_release (StrTokenType **)
 // requires: string/str_new.c
 // requires: string/str_copy.c

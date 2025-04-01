@@ -1,6 +1,6 @@
 // as: path_concat
 // provides: char *path_concat (const char *, size_t, const char *, size_t)
-// comment: assume Alloc
+// requires: mem/talloc.c
 
 char *path_concat (const char *a, size_t a_sz, const char *b, size_t b_sz) {
   char *spb = (char *) b;

@@ -1,12 +1,12 @@
 #define REQUIRE_CRT
-#define REQUIRE_MEM_SET
+//#define REQUIRE_MEM_SET
 #define REQUIRE_FILE_REMOVE
 #define REQUIRE_FORMAT
 #define REQUIRE_STR_EQ
 
 #include <libc.h>
 
-#define NAME "__File.remove"
+#define NAME "File.remove"
 #define __USAGE "Usage: " NAME " [option]... FILE[s]\n" \
    "Remove FILE(s)\n\n" \
    "  --force       never prompt\n" \

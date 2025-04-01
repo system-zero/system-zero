@@ -170,6 +170,8 @@ m.set.libc.source ([
   "libc/path/extname.c",
   "libc/path/is_absolute.c",
   "libc/path/realpath.c",
+  "libc/path/split.c",
+  "libc/path/split.h",
   "libc/rtc/rtc.h",
   "libc/signal/kill.c",
   "libc/signal/raise.c",

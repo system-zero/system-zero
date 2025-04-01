@@ -529,11 +529,12 @@ int vformat (FormatType *this, va_list args) {
         len = 1;
         break;
 
-      case DT_U8CHAR:
+      case DT_U8CHAR: {
         utf8 u =va_arg(args, int);
         len = utf8_character (u, bytebuf, 8);
         str = bytebuf;
         break;
+      }
 
       case DT_PTR: {
         void *v = va_arg(args, void *);
