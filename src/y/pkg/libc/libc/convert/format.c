@@ -1,6 +1,7 @@
 // provides: int format_to_string (char *, size_t, const char *, ...)
 // provides: int format_to_fd (int, const char *, ...)
 // provides: int vformat (FormatType *, va_list)
+// provides: int vformat_to_fd (int, const char *, va_list)
 // requires: string/bytelen.c
 // requires: utf8/utf8_character.c
 // requires: utf8/utf8_string_after_nth_char.c
@@ -634,6 +635,13 @@ int format_to_fd (int fd, const char *fmt, ...) {
   va_end(ap);
 
   return n;
+}
+
+int vformat_to_fd (int fd, const char *fmt, va_list ap) {
+  FormatType this = NewFormat (NULL, 0, fmt, .user_data = &fd,
+      .outputByte = output_byte_to_fd);
+
+  return vformat (&this, ap);
 }
 
 /* test {

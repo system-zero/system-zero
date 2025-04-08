@@ -129,8 +129,8 @@ static VALUE file_symlink (la_t *this, VALUE v_src_file, VALUE v_dest_file) {
   string *src_lnk = NULL;
 
   if (dereference and File.is_lnk (src_file)) {
-    string *s = File.readlink (src_file);
-    if (NULL is s) {
+    src_lnk = File.readlink (src_file);
+    if (NULL is src_lnk) {
       if (verbose > OPT_NO_VERBOSE and NULL isnot err_fp)
         fprintf (err_fp, "symlink: can not read link '%s': %s\n",
             src_file, Error.errno_string (errno));

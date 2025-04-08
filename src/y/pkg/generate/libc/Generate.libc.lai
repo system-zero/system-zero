@@ -45,10 +45,10 @@ include ("argparse")
   SYSMANPATH  = "/share/man:" + SYSSHAREDDIR: concat_with ("man") + ":/usr/local/share/man:/usr/share/man",
   LIBCOUTDIR  = ZSYSINCDIR
 
-  const string[24] libcdirs = [
+  const string[25] libcdirs = [
     "syscall", "std", "stdio", "stdlib", "ctype", "signal", "string", "sys",
     "unistd",  "time", "error", "convert", "utf8", "file", "fs", "dev",
-    "dir", "path", "rtc", "map", "term", "mem", "crt", "math"]
+    "dir", "path", "rtc", "map", "term", "mem", "crt", "math", "crypt"]
 
   const
   metapkg_str    = "MetaPackage",
@@ -146,7 +146,9 @@ include ("argparse")
   var outputDir  = if null is argparse.results.outputDir then LIBCOUTDIR orelse argparse.results.outputDir
 
   ifnot outputDir: exists () then
-    mkdir (outputDir, 0755; verbose : verbose)
+    if notok is outputDir: mkdir (0755; verbose : verbose)
+      return error (outputDir + ": failed to make directory, " + errno_string (errno))
+
   ifnot outputDir: is_directory () then
     return error (outputDir + ": is not a directory")
 
@@ -155,7 +157,9 @@ include ("argparse")
   var commentFile = outputDir: concat_with ("Comments_libc")
 
   ifnot LIBCALLDIR: exists () then
-    mkdir (LIBCALLDIR, 0755; verbose : verbose)
+    ifnot ok is LIBCALLDIR: mkdir (0755; verbose : verbose)
+      return error (LIBCALLDIR + ": failed to make directory, " + errno_string (errno))
+
   ifnot LIBCALLDIR: is_directory () then
     return error (LIBCALLDIR + ": is not a directory")
 
@@ -342,7 +346,7 @@ include ("argparse")
     if unit: file_exists () then
       ifnot key_exists then
         if notok is unit: file_remove () then
-          return error ("${unit}: failed to remove")
+          return error (unit + ": failed to remove")
 
     if key_exists {
       if notok is unit: file_append (test) then
@@ -361,9 +365,15 @@ include ("argparse")
     return index;
   }
 
+  ifnot LIBCTESTDIR: exists () then
+    if notok is LIBCTESTDIR: mkdir (0755; verbose : verbose)
+      return error (LIBCTESTDIR + ": failed to make directory, " + errno_string (errno))
+  ifnot LIBCTESTDIR: is_directory () then
+      return error (LIBCTESTDIR + ": is not a directory")
+
   if LIBCTESTFILE: file_exists ()
     if notok is LIBCTESTFILE: file_remove ()
-      return error ("${LIBCTESTFILE}: failed to remove, ${errno_string (errno)}")
+      return error (LIBCTESTFILE + ": failed to remove, " + errno_string (errno))
 
   for v in libcdirs {
     var dir = LIBCSRCDIR: concat_with (v)
@@ -494,7 +504,7 @@ include ("argparse")
 
           ifnot is_meta {
             ifnot num_found - 1 then
-              append format ("\n#ifdef REQUIRE_${f_hdr}\n#ifndef ${f_hdr}_FD\n#define ${f_hdr}_FD\n\n") in funcSigns
+              append format ("\n#ifdef REQUIRE_${f_hdr}\n#ifndef ${f_hdr}_FDEFINED\n#define ${f_hdr}_FDEFINED\n\n") in funcSigns
 
             append sp + if sp: eq_n ("#define ", 8) then "\n" orelse ";\n" end in funcSigns
           }
@@ -503,7 +513,7 @@ include ("argparse")
         }
 
         ifnot is_meta then
-          if num_found then append "\n#endif /* " + f_hdr + "_FD */\n#endif\n" in funcSigns
+          if num_found then append "\n#endif /* " + f_hdr + "_FDEFINED */\n#endif\n" in funcSigns
       }
 
       num_found = 0
@@ -617,7 +627,7 @@ include ("argparse")
 
         append format ("#define REQUIRE_${f_hdr}_H\n") in libcAllC
 
-        append "#ifndef " + f_hdr + "_TD\n#define " + f_hdr + "_TD\n" in libcTypes
+        append "#ifndef " + f_hdr + "_TDEFINED\n#define " + f_hdr + "_TDEFINED\n" in libcTypes
         append format ("/* ${dotsToLibc}/${v}/${f} */\n\n") in libcTypes
 
         for (var i = idx; i < lines_len; i++) {
@@ -625,7 +635,7 @@ include ("argparse")
           append lines[i] + '\n' in libcTypes
         }
 
-        append "\n#endif /* " + f_hdr + "_TD */\n#endif\n" in libcTypes
+        append "\n#endif /* " + f_hdr + "_TDEFINED */\n#endif\n" in libcTypes
       } else {
 
         if lines_len - idx {

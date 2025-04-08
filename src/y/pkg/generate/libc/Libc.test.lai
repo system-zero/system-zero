@@ -6,9 +6,10 @@ import ("file")
 import ("time")
 include ("argparse")
 
-var argparse = New Argparse (3, 0, "TestLibc [arg, ...]")
+var argparse = New Argparse (4, 0, "TestLibc [arg, ...]")
 argparse.add ("cc",  0, "cc=",  "set cc (default gcc)", StringType, ARG_VALUE_REQUIRED; defval : "gcc")
 argparse.add ("std", 0, "std=", "set standard c version (default c11)", StringType, ARG_VALUE_REQUIRED; defval : "c11")
+argparse.add ("debug", 0,  "with-gdb", "run test[s] with gdb", BooleanType, 0)
 argparse.add ("unit", 0, "unit=", "run only this unit", StringType, ARG_VALUE_REQUIRED);
 
 if notok is argparse.process (__argv, 0) then exit (1)
@@ -21,10 +22,18 @@ const INCDIR = "SYSDIR": sys_get (): path_concat ("include"): path_concat ("z")
 const SRCDIR = Sys.get ("SRCDIR")
 const LIBCTESTDIR = SRCDIR: path_concat ("y/pkg/libc/libc/tests")
 
+var DEBUG = argparse.results.debug
+
 #if notok is LIBCTESTDIR: dir_change () {
 #  println (stderr, "${LIBCTESTDIR): cannot change directory: ${errno_string (errno)}")
 #  exit (1)
 #}
+
+var GDB_ARGV = ["gdb",
+ "-ex", "set logging file /tmp/gdb",
+ "-ex", "set logging overwrite on",
+ "-ex", "set logging enabled",
+ "-ex", "run", "--args"]
 
 const testsFile = LIBCTESTDIR: path_concat ("tests")
 const buildDir  = LIBCTESTDIR: path_concat ("build")
@@ -194,7 +203,15 @@ for ntests times {
   append_to_logfile (format ("    execution : {\n      log : `\n"))
 
   var totalstr = total: to_string (10)
-  execution_opts.argv = [output, total: to_string (10)]
+
+  if DEBUG {
+    execution_opts.argv = GDB_ARGV
+    append output in execution_opts.argv
+    append total: to_string (10) in execution_opts.argv
+  } else {
+    execution_opts.argv = [output, total: to_string (10)]]
+  } 
+
   total += s.num_tests
 
   retval = Sh.process (execution_opts)

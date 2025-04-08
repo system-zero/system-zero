@@ -4,6 +4,7 @@
 // provides: int sys_fclose  (FILE *)
 // provides: int sys_fflush  (FILE *)
 // provides: int sys_fgetc (FILE *)
+// provides: char *sys_fgets (char *, int, FILE *)
 // provides: int sys_ungetc (int, FILE *)
 // provides: int sys_fileno (FILE *)
 // provides: size_t sys_fwrite (const void *, size_t, size_t, FILE *)
@@ -263,6 +264,34 @@ int sys_fgetc (FILE *fp) {
   }
 
   return fp->in_cur < fp->in_buflen ? (unsigned char) fp->in_buf[fp->in_cur++] : EOF;
+}
+
+char *sys_fgets (char *s, int size, FILE *fp) {
+  int wr = 0;
+  int c = 0;
+  char *ptr = s;
+
+  while (1) {
+    if (wr + 1 == size)
+      break;
+
+    c = sys_fgetc (fp);
+
+    if (c == EOF)
+      break;
+
+    if (c == '\n')
+      wr = size - 2;
+
+    *ptr++ = c;
+     wr++;
+  }
+
+  if (wr == 0)
+    return NULL;
+
+  *ptr = '\0';
+  return s;
 }
 
 size_t sys_fread (void *v, size_t size, size_t nmemb, FILE *fp) {

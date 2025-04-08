@@ -5,7 +5,7 @@
 // provides: void *map_set_by_callback (Map_Type *, char *, MapReleaseCb, MapSetValueCb)
 // provides: int map_set (Map_Type *, char *, void *, MapReleaseCb)
 // provides: int map_set_with_key_allocated (Map_Type *, char *, void *, MapReleaseCb)
-// provides: int map_key_exists (Map_Type *, char *)
+// provides: int map_key_exists (Map_Type *, const char *)
 // provides: Map_Type *map_clone (Map_Type *, MapCopyCb, void *)
 // provides: void map_clear (Map_Type *)
 // provides: void map_release (Map_Type **)
@@ -154,7 +154,7 @@ void *map_set_by_callback (Map_Type *m, char *key, MapReleaseCb r_cb, MapSetValu
   return map->value;
 }
 
-int map_key_exists (Map_Type *m, char *key) {
+int map_key_exists (Map_Type *m, const char *key) {
   uint32_t hash = MAP_HASH_KEY(m, key);
   map_type *it = m->slots[hash];
   while (it) {

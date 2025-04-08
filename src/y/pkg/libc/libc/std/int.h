@@ -1,5 +1,3 @@
-#define MB_LEN_MAX    16
-#define OPEN_MAX      1024
 #define CHAR_BIT      8
 #define SHRT_BIT      16
 #define INT_BIT       32
@@ -123,28 +121,6 @@ typedef unsigned char      uint8_t;
 typedef unsigned short int uint16_t;
 typedef unsigned int       uint32_t;
 
-typedef signed char        int_fast8_t;
-typedef unsigned char      uint_fast8_t;
-
-#if __WORDSIZE == 64
-
-typedef long int           int_fast16_t;
-typedef long int           int_fast32_t;
-typedef long int           int_fast64_t;
-typedef unsigned long int  uint_fast16_t;
-typedef unsigned long int  uint_fast32_t;
-typedef unsigned long int  uint_fast64_t;
-
-#else
-
-typedef int                int_fast16_t;
-typedef int                int_fast32_t;
-typedef long long int      int_fast64_t;
-typedef unsigned int       uint_fast16_t;
-typedef unsigned int       uint_fast32_t;
-typedef unsigned long long int uint_fast64_t;
-
-#endif
 
 #if __WORDSIZE == 64
 
@@ -157,11 +133,6 @@ typedef signed long long int int64_t;
 typedef unsigned long long int uint64_t;
 
 #endif
-
-typedef uint8_t   byte;
-typedef uint16_t  word;
-typedef uint32_t  dword;
-typedef uint64_t  qword;
 
 typedef unsigned int  uint;
 typedef unsigned char uchar;
@@ -189,4 +160,58 @@ typedef signed int utf8;
 #define PRIdPTR "d"
 #define PRIuPTR "u"
 
+#endif
+
+/* Introduced at Sun 06/04/2026 */
+typedef uint8_t   u8;
+typedef uint16_t  u16;
+typedef uint32_t  u32;
+typedef uint64_t  u64;
+typedef size_t    usize;
+
+typedef int8_t    i8;
+typedef int16_t   i16;
+typedef int32_t   i32;
+typedef int64_t   i64;
+typedef ssize_t   isize;
+
+typedef float     f32;
+typedef double    f64;
+/* It seems better to use them, as they match the number of bits, in a consistent
+   established way.
+   And since that virgil provides integer types for all bit widths from 1 ... 64
+
+     https://github.com/titzer/virgil
+
+   then without doubt we should better use them.
+ */
+
+/* also please give these a chance (hopefully we'll not destroy the universe).
+   In any case the convention is char to be signed but not true for all machines.
+   We can force gcc with "-funsigned-char" or "-fsigned-char" to handle char as
+   either unsigned or signed respectively.
+   So in the clause above that we use to define its range, we could also do:
+*/
+#ifdef __CHAR_UNSIGNED__
+  typedef unsigned char  byte;
+#else
+  typedef signed   char  byte;
+#endif
+
+// or use them explicitly
+typedef unsigned char   ubyte;
+typedef   signed char   ibyte;
+// however we rather better use byte or even better uae xhar (though wrong)
+
+/* and be sure about some expectations (overexaggerated maybe). */
+static_assert (sizeof (char)      == 1, "error: awaiting size of a char to be 1 bytes long");
+static_assert (sizeof (short)     == 2, "error: awaiting size of a short to be 2 bytes long");
+static_assert (sizeof (int)       == 4, "error: awaiting size of an int to be 4 bytes long");
+
+#if __WORDSIZE == 64
+static_assert (sizeof (long)      == 8, "error: awaiting size of a long to be 8 bytes long");
+static_assert (sizeof (size_t)    == 8, "error: awaiting size of a size_t to o be 8 bytes long");
+#else
+static_assert (sizeof (size_t)    == 4, "error: awaiting size of a size_t to o be 4 bytes long");
+static_assert (sizeof (long)      == 4, "error: awaiting size of a long to be 4 bytes long");
 #endif

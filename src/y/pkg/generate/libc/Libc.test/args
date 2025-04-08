@@ -1,1 +1,1 @@
---unit=,--std=,--cc=
+--unit=,--std=,--cc=,--with-gdb
