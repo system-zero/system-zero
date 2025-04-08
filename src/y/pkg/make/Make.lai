@@ -50,7 +50,7 @@ func argparseNew () {
   argparse.add ("withoutSys", 0, "without-sys-headers", "do not write specific to this system headers (libc)", BooleanType, 0)
   argparse.add ("withoutModCompat", 0, "without-module-compat", "do not output module compatibility code (libc)", BooleanType, 0)
   argparse.add ("remove_cache", 0, "remove-cache", "remove cached file", BooleanType, 0)
-  argparse.add ("platform", 0, "platform=", "operating system (default: Os.platform ())", StringType, ARG_VALUE_REQUIRED; defval : Os.platform ())
+  argparse.add ("platform", 0, "platform=", "operating system (default: Os.platform ())", StringType, ARG_VALUE_REQUIRED; defval : platform ())
   argparse.add ("version", 0, "version=", "set version", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("march", 0, "march=", "set march (default native)", StringType, ARG_VALUE_REQUIRED)
   argparse.add ("optimization", 0, "optimization=", "set optimization (default -O2)", StringType, ARG_VALUE_REQUIRED)
@@ -94,6 +94,7 @@ const key_exists        = map_key_exists
 const base64_encode     = crypt_base64_encode_file
 const char              = integer_char
 const advance           = string_advance
+const platform          = os_platform
 
 const PLATFORM
 const VERSION           = "0.4.4"
@@ -624,31 +625,43 @@ var string[0] MAKE_INSTALLED
     return ok if null is exec
     return notok if notok is this.change_to_build_directory ()
 
-    var targetdir = this.shelldatadir: concat_with (exec)
+    var targetdirs = [
+      this.shelldatadir: concat_with (exec),
+      this.shelldatadir: concat_with (exec) + "-static"]
 
-    ifnot targetdir: exists ()
-      mkdir (targetdir, 0700)
+    for v in targetdirs {
+      ifnot v: exists ()
+        if notok is v: mkdir (0700)
+          return this.error (v + ": can not make directory")
 
-    ifnot targetdir: isdirectory ()
-      return this.error (targetdir + ": not a directory")
+      ifnot v: isdirectory ()
+        return this.error (v + ": not a directory")
+    }
 
     ifnot this.verbose
       ifnot this.dump_commands
         println ("  install data")
 
     var args = exec: concat_with ("args")
-    if args: exists ()
-      return notok if
-        notok is copy (args, targetdir; verbose : this.verbose + 1, force : 1)
+    if args: exists () {
+      for v in targetdirs
+        return notok if
+          notok is copy (args, v; verbose : this.verbose + 1, force : 1)
+    }
 
     var flags = exec: concat_with ("flags")
-    if flags: exists ()
-      copy (flags, targetdir; verbose : this.verbose + 1, force : 1)
+    if flags: exists () {
+      for v in targetdirs
+        return notok if
+          notok is copy (flags, v; verbose : this.verbose + 1, force : 1)
+    }
 
     var literal_args = exec: concat_with ("literal_args")
-    if literal_args: exists ()
-      return notok if
-        notok is copy (literal_args, targetdir; verbose : this.verbose + 1, force : 1)
+    if literal_args: exists () {
+      for v in targetdirs
+        return notok if
+          notok is copy (literal_args, v; verbose : this.verbose + 1, force : 1)
+    }
   }
 
   endbuild : func (retval, ar) {

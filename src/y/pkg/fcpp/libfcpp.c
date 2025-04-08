@@ -1456,9 +1456,9 @@ static ReturnCode openinclude ( struct cpreproc_t *global,
        return FCPP_FILENAME_BUFFER_OVERFLOW ;
     } else {
       if ((*incptr)[len-1] != '/')
-        sprintf (tmpname, "%s/%s", *incptr, filename);
+        snprintf (tmpname, NWORK, "%s/%s", *incptr, filename);
       else
-        sprintf (tmpname, "%s%s", *incptr, filename);
+        snprintf (tmpname, NWORK, "%s%s", *incptr, filename);
 
       if (!openfile (global, tmpname))
         return FCPP_OK;

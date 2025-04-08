@@ -7,7 +7,7 @@
 #define REQUIRE_STD_MODULE
 
 #include <z/cenv.h>
-#include<fcpp.h>
+#include <fcpp.h>
 
 MODULE(generateerrno);
 

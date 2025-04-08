@@ -1,3 +1,3 @@
 var m =New Make (__file__, SHARED|STATIC)
-m.set.library.cflag ("-Wno-char-subscripts")
+m.set.library.cflag (["-Wno-char-subscripts", "-Wno-format-truncation"])
 return m
