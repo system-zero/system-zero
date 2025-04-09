@@ -1,14 +1,22 @@
 // provides: __attribute__((noreturn)) void _start (void)
 // provides: __attribute__((noreturn)) void __main__ (int, char **)
+// requires: env/env.c
 // requires: stdlib/_exit.c
 // requires: std/environ.h
 
 extern int main (int, char **);
 
-char **environ = NULL;
-
 __attribute__((noreturn)) void __main__ (int argc, char **argv) {
-  environ = argv + (argc + 1);
+ char **environment = argv + (argc + 1);
+
+  char **envp;
+  char *e;
+
+  for (envp = environment; *envp != NULL; envp++) {
+    e = *envp;
+    put_env (e);
+  }
+
   int retval = main (argc, argv);
   _exit (retval);
 }

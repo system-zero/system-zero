@@ -1,3 +1,19 @@
+## About our host.
+I've been using github for years, and I've to admit that I've never encounterd any issue.
+But also there were many times that I've been surprised by the quality of their services,
+probably because the code was written from coders for coders, it matched the expectations
+and beyond to be honest. Probably and from a user point of view, one of the best software
+I've ever used.
+
+However, there is a question in me:
+
+Why the home of open source is a closed source platform?
+
+of which I do not have an answer and I find myself unconformable.
+
+I've to think a bit more, but the decision (unless something is going to be change in a quite
+drastic way) seems relative easy.
+
 ## Research on most primitive functional systems from scratch.
 
 This project has been started at the very first days of 2021, and the first cycle has
@@ -1563,12 +1579,13 @@ gained consience. Hopefully one day.
 * [PCG Random Number Generation for C.](https://github.com/imneme/pcg-c-basic)
 * [UUID generator.](https://github.com/rxi/uuid4)
 * [A minimal C Runtime.](https://github.com/lpsantil/rt0)
-* [A base system and early userspace for Linux.](https://github.com/arsv/minibase)
+* [Minibase: a base system and early userspace for Linux.](https://github.com/arsv/minibase)
 * [Neat Libc.](https://github.com/aligrudi/neatlibc)
 * [Diet Libc.](http://www.fefe.de/dietlibc)
 * [Embedded Artistry libc.](https://github.com/embeddedartistry/libc)
 * [Mlibc.](https://github.com/managarm/mlibc)
 * [Picolibc.](https://github.com/picolibc/picolibc)
+* [klibc from Linux Kernel.](https://git.kernel.org/pub/scm/libs/klibc/klibc.git)
 * [Math library.](https://www.fixscript.org/blog/math-library)
 * [Custom Malloc.](https://github.com/miguelperes/custom-malloc)
 * [Dynamic Memory Allocation in C.](https://github.com/RAGUL1902/Dynamic-Memory-Allocation-in-C)

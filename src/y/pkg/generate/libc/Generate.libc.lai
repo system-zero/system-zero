@@ -45,10 +45,11 @@ include ("argparse")
   SYSMANPATH  = "/share/man:" + SYSSHAREDDIR: concat_with ("man") + ":/usr/local/share/man:/usr/share/man",
   LIBCOUTDIR  = ZSYSINCDIR
 
-  const string[25] libcdirs = [
+  const string[26] libcdirs = [
     "syscall", "std", "stdio", "stdlib", "ctype", "signal", "string", "sys",
     "unistd",  "time", "error", "convert", "utf8", "file", "fs", "dev",
-    "dir", "path", "rtc", "map", "term", "mem", "crt", "math", "crypt"]
+    "dir", "path", "rtc", "map", "term", "mem", "crt", "math", "crypt",
+    "env"]
 
   const
   metapkg_str    = "MetaPackage",
@@ -200,8 +201,13 @@ include ("argparse")
    `/* This is an oversimplified tiny libc for x86 and x86_64 in a single unit.
        You get only what you only want, with a without magic code.
 
-       This should compile with -std=c99 and onwards until (included) c23
-       without a warning.
+       As it is mostly interested for the mechanics, it should prioritize code
+       clarity/intention instead of an optimization or else it should be a bug
+       or weakness to develop understandable/readable code.
+
+       This should compile with -std=c99 and onwards standards, until (included)
+       c23  without a warning. We do prefer c11 or c23 though, as in case of c99
+       we will miss static_assert.
      */
 
     #ifndef LIBC_HDR

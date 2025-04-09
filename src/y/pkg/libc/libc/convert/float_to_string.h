@@ -1,4 +1,4 @@
-#include <float.h>
+// requires: std/float.h
 
 #if (DBL_MANT_DIG <= 24) && (DBL_MAX_EXP <= 128)
   typedef uint32_t double_bin;
