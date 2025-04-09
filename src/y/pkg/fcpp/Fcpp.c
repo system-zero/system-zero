@@ -7,11 +7,19 @@
 
 #include "fcpp.h"
 
+
+#define str_eq(_a_, _b_) (0 == strcmp (_a_, _b_))
+
+typedef struct {
+  char arch[16];
+  char stdc[32];
+} FcppOps;
+
 static char *own_input  (char *, int, void *);
 static void  own_output (int , void *);
 static void  own_error  (void *, char *, va_list);
 
-static int SetOptions (int, char **, struct fcppTag **);
+static int SetOptions (int, char **, struct fcppTag **, FcppOps *);
 
 static char ignore = FALSE;  /* if we should ignore strange flags! */
 static char display = FALSE; /* display all options in use! */
@@ -33,8 +41,15 @@ int main (int argc, char **argv) {
 
   tagptr++;
 
-  if(!(i = SetOptions (argc, argv, &tagptr)))
+  FcppOps ops;
+  *ops.arch = '\0';
+  *ops.stdc = '\0';
+
+  if(!(i = SetOptions (argc, argv, &tagptr, &ops)))
     return 0;
+
+  if (*ops.arch == '\0') strncpy (ops.arch, "__x86_64__=1", 16);
+  if (*ops.stdc == '\0') strncpy (ops.stdc, "__STDC_VERSION__=201112L", 32);
 
   if (argc - i > 2) {
     printf ("Too many file arguments. Usage: cpp [options] [input [output]]\n");
@@ -103,6 +118,14 @@ int main (int argc, char **argv) {
   tagptr->data = (void *) own_error;
   tagptr++;
 
+  tagptr->tag = FCPPTAG_DEFINE;
+  tagptr->data =  ops.arch;
+  tagptr++;
+
+  tagptr->tag = FCPPTAG_DEFINE;
+  tagptr->data =  ops.stdc;
+  tagptr++;
+
   /* The LAST tag: */
 
   tagptr->tag = FCPPTAG_END;
@@ -129,7 +152,7 @@ static void own_error(void *userdata, char *format, va_list arg) {
   vfprintf (stderr, format, arg);
 }
 
-static int SetOptions(int argc, char **argv, struct fcppTag **tagptr) {
+static int SetOptions(int argc, char **argv, struct fcppTag **tagptr, FcppOps *ops) {
   int i;
   char *ap;
   for (i = 1; i < argc; i++) {
@@ -313,6 +336,29 @@ static int SetOptions(int argc, char **argv, struct fcppTag **tagptr) {
             tags[tag++]->data = ap;
             break;
           */
+
+        case '-':
+          if ('-' == *ap) {
+            if (str_eq ("--arch=x86", argv[i])) {
+              strncpy (ops->arch, "__x86_64__=1", 16);
+              break;
+            } else if (str_eq ("--arch=x86_64", argv[i])) {
+              strncpy (ops->arch, "__x86__=1", 16);
+              break;
+            } else if (str_eq ("--std=c99", argv[i])) {
+              strncpy (ops->stdc, "__STDC_VERSION__=199901L", 32);
+              break;
+            } else if (str_eq ("--std=c11", argv[i])) {
+              strncpy (ops->stdc, "__STDC_VERSION__=201112L", 32);
+              break;
+            } else if (str_eq ("--std=c23", argv[i])) {
+              strncpy (ops->stdc, "__STDC_VERSION__=202311L", 32);
+              break;
+            }
+          }
+
+          // fallthrough
+
         case 'h':
         case '?': /* if a question mark is possible to specify! */
         default:      /* What is this one?  */

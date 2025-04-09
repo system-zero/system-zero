@@ -64,11 +64,11 @@
 #endif
 
 #ifndef NBUFF
-#define NBUFF     512
+#define NBUFF     (512 * 8)
 #endif
 
 #ifndef NWORK
-#define NWORK     512
+#define NWORK     (512 * 4)
 #endif
 
 #ifndef NEXP
@@ -686,112 +686,6 @@ struct cpreproc_t {
 
   char outputfunctions;   /* output all discovered functions to stderr! */
 };
-
-typedef enum {
-  ERROR_STRING_MUST_BE_IF,
-  ERROR_STRING_MAY_NOT_FOLLOW_ELSE,
-  ERROR_ERROR,
-  ERROR_PREPROC_FAILURE,
-  ERROR_MISSING_ARGUMENT,
-  ERROR_INCLUDE_SYNTAX,
-  ERROR_DEFINE_SYNTAX,
-  ERROR_REDEFINE,
-  ERROR_ILLEGAL_UNDEF,
-  ERROR_RECURSIVE_MACRO,
-  ERROR_EOF_IN_ARGUMENT,
-  ERROR_MISPLACED_CONSTANT,
-  ERROR_IF_OVERFLOW,
-  ERROR_ILLEGAL_IF_LINE,
-  ERROR_OPERATOR,
-  ERROR_EXPR_OVERFLOW,
-  ERROR_UNBALANCED_PARENS,
-  ERROR_MISPLACED,
-  ERROR_STRING_IN_IF,
-  ERROR_DEFINED_SYNTAX,
-  ERROR_ILLEGAL_ASSIGN,
-  ERROR_ILLEGAL_BACKSLASH,
-  ERROR_SIZEOF_SYNTAX,
-  ERROR_SIZEOF_UNKNOWN,
-  ERROR_SIZEOF_ILLEGAL_TYPE,
-  ERROR_SIZEOF_NO_TYPE,
-  ERROR_UNTERMINATED_STRING,
-  ERROR_EOF_IN_COMMENT,
-  ERROR_IFDEF_DEPTH,
-  ERROR_ILLEGAL_CHARACTER,
-  ERROR_ILLEGAL_CHARACTER2,
-  ERROR_SIZEOF_BUG,
-  ERROR_IF_OPERAND,
-  ERROR_STRANG_CHARACTER,
-  ERROR_STRANG_CHARACTER2,
-
-  BORDER_ERROR_WARN, /* below this number: errors, above: warnings */
-
-  WARN_CONTROL_LINE_IN_MACRO,
-  WARN_ILLEGAL_COMMAND,
-  WARN_UNEXPECTED_TEXT_IGNORED,
-  WARN_TOO_FEW_VALUES_TO_SIZEOF,
-  WARN_TOO_MANY_VALUES_TO_SIZEOF,
-  WARN_NOT_DEFINED,
-  WARN_INTERNAL_ERROR,
-  WARN_MACRO_NEEDS_ARGUMENTS,
-  WARN_WRONG_NUMBER_ARGUMENTS,
-  WARN_DIVISION_BY_ZERO,
-  WARN_ILLEGAL_OCTAL,
-  WARN_MULTIBYTE_NOT_PORTABLE,
-  WARN_CANNOT_OPEN_INCLUDE,
-  WARN_BRACKET_DEPTH,
-  WARN_PAREN_DEPTH,
-  WARN_BRACE_DEPTH,
-  WARN_NESTED_COMMENT,
-
-  BORDER_WARN_FATAL, /* below this number: warnings, above: fatals */
-
-  FATAL_TOO_MANY_NESTINGS,
-  FATAL_FILENAME_BUFFER_OVERFLOW,
-  FATAL_TOO_MANY_INCLUDE_DIRS,
-  FATAL_TOO_MANY_INCLUDE_FILES,
-  FATAL_TOO_MANY_ARGUMENTS_MACRO,
-  FATAL_MACRO_AREA_OVERFLOW,
-  FATAL_ILLEGAL_MACRO,
-  FATAL_TOO_MANY_ARGUMENTS_EXPANSION,
-  FATAL_OUT_OF_SPACE_IN_ARGUMENT,
-  FATAL_WORK_AREA_OVERFLOW,
-  FATAL_WORK_BUFFER_OVERFLOW,
-  FATAL_OUT_OF_MEMORY,
-  FATAL_TOO_MUCH_PUSHBACK
-
-
-  } ErrorCode;
-
-/**********************************************************************
- * RETURN CODES:
- *********************************************************************/
-
-typedef enum {
-  FCPP_OK,
-  FCPP_OUT_OF_MEMORY,
-  FCPP_TOO_MANY_NESTED_STATEMENTS,
-  FCPP_FILENAME_BUFFER_OVERFLOW,
-  FCPP_NO_INCLUDE,
-  FCPP_OPEN_ERROR,
-  FCPP_TOO_MANY_ARGUMENTS,
-  FCPP_WORK_AREA_OVERFLOW,
-  FCPP_ILLEGAL_MACRO,
-  FCPP_EOF_IN_MACRO,
-  FCPP_OUT_OF_SPACE_IN_MACRO_EXPANSION,
-  FCPP_ILLEGAL_CHARACTER,
-  FCPP_CANT_USE_STRING_IN_IF,
-  FCPP_BAD_IF_DEFINED_SYNTAX,
-  FCPP_IF_ERROR,
-  FCPP_SIZEOF_ERROR,
-  FCPP_UNTERMINATED_STRING,
-  FCPP_TOO_MANY_INCLUDE_DIRS,
-  FCPP_TOO_MANY_INCLUDE_FILES,
-  FCPP_INTERNAL_ERROR,
-
-  FCPP_LAST_ERROR
-} ReturnCode;
-
 
 static ReturnCode cppmain (struct cpreproc_t *);
 static ReturnCode addfile (struct cpreproc_t *, FILE *, char *);
@@ -1614,10 +1508,15 @@ static int dooptions (struct cpreproc_t *global, struct fcppTag *tags) {
           char *text= (char *) symbol;
           while (*text != EOS && *text != '=')
             text++;
-          if (*text == EOS)
+          if (*text == EOS) {
             text = (char *) "1";
-          else
+          } else {
             *text++ = EOS;
+
+            if (*text == EOS)
+              return FCPP_EOF_IN_MACRO;
+          }
+
           /*
            * Now, save the word and its definition.
            */
@@ -2505,7 +2404,7 @@ ReturnCode eval (struct cpreproc_t *global, int *eval)
    * For compatiblity with older cpp's, this return returns 1 (TRUE)
    * if a syntax error is detected.
    */
-  int op;    /* Current operator    */
+  int op = 0;    /* Current operator    */
   int *valp;    /* -> value vector    */
   OPTAB *opp;    /* Operator stack    */
   int prec;    /* Op precedence    */
@@ -2719,6 +2618,7 @@ static ReturnCode evallex (struct cpreproc_t *global,
         return ret;
       }
       global->evalue = 0;
+
       *op = DIG;
       return FCPP_OK;
     } else if (t == DIG) {                  /* Numbers are harder   */
@@ -2937,7 +2837,7 @@ static int evalnum (struct cpreproc_t *global, int c) {
   int value;
   int base;
   int c1;
-  
+
   if (c != '0')
     base = 10;
   else if ((c = cget (global)) == 'x' || c == 'X') {
@@ -2959,7 +2859,7 @@ static int evalnum (struct cpreproc_t *global, int c) {
     value += c1;
     c = cget (global);
   }
-  if (c == 'u' || c == 'U')       /* Unsigned nonsense            */
+  if (c == 'u' || c == 'U' || c == 'L')       /* Unsigned nonsense            */
     c = cget (global);
   unget (global);
   return value;
